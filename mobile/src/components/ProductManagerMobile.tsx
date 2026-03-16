@@ -14179,10 +14179,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={16} color={modernColors.primary} />
             <Text style={styles.hintText}>
-                💡 <Text style={styles.hintBold}>Conseil Restauration :</Text> Plus vous détaillez votre carte et vos spécialités locales, plus vous aurez de visibilité auprès des clients recherchant des plats spécifiques !{'\n\n'}
-                🍽️ Ajoutez au minimum 3-5 plats phares de votre carte{'\n'}
-                🍹 Précisez vos boissons locales (bissap, gingembre, etc.){'\n'}
-                🚗 Indiquez vos zones de livraison pour attirer les clients à proximité
+                {t('productManagerMobile.conseilRestauration')}
             </Text>
         </View>
     </>
@@ -14325,9 +14322,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={14} color={modernColors.primary} />
             <Text style={styles.hintText}>
-                💡 <Text style={styles.hintBold}>Conseil High-Tech :</Text> Précisez les spécifications techniques, l'état exact (rayures, fonctionnement), et ajoutez des photos de qualité pour rassurer les acheteurs !{'\n\n'}
-                📸 Photos recommandées : Vue d'ensemble, écran allumé, ports/connectiques, emballage/accessoires{'\n'}
-                🎯 Mentionnez la version/année du modèle pour plus de précision
+                {t('productManagerMobile.conseilHighTech')}
             </Text>
         </View>
     </>
@@ -15144,11 +15139,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={16} color={modernColors.primary} />
             <Text style={styles.hintText}>
-                💡 <Text style={styles.hintBold}>Conseil Formation :</Text> Plus vous détaillez votre programme, vos objectifs pédagogiques et vos résultats attendus, plus vous attirerez des candidats motivés !{'\n\n'}
-                🎓 Mentionnez les certifications reconnues (Cambridge, TOEFL, etc.){'\n'}
-                👨‍🏫 Indiquez l'expérience et les qualifications du formateur{'\n'}
-                📊 Précisez le taux de réussite aux examens ou concours{'\n'}
-                🎯 Listez les débouchés professionnels après la formation
+                {t('productManagerMobile.conseilFormation')}
             </Text>
         </View>
     </>

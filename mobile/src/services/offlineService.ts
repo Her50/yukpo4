@@ -234,11 +234,18 @@ class OfflineService extends EventEmitter {
 
         for (const action of actionsToSync) {
             try {
-                // TODO: Implémenter l'appel API réel
-                // const response = await apiCall(action.endpoint, action.method, action.payload);
-
-                // Pour l'instant, simuler un succès
-                successfulActions.push(action.id);
+                // Construire les options de requête selon la méthode HTTP
+                const options: RequestInit = { method: action.method };
+                if (action.payload && ['POST', 'PUT', 'PATCH'].includes(action.method)) {
+                    options.body = JSON.stringify(action.payload);
+                }
+                const response = await apiCall(action.endpoint, options, false); // false = pas de retry (on gère nous-mêmes)
+                if (response.success !== false) {
+                    successfulActions.push(action.id);
+                    console.log('[OfflineService] ✅ Action synchronisée:', action.endpoint);
+                } else {
+                    throw new Error(response.error || 'Sync failed');
+                }
             } catch (error) {
                 action.retryCount++;
                 if (action.retryCount < action.maxRetries) {

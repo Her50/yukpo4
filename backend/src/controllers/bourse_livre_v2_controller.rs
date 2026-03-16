@@ -16,7 +16,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use log::{error, info};
+use log::{error, info, warn};
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
@@ -595,7 +595,7 @@ pub async fn get_programmes_scolaires(
     let programmes = match query.fetch_all(&state.pg).await {
         Ok(p) => p,
         Err(e) => {
-            tracing::warn!(
+            warn!(
                 "[get_programmes_scolaires] DB error (table may not exist yet): {}",
                 e
             );

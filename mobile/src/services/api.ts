@@ -151,6 +151,69 @@ const removeAuthToken = async (): Promise<void> => {
   }
 };
 
+// ✅ NOUVEAU: Refresh proactif du token JWT avant expiration
+let isRefreshing = false;
+const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000; // 5 minutes avant expiration
+
+const decodeJwtExp = (token: string): number | null => {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1]));
+    return payload.exp ? payload.exp * 1000 : null; // en ms
+  } catch { return null; }
+};
+
+const ensureValidToken = async (): Promise<string | null> => {
+  try {
+    const token = await getAuthToken();
+    if (!token) return null;
+
+    const expMs = decodeJwtExp(token);
+    if (!expMs) return token; // Impossible de décoder, utiliser tel quel
+
+    const now = Date.now();
+    const timeLeft = expMs - now;
+
+    // Token déjà expiré
+    if (timeLeft <= 0) {
+      console.warn('[API] ⚠️ Token expiré, suppression');
+      await removeAuthToken();
+      return null;
+    }
+
+    // Token va expirer bientôt → refresh proactif
+    if (timeLeft < TOKEN_REFRESH_MARGIN_MS && !isRefreshing) {
+      isRefreshing = true;
+      console.log('[API] 🔄 Refresh proactif du token (expire dans', Math.round(timeLeft / 1000), 's)');
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.token) {
+            await saveAuthToken(data.token);
+            console.log('[API] ✅ Token rafraîchi avec succès');
+            isRefreshing = false;
+            return data.token;
+          }
+        }
+        // Si le refresh échoue, utiliser l'ancien token tant qu'il est encore valide
+        console.warn('[API] ⚠️ Refresh échoué, utilisation du token existant');
+      } catch (refreshErr) {
+        console.warn('[API] ⚠️ Erreur refresh token:', refreshErr);
+      }
+      isRefreshing = false;
+    }
+
+    return token;
+  } catch {
+    return await getAuthToken();
+  }
+};
+
 // ✅ NOUVEAU: Système de retry avec backoff exponentiel
 interface RetryConfig {
   maxRetries?: number;
@@ -290,7 +353,8 @@ const apiCallInternal = async <T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
-  const token = await getAuthToken();
+  // ✅ Utiliser ensureValidToken pour refresh proactif avant expiration
+  const token = await ensureValidToken();
 
   const config: RequestInit = {
     headers: {

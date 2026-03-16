@@ -8,15 +8,16 @@
  * Utilise expo-task-manager + expo-location pour le background tracking.
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiPost } from './api';
 
 // ── Constantes ──
 const BACKGROUND_LOCATION_TASK = 'YUKPO_BACKGROUND_LOCATION_TASK';
 const STORAGE_KEY_SESSION = '@yukpo_passive_session';
 const STORAGE_KEY_ENABLED = '@yukpo_passive_tracking_enabled';
+const STORAGE_KEY_PENDING_SESSIONS = '@yukpo_passive_pending_sessions';
 
 // Seuils de détection
 const MIN_MOVEMENT_METERS = 15;       // Mouvement minimum pour compter (évite le bruit GPS)
@@ -47,7 +48,7 @@ const haversine = (lat1: number, lon1: number, lat2: number, lon2: number): numb
 const estimateCalories = (distKm: number, durationMin: number, mode: string, avgSpeed: number): number => {
     let met = mode === 'walking' ? (avgSpeed < 4 ? 2.5 : avgSpeed < 5.5 ? 3.5 : 4.5)
         : mode === 'bicycling' ? (avgSpeed < 16 ? 4.0 : 6.8)
-        : mode === 'transit' ? 1.3 : 1.5;
+            : mode === 'transit' ? 1.3 : 1.5;
     return (met * 70 * durationMin) / 60;
 };
 
@@ -97,33 +98,79 @@ const saveSession = async (session: PassiveSession): Promise<void> => {
     if (mode === 'walking' && avg >= 3 && avg <= 7) qual += 15;
     qual = Math.min(100, Math.max(0, qual));
 
+    const payload = {
+        travel_mode: mode,
+        origin_address: 'Détection automatique',
+        destination_address: 'Détection automatique',
+        origin_lat: session.originLat,
+        origin_lng: session.originLng,
+        dest_lat: session.lastLat,
+        dest_lng: session.lastLng,
+        distance_meters: Math.round(dM),
+        duration_seconds: dSec,
+        avg_speed_kmh: Math.round(avg * 10) / 10,
+        max_speed_kmh: Math.round(session.maxSpeed * 10) / 10,
+        calories_burned: Math.round(cal),
+        quality_score: qual,
+        speed_consistency: Math.round(consistency * 10) / 10,
+        pace_per_km_seconds: Math.round(pacePerKm),
+        checkpoints_reported: 0,
+        checkpoints_encountered: 0,
+        was_off_route: false,
+        started_at: session.startedAt,
+    };
+
     try {
-        await apiPost('/api/navigation/activity/log', {
-            travel_mode: mode,
-            origin_address: 'Détection automatique',
-            destination_address: 'Détection automatique',
-            origin_lat: session.originLat,
-            origin_lng: session.originLng,
-            dest_lat: session.lastLat,
-            dest_lng: session.lastLng,
-            distance_meters: Math.round(dM),
-            duration_seconds: dSec,
-            avg_speed_kmh: Math.round(avg * 10) / 10,
-            max_speed_kmh: Math.round(session.maxSpeed * 10) / 10,
-            calories_burned: Math.round(cal),
-            quality_score: qual,
-            speed_consistency: Math.round(consistency * 10) / 10,
-            pace_per_km_seconds: Math.round(pacePerKm),
-            checkpoints_reported: 0,
-            checkpoints_encountered: 0,
-            was_off_route: false,
-            started_at: session.startedAt,
-        });
+        await apiPost('/api/navigation/activity/log', payload);
         console.log('[PassiveTracker] ✅ Session enregistrée:', {
             mode, distKm: dKm.toFixed(2), durMin: Math.round(dMin), cal: Math.round(cal), qual
         });
     } catch (e) {
-        console.warn('[PassiveTracker] ❌ Erreur enregistrement session:', e);
+        console.warn('[PassiveTracker] ❌ Erreur enregistrement session, mise en queue offline:', e);
+        // Queue la session pour envoi ultérieur quand le réseau revient
+        try {
+            const raw = await AsyncStorage.getItem(STORAGE_KEY_PENDING_SESSIONS);
+            const pending: any[] = raw ? JSON.parse(raw) : [];
+            pending.push({ payload, queuedAt: new Date().toISOString() });
+            // Limiter la queue à 50 sessions max pour éviter saturation stockage
+            const trimmed = pending.slice(-50);
+            await AsyncStorage.setItem(STORAGE_KEY_PENDING_SESSIONS, JSON.stringify(trimmed));
+            console.log('[PassiveTracker] 📦 Session mise en queue offline (' + trimmed.length + ' en attente)');
+        } catch (queueError) {
+            console.warn('[PassiveTracker] Erreur mise en queue:', queueError);
+        }
+    }
+};
+
+// ── Retry des sessions en attente (appelé quand le réseau revient) ──
+const retryPendingSessions = async (): Promise<void> => {
+    try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY_PENDING_SESSIONS);
+        if (!raw) return;
+        const pending: Array<{ payload: any; queuedAt: string }> = JSON.parse(raw);
+        if (pending.length === 0) return;
+
+        console.log('[PassiveTracker] 🔄 Retry de', pending.length, 'sessions en attente...');
+        const failed: typeof pending = [];
+
+        for (const item of pending) {
+            try {
+                await apiPost('/api/navigation/activity/log', item.payload);
+                console.log('[PassiveTracker] ✅ Session en attente envoyée (du', item.queuedAt, ')');
+            } catch {
+                failed.push(item);
+            }
+        }
+
+        if (failed.length > 0) {
+            await AsyncStorage.setItem(STORAGE_KEY_PENDING_SESSIONS, JSON.stringify(failed));
+            console.log('[PassiveTracker] ⚠️', failed.length, 'sessions toujours en échec');
+        } else {
+            await AsyncStorage.removeItem(STORAGE_KEY_PENDING_SESSIONS);
+            console.log('[PassiveTracker] ✅ Toutes les sessions en attente envoyées');
+        }
+    } catch (e) {
+        console.warn('[PassiveTracker] Erreur retry sessions:', e);
     }
 };
 
@@ -312,6 +359,8 @@ export const PassiveActivityTracker = {
                     await PassiveActivityTracker.start();
                 }
             }
+            // Toujours essayer de renvoyer les sessions en attente au réseau
+            retryPendingSessions().catch(() => { });
         } catch (e) {
             console.warn('[PassiveTracker] Erreur reprise:', e);
         }

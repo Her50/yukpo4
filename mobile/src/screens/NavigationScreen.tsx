@@ -576,13 +576,20 @@ const NavigationScreen: React.FC = () => {
                 });
                 console.log('[Navigation] Validated POIs:', vp);
                 setPointsOfInterest(vp);
+                // Cache les POI
+                saveToCache(CACHE_KEYS.pois, vp, CACHE_TTL);
                 // Toutes les catégories restent fermées — l'utilisateur clique pour ouvrir
                 const reset: Record<string, boolean> = {};
                 Object.keys(POI_CATEGORIES).forEach(k => reset[k] = false);
                 setExpandedCategories(reset);
                 setPoiShowAll({});
             }
-        } catch { setPointsOfInterest([]); } finally { setLoadingPOI(false); }
+        } catch {
+            // Fallback cache offline
+            const cached = await loadFromCache<PointOfInterest[]>(CACHE_KEYS.pois);
+            if (cached && cached.length > 0) { setPointsOfInterest(cached); setUsingCachedData(true); console.log('[Navigation] 📦 POI chargés depuis le cache'); }
+            else setPointsOfInterest([]);
+        } finally { setLoadingPOI(false); }
     }, [destinationCoords, getCurrentPosition]);
 
     const loadCheckpointsSafely = useCallback(async () => {
@@ -605,13 +612,18 @@ const NavigationScreen: React.FC = () => {
                 const filtered = checkpointsArray.filter((c: any) => c && validateCoords(c.latitude, c.longitude));
                 console.log('[Navigation] Filtered checkpoints:', JSON.stringify(filtered, null, 2));
                 setCheckpoints(filtered);
+                // Cache les checkpoints
+                saveToCache(CACHE_KEYS.checkpoints, filtered, CACHE_TTL);
             } else {
                 console.log('[Navigation] No checkpoints found in array');
                 setCheckpoints([]);
             }
         } catch (error) {
             console.error('[Navigation] Error loading checkpoints:', error);
-            setCheckpoints([]);
+            // Fallback cache offline
+            const cached = await loadFromCache<any[]>(CACHE_KEYS.checkpoints);
+            if (cached && cached.length > 0) { setCheckpoints(cached); setUsingCachedData(true); console.log('[Navigation] 📦 Checkpoints chargés depuis le cache'); }
+            else setCheckpoints([]);
         } finally {
             setLoadingCheckpoints(false);
         }
@@ -707,31 +719,45 @@ const NavigationScreen: React.FC = () => {
             if (sr?.data) {
                 console.log('[Navigation] Setting activity summary:', sr.data);
                 const summary = sr.data.summary || {};
-                setActivitySummary({
+                const summaryData = {
                     ...summary,
                     by_mode: sr.data.by_mode || [],
                     best_session: sr.data.best_session || null,
                     daily_trend: sr.data.daily_trend || [],
                     most_visited_places: (sr.data.top_destinations || []).map((d: any) => ({ name: d.address || 'Lieu inconnu', visit_count: d.visits || 0 })),
                     favorite_poi_types: (sr.data.by_mode || []).map((m: any) => ({ poi_type: m.mode, count: m.count || 0 })),
-                });
+                };
+                setActivitySummary(summaryData);
+                saveToCache(CACHE_KEYS.activitySummary, summaryData, CACHE_TTL_LONG);
             }
             if (hr?.data?.activities) {
                 console.log('[Navigation] Setting activity history:', hr.data.activities);
                 setActivityHistory(hr.data.activities);
+                saveToCache(CACHE_KEYS.activityHistory, hr.data.activities, CACHE_TTL_LONG);
             }
             if (ar?.data?.success) {
                 console.log('[Navigation] Setting AI insights:', ar.data);
                 setAiInsights(ar.data);
+                saveToCache(CACHE_KEYS.aiInsights, ar.data, CACHE_TTL_LONG);
             } else {
                 console.log('[Navigation] AI insights not successful or missing');
             }
         } catch (e) {
             console.error('[Navigation] Error loading activity stats:', e);
+            // Fallback cache offline
+            const [cachedSummary, cachedHistory, cachedInsights] = await Promise.all([
+                loadFromCache<any>(CACHE_KEYS.activitySummary),
+                loadFromCache<any[]>(CACHE_KEYS.activityHistory),
+                loadFromCache<any>(CACHE_KEYS.aiInsights),
+            ]);
+            if (cachedSummary) { setActivitySummary(cachedSummary); setUsingCachedData(true); }
+            if (cachedHistory) { setActivityHistory(cachedHistory); setUsingCachedData(true); }
+            if (cachedInsights) { setAiInsights(cachedInsights); setUsingCachedData(true); }
+            if (cachedSummary || cachedHistory || cachedInsights) console.log('[Navigation] 📦 Stats d\'activité chargées depuis le cache');
         } finally {
             setLoadingActivity(false);
         }
-    }, []);
+    }, [saveToCache, loadFromCache]);
     const estimateCalories = useCallback((dKm: number, dMin: number, mode: string, spd: number) => {
         let met = mode === 'walking' ? (spd < 4 ? 2.5 : spd < 5.5 ? 3.5 : spd < 7 ? 4.5 : 6.0) : mode === 'bicycling' ? (spd < 16 ? 4.0 : spd < 20 ? 6.8 : spd < 25 ? 8.0 : 10.0) : mode === 'transit' ? 1.3 : 1.5;
         return (met * 70 * dMin) / 60;
