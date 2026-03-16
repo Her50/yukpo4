@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 /// Calcule la classe immédiatement supérieure dans le système camerounais/francophone.
 /// Hiérarchie: SIL → CP → CE1 → CE2 → CM1 → CM2 → 6ème → 5ème → 4ème → 3ème → Seconde → Première → Terminale
+/// Retourne "" (vide) pour Terminale car il n'y a PAS de classe supérieure.
 pub fn compute_classe_superieure(classe_actuelle: &str) -> String {
     let normalized = classe_actuelle.trim().to_lowercase();
     let mapping: &[(&str, &str)] = &[
@@ -38,8 +39,9 @@ pub fn compute_classe_superieure(classe_actuelle: &str) -> String {
         ("premiere", "Terminale"),
         ("1ère", "Terminale"),
         ("1ere", "Terminale"),
-        ("terminale", "Terminale"),
-        ("tle", "Terminale"),
+        // Terminale → PAS de classe supérieure → retourne vide
+        ("terminale", ""),
+        ("tle", ""),
     ];
     for (key, val) in mapping {
         if normalized == *key {
@@ -48,6 +50,12 @@ pub fn compute_classe_superieure(classe_actuelle: &str) -> String {
     }
     // Si non reconnu, retourner la même classe
     classe_actuelle.to_string()
+}
+
+/// Vérifie si une classe est la Terminale (dernière classe, pas de troc possible)
+pub fn is_classe_terminale(classe: &str) -> bool {
+    let normalized = classe.trim().to_lowercase();
+    matches!(normalized.as_str(), "terminale" | "tle")
 }
 
 /// Déduit le niveau scolaire (Primaire/Collège/Lycée) depuis la classe
@@ -503,7 +511,7 @@ L'élève a DÉJÀ UTILISÉ ce livre → il passe en classe supérieure.
 classe_souhaitee = classe IMMÉDIATEMENT SUPÉRIEURE à classe_actuelle.
 Hiérarchie: SIL→CP→CE1→CE2→CM1→CM2→6ème→5ème→4ème→3ème→Seconde→Première→Terminale.
 Ex: livre "6ème" → classe_souhaitee="5ème", livre "CM2" → classe_souhaitee="6ème", livre "3ème" → classe_souhaitee="Seconde".
-Si Terminale → classe_souhaitee="Terminale".
+Si Terminale → classe_souhaitee=null (pas de classe supérieure, livre en mode vente uniquement).
 
 Localisation: lat={}, lng={}.
 Programmes connus: {}.
@@ -567,16 +575,25 @@ Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, cla
         // ou si classe_souhaitee est incorrecte, on la recalcule
         let mut analysis = analysis;
         if let Some(ref classe_act) = analysis.classe_actuelle {
-            let computed = compute_classe_superieure(classe_act);
-            if analysis.classe_souhaitee.is_none()
-                || analysis.classe_souhaitee.as_deref() == Some("")
-            {
+            if is_classe_terminale(classe_act) {
+                // Terminale: PAS de classe supérieure → classe_souhaitee = None
+                // Le livre sera automatiquement en mode "vente"
                 log::info!(
-                    "[BookExchangeAIService] Fallback classe_souhaitee: {} → {}",
-                    classe_act,
-                    computed
+                    "[BookExchangeAIService] Classe Terminale détectée: classe_souhaitee=None, mode=vente"
                 );
-                analysis.classe_souhaitee = Some(computed);
+                analysis.classe_souhaitee = None;
+            } else {
+                let computed = compute_classe_superieure(classe_act);
+                if analysis.classe_souhaitee.is_none()
+                    || analysis.classe_souhaitee.as_deref() == Some("")
+                {
+                    log::info!(
+                        "[BookExchangeAIService] Fallback classe_souhaitee: {} → {}",
+                        classe_act,
+                        computed
+                    );
+                    analysis.classe_souhaitee = Some(computed);
+                }
             }
         }
 

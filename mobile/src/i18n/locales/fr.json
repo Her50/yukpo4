@@ -1458,7 +1458,19 @@
         "creerCetteChaine": "🔗 Créer cette chaîne",
         "livreSouhaite": "Livre souhaité",
         "rechercheDeMatchings": "Recherche de matchings...",
-        "livreOffert": "Livre offert"
+        "livreOffert": "Livre offert",
+        "chainFinalized": "Chaîne finalisée ! {{count}} paquets créés. Le coursier sera dispatché.",
+        "cannotFinalizeChain": "Impossible de finaliser la chaîne",
+        "bookCancelled": "Livre #{{id}} annulé. {{amount}} XAF crédités sur votre portefeuille.",
+        "cannotCancelBook": "Impossible d'annuler ce livre",
+        "scheduleReady": "Planning de livraison prêt : {{days}} jour(s) planifié(s).",
+        "cannotBuildSchedule": "Impossible de construire le planning de livraison",
+        "chainDetails": "Détails de la chaîne",
+        "participants": "{{count}} participants",
+        "sellers": "{{count}} vendeur(s)",
+        "totalDistance": "Distance totale : {{km}} km",
+        "vendeurLabel": "Vendeur",
+        "trocLabel": "Troc"
     },
     "taxiAvailability": {
         "cannotLoadDetails": "Impossible de charger les détails du taxi",
@@ -4794,7 +4806,8 @@
         "redemarrer": "Redémarrer",
         "oupsUneErreurSestProduite": "Oups ! Une erreur s'est produite",
         "errorboundaryComposantsAvecChildrenPrimitifsDetect": "🚨 [ErrorBoundary] {{problematicLogs.length}} composant(s) avec children primitifs détectés",
-        "applicationARencontreUneErreurInattendue": "application a rencontré une erreur inattendue. Veuillez redémarrer l"
+        "applicationARencontreUneErreurInattendue": "application a rencontré une erreur inattendue. Veuillez redémarrer l",
+        "unexpectedErrorMessage": "L'application a rencontré une erreur inattendue. Veuillez redémarrer l'application ou contacter le support si le problème persiste."
     },
     "errorBoundaryWithDebug": {
         "reessayer": "Réessayer",
@@ -5236,7 +5249,9 @@
         "creneaux": "Créneaux",
         "serviceOptionnel": "Service (optionnel)",
         "dateJjmmaaaaLaisserVidePourAujourd": "Date (JJ/MM/AAAA) - Laisser vide pour aujourd",
-        "attenteActuelsAL": "attente actuels à l"
+        "attenteActuelsAL": "attente actuels à l",
+        "consultWaitTimes": "Consultez les temps d'attente actuels à l'hôpital",
+        "datePlaceholder": "Date (JJ/MM/AAAA) - laisser vide pour aujourd'hui"
     },
     "hospitalAIRecommendations": {
         "decrivezVosSymptomes": "Décrivez vos symptômes",
@@ -7673,7 +7688,9 @@
         "hotelsChambresDhotesAubergesGitesReservations": "Hôtels, chambres d\\'hôtes, auberges, gîtes, réservations",
         "bureauDetudesPlansConceptionSuiviChantierPermis": "Bureau d\\'études, plans, conception, suivi chantier, permis de construire",
         "organisationDevenementsMariagesFetesCelebrations": "Organisation d\\'événements, mariages, fêtes, célébrations",
-        "hotesFamilialeAccueilChaleureuxPetitdejeunerMaisonchamb": "hôtes familiale accueil chaleureux petit-déjeuner maison,Chambre d'hôtes,Non classé,5,Wi-Fi|Parking,Petit-déjeuner,Oui,Non,Non,Non,Non,Oui,Oui,Non,Quartier résidentiel,Bafoussam,5.4774°N 10.4177°E,4.7"
+        "hotesFamilialeAccueilChaleureuxPetitdejeunerMaisonchamb": "hôtes familiale accueil chaleureux petit-déjeuner maison,Chambre d'hôtes,Non classé,5,Wi-Fi|Parking,Petit-déjeuner,Oui,Non,Non,Non,Non,Oui,Oui,Non,Quartier résidentiel,Bafoussam,5.4774°N 10.4177°E,4.7",
+        "emergencyNumbersHint": "💡 Les numéros d'urgence peuvent être ajoutés dans la fiche de l'établissement",
+        "computerDescriptionHint": "💡 Décrivez l'état général de l'ordinateur, ses performances et tout défaut éventuel"
     },
     "productMediaCarousel": {
         "aucunMediaDisponible": "Aucun média disponible",
@@ -7867,7 +7884,8 @@
         "demandeDePermission": "Demande de permission",
         "accesALaCameraEstNecessaire": "accès à la caméra est nécessaire pour scanner les QR codes",
         "accederALaCamera": "accéder à la caméra",
-        "accesALaCameraDansLes": "accès à la caméra dans les paramètres de l"
+        "accesALaCameraDansLes": "accès à la caméra dans les paramètres de l",
+        "pleaseAllowCameraAccess": "Veuillez autoriser l'accès à la caméra dans les paramètres de votre appareil"
     },
     "quickPreview": {
         "generationDuPreview": "Génération du preview...",
@@ -9425,7 +9443,8 @@
         "erreurLorsDeLaCreationDu": "❌ Erreur lors de la création du produit",
         "laRequeteAPrisTropDe": "La requête a pris trop de temps. Cela peut être dû à une connexion lente ou un serveur surchargé.\\n\\nVeuillez réessayer dans quelques instants.",
         "eviterLesVentesDeProduitsEpuises": "éviter les ventes de produits épuisés et d",
-        "eviterLesVentesDeProduitsEpuisesEt": "éviter les ventes de produits épuisés et d'améliorer l"
+        "eviterLesVentesDeProduitsEpuisesEt": "éviter les ventes de produits épuisés et d'améliorer l",
+        "stockManagementTip": "La gestion du stock permet d'éviter les ventes de produits épuisés et d'améliorer l'expérience de vos clients."
     },
     "loginScreen": {
         "veuillezRemplirTousLesChamps": "Veuillez remplir tous les champs",
@@ -9575,7 +9594,8 @@
         "candidatureSoumiseAvecSuccesVotreFormulaire": "✅ Candidature soumise avec succès ! Votre formulaire est en attente de validation.",
         "brouillonEnregistreVousPouvezCompleterEt": "💾 Brouillon enregistré ! Vous pouvez compléter et soumettre plus tard.",
         "brouillonChargeVousPouvezContinuerA": "📝 Brouillon chargé. Vous pouvez continuer à compléter votre candidature.",
-        "aPasEteApprouveeVeuillezContacter": "a pas été approuvée. Veuillez contacter le support pour plus d"
+        "aPasEteApprouveeVeuillezContacter": "a pas été approuvée. Veuillez contacter le support pour plus d",
+        "candidatureRefuseeDetail": "Votre candidature n'a pas été approuvée. Veuillez contacter le support pour plus d'informations."
     },
     "courierVerificationCodeScreen": {},
     "deliveryHomeScreen": {},
@@ -10654,7 +10674,8 @@
         "termine": "terminé",
         "annule": "annulé",
         "nonSpecifie": "Non spécifié",
-        "avezPasEncoreEffectueD": "avez pas encore effectué d"
+        "avezPasEncoreEffectueD": "avez pas encore effectué d",
+        "noExamYet": "Vous n'avez pas encore effectué d'examen de laboratoire."
     },
     "myPharmacyOrdersScreen": {
         "confirmee": "confirmée",

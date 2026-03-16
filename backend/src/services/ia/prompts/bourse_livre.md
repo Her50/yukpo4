@@ -138,8 +138,9 @@ TON RÔLE - ANALYSER LES DEUX FACES DU LIVRE :
      - Livre de "6ème" → classe_souhaitee = "5ème"
      - Livre de "CM2"  → classe_souhaitee = "6ème"
      - Livre de "3ème" → classe_souhaitee = "Seconde"
-     - Livre de "Terminale" → classe_souhaitee = "Terminale" (pas de classe supérieure)
+     - Livre de "Terminale" → classe_souhaitee = null (PAS de classe supérieure, ce livre ne peut être que VENDU, pas troqué)
    Si tu ne peux pas déterminer la classe du livre, mets les deux à null.
+   IMPORTANT: Un livre de Terminale n'a AUCUNE classe supérieure → classe_souhaitee DOIT être null.
 
 3. DÉTECTION PRIX ET DEVISE :
    - Chercher le prix imprimé sur le livre (souvent au verso ou en 4ème de couverture)

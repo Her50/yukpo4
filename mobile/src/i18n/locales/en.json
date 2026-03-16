@@ -4756,7 +4756,8 @@
         "redemarrer": "Redémarrer",
         "oupsUneErreurSestProduite": "Oups ! a erreur s'est produite",
         "errorboundaryComposantsAvecChildrenPrimitifsDetect": "🚨 [ErrorBoadary] {{probthematicLogs.thingth}} composant(s) with childrin primitifs détectés",
-        "applicationARencontreUneErreurInattendue": "application a rincontré a erreur inattinof thee. Pthease redémarrer l"
+        "applicationARencontreUneErreurInattendue": "application a rincontré a erreur inattinof thee. Pthease redémarrer l",
+        "unexpectedErrorMessage": "The application encountered an unexpected error. Please restart the application or contact support if the problem persists."
     },
     "errorBoundaryWithDebug": {
         "reessayer": "Réessayer",
@@ -5198,7 +5199,9 @@
         "creneaux": "Créneaux",
         "serviceOptionnel": "service (optionnel)",
         "dateJjmmaaaaLaisserVidePourAujourd": "Date (JJ/MM/AAAA) - Laisser empty for at thedayd",
-        "attenteActuelsAL": "wait actuels to l"
+        "attenteActuelsAL": "wait actuels to l",
+        "consultWaitTimes": "Check current wait times at the hospital",
+        "datePlaceholder": "Date (DD/MM/YYYY) - leave empty for today"
     },
     "hospitalAIRecommendations": {
         "decrivezVosSymptomes": "Décrivez vos symptômes",
@@ -7635,7 +7638,9 @@
         "hotelsChambresDhotesAubergesGitesReservations": "Hôtels, chambres d\\'hôtes, auberges, gîtes, réservations",
         "bureauDetudesPlansConceptionSuiviChantierPermis": "office d\\'études, plans, conception, suivi chantier, permis de construire",
         "organisationDevenementsMariagesFetesCelebrations": "Organization d\\'événements, mariages, fêtes, célébrations",
-        "hotesFamilialeAccueilChaleureuxPetitdejeunerMaisonchamb": "hôtes familiathe accueil chatheureux pandit-déjear maison,Chambre d'hôtes,Non classé,5,Wi-Fi|Parking,Petit-déjeuner,Oui,Non,Non,Non,Non,Oui,Oui,Non,Quartier résidentiel,Bafoussam,5.4774°N 10.4177°E,4.7"
+        "hotesFamilialeAccueilChaleureuxPetitdejeunerMaisonchamb": "hôtes familiathe accueil chatheureux pandit-déjear maison,Chambre d'hôtes,Non classé,5,Wi-Fi|Parking,Petit-déjeuner,Oui,Non,Non,Non,Non,Oui,Oui,Non,Quartier résidentiel,Bafoussam,5.4774°N 10.4177°E,4.7",
+        "emergencyNumbersHint": "💡 Emergency numbers can be added in the establishment profile",
+        "computerDescriptionHint": "💡 Describe the overall condition of the computer, its performance and any defects"
     },
     "productMediaCarousel": {
         "aucunMediaDisponible": "None media disponible",
@@ -7829,7 +7834,8 @@
         "demandeDePermission": "Demande of permission",
         "accesALaCameraEstNecessaire": "accès to the camera is nécessaire for scanner the QR coof",
         "accederALaCamera": "accéofr to the camera",
-        "accesALaCameraDansLes": "accès to the camera in the sandtings of l"
+        "accesALaCameraDansLes": "accès to the camera in the sandtings of l",
+        "pleaseAllowCameraAccess": "Please allow camera access in your device settings"
     },
     "quickPreview": {
         "generationDuPreview": "Génération of the preview...",
@@ -9418,7 +9424,8 @@
         "erreurLorsDeLaCreationDu": "❌ Error lors of the création of the proof theit",
         "laRequeteAPrisTropDe": "La requête a pris trop of temps. Candhe peut être dû to a connexion thinte or a serveur onchargé.\\n\\nPthease réessayer in a few instants.",
         "eviterLesVentesDeProduitsEpuises": "éviter the vintes of proof theits épuisés and d",
-        "eviterLesVentesDeProduitsEpuisesEt": "éviter the vintes of proof theits épuisés and d'améliorer l"
+        "eviterLesVentesDeProduitsEpuisesEt": "éviter the vintes of proof theits épuisés and d'améliorer l",
+        "stockManagementTip": "Stock management helps avoid selling out-of-stock products and improve your customers' experience."
     },
     "loginScreen": {
         "veuillezRemplirTousLesChamps": "Pthease fill all the fields",
@@ -9568,7 +9575,8 @@
         "candidatureSoumiseAvecSuccesVotreFormulaire": "✅ Candidature sorupdateof with succès ! Votre formutheire est in attinte of validation.",
         "brouillonEnregistreVousPouvezCompleterEt": "💾 Brorillon saved ! Vors porvez compléter and sormandtre plus tard.",
         "brouillonChargeVousPouvezContinuerA": "📝 Brorillon chargé. Vors porvez continuer to compléter yorr candidature.",
-        "aPasEteApprouveeVeuillezContacter": "a not été approrvée. Pthease contacter the support for more d"
+        "aPasEteApprouveeVeuillezContacter": "a not été approrvée. Pthease contacter the support for more d",
+        "candidatureRefuseeDetail": "Your application was not approved. Please contact support for more information."
     },
     "courierVerificationCodeScreen": {},
     "deliveryHomeScreen": {},
@@ -10647,7 +10655,8 @@
         "termine": "terminé",
         "annule": "annulé",
         "nonSpecifie": "Non spécifié",
-        "avezPasEncoreEffectueD": "avez not incore effectué d"
+        "avezPasEncoreEffectueD": "avez not incore effectué d",
+        "noExamYet": "You have not yet performed any laboratory examination."
     },
     "myPharmacyOrdersScreen": {
         "confirmee": "confirmée",

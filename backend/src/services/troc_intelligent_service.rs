@@ -7,7 +7,8 @@ use crate::models::troc_livre::{
     CreateTrocDirectRequest, MatchingChaine, MatchingDirect, ParticipantChaine, TrocLivre,
 };
 use log::{self, info};
-use sqlx::PgPool;
+#[allow(unused_imports)]
+use sqlx::{PgPool, Row};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -206,11 +207,16 @@ impl TrocIntelligentService {
     //   1. Construire un graphe dirigé de transferts potentiels (livre_owner → receiver)
     //      - Un transfert existe si le livre de A correspond au besoin de B
     //        (classe_actuelle de A = classe_souhaitee de B, même matière)
+    //      - Le matching s'adapte à TOUTES les classes/matières de chaque utilisateur
     //   2. Anti-réciprocité: si on ajoute A→B, jamais B→A dans la même chaîne
-    //   3. Vendeurs (mode_listing='vente') = nœuds source uniquement (ils donnent, ne reçoivent rien)
-    //   4. Taille dynamique, optimisée par proximité GPS
-    //   5. La chaîne est "bouclée" quand tous les besoins du demandeur initial sont couverts
-    //      OU quand on ne peut plus ajouter de transferts sans violer l'anti-réciprocité
+    //   3. Vendeurs optionnels: si présents, ils sont nœuds source (donnent, ne reçoivent rien)
+    //      La chaîne fonctionne aussi sans aucun vendeur.
+    //   4. Taille dynamique (max 10 par défaut), optimisée par proximité GPS
+    //   5. Multi-chaîne: un user peut participer à plusieurs chaînes MAIS il ne peut
+    //      être non-source (receiver-only = pas au point de départ) dans AU PLUS 1 chaîne
+    //      active. Cela évite les allers-retours coursier au même domicile.
+    //   6. Coursier unique par participant: un seul coursier assure toutes les livraisons
+    //      d'un participant sur l'ensemble de ses chaînes.
     //
     // Résultat: un DAG (pas un cycle) d'arêtes (sender → receiver, livre)
 
@@ -225,7 +231,7 @@ impl TrocIntelligentService {
             livre_offert_id
         );
 
-        let max_nodes = max_participants.unwrap_or(8) as usize;
+        let max_nodes = max_participants.unwrap_or(10) as usize;
 
         // Récupérer le livre offert (point de départ)
         let livre_offert = sqlx::query_as::<_, LivreScolaire>(
@@ -306,19 +312,26 @@ impl TrocIntelligentService {
                     continue;
                 }
                 // Le receiver a-t-il besoin d'un livre de cette classe/matière ?
+                // Note: les livres de Terminale ont classe_souhaitee="" → ne matchent jamais
+                // comme demande (ils sont vendeurs/source-only dans la chaîne)
                 let receiver_needs = receiver_livres.iter().any(|rl| {
-                    rl.classe_souhaitee == sender_livre.classe_actuelle
+                    !rl.classe_souhaitee.is_empty()
+                        && rl.classe_souhaitee == sender_livre.classe_actuelle
                         && rl.matiere == sender_livre.matiere
                 });
                 if !receiver_needs {
                     continue;
                 }
-                // Vendeur ne peut PAS recevoir (source-only)
-                let _sender_mode = sender_livre.mode_listing.as_deref().unwrap_or("troc");
-                // Le receiver ne peut recevoir que s'il est en mode troc (pas vendeur pur)
-                // Note: un vendeur peut quand même recevoir s'il a aussi un livre en mode troc
-                // Mais on vérifie au niveau de l'arête: le sender peut envoyer
-                let dist = Self::compute_distance_between(sender_livre, receiver_livres[0]);
+                // Trouver le livre du receiver qui matche (pour le calcul GPS précis)
+                let matched_receiver_livre = receiver_livres
+                    .iter()
+                    .find(|rl| {
+                        rl.classe_souhaitee == sender_livre.classe_actuelle
+                            && rl.matiere == sender_livre.matiere
+                    })
+                    .unwrap_or(&receiver_livres[0]);
+
+                let dist = Self::compute_distance_between(sender_livre, matched_receiver_livre);
 
                 edges.push(PotentialEdge {
                     sender_id,
@@ -341,17 +354,31 @@ impl TrocIntelligentService {
         );
 
         // ---------------------------------------------------------------
+        // Contrainte multi-chaîne: identifier les users déjà "non-source"
+        // (receiver-only = pas au point de départ) dans une chaîne active.
+        // Règle stricte: un user ne peut être non-source dans AU PLUS 1 chaîne.
+        // ---------------------------------------------------------------
+        let users_already_non_source = self.get_users_non_source_in_active_chains().await?;
+        info!(
+            "[TROC_INTELLIGENT] {} users déjà non-source dans une chaîne active",
+            users_already_non_source.len()
+        );
+
+        // ---------------------------------------------------------------
         // Greedy DAG construction: ajouter les arêtes une par une
         // en respectant:
         //   - Anti-réciprocité: si A→B, pas B→A
         //   - Max nodes
         //   - Pas de self-loop
         //   - Un livre ne peut être transféré qu'une seule fois
+        //   - Multi-chaîne: un user déjà non-source ailleurs ne peut pas
+        //     être non-source (receiver-only) dans cette chaîne aussi
         // ---------------------------------------------------------------
         let mut dag_edges: Vec<&PotentialEdge> = Vec::new();
         let mut directed_pairs: HashSet<(i32, i32)> = HashSet::new(); // (sender, receiver) existants
         let mut used_livre_ids: HashSet<i32> = HashSet::new();
         let mut chain_users: HashSet<i32> = HashSet::new();
+        let mut senders_in_chain: HashSet<i32> = HashSet::new(); // Users qui envoient dans cette chaîne
 
         // L'initiateur est toujours dans la chaîne
         chain_users.insert(initiateur_id);
@@ -383,11 +410,25 @@ impl TrocIntelligentService {
                 continue; // Arête déconnectée de la chaîne
             }
 
+            // Contrainte multi-chaîne: si le receiver est déjà non-source dans
+            // une autre chaîne active ET n'est pas déjà sender dans cette chaîne,
+            // on ne peut pas le rendre non-source ici aussi (règle stricte: max 1).
+            if users_already_non_source.contains(&edge.receiver_id)
+                && !senders_in_chain.contains(&edge.receiver_id)
+            {
+                info!(
+                    "[TROC_INTELLIGENT] Skip arête {}->{}: user {} déjà non-source dans une autre chaîne",
+                    edge.sender_id, edge.receiver_id, edge.receiver_id
+                );
+                continue;
+            }
+
             // Ajouter l'arête
             directed_pairs.insert((edge.sender_id, edge.receiver_id));
             used_livre_ids.insert(edge.livre.id);
             chain_users.insert(edge.sender_id);
             chain_users.insert(edge.receiver_id);
+            senders_in_chain.insert(edge.sender_id);
             dag_edges.push(edge);
         }
 
@@ -520,6 +561,65 @@ impl TrocIntelligentService {
             }
             _ => 999.0, // Pas de GPS → grande distance par défaut
         }
+    }
+
+    /// Identifier les users déjà "non-source" (receiver-only, pas au point de départ)
+    /// dans une chaîne active. Un user ne peut être non-source dans AU PLUS 1 chaîne.
+    /// Retourne un HashSet des user_ids qui sont DÉJÀ non-source dans au moins 1 chaîne active.
+    #[allow(dead_code)]
+    async fn get_users_non_source_in_active_chains(&self) -> AppResult<HashSet<i32>> {
+        let chains = sqlx::query_as::<_, ChaineTrocLivre>(
+            "SELECT * FROM chaines_troc_livres WHERE statut IN ('en_formation', 'validee', 'en_cours')",
+        )
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur lecture chaînes actives: {}", e)))?;
+
+        let mut non_source_users: HashSet<i32> = HashSet::new();
+
+        for chain in &chains {
+            if let Some(ref transfers_json) = chain.transfers {
+                let transfers: Vec<ChainTransfer> =
+                    serde_json::from_value(transfers_json.clone()).unwrap_or_default();
+                let senders: HashSet<i32> = transfers.iter().map(|t| t.sender_id).collect();
+                let receivers: HashSet<i32> = transfers.iter().map(|t| t.receiver_id).collect();
+
+                // Non-source = users qui reçoivent mais n'envoient rien dans cette chaîne
+                for &r in &receivers {
+                    if !senders.contains(&r) {
+                        non_source_users.insert(r);
+                    }
+                }
+            }
+        }
+
+        Ok(non_source_users)
+    }
+
+    /// Identifier le coursier assigné à un user dans ses chaînes actives.
+    /// Retourne un HashMap user_id → coursier_id (si un coursier a déjà été assigné).
+    #[allow(dead_code)]
+    async fn get_assigned_couriers_for_users(&self) -> AppResult<HashMap<i32, i32>> {
+        // Chercher dans les paquets de livraison actifs quel coursier est assigné à quel user
+        let rows = sqlx::query(
+            r#"
+            SELECT DISTINCT destinataire_id, coursier_id
+            FROM book_delivery_packages
+            WHERE coursier_id IS NOT NULL
+            AND statut IN ('constitue', 'en_route', 'a_constituer')
+            "#,
+        )
+        .fetch_all(&*self.pool)
+        .await
+        .unwrap_or_default();
+
+        let mut map: HashMap<i32, i32> = HashMap::new();
+        for row in &rows {
+            let dest_id: i32 = Row::get(row, "destinataire_id");
+            let cour_id: i32 = Row::get(row, "coursier_id");
+            map.insert(dest_id, cour_id);
+        }
+        Ok(map)
     }
 
     /// Créer un troc direct
@@ -1538,6 +1638,45 @@ impl TrocIntelligentService {
                 "[TROC_INTELLIGENT] Paquet {} créé: {} → {} ({} livres, {:.0} XAF)",
                 reference, sender_id, receiver_id, nombre_livres, valeur_totale
             );
+        }
+
+        // 4b. Contrainte coursier unique: si un participant a déjà un coursier
+        // assigné dans une autre chaîne, assigner le même coursier aux nouveaux paquets.
+        // Cela évite que plusieurs coursiers visitent le même domicile.
+        let existing_couriers = self.get_assigned_couriers_for_users().await?;
+        for &pkg_id in &package_ids_created {
+            // Récupérer destinataire_id et expediteur_id du paquet
+            if let Ok(Some(row)) = sqlx::query(
+                "SELECT destinataire_id, expediteur_id FROM book_delivery_packages WHERE id = $1",
+            )
+            .bind(pkg_id)
+            .fetch_optional(&*self.pool)
+            .await
+            {
+                let dest_id: i32 = Row::get(&row, "destinataire_id");
+                let exp_id: i32 = Row::get(&row, "expediteur_id");
+
+                // Chercher un coursier déjà assigné pour ce destinataire ou expéditeur
+                let coursier_id = existing_couriers
+                    .get(&dest_id)
+                    .or_else(|| existing_couriers.get(&exp_id));
+
+                if let Some(&cid) = coursier_id {
+                    sqlx::query(
+                        "UPDATE book_delivery_packages SET coursier_id = $2 WHERE id = $1 AND coursier_id IS NULL",
+                    )
+                    .bind(pkg_id)
+                    .bind(cid)
+                    .execute(&*self.pool)
+                    .await
+                    .ok(); // Non-bloquant: si la colonne n'existe pas encore, on continue
+
+                    info!(
+                        "[TROC_INTELLIGENT] Paquet {} → coursier {} (réutilisé, même participant)",
+                        pkg_id, cid
+                    );
+                }
+            }
         }
 
         // 5. Calculer la route optimisée via les paquets créés
