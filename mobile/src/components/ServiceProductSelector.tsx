@@ -4,6 +4,7 @@ import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 import { config } from '../config/environment';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Product {
     serviceId: number;
@@ -53,7 +54,8 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
     onClose,
     allowMultiple = false, // ✅ Par défaut, sélection unique pour compatibilité
 }) => {
-    const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set()); // ✅ NOUVEAU : Set pour sélection multiple
+        const { t } = useLanguageSafe();
+const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set()); // ✅ NOUVEAU : Set pour sélection multiple
 
     const handleConfirm = () => {
         if (allowMultiple && onSelectMultiple) {
@@ -110,30 +112,30 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
         const safeServiceName = (() => {
             if (!product.serviceName) return 'Service sans nom';
             if (typeof product.serviceName === 'string') {
-                return product.serviceName.trim() || 'Service sans nom';
+                return product.serviceName.trim() || t('serviceProductSelector.serviceSansNom');
             }
             if (typeof product.serviceName === 'object' && product.serviceName !== null) {
                 const obj = product.serviceName as any;
                 if ('valeur' in obj && typeof obj.valeur === 'string') {
-                    return obj.valeur.trim() || 'Service sans nom';
+                    return obj.valeur.trim() || t('serviceProductSelector.serviceSansNom');
                 }
             }
-            return String(product.serviceName) || 'Service sans nom';
+            return String(product.serviceName) || t('serviceProductSelector.serviceSansNom');
         })();
 
         // ✅ SÉCURISÉ: S'assurer que productName est toujours une string valide
         const safeProductName = (() => {
             if (!product.productName) return 'Produit sans nom';
             if (typeof product.productName === 'string') {
-                return product.productName.trim() || 'Produit sans nom';
+                return product.productName.trim() || t('serviceProductSelector.produitSansNom');
             }
             if (typeof product.productName === 'object' && product.productName !== null) {
                 const obj = product.productName as any;
                 if ('valeur' in obj && typeof obj.valeur === 'string') {
-                    return obj.valeur.trim() || 'Produit sans nom';
+                    return obj.valeur.trim() || t('serviceProductSelector.produitSansNom');
                 }
             }
-            return String(product.productName) || 'Produit sans nom';
+            return String(product.productName) || t('serviceProductSelector.produitSansNom');
         })();
 
         const key = `${product.serviceId}-${safeServiceName}`;
@@ -165,7 +167,7 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
             <View style={styles.overlay}>
                 <NativeCard style={styles.modal}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>Sélectionner un produit</Text>
+                        <Text style={styles.title}>{t('serviceProductSelector.selectionnerUnProduit')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>
@@ -196,15 +198,15 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                                 const serviceNameDisplay = (() => {
                                     if (!service || !service.serviceName) return 'Service sans nom';
                                     if (typeof service.serviceName === 'string') {
-                                        return service.serviceName.trim() || 'Service sans nom';
+                                        return service.serviceName.trim() || t('serviceProductSelector.serviceSansNom');
                                     }
                                     if (typeof service.serviceName === 'object' && service.serviceName !== null) {
                                         const serviceNameObj = service.serviceName as any;
                                         if ('valeur' in serviceNameObj && typeof serviceNameObj.valeur === 'string') {
-                                            return serviceNameObj.valeur.trim() || 'Service sans nom';
+                                            return serviceNameObj.valeur.trim() || t('serviceProductSelector.serviceSansNom');
                                         }
                                     }
-                                    return String(service.serviceName) || 'Service sans nom';
+                                    return String(service.serviceName) || t('serviceProductSelector.serviceSansNom');
                                 })();
 
                                 return (
@@ -235,7 +237,7 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                                                             const parsed = JSON.parse(trimmed);
                                                             if (typeof parsed === 'object' && parsed !== null) {
                                                                 if ('valeur' in parsed && typeof parsed.valeur === 'string') {
-                                                                    return parsed.valeur.trim() || 'Produit sans nom';
+                                                                    return parsed.valeur.trim() || t('serviceProductSelector.produitSansNom');
                                                                 }
                                                                 return 'Produit sans nom';
                                                             }
@@ -243,17 +245,17 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                                                             // Ce n'est pas du JSON valide
                                                         }
                                                     }
-                                                    return trimmed || 'Produit sans nom';
+                                                    return trimmed || t('serviceProductSelector.produitSansNom');
                                                 }
 
                                                 if (typeof productName === 'object' && productName !== null) {
                                                     if ('valeur' in productName && typeof productName.valeur === 'string') {
-                                                        return productName.valeur.trim() || 'Produit sans nom';
+                                                        return productName.valeur.trim() || t('serviceProductSelector.produitSansNom');
                                                     }
                                                     return 'Produit sans nom';
                                                 }
 
-                                                return String(productName) || 'Produit sans nom';
+                                                return String(productName) || t('serviceProductSelector.produitSansNom');
                                             };
 
                                             const productNameDisplay = extractProductName(product.productName);
@@ -321,14 +323,14 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                             })
                         ) : (
                             <View style={styles.emptyState}>
-                                <Text style={styles.emptyStateText}>Aucun produit disponible</Text>
+                                <Text style={styles.emptyStateText}>{t('serviceProductSelector.aucunProduitDisponible')}</Text>
                             </View>
                         )}
                     </ScrollView>
 
                     <View style={styles.footer}>
                         <NativeButton
-                            title="Annuler"
+                            title={t('serviceProductSelector.annuler')}
                             variant="outline"
                             size="medium"
                             onPress={onClose}

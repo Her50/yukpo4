@@ -146,7 +146,7 @@ export const PubliciteSearchResults: React.FC<PubliciteSearchResultsProps> = ({
                             <View style={styles.textContent}>
                                 <View style={styles.badge}>
                                     <SafeIcon name="tag" size={12} color={modernColors.primary} />
-                                    <Text style={styles.badgeText}>Publicité</Text>
+                                    <Text style={styles.badgeText}>{t('publiciteSearchResults.publicite')}</Text>
                                 </View>
                                 {item.titre && (
                                     <Text style={styles.title} numberOfLines={2}>

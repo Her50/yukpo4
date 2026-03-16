@@ -90,10 +90,10 @@ const PharmacieHomeScreen: React.FC = () => {
 
     const sortOptions: { value: SortOption; label: string; icon: string }[] = [
         { value: 'relevance', label: 'Pertinence', icon: 'star' },
-        { value: 'price_asc', label: 'Prix croissant', icon: 'arrow-up' },
-        { value: 'price_desc', label: 'Prix décroissant', icon: 'arrow-down' },
+        { value: 'price_asc', label: t('pharmacieHomeScreen.prixCroissant'), icon: 'arrow-up' },
+        { value: 'price_desc', label: t('pharmacieHome.prixDecroissant'), icon: 'arrow-down' },
         { value: 'distance_asc', label: 'Plus proche', icon: 'map-pin' },
-        { value: 'name_asc', label: 'Nom (A-Z)', icon: 'type' },
+        { value: 'name_asc', label: t('pharmacieHomeScreen.nomAz'), icon: 'type' },
     ];
 
     // Obtenir l'icône du tri courant
@@ -106,7 +106,7 @@ const PharmacieHomeScreen: React.FC = () => {
     const quickFilters = [
         { id: 'proche', label: 'Proche de moi', icon: 'map-pin', distance: 10 },
         { id: 'disponible', label: 'Disponibles', icon: 'check-circle', available: true },
-        { id: 'prix_bas', label: 'Prix bas', icon: 'tag' },
+        { id: 'prix_bas', label: t('pharmacieHomeScreen.prixBas'), icon: 'tag' },
     ];
 
     // Initialiser avec localisation GPS
@@ -179,7 +179,7 @@ const PharmacieHomeScreen: React.FC = () => {
                 setTotalResults(r.total || results.length);
                 setPage(1);
             } else {
-                setError('Aucun médicament trouvé');
+                setError(t('pharmacieHome.aucunMedicamentTrouve'));
                 setMedications([]);
             }
         } catch (err: any) {
@@ -279,7 +279,7 @@ const PharmacieHomeScreen: React.FC = () => {
         const result = await askPharmacyQuestion(aiQuestion, medNames);
 
         if (result.success && result.data) {
-            const message = result.data.message || 'Réponse non disponible';
+            const message = result.data.message || t('pharmacieHome.reponseNonDisponible');
             setAiResponse(message);
             if (result.data.suggestions?.length > 0) {
                 setAiSuggestions(result.data.suggestions);
@@ -290,7 +290,7 @@ const PharmacieHomeScreen: React.FC = () => {
                 toaster?.show?.(t('pharmacieHome.aiResponseGenerated'), 'success');
             }
         } else {
-            setAiResponse('Consultez votre pharmacien pour des conseils personnalisés.');
+            setAiResponse(t('pharmacieHomeScreen.consultezVotrePharmacienPourDesConseils'));
             toaster?.show?.(t('pharmacieHome.aiTemporarilyUnavailable'), 'error');
         }
     };
@@ -310,8 +310,8 @@ const PharmacieHomeScreen: React.FC = () => {
         } else if (searchQuery.length === 0) {
             // Suggestions générales quand pas de recherche
             setAiSuggestions([
-                'Quels médicaments pour la fièvre?',
-                'Comment traiter un mal de tête?',
+                t('pharmacieHomeScreen.quelsMedicamentsPourLaFievre'),
+                t('pharmacieHomeScreen.commentTraiterUnMalDeTete'),
                 'Quels sont les médicaments disponibles près de moi?'
             ]);
         } else {
@@ -371,18 +371,18 @@ const PharmacieHomeScreen: React.FC = () => {
                     setImageAnalysisResult(analysis);
 
                     // Afficher le résultat dans le chat IA
-                    const description = analysis.description || analysis.interpretation || 'Analyse complétée';
+                    const description = analysis.description || analysis.interpretation || t('pharmacieHome.analyseCompletee');
                     const recommendations = analysis.recommendations ?
                         (Array.isArray(analysis.recommendations) ? analysis.recommendations.join('\n') : analysis.recommendations) : '';
 
                     setAiResponse(
-                        `Analyse du médicament:\n\n${description}\n\n` +
+                        t('pharmacieHomeScreen.analyseDuMedicamentnnnn', { description: description }) +
                         (recommendations ? `Recommandations:\n${recommendations}` : '')
                     );
                     setShowAIChat(true);
                 } else {
                     const ar = analysisResponse.data as any;
-                    const errorMsg = analysisResponse.error || ar?.error || 'Impossible d\'analyser l\'image du médicament. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
+                    const errorMsg = analysisResponse.error || ar?.error || 'Impossible d\'analyser l\t('pharmacieHomeScreen.imageDuMedicamentLiaDanalyseD')'images n\'est peut-être pas encore opérationnelle.';
                     Alert.alert(
                         t('message.error'),
                         errorMsg,
@@ -431,7 +431,7 @@ const PharmacieHomeScreen: React.FC = () => {
         if (result.success && result.data) {
             const dosage = result.data;
             setDosageData({
-                dosage: dosage.dosage || 'Consultez votre médecin',
+                dosage: dosage.dosage || t('pharmacieHome.consultezVotreMedecin'),
                 frequency: dosage.frequency || 'Selon prescription',
                 duration: dosage.duration || 'Selon prescription',
                 precautions: Array.isArray(dosage.precautions) ? dosage.precautions : [],
@@ -459,7 +459,7 @@ const PharmacieHomeScreen: React.FC = () => {
             const interaction = result.data;
             setInteractionsData({
                 severity: interaction.severity || 'none',
-                description: interaction.description || 'Aucune interaction connue',
+                description: interaction.description || t('pharmacieHome.aucuneInteractionConnue'),
                 recommendation: interaction.recommendation || 'Consultez votre pharmacien',
                 alternative_suggestions: Array.isArray(interaction.alternative_suggestions) ?
                     interaction.alternative_suggestions : [],
@@ -579,7 +579,7 @@ const PharmacieHomeScreen: React.FC = () => {
                             <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Rechercher un médicament..."
+                                placeholder={t('pharmacieHome.rechercherUnMedicament')}
                                 placeholderTextColor="#9CA3AF"
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
@@ -649,7 +649,7 @@ const PharmacieHomeScreen: React.FC = () => {
                             type="lucide"
                         />
                         <Text style={styles.sortButtonText}>
-                            {sortOptions.find(o => o.value === sortBy)?.label || 'Trier'}
+                            {sortOptions.find(o => o.value === sortBy)?.label || t('pharmacieHome.trier')}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -738,7 +738,7 @@ const PharmacieHomeScreen: React.FC = () => {
                                 >
                                     <SafeIcon name="camera" size={20} color="#059669" type="lucide" />
                                     <Text style={styles.aiImageButtonText}>
-                                        {analyzingImage ? 'Analyse en cours...' : 'Analyser un médicament (photo)'}
+                                        {analyzingImage ? 'Analyse en cours...' : t('pharmacieHomeScreen.analyserUnMedicamentPhoto')}
                                     </Text>
                                     {analyzingImage && (
                                         <ActivityIndicator size="small" color="#059669" style={{ marginLeft: 8 }} />
@@ -801,7 +801,7 @@ const PharmacieHomeScreen: React.FC = () => {
                                     <View style={styles.aiInputContainer}>
                                         <TextInput
                                             style={styles.aiInput}
-                                            placeholder="Ex: Quels sont les effets secondaires de ce médicament?"
+                                            placeholder={t('pharmacieHome.exQuelsSontLesEffets')}
                                             placeholderTextColor="#9CA3AF"
                                             value={aiQuestion}
                                             onChangeText={setAiQuestion}
@@ -832,7 +832,7 @@ const PharmacieHomeScreen: React.FC = () => {
                                     <View style={styles.aiResponseContainer}>
                                         <View style={styles.aiResponseHeader}>
                                             <SafeIcon name="brain" size={16} color="#059669" type="lucide" />
-                                            <Text style={styles.aiResponseTitle}>Réponse IA</Text>
+                                            <Text style={styles.aiResponseTitle}>{t('pharmacieHome.reponseIa')}</Text>
                                         </View>
                                         <ScrollView
                                             style={styles.aiResponseTextScroll}
@@ -848,7 +848,7 @@ const PharmacieHomeScreen: React.FC = () => {
                                                 setAiQuestion('');
                                             }}
                                         >
-                                            <Text style={styles.aiClearButtonText}>Nouvelle question</Text>
+                                            <Text style={styles.aiClearButtonText}>{t('pharmacieHome.nouvelleQuestion')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 )}
@@ -862,7 +862,7 @@ const PharmacieHomeScreen: React.FC = () => {
             {loading && medications.length === 0 ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Recherche de médicaments...</Text>
+                    <Text style={styles.loadingText}>{t('pharmacieHome.rechercheDeMedicaments')}</Text>
                 </View>
             ) : error && medications.length === 0 ? (
                 <View style={styles.centerContainer}>
@@ -876,7 +876,7 @@ const PharmacieHomeScreen: React.FC = () => {
                             style={styles.clearFiltersButton}
                             onPress={clearFilters}
                         >
-                            <Text style={styles.clearFiltersText}>Réinitialiser les filtres</Text>
+                            <Text style={styles.clearFiltersText}>{t('pharmacieHome.reinitialiserLesFiltres')}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -907,7 +907,7 @@ const PharmacieHomeScreen: React.FC = () => {
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="pill" size={64} color="#9CA3AF" />
-                            <Text style={styles.emptyText}>Aucun médicament trouvé</Text>
+                            <Text style={styles.emptyText}>{t('pharmacieHome.aucunMedicamentTrouve')}</Text>
                             <Text style={styles.emptySubtext}>
                                 Essayez de modifier vos critères de recherche
                             </Text>
@@ -916,7 +916,7 @@ const PharmacieHomeScreen: React.FC = () => {
                                     style={styles.clearFiltersButton}
                                     onPress={clearFilters}
                                 >
-                                    <Text style={styles.clearFiltersText}>Réinitialiser les filtres</Text>
+                                    <Text style={styles.clearFiltersText}>{t('pharmacieHome.reinitialiserLesFiltres')}</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -1354,16 +1354,16 @@ const DosageModal: React.FC<DosageModalProps> = ({
                                     <Text style={styles.dosageValue}>{dosage.dosage}</Text>
                                 </View>
                                 <View style={styles.dosageCard}>
-                                    <Text style={styles.dosageLabel}>Fréquence</Text>
+                                    <Text style={styles.dosageLabel}>{t('pharmacieHome.frequence')}</Text>
                                     <Text style={styles.dosageValue}>{dosage.frequency}</Text>
                                 </View>
                                 <View style={styles.dosageCard}>
-                                    <Text style={styles.dosageLabel}>Durée</Text>
+                                    <Text style={styles.dosageLabel}>{t('pharmacieHome.duree')}</Text>
                                     <Text style={styles.dosageValue}>{dosage.duration}</Text>
                                 </View>
                                 {dosage.precautions.length > 0 && (
                                     <View style={styles.warningsCard}>
-                                        <Text style={styles.warningsTitle}>Précautions</Text>
+                                        <Text style={styles.warningsTitle}>{t('pharmacieHome.precautions')}</Text>
                                         {dosage.precautions.map((precaution, index) => (
                                             <View key={index} style={styles.warningItem}>
                                                 <SafeIcon name="info" size={16} color="#3B82F6" type="lucide" />
@@ -1439,11 +1439,11 @@ const InteractionsModal: React.FC<InteractionsModalProps> = ({
     const getSeverityLabel = (severity: string) => {
         switch (severity) {
             case 'contraindicated':
-                return 'Contre-indiqué';
+                return t('pharmacieHomeScreen.contreindique');
             case 'major':
                 return 'Majeure';
             case 'moderate':
-                return 'Modérée';
+                return t('pharmacieHomeScreen.moderee');
             case 'minor':
                 return 'Mineure';
             default:
@@ -1466,7 +1466,7 @@ const InteractionsModal: React.FC<InteractionsModalProps> = ({
                                 <SafeIcon name="alert-triangle" size={24} color="#F59E0B" type="lucide" />
                             </View>
                             <View>
-                                <Text style={styles.modalTitle}>Interactions Médicamenteuses</Text>
+                                <Text style={styles.modalTitle}>{t('pharmacieHome.interactionsMedicamenteuses')}</Text>
                                 {medication && (
                                     <Text style={styles.modalSubtitle}>{medication.nom_produit}</Text>
                                 )}
@@ -1505,7 +1505,7 @@ const InteractionsModal: React.FC<InteractionsModalProps> = ({
                                 </View>
                                 {interactions.alternative_suggestions.length > 0 && (
                                     <View style={styles.alternativesCard}>
-                                        <Text style={styles.alternativesTitle}>Alternatives suggérées</Text>
+                                        <Text style={styles.alternativesTitle}>{t('pharmacieHome.alternativesSuggerees')}</Text>
                                         {interactions.alternative_suggestions.map((alt, index) => (
                                             <View key={index} style={styles.alternativeItem}>
                                                 <SafeIcon name="pill" size={16} color="#10B981" type="lucide" />
@@ -1564,7 +1564,7 @@ const MedicationDetailsModal: React.FC<MedicationDetailsModalProps> = ({
             <View style={styles.modalOverlay}>
                 <View style={styles.modalContent}>
                     <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Détails du médicament</Text>
+                        <Text style={styles.modalTitle}>{t('pharmacieHome.detailsDuMedicament')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
                             <SafeIcon name="x" size={24} color="#111827" type="lucide" />
                         </TouchableOpacity>
@@ -1631,7 +1631,7 @@ const MedicationDetailsModal: React.FC<MedicationDetailsModalProps> = ({
                         )}
 
                         <View style={styles.aiActionsSection}>
-                            <Text style={styles.aiActionsTitle}>Fonctionnalités IA</Text>
+                            <Text style={styles.aiActionsTitle}>{t('pharmacieHome.fonctionnalitesIa')}</Text>
                             <TouchableOpacity
                                 style={styles.aiActionButton}
                                 onPress={onGetDosage}
@@ -1645,7 +1645,7 @@ const MedicationDetailsModal: React.FC<MedicationDetailsModalProps> = ({
                                 onPress={onCheckInteractions}
                             >
                                 <SafeIcon name="alert-triangle" size={20} color="#F59E0B" type="lucide" />
-                                <Text style={styles.aiActionButtonText}>Vérifier interactions</Text>
+                                <Text style={styles.aiActionButtonText}>{t('pharmacieHome.verifierInteractions')}</Text>
                                 <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
                             </TouchableOpacity>
                         </View>

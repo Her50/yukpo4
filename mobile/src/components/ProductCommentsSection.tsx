@@ -85,7 +85,7 @@ const REACTION_OPTIONS = [
     { type: 'love', label: 'J\'adore', emoji: '❤️' },
     { type: 'insightful', label: 'Pertinent', emoji: '💡' },
     { type: 'support', label: 'Soutien', emoji: '🤝' },
-    { type: 'funny', label: 'Drôle', emoji: '😄' },
+    { type: 'funny', label: t('productCommentsSection.drole'), emoji: '😄' },
     { type: 'angry', label: 'Pas d\'accord', emoji: '😠' },
 ];
 
@@ -261,7 +261,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             }
         } catch (err) {
             console.error('[ProductCommentsSection] loadComments error', err);
-            setError('Erreur lors du chargement des commentaires');
+            setError(t('productCommentsSection.erreurLorsDuChargementDesCommentaires'));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -487,13 +487,13 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     });
                     let userMessage = 'Impossible de publier le commentaire';
                     if (status === 422) {
-                        userMessage = 'Le format du commentaire est invalide. Vérifiez que vous avez saisi un texte ou une note.';
+                        userMessage = t('productCommentsSection.leFormatDuCommentaireEstInvalide');
                     } else if (status === 401) {
-                        userMessage = 'Vous devez être connecté pour commenter.';
+                        userMessage = t('productCommentsSection.vousDevezEtreConnectePourCommenter');
                     } else if (status === 400) {
-                        userMessage = 'Veuillez saisir un commentaire ou sélectionner une note.';
+                        userMessage = t('productCommentsSection.veuillezSaisirUnCommentaireOuSelectionner');
                     } else if (status >= 500) {
-                        userMessage = 'Erreur serveur. Réessayez dans quelques instants.';
+                        userMessage = t('productCommentsSection.erreurServeurReessayezDansQuelquesInstants');
                     } else if (errorDetail && errorDetail !== 'Erreur inconnue') {
                         userMessage = errorDetail;
                     }
@@ -532,7 +532,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
             Alert.alert(
                 'Supprimer le commentaire',
-                'Êtes-vous sûr de vouloir supprimer ce commentaire ?',
+                t('productCommentsSection.etesvousSurDeVouloirSupprimerCe'),
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
@@ -649,7 +649,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         }
         setEditingTarget(comment);
         setReplyTarget(null);
-        setComposerContent(comment.content.replace('[Commentaire supprimé]', ''));
+        setComposerContent(comment.content.replace(t('productCommentsSection.commentaireSupprime'), ''));
         setComposerRating(comment.parent_comment_id ? null : (comment.rating ?? null));
         setSelectedMentions(
             comment.mention_users.map((mention) => ({
@@ -725,7 +725,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
                 <View style={styles.commentBody}>
                     {item.is_deleted ? (
-                        <Text style={styles.deletedText}>Ce commentaire a été supprimé</Text>
+                        <Text style={styles.deletedText}>{t('productCommentsSection.ceCommentaireAEteSupprime')}</Text>
                     ) : (
                         <Text style={styles.commentContent}>
                             {parseMentions(cleanCommentContent(item.content, item.user_name))}
@@ -772,7 +772,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             onPress={() => handleReply(item)}
                         >
                             <SafeIcon name="corner-up-right" size={16} color={modernColors.primary} />
-                            <Text style={styles.footerActionText}>Répondre</Text>
+                            <Text style={styles.footerActionText}>{t('productCommentsSection.repondre')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.footerAction}
@@ -812,7 +812,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         <Text style={styles.composerContextLabel}>
                             {editingTarget
                                 ? 'Modification du commentaire'
-                                : `Réponse à ${replyTarget?.user_name}`}
+                                : t('productCommentsSection.reponseA', { replyTarget?_user_name: replyTarget?.user_name })}
                         </Text>
                     </View>
                     <TouchableOpacity onPress={handleCancelComposer}>
@@ -867,7 +867,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         style={styles.stopRecordingButton}
                         onPress={stopAudioRecording}
                     >
-                        <Text style={styles.stopRecordingText}>Arrêter</Text>
+                        <Text style={styles.stopRecordingText}>{t('productCommentsSection.arreter')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.cancelRecordingButton}
@@ -885,8 +885,8 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     multiline
                     placeholder={
                         replyTarget
-                            ? 'Tapez votre réponse...'
-                            : 'Partagez votre expérience...'
+                            ? t('productCommentsSection.tapezVotreReponse')
+                            : t('productCommentsSection.partagezVotreExperience')
                     }
                     placeholderTextColor={modernColors.textSecondary}
                     style={styles.composerInput}
@@ -1022,7 +1022,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         !loading && (
                             <View style={styles.emptyState}>
                                 <SafeIcon name="message-circle" size={48} color={modernColors.textSecondary} />
-                                <Text style={styles.emptyTitle}>Aucun commentaire pour l'instant</Text>
+                                <Text style={styles.emptyTitle}>{t('productCommentsSection.aucunCommentairePourLinstant')}</Text>
                                 <Text style={styles.emptySubtitle}>
                                     Soyez le premier à partager votre expérience !
                                 </Text>

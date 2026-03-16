@@ -12,6 +12,7 @@ import {
     View
 } from 'react-native';
 import { apiGet } from '../../services/api';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Experience {
     id: number;
@@ -28,6 +29,7 @@ interface Experience {
 
 const ExperiencesEtudiantsScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const etablissementId = (route.params as any)?.etablissement_id;
 
@@ -79,7 +81,7 @@ const ExperiencesEtudiantsScreen: React.FC = () => {
                 </View>
                 {item.is_modere && (
                     <View style={styles.verifiedBadge}>
-                        <Text style={styles.verifiedText}>✓ Modéré</Text>
+                        <Text style={styles.verifiedText}>{t('experiencesEtudiants.modere')}</Text>
                     </View>
                 )}
             </View>
@@ -98,7 +100,7 @@ const ExperiencesEtudiantsScreen: React.FC = () => {
                     style={styles.linkButton}
                     onPress={() => navigation.navigate('EtablissementDetails', { id: item.etablissement_id })}
                 >
-                    <Text style={styles.linkButtonText}>Voir l'établissement</Text>
+                    <Text style={styles.linkButtonText}>{t('experiencesEtudiants.voirLetablissement')}</Text>
                 </TouchableOpacity>
             )}
         </View>
@@ -110,7 +112,7 @@ const ExperiencesEtudiantsScreen: React.FC = () => {
             <View style={styles.filtersContainer}>
                 <TextInput
                     style={styles.input}
-                    placeholder="Filière (ex: Scientifique)"
+                    placeholder={t('experiencesEtudiants.filiereExScientifique')}
                     value={filiere}
                     onChangeText={setFiliere}
                 />
@@ -121,7 +123,7 @@ const ExperiencesEtudiantsScreen: React.FC = () => {
                         searchExperiences();
                     }}
                 >
-                    <Text style={styles.searchButtonText}>Rechercher</Text>
+                    <Text style={styles.searchButtonText}>{t('experiencesEtudiants.rechercher')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -129,7 +131,7 @@ const ExperiencesEtudiantsScreen: React.FC = () => {
             {loading ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color="#3B82F6" />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('experiencesEtudiants.chargement')}</Text>
                 </View>
             ) : experiences.length > 0 ? (
                 <>
@@ -151,7 +153,7 @@ const ExperiencesEtudiantsScreen: React.FC = () => {
                 </>
             ) : (
                 <View style={styles.centerContainer}>
-                    <Text style={styles.emptyText}>Aucune expérience trouvée</Text>
+                    <Text style={styles.emptyText}>{t('experiencesEtudiants.aucuneExperienceTrouvee')}</Text>
                 </View>
             )}
         </View>

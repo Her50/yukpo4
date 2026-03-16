@@ -16,6 +16,7 @@ import LivreScolaireValidationVideoRecorder from '../../components/troc/LivreSco
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface RouteParams {
     trocId: number;
@@ -26,6 +27,7 @@ interface RouteParams {
 const TrocLiveValidationScreen: React.FC = () => {
     const route = useRoute();
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const params = (route.params as any) as RouteParams;
 
@@ -108,8 +110,8 @@ const TrocLiveValidationScreen: React.FC = () => {
 
             if (valData?.success) {
                 Alert.alert(
-                    'Succès',
-                    'Vidéo de validation enregistrée avec succès !',
+                    t('trocLiveValidationScreen.succes'),
+                    t('trocLiveValidationScreen.videoDeValidationEnregistreeAvecSucces'),
                     [
                         {
                             text: 'OK',
@@ -140,7 +142,7 @@ const TrocLiveValidationScreen: React.FC = () => {
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('trocLiveValidation.chargement')}</Text>
             </View>
         );
     }
@@ -175,7 +177,7 @@ const TrocLiveValidationScreen: React.FC = () => {
                 <NativeCard style={styles.card}>
                     <View style={styles.header}>
                         <SafeIcon name="Video" size={32} color={modernColors.primary} type="lucide" />
-                        <Text style={styles.title}>Vidéo enregistrée</Text>
+                        <Text style={styles.title}>{t('trocLiveValidation.videoEnregistree')}</Text>
                     </View>
 
                     <Text style={styles.description}>
@@ -186,7 +188,7 @@ const TrocLiveValidationScreen: React.FC = () => {
                     {/* TODO: Ajouter un lecteur vidéo pour prévisualiser */}
                     <View style={styles.videoPlaceholder}>
                         <SafeIcon name="PlayCircle" size={64} color={modernColors.primary} type="lucide" />
-                        <Text style={styles.videoPlaceholderText}>Vidéo enregistrée</Text>
+                        <Text style={styles.videoPlaceholderText}>{t('trocLiveValidation.videoEnregistree')}</Text>
                     </View>
 
                     <View style={styles.actions}>
@@ -206,7 +208,7 @@ const TrocLiveValidationScreen: React.FC = () => {
                             disabled={uploading}
                         >
                             <SafeIcon name="Upload" size={20} color="#FFF" type="lucide" />
-                            <Text style={styles.uploadButtonText}>Envoyer la vidéo</Text>
+                            <Text style={styles.uploadButtonText}>{t('trocLiveValidation.envoyerLaVideo')}</Text>
                         </NativeButton>
                     </View>
                 </NativeCard>
@@ -220,12 +222,12 @@ const TrocLiveValidationScreen: React.FC = () => {
             <NativeCard style={styles.card}>
                 <View style={styles.header}>
                     <SafeIcon name="Camera" size={32} color={modernColors.primary} type="lucide" />
-                    <Text style={styles.title}>Validation vidéo du livre</Text>
+                    <Text style={styles.title}>{t('trocLiveValidation.validationVideoDuLivre')}</Text>
                 </View>
 
                 {trocData && (
                     <View style={styles.trocInfo}>
-                        <Text style={styles.trocInfoLabel}>Livre à valider:</Text>
+                        <Text style={styles.trocInfoLabel}>{t('trocLiveValidation.livreAValider')}</Text>
                         <Text style={styles.trocInfoValue}>
                             {trocData.livre_offert?.titre || 'Livre'}
                         </Text>
@@ -272,7 +274,7 @@ const TrocLiveValidationScreen: React.FC = () => {
                         style={styles.cancelButton}
                     >
                         <SafeIcon name="X" size={20} color={modernColors.text} type="lucide" />
-                        <Text style={styles.cancelButtonText}>Annuler</Text>
+                        <Text style={styles.cancelButtonText}>{t('trocLiveValidationScreen.annuler')}</Text>
                     </NativeButton>
 
                     <NativeButton
@@ -281,7 +283,7 @@ const TrocLiveValidationScreen: React.FC = () => {
                         style={styles.startButton}
                     >
                         <SafeIcon name="Video" size={20} color="#FFF" type="lucide" />
-                        <Text style={styles.startButtonText}>Commencer l'enregistrement</Text>
+                        <Text style={styles.startButtonText}>{t('trocLiveValidationScreen.commencerLenregistrement')}</Text>
                     </NativeButton>
                 </View>
             </NativeCard>

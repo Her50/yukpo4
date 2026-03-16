@@ -12,6 +12,7 @@ import { Effect } from '../services/effectLibraryService';
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeCard, NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 // Note: Pour le slider, on utilisera un composant natif ou une alternative
 // Slider peut être remplacé par un composant personnalisé si nécessaire
 
@@ -148,7 +149,8 @@ export const EffectParameterPanel: React.FC<EffectParameterPanelProps> = ({
     onApply,
     onCancel,
 }) => {
-    const [parameters, setParameters] = useState<Record<string, any>>(() => {
+        const { t } = useLanguageSafe();
+const [parameters, setParameters] = useState<Record<string, any>>(() => {
         // Initialiser avec les valeurs par défaut de l'effet ou les valeurs initiales
         const defaults = effect.parameters || {};
         return { ...defaults, ...initialParameters };
@@ -230,7 +232,7 @@ export const EffectParameterPanel: React.FC<EffectParameterPanelProps> = ({
                                 min={paramMin}
                                 max={paramMax}
                                 default={paramValue}
-                                description={`Paramètre ${paramName}`}
+                                description={t('effectParameterPanel.parametre', { paramName: paramName })}
                                 onChange={(value) => handleParameterChange(paramName, value)}
                             />
                         );
@@ -241,7 +243,7 @@ export const EffectParameterPanel: React.FC<EffectParameterPanelProps> = ({
             <View style={styles.footer}>
                 <NativeButton
                     variant="secondary"
-                    label="Réinitialiser"
+                    label={t('effectParameterPanel.reinitialiser')}
                     onPress={handleReset}
                     style={styles.resetButton}
                 />

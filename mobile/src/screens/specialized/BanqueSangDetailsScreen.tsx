@@ -21,6 +21,7 @@ import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface BanqueSangDetails {
     id: number;
@@ -51,6 +52,7 @@ interface BanqueSangDetails {
 
 const BanqueSangDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
     const params = route.params as any;
@@ -117,8 +119,8 @@ const BanqueSangDetailsScreen: React.FC = () => {
     const rating = banque?.note_moyenne || (ratingStats?.average_rating as number) || 0;
     const reviewCount = banque?.nombre_avis || (ratingStats?.total_ratings as number) || 0;
 
-    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#DC2626" /><Text style={st.centerText}>Chargement...</Text></View>);
-    if (!banque) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#EF4444" /><Text style={st.centerText}>Banque de sang non trouvée</Text></View>);
+    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#DC2626" /><Text style={st.centerText}>{t('banqueSangDetails.chargement')}</Text></View>);
+    if (!banque) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#EF4444" /><Text style={st.centerText}>{t('banqueSangDetails.banqueDeSangNonTrouvee')}</Text></View>);
 
     const isOpen = banque.is_available_now;
     const starsFull = Math.floor(rating);
@@ -150,7 +152,7 @@ const BanqueSangDetailsScreen: React.FC = () => {
                     <View style={st.heroBadges}>
                         <View style={[st.badge, { backgroundColor: isOpen ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)' }]}>
                             <View style={[st.badgeDot, { backgroundColor: isOpen ? '#fff' : '#FCA5A5' }]} />
-                            <Text style={st.badgeText}>{isOpen ? 'Ouvert' : 'Fermé'}</Text>
+                            <Text style={st.badgeText}>{isOpen ? 'Ouvert' : t('banqueSangDetailsScreen.ferme')}</Text>
                         </View>
                         {banque.urgence_24h && (
                             <View style={[st.badge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
@@ -161,13 +163,13 @@ const BanqueSangDetailsScreen: React.FC = () => {
                         {banque.accepte_dons && (
                             <View style={[st.badge, { backgroundColor: 'rgba(16,185,129,0.35)' }]}>
                                 <SafeIcon name="heart" size={12} color="#fff" />
-                                <Text style={st.badgeText}>Dons acceptés</Text>
+                                <Text style={st.badgeText}>{t('banqueSangDetails.donsAcceptes')}</Text>
                             </View>
                         )}
                         {banque.is_verified && (
                             <View style={[st.badge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
                                 <SafeIcon name="check-circle" size={12} color="#fff" />
-                                <Text style={st.badgeText}>Vérifié</Text>
+                                <Text style={st.badgeText}>{t('banqueSangDetails.verifie')}</Text>
                             </View>
                         )}
                     </View>
@@ -206,7 +208,7 @@ const BanqueSangDetailsScreen: React.FC = () => {
                 {/* Stocks sanguins */}
                 {stockEntries.length > 0 && (
                     <View style={st.section}>
-                        <View style={st.sectionHeader}><SafeIcon name="droplet" size={18} color="#DC2626" /><Text style={st.sectionTitle}>Stocks disponibles</Text></View>
+                        <View style={st.sectionHeader}><SafeIcon name="droplet" size={18} color="#DC2626" /><Text style={st.sectionTitle}>{t('banqueSangDetails.stocksDisponibles')}/Text></View>
                         <View style={st.stocksGrid}>
                             {stockEntries.map(([groupe, qty]) => {
                                 const level = qty > 20 ? 'high' : qty > 5 ? 'medium' : 'low';
@@ -216,7 +218,7 @@ const BanqueSangDetailsScreen: React.FC = () => {
                                     <View key={groupe} style={[st.stockCard, { backgroundColor: c.bg, borderColor: c.border }]}>
                                         <Text style={[st.stockGroupe, { color: c.text }]}>{groupe}</Text>
                                         <Text style={[st.stockQty, { color: c.text }]}>{qty}</Text>
-                                        <Text style={[st.stockUnit, { color: c.text }]}>unités</Text>
+                                        <Text style={[st.stockUnit, { color: c.text }]}>{t('banqueSangDetails.unites')}</Text>
                                     </View>
                                 );
                             })}
@@ -237,7 +239,7 @@ const BanqueSangDetailsScreen: React.FC = () => {
                             navigation.navigate('BloodDonation' as never);
                         }}>
                             <SafeIcon name="droplet" size={18} color="#DC2626" />
-                            <Text style={st.fullBtnText}>Devenir donneur</Text>
+                            <Text style={st.fullBtnText}>{t('banqueSangDetails.devenirDonneur')}/Text>
                             <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                         </TouchableOpacity>
                     )}

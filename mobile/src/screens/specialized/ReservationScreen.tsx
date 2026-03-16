@@ -146,7 +146,7 @@ const ReservationScreen: React.FC<ReservationScreenProps> = ({ route, navigation
         if (reservationType === 'place' && serviceType === 'covoiturage') {
             return (
                 <View style={styles.section}>
-                    <Text style={styles.label}>Nombre de places</Text>
+                    <Text style={styles.label}>{t('reservation.nombreDePlaces')}</Text>
                     <NativeInput
                         value={nombrePlaces.toString()}
                         onChangeText={(text) => setNombrePlaces(parseInt(text) || 1)}
@@ -160,17 +160,17 @@ const ReservationScreen: React.FC<ReservationScreenProps> = ({ route, navigation
         if (reservationType === 'course' && serviceType === 'taxi') {
             return (
                 <View style={styles.section}>
-                    <Text style={styles.label}>Adresse de prise en charge *</Text>
+                    <Text style={styles.label}>{t('reservation.adresseDePriseEnCharge')}</Text>
                     <NativeInput
                         value={pickupAddress}
                         onChangeText={setPickupAddress}
-                        placeholder="Adresse de départ"
+                        placeholder={t('reservation.adresseDeDepart')}
                     />
-                    <Text style={styles.label}>Adresse de destination (optionnel)</Text>
+                    <Text style={styles.label}>{t('reservation.adresseDeDestinationOptionnel')}</Text>
                     <NativeInput
                         value={dropoffAddress}
                         onChangeText={setDropoffAddress}
-                        placeholder="Adresse d'arrivée"
+                        placeholder={t('reservationScreen.adresseD')}arrivée"
                     />
                 </View>
             );
@@ -183,9 +183,9 @@ const ReservationScreen: React.FC<ReservationScreenProps> = ({ route, navigation
                     <NativeInput
                         value={destination}
                         onChangeText={setDestination}
-                        placeholder="Ville de destination"
+                        placeholder={t('reservation.villeDeDestination')}
                     />
-                    <Text style={styles.label}>Nombre de tickets</Text>
+                    <Text style={styles.label}>{t('reservation.nombreDeTickets')}</Text>
                     <NativeInput
                         value={numberOfTickets.toString()}
                         onChangeText={(text) => setNumberOfTickets(parseInt(text) || 1)}
@@ -199,17 +199,17 @@ const ReservationScreen: React.FC<ReservationScreenProps> = ({ route, navigation
         if (reservationType === 'rdv') {
             return (
                 <View style={styles.section}>
-                    <Text style={styles.label}>Nom du patient (optionnel)</Text>
+                    <Text style={styles.label}>{t('reservation.nomDuPatientOptionnel')}/Text>
                     <NativeInput
                         value={patientName}
                         onChangeText={setPatientName}
-                        placeholder="Nom complet"
+                        placeholder={t('reservation.nomComplet')}
                     />
                     <Text style={styles.label}>Raison du rendez-vous (optionnel)</Text>
                     <NativeInput
                         value={reason}
                         onChangeText={setReason}
-                        placeholder="Décrivez brièvement"
+                        placeholder={t('reservation.decrivezBrievement')}
                         multiline
                         numberOfLines={3}
                     />
@@ -223,12 +223,12 @@ const ReservationScreen: React.FC<ReservationScreenProps> = ({ route, navigation
     return (
         <ScrollView style={styles.container}>
             <NativeCard style={styles.card}>
-                <Text style={styles.title}>Réservation</Text>
+                <Text style={styles.title}>{t('reservation.reservation')}</Text>
                 <Text style={styles.serviceName}>{serviceName}</Text>
 
                 {reservationType === 'rdv' && (
                     <View style={styles.section}>
-                        <Text style={styles.label}>Date et heure souhaitées *</Text>
+                        <Text style={styles.label}>{t('reservation.dateEtHeureSouhaitees')}</Text>
                         <NativeInput
                             value={requestedDate}
                             onChangeText={setRequestedDate}
@@ -241,11 +241,11 @@ const ReservationScreen: React.FC<ReservationScreenProps> = ({ route, navigation
                 {renderSpecificFields()}
 
                 <View style={styles.section}>
-                    <Text style={styles.label}>Notes (optionnel)</Text>
+                    <Text style={styles.label}>{t('reservation.notesOptionnel')}/Text>
                     <NativeInput
                         value={notes}
                         onChangeText={setNotes}
-                        placeholder="Informations complémentaires"
+                        placeholder={t('reservation.informationsComplementaires')}
                         multiline
                         numberOfLines={4}
                     />
@@ -255,7 +255,7 @@ const ReservationScreen: React.FC<ReservationScreenProps> = ({ route, navigation
                     <ActivityIndicator size="large" color={modernColors.primary} />
                 ) : (
                     <NativeButton
-                        title="Créer la réservation"
+                        title={t('reservation.creerLaReservation')}
                         variant="primary"
                         onPress={handleCreateReservation}
                         style={styles.button}

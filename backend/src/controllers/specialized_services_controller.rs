@@ -2607,9 +2607,11 @@ pub async fn share_property(
 
     // Générer un lien de partage unique
     let share_token = Uuid::new_v4().to_string();
+    let base_url =
+        std::env::var("FRONTEND_URL").unwrap_or_else(|_| "https://yukpo.com".to_string());
     let share_url = format!(
-        "https://yukpomnang.com/immobilier/{}?share={}",
-        property_id, share_token
+        "{}/immobilier/{}?share={}",
+        base_url, property_id, share_token
     );
 
     // Enregistrer le partage

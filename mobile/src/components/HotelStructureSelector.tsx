@@ -4,6 +4,7 @@ import { hotelPlacesService, HotelStructureType } from '../services/hotelPlacesS
 import { modalityService } from '../services/modalityService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface HotelStructureSelectorProps {
     label: string;
@@ -21,12 +22,13 @@ export const HotelStructureSelector: React.FC<HotelStructureSelectorProps> = ({
     value,
     onSelect,
     type = 'hotel',
-    placeholder = 'Rechercher un hôtel...',
+    placeholder={t('hotelStructureSelector.rechercherUnHotel')},
     required = false,
     useLocation = true,
     radius = 5000,
 }) => {
-    const [open, setOpen] = useState(false);
+        const { t } = useLanguageSafe();
+const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [options, setOptions] = useState<string[]>([]);
@@ -91,7 +93,7 @@ export const HotelStructureSelector: React.FC<HotelStructureSelectorProps> = ({
                         {value || placeholder}
                     </Text>
                     {locationEnabled && (
-                        <Text style={styles.locationHint}>📍 Recherche par proximité activée</Text>
+                        <Text style={styles.locationHint}>{t('hotelStructureSelector.rechercheParProximiteActivee')}</Text>
                     )}
                 </View>
                 <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
@@ -126,7 +128,7 @@ export const HotelStructureSelector: React.FC<HotelStructureSelectorProps> = ({
                                     color={locationEnabled ? modernColors.primary : modernColors.textSecondary}
                                 />
                                 <Text style={[styles.locationToggleText, locationEnabled && styles.locationToggleTextActive]}>
-                                    {locationEnabled ? 'Recherche par proximité' : 'Recherche par nom'}
+                                    {locationEnabled ? t('hotelStructureSelector.rechercheParProximite') : 'Recherche par nom'}
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -150,7 +152,7 @@ export const HotelStructureSelector: React.FC<HotelStructureSelectorProps> = ({
 
                         {loading && (
                             <View style={styles.loadingContainer}>
-                                <Text style={styles.loadingText}>🔍 Recherche en cours...</Text>
+                                <Text style={styles.loadingText}>{t('hotelStructureSelector.rechercheEnCours')}/Text>
                             </View>
                         )}
 
@@ -158,7 +160,7 @@ export const HotelStructureSelector: React.FC<HotelStructureSelectorProps> = ({
                             {options.length === 0 && !loading && (
                                 <View style={styles.emptyContainer}>
                                     <SafeIcon name="search" size={40} color={modernColors.textSecondary} />
-                                    <Text style={styles.emptyText}>Aucun hôtel trouvé</Text>
+                                    <Text style={styles.emptyText}>{t('hotelStructureSelector.aucunHotelTrouve')}</Text>
                                     <Text style={styles.emptyHint}>
                                         {locationEnabled ? "Essayez de désactiver la géolocalisation" : "Essayez un autre terme"}
                                     </Text>
@@ -187,7 +189,7 @@ export const HotelStructureSelector: React.FC<HotelStructureSelectorProps> = ({
                             onPress={() => setShowAddModal(true)}
                         >
                             <SafeIcon name="plus-circle" size={18} color={modernColors.primary} />
-                            <Text style={styles.addButtonText}>Ajouter un hôtel</Text>
+                            <Text style={styles.addButtonText}>{t('hotelStructureSelector.ajouterUnHotel')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -197,9 +199,9 @@ export const HotelStructureSelector: React.FC<HotelStructureSelectorProps> = ({
             <Modal visible={showAddModal} transparent animationType="fade" onRequestClose={() => setShowAddModal(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.addModalContainer}>
-                        <Text style={styles.addModalTitle}>Ajouter un hôtel</Text>
+                        <Text style={styles.addModalTitle}>{t('hotelStructureSelector.ajouterUnHotel')}</Text>
                         <TextInput
-                            placeholder="Nom de l'hôtel"
+                            placeholder={t('hotelStructureSelector.nomDeL')}hôtel"
                             value={newHotelName}
                             onChangeText={setNewHotelName}
                             style={styles.addModalInput}
@@ -214,13 +216,13 @@ export const HotelStructureSelector: React.FC<HotelStructureSelectorProps> = ({
                                     setNewHotelName('');
                                 }}
                             >
-                                <Text style={styles.addModalButtonTextCancel}>Annuler</Text>
+                                <Text style={styles.addModalButtonTextCancel}>{t('hotelStructureSelector.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.addModalButton, styles.addModalButtonConfirm]}
                                 onPress={handleAddCustomHotel}
                             >
-                                <Text style={styles.addModalButtonTextConfirm}>Ajouter</Text>
+                                <Text style={styles.addModalButtonTextConfirm}>{t('hotelStructureSelector.ajouter')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

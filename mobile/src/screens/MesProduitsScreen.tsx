@@ -101,18 +101,18 @@ const normalizeCategoryKey = (product: Record<string, any>): string | null => {
 };
 
 const getProductTypeLabel = (type: string | null | undefined): string => {
-    if (!type) return 'Non catégorisé';
+    if (!type) return t('mesProduitsScreen.nonCategorise');
     const key = type.toLowerCase();
     const labels: Record<string, string> = {
-        'electronique': '📱 Électronique',
+        'electronique': t('mesProduitsScreen.electronique'),
         'informatique': '💻 Informatique',
         'plombier': '🔧 Plomberie',
         'plomberie': '🔧 Plomberie',
-        'electricite': '⚡ Électricité',
+        'electricite': t('mesProduitsScreen.electricite'),
         'automobile': '🚗 Automobile',
         'agriculture': '🌾 Agriculture',
-        'beaute': '💄 Beauté',
-        'sante': '🩺 Santé',
+        'beaute': t('mesProduitsScreen.beaute'),
+        'sante': t('mesProduitsScreen.sante'),
         'immobilier': '🏢 Immobilier',
         'service': '💼 Service',
         'prestation': '💼 Prestation',
@@ -124,7 +124,7 @@ const getProductTypeLabel = (type: string | null | undefined): string => {
     }
 
     if (!key) {
-        return 'Autres catégories';
+        return t('mesProduitsScreen.autresCategories');
     }
 
     return key.charAt(0).toUpperCase() + key.slice(1);
@@ -389,7 +389,7 @@ const MesProduitsScreen: React.FC = () => {
                     serviceId: product.service_id.toString(),
                     productIndex: productIndex,
                     product_index: productIndex,
-                    nom: product.product_name || productData.nom || productData.nom_produit || 'Produit sans nom',
+                    nom: product.product_name || productData.nom || productData.nom_produit || t('mesProduits.produitSansNom'),
                     prix: prixValue || 0,
                     devise: productData.devise || productData.devise_produit || 'XAF',
                     description: productData.description || productData.description_produit || '',
@@ -659,8 +659,8 @@ const MesProduitsScreen: React.FC = () => {
         }
 
         const message = result?.headline
-            ? `${result.headline}\n\nVotre vidéo est maintenant disponible. Vous pouvez la voir dans la galerie du produit.`
-            : 'Votre vidéo est maintenant disponible. Vous pouvez la voir dans la galerie du produit.';
+            ? t('mesProduitsScreen.nnvotreVideoEstMaintenantDisponibleVous', { result_headline: result.headline })
+            : t('mesProduitsScreen.votreVideoEstMaintenantDisponibleVous');
 
         // Navigation vers le service pour voir la vidéo
         const serviceId = result?.service_id;
@@ -794,7 +794,7 @@ const MesProduitsScreen: React.FC = () => {
                                     }
                                 } catch (error: any) {
                                     // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
-                                    const errorMessage = error instanceof Error ? error.message : (error?.message || 'Impossible de réactiver');
+                                    const errorMessage = error instanceof Error ? error.message : (error?.message || t('mesProduits.impossibleDeReactiver'));
                                     const errorStack = error instanceof Error ? error.stack : undefined;
                                     console.error('[MesProduitsScreen] Erreur réactivation:', {
                                         message: errorMessage,
@@ -848,7 +848,7 @@ const MesProduitsScreen: React.FC = () => {
                                     }
                                 } catch (error: any) {
                                     // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
-                                    const errorMessage = error instanceof Error ? error.message : (error?.message || 'Impossible de désactiver');
+                                    const errorMessage = error instanceof Error ? error.message : (error?.message || t('mesProduits.impossibleDeDesactiver'));
                                     const errorStack = error instanceof Error ? error.stack : undefined;
                                     console.error('[MesProduitsScreen] Erreur désactivation:', {
                                         message: errorMessage,
@@ -1360,7 +1360,7 @@ const MesProduitsScreen: React.FC = () => {
                                 try {
                                     // ✅ CORRECTION: Générer les suggestions IA avant de naviguer (comme dans HomeScreen)
                                     const input = {
-                                        texte: 'Création d\'un nouveau service',
+                                        texte: t('mesProduitsScreen.creationDunNouveauService'),
                                     };
 
                                     const result = await genererSuggestionsService(input);
@@ -1606,7 +1606,7 @@ const MesProduitsScreen: React.FC = () => {
             { label: 'Actifs', value: activeProducts, accentColor: '#10B981', icon: 'check' },
             { label: 'Vues', value: totalViews, accentColor: '#3B82F6', icon: 'eye' },
             { label: 'Partages', value: totalShares, accentColor: '#8B5CF6', icon: 'share-2' },
-            { label: 'Favoris', value: totalSaves, accentColor: '#EF4444', icon: 'heart' },
+            { label: t('mesProduits.favoris'), value: totalSaves, accentColor: '#EF4444', icon: 'heart' },
         ]
     ), [totalProducts, activeProducts, totalViews, totalShares, totalSaves]);
 
@@ -1942,13 +1942,13 @@ const MesProduitsScreen: React.FC = () => {
             description_produit: prefill.description_produit || 'VIDE',
             prix_produit: prefill.prix_produit || 'VIDE',
             devise_produit: prefill.devise_produit || 'VIDE',
-            produits: prefill.produits ? (Array.isArray(prefill.produits) ? `${prefill.produits.length} élément(s)` : 'non-array') : 'VIDE',
+            produits: prefill.produits ? (Array.isArray(prefill.produits) ? t('mesProduitsScreen.elements', { prefill_produits_length: prefill.produits.length }) : 'non-array') : 'VIDE',
             sous_caracteristiques: prefill.sous_caracteristiques
-                ? (typeof prefill.sous_caracteristiques === 'object' ? `${Object.keys(prefill.sous_caracteristiques).length} dimension(s)` : 'présent')
+                ? (typeof prefill.sous_caracteristiques === 'object' ? `${Object.keys(prefill.sous_caracteristiques).length} dimension(s)` : t('mesProduitsScreen.present'))
                 : 'VIDE',
             lieu_produit: prefill.lieu_produit || 'VIDE',
-            variabilite_prix: prefill.variabilite_prix ? 'présent' : 'VIDE',
-            price_variant: prefill.price_variant ? 'présent' : 'VIDE',
+            variabilite_prix: prefill.variabilite_prix ? t('mesProduitsScreen.present') : 'VIDE',
+            price_variant: prefill.price_variant ? t('mesProduitsScreen.present') : 'VIDE',
             totalKeys: Object.keys(prefill).length,
             allKeys: Object.keys(prefill).filter(k => !['images', 'videos', 'audios', 'documents'].includes(k))
         });
@@ -2078,7 +2078,7 @@ const MesProduitsScreen: React.FC = () => {
                     return (
                         <View style={{ width: '100%', height: 80, backgroundColor: '#F3F4F6', borderTopLeftRadius: 12, borderTopRightRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
                             <SafeIcon name="image" size={32} color="#D1D5DB" />
-                            <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 4 }}>Aucune image</Text>
+                            <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 4 }}>{t('mesProduits.aucuneImage')}</Text>
                         </View>
                     );
                 })()}
@@ -2086,7 +2086,7 @@ const MesProduitsScreen: React.FC = () => {
                 <View style={styles.productHeader}>
                     <View style={styles.productTitleContainer}>
                         <Text style={styles.productName} numberOfLines={2}>
-                            {(product.nom?.trim() || product.nom_produit?.trim() || 'Produit sans nom')}
+                            {(product.nom?.trim() || product.nom_produit?.trim() || t('mesProduits.produitSansNom'))}
                         </Text>
                         <View style={[
                             styles.productStatusBadge,
@@ -2114,7 +2114,7 @@ const MesProduitsScreen: React.FC = () => {
                                             const parsed = JSON.parse(titre.trim());
                                             if (typeof parsed === 'object' && parsed !== null) {
                                                 if ('valeur' in parsed && typeof parsed.valeur === 'string') {
-                                                    return parsed.valeur.trim() || 'Service sans titre';
+                                                    return parsed.valeur.trim() || t('mesProduits.serviceSansTitre');
                                                 }
                                                 return 'Service sans titre';
                                             }
@@ -2122,12 +2122,12 @@ const MesProduitsScreen: React.FC = () => {
                                             // Ce n'est pas du JSON valide, retourner tel quel
                                         }
                                     }
-                                    return titre.trim() || 'Service sans titre';
+                                    return titre.trim() || t('mesProduits.serviceSansTitre');
                                 }
                                 // Si c'est un objet, essayer d'extraire la valeur
                                 if (typeof titre === 'object' && titre !== null) {
                                     if ('valeur' in titre && typeof titre.valeur === 'string') {
-                                        return titre.valeur.trim() || 'Service sans titre';
+                                        return titre.valeur.trim() || t('mesProduits.serviceSansTitre');
                                     }
                                     return 'Service sans titre';
                                 }
@@ -2139,7 +2139,7 @@ const MesProduitsScreen: React.FC = () => {
                     <View style={styles.productInfoRow}>
                         <SafeIcon name="tag" size={14} color="#6B7280" />
                         <Text style={styles.productCategory} numberOfLines={1}>
-                            {categoryLabel || 'Non catégorisé'}
+                            {categoryLabel || t('mesProduits.nonCategorise')}
                         </Text>
                     </View>
 
@@ -2178,7 +2178,7 @@ const MesProduitsScreen: React.FC = () => {
                         onPress={() => handleEditProduct(product)}
                     >
                         <SafeIcon name="edit" size={16} color="#FFFFFF" />
-                        <Text style={styles.primaryButtonText}>Modifier</Text>
+                        <Text style={styles.primaryButtonText}>{t('mesProduitsScreen.modifier')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[
@@ -2205,7 +2205,7 @@ const MesProduitsScreen: React.FC = () => {
                         onPress={() => handleShareProduct(product)}
                     >
                         <SafeIcon name="share" size={15} color="#3B82F6" />
-                        <Text style={[styles.contextMenuLabel, { color: '#3B82F6' }]}>Partager</Text>
+                        <Text style={[styles.contextMenuLabel, { color: '#3B82F6' }]}>{t('mesProduitsScreen.partager')}</Text>
                     </TouchableOpacity>
                     {/* ✅ NOUVEAU 2026-03-14: Partage interne produit */}
                     <InternalShareButton
@@ -2219,7 +2219,7 @@ const MesProduitsScreen: React.FC = () => {
                         iconSize={15}
                         iconColor="#8B5CF6"
                         showLabel
-                        label="Envoyer"
+                        label={t('mesProduits.envoyer')}
                         style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}
                     />
                     <TouchableOpacity
@@ -2258,7 +2258,7 @@ const MesProduitsScreen: React.FC = () => {
     // ✅ UX AMÉLIORÉ: Menu regroupant toutes les actions (y compris celles retirées du header)
     const menuActions = [
         {
-            label: 'Créer une vidéo',
+            label: t('mesProduits.creerUneVideo'),
             icon: 'video',
             onPress: () => {
                 setShowMenuModal(false);
@@ -2266,7 +2266,7 @@ const MesProduitsScreen: React.FC = () => {
             },
         },
         {
-            label: 'Galerie médias',
+            label: t('mesProduits.galerieMedias'),
             icon: 'image',
             onPress: () => {
                 setShowMenuModal(false);
@@ -2279,7 +2279,7 @@ const MesProduitsScreen: React.FC = () => {
             },
         },
         {
-            label: 'Mes Publicités',
+            label: t('mesProduits.mesPublicites'),
             icon: 'megaphone',
             onPress: () => {
                 setShowMenuModal(false);
@@ -2328,7 +2328,7 @@ const MesProduitsScreen: React.FC = () => {
             },
         },
         {
-            label: 'Gérer les membres',
+            label: t('mesProduits.gererLesMembres'),
             icon: 'users',
             onPress: () => {
                 setShowMenuModal(false);
@@ -2336,7 +2336,7 @@ const MesProduitsScreen: React.FC = () => {
             },
         },
         {
-            label: 'Mes vidéos',
+            label: t('mesProduits.mesVideos'),
             icon: 'play-circle',
             onPress: () => {
                 setShowMenuModal(false);
@@ -2344,7 +2344,7 @@ const MesProduitsScreen: React.FC = () => {
             },
         },
         {
-            label: 'Éditer service',
+            label: t('mesProduits.editerService'),
             icon: 'settings',
             onPress: () => {
                 setShowMenuModal(false);
@@ -2358,7 +2358,7 @@ const MesProduitsScreen: React.FC = () => {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement de vos produits...</Text>
+                <Text style={styles.loadingText}>{t('mesProduits.chargementDeVosProduits')}</Text>
             </View>
         );
     }
@@ -2465,11 +2465,11 @@ const MesProduitsScreen: React.FC = () => {
                 {!Array.isArray(filteredProducts) || filteredProducts.length === 0 ? (
                     <View style={styles.emptyState}>
                         <SafeIcon name="package" size={64} color="#D1D5DB" />
-                        <Text style={styles.emptyTitle}>Aucun produit</Text>
+                        <Text style={styles.emptyTitle}>{t('mesProduits.aucunProduit')}</Text>
                         <Text style={styles.emptySubtitle}>
                             {filter !== 'tous'
                                 ? `Aucun produit ${filter}`
-                                : 'Ajoutez des produits à vos services'}
+                                : t('mesProduitsScreen.ajoutezDesProduitsAVosServices')}
                         </Text>
                     </View>
                 ) : (
@@ -2633,7 +2633,7 @@ const MesProduitsScreen: React.FC = () => {
                             </View>
                             <View style={styles.productActionTextCol}>
                                 <Text style={styles.productActionLabel}>Promouvoir</Text>
-                                <Text style={styles.productActionHint}>Booster la visibilité</Text>
+                                <Text style={styles.productActionHint}>{t('mesProduits.boosterLaVisibilite')}</Text>
                             </View>
                         </TouchableOpacity>
 
@@ -2665,7 +2665,7 @@ const MesProduitsScreen: React.FC = () => {
                             </View>
                             <View style={styles.productActionTextCol}>
                                 <Text style={styles.productActionLabel}>Dupliquer</Text>
-                                <Text style={styles.productActionHint}>Créer une copie</Text>
+                                <Text style={styles.productActionHint}>{t('mesProduits.creerUneCopie')}</Text>
                             </View>
                         </TouchableOpacity>
 
@@ -2680,7 +2680,7 @@ const MesProduitsScreen: React.FC = () => {
                                 <SafeIcon name="truck" size={18} color="#3B82F6" />
                             </View>
                             <View style={styles.productActionTextCol}>
-                                <Text style={styles.productActionLabel}>Livraison</Text>
+                                <Text style={styles.productActionLabel}>{t('mesProduits.livraison')}/Text>
                                 <Text style={styles.productActionHint}>Configurer la livraison</Text>
                             </View>
                         </TouchableOpacity>
@@ -2699,8 +2699,8 @@ const MesProduitsScreen: React.FC = () => {
                                 <SafeIcon name="trash-2" size={18} color="#DC2626" />
                             </View>
                             <View style={styles.productActionTextCol}>
-                                <Text style={[styles.productActionLabel, { color: '#DC2626' }]}>Supprimer</Text>
-                                <Text style={styles.productActionHint}>Supprimer définitivement</Text>
+                                <Text style={[styles.productActionLabel, { color: '#DC2626' }]}>{t('mesProduitsScreen.supprimer')}</Text>
+                                <Text style={styles.productActionHint}>{t('mesProduits.supprimerDefinitivement')}</Text>
                             </View>
                         </TouchableOpacity>
 
@@ -2709,7 +2709,7 @@ const MesProduitsScreen: React.FC = () => {
                             style={styles.productActionCancel}
                             onPress={() => setShowProductActionsModal(false)}
                         >
-                            <Text style={styles.productActionCancelText}>Annuler</Text>
+                            <Text style={styles.productActionCancelText}>{t('mesProduitsScreen.annuler')}</Text>
                         </TouchableOpacity>
                     </View>
                 </TouchableOpacity>

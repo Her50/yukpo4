@@ -14,6 +14,7 @@ import {
 import ChatModalMobile from '../../components/ChatModalMobile';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Etablissement {
     id: number;
@@ -32,6 +33,7 @@ interface Etablissement {
 
 const EtablissementDetailsScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
     const { id } = (route.params as any) || {};
@@ -64,7 +66,7 @@ const EtablissementDetailsScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color="#3B82F6" />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('etablissementDetails.chargement')}</Text>
             </View>
         );
     }
@@ -72,12 +74,12 @@ const EtablissementDetailsScreen: React.FC = () => {
     if (!etablissement) {
         return (
             <View style={styles.centerContainer}>
-                <Text style={styles.emptyText}>Établissement non trouvé</Text>
+                <Text style={styles.emptyText}>{t('etablissementDetails.etablissementNonTrouve')}</Text>
                 <TouchableOpacity
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Text style={styles.backButtonText}>Retour</Text>
+                    <Text style={styles.backButtonText}>{t('etablissementDetails.retour')}/Text>
                 </TouchableOpacity>
             </View>
         );
@@ -96,7 +98,7 @@ const EtablissementDetailsScreen: React.FC = () => {
                     <Text style={styles.meta}>🎓 {etablissement.type_etablissement}</Text>
                     {etablissement.is_verified && (
                         <View style={styles.verifiedBadge}>
-                            <Text style={styles.verifiedText}>✓ Vérifié</Text>
+                            <Text style={styles.verifiedText}>{t('etablissementDetails.verifie')}</Text>
                         </View>
                     )}
                 </View>
@@ -140,7 +142,7 @@ const EtablissementDetailsScreen: React.FC = () => {
             {/* Filières */}
             {etablissement.filieres && etablissement.filieres.length > 0 && (
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Filières</Text>
+                    <Text style={styles.sectionTitle}>{t('etablissementDetails.filieres')}</Text>
                     <View style={styles.tagsContainer}>
                         {etablissement.filieres.map((filiere, idx) => (
                             <View key={idx} style={styles.tag}>
@@ -197,7 +199,7 @@ const EtablissementDetailsScreen: React.FC = () => {
                         }
                     >
                         <Text style={styles.actionIcon}>💬</Text>
-                        <Text style={styles.actionText}>Expériences</Text>
+                        <Text style={styles.actionText}>{t('etablissementDetails.experiences')}</Text>
                     </TouchableOpacity>
                 </View>
                 {/* Bouton Contacter */}
@@ -205,7 +207,7 @@ const EtablissementDetailsScreen: React.FC = () => {
                     style={styles.contactButton}
                     onPress={() => setShowChat(true)}
                 >
-                    <Text style={styles.contactButtonText}>💬 Contacter l'établissement</Text>
+                    <Text style={styles.contactButtonText}>{t('etablissementDetails.contacterLetablissement')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -232,7 +234,7 @@ const EtablissementDetailsScreen: React.FC = () => {
             {etablissement.statistiques_examens &&
                 Object.keys(etablissement.statistiques_examens).length > 0 && (
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Statistiques d'examens</Text>
+                        <Text style={styles.sectionTitle}>{t('etablissementDetails.statistiquesDexamens')}/Text>
                         {Object.entries(etablissement.statistiques_examens).map(
                             ([annee, stats]: [string, any]) => (
                                 <View key={annee} style={styles.statsCard}>

@@ -5,6 +5,7 @@ import { modernColors } from '../theme/modernTheme';
 import { Product } from '../types/Product';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ProductDuplicationModalProps {
     visible: boolean;
@@ -19,7 +20,8 @@ const ProductDuplicationModal: React.FC<ProductDuplicationModalProps> = ({
     product,
     onDuplicate
 }) => {
-    const [duplicatedProduct, setDuplicatedProduct] = useState<Product | null>(null);
+        const { t } = useLanguageSafe();
+const [duplicatedProduct, setDuplicatedProduct] = useState<Product | null>(null);
 
     React.useEffect(() => {
         if (product && visible) {
@@ -45,8 +47,8 @@ const ProductDuplicationModal: React.FC<ProductDuplicationModalProps> = ({
             onDuplicate(duplicatedProduct);
             onClose();
             Alert.alert(
-                '✅ Produit dupliqué',
-                'Le produit a été dupliqué avec succès. Vous pouvez maintenant le modifier.',
+                t('productDuplicationModal.produitDuplique'),
+                t('productDuplicationModal.leProduitAEteDupliqueAvec'),
                 [{ text: 'OK' }]
             );
         }
@@ -100,15 +102,15 @@ const ProductDuplicationModal: React.FC<ProductDuplicationModalProps> = ({
                     </NativeCard>
 
                     <NativeCard style={styles.previewCard}>
-                        <Text style={styles.previewTitle}>Aperçu du produit dupliqué :</Text>
+                        <Text style={styles.previewTitle}>{t('productDuplication.apercuDuProduitDuplique')}</Text>
 
                         <View style={styles.fieldRow}>
-                            <Text style={styles.fieldLabel}>Nom du produit :</Text>
+                            <Text style={styles.fieldLabel}>{t('productDuplication.nomDuProduit')}/Text>
                             <Text style={styles.fieldValue}>{duplicatedProduct.nom}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
-                            <Text style={styles.fieldLabel}>Type :</Text>
+                            <Text style={styles.fieldLabel}>{t('productDuplication.type')}/Text>
                             <Text style={styles.fieldValue}>{duplicatedProduct.type}</Text>
                         </View>
 
@@ -125,14 +127,14 @@ const ProductDuplicationModal: React.FC<ProductDuplicationModalProps> = ({
                         )}
 
                         <View style={styles.fieldRow}>
-                            <Text style={styles.fieldLabel}>Images :</Text>
+                            <Text style={styles.fieldLabel}>{t('productDuplication.images')}/Text>
                             <Text style={styles.fieldValue}>
                                 {duplicatedProduct.images?.length || 0} image(s) (réinitialisées)
                             </Text>
                         </View>
 
                         <View style={styles.fieldRow}>
-                            <Text style={styles.fieldLabel}>Vidéos :</Text>
+                            <Text style={styles.fieldLabel}>{t('productDuplication.videos')}</Text>
                             <Text style={styles.fieldValue}>
                                 {duplicatedProduct.videos?.length || 0} vidéo(s) (réinitialisées)
                             </Text>
@@ -140,11 +142,11 @@ const ProductDuplicationModal: React.FC<ProductDuplicationModalProps> = ({
                     </NativeCard>
 
                     <NativeCard style={styles.actionsCard}>
-                        <Text style={styles.actionsTitle}>Actions disponibles après duplication :</Text>
+                        <Text style={styles.actionsTitle}>{t('productDuplication.actionsDisponiblesApresDuplication')}</Text>
 
                         <View style={styles.actionItem}>
                             <SafeIcon name="edit" size={16} color={modernColors.primary} />
-                            <Text style={styles.actionText}>Modifier le nom du produit</Text>
+                            <Text style={styles.actionText}>{t('productDuplication.modifierLeNomDuProduit')}/Text>
                         </View>
 
                         <View style={styles.actionItem}>
@@ -154,24 +156,24 @@ const ProductDuplicationModal: React.FC<ProductDuplicationModalProps> = ({
 
                         <View style={styles.actionItem}>
                             <SafeIcon name="image" size={16} color={modernColors.warning} />
-                            <Text style={styles.actionText}>Ajouter de nouvelles images</Text>
+                            <Text style={styles.actionText}>{t('productDuplicationModal.ajouterDeNouvellesImages')}</Text>
                         </View>
 
                         <View style={styles.actionItem}>
                             <SafeIcon name="video" size={16} color={modernColors.info} />
-                            <Text style={styles.actionText}>Ajouter de nouvelles vidéos</Text>
+                            <Text style={styles.actionText}>{t('productDuplication.ajouterDeNouvellesVideos')}</Text>
                         </View>
 
                         <View style={styles.actionItem}>
                             <SafeIcon name="settings" size={16} color={modernColors.textSecondary} />
-                            <Text style={styles.actionText}>Modifier les paramètres spécifiques</Text>
+                            <Text style={styles.actionText}>{t('productDuplication.modifierLesParametresSpecifiques')}</Text>
                         </View>
                     </NativeCard>
                 </ScrollView>
 
                 <View style={styles.footer}>
                     <NativeButton
-                        title="Annuler"
+                        title={t('productDuplicationModal.annuler')}
                         onPress={onClose}
                         variant="secondary"
                         style={styles.cancelButton}

@@ -5,6 +5,7 @@
 import React from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Svg, {
+import { useLanguageSafe } from '../contexts/LanguageContext';
     Circle,
     Defs,
     FeComponentTransfer,
@@ -36,7 +37,7 @@ const IconPreview: React.FC<IconPreviewProps> = ({
     return (
         <View style={styles.container}>
             {showLabel && (
-                <Text style={styles.title}>Icône Yukpo - Motif Ndop</Text>
+                <Text style={styles.title}>{t('iconPreview.iconeYukpoMotifNdop')}</Text>
             )}
 
             <View style={[styles.iconContainer, { width: size, height: size }]}>

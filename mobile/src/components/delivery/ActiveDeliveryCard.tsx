@@ -5,6 +5,7 @@ import { modernColors } from '../../theme/modernTheme';
 import { DeliverySummary } from '../../types/delivery';
 import SafeIcon from '../SafeIcon';
 import { NativeBadge, NativeButton, NativeCard } from '../SafeNativeDesign';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ActiveDeliveryCardProps {
     delivery: DeliverySummary;
@@ -16,19 +17,19 @@ const statusLabelMap: Record<string, string> = {
     requested: 'En attente',
     awaiting_courier: 'Recherche coursier',
     awaiting_courier_confirmation: 'Recherche coursier',
-    assigned: 'Coursier assigné',
-    accepted: 'Coursier assigné',
+    assigned: t('activeDeliveryCard.coursierAssigne'),
+    accepted: t('activeDeliveryCard.coursierAssigne'),
     en_route_pickup: 'En route vers le retrait',
-    arrival_pickup: 'Arrivé au point de retrait',
-    picked_up: 'Colis récupéré',
-    shopping_pending: 'Arrivé au supermarché',
+    arrival_pickup: t('activeDeliveryCard.arriveAuPointDeRetrait'),
+    picked_up: t('activeDeliveryCard.colisRecupere'),
+    shopping_pending: t('activeDeliveryCard.arriveAuSupermarche'),
     shopping_in_progress: 'Courses en cours',
-    shopping_completed: 'Panier validé',
+    shopping_completed: t('activeDeliveryCard.panierValide'),
     en_route_delivery: 'En route client',
-    arrival_destination: 'Arrivé à destination',
-    delivered: 'Livré',
-    completed: 'Terminé',
-    cancelled: 'Annulé',
+    arrival_destination: t('activeDeliveryCard.arriveADestination'),
+    delivered: t('activeDeliveryCard.livre'),
+    completed: t('activeDeliveryCard.termine'),
+    cancelled: t('activeDeliveryCard.annule'),
 };
 
 const statusColorMap: Record<string, string> = {
@@ -83,7 +84,7 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
         return delivery.checkpoints[delivery.checkpoints.length - 1];
     }, [delivery.checkpoints]);
 
-    const deliveryTypeLabel = delivery.kind === 'shopping' ? 'Courses supermarché' : 'Livraison colis';
+    const deliveryTypeLabel = delivery.kind === 'shopping' ? t('activeDeliveryCard.coursesSupermarche') : 'Livraison colis';
 
     const lastUpdate = delivery.lastEventAt
         ? new Date(delivery.lastEventAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -120,7 +121,7 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
             <View style={styles.body}>
                 <View style={styles.row}>
                     <SafeIcon name="store" size={16} color={modernColors.textSecondary} />
-                    <Text style={styles.locationText}>{delivery.pickup?.label ?? 'Supermarché'}</Text>
+                    <Text style={styles.locationText}>{delivery.pickup?.label ?? t('activeDeliveryCard.supermarche')}</Text>
                 </View>
                 <View style={styles.row}>
                     <SafeIcon
@@ -163,13 +164,13 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
 
             <View style={styles.footer}>
                 <View>
-                    <Text style={styles.footerLabel}>Dernière mise à jour</Text>
-                    <Text style={styles.footerValue}>{lastUpdate ?? 'En attente'}</Text>
+                    <Text style={styles.footerLabel}>{t('activeDeliveryCard.derniereMiseAJour')}</Text>
+                    <Text style={styles.footerValue}>{lastUpdate ?? t('activeDeliveryCard.enAttente')}</Text>
                 </View>
                 <View style={styles.footerButtons}>
                     {/* ✅ Phase 9 - Amélioration 30 : Bouton "Modifier l'adresse" toujours visible */}
                     <NativeButton
-                        title="Modifier"
+                        title={t('activeDeliveryCard.modifier')}
                         variant="outline"
                         size="small"
                         onPress={() => onPress(delivery.id)}

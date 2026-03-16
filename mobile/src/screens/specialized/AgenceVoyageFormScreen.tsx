@@ -116,9 +116,9 @@ const AgenceVoyageFormScreen: React.FC = () => {
                 context: 'travel_agency_partner_dashboard',
             });
             const d = (resp?.data || resp) as any;
-            setAiSuggestion(d?.response || d?.message || d?.data?.response || 'Aucune suggestion disponible.');
+            setAiSuggestion(d?.response || d?.message || d?.data?.response || t('agenceVoyageForm.aucuneSuggestionDisponible'));
         } catch {
-            setAiSuggestion('Service IA temporairement indisponible. Réessayez plus tard.');
+            setAiSuggestion(t('agenceVoyageFormScreen.serviceIaTemporairementIndisponibleReessayezPlus'));
         } finally { setLoadingAI(false); }
     };
 
@@ -205,7 +205,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
         if (!serviceId && user?.id && formData.nom_agence) {
             (async () => {
                 try {
-                    const resp = await servicesApi.createService({ titre_service: formData.nom_agence || 'Agence de Voyage', description: 'Agence de voyage', category: 'transport' });
+                    const resp = await servicesApi.createService({ titre_service: formData.nom_agence || t('agenceVoyageForm.agenceDeVoyage'), description: 'Agence de voyage', category: 'transport' });
                     if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) setServiceId((resp.data as any).id);
                 } catch (e) { console.error('[AgenceVoyage] Service:', e); }
             })();
@@ -349,7 +349,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
         } catch (e: any) { Alert.alert(t('message.error'), e.message || t('message.error')); } finally { setLoading(false); }
     };
 
-    if (initialLoading) return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#2563EB" /><Text style={s.loadingText}>Chargement...</Text></View>;
+    if (initialLoading) return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#2563EB" /><Text style={s.loadingText}>{t('agenceVoyageForm.chargement')}</Text></View>;
 
     // ─── RENDER: Overview ────────────────────────────────────────────────
     const renderOverview = () => (
@@ -359,7 +359,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                 {[
                     { label: 'Destinations', value: selectedDestinations.length, icon: 'map-pin', color: '#2563EB' },
                     { label: 'Compagnies', value: selectedCompagnies.length, icon: 'bus', color: '#F59E0B' },
-                    { label: 'Horaires', value: schedules.length, icon: 'clock', color: '#10B981' },
+                    { label: t('agenceVoyageForm.horaires'), value: schedules.length, icon: 'clock', color: '#10B981' },
                     { label: 'Tickets', value: agencyTickets.length, icon: 'ticket', color: '#EF4444' },
                 ].map((st, i) => (
                     <View key={i} style={[s.statCard, { borderLeftColor: st.color }]}>
@@ -373,9 +373,9 @@ const AgenceVoyageFormScreen: React.FC = () => {
             {/* Quick Actions */}
             <View style={s.quickRow}>
                 {[
-                    { label: 'Ajouter horaire', icon: 'plus-circle', color: '#2563EB', onPress: () => { setEditingSchedule(null); setScheduleForm({ departure_city: '', arrival_city: '', departure_times: [], day_of_week: null, notes: '' }); setShowScheduleModal(true); } },
-                    { label: 'Mon service', icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
-                    { label: 'Modèles bus', icon: 'truck', color: '#8B5CF6', onPress: () => setActiveTab('bus') },
+                    { label: t('agenceVoyageForm.ajouterHoraire'), icon: 'plus-circle', color: '#2563EB', onPress: () => { setEditingSchedule(null); setScheduleForm({ departure_city: '', arrival_city: '', departure_times: [], day_of_week: null, notes: '' }); setShowScheduleModal(true); } },
+                    { label: t('agenceVoyageForm.monService'), icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
+                    { label: t('agenceVoyageForm.modelesBus'), icon: 'truck', color: '#8B5CF6', onPress: () => setActiveTab('bus') },
                     { label: 'IA Conseils', icon: 'sparkles', color: '#7C3AED', onPress: handleAISuggest },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
@@ -390,7 +390,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
             {formData.jours_ouverture.length > 0 && (
                 <View style={s.infoCard}><SafeIcon name="calendar" size={16} color="#2563EB" /><Text style={s.infoText}>{formData.jours_ouverture.map(d => DAYS_OF_WEEK.find(w => w.value === d)?.short || '').join(', ')}</Text></View>
             )}
-            {formData.peut_emettre_tickets_bus && <View style={s.infoCard}><SafeIcon name="ticket" size={16} color="#10B981" /><Text style={s.infoText}>Émission de tickets bus activée</Text></View>}
+            {formData.peut_emettre_tickets_bus && <View style={s.infoCard}><SafeIcon name="ticket" size={16} color="#10B981" /><Text style={s.infoText}>{t('agenceVoyageForm.emissionDeTicketsBusActivee')}</Text></View>}
 
             {/* IA Suggestions Card */}
             {loadingAI && (
@@ -408,7 +408,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     <Text style={{ fontSize: 13, color: '#374151', lineHeight: 20 }}>{aiSuggestion}</Text>
                     <TouchableOpacity onPress={handleAISuggest} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
                         <SafeIcon name="refresh-cw" size={13} color="#7C3AED" />
-                        <Text style={{ fontSize: 12, color: '#7C3AED', fontWeight: '600' }}>Actualiser</Text>
+                        <Text style={{ fontSize: 12, color: '#7C3AED', fontWeight: '600' }}>{t('agenceVoyageForm.actualiser')}</Text>
                     </TouchableOpacity>
                 </View>
             )}
@@ -416,7 +416,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
             {/* Recent Schedules */}
             {schedules.length > 0 && (
                 <>
-                    <View style={s.sectionRow}><Text style={s.sectionTitle}>Horaires récents</Text><TouchableOpacity onPress={() => setActiveTab('schedules')}><Text style={s.seeAll}>Tout voir</Text></TouchableOpacity></View>
+                    <View style={s.sectionRow}><Text style={s.sectionTitle}>{t('agenceVoyageForm.horairesRecents')}</Text><TouchableOpacity onPress={() => setActiveTab('schedules')}><Text style={s.seeAll}>Tout voir</Text></TouchableOpacity></View>
                     {schedules.slice(0, 3).map((sch: any, i: number) => (
                         <View key={i} style={s.scheduleCard}>
                             <View style={{ flex: 1 }}>
@@ -434,18 +434,18 @@ const AgenceVoyageFormScreen: React.FC = () => {
     // ─── RENDER: Service Form ────────────────────────────────────────────
     const renderServiceForm = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
-            {user?.role !== 'partenaire' && <View style={s.field}><NativeInput label="Nom *" value={formData.nom_agence} onChangeText={t => setFormData({ ...formData, nom_agence: t })} placeholder="Ex: Agence Voyages Express" /></View>}
+            {user?.role !== 'partenaire' && <View style={s.field}><NativeInput label="Nom *" value={formData.nom_agence} onChangeText={t => setFormData({ ...formData, nom_agence: t })} placeholder={t('agenceVoyageForm.exAgenceVoyagesExpress')} /></View>}
             <View style={s.field}>
                 <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
                     <SafeIcon name="map-pin" size={20} color="#2563EB" />
-                    <Text style={s.gpsBtnText}>{selectedGPS ? '✓ GPS sélectionné' : 'Position GPS'}</Text>
+                    <Text style={s.gpsBtnText}>{selectedGPS ? t('agenceVoyageFormScreen.gpsSelectionne') : 'Position GPS'}</Text>
                     <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                 </TouchableOpacity>
             </View>
-            {user?.role !== 'partenaire' && <View style={s.field}><NativeInput label="Adresse" value={formData.adresse} onChangeText={t => setFormData({ ...formData, adresse: t })} placeholder="Adresse complète" /></View>}
-            <View style={s.field}><LocationSelector label="Quartier" value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, quartier: loc })} placeholder="Rechercher..." scope="all" enrichWithBackend /></View>
+            {user?.role !== 'partenaire' && <View style={s.field}><NativeInput label="Adresse" value={formData.adresse} onChangeText={t => setFormData({ ...formData, adresse: t })} placeholder={t('agenceVoyageForm.adresseComplete')} /></View>}
+            <View style={s.field}><LocationSelector label={t('agenceVoyageForm.quartier')} value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, quartier: loc })} placeholder={t('agenceVoyageForm.rechercher')} scope="all" enrichWithBackend /></View>
 
-            <Text style={s.label}>Services proposés</Text>
+            <Text style={s.label}>{t('agenceVoyageForm.servicesProposes')}</Text>
             <View style={s.chips}>{SERVICES_OPTIONS.map(svc => {
                 const on = selectedServices.includes(svc);
                 return <TouchableOpacity key={svc} style={[s.chip, on && s.chipOn]} onPress={() => setSelectedServices(on ? selectedServices.filter(x => x !== svc) : [...selectedServices, svc])}><Text style={[s.chipText, on && s.chipTextOn]}>{svc}</Text></TouchableOpacity>;
@@ -460,7 +460,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                         <TouchableOpacity onPress={() => setSelectedDestinations(selectedDestinations.filter((_, j) => j !== i))}><SafeIcon name="x" size={16} color="#EF4444" /></TouchableOpacity>
                     </View>
                 ))}
-                <LocationSelector label="" value="" onSelect={(loc: LocationObject) => setSelectedDestinations([...selectedDestinations, loc])} placeholder="Ajouter une destination..." scope="all" enrichWithBackend />
+                <LocationSelector label="" value="" onSelect={(loc: LocationObject) => setSelectedDestinations([...selectedDestinations, loc])} placeholder={t('agenceVoyageForm.ajouterUneDestination')} scope="all" enrichWithBackend />
             </View>
 
             <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -474,19 +474,19 @@ const AgenceVoyageFormScreen: React.FC = () => {
                 <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
             </TouchableOpacity>
 
-            <View style={[s.switchRow, { marginTop: 16 }]}><View><Text style={s.switchLbl}>Émission tickets bus</Text><Text style={s.hint}>Peut émettre des tickets pour les compagnies</Text></View><Switch value={formData.peut_emettre_tickets_bus} onValueChange={v => setFormData({ ...formData, peut_emettre_tickets_bus: v })} trackColor={{ false: '#D1D5DB', true: '#2563EB' }} /></View>
+            <View style={[s.switchRow, { marginTop: 16 }]}><View><Text style={s.switchLbl}>{t('agenceVoyageForm.emissionTicketsBus')}</Text><Text style={s.hint}>{t('agenceVoyageForm.peutEmettreDesTicketsPour')}</Text></View><Switch value={formData.peut_emettre_tickets_bus} onValueChange={v => setFormData({ ...formData, peut_emettre_tickets_bus: v })} trackColor={{ false: '#D1D5DB', true: '#2563EB' }} /></View>
 
-            {formData.peut_emettre_tickets_bus && <View style={s.field}><CompanySelector label="Compagnies affiliées" selected={selectedAffiliees} onSelectionChange={setSelectedAffiliees} /></View>}
+            {formData.peut_emettre_tickets_bus && <View style={s.field}><CompanySelector label={t('agenceVoyageForm.compagniesAffiliees')} selected={selectedAffiliees} onSelectionChange={setSelectedAffiliees} /></View>}
 
             {user?.role !== 'partenaire' && (
                 <>
-                    <View style={s.field}><NativeInput label="Téléphone *" value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label={t('agenceVoyageForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="Email" value={formData.email} onChangeText={t => setFormData({ ...formData, email: t })} placeholder="agence@example.com" keyboardType="email-address" autoCapitalize="none" /></View>
                     <View style={s.field}><NativeInput label="Site web" value={formData.site_web} onChangeText={t => setFormData({ ...formData, site_web: t })} placeholder="https://..." autoCapitalize="none" /></View>
                 </>
             )}
-            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? 'Mettre à jour' : 'Enregistrer l\'Agence')} onPress={handleSubmit} disabled={loading || !formData.nom_agence.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
+            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? t('agenceVoyageFormScreen.mettreAJour') : 'Enregistrer l\'Agence')} onPress={handleSubmit} disabled={loading || !formData.nom_agence.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
         </ScrollView>
     );
 
@@ -496,12 +496,12 @@ const AgenceVoyageFormScreen: React.FC = () => {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
                 <TouchableOpacity style={s.addBtn} onPress={() => { setEditingSchedule(null); setScheduleForm({ departure_city: '', arrival_city: '', departure_times: [], day_of_week: null, notes: '' }); setShowScheduleModal(true); }}>
-                    <SafeIcon name="plus" size={18} color="#fff" /><Text style={s.addBtnText}>Ajouter</Text>
+                    <SafeIcon name="plus" size={18} color="#fff" /><Text style={s.addBtnText}>{t('agenceVoyageFormScreen.ajouter')}</Text>
                 </TouchableOpacity>
             </View>
             {loadingSchedules ? <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 32 }} /> :
                 schedules.length === 0 ? (
-                    <View style={s.emptyDash}><SafeIcon name="clock" size={48} color="#9CA3AF" /><Text style={s.emptyTitle}>Aucun horaire</Text><Text style={s.emptyText}>Créez vos horaires de départ pour les rendre visibles</Text></View>
+                    <View style={s.emptyDash}><SafeIcon name="clock" size={48} color="#9CA3AF" /><Text style={s.emptyTitle}>{t('agenceVoyageForm.aucunHoraire')}/Text><Text style={s.emptyText}>{t('agenceVoyageForm.creezVosHorairesDeDepart')}</Text></View>
                 ) : (
                     schedules.map((sch: any, i: number) => (
                         <View key={i} style={s.scheduleCardFull}>
@@ -525,10 +525,10 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const renderBusTab = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
             <TouchableOpacity style={s.addBtn} onPress={() => { setEditingModelIndex(null); setShowBusModelForm(true); }}>
-                <SafeIcon name="plus" size={18} color="#fff" /><Text style={s.addBtnText}>Ajouter un modèle</Text>
+                <SafeIcon name="plus" size={18} color="#fff" /><Text style={s.addBtnText}>{t('agenceVoyageForm.ajouterUnModele')}</Text>
             </TouchableOpacity>
             {busModels.length === 0 ? (
-                <View style={s.emptyDash}><SafeIcon name="truck" size={48} color="#9CA3AF" /><Text style={s.emptyTitle}>Aucun modèle</Text><Text style={s.emptyText}>Configurez vos modèles de bus pour la billetterie</Text></View>
+                <View style={s.emptyDash}><SafeIcon name="truck" size={48} color="#9CA3AF" /><Text style={s.emptyTitle}>{t('agenceVoyageForm.aucunModele')}</Text><Text style={s.emptyText}>{t('agenceVoyageForm.configurezVosModelesDeBus')}</Text></View>
             ) : busModels.map((model, i) => (
                 <View key={i} style={s.busCard}>
                     <View style={{ flex: 1 }}>
@@ -553,9 +553,9 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     <TouchableOpacity onPress={() => setShowScheduleModal(false)}><SafeIcon name="x" size={24} color="#6B7280" /></TouchableOpacity>
                 </View>
                 <ScrollView style={{ padding: 16, maxHeight: 450 }}>
-                    <View style={s.field}><NativeInput label="Ville départ *" value={scheduleForm.departure_city} onChangeText={t => setScheduleForm({ ...scheduleForm, departure_city: t })} placeholder="Ex: Douala" /></View>
-                    <View style={s.field}><NativeInput label="Ville arrivée *" value={scheduleForm.arrival_city} onChangeText={t => setScheduleForm({ ...scheduleForm, arrival_city: t })} placeholder="Ex: Yaoundé" /></View>
-                    <Text style={s.label}>Horaires de départ</Text>
+                    <View style={s.field}><NativeInput label={t('agenceVoyageForm.villeDepart')} value={scheduleForm.departure_city} onChangeText={t => setScheduleForm({ ...scheduleForm, departure_city: t })} placeholder="Ex: Douala" /></View>
+                    <View style={s.field}><NativeInput label={t('agenceVoyageForm.villeArrivee')} value={scheduleForm.arrival_city} onChangeText={t => setScheduleForm({ ...scheduleForm, arrival_city: t })} placeholder={t('agenceVoyageForm.exYaounde')} /></View>
+                    <Text style={s.label}>{t('agenceVoyageForm.horairesDeDepart')}</Text>
                     {scheduleForm.departure_times.map((t, i) => (
                         <View key={i} style={s.timeRow}>
                             <NativeInput value={t} onChangeText={v => { const u = [...scheduleForm.departure_times]; u[i] = v; setScheduleForm({ ...scheduleForm, departure_times: u }); }} placeholder="08:00" style={{ flex: 1 }} />
@@ -563,9 +563,9 @@ const AgenceVoyageFormScreen: React.FC = () => {
                         </View>
                     ))}
                     <TouchableOpacity style={s.addTimeBtn} onPress={() => setScheduleForm({ ...scheduleForm, departure_times: [...scheduleForm.departure_times, '08:00'] })}>
-                        <SafeIcon name="plus" size={16} color="#2563EB" /><Text style={s.addTimeBtnText}>Ajouter un horaire</Text>
+                        <SafeIcon name="plus" size={16} color="#2563EB" /><Text style={s.addTimeBtnText}>{t('agenceVoyageForm.ajouterUnHoraire')}</Text>
                     </TouchableOpacity>
-                    <Text style={[s.label, { marginTop: 16 }]}>Jour (optionnel)</Text>
+                    <Text style={[s.label, { marginTop: 16 }]}>{t('agenceVoyageForm.jourOptionnel')}/Text>
                     <View style={s.daysRow}>{DAYS_OF_WEEK.map(d => (
                         <TouchableOpacity key={d.value} style={[s.dayBtn, scheduleForm.day_of_week === d.value && s.dayBtnOn]} onPress={() => setScheduleForm({ ...scheduleForm, day_of_week: scheduleForm.day_of_week === d.value ? null : d.value })}>
                             <Text style={[s.dayBtnText, scheduleForm.day_of_week === d.value && s.dayBtnTextOn]}>{d.short}</Text>
@@ -574,8 +574,8 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     <View style={[s.field, { marginTop: 16 }]}><NativeInput label="Notes" value={scheduleForm.notes} onChangeText={t => setScheduleForm({ ...scheduleForm, notes: t })} placeholder="Notes..." multiline /></View>
                 </ScrollView>
                 <View style={s.modalFooter}>
-                    <NativeButton title="Annuler" onPress={() => setShowScheduleModal(false)} variant="secondary" style={{ flex: 1 }} />
-                    <NativeButton title={editingSchedule ? 'Modifier' : 'Créer'} onPress={handleSaveSchedule} variant="primary" style={{ flex: 1 }} disabled={loading || !scheduleForm.departure_city.trim() || !scheduleForm.arrival_city.trim() || scheduleForm.departure_times.length === 0} />
+                    <NativeButton title={t('agenceVoyageFormScreen.annuler')} onPress={() => setShowScheduleModal(false)} variant="secondary" style={{ flex: 1 }} />
+                    <NativeButton title={editingSchedule ? 'Modifier' : t('agenceVoyageFormScreen.creer')} onPress={handleSaveSchedule} variant="primary" style={{ flex: 1 }} disabled={loading || !scheduleForm.departure_city.trim() || !scheduleForm.arrival_city.trim() || scheduleForm.departure_times.length === 0} />
                 </View>
             </View></View>
         </Modal>
@@ -589,7 +589,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
             {/* Quick Actions */}
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                 <TouchableOpacity style={[s.addBtn, { flex: 1, justifyContent: 'center' }]} onPress={() => loadAgencyTickets()}>
-                    <SafeIcon name="refresh-cw" size={16} color="#fff" /><Text style={s.addBtnText}>Actualiser</Text>
+                    <SafeIcon name="refresh-cw" size={16} color="#fff" /><Text style={s.addBtnText}>{t('agenceVoyageForm.actualiser')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[s.addBtn, { flex: 1, justifyContent: 'center', backgroundColor: '#10B981' }]} onPress={() => {
                     (navigation as any).navigate('BusTicketQRScanner', {
@@ -610,15 +610,15 @@ const AgenceVoyageFormScreen: React.FC = () => {
             {/* Boarding Summary */}
             {boardingSummary && (
                 <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: '#10B981' }}>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>Résumé embarquement</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>{t('agenceVoyageForm.resumeEmbarquement')}</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                         <View style={{ flex: 1, minWidth: '45%', alignItems: 'center', padding: 8, backgroundColor: '#F0FDF4', borderRadius: 8 }}>
                             <Text style={{ fontSize: 20, fontWeight: '700', color: '#10B981' }}>{boardingSummary.boarded_passengers}</Text>
-                            <Text style={{ fontSize: 11, color: '#6B7280' }}>Embarqués</Text>
+                            <Text style={{ fontSize: 11, color: '#6B7280' }}>{t('agenceVoyageForm.embarques')}</Text>
                         </View>
                         <View style={{ flex: 1, minWidth: '45%', alignItems: 'center', padding: 8, backgroundColor: '#FEF3C7', borderRadius: 8 }}>
                             <Text style={{ fontSize: 20, fontWeight: '700', color: '#D97706' }}>{boardingSummary.pending_passengers}</Text>
-                            <Text style={{ fontSize: 11, color: '#6B7280' }}>En attente</Text>
+                            <Text style={{ fontSize: 11, color: '#6B7280' }}>{t('agenceVoyageForm.enAttente')}/Text>
                         </View>
                         <View style={{ flex: 1, minWidth: '45%', alignItems: 'center', padding: 8, backgroundColor: '#FEE2E2', borderRadius: 8 }}>
                             <Text style={{ fontSize: 20, fontWeight: '700', color: '#EF4444' }}>{boardingSummary.no_show_passengers}</Text>
@@ -626,7 +626,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                         </View>
                         <View style={{ flex: 1, minWidth: '45%', alignItems: 'center', padding: 8, backgroundColor: '#EFF6FF', borderRadius: 8 }}>
                             <Text style={{ fontSize: 20, fontWeight: '700', color: '#2563EB' }}>{Math.round(boardingSummary.completion_percentage || 0)}%</Text>
-                            <Text style={{ fontSize: 11, color: '#6B7280' }}>Complétion</Text>
+                            <Text style={{ fontSize: 11, color: '#6B7280' }}>{t('agenceVoyageForm.completion')}</Text>
                         </View>
                     </View>
                 </View>
@@ -640,12 +640,12 @@ const AgenceVoyageFormScreen: React.FC = () => {
                         <View key={i} style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#fff', borderRadius: 10, marginBottom: 6, borderLeftWidth: 3, borderLeftColor: p.is_validated ? '#10B981' : '#F59E0B' }}>
                             <View style={{ flex: 1 }}>
                                 <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>{p.passenger_name || `Passager #${p.seat_number}`}</Text>
-                                <Text style={{ fontSize: 12, color: '#6B7280' }}>Place {p.seat_number} · {p.display_status === 'boarded' ? '✓ Embarqué' : p.display_status === 'no_show' ? '✗ Absent' : '⏳ En attente'}</Text>
+                                <Text style={{ fontSize: 12, color: '#6B7280' }}>Place {p.seat_number} · {p.display_status === 'boarded' ? t('agenceVoyageFormScreen.embarque') : p.display_status === 'no_show' ? '✗ Absent' : '⏳ En attente'}</Text>
                             </View>
                             {!p.is_validated && (
                                 <TouchableOpacity style={{ backgroundColor: '#10B981', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 }}
                                     onPress={() => handleManualValidation(p.reservation_id)}>
-                                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Valider</Text>
+                                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>{t('agenceVoyageForm.valider')}/Text>
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -657,7 +657,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>Tickets vendus ({agencyTickets.length})</Text>
             {loadingTickets ? <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 32 }} /> :
                 agencyTickets.length === 0 ? (
-                    <View style={s.emptyDash}><SafeIcon name="ticket" size={48} color="#9CA3AF" /><Text style={s.emptyTitle}>Aucun ticket vendu</Text><Text style={s.emptyText}>Les tickets apparaîtront ici une fois que des clients réservent</Text></View>
+                    <View style={s.emptyDash}><SafeIcon name="ticket" size={48} color="#9CA3AF" /><Text style={s.emptyTitle}>{t('agenceVoyageForm.aucunTicketVendu')}/Text><Text style={s.emptyText}>{t('agenceVoyageForm.lesTicketsApparaitrontIciUne')}</Text></View>
                 ) : (
                     agencyTickets.map((ticket: any, i: number) => (
                         <TouchableOpacity key={i} style={{ backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 8, borderLeftWidth: 3, borderLeftColor: ticket.payment_status === 'completed' ? '#10B981' : '#F59E0B' }}
@@ -675,7 +675,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                                 <View style={{ alignItems: 'flex-end' }}>
                                     <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }}>{(ticket.total_amount || 0).toLocaleString()} {ticket.currency || 'XAF'}</Text>
                                     <View style={{ backgroundColor: ticket.payment_status === 'completed' ? '#D1FAE5' : '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 4 }}>
-                                        <Text style={{ fontSize: 10, color: ticket.payment_status === 'completed' ? '#059669' : '#D97706', fontWeight: '600' }}>{ticket.payment_status === 'completed' ? 'Payé' : 'En cours'}</Text>
+                                        <Text style={{ fontSize: 10, color: ticket.payment_status === 'completed' ? '#059669' : '#D97706', fontWeight: '600' }}>{ticket.payment_status === 'completed' ? t('agenceVoyageFormScreen.paye') : 'En cours'}</Text>
                                     </View>
                                     {ticket.boarded_count !== undefined && (
                                         <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{ticket.boarded_count}/{ticket.number_of_tickets} embarqué(s)</Text>
@@ -691,12 +691,12 @@ const AgenceVoyageFormScreen: React.FC = () => {
     // ─── RENDER: Dashboard ───────────────────────────────────────────────
     if (isDashboardMode || (user?.role === 'partenaire' && serviceId)) {
         const tabs: { key: TabType; label: string; icon: string }[] = [
-            { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
+            { key: 'overview', label: t('agenceVoyageForm.accueil'), icon: 'layout-dashboard' },
             { key: 'service', label: 'Service', icon: 'settings' },
-            { key: 'schedules', label: 'Horaires', icon: 'clock' },
+            { key: 'schedules', label: t('agenceVoyageForm.horaires'), icon: 'clock' },
             { key: 'bus', label: 'Bus', icon: 'bus' },
             { key: 'tickets', label: 'Tickets', icon: 'ticket' },
-            { key: 'team', label: 'Équipe', icon: 'users' },
+            { key: 'team', label: t('agenceVoyageForm.equipe'), icon: 'users' },
         ];
 
         return (
@@ -705,7 +705,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     <View style={s.dashHeaderRow}>
                         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
                         <View style={{ flex: 1 }}>
-                            <Text style={s.dashTitle}>{agencyData?.nom_agence || formData.nom_agence || 'Mon Agence'}</Text>
+                            <Text style={s.dashTitle}>{agencyData?.nom_agence || formData.nom_agence || t('agenceVoyageForm.monAgence')}</Text>
                             <Text style={s.dashSub}>{selectedDestinations.length} destination{selectedDestinations.length > 1 ? 's' : ''} · {schedules.length} horaire{schedules.length > 1 ? 's' : ''}</Text>
                         </View>
                     </View>
@@ -737,7 +737,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
         <View style={s.container}>
             <LinearGradient colors={['#1E3A8A', '#2563EB']} style={s.createHeader}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
-                <Text style={s.createTitle}>Enregistrer une Agence</Text>
+                <Text style={s.createTitle}>{t('agenceVoyageFormScreen.enregistrerUneAgence')}</Text>
             </LinearGradient>
             {renderServiceForm()}
             <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={(c: string) => { setSelectedGPS(c); setShowGPSModal(false); }} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation" />

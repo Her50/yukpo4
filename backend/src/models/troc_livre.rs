@@ -1,4 +1,4 @@
-// ✅ NOUVEAU: Modèle pour trocs de livres scolaires
+// ✅ Modèle pour trocs de livres scolaires — V3: DAG sans réciprocité
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -31,6 +31,9 @@ pub struct TrocLivre {
     // Proximité
     pub distance_km: Option<f64>,
 
+    // Constitution paquet
+    pub is_packaged: Option<bool>, // true si déjà inclus dans un paquet de livraison
+
     // Dates
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -42,8 +45,26 @@ pub struct TrocLivre {
 pub struct ChaineTrocLivre {
     pub id: i32,
 
-    // Participants (ordre de la chaîne)
+    // Participants (ordre de la chaîne) — legacy
     pub participants: serde_json::Value, // JSONB: [{user_id, livre_offert_id, livre_souhaite_id, ordre}]
+
+    // V3: Transferts directionnels (arêtes du DAG)
+    pub transfers: Option<serde_json::Value>, // [{sender_id, receiver_id, livre_id, ...}]
+
+    // V3: Route optimisée du coursier
+    pub route_optimisee: Option<serde_json::Value>,
+
+    // V3: Planning de livraison multi-jours
+    pub delivery_schedule: Option<serde_json::Value>,
+
+    // V3: Référence lisible
+    pub reference: Option<String>,
+
+    // V3: Nombre de vendeurs dans la chaîne
+    pub nombre_vendeurs: Option<i32>,
+
+    // V3: IDs des paquets générés
+    pub package_ids: Option<serde_json::Value>,
 
     // Statut
     pub statut: String, // "en_formation", "validee", "en_cours", "complete"
@@ -57,6 +78,24 @@ pub struct ChaineTrocLivre {
     pub updated_at: DateTime<Utc>,
     pub date_validation: Option<DateTime<Utc>>,
     pub date_complete: Option<DateTime<Utc>>,
+}
+
+// ============================================================================
+// TRANSFERT DIRECTIONNEL (arête du DAG de la chaîne)
+// ============================================================================
+
+/// Un transfert = un livre envoyé de sender vers receiver.
+/// Anti-réciprocité: si (A→B) existe, (B→A) est interdit.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChainTransfer {
+    pub sender_id: i32,
+    pub receiver_id: i32,
+    pub livre_id: i32,
+    pub livre_titre: Option<String>,
+    pub matiere: Option<String>,
+    pub valeur: f64,
+    pub mode_listing: String, // 'troc' ou 'vente'
+    pub statut: String,       // 'pending', 'picked_up', 'delivered', 'cancelled'
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -96,16 +135,22 @@ pub struct MatchingDirect {
     pub score_proximite: f64,
     pub livre_offert: Option<serde_json::Value>, // Détails du livre offert
     pub livre_souhaite: Option<serde_json::Value>, // Détails du livre souhaité
+    /// true si un troc inverse (participant→initiateur) existe déjà ou serait créé.
+    /// Les matchs réciproques causent des allers-retours coursier et sont à éviter.
+    #[serde(default)]
+    pub is_reciprocal: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MatchingChaine {
-    pub chaine_id: Option<i32>, // ID si chaîne déjà créée
+    pub chaine_id: Option<i32>,
     pub participants: Vec<ParticipantChaine>,
+    pub transfers: Vec<ChainTransfer>, // V3: arêtes du DAG
     pub distance_totale_km: f64,
     pub score_proximite: f64,
     pub nombre_participants: i32,
-    pub livres: Vec<serde_json::Value>, // Détails des livres de la chaîne
+    pub nombre_vendeurs: i32, // V3: vendeurs (source-only)
+    pub livres: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -117,4 +162,16 @@ pub struct TrocDetails {
     pub initiateur: Option<serde_json::Value>, // Détails utilisateur initiateur
     pub participant: Option<serde_json::Value>, // Détails utilisateur participant
     pub chaine: Option<ChaineTrocLivre>,       // Détails de la chaîne si applicable
+}
+
+// ============================================================================
+// ANNULATION LIVRE PAR COURSIER (aléas terrain)
+// ============================================================================
+
+/// Requête d'annulation d'un livre par le coursier sur le terrain
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BookCancellationRequest {
+    pub package_id: i32,
+    pub livre_id: i32,
+    pub raison: Option<String>,
 }

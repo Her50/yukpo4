@@ -363,8 +363,8 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
   const getStatusText = (status: string) => {
     switch (status) {
       case 'active': return 'En cours';
-      case 'completed': return 'Terminé';
-      case 'cancelled': return 'Annulé';
+      case 'completed': return t('chatHistoryModal.termine');
+      case 'cancelled': return t('chatHistoryModal.annule');
       default: return 'Inconnu';
     }
   };
@@ -415,8 +415,8 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                   'Options du chat',
                   'Que souhaitez-vous faire ?',
                   [
-                    { text: 'Voir le profil', onPress: () => { } },
-                    { text: 'Marquer comme terminé', onPress: () => { } },
+                    { text: t('common.viewProfile'), onPress: () => { } },
+                    { text: t('chatHistory.marquerCommeTermine'), onPress: () => { } },
                     { text: t('common.cancel'), style: 'cancel' }
                   ]
                 );
@@ -465,7 +465,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
           <View style={styles.messageInputContainer}>
             <TextInput
               style={styles.messageInput}
-              placeholder="Tapez votre message..."
+              placeholder={t('chatHistory.tapezVotreMessage')}
               value={newMessage}
               onChangeText={setNewMessage}
               multiline
@@ -522,7 +522,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={styles.searchInput}
-              placeholder="Rechercher une conversation..."
+              placeholder={t('chatHistory.rechercherUneConversation')}
               value={searchTerm}
               onChangeText={setSearchTerm}
             />
@@ -556,12 +556,12 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
         <ScrollView style={styles.chatList}>
           {loading ? (
             <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Chargement...</Text>
+              <Text style={styles.loadingText}>{t('chatHistory.chargement')}</Text>
             </View>
           ) : filteredChatHistories.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>💬</Text>
-              <Text style={styles.emptyText}>Aucune conversation trouvée</Text>
+              <Text style={styles.emptyText}>{t('chatHistory.aucuneConversationTrouvee')}</Text>
             </View>
           ) : (
             filteredChatHistories.map((chat) => (

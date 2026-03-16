@@ -14,6 +14,7 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface ServiceFilters {
     type?: string; // "pharmacie", "hopital", etc. ou "all"
@@ -35,7 +36,8 @@ const ServiceFilters: React.FC<Props> = ({
     onApply,
     initialFilters,
 }) => {
-    const [filters, setFilters] = useState<ServiceFilters>(
+        const { t } = useLanguageSafe();
+const [filters, setFilters] = useState<ServiceFilters>(
         initialFilters || {
             type: 'all',
             status: 'all',
@@ -50,12 +52,12 @@ const ServiceFilters: React.FC<Props> = ({
     }, [initialFilters]);
 
     const serviceTypes = [
-        { value: 'all', label: 'Tous les types', icon: '📋' },
+        { value: 'all', label: t('serviceFilters.tousLesTypes'), icon: '📋' },
         { value: 'pharmacie', label: 'Pharmacie', icon: '💊' },
-        { value: 'hopital', label: 'Hôpital', icon: '🏥' },
+        { value: 'hopital', label: t('serviceFilters.hopital'), icon: '🏥' },
         { value: 'laboratoire', label: 'Laboratoire', icon: '🔬' },
         { value: 'banque_sang', label: 'Banque de Sang', icon: '🩸' },
-        { value: 'agence_voyage', label: 'Agence de Voyage', icon: '🚌' },
+        { value: 'agence_voyage', label: t('serviceFilters.agenceDeVoyage'), icon: '🚌' },
         { value: 'covoiturage', label: 'Covoiturage', icon: '🚗' },
         { value: 'taxi', label: 'Taxi', icon: '🚕' },
     ];
@@ -67,11 +69,11 @@ const ServiceFilters: React.FC<Props> = ({
     ];
 
     const dateRanges = [
-        { value: 'all', label: 'Toutes les dates', icon: '📅' },
+        { value: 'all', label: t('serviceFilters.toutesLesDates'), icon: '📅' },
         { value: 'today', label: "Aujourd'hui", icon: '🕐' },
         { value: 'week', label: 'Cette semaine', icon: '📆' },
         { value: 'month', label: 'Ce mois', icon: '🗓️' },
-        { value: 'year', label: 'Cette année', icon: '📅' },
+        { value: 'year', label: t('serviceFilters.cetteAnnee'), icon: '📅' },
     ];
 
     const handleApply = () => {
@@ -109,7 +111,7 @@ const ServiceFilters: React.FC<Props> = ({
                     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                         {/* Filtre par type */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Type de service</Text>
+                            <Text style={styles.sectionTitle}>{t('serviceFilters.typeDeService')}</Text>
                             <View style={styles.optionsGrid}>
                                 {serviceTypes.map((type) => (
                                     <TouchableOpacity
@@ -163,7 +165,7 @@ const ServiceFilters: React.FC<Props> = ({
 
                         {/* Filtre par date */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Date de création</Text>
+                            <Text style={styles.sectionTitle}>{t('serviceFilters.dateDeCreation')}</Text>
                             <View style={styles.optionsRow}>
                                 {dateRanges.map((range) => (
                                     <TouchableOpacity
@@ -196,7 +198,7 @@ const ServiceFilters: React.FC<Props> = ({
                             onPress={handleReset}
                             style={styles.resetButton}
                         >
-                            <Text style={styles.resetButtonText}>Réinitialiser</Text>
+                            <Text style={styles.resetButtonText}>{t('serviceFilters.reinitialiser')}</Text>
                         </NativeButton>
                         <NativeButton
                             variant="primary"

@@ -24,7 +24,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
     fieldName,
     onSelect,
     required = false,
-    placeholder = 'Sélectionner...'
+    placeholder={t('selectModalitySelector.selectionner')}
 }) => {
     const [allOptions, setAllOptions] = useState<string[]>([]);
 
@@ -103,8 +103,8 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
 
     const clearSelection = () => {
         Alert.alert(
-            'Effacer la sélection',
-            `Voulez-vous effacer le ${label.toLowerCase()} sélectionné ?`,
+            t('selectModalitySelector.effacerLaSelection'),
+            t('selectModalitySelector.voulezvousEffacerLeSelectionne', { label_toLowerCase(): label.toLowerCase() }),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -174,7 +174,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                     <View style={styles.modalContainer}>
                         {/* Header */}
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Sélectionner {label.toLowerCase()}</Text>
+                            <Text style={styles.modalTitle}>{t('selectModalitySelector.selectionner')} {label.toLowerCase()}</Text>
                             <TouchableOpacity
                                 onPress={() => setShowModal(false)}
                                 style={styles.closeButton}
@@ -203,7 +203,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                         {/* Liste des options */}
                         <ScrollView style={styles.optionsList}>
                             {loading ? (
-                                <Text style={styles.loadingText}>Chargement...</Text>
+                                <Text style={styles.loadingText}>{t('selectModalitySelector.chargement')}</Text>
                             ) : (
                                 <>
                                     {/* ✅ AMÉLIORATION UX : Bouton d'ajout rapide si aucun résultat */}
@@ -300,7 +300,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                                 style={[styles.addModalButton, { backgroundColor: '#F3F4F6' }]}
                                 onPress={() => { setShowAddModal(false); setNewModalityText(''); }}
                             >
-                                <Text style={[styles.addModalButtonText, { color: modernColors.textSecondary }]}>Annuler</Text>
+                                <Text style={[styles.addModalButtonText, { color: modernColors.textSecondary }]}>{t('selectModalitySelector.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.addModalButton, { backgroundColor: modernColors.primary }]}
@@ -333,7 +333,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                                     }
                                 }}
                             >
-                                <Text style={[styles.addModalButtonText, { color: '#FFFFFF' }]}>Ajouter</Text>
+                                <Text style={[styles.addModalButtonText, { color: '#FFFFFF' }]}>{t('selectModalitySelector.ajouter')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

@@ -26,10 +26,10 @@ import { modernColors } from '../theme/modernTheme';
 
 const STATUS_LABELS: Record<string, string> = {
     pending: 'En attente',
-    validated: 'Validée',
-    ready: 'Prête',
-    rejected: 'Rejetée',
-    cancelled: 'Annulée',
+    validated: t('providerOrderManagementScreen.validee'),
+    ready: t('providerOrderManagementScreen.prete'),
+    rejected: t('providerOrderManagementScreen.rejetee'),
+    cancelled: t('providerOrderManagementScreen.annulee'),
 };
 
 const ProviderOrderManagementScreen: React.FC = () => {
@@ -180,7 +180,7 @@ const ProviderOrderManagementScreen: React.FC = () => {
                 <View style={styles.orderHeader}>
                     <View>
                         <Text style={styles.orderId}>Commande #{item.id.slice(0, 8)}</Text>
-                        <Text style={styles.orderDate}>Créée le {formatDate(item.created_at)}</Text>
+                        <Text style={styles.orderDate}>{t('providerOrderManagementScreen.creeeLe')} {formatDate(item.created_at)}</Text>
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
                         <Text style={styles.statusBadgeText}>{STATUS_LABELS[item.status] || item.status}</Text>
@@ -257,12 +257,12 @@ const ProviderOrderManagementScreen: React.FC = () => {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-back" size={24} color={modernColors.text} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Mes commandes</Text>
+                    <Text style={styles.headerTitle}>{t('providerOrderManagement.mesCommandes')}</Text>
                     <View style={{ width: 40 }} />
                 </View>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('providerOrderManagement.chargement')}</Text>
                 </View>
             </View>
         );
@@ -280,7 +280,7 @@ const ProviderOrderManagementScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-back" size={24} color={modernColors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Mes commandes</Text>
+                <Text style={styles.headerTitle}>{t('providerOrderManagement.mesCommandes')}</Text>
                 <TouchableOpacity
                     onPress={loadOrders}
                     style={styles.refreshButton}
@@ -295,7 +295,7 @@ const ProviderOrderManagementScreen: React.FC = () => {
             {orders.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="document-text-outline" size={64} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyText}>Aucune commande en attente</Text>
+                    <Text style={styles.emptyText}>{t('providerOrderManagement.aucuneCommandeEnAttente')}</Text>
                 </View>
             ) : (
                 <FlatList
@@ -336,7 +336,7 @@ const ProviderOrderManagementScreen: React.FC = () => {
                                 accessibilityRole="button"
                                 accessibilityHint="Annule le rejet de la commande"
                             >
-                                <Text style={styles.cancelButtonText}>Annuler</Text>
+                                <Text style={styles.cancelButtonText}>{t('providerOrderManagementScreen.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.modalButton, styles.confirmButton]}

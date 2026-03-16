@@ -15,6 +15,7 @@ import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Slot {
     id: number;
@@ -44,7 +45,8 @@ const BookAppointmentScreen: React.FC<BookAppointmentScreenProps> = ({ route, na
     const { user } = useAuth();
     const { serviceId, serviceType, serviceName } = route.params;
 
-    const [selectedDate, setSelectedDate] = useState<string>('');
+        const { t } = useLanguageSafe();
+const [selectedDate, setSelectedDate] = useState<string>('');
     const [datesWithSlots, setDatesWithSlots] = useState<string[]>([]);
     const [slots, setSlots] = useState<Slot[]>([]);
     const [loading, setLoading] = useState(true);
@@ -138,12 +140,12 @@ const BookAppointmentScreen: React.FC<BookAppointmentScreenProps> = ({ route, na
 
             if (response.success) {
                 Alert.alert(
-                    'Réservation confirmée',
-                    `Votre rendez-vous du ${formatDateDisplay(selectedDate)} à ${selectedSlot.start_time?.substring(0, 5)} a été enregistré.\n\nVous recevrez une notification quand le prestataire aura confirmé.`,
+                    t('bookAppointmentScreen.reservationConfirmee'),
+                    t('bookAppointmentScreen.votreRendezvousDuAAEte', { formatDateDisplay(selectedDate): formatDateDisplay(selectedDate), selectedSlot_start_time?_substring(0, 5): selectedSlot.start_time?.substring(0, 5) }),
                     [{ text: 'OK', onPress: () => navigation.goBack() }]
                 );
             } else {
-                Alert.alert('Erreur', (response as any).error || 'Impossible de réserver');
+                Alert.alert('Erreur', (response as any).error || t('bookAppointment.impossibleDeReserver'));
             }
         } catch (error: any) {
             Alert.alert('Erreur', error.message || 'Une erreur est survenue');
@@ -188,7 +190,7 @@ const BookAppointmentScreen: React.FC<BookAppointmentScreenProps> = ({ route, na
 
             <ScrollView style={styles.scrollContent}>
                 {/* Date Selector */}
-                <Text style={styles.sectionTitle}>Choisir une date</Text>
+                <Text style={styles.sectionTitle}>{t('bookAppointment.choisirUneDate')}</Text>
                 {datesWithSlots.length > 0 ? (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateScroll}>
                         {datesWithSlots.map((date) => (
@@ -267,7 +269,7 @@ const BookAppointmentScreen: React.FC<BookAppointmentScreenProps> = ({ route, na
                             </View>
                         ) : (
                             <View style={styles.noSlots}>
-                                <Text style={styles.noSlotsText}>Aucun créneau disponible ce jour</Text>
+                                <Text style={styles.noSlotsText}>{t('bookAppointment.aucunCreneauDisponibleCeJour')}</Text>
                             </View>
                         )}
                     </>
@@ -276,7 +278,7 @@ const BookAppointmentScreen: React.FC<BookAppointmentScreenProps> = ({ route, na
                 {/* Booking Form */}
                 {selectedSlot && (
                     <View style={styles.bookingForm}>
-                        <Text style={styles.sectionTitle}>Vos informations</Text>
+                        <Text style={styles.sectionTitle}>{t('bookAppointment.vosInformations')}</Text>
 
                         <View style={styles.selectedSlotBanner}>
                             <SafeIcon name="check-circle" size={20} color="#059669" />
@@ -286,15 +288,15 @@ const BookAppointmentScreen: React.FC<BookAppointmentScreenProps> = ({ route, na
                             </Text>
                         </View>
 
-                        <Text style={styles.fieldLabel}>Nom du patient *</Text>
+                        <Text style={styles.fieldLabel}>{t('bookAppointment.nomDuPatient')}/Text>
                         <NativeInput
                             value={patientName}
                             onChangeText={setPatientName}
-                            placeholder="Nom complet du patient"
+                            placeholder={t('bookAppointment.nomCompletDuPatient')}
                         />
 
                         <Text style={styles.fieldLabel}>
-                            {serviceType === 'hopital' ? 'Motif de consultation' : 'Type d\'examen souhaité'}
+                            {serviceType === 'hopital' ? 'Motif de consultation' : 'Type d\t('bookAppointmentScreen.examenSouhaite')}
                         </Text>
                         <NativeInput
                             value={reason}
@@ -303,11 +305,11 @@ const BookAppointmentScreen: React.FC<BookAppointmentScreenProps> = ({ route, na
                             multiline
                         />
 
-                        <Text style={styles.fieldLabel}>Notes supplémentaires</Text>
+                        <Text style={styles.fieldLabel}>{t('bookAppointment.notesSupplementaires')}</Text>
                         <NativeInput
                             value={notes}
                             onChangeText={setNotes}
-                            placeholder="Informations complémentaires..."
+                            placeholder={t('bookAppointment.informationsComplementaires')}
                             multiline
                         />
 
@@ -319,7 +321,7 @@ const BookAppointmentScreen: React.FC<BookAppointmentScreenProps> = ({ route, na
                         )}
 
                         <NativeButton
-                            title={booking ? 'Réservation en cours...' : 'Confirmer le rendez-vous'}
+                            title={booking ? t('bookAppointmentScreen.reservationEnCours') : t('bookAppointmentScreen.confirmerLeRendezvous')}
                             onPress={handleBookSlot}
                             disabled={booking}
                         />

@@ -53,7 +53,8 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
     clientUserId,
     onPriceNegotiated,
 }) => {
-    const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
+        const { t } = useLanguageSafe();
+const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [pendingOffer, setPendingOffer] = useState<NegotiatedPriceOffer | null>(null);
     const [loadingOffer, setLoadingOffer] = useState(false);
@@ -146,8 +147,8 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
 
             if (response.success) {
                 Alert.alert(
-                    'Proposition envoyée',
-                    'Votre proposition de prix a été envoyée au prestataire. Vous serez notifié de sa réponse.',
+                    t('negotiatedPriceModal.propositionEnvoyee'),
+                    t('negotiatedPriceModal.votrePropositionDePrixAEte'),
                     [{
                         text: 'OK', onPress: () => {
                             setNegotiatedPrice('');
@@ -181,8 +182,8 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
 
             if (response.success) {
                 Alert.alert(
-                    'Prix négocié accepté',
-                    'Le prix négocié a été accepté et sera utilisé pour les prochaines commandes.',
+                    t('negotiatedPriceModal.prixNegocieAccepte'),
+                    t('negotiatedPriceModal.lePrixNegocieAEteAccepte'),
                     [{
                         text: 'OK', onPress: () => {
                             setPendingOffer(null);
@@ -239,7 +240,7 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                         <View style={styles.headerContent}>
                             <SafeIcon name="dollar-sign" size={24} color="#FFFFFF" />
                             <Text style={styles.headerTitle}>
-                                {isMerchant ? 'Proposition de prix négocié' : 'Proposer un prix négocié'}
+                                {isMerchant ? t('negotiatedPriceModal.propositionDePrixNegocie') : t('negotiatedPriceModal.proposerUnPrixNegocie')}
                             </Text>
                         </View>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -267,7 +268,7 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                                             <Text style={styles.pendingOfferTitle}>Proposition en attente</Text>
                                         </View>
                                         <View style={styles.pendingOfferContent}>
-                                            <Text style={styles.pendingOfferLabel}>Votre prix proposé</Text>
+                                            <Text style={styles.pendingOfferLabel}>{t('negotiatedPrice.votrePrixPropose')}</Text>
                                             <Text style={styles.pendingOfferPrice}>
                                                 {(pendingOffer.negotiated_price_cents / 100).toLocaleString('fr-FR')} FCFA
                                             </Text>
@@ -285,7 +286,7 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                                                     [
                                                         { text: t('common.no'), style: 'cancel' },
                                                         {
-                                                            text: 'Oui, annuler',
+                                                            text: t('negotiatedPrice.ouiAnnuler'),
                                                             style: 'destructive',
                                                             onPress: async () => {
                                                                 try {
@@ -303,13 +304,13 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                                             }}
                                         >
                                             <SafeIcon name="x" size={18} color="#FFFFFF" />
-                                            <Text style={styles.buttonText}>Annuler la proposition</Text>
+                                            <Text style={styles.buttonText}>{t('negotiatedPriceModal.annulerLaProposition')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 ) : (
                                     // ✅ Formulaire pour proposer un nouveau prix
                                     <View style={styles.merchantSection}>
-                                        <Text style={styles.label}>Prix négocié proposé (FCFA) *</Text>
+                                        <Text style={styles.label}>{t('negotiatedPrice.prixNegocieProposeFcfa')}</Text>
                                         <TextInput
                                             style={styles.input}
                                             value={negotiatedPrice}
@@ -341,7 +342,7 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                                             ) : (
                                                 <>
                                                     <SafeIcon name="send" size={18} color="#FFFFFF" />
-                                                    <Text style={styles.buttonText}>Envoyer la proposition</Text>
+                                                    <Text style={styles.buttonText}>{t('negotiatedPrice.envoyerLaProposition')}/Text>
                                                 </>
                                             )}
                                         </TouchableOpacity>
@@ -356,7 +357,7 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                                 {loadingOffer ? (
                                     <View style={styles.loadingContainer}>
                                         <ActivityIndicator size="large" color={modernColors.primary} />
-                                        <Text style={styles.loadingText}>Chargement des propositions...</Text>
+                                        <Text style={styles.loadingText}>{t('negotiatedPrice.chargementDesPropositions')}</Text>
                                     </View>
                                 ) : pendingOffer ? (
                                     <View style={styles.offerCard}>
@@ -373,13 +374,13 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                                                 </Text>
                                             </View>
                                             <View style={styles.priceRow}>
-                                                <Text style={styles.priceLabel}>Prix proposé</Text>
+                                                <Text style={styles.priceLabel}>{t('negotiatedPrice.prixPropose')}</Text>
                                                 <Text style={styles.negotiatedPriceDisplay}>
                                                     {(pendingOffer.negotiated_price_cents / 100).toLocaleString('fr-FR')} FCFA
                                                 </Text>
                                             </View>
                                             <View style={styles.priceRow}>
-                                                <Text style={styles.priceLabel}>Réduction</Text>
+                                                <Text style={styles.priceLabel}>{t('negotiatedPrice.reduction')}</Text>
                                                 <Text style={styles.discountDisplay}>
                                                     - {((pendingOffer.original_price_cents - pendingOffer.negotiated_price_cents) / 100).toLocaleString('fr-FR')} FCFA
                                                 </Text>

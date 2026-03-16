@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import ReactNative from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image: RNImage } = ReactNative;
 
@@ -21,7 +22,8 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
     onBannerChange,
     readonly = false
 }) => {
-    const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
+        const { t } = useLanguageSafe();
+const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
 
     const pickImage = async (type: 'logo' | 'banner') => {
         try {
@@ -35,8 +37,8 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
 
             if (!permissionResult.granted) {
                 Alert.alert(
-                    'Permission refusée',
-                    'Vous devez autoriser l\'accès à la galerie pour ajouter des images'
+                    t('brandingManagerMobile.permissionRefusee'),
+                    'Vous devez autoriser l\t('brandingManagerMobile.accesALaGaleriePourAjouter')
                 );
                 return;
             }
@@ -84,7 +86,7 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
     if (readonly) {
         return (
             <View style={styles.readonlyContainer}>
-                <Text style={styles.readonlyText}>Identité visuelle (lecture seule)</Text>
+                <Text style={styles.readonlyText}>{t('brandingManagerMobile.identiteVisuelleLectureSeule')}</Text>
                 <View style={styles.readonlyGrid}>
                     {logo.length > 0 && (
                         <View style={styles.readonlyItem}>
@@ -95,7 +97,7 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
                     {banner.length > 0 && (
                         <View style={styles.readonlyItem}>
                             <SafeIcon name="image" size={20} color="#8B5CF6" />
-                            <Text style={styles.readonlyLabel}>Bannière</Text>
+                            <Text style={styles.readonlyLabel}>{t('brandingManagerMobile.banniere')}</Text>
                         </View>
                     )}
                 </View>
@@ -105,8 +107,8 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Identité Visuelle</Text>
-            <Text style={styles.subtitle}>Logo et bannière de votre service</Text>
+            <Text style={styles.title}>{t('brandingManagerMobile.identiteVisuelle')}</Text>
+            <Text style={styles.subtitle}>{t('brandingManagerMobile.logoEtBanniereDeVotre')}</Text>
 
             {/* Logo */}
             <View style={styles.section}>
@@ -121,8 +123,8 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
                         onPress={() => pickImage('logo')}
                     >
                         <SafeIcon name="upload" size={32} color="#3B82F6" />
-                        <Text style={[styles.uploadText, { color: '#3B82F6' }]}>Télécharger le logo</Text>
-                        <Text style={styles.uploadHint}>Format carré recommandé</Text>
+                        <Text style={[styles.uploadText, { color: '#3B82F6' }]}>{t('brandingManagerMobile.telechargerLeLogo')}</Text>
+                        <Text style={styles.uploadHint}>{t('brandingManagerMobile.formatCarreRecommande')}</Text>
                     </TouchableOpacity>
                 ) : (
                     <View style={styles.previewContainer}>
@@ -138,14 +140,14 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
                                 onPress={() => pickImage('logo')}
                             >
                                 <SafeIcon name="edit-2" size={16} color="#3B82F6" />
-                                <Text style={styles.changeButtonText}>Modifier</Text>
+                                <Text style={styles.changeButtonText}>{t('brandingManagerMobile.modifier')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.actionButton, styles.deleteButton]}
                                 onPress={() => removeImage('logo')}
                             >
                                 <SafeIcon name="trash-2" size={16} color="#EF4444" />
-                                <Text style={styles.deleteButtonText}>Supprimer</Text>
+                                <Text style={styles.deleteButtonText}>{t('brandingManagerMobile.supprimer')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -156,7 +158,7 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                     <SafeIcon name="flag" size={20} color="#8B5CF6" />
-                    <Text style={styles.sectionTitle}>Bannière</Text>
+                    <Text style={styles.sectionTitle}>{t('brandingManagerMobile.banniere')}</Text>
                 </View>
 
                 {banner.length === 0 ? (
@@ -165,8 +167,8 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
                         onPress={() => pickImage('banner')}
                     >
                         <SafeIcon name="upload" size={32} color="#8B5CF6" />
-                        <Text style={[styles.uploadText, { color: '#8B5CF6' }]}>Télécharger la bannière</Text>
-                        <Text style={styles.uploadHint}>Format rectangle recommandé (16:9)</Text>
+                        <Text style={[styles.uploadText, { color: '#8B5CF6' }]}>{t('brandingManagerMobile.telechargerLaBanniere')}</Text>
+                        <Text style={styles.uploadHint}>{t('brandingManagerMobile.formatRectangleRecommande169')}</Text>
                     </TouchableOpacity>
                 ) : (
                     <View style={styles.previewContainer}>
@@ -182,14 +184,14 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
                                 onPress={() => pickImage('banner')}
                             >
                                 <SafeIcon name="edit-2" size={16} color="#8B5CF6" />
-                                <Text style={styles.changeButtonText}>Modifier</Text>
+                                <Text style={styles.changeButtonText}>{t('brandingManagerMobile.modifier')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.actionButton, styles.deleteButton]}
                                 onPress={() => removeImage('banner')}
                             >
                                 <SafeIcon name="trash-2" size={16} color="#EF4444" />
-                                <Text style={styles.deleteButtonText}>Supprimer</Text>
+                                <Text style={styles.deleteButtonText}>{t('brandingManagerMobile.supprimer')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -199,7 +201,7 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
             {/* Conseil */}
             <View style={styles.hintBox}>
                 <Text style={styles.hintText}>
-                    💡 <Text style={styles.hintBold}>Conseil :</Text> Un logo professionnel et une belle bannière renforcent votre identité de marque
+                    💡 <Text style={styles.hintBold}>Conseil :</Text>{t('brandingManagerMobile.unLogoProfessionnelEtUneBelle')}
                 </Text>
             </View>
 

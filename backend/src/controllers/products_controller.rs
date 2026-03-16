@@ -2642,7 +2642,7 @@ fn build_og_product_svg(product_name: &str, price_text: &str, variants: &[String
   <text x="600" y="120" font-family="Arial, Helvetica, sans-serif" font-size="100" font-weight="bold" fill="white" text-anchor="middle" opacity="0.15">Y</text>
   <text x="600" y="240" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="bold" fill="white" text-anchor="middle" opacity="0.95">{name}</text>
   <text x="600" y="280" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="white" text-anchor="middle" opacity="0.5">━━━━━━━━━━━━━━━━━━</text>
-{price}{variants}  <text x="600" y="590" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="white" text-anchor="middle" opacity="0.4">yukpomnang.com</text>
+{price}{variants}  <text x="600" y="590" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="white" text-anchor="middle" opacity="0.4">yukpo.com</text>
 </svg>"#,
         name = safe(&display_name),
         price = price_svg,
@@ -2702,7 +2702,7 @@ pub async fn og_placeholder_image(
   <rect width="1200" height="630" fill="url(#bg)"/>
   <text x="600" y="240" font-family="Arial, Helvetica, sans-serif" font-size="120" font-weight="bold" fill="white" text-anchor="middle" opacity="0.9">Y</text>
   <text x="600" y="340" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="white" text-anchor="middle" opacity="0.8">{}</text>
-  <text x="600" y="520" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="white" text-anchor="middle" opacity="0.6">yukpomnang.com</text>
+  <text x="600" y="520" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="white" text-anchor="middle" opacity="0.6">yukpo.com</text>
 </svg>"#,
         safe_name
     );

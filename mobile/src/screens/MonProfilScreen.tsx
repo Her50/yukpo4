@@ -8,9 +8,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const MonProfilScreen: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const { user, updateUser } = useAuth();
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -52,7 +54,7 @@ const MonProfilScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Title style={styles.title}>Mon Profil</Title>
+          <Title style={styles.title}>{t('monProfil.monProfil')}</Title>
           <TouchableOpacity
             style={styles.editButton}
             onPress={() => setEditing(!editing)}
@@ -73,7 +75,7 @@ const MonProfilScreen: React.FC = () => {
               style={styles.avatar}
             />
             <View style={styles.profileInfo}>
-              <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
+              <Text style={styles.userName}>{user?.name || t('monProfil.utilisateur')}</Text>
               <Text style={styles.userEmail}>{user?.email}</Text>
               <Text style={styles.userRole}>R�le: {user?.role}</Text>
             </View>
@@ -82,10 +84,10 @@ const MonProfilScreen: React.FC = () => {
 
         <Card style={styles.infoCard}>
           <Card.Content>
-            <Title style={styles.cardTitle}>Informations personnelles</Title>
+            <Title style={styles.cardTitle}>{t('monProfil.informationsPersonnelles')}/Title>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Nom complet</Text>
+              <Text style={styles.inputLabel}>{t('monProfil.nomComplet')}</Text>
               {editing ? (
                 <TextInput
                   value={formData.name}
@@ -129,7 +131,7 @@ const MonProfilScreen: React.FC = () => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Solde</Text>
+              <Text style={styles.inputLabel}>{t('monProfil.solde')}/Text>
               <Text style={styles.inputValue}>
                 {user?.credits?.toLocaleString() || '0'} XAF
               </Text>
@@ -174,7 +176,7 @@ const MonProfilScreen: React.FC = () => {
               onPress={() => navigation.navigate('SoldeDetail' as never)}
             >
               <Ionicons name="time" size={24} color={theme.colors.primary} />
-              <Text style={styles.actionText}>Historique</Text>
+              <Text style={styles.actionText}>{t('monProfil.historique')}/Text>
               <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
             </TouchableOpacity>
 

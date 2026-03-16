@@ -2,6 +2,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { CombinationProgress, formatRemainingTime, formatCombinationCount } from '../hooks/useCombinationProgress';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface CombinationProgressBarProps {
   progress: CombinationProgress | null;
@@ -45,7 +46,7 @@ export function CombinationProgressBar({ progress, compact = false }: Combinatio
       <View style={[styles.container, compact && styles.containerCompact]}>
         {!compact && (
           <View style={styles.header}>
-            <Text style={styles.title}>🚀 Génération des combinaisons</Text>
+            <Text style={styles.title}>{t('combinationProgressBar.generationDesCombinaisons')}</Text>
             <Text style={styles.percentage}>{percentage.toFixed(1)}%</Text>
           </View>
         )}

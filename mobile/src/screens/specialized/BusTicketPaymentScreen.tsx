@@ -14,12 +14,14 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import PaymentMethodPrompt from '../../components/PaymentMethodPrompt';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { usePaymentMethodCheck } from '../../hooks/usePaymentMethodCheck';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface BusTicketPaymentParams {
     productId: string;
@@ -37,6 +39,8 @@ const BusTicketPaymentScreen: React.FC = () => {
     const { user, refreshUser } = useAuth();
     const [loading, setLoading] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<'tokens' | 'mobile_money' | null>(null);
+    const [showPaymentPrompt, setShowPaymentPrompt] = useState(false);
+    const paymentCheck = usePaymentMethodCheck();
 
     const params = (route.params || {}) as BusTicketPaymentParams;
     const {
@@ -68,7 +72,7 @@ const BusTicketPaymentScreen: React.FC = () => {
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
-                        text: 'Recharger',
+                        text: t('common.reload'),
                         onPress: () => (navigation as any).navigate('RechargeTokens'),
                     },
                 ]
@@ -94,11 +98,11 @@ const BusTicketPaymentScreen: React.FC = () => {
             if (resData.success || resData.payment_id) {
                 await refreshUser?.();
                 Alert.alert(
-                    'Paiement réussi',
-                    `Votre ticket a été payé avec succès !\nMontant: ${(resData.total_amount || totalPrice).toLocaleString()} FCFA`,
+                    t('busTicketPaymentScreen.paiementReussi'),
+                    t('busTicketPaymentScreen.votreTicketAEtePayeAvec', { (resData_total_amount || totalPrice)_toLocaleString(): (resData.total_amount || totalPrice).toLocaleString() }),
                     [
                         {
-                            text: 'Voir mon ticket',
+                            text: t('busTicketPaymentScreen.voirMonTicket'),
                             onPress: () => {
                                 (navigation as any).navigate('MyBusTickets');
                             },
@@ -116,10 +120,16 @@ const BusTicketPaymentScreen: React.FC = () => {
         }
     };
 
-    const handlePaymentWithMobileMoney = () => {
+    const handlePaymentWithMobileMoney = async () => {
+        // Vérifier les moyens de paiement avant de procéder
+        const needsPayment = await paymentCheck.checkAndPrompt();
+        if (needsPayment) {
+            setShowPaymentPrompt(true);
+            return;
+        }
         Alert.alert(
             'Paiement Mobile Money',
-            'Cette fonctionnalité sera bientôt disponible. Utilisez vos tokens pour l\'instant.',
+            t('busTicketPaymentScreen.cetteFonctionnaliteSeraBientotDisponibleUtilisezVos'),
             [{ text: 'OK' }]
         );
     };
@@ -139,9 +149,9 @@ const BusTicketPaymentScreen: React.FC = () => {
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                 <View style={styles.summaryCard}>
-                    <Text style={styles.summaryTitle}>Résumé de la réservation</Text>
+                    <Text style={styles.summaryTitle}>{t('busTicketPayment.resumeDeLaReservation')}</Text>
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Places réservées:</Text>
+                        <Text style={styles.summaryLabel}>{t('busTicketPayment.placesReservees')}</Text>
                         <Text style={styles.summaryValue}>{numberOfTickets}</Text>
                     </View>
                     <View style={styles.summaryRow}>
@@ -157,7 +167,7 @@ const BusTicketPaymentScreen: React.FC = () => {
                         </Text>
                     </View>
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Frais de réservation:</Text>
+                        <Text style={styles.summaryLabel}>{t('busTicketPayment.fraisDeReservation')}</Text>
                         <Text style={styles.summaryValue}>
                             {bookingFee.toLocaleString()} FCFA
                         </Text>
@@ -177,7 +187,7 @@ const BusTicketPaymentScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.paymentMethodsCard}>
-                    <Text style={styles.sectionTitle}>Méthode de paiement</Text>
+                    <Text style={styles.sectionTitle}>{t('busTicketPayment.methodeDePaiement')}</Text>
 
                     {/* Paiement avec tokens */}
                     <TouchableOpacity
@@ -233,7 +243,7 @@ const BusTicketPaymentScreen: React.FC = () => {
                                 <Text style={styles.paymentMethodName}>
                                     Mobile Money (MTN/Orange)
                                 </Text>
-                                <Text style={styles.paymentMethodBalance}>Bientôt disponible</Text>
+                                <Text style={styles.paymentMethodBalance}>{t('busTicketPayment.bientotDisponible')}</Text>
                             </View>
                         </View>
                         {paymentMethod === 'mobile_money' && (
@@ -274,6 +284,16 @@ const BusTicketPaymentScreen: React.FC = () => {
                     )}
                 </TouchableOpacity>
             </View>
+
+            <PaymentMethodPrompt
+                visible={showPaymentPrompt}
+                onClose={() => setShowPaymentPrompt(false)}
+                onSaved={() => {
+                    paymentCheck.refresh();
+                    setShowPaymentPrompt(false);
+                }}
+                context="payment"
+            />
         </SafeNativeView>
     );
 };

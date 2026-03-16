@@ -33,7 +33,7 @@ const VoiceSearchButton: React.FC<Props> = ({ onTranscript, disabled }) => {
             // Simulation: demander à l'utilisateur de saisir (en attendant l'intégration réelle)
             Alert.prompt(
                 'Recherche vocale',
-                'La transcription vocale sera bientôt disponible. Veuillez saisir votre recherche:',
+                t('voiceSearchButton.laTranscriptionVocaleSeraBientotDisponible'),
                 [
                     {
                         text: t('common.cancel'),
@@ -41,7 +41,7 @@ const VoiceSearchButton: React.FC<Props> = ({ onTranscript, disabled }) => {
                         onPress: () => setIsProcessing(false),
                     },
                     {
-                        text: 'Rechercher',
+                        text: t('voiceSearchButton.rechercher'),
                         onPress: (text) => {
                             if (text && text.trim()) {
                                 onTranscript(text.trim());

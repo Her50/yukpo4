@@ -19,6 +19,7 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface TaxiSearchFilters {
     zone?: string;
@@ -35,6 +36,7 @@ interface TaxiSearchFilters {
 const TaxiSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     const [zone, setZone] = useState('');
     // ✅ NOUVEAU: Localisation avec autocomplete intelligent (lieu universel)
@@ -102,7 +104,7 @@ const TaxiSearchScreen: React.FC = () => {
             id: 'proche',
             title: 'Plus proche',
             icon: 'map-pin',
-            description: 'Taxis à proximité',
+            description: t('taxiSearch.taxisAProximite'),
             action: () => {
                 hapticPress();
                 setMaxDistance(10);
@@ -111,7 +113,7 @@ const TaxiSearchScreen: React.FC = () => {
         },
         {
             id: 'disponible',
-            title: 'Disponible',
+            title: t('taxiSearchScreen.disponible'),
             icon: 'check-circle',
             description: 'Taxis libres',
             action: () => {
@@ -153,7 +155,7 @@ const TaxiSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="car" size={32} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>Rechercher un taxi</Text>
+                        <Text style={styles.headerTitle}>{t('taxiSearch.rechercherUnTaxi')}</Text>
                         <Text style={styles.headerSubtitle}>
                             Trouvez rapidement un taxi disponible près de chez vous
                         </Text>
@@ -183,7 +185,7 @@ const TaxiSearchScreen: React.FC = () => {
                                 <SafeIcon name="sparkles" size={24} color="#FFFFFF" type="lucide" />
                             </View>
                             <View style={styles.aiFeaturesBannerText}>
-                                <Text style={styles.aiFeaturesBannerTitle}>Fonctionnalités IA</Text>
+                                <Text style={styles.aiFeaturesBannerTitle}>{t('taxiSearch.fonctionnalitesIa')}</Text>
                                 <Text style={styles.aiFeaturesBannerSubtitle}>
                                     Prédiction demande, prix dynamique, optimisation routes
                                 </Text>
@@ -221,17 +223,17 @@ const TaxiSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>📍 Localisation</Text>
+                    <Text style={styles.sectionTitle}>{t('taxiSearch.localisation')}/Text>
 
                     {/* Lieu (universel : ville, quartier, établissement, point GPS) */}
                     <View style={styles.inputGroup}>
                         <LocationSelector
-                            label="Lieu de recherche *"
+                            label={t('taxiSearch.lieuDeRecherche')}
                             value={typeof lieu === 'string' ? (lieu ? { raw: lieu, place_name: lieu } : '') : lieu}
                             onSelect={(location: LocationObject) => {
                                 setLieu(location);
                             }}
-                            placeholder="Rechercher un lieu, ville, quartier, établissement..."
+                            placeholder={t('taxiSearch.rechercherUnLieuVilleQuartier')}
                             scope="all"
                             enrichWithBackend={true}
                             required={true}
@@ -310,7 +312,7 @@ const TaxiSearchScreen: React.FC = () => {
                     {/* Type véhicule */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="car" size={14} color={modernColors.primary} type="lucide" /> Type de véhicule
+                            <SafeIcon name="car" size={14} color={modernColors.primary} type="lucide" />{t('taxiSearchScreen.typeDeVehicule')}
                         </Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
                             <TouchableOpacity
@@ -343,7 +345,7 @@ const TaxiSearchScreen: React.FC = () => {
 
                     {/* Options */}
                     <View style={styles.optionsSection}>
-                        <Text style={styles.sectionTitle}>⚙️ Options de recherche</Text>
+                        <Text style={styles.sectionTitle}>{t('taxiSearch.optionsDeRecherche')}/Text>
 
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>
@@ -406,7 +408,7 @@ const TaxiSearchScreen: React.FC = () => {
                 <View style={styles.infoCard}>
                     <View style={styles.infoHeader}>
                         <SafeIcon name="info" size={20} color="#06B6D4" type="lucide" />
-                        <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
+                        <Text style={styles.infoTitle}>{t('taxiSearch.bonASavoir')}</Text>
                     </View>
                     <Text style={styles.infoText}>
                         • La recherche intelligente utilise l'IA pour trouver le meilleur taxi selon vos préférences{'\n'}

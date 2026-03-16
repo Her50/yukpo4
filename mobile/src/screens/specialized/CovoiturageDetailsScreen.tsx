@@ -21,6 +21,7 @@ import CovoiturageDriverProfile from '../../components/covoiturage/CovoiturageDr
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface CovoiturageDetails {
     id: number;
@@ -48,6 +49,7 @@ interface CovoiturageDetails {
 
 const CovoiturageDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
     const params = route.params as { covoiturageId: number };
@@ -94,8 +96,8 @@ const CovoiturageDetailsScreen: React.FC = () => {
         } catch { }
     };
 
-    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#059669" /><Text style={st.centerText}>Chargement...</Text></View>);
-    if (!covoiturage) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#059669" /><Text style={st.centerText}>Trajet non trouvé</Text></View>);
+    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#059669" /><Text style={st.centerText}>{t('covoiturageDetails.chargement')}</Text></View>);
+    if (!covoiturage) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#059669" /><Text style={st.centerText}>{t('covoiturageDetails.trajetNonTrouve')}</Text></View>);
 
     const totalPrice = numberOfPlaces * covoiturage.prix_par_place;
     const isOpen = covoiturage.statut === 'ouvert';
@@ -146,9 +148,9 @@ const CovoiturageDetailsScreen: React.FC = () => {
 
                 {/* Trip Info Card */}
                 <View style={st.card}>
-                    <View style={st.cardHeader}><SafeIcon name="info" size={18} color="#059669" /><Text style={st.cardTitle}>Détails du trajet</Text></View>
+                    <View style={st.cardHeader}><SafeIcon name="info" size={18} color="#059669" /><Text style={st.cardTitle}>{t('covoiturageDetails.detailsDuTrajet')}</Text></View>
                     <View style={st.infoRow}><SafeIcon name="calendar" size={16} color="#6B7280" /><Text style={st.infoText}>{dateDisplay}</Text></View>
-                    {covoiturage.heure_depart && (<View style={st.infoRow}><SafeIcon name="clock" size={16} color="#6B7280" /><Text style={st.infoText}>Départ à {covoiturage.heure_depart.substring(0, 5)}</Text></View>)}
+                    {covoiturage.heure_depart && (<View style={st.infoRow}><SafeIcon name="clock" size={16} color="#6B7280" /><Text style={st.infoText}>{t('covoiturageDetailsScreen.departA')} {covoiturage.heure_depart.substring(0, 5)}</Text></View>)}
                     {covoiturage.type_vehicule && (<View style={st.infoRow}><SafeIcon name="car" size={16} color="#6B7280" /><Text style={st.infoText}>{covoiturage.type_vehicule}{covoiturage.marque_modele ? ' — ' + covoiturage.marque_modele : ''}</Text></View>)}
                 </View>
 
@@ -156,7 +158,7 @@ const CovoiturageDetailsScreen: React.FC = () => {
                 <View style={st.quickRow}>
                     {[
                         { icon: 'message-square', label: 'Chat', color: '#8B5CF6', onPress: () => { if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; } setShowChat(true); } },
-                        { icon: 'share-2', label: 'Partager', color: '#3B82F6', onPress: handleShare },
+                        { icon: 'share-2', label: t('covoiturageDetailsScreen.partager'), color: '#3B82F6', onPress: handleShare },
                     ].map((a, i) => (
                         <TouchableOpacity key={i} style={st.quickAction} onPress={a.onPress}>
                             <View style={[st.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon} size={20} color={a.color} /></View>
@@ -190,10 +192,10 @@ const CovoiturageDetailsScreen: React.FC = () => {
                 {/* Booking Card */}
                 {isOpen && hasPlaces && (
                     <View style={[st.card, { borderColor: '#A7F3D0', borderWidth: 1 }]}>
-                        <View style={st.cardHeader}><SafeIcon name="calendar" size={18} color="#059669" /><Text style={st.cardTitle}>Réserver une place</Text></View>
+                        <View style={st.cardHeader}><SafeIcon name="calendar" size={18} color="#059669" /><Text style={st.cardTitle}>{t('covoiturageDetails.reserverUnePlace')}</Text></View>
 
                         <View style={{ marginBottom: 14 }}>
-                            <Text style={st.label}>Nombre de places</Text>
+                            <Text style={st.label}>{t('covoiturageDetails.nombreDePlaces')}</Text>
                             <View style={st.placesSelector}>
                                 <TouchableOpacity style={st.selectorBtn} onPress={() => setNumberOfPlaces(Math.max(1, numberOfPlaces - 1))} disabled={numberOfPlaces <= 1}>
                                     <SafeIcon name="minus" size={16} color="#059669" />
@@ -211,8 +213,8 @@ const CovoiturageDetailsScreen: React.FC = () => {
                         </View>
 
                         <View style={{ marginBottom: 14 }}>
-                            <Text style={st.label}>Notes (optionnel)</Text>
-                            <TextInput style={st.textInput} value={notes} onChangeText={setNotes} placeholder="Informations complémentaires..." placeholderTextColor="#9CA3AF" multiline />
+                            <Text style={st.label}>{t('covoiturageDetails.notesOptionnel')}/Text>
+                            <TextInput style={st.textInput} value={notes} onChangeText={setNotes} placeholder={t('covoiturageDetails.informationsComplementaires')} placeholderTextColor="#9CA3AF" multiline />
                         </View>
 
                         <View style={st.totalRow}>
@@ -223,7 +225,7 @@ const CovoiturageDetailsScreen: React.FC = () => {
                         {covoiturage.user_id === (user?.id as any) ? (
                             <TouchableOpacity style={[st.bookBtn, { backgroundColor: '#6366F1' }]} onPress={() => navigation.navigate('MyTrips' as never)}>
                                 <SafeIcon name="settings" size={20} color="#fff" />
-                                <Text style={st.bookBtnText}>Gérer mon trajet</Text>
+                                <Text style={st.bookBtnText}>{t('covoiturageDetails.gererMonTrajet')}</Text>
                             </TouchableOpacity>
                         ) : (
                             <TouchableOpacity
@@ -232,7 +234,7 @@ const CovoiturageDetailsScreen: React.FC = () => {
                                 disabled={booking || numberOfPlaces > covoiturage.places_disponibles}
                             >
                                 {booking ? <ActivityIndicator color="#fff" /> : <SafeIcon name="check" size={20} color="#fff" />}
-                                <Text style={st.bookBtnText}>Réserver {numberOfPlaces} place{numberOfPlaces > 1 ? 's' : ''}</Text>
+                                <Text style={st.bookBtnText}>{t('covoiturageDetailsScreen.reserver')} {numberOfPlaces} place{numberOfPlaces > 1 ? 's' : ''}</Text>
                             </TouchableOpacity>
                         )}
                     </View>

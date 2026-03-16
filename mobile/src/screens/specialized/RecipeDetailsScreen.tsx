@@ -17,6 +17,7 @@ import {
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -53,6 +54,7 @@ interface RecipeDetailsScreenProps { }
 
 const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const recipeId: number | undefined = route.params?.recipeId;
 
@@ -73,8 +75,8 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
             // Pour l'instant, on simule avec des données
             const mockRecipe: Recipe = {
                 id: recipeId || 1,
-                name: 'Ndolé',
-                description: 'Plat traditionnel camerounais à base de feuilles amères',
+                name: t('recipeDetailsScreen.ndole'),
+                description: t('recipeDetails.platTraditionnelCamerounaisABase'),
                 cuisine_style: 'camerounaise',
                 meal_type: ['dejeuner', 'diner'],
                 difficulty: 'moyen',
@@ -82,17 +84,17 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
                 cook_time_minutes: 60,
                 servings: 4,
                 ingredients: [
-                    { name: 'Feuilles de ndolé', quantity: 500, unit: 'g' },
-                    { name: 'Viande de bœuf', quantity: 500, unit: 'g' },
+                    { name: t('recipeDetailsScreen.feuillesDeNdole'), quantity: 500, unit: 'g' },
+                    { name: t('recipeDetailsScreen.viandeDeBuf'), quantity: 500, unit: 'g' },
                     { name: 'Arachides', quantity: 200, unit: 'g' },
-                    { name: 'Oignons', quantity: 2, unit: 'pièces' },
+                    { name: 'Oignons', quantity: 2, unit: t('recipeDetailsScreen.pieces') },
                     { name: 'Huile de palme', quantity: 50, unit: 'ml' },
                 ],
                 instructions: [
-                    'Laver et ébouillanter les feuilles de ndolé',
-                    'Faire cuire la viande avec les épices',
+                    t('recipeDetailsScreen.laverEtEbouillanterLesFeuillesDe'),
+                    t('recipeDetailsScreen.faireCuireLaViandeAvecLes'),
                     'Mixer les arachides et les oignons',
-                    'Ajouter les feuilles de ndolé à la viande',
+                    t('recipeDetailsScreen.ajouterLesFeuillesDeNdoleA'),
                     'Laisser mijoter 30 minutes',
                 ],
                 nutrition_per_serving: {
@@ -146,7 +148,7 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement de la recette...</Text>
+                <Text style={styles.loadingText}>{t('recipeDetails.chargementDeLaRecette')}</Text>
             </View>
         );
     }
@@ -155,9 +157,9 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
         return (
             <View style={styles.centerContainer}>
                 <SafeIcon name="AlertCircle" size={64} color={modernColors.textSecondary} type="lucide" />
-                <Text style={styles.errorText}>Recette non trouvée</Text>
+                <Text style={styles.errorText}>{t('recipeDetails.recetteNonTrouvee')}</Text>
                 <NativeButton
-                    title="Retour"
+                    title={t('recipeDetailsScreen.retour')}
                     onPress={() => navigation.goBack()}
                     style={styles.backButton}
                 />
@@ -229,7 +231,7 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
                             {recipe.difficulty === 'facile' ? 'Facile' :
                                 recipe.difficulty === 'moyen' ? 'Moyen' : 'Difficile'}
                         </Text>
-                        <Text style={styles.infoLabel}>Difficulté</Text>
+                        <Text style={styles.infoLabel}>{t('recipeDetails.difficulte')}</Text>
                     </NativeCard>
                 </View>
 
@@ -242,7 +244,7 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
 
                 {/* Ajuster portions */}
                 <NativeCard style={styles.servingsCard}>
-                    <Text style={styles.sectionTitle}>Nombre de portions</Text>
+                    <Text style={styles.sectionTitle}>{t('recipeDetails.nombreDePortions')}</Text>
                     <View style={styles.servingsControls}>
                         <TouchableOpacity
                             style={styles.servingsButton}
@@ -262,7 +264,7 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
 
                 {/* Ingrédients */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Ingrédients</Text>
+                    <Text style={styles.sectionTitle}>{t('recipeDetails.ingredients')}</Text>
                     <NativeCard style={styles.ingredientsCard}>
                         {/* ✅ CORRIGÉ: Utiliser adjustedIngredients mémorisé pour éviter les recalculs */}
                         {adjustedIngredients.map((ingredient, index) => (
@@ -306,7 +308,7 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
                                     </Text>
                                 </View>
                                 <View style={styles.nutritionItem}>
-                                    <Text style={styles.nutritionLabel}>Protéines</Text>
+                                    <Text style={styles.nutritionLabel}>{t('recipeDetails.proteines')}</Text>
                                     <Text style={styles.nutritionValue}>
                                         {recipe.nutrition_per_serving.proteins} g
                                     </Text>
@@ -333,7 +335,7 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
                 {/* Actions */}
                 <View style={styles.actionsContainer}>
                     <NativeButton
-                        title="Ajouter à la liste de courses"
+                        title={t('recipeDetails.ajouterALaListeDe')}
                         onPress={() => {
                             navigation.navigate('ShoppingList' as never, {
                                 recipeId: recipe.id,
@@ -349,7 +351,7 @@ const RecipeDetailsScreen: React.FC<RecipeDetailsScreenProps> = () => {
                             }}
                         >
                             <SafeIcon name="Play" size={20} color={modernColors.primary} type="lucide" />
-                            <Text style={styles.videoButtonText}>Voir la vidéo</Text>
+                            <Text style={styles.videoButtonText}>{t('recipeDetails.voirLaVideo')}</Text>
                         </TouchableOpacity>
                     )}
                 </View>

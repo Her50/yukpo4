@@ -212,7 +212,7 @@ export const PubliciteCarouselPlacement: React.FC<PubliciteCarouselPlacementProp
                             </Text>
                         )}
                         <TouchableOpacity style={styles.ctaButton} onPress={() => handleCTAClick(item)}>
-                            <Text style={styles.ctaText}>Voir le produit</Text>
+                            <Text style={styles.ctaText}>{t('publiciteCarouselPlacement.voirLeProduit')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -228,9 +228,9 @@ export const PubliciteCarouselPlacement: React.FC<PubliciteCarouselPlacementProp
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>✨ Publicités</Text>
+                <Text style={styles.headerTitle}>{t('publiciteCarouselPlacement.publicites')}</Text>
                 <Text style={styles.headerSubtitle}>
-                    {publicites.length} {publicites.length > 1 ? 'publicités' : 'publicité'}
+                    {publicites.length} {publicites.length > 1 ? t('publiciteCarouselPlacement.publicites') : t('publiciteCarouselPlacement.publicite')}
                 </Text>
             </View>
 

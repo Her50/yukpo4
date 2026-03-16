@@ -55,7 +55,7 @@ const ChaussureVariantManager: React.FC<ChaussureVariantManagerProps> = ({
     const handleDeleteVariant = (variantId: string) => {
         Alert.alert(
             'Supprimer la variante',
-            'Êtes-vous sûr de vouloir supprimer cette variante ?',
+            t('chaussureVariantManager.etesvousSurDeVouloirSupprimerCette'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -117,7 +117,7 @@ const ChaussureVariantManager: React.FC<ChaussureVariantManagerProps> = ({
                 {!readonly && (
                     <TouchableOpacity style={styles.addButton} onPress={handleAddVariant}>
                         <SafeIcon name="plus" size={16} color="#FFFFFF" />
-                        <Text style={styles.addButtonText}>Ajouter</Text>
+                        <Text style={styles.addButtonText}>{t('chaussureVariantManager.ajouter')}</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -130,7 +130,7 @@ const ChaussureVariantManager: React.FC<ChaussureVariantManagerProps> = ({
             {variants.length === 0 ? (
                 <View style={styles.emptyState}>
                     <SafeIcon name="shopping-bag" size={48} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyText}>Aucune variante ajoutée</Text>
+                    <Text style={styles.emptyText}>{t('chaussureVariantManager.aucuneVarianteAjoutee')}</Text>
                     <Text style={styles.emptyHint}>
                         Ajoutez les pointures et couleurs disponibles
                     </Text>
@@ -251,7 +251,7 @@ const ChaussureVariantManager: React.FC<ChaussureVariantManagerProps> = ({
 
                                     {/* Référence optionnelle */}
                                     <View style={[styles.fieldContainer, { marginBottom: 8 }]}>
-                                        <Text style={styles.fieldLabel}>Référence (opt.)</Text>
+                                        <Text style={styles.fieldLabel}>{t('chaussureVariantManager.referenceOpt')}</Text>
                                         <NativeInput
                                             placeholder="Ex: NIKE-AIR-38-BLK"
                                             value={variant.reference || ''}

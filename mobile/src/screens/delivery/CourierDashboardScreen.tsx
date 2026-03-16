@@ -23,9 +23,11 @@ import { notificationSoundService } from '../../services/notificationSoundServic
 import { modernColors } from '../../theme/modernTheme';
 import { DeliverySummary } from '../../types/delivery';
 import { useScreenEnter } from '../../utils/animations';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const CourierDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -124,7 +126,7 @@ const CourierDashboardScreen: React.FC = () => {
             <SafeNativeView style={styles.container}>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('courierDashboard.chargement')}</Text>
                 </View>
             </SafeNativeView>
         );
@@ -138,7 +140,7 @@ const CourierDashboardScreen: React.FC = () => {
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
                 >
                     <View style={styles.header}>
-                        <Text style={styles.title}>Tableau de bord coursier</Text>
+                        <Text style={styles.title}>{t('courierDashboard.tableauDeBordCoursier')}/Text>
                         <Text style={styles.subtitle}>Suivez vos performances et livraisons</Text>
                     </View>
 
@@ -165,7 +167,7 @@ const CourierDashboardScreen: React.FC = () => {
                         ) : activeDeliveries.length === 0 ? (
                             <NativeCard style={styles.emptyCard}>
                                 <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
-                                <Text style={styles.emptyText}>Aucune livraison active</Text>
+                                <Text style={styles.emptyText}>{t('courierDashboard.aucuneLivraisonActive')}</Text>
                                 <Text style={styles.emptySubtext}>
                                     Les nouvelles livraisons apparaîtront ici
                                 </Text>
@@ -207,7 +209,7 @@ const CourierDashboardScreen: React.FC = () => {
                                             }}
                                         >
                                             <SafeIcon name="shield" size={16} color={modernColors.primary} />
-                                            <Text style={styles.verificationCodeButtonText}>Mon code de vérification</Text>
+                                            <Text style={styles.verificationCodeButtonText}>{t('courierDashboard.monCodeDeVerification')}</Text>
                                         </TouchableOpacity>
                                     </NativeCard>
                                 </TouchableOpacity>
@@ -219,14 +221,14 @@ const CourierDashboardScreen: React.FC = () => {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Actions rapides</Text>
                         <NativeButton
-                            title="📊 Voir mes statistiques"
+                            title={t('courierDashboardScreen.voirMesStatistiques')}
                             variant="outline"
                             onPress={() => {
                                 // ✅ FIX 2026-03-14: Afficher les statistiques détaillées avec les données déjà chargées
                                 Alert.alert(
-                                    'Statistiques détaillées',
-                                    `Livraisons complétées: ${safeStats.completedDeliveries}\n` +
-                                    `Taux de réussite: ${safeStats.successRate.toFixed(1)}%\n` +
+                                    t('courierDashboardScreen.statistiquesDetaillees'),
+                                    t('courierDashboardScreen.livraisonsCompleteesN', { safeStats_completedDeliveries: safeStats.completedDeliveries }) +
+                                    t('courierDashboardScreen.tauxDeReussiteN', { safeStats_successRate_toFixed(1): safeStats.successRate.toFixed(1) }) +
                                     `Temps moyen: ${safeStats.avgDeliveryTime.toFixed(0)} min\n` +
                                     `Gains totaux: ${safeStats.totalEarnings.toFixed(0)} XAF\n` +
                                     `Gains ce mois: ${safeStats.currentMonthEarnings.toFixed(0)} XAF`,
@@ -235,7 +237,7 @@ const CourierDashboardScreen: React.FC = () => {
                             }}
                         />
                         <NativeButton
-                            title="💰 Mon portefeuille"
+                            title={t('courierDashboard.monPortefeuille')}
                             variant="outline"
                             onPress={() => {
                                 (navigation as any).navigate('WalletFinancial');

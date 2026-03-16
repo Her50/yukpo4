@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import SafeIcon from '../SafeIcon';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface InlineChatProps {
   deliveryId: string;
@@ -23,7 +24,8 @@ const InlineChat: React.FC<InlineChatProps> = ({
   onSendMessage,
   style,
 }) => {
-  const [messageText, setMessageText] = useState('');
+      const { t } = useLanguageSafe();
+const [messageText, setMessageText] = useState('');
   const [sending, setSending] = useState(false);
 
   const handleSend = async () => {
@@ -50,7 +52,7 @@ const InlineChat: React.FC<InlineChatProps> = ({
       <View style={styles.messagesContainer}>
         {messages.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Aucun message pour le moment</Text>
+            <Text style={styles.emptyText}>{t('inlineChat.aucunMessagePourLeMoment')}</Text>
           </View>
         ) : (
           messages.map((msg) => {
@@ -75,7 +77,7 @@ const InlineChat: React.FC<InlineChatProps> = ({
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Tapez votre message..."
+          placeholder={t('inlineChat.tapezVotreMessage')}
           placeholderTextColor={modernColors.textSecondary}
           value={messageText}
           onChangeText={setMessageText}

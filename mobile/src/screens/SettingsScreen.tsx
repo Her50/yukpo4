@@ -234,7 +234,7 @@ const SettingsScreen: React.FC = () => {
       <Text style={styles.sectionTitle}>👤 Profil</Text>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Prénom</Text>
+        <Text style={styles.label}>{t('settings.prenom')}</Text>
         <TextInput
           style={styles.input}
           value={settings.firstName}
@@ -242,7 +242,7 @@ const SettingsScreen: React.FC = () => {
             updateSetting('firstName', value);
             updateSetting('name', `${value} ${settings.lastName}`.trim());
           }}
-          placeholder="Votre prénom"
+          placeholder={t('settings.votrePrenom')}
         />
       </View>
 
@@ -255,7 +255,7 @@ const SettingsScreen: React.FC = () => {
             updateSetting('lastName', value);
             updateSetting('name', `${settings.firstName} ${value}`.trim());
           }}
-          placeholder="Votre nom"
+          placeholder={t('settings.votreNom')}
         />
       </View>
 
@@ -272,7 +272,7 @@ const SettingsScreen: React.FC = () => {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Téléphone</Text>
+        <Text style={styles.label}>{t('settings.telephone')}</Text>
         <TextInput
           style={styles.input}
           value={settings.phone}
@@ -299,11 +299,11 @@ const SettingsScreen: React.FC = () => {
 
   const renderNotificationsSection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>🔔 Notifications</Text>
+      <Text style={styles.sectionTitle}>{t('settings.notifications')}/Text>
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>Notifications email</Text>
+          <Text style={styles.settingTitle}>{t('settings.notificationsEmail')}/Text>
           <Text style={styles.settingDescription}>Recevoir des notifications par email</Text>
         </View>
         <Switch
@@ -316,7 +316,7 @@ const SettingsScreen: React.FC = () => {
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>Notifications push</Text>
+          <Text style={styles.settingTitle}>{t('settings.notificationsPush')}/Text>
           <Text style={styles.settingDescription}>Recevoir des notifications push</Text>
         </View>
         <Switch
@@ -329,7 +329,7 @@ const SettingsScreen: React.FC = () => {
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>Notifications SMS</Text>
+          <Text style={styles.settingTitle}>{t('settings.notificationsSms')}/Text>
           <Text style={styles.settingDescription}>Recevoir des notifications par SMS</Text>
         </View>
         <Switch
@@ -357,11 +357,11 @@ const SettingsScreen: React.FC = () => {
 
   const renderPrivacySection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>🔒 Confidentialité</Text>
+      <Text style={styles.sectionTitle}>{t('settings.confidentialite')}</Text>
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>Visibilité du profil</Text>
+          <Text style={styles.settingTitle}>{t('settings.visibiliteDuProfil')}</Text>
           <Text style={styles.settingDescription}>Qui peut voir votre profil</Text>
         </View>
         <TouchableOpacity
@@ -388,8 +388,8 @@ const SettingsScreen: React.FC = () => {
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>Afficher la localisation</Text>
-          <Text style={styles.settingDescription}>Partager votre position</Text>
+          <Text style={styles.settingTitle}>{t('settings.afficherLaLocalisation')}/Text>
+          <Text style={styles.settingDescription}>{t('settingsScreen.partagerVotrePosition')}</Text>
         </View>
         <Switch
           value={settings.showLocation}
@@ -402,7 +402,7 @@ const SettingsScreen: React.FC = () => {
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
           <Text style={styles.settingTitle}>Statut en ligne</Text>
-          <Text style={styles.settingDescription}>Afficher quand vous êtes en ligne</Text>
+          <Text style={styles.settingDescription}>{t('settings.afficherQuandVousEtesEn')}</Text>
         </View>
         <Switch
           value={settings.showOnlineStatus}
@@ -414,8 +414,8 @@ const SettingsScreen: React.FC = () => {
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>Collecte de données</Text>
-          <Text style={styles.settingDescription}>Autoriser la collecte de données d'usage</Text>
+          <Text style={styles.settingTitle}>{t('settings.collecteDeDonnees')}</Text>
+          <Text style={styles.settingDescription}>{t('settings.autoriserLaCollecteDeDonnees')}</Text>
         </View>
         <Switch
           value={settings.allowDataCollection}
@@ -433,8 +433,8 @@ const SettingsScreen: React.FC = () => {
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>Thème</Text>
-          <Text style={styles.settingDescription}>Choisir le thème de l'application</Text>
+          <Text style={styles.settingTitle}>{t('settings.theme')}</Text>
+          <Text style={styles.settingDescription}>{t('settings.choisirLeThemeDeLapplication')}</Text>
         </View>
         <TouchableOpacity
           style={styles.selector}
@@ -505,7 +505,7 @@ const SettingsScreen: React.FC = () => {
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>Mode compact</Text>
+          <Text style={styles.settingTitle}>{t('settings.modeCompact')}/Text>
           <Text style={styles.settingDescription}>Interface plus compacte</Text>
         </View>
         <Switch
@@ -520,7 +520,7 @@ const SettingsScreen: React.FC = () => {
 
   const renderSecuritySection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>🛡️ Sécurité</Text>
+      <Text style={styles.sectionTitle}>{t('settings.securite')}</Text>
 
       {/* ✅ NOUVEAU 2026-02-06: Bouton pour changer le mot de passe */}
       <TouchableOpacity
@@ -532,8 +532,8 @@ const SettingsScreen: React.FC = () => {
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>Authentification à deux facteurs</Text>
-          <Text style={styles.settingDescription}>Sécuriser votre compte avec 2FA</Text>
+          <Text style={styles.settingTitle}>{t('settings.authentificationADeuxFacteurs')}</Text>
+          <Text style={styles.settingDescription}>{t('settings.securiserVotreCompteAvec2fa')}</Text>
         </View>
         <Switch
           value={settings.twoFactorAuth}
@@ -545,8 +545,8 @@ const SettingsScreen: React.FC = () => {
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>Délai de session</Text>
-          <Text style={styles.settingDescription}>Temps avant déconnexion automatique</Text>
+          <Text style={styles.settingTitle}>{t('settings.delaiDeSession')}</Text>
+          <Text style={styles.settingDescription}>{t('settings.tempsAvantDeconnexionAutomatique')}</Text>
         </View>
         <TouchableOpacity
           style={styles.selector}
@@ -575,7 +575,7 @@ const SettingsScreen: React.FC = () => {
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
           <Text style={styles.settingTitle}>Alertes de connexion</Text>
-          <Text style={styles.settingDescription}>Être notifié des nouvelles connexions</Text>
+          <Text style={styles.settingDescription}>{t('settings.etreNotifieDesNouvellesConnexions')}</Text>
         </View>
         <Switch
           value={settings.loginAlerts}
@@ -607,18 +607,18 @@ const SettingsScreen: React.FC = () => {
   return (
     <SafeNativeView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>⚙️ Paramètres</Text>
-        <Text style={styles.subtitle}>Personnalisez votre expérience</Text>
+        <Text style={styles.title}>{t('settings.parametres')}</Text>
+        <Text style={styles.subtitle}>{t('settings.personnalisezVotreExperience')}</Text>
       </View>
 
       <View style={styles.tabsContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs}>
           {[
-            { id: 'profile', title: '👤 Profil', icon: '👤' },
-            { id: 'notifications', title: '🔔 Notifications', icon: '🔔' },
-            { id: 'privacy', title: '🔒 Confidentialité', icon: '🔒' },
+            { id: 'profile', title: t('settingsScreen.profil'), icon: '👤' },
+            { id: 'notifications', title: t('settings.notifications'), icon: '🔔' },
+            { id: 'privacy', title: t('settings.confidentialite'), icon: '🔒' },
             { id: 'appearance', title: '🎨 Apparence', icon: '🎨' },
-            { id: 'security', title: '🛡️ Sécurité', icon: '🛡️' },
+            { id: 'security', title: t('settings.securite'), icon: '🛡️' },
           ].map((tab) => (
             <TouchableOpacity
               key={tab.id}
@@ -648,7 +648,7 @@ const SettingsScreen: React.FC = () => {
           style={[styles.button, styles.resetButton]}
           onPress={handleReset}
         >
-          <Text style={styles.resetButtonText}>🔄 Réinitialiser</Text>
+          <Text style={styles.resetButtonText}>{t('settings.reinitialiser')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -675,34 +675,34 @@ const SettingsScreen: React.FC = () => {
               <Text style={styles.modalTitle}>🔐 Changer le mot de passe</Text>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Mot de passe actuel</Text>
+                <Text style={styles.label}>{t('settings.motDePasseActuel')}</Text>
                 <TextInput
                   style={styles.input}
                   value={passwordData.currentPassword}
                   onChangeText={(value) => setPasswordData(prev => ({ ...prev, currentPassword: value }))}
-                  placeholder="Entrez votre mot de passe actuel"
+                  placeholder={t('settings.entrezVotreMotDePasse')}
                   secureTextEntry
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Nouveau mot de passe</Text>
+                <Text style={styles.label}>{t('settings.nouveauMotDePasse')}</Text>
                 <TextInput
                   style={styles.input}
                   value={passwordData.newPassword}
                   onChangeText={(value) => setPasswordData(prev => ({ ...prev, newPassword: value }))}
-                  placeholder="Entrez votre nouveau mot de passe"
+                  placeholder={t('settings.entrezVotreNouveauMotDe')}
                   secureTextEntry
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Confirmer le mot de passe</Text>
+                <Text style={styles.label}>{t('settingsScreen.confirmerLeMotDePasse')}</Text>
                 <TextInput
                   style={styles.input}
                   value={passwordData.confirmPassword}
                   onChangeText={(value) => setPasswordData(prev => ({ ...prev, confirmPassword: value }))}
-                  placeholder="Confirmez votre nouveau mot de passe"
+                  placeholder={t('settings.confirmezVotreNouveauMotDe')}
                   secureTextEntry
                 />
               </View>
@@ -715,7 +715,7 @@ const SettingsScreen: React.FC = () => {
                     setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
                   }}
                 >
-                  <Text style={styles.modalButtonTextCancel}>Annuler</Text>
+                  <Text style={styles.modalButtonTextCancel}>{t('settingsScreen.annuler')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.modalButtonSave]}

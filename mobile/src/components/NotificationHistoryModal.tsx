@@ -5,6 +5,7 @@ import { API_ENDPOINTS } from '../config/api.config';
 import { useAuth } from '../contexts/AuthContext';
 import { apiDelete, apiGet, apiPatch } from '../services/api';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } = ReactNative;
 
@@ -33,7 +34,8 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   onChange,
 }) => {
   const { user } = useAuth();
-  const navigation = useNavigation(); // ✅ NOUVEAU : Pour la navigation vers les actions
+  const navigation = useNavigation();
+    const { t } = useLanguageSafe(); // ✅ NOUVEAU : Pour la navigation vers les actions
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -375,7 +377,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={styles.searchInput}
-              placeholder="Rechercher..."
+              placeholder={t('notificationHistory.rechercher')}
               value={searchTerm}
               onChangeText={setSearchTerm}
             />
@@ -414,15 +416,15 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
         <ScrollView style={styles.notificationsList}>
           {loading ? (
             <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Chargement...</Text>
+              <Text style={styles.loadingText}>{t('notificationHistory.chargement')}</Text>
             </View>
           ) : filteredNotifications.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>🔔</Text>
               <Text style={styles.emptyText}>
                 {notifications.length === 0
-                  ? 'Aucune notification trouvée'
-                  : `Aucune notification "${filterType}" trouvée`}
+                  ? t('notificationHistoryModal.aucuneNotificationTrouvee')
+                  : t('notificationHistoryModal.aucuneNotificationTrouvee', { filterType: filterType })}
               </Text>
               {notifications.length > 0 && (
                 <Text style={styles.emptySubtext}>
@@ -540,7 +542,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                         onPress={() => deleteNotification(notification.id)}
                       >
                         <Text style={styles.actionIcon}>🗑️</Text>
-                        <Text style={[styles.actionButtonText, { color: '#F44336' }]}>Supprimer</Text>
+                        <Text style={[styles.actionButtonText, { color: '#F44336' }]}>{t('notificationHistoryModal.supprimer')}</Text>
                       </TouchableOpacity>
                     </View>
                   </View>

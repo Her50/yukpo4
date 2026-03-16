@@ -11,6 +11,7 @@ import {
 import { apiGet, apiPost } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SmartApplianceInputProps {
     brand: string; // Marque de l'appareil (pour suggestions contextuelles)
@@ -27,11 +28,12 @@ const SmartApplianceInput: React.FC<SmartApplianceInputProps> = ({
     value,
     onChangeText,
     placeholder = 'Ex: RT50K6000S8',
-    label = 'Modèle',
+    label={t('smartApplianceInput.modele')},
     required = false,
     autoLoadLastUsed = true,
 }) => {
-    const [suggestions, setSuggestions] = useState<string[]>([]);
+        const { t } = useLanguageSafe();
+const [suggestions, setSuggestions] = useState<string[]>([]);
     const [allModels, setAllModels] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
@@ -288,7 +290,7 @@ const SmartApplianceInput: React.FC<SmartApplianceInputProps> = ({
                                     </Text>
                                     {isLastUsed && (
                                         <View style={styles.lastUsedBadge}>
-                                            <Text style={styles.lastUsedBadgeText}>Récent</Text>
+                                            <Text style={styles.lastUsedBadgeText}>{t('smartApplianceInput.recent')}</Text>
                                         </View>
                                     )}
                                 </TouchableOpacity>

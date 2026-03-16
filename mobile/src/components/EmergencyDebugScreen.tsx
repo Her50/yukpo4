@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Props {
     onClose: () => void;
@@ -21,7 +22,7 @@ export default function EmergencyDebugScreen({ onClose, logs }: Props) {
                 <Text style={styles.label}>Logs de debug:</Text>
                 <View style={styles.logsContainer}>
                     <Text style={styles.logsText}>
-                        {logs || "Aucun log disponible"}
+                        {logs || t('emergencyDebug.aucunLogDisponible')}
                     </Text>
                 </View>
 
@@ -36,7 +37,7 @@ export default function EmergencyDebugScreen({ onClose, logs }: Props) {
             </ScrollView>
 
             <TouchableOpacity onPress={onClose} style={styles.closeMainButton}>
-                <Text style={styles.closeMainButtonText}>Fermer</Text>
+                <Text style={styles.closeMainButtonText}>{t('emergencyDebugScreen.fermer')}</Text>
             </TouchableOpacity>
         </View>
     );

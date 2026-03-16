@@ -3,6 +3,7 @@
 import { useNavigation } from "@react-navigation/native";
 import * as React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // Utilitaire React pour branding Yukpo
 export const YukpoBrand: React.FC<{ style?: any }> = ({ style }) => (
@@ -13,10 +14,10 @@ export const YukpoBrand: React.FC<{ style?: any }> = ({ style }) => (
 );
 
 const legalLinks = [
-  { path: "MentionsLegales", label: "Mentions légales" },
-  { path: "Confidentialite", label: "Confidentialité" },
+  { path: "MentionsLegales", label: t('footer.mentionsLegales') },
+  { path: "Confidentialite", label: t('footer.confidentialite') },
   { path: "Cookies", label: "Cookies" },
-  { path: "APropos", label: "À propos" },
+  { path: "APropos", label: t('footer.aPropos') },
 ];
 
 const uniqueLinks = legalLinks.filter(
@@ -25,6 +26,7 @@ const uniqueLinks = legalLinks.filter(
 
 const Footer: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
   const handleLinkPress = (path: string) => {
     (navigation as any).navigate(path);

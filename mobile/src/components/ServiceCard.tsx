@@ -6,6 +6,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeCard } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ServiceCardProps {
     service: {
@@ -35,7 +36,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
 }) => {
     const typeLabels: Record<string, string> = {
         pharmacie: 'Pharmacie',
-        hopital: 'Hôpital',
+        hopital: t('serviceCard.hopital'),
         laboratoire: 'Laboratoire',
         banque_sang: 'Banque de Sang',
         agence_voyage: 'Agence',
@@ -73,7 +74,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
 
     // ✅ NOUVEAU: Labels d'accessibilité
     const defaultAccessibilityLabel = `${typeLabel} ${service.nom}, ${service.is_active ? 'actif' : 'inactif'}`;
-    const defaultAccessibilityHint = 'Double-tapez pour voir les détails';
+    const defaultAccessibilityHint = t('serviceCard.doubletapezPourVoirLesDetails');
 
     return (
         <TouchableOpacity
@@ -172,7 +173,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                     <View style={styles.availableBadge}>
                         <View style={styles.availableDot} />
                         <SafeIcon name="clock" size={12} color={modernColors.success} type="lucide" />
-                        <Text style={styles.availableText}>Disponible maintenant</Text>
+                        <Text style={styles.availableText}>{t('serviceCard.disponibleMaintenant')}</Text>
                     </View>
                 )}
             </NativeCard>

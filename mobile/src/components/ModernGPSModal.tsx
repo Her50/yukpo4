@@ -22,6 +22,7 @@ import ErrorBoundary from './ErrorBoundary';
 import InteractiveMapView from './InteractiveMapView';
 import { LocationObject } from './LocationSelector';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -51,12 +52,13 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
     onSelect,
     onSelectLocation,
     currentLocation,
-    title = 'Sélection de localisation GPS',
+    title={t('modernGPS.selectionDeLocalisationGps')},
     allowZoneSelection = true
 }) => {
     const { location: userLocation } = useLocation();
     const { createAddressFromLocation, addresses: savedAddresses } = useSavedAddresses('both');
-    const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
+        const { t } = useLanguageSafe();
+const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
     const [selectedPolygon, setSelectedPolygon] = useState<{ lat: number; lng: number }[]>([]);
     const [loading, setLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
@@ -690,7 +692,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                         <SafeIcon name="search" size={18} color="#9CA3AF" />
                         <TextInput
                             style={styles.searchInput}
-                            placeholder="Hôpital, pharmacie, quartier, restaurant..."
+                            placeholder={t('modernGPS.hopitalPharmacieQuartierRestaurant')}
                             value={searchQuery}
                             onChangeText={handleSearchQueryChange}
                             placeholderTextColor="#9CA3AF"
@@ -745,7 +747,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                             disabled={loading}
                         >
                             <SafeIcon name={loading ? 'loader' : 'navigation'} size={16} color="#FFF" />
-                            <Text style={styles.gpsBtnText}>Ma position</Text>
+                            <Text style={styles.gpsBtnText}>{t('modernGPS.maPosition')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -772,7 +774,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                         }}
                                     >
                                         <SafeIcon name="refresh-cw" size={16} color="#FFFFFF" />
-                                        <Text style={styles.retryButtonText}>Réessayer</Text>
+                                        <Text style={styles.retryButtonText}>{t('modernGPS.reessayer')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             }
@@ -837,7 +839,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                         </View>
                                         {suggestion.is_saved && (
                                             <View style={styles.savedBadge}>
-                                                <Text style={styles.savedBadgeText}>Sauvegardé</Text>
+                                                <Text style={styles.savedBadgeText}>{t('modernGPS.sauvegarde')}</Text>
                                             </View>
                                         )}
                                     </TouchableOpacity>
@@ -850,7 +852,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                 {/* Actions en bas */}
                 <View style={styles.actionBar}>
                     <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-                        <Text style={styles.cancelButtonText}>Annuler</Text>
+                        <Text style={styles.cancelButtonText}>{t('modernGPSModal.annuler')}</Text>
                     </TouchableOpacity>
 
                     {/* ✅ NOUVEAU 2026-01-04: Bouton "Sauvegarder ce lieu" (uniquement pour les points) */}
@@ -860,7 +862,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                             onPress={handleSaveLocation}
                         >
                             <SafeIcon name="bookmark" size={16} color="#FFFFFF" />
-                            <Text style={styles.saveLocationButtonText}>Sauvegarder</Text>
+                            <Text style={styles.saveLocationButtonText}>{t('modernGPS.sauvegarder')}</Text>
                         </TouchableOpacity>
                     )}
 
@@ -872,7 +874,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                         onPress={confirmSelection}
                         disabled={(!selectedLocation && zoneType === 'point') || (selectedPolygon.length < 3 && zoneType === 'polygon')}
                     >
-                        <Text style={styles.confirmButtonText}>Confirmer</Text>
+                        <Text style={styles.confirmButtonText}>{t('modernGPSModal.confirmer')}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -910,7 +912,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
 
                                 <TextInput
                                     style={styles.saveModalInput}
-                                    placeholder="Nom du lieu..."
+                                    placeholder={t('modernGPS.nomDuLieu')}
                                     value={saveLocationName}
                                     onChangeText={setSaveLocationName}
                                     autoFocus={true}
@@ -935,7 +937,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                             setSaveLocationName('');
                                         }}
                                     >
-                                        <Text style={styles.saveModalCancelText}>Annuler</Text>
+                                        <Text style={styles.saveModalCancelText}>{t('modernGPSModal.annuler')}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[
@@ -950,7 +952,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                         ) : (
                                             <>
                                                 <SafeIcon name="check" size={16} color="#FFFFFF" />
-                                                <Text style={styles.saveModalConfirmText}>Confirmer</Text>
+                                                <Text style={styles.saveModalConfirmText}>{t('modernGPSModal.confirmer')}</Text>
                                             </>
                                         )}
                                     </TouchableOpacity>

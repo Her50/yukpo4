@@ -22,6 +22,7 @@ import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNati
 import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface AlerteEmploi {
     id: number;
@@ -36,14 +37,15 @@ interface AlerteEmploi {
 }
 
 const SECTEURS = [
-    'Informatique', 'Commerce', 'Santé', 'Éducation', 'Finance',
-    'Marketing', 'Ressources Humaines', 'Ingénierie', 'Design', 'Autre',
+    'Informatique', 'Commerce', t('alertesEmploiScreen.sante'), 'Éducation', 'Finance',
+    'Marketing', 'Ressources Humaines', t('alertesEmploiScreen.ingenierie'), 'Design', 'Autre',
 ];
 
 const TYPES_CONTRAT = ['CDI', 'CDD', 'Stage', 'Freelance', 'Temps partiel', 'Alternance'];
 
 const AlertesEmploiScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [alertes, setAlertes] = useState<AlerteEmploi[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -129,7 +131,7 @@ const AlertesEmploiScreen: React.FC = () => {
                 </View>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.alerteTitre} numberOfLines={1}>
-                        {item.titre_poste || item.secteur || 'Alerte générale'}
+                        {item.titre_poste || item.secteur || t('alertesEmploi.alerteGenerale')}
                     </Text>
                     <Text style={styles.alerteDate}>
                         Créée le {new Date(item.created_at).toLocaleDateString('fr-FR')}
@@ -165,7 +167,7 @@ const AlertesEmploiScreen: React.FC = () => {
                 {item.remote && (
                     <View style={styles.critereChip}>
                         <SafeIcon name="wifi" size={12} color="#6B7280" />
-                        <Text style={styles.critereText}>Télétravail</Text>
+                        <Text style={styles.critereText}>{t('alertesEmploi.teletravail')}</Text>
                     </View>
                 )}
                 {item.salaire_min && (
@@ -187,7 +189,7 @@ const AlertesEmploiScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.headerTitle}>Mes Alertes Emploi</Text>
+                        <Text style={styles.headerTitle}>{t('alertesEmploi.mesAlertesEmploi')}</Text>
                         <Text style={styles.headerSubtitle}>
                             {alertes.length} alerte{alertes.length > 1 ? 's' : ''} configurée{alertes.length > 1 ? 's' : ''}
                         </Text>
@@ -208,7 +210,7 @@ const AlertesEmploiScreen: React.FC = () => {
             {loading && alertes.length === 0 ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color="#6366F1" />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('alertesEmploi.chargement')}</Text>
                 </View>
             ) : (
                 <FlatList
@@ -228,7 +230,7 @@ const AlertesEmploiScreen: React.FC = () => {
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="bell-off" size={64} color="#9CA3AF" />
-                            <Text style={styles.emptyTitle}>Aucune alerte</Text>
+                            <Text style={styles.emptyTitle}>{t('alertesEmploi.aucuneAlerte')}</Text>
                             <Text style={styles.emptyText}>
                                 Créez une alerte pour être notifié dès qu'une offre correspondant à vos critères est publiée.
                             </Text>
@@ -240,7 +242,7 @@ const AlertesEmploiScreen: React.FC = () => {
                                 }}
                             >
                                 <SafeIcon name="plus" size={18} color="#FFFFFF" />
-                                <Text style={styles.createButtonText}>Créer une alerte</Text>
+                                <Text style={styles.createButtonText}>{t('alertesEmploi.creerUneAlerte')}</Text>
                             </TouchableOpacity>
                         </View>
                     }
@@ -257,18 +259,18 @@ const AlertesEmploiScreen: React.FC = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Nouvelle alerte</Text>
+                            <Text style={styles.modalTitle}>{t('alertesEmploi.nouvelleAlerte')}</Text>
                             <TouchableOpacity onPress={() => setShowCreateModal(false)}>
                                 <SafeIcon name="x" size={24} color="#111827" />
                             </TouchableOpacity>
                         </View>
 
                         <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-                            <Text style={styles.fieldLabel}>Titre du poste recherché</Text>
+                            <Text style={styles.fieldLabel}>{t('alertesEmploi.titreDuPosteRecherche')}</Text>
                             <NativeInput
                                 value={formTitre}
                                 onChangeText={setFormTitre}
-                                placeholder="Ex: Développeur, Comptable..."
+                                placeholder={t('alertesEmploi.exDeveloppeurComptable')}
                             />
 
                             <Text style={styles.fieldLabel}>Secteur</Text>
@@ -284,7 +286,7 @@ const AlertesEmploiScreen: React.FC = () => {
                                 ))}
                             </View>
 
-                            <Text style={styles.fieldLabel}>Type de contrat</Text>
+                            <Text style={styles.fieldLabel}>{t('alertesEmploi.typeDeContrat')}</Text>
                             <View style={styles.chipContainer}>
                                 {TYPES_CONTRAT.map(t => (
                                     <TouchableOpacity
@@ -297,11 +299,11 @@ const AlertesEmploiScreen: React.FC = () => {
                                 ))}
                             </View>
 
-                            <Text style={styles.fieldLabel}>Lieu de travail</Text>
+                            <Text style={styles.fieldLabel}>{t('alertesEmploi.lieuDeTravail')}</Text>
                             <NativeInput
                                 value={formLieu}
                                 onChangeText={setFormLieu}
-                                placeholder="Ex: Douala, Yaoundé..."
+                                placeholder={t('alertesEmploi.exDoualaYaounde')}
                             />
 
                             <Text style={styles.fieldLabel}>Salaire minimum (FCFA)</Text>
@@ -313,7 +315,7 @@ const AlertesEmploiScreen: React.FC = () => {
                             />
 
                             <View style={styles.switchRow}>
-                                <Text style={styles.fieldLabel}>Télétravail uniquement</Text>
+                                <Text style={styles.fieldLabel}>{t('alertesEmploi.teletravailUniquement')}</Text>
                                 <Switch
                                     value={formRemote}
                                     onValueChange={setFormRemote}
@@ -322,7 +324,7 @@ const AlertesEmploiScreen: React.FC = () => {
                             </View>
 
                             <NativeButton
-                                title={creating ? 'Création...' : 'Créer l\'alerte'}
+                                title={creating ? t('alertesEmploiScreen.creation') : t('alertesEmploiScreen.creerLalerte')}
                                 onPress={handleCreate}
                                 disabled={creating}
                                 style={styles.submitButton}

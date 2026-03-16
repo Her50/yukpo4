@@ -29,7 +29,8 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
     onSuccess,
     userId
 }) => {
-    const [loading, setLoading] = useState(false);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(false);
     const [inactiveProducts, setInactiveProducts] = useState<any[]>([]);
     const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
     const [userBalance, setUserBalance] = useState<number>(0);
@@ -115,7 +116,7 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
 
         // Confirmation
         Alert.alert(
-            'Confirmer la réactivation',
+            t('productReactivationModal.confirmerLaReactivation'),
             `Réactiver ${selectedProducts.size} produit(s) pour ${totalCost.toLocaleString()} FCFA ?\n\nNouveau solde : ${(userBalance - totalCost).toLocaleString()} FCFA`,
             [
                 { text: t('common.cancel'), style: 'cancel' },
@@ -168,8 +169,8 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
 
             if (allSuccess) {
                 Alert.alert(
-                    '✅ Réactivation réussie',
-                    `${selectedProducts.size} produit(s) réactivé(s) avec succès !\n\nIls seront actifs pendant 30 jours.`,
+                    t('productReactivationModal.reactivationReussie'),
+                    t('productReactivationModal.produitsReactivesAvecSuccesNnilsSeront', { selectedProducts_size: selectedProducts.size }),
                     [{
                         text: 'OK', onPress: () => {
                             setSelectedProducts(new Set());
@@ -187,15 +188,15 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
                     .join('\n');
 
                 Alert.alert(
-                    '❌ Erreur de réactivation',
-                    `Certains produits n'ont pas pu être réactivés :\n\n${errorMessages}`
+                    t('productReactivationModal.erreurDeReactivation'),
+                    t('productReactivationModal.certainsProduitsNontPasPuEtre', { errorMessages: errorMessages })
                 );
             }
         } catch (error) {
             console.error('[ProductReactivation] Erreur réactivation:', error);
             Alert.alert(
                 '❌ Erreur',
-                `Erreur lors de la réactivation des produits :\n\n${error.message || error}`
+                t('productReactivationModal.erreurLorsDeLaReactivationDes', { error_message || error: error.message || error })
             );
         } finally {
             setLoading(false);
@@ -240,7 +241,7 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
                         <SafeIcon name="x" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                     <View style={styles.headerContent}>
-                        <Text style={styles.headerTitle}>Produits Désactivés</Text>
+                        <Text style={styles.headerTitle}>{t('productReactivation.produitsDesactives')}</Text>
                         <Text style={styles.headerSubtitle}>
                             Réactivez vos produits pour 1000 FCFA chacun
                         </Text>
@@ -251,7 +252,7 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
                 <View style={styles.balanceCard}>
                     <View style={styles.balanceInfo}>
                         <SafeIcon name="wallet" size={20} color={modernColors.primary} />
-                        <Text style={styles.balanceLabel}>Votre solde</Text>
+                        <Text style={styles.balanceLabel}>{t('productReactivation.votreSolde')}</Text>
                     </View>
                     <Text style={styles.balanceAmount}>
                         {userBalance.toLocaleString()} FCFA
@@ -261,7 +262,7 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
                 {loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Chargement...</Text>
+                        <Text style={styles.loadingText}>{t('productReactivation.chargement')}</Text>
                     </View>
                 ) : inactiveProducts.length === 0 ? (
                     <View style={styles.emptyContainer}>
@@ -277,11 +278,11 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
                         <View style={styles.quickActions}>
                             <TouchableOpacity style={styles.quickButton} onPress={selectAll}>
                                 <SafeIcon name="check-square" size={18} color={modernColors.primary} />
-                                <Text style={styles.quickButtonText}>Tout sélectionner</Text>
+                                <Text style={styles.quickButtonText}>{t('productReactivation.toutSelectionner')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.quickButton} onPress={deselectAll}>
                                 <SafeIcon name="square" size={18} color="#6B7280" />
-                                <Text style={styles.quickButtonText}>Tout désélectionner</Text>
+                                <Text style={styles.quickButtonText}>{t('productReactivation.toutDeselectionner')}</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -353,7 +354,7 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
                                 {!canAffordReactivation() && selectedProducts.size > 0 && (
                                     <View style={styles.insufficientBadge}>
                                         <SafeIcon name="alert-triangle" size={16} color="#EF4444" />
-                                        <Text style={styles.insufficientText}>Solde insuffisant</Text>
+                                        <Text style={styles.insufficientText}>{t('productReactivation.soldeInsuffisant')}/Text>
                                     </View>
                                 )}
                             </View>

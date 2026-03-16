@@ -15,6 +15,7 @@ import {
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -31,9 +32,10 @@ const NewGPSModal: React.FC<NewGPSModalProps> = ({
     onClose,
     onSelect,
     currentLocation,
-    title = 'Sélectionner une localisation',
+    title={t('newGPS.selectionnerUneLocalisation')},
 }) => {
-    const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(
+        const { t } = useLanguageSafe();
+const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(
         currentLocation ? { lat: currentLocation.lat, lng: currentLocation.lng } : null
     );
     const [loading, setLoading] = useState(false);
@@ -54,7 +56,7 @@ const NewGPSModal: React.FC<NewGPSModalProps> = ({
 
             if (status !== 'granted') {
                 Alert.alert(
-                    'Permission refusée',
+                    t('newGPSModal.permissionRefusee'),
                     'Nous avons besoin de votre permission pour accéder à votre position'
                 );
                 setLoading(false);
@@ -207,7 +209,7 @@ const NewGPSModal: React.FC<NewGPSModalProps> = ({
                         <SafeIcon name="search" size={20} color={modernColors.textSecondary} />
                         <TextInput
                             style={styles.searchInput}
-                            placeholder="Rechercher une adresse..."
+                            placeholder={t('newGPS.rechercherUneAdresse')}
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                             onSubmitEditing={searchAddress}
@@ -218,7 +220,7 @@ const NewGPSModal: React.FC<NewGPSModalProps> = ({
                         onPress={searchAddress}
                         disabled={loading}
                     >
-                        <Text style={styles.searchButtonText}>Rechercher</Text>
+                        <Text style={styles.searchButtonText}>{t('newGPS.rechercher')}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -258,7 +260,7 @@ const NewGPSModal: React.FC<NewGPSModalProps> = ({
                                     latitude: selectedCoords.lat,
                                     longitude: selectedCoords.lng,
                                 }}
-                                title="Position sélectionnée"
+                                title={t('newGPS.positionSelectionnee')}
                                 description={address}
                                 pinColor={modernColors.primary}
                             />
@@ -281,7 +283,7 @@ const NewGPSModal: React.FC<NewGPSModalProps> = ({
                 {/* Boutons d'action */}
                 <View style={styles.actionsContainer}>
                     <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-                        <Text style={styles.cancelButtonText}>Annuler</Text>
+                        <Text style={styles.cancelButtonText}>{t('newGPSModal.annuler')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.confirmButton, !selectedCoords && styles.confirmButtonDisabled]}
@@ -289,7 +291,7 @@ const NewGPSModal: React.FC<NewGPSModalProps> = ({
                         disabled={!selectedCoords}
                     >
                         <SafeIcon name="check" size={20} color="#FFFFFF" />
-                        <Text style={styles.confirmButtonText}>Confirmer</Text>
+                        <Text style={styles.confirmButtonText}>{t('newGPSModal.confirmer')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>

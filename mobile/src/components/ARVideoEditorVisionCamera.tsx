@@ -22,6 +22,7 @@ import { createARPlugin } from '../native/ARPlugin';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -52,7 +53,8 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
 }) => {
     const { hasPermission, requestPermission } = useCameraPermission();
     const device = useCameraDevice('back');
-    const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
+        const { t } = useLanguageSafe();
+const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
     const [arMode, setArMode] = useState<ARMode>('preview');
     const [isRecording, setIsRecording] = useState(false);
     const [recordingDuration, setRecordingDuration] = useState(0);
@@ -209,7 +211,7 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Vérification des permissions...</Text>
+                <Text style={styles.loadingText}>{t('aRVideoEditorVisionCamera.verificationDesPermissions')}</Text>
             </View>
         );
     }
@@ -219,7 +221,7 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
             <View style={styles.container}>
                 <NativeCard style={styles.permissionCard}>
                     <SafeIcon name="camera-off" size={64} color={modernColors.primary} />
-                    <Text style={styles.permissionTitle}>Caméra non disponible</Text>
+                    <Text style={styles.permissionTitle}>{t('aRVideoEditorVisionCamera.cameraNonDisponible')}</Text>
                     <Text style={styles.permissionText}>
                         Aucune caméra arrière trouvée sur cet appareil.
                     </Text>
@@ -233,9 +235,9 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
         switch (trackingState) {
             case 'tracking':
                 const quality = arTrackingResult?.trackingQuality || 'good';
-                return `Surface détectée (${quality === 'excellent' ? 'Excellente' : 'Bonne'} qualité)`;
+                return t('aRVideoEditorVisionCamera.surfaceDetecteeQualite', { quality === 'excellent' ? 'Excellente' : 'Bonne': quality === 'excellent' ? 'Excellente' : 'Bonne' });
             case 'tracking_lost':
-                return 'Surface perdue - Déplacez la caméra';
+                return t('aRVideoEditorVisionCamera.surfacePerdueDeplacezLaCamera');
             case 'error':
                 return 'Erreur de tracking AR';
             default:
@@ -303,7 +305,7 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
                         <View style={styles.controls}>
                             {!videoUri && !isRecording ? (
                                 <NativeButton
-                                    title="Démarrer l'enregistrement"
+                                    title={t('aRVideoEditorVisionCamera.demarrerL')}enregistrement"
                                     variant="primary"
                                     size="large"
                                     onPress={handleStartRecording}
@@ -312,7 +314,7 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
                             ) : (
                                 <View style={styles.recordingControls}>
                                     <NativeButton
-                                        title={`Arrêter (${recordingDuration}s)`}
+                                        title={t('aRVideoEditorVisionCamera.arreterS', { recordingDuration: recordingDuration })}
                                         variant="danger"
                                         size="large"
                                         onPress={handleStopRecording}
@@ -322,7 +324,7 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
 
                             {!videoUri && onClose && (
                                 <NativeButton
-                                    title="Fermer"
+                                    title={t('aRVideoEditorVisionCamera.fermer')}
                                     variant="secondary"
                                     size="medium"
                                     onPress={onClose}
@@ -344,13 +346,13 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
                     <View style={styles.postCaptureContent}>
                         <NativeCard style={styles.videoPreviewCard}>
                             <SafeIcon name="check-circle" size={64} color={modernColors.success} />
-                            <Text style={styles.successText}>Vidéo enregistrée avec succès !</Text>
-                            <Text style={styles.successSubtext}>Prêt pour l'étape suivante</Text>
+                            <Text style={styles.successText}>{t('aRVideoEditorVisionCamera.videoEnregistreeAvecSucces')}</Text>
+                            <Text style={styles.successSubtext}>{t('aRVideoEditorVisionCamera.pretPourLetapeSuivante')}</Text>
                         </NativeCard>
 
                         <View style={styles.actionButtons}>
                             <NativeButton
-                                title="✅ Utiliser cette vidéo"
+                                title={t('aRVideoEditorVisionCamera.utiliserCetteVideo')}
                                 variant="primary"
                                 size="large"
                                 onPress={() => {
@@ -362,7 +364,7 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
                             />
 
                             <NativeButton
-                                title="🔄 Réenregistrer"
+                                title={t('aRVideoEditorVisionCamera.reenregistrer')}
                                 variant="secondary"
                                 size="medium"
                                 onPress={() => {
@@ -376,7 +378,7 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
 
                         {onClose && (
                             <NativeButton
-                                title="Fermer"
+                                title={t('aRVideoEditorVisionCamera.fermer')}
                                 variant="secondary"
                                 size="medium"
                                 onPress={onClose}

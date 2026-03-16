@@ -307,7 +307,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                     },
                 ]);
             } else {
-                throw new Error(response.message || 'Erreur lors de la modification');
+                throw new Error(response.message || t('deliveryPartnersAdmin.erreurLorsDeLaModification'));
             }
         } catch (error: any) {
             console.error('[DeliveryPartnersAdminScreen] Erreur modification:', error);
@@ -335,7 +335,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Gestion des partenaires</Text>
+                <Text style={styles.title}>{t('deliveryPartnersAdmin.gestionDesPartenaires')}/Text>
                 {activeTab === 'approved' && (
                     <TouchableOpacity onPress={handleCreate} style={styles.addButton}>
                         <SafeIcon name="plus" size={24} color={modernColors.primary} />
@@ -369,12 +369,12 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                     {loadingPending ? (
                         <View style={styles.loadingContainer}>
                             <ActivityIndicator size="large" color={modernColors.primary} />
-                            <Text style={styles.loadingText}>Chargement...</Text>
+                            <Text style={styles.loadingText}>{t('deliveryPartnersAdmin.chargement')}</Text>
                         </View>
                     ) : pendingPartners.length === 0 ? (
                         <NativeCard style={styles.emptyCard}>
                             <SafeIcon name="inbox" size={48} color={modernColors.textSecondary} />
-                            <Text style={styles.emptyText}>Aucune candidature en attente</Text>
+                            <Text style={styles.emptyText}>{t('deliveryPartnersAdmin.aucuneCandidatureEnAttente')}</Text>
                         </NativeCard>
                     ) : (
                         pendingPartners.map((partner) => (
@@ -401,7 +401,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                             </Text>
                                         </View>
                                         <View style={styles.statusBadgePending}>
-                                            <Text style={styles.statusTextPending}>En attente</Text>
+                                            <Text style={styles.statusTextPending}>{t('deliveryPartnersAdmin.enAttente')}/Text>
                                         </View>
                                     </View>
                                 </TouchableOpacity>
@@ -445,7 +445,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                     {partners.length === 0 ? (
                         <NativeCard style={styles.emptyCard}>
                             <SafeIcon name="truck" size={48} color={modernColors.textSecondary} />
-                            <Text style={styles.emptyText}>Aucun partenaire enregistré</Text>
+                            <Text style={styles.emptyText}>{t('deliveryPartnersAdmin.aucunPartenaireEnregistre')}</Text>
                             <Text style={styles.emptySubtext}>
                                 Cliquez sur le bouton + pour créer un nouveau partenaire
                             </Text>
@@ -497,7 +497,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                         onPress={() => handleEdit(partner)}
                                     >
                                         <SafeIcon name="edit" size={18} color={modernColors.primary} />
-                                        <Text style={styles.actionButtonText}>Modifier</Text>
+                                        <Text style={styles.actionButtonText}>{t('deliveryPartnersAdminScreen.modifier')}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.actionButton, styles.deleteButton]}
@@ -528,7 +528,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Détails de la candidature</Text>
+                            <Text style={styles.modalTitle}>{t('deliveryPartnersAdmin.detailsDeLaCandidature')}</Text>
                             <TouchableOpacity
                                 onPress={() => {
                                     setShowDetailModal(false);
@@ -554,7 +554,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
 
                                 {selectedPendingPartner.partner_type && (
                                     <NativeCard style={styles.detailCard}>
-                                        <Text style={styles.detailLabel}>Type de partenaire</Text>
+                                        <Text style={styles.detailLabel}>{t('deliveryPartnersAdmin.typeDePartenaire')}</Text>
                                         <Text style={styles.detailValue}>
                                             {selectedPendingPartner.partner_type}
                                         </Text>
@@ -629,7 +629,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                             </Text>
                             <TextInput
                                 style={styles.textInput}
-                                placeholder="Ex: Documents incomplets, informations manquantes..."
+                                placeholder={t('deliveryPartnersAdmin.exDocumentsIncompletsInformationsManquan')}
                                 value={rejectionReason}
                                 onChangeText={setRejectionReason}
                                 multiline
@@ -637,7 +637,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                             />
                             <View style={styles.modalActions}>
                                 <NativeButton
-                                    title="Annuler"
+                                    title={t('deliveryPartnersAdminScreen.annuler')}
                                     variant="outline"
                                     onPress={() => {
                                         setShowRejectModal(false);
@@ -673,7 +673,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Modifier le partenaire</Text>
+                            <Text style={styles.modalTitle}>{t('deliveryPartnersAdminScreen.modifierLePartenaire')}</Text>
                             <TouchableOpacity
                                 onPress={() => {
                                     setShowEditModal(false);
@@ -690,7 +690,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                     <Text style={styles.inputLabel}>Nom *</Text>
                                     <TextInput
                                         style={styles.textInput}
-                                        placeholder="Nom du partenaire"
+                                        placeholder={t('deliveryPartnersAdmin.nomDuPartenaire')}
                                         value={editForm.name}
                                         onChangeText={(text) => setEditForm({ ...editForm, name: text })}
                                     />
@@ -700,7 +700,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                     <Text style={styles.inputLabel}>Description</Text>
                                     <TextInput
                                         style={[styles.textInput, styles.textArea]}
-                                        placeholder="Description du partenaire"
+                                        placeholder={t('deliveryPartnersAdminScreen.descriptionDuPartenaire')}
                                         value={editForm.description}
                                         onChangeText={(text) => setEditForm({ ...editForm, description: text })}
                                         multiline
@@ -709,7 +709,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                 </View>
 
                                 <View style={styles.inputContainer}>
-                                    <Text style={styles.inputLabel}>Type de partenaire</Text>
+                                    <Text style={styles.inputLabel}>{t('deliveryPartnersAdmin.typeDePartenaire')}</Text>
                                     <TextInput
                                         style={styles.textInput}
                                         placeholder="livraison, pharmacie, etc."
@@ -731,7 +731,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                 </View>
 
                                 <View style={styles.inputContainer}>
-                                    <Text style={styles.inputLabel}>Téléphone</Text>
+                                    <Text style={styles.inputLabel}>{t('deliveryPartnersAdmin.telephone')}</Text>
                                     <TextInput
                                         style={styles.textInput}
                                         placeholder="+237 6XX XXX XXX"
@@ -745,7 +745,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                     <Text style={styles.inputLabel}>Adresse</Text>
                                     <TextInput
                                         style={[styles.textInput, styles.textArea]}
-                                        placeholder="Adresse complète"
+                                        placeholder={t('deliveryPartnersAdmin.adresseComplete')}
                                         value={editForm.address}
                                         onChangeText={(text) => setEditForm({ ...editForm, address: text })}
                                         multiline
@@ -754,10 +754,10 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                 </View>
 
                                 <View style={styles.inputContainer}>
-                                    <Text style={styles.inputLabel}>Ville</Text>
+                                    <Text style={styles.inputLabel}>{t('deliveryPartnersAdmin.ville')}/Text>
                                     <TextInput
                                         style={styles.textInput}
-                                        placeholder="Ville"
+                                        placeholder={t('deliveryPartnersAdmin.ville')}
                                         value={editForm.city}
                                         onChangeText={(text) => setEditForm({ ...editForm, city: text })}
                                     />
@@ -767,7 +767,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                     <Text style={styles.inputLabel}>Pays *</Text>
                                     <TextInput
                                         style={styles.textInput}
-                                        placeholder="Cameroun, Sénégal, etc."
+                                        placeholder={t('deliveryPartnersAdmin.camerounSenegalEtc')}
                                         value={editForm.country}
                                         onChangeText={(text) => setEditForm({ ...editForm, country: text })}
                                     />
@@ -808,10 +808,10 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                 </View>
 
                                 <View style={styles.inputContainer}>
-                                    <Text style={styles.inputLabel}>Adresse de localisation</Text>
+                                    <Text style={styles.inputLabel}>{t('deliveryPartnersAdmin.adresseDeLocalisation')}</Text>
                                     <TextInput
                                         style={[styles.textInput, styles.textArea]}
-                                        placeholder="Adresse formatée"
+                                        placeholder={t('deliveryPartnersAdmin.adresseFormatee')}
                                         value={editForm.location_address}
                                         onChangeText={(text) => setEditForm({ ...editForm, location_address: text })}
                                         multiline
@@ -860,13 +860,13 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                             size={20}
                                             color={editForm.is_active ? modernColors.primary : modernColors.textSecondary}
                                         />
-                                        <Text style={styles.checkboxLabel}>Partenaire actif</Text>
+                                        <Text style={styles.checkboxLabel}>{t('deliveryPartnersAdmin.partenaireActif')}/Text>
                                     </TouchableOpacity>
                                 </View>
 
                                 <View style={styles.modalActions}>
                                     <NativeButton
-                                        title="Annuler"
+                                        title={t('deliveryPartnersAdminScreen.annuler')}
                                         variant="outline"
                                         onPress={() => {
                                             setShowEditModal(false);
@@ -875,7 +875,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                         style={styles.modalButton}
                                     />
                                     <NativeButton
-                                        title={processing === editingPartner?.id ? 'Enregistrement...' : 'Enregistrer'}
+                                        title={processing === editingPartner?.id ? 'Enregistrement...' : t('deliveryPartnersAdminScreen.enregistrer')}
                                         variant="primary"
                                         onPress={handleSaveEdit}
                                         disabled={!editForm.name.trim() || processing === editingPartner?.id}

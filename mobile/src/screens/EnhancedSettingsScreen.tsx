@@ -14,6 +14,7 @@ import {
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import { useAuth } from '../contexts/AuthContext';
 import { userApi } from '../services/api';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -27,6 +28,7 @@ interface SettingsSection {
 
 const EnhancedSettingsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user, updateUser } = useAuth();
     const [currentScreen, setCurrentScreen] = useState('main');
     const [loading, setLoading] = useState(false);
@@ -125,24 +127,24 @@ const EnhancedSettingsScreen: React.FC = () => {
     const sections: SettingsSection[] = [
         {
             id: 'profile',
-            title: 'Profil',
+            title: t('enhancedSettingsScreen.profil'),
             icon: '👤',
             color: '#3B82F6',
-            description: 'Gérer vos informations personnelles'
+            description: t('enhancedSettings.gererVosInformationsPersonnelles')
         },
         {
             id: 'notifications',
             title: 'Notifications',
             icon: '🔔',
             color: '#F59E0B',
-            description: 'Contrôler vos notifications'
+            description: t('enhancedSettings.controlerVosNotifications')
         },
         {
             id: 'privacy',
-            title: 'Confidentialité',
+            title: t('enhancedSettings.confidentialite'),
             icon: '🔒',
             color: '#EF4444',
-            description: 'Gérer votre vie privée'
+            description: t('enhancedSettings.gererVotreViePrivee')
         },
         {
             id: 'appearance',
@@ -153,17 +155,17 @@ const EnhancedSettingsScreen: React.FC = () => {
         },
         {
             id: 'security',
-            title: 'Sécurité',
+            title: t('enhancedSettings.securite'),
             icon: '🛡️',
             color: '#10B981',
-            description: 'Sécuriser votre compte'
+            description: t('enhancedSettings.securiserVotreCompte')
         },
         {
             id: 'data',
-            title: 'Données',
+            title: t('enhancedSettings.donnees'),
             icon: '💾',
             color: '#6B7280',
-            description: 'Gérer vos données'
+            description: t('enhancedSettings.gererVosDonnees')
         }
     ];
 
@@ -186,7 +188,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     Alert.alert('Succès', 'Profil mis à jour avec succès');
                     setCurrentScreen('main');
                 } else {
-                    throw new Error(response?.message || 'Erreur lors de la sauvegarde');
+                    throw new Error(response?.message || t('enhancedSettings.erreurLorsDeLaSauvegarde'));
                 }
             } else {
                 // Pour les autres sections, simuler une sauvegarde
@@ -206,8 +208,8 @@ const EnhancedSettingsScreen: React.FC = () => {
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Paramètres</Text>
-                <Text style={styles.headerSubtitle}>Personnalisez votre expérience</Text>
+                <Text style={styles.headerTitle}>{t('enhancedSettings.parametres')}</Text>
+                <Text style={styles.headerSubtitle}>{t('enhancedSettings.personnalisezVotreExperience')}</Text>
             </View>
 
             {/* Raccourci Mes Suivis */}
@@ -220,7 +222,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                         <Text style={styles.sectionIconText}>❤️</Text>
                     </View>
                     <View style={styles.sectionContent}>
-                        <Text style={styles.sectionTitle}>Mes Suivis</Text>
+                        <Text style={styles.sectionTitle}>{t('enhancedSettings.mesSuivis')}</Text>
                         <Text style={styles.sectionDescription}>Vendeurs et prestataires que vous suivez</Text>
                     </View>
                     <Text style={styles.sectionArrow}>›</Text>
@@ -249,17 +251,17 @@ const EnhancedSettingsScreen: React.FC = () => {
 
             {/* Informations utilisateur */}
             <View style={styles.userInfoCard}>
-                <Text style={styles.userInfoTitle}>Informations du compte</Text>
+                <Text style={styles.userInfoTitle}>{t('enhancedSettings.informationsDuCompte')}/Text>
                 <View style={styles.userInfoRow}>
                     <Text style={styles.userInfoLabel}>Nom:</Text>
-                    <Text style={styles.userInfoValue}>{user?.name || 'Non défini'}</Text>
+                    <Text style={styles.userInfoValue}>{user?.name || t('enhancedSettings.nonDefini')}</Text>
                 </View>
                 <View style={styles.userInfoRow}>
                     <Text style={styles.userInfoLabel}>Email:</Text>
-                    <Text style={styles.userInfoValue}>{user?.email || 'Non défini'}</Text>
+                    <Text style={styles.userInfoValue}>{user?.email || t('enhancedSettings.nonDefini')}</Text>
                 </View>
                 <View style={styles.userInfoRow}>
-                    <Text style={styles.userInfoLabel}>Crédits:</Text>
+                    <Text style={styles.userInfoLabel}>{t('enhancedSettings.credits')}</Text>
                     <Text style={styles.userInfoValue}>{user?.credits || 0} tokens</Text>
                 </View>
             </View>
@@ -269,8 +271,8 @@ const EnhancedSettingsScreen: React.FC = () => {
     const renderProfileScreen = () => (
         <View style={styles.container}>
             <NavigatorToolbar
-                title="Profil"
-                subtitle="Gérez vos informations personnelles"
+                title={t('enhancedSettingsScreen.profil')}
+                subtitle={t('enhancedSettings.gerezVosInformationsPersonnelles')}
                 showHandle={false}
                 density="compact"
                 backIcon="back"
@@ -280,17 +282,17 @@ const EnhancedSettingsScreen: React.FC = () => {
                 <View style={styles.formContainer}>
                     {profileLoading && (
                         <View style={styles.loadingContainer}>
-                            <Text style={styles.loadingText}>Chargement du profil...</Text>
+                            <Text style={styles.loadingText}>{t('enhancedSettings.chargementDuProfil')}</Text>
                         </View>
                     )}
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Nom complet</Text>
+                        <Text style={styles.inputLabel}>{t('enhancedSettings.nomComplet')}</Text>
                         <TextInput
                             style={styles.textInput}
                             value={profileData.name}
                             onChangeText={(text) => setProfileData({ ...profileData, name: text })}
-                            placeholder="Votre nom complet"
+                            placeholder={t('enhancedSettings.votreNomComplet')}
                             editable={!profileLoading}
                         />
                     </View>
@@ -307,7 +309,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Téléphone</Text>
+                        <Text style={styles.inputLabel}>{t('enhancedSettings.telephone')}</Text>
                         <TextInput
                             style={styles.textInput}
                             value={profileData.phone}
@@ -323,14 +325,14 @@ const EnhancedSettingsScreen: React.FC = () => {
                             style={[styles.textInput, styles.textArea]}
                             value={profileData.bio}
                             onChangeText={(text) => setProfileData({ ...profileData, bio: text })}
-                            placeholder="Décrivez-vous en quelques mots..."
+                            placeholder={t('enhancedSettings.decrivezvousEnQuelquesMots')}
                             multiline
                             numberOfLines={3}
                         />
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Visibilité du profil</Text>
+                        <Text style={styles.inputLabel}>{t('enhancedSettings.visibiliteDuProfil')}</Text>
                         <View style={styles.radioGroup}>
                             {['public', 'private', 'friends'].map((option) => (
                                 <TouchableOpacity
@@ -350,7 +352,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                                         {option === 'public'
                                             ? 'Public'
                                             : option === 'private'
-                                                ? 'Privé'
+                                                ? t('enhancedSettingsScreen.prive')
                                                 : 'Amis uniquement'}
                                     </Text>
                                 </TouchableOpacity>
@@ -385,7 +387,7 @@ const EnhancedSettingsScreen: React.FC = () => {
             <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.formContainer}>
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>Notifications push</Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.notificationsPush')}/Text>
                         <TouchableOpacity
                             style={[styles.toggle, notifications.push && styles.toggleActive]}
                             onPress={() => setNotifications({ ...notifications, push: !notifications.push })}
@@ -395,7 +397,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>Notifications email</Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.notificationsEmail')}/Text>
                         <TouchableOpacity
                             style={[styles.toggle, notifications.email && styles.toggleActive]}
                             onPress={() => setNotifications({ ...notifications, email: !notifications.email })}
@@ -405,7 +407,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>Notifications SMS</Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.notificationsSms')}/Text>
                         <TouchableOpacity
                             style={[styles.toggle, notifications.sms && styles.toggleActive]}
                             onPress={() => setNotifications({ ...notifications, sms: !notifications.sms })}
@@ -453,8 +455,8 @@ const EnhancedSettingsScreen: React.FC = () => {
     const renderPrivacyScreen = () => (
         <View style={styles.container}>
             <NavigatorToolbar
-                title="Confidentialité"
-                subtitle="Contrôlez vos informations partagées"
+                title={t('enhancedSettings.confidentialite')}
+                subtitle={t('enhancedSettings.controlezVosInformationsPartagees')}
                 showHandle={false}
                 density="compact"
                 backIcon="back"
@@ -463,7 +465,7 @@ const EnhancedSettingsScreen: React.FC = () => {
             <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.formContainer}>
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>Afficher ma localisation</Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.afficherMaLocalisation')}/Text>
                         <TouchableOpacity
                             style={[styles.toggle, privacy.showLocation && styles.toggleActive]}
                             onPress={() => setPrivacy({ ...privacy, showLocation: !privacy.showLocation })}
@@ -473,7 +475,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>Afficher mon statut en ligne</Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.afficherMonStatutEnLigne')}/Text>
                         <TouchableOpacity
                             style={[styles.toggle, privacy.showOnlineStatus && styles.toggleActive]}
                             onPress={() => setPrivacy({ ...privacy, showOnlineStatus: !privacy.showOnlineStatus })}
@@ -493,7 +495,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>Partage de données</Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.partageDeDonnees')}</Text>
                         <TouchableOpacity
                             style={[styles.toggle, privacy.dataSharing && styles.toggleActive]}
                             onPress={() => setPrivacy({ ...privacy, dataSharing: !privacy.dataSharing })}
@@ -529,7 +531,7 @@ const EnhancedSettingsScreen: React.FC = () => {
             <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.formContainer}>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Thème</Text>
+                        <Text style={styles.inputLabel}>{t('enhancedSettings.theme')}</Text>
                         <View style={styles.radioGroup}>
                             {['light', 'dark', 'auto'].map((theme) => (
                                 <TouchableOpacity
@@ -571,7 +573,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                                             appearance.language === lang && styles.radioOptionTextActive,
                                         ]}
                                     >
-                                        {lang === 'fr' ? 'Français' : lang === 'en' ? 'English' : 'Español'}
+                                        {lang === 'fr' ? t('enhancedSettingsScreen.francais') : lang === 'en' ? 'English' : 'Español'}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -605,7 +607,7 @@ const EnhancedSettingsScreen: React.FC = () => {
     const renderSecurityScreen = () => (
         <View style={styles.container}>
             <NavigatorToolbar
-                title="Sécurité"
+                title={t('enhancedSettings.securite')}
                 subtitle="Renforcez la protection de votre compte"
                 showHandle={false}
                 density="compact"
@@ -615,7 +617,7 @@ const EnhancedSettingsScreen: React.FC = () => {
             <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.formContainer}>
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>Authentification à deux facteurs</Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.authentificationADeuxFacteurs')}</Text>
                         <TouchableOpacity
                             style={[styles.toggle, security.twoFactor && styles.toggleActive]}
                             onPress={() => setSecurity({ ...security, twoFactor: !security.twoFactor })}
@@ -625,7 +627,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>Authentification biométrique</Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.authentificationBiometrique')}</Text>
                         <TouchableOpacity
                             style={[styles.toggle, security.biometric && styles.toggleActive]}
                             onPress={() => setSecurity({ ...security, biometric: !security.biometric })}
@@ -645,7 +647,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Délai d'expiration de session (minutes)</Text>
+                        <Text style={styles.inputLabel}>{t('enhancedSettings.delaiDexpirationDeSessionMinutes')}</Text>
                         <TextInput
                             style={styles.textInput}
                             value={security.sessionTimeout.toString()}
@@ -674,7 +676,7 @@ const EnhancedSettingsScreen: React.FC = () => {
     const renderDataScreen = () => (
         <View style={styles.container}>
             <NavigatorToolbar
-                title="Données"
+                title={t('enhancedSettings.donnees')}
                 subtitle="Gestion du stockage et des sauvegardes"
                 showHandle={false}
                 density="compact"
@@ -684,7 +686,7 @@ const EnhancedSettingsScreen: React.FC = () => {
             <ScrollView style={styles.sectionScroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.formContainer}>
                     <View style={styles.infoCard}>
-                        <Text style={styles.infoCardTitle}>Cache de l'application</Text>
+                        <Text style={styles.infoCardTitle}>{t('enhancedSettings.cacheDeLapplication')}/Text>
                         <Text style={styles.infoCardValue}>{data.cacheSize}</Text>
                         <TouchableOpacity style={styles.actionButton}>
                             <Text style={styles.actionButtonText}>Vider le cache</Text>
@@ -702,7 +704,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Fréquence de synchronisation</Text>
+                        <Text style={styles.inputLabel}>{t('enhancedSettings.frequenceDeSynchronisation')}</Text>
                         <View style={styles.radioGroup}>
                             {['hourly', 'daily', 'weekly'].map((freq) => (
                                 <TouchableOpacity

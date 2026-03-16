@@ -18,6 +18,7 @@ import {
 import { autocompleteHistoryService } from '../services/autocompleteHistoryService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AutocompleteGranularEditorProps {
     label: string;
@@ -51,7 +52,8 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
     allowCustomModality = true,
     filtrable = true,
 }) => {
-    const [showModal, setShowModal] = useState(false);
+        const { t } = useLanguageSafe();
+const [showModal, setShowModal] = useState(false);
     const [currentValues, setCurrentValues] = useState<string[]>(value || []);
     const [subCharacteristics, setSubCharacteristics] = useState<SubCharacteristicInput[]>([]);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -297,7 +299,7 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
                                     }}
                                 >
                                     <SafeIcon name="edit" size={12} color={modernColors.primary} />
-                                    <Text style={styles.suggestionEditText}>Modifier</Text>
+                                    <Text style={styles.suggestionEditText}>{t('autocompleteGranularEditor.modifier')}</Text>
                                 </TouchableOpacity>
                             </View>
                         ))}
@@ -351,7 +353,7 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
             {/* Champ de saisie rapide avec bouton Ajouter aligné */}
             <View style={styles.quickInputWrapper}>
                 <Text style={styles.quickInputLabel}>
-                    📝 {currentValues.length > 0 ? `${currentValues.length} ajoutée(s)` : 'Aucune caractéristique ajoutée'}
+                    📝 {currentValues.length > 0 ? `${currentValues.length} ajoutée(s)` : t('autocompleteGranularEditor.aucuneCaracteristiqueAjoutee')}
                 </Text>
                 <TouchableOpacity
                     style={styles.quickInputContainer}
@@ -376,7 +378,7 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
                         }}
                     >
                         <SafeIcon name="plus" size={18} color="#FFFFFF" />
-                        <Text style={styles.addButtonText}>Ajouter</Text>
+                        <Text style={styles.addButtonText}>{t('autocompleteGranularEditor.ajouter')}</Text>
                     </TouchableOpacity>
                 </TouchableOpacity>
             </View>
@@ -445,7 +447,7 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
                                 }}
                             >
                                 <SafeIcon name="plus-circle" size={18} color={modernColors.primary} />
-                                <Text style={styles.addCustomButtonText}>Ajouter caractéristique</Text>
+                                <Text style={styles.addCustomButtonText}>{t('autocompleteGranularEditor.ajouterCaracteristique')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={styles.cancelButton}
@@ -454,10 +456,10 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
                                     setEditingIndex(null);
                                 }}
                             >
-                                <Text style={styles.cancelButtonText}>Annuler</Text>
+                                <Text style={styles.cancelButtonText}>{t('autocompleteGranularEditor.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.saveButton} onPress={saveEdit}>
-                                <Text style={styles.saveButtonText}>Enregistrer</Text>
+                                <Text style={styles.saveButtonText}>{t('autocompleteGranularEditor.enregistrer')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -475,7 +477,7 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
                     <View style={styles.customModalContent}>
                         <View style={styles.customModalHeader}>
                             <SafeIcon name="plus-circle" size={24} color={modernColors.primary} />
-                            <Text style={styles.customModalTitle}>Ajouter une caractéristique</Text>
+                            <Text style={styles.customModalTitle}>{t('autocompleteGranularEditor.ajouterUneCaracteristique')}</Text>
                             <TouchableOpacity
                                 style={styles.closeButton}
                                 onPress={() => {
@@ -494,10 +496,10 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
                             </Text>
 
                             <View style={styles.customInputContainer}>
-                                <Text style={styles.customInputLabel}>Nom de la caractéristique</Text>
+                                <Text style={styles.customInputLabel}>{t('autocompleteGranularEditor.nomDeLaCaracteristique')}</Text>
                                 <TextInput
                                     style={styles.customInput}
-                                    placeholder="Ex: couleur, taille, matière..."
+                                    placeholder={t('autocompleteGranularEditor.exCouleurTailleMatiere')}
                                     placeholderTextColor="#9CA3AF"
                                     value={customModalityLabel}
                                     onChangeText={setCustomModalityLabel}
@@ -529,7 +531,7 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
                                     setCustomModalityValue('');
                                 }}
                             >
-                                <Text style={styles.cancelButtonText}>Annuler</Text>
+                                <Text style={styles.cancelButtonText}>{t('autocompleteGranularEditor.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[
@@ -568,7 +570,7 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
                                 disabled={!customModalityLabel || !customModalityValue}
                             >
                                 <SafeIcon name="check" size={18} color="#FFFFFF" />
-                                <Text style={styles.customSaveButtonText}>Ajouter</Text>
+                                <Text style={styles.customSaveButtonText}>{t('autocompleteGranularEditor.ajouter')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

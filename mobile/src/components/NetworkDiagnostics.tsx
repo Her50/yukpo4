@@ -4,13 +4,15 @@ import { networkDiagnostics } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface NetworkDiagnosticsProps {
     onClose?: () => void;
 }
 
 const NetworkDiagnostics: React.FC<NetworkDiagnosticsProps> = ({ onClose }) => {
-    const [isRunning, setIsRunning] = useState(false);
+        const { t } = useLanguageSafe();
+const [isRunning, setIsRunning] = useState(false);
     const [results, setResults] = useState<any>(null);
 
     const runDiagnostics = async () => {
@@ -28,11 +30,11 @@ const NetworkDiagnostics: React.FC<NetworkDiagnosticsProps> = ({ onClose }) => {
             const statusIcon = diagnostics.isOnline && diagnostics.apiReachable ? '✅' : '❌';
             const statusText = diagnostics.isOnline && diagnostics.apiReachable
                 ? 'Connexion OK'
-                : 'Problème de connexion';
+                : t('networkDiagnostics.problemeDeConnexion');
 
             Alert.alert(
-                `${statusIcon} Diagnostic réseau`,
-                `Statut: ${statusText}\nTemps de réponse: ${diagnostics.responseTime}ms\nErreur: ${diagnostics.error || 'Aucune'}`,
+                t('networkDiagnostics.diagnosticReseau', { statusIcon: statusIcon }),
+                t('networkDiagnostics.statutNtempsDeReponseMsnerreur', { statusText: statusText, diagnostics_responseTime: diagnostics.responseTime, diagnostics_error || 'Aucune': diagnostics.error || 'Aucune' }),
                 [{ text: 'OK' }]
             );
 
@@ -47,7 +49,7 @@ const NetworkDiagnostics: React.FC<NetworkDiagnosticsProps> = ({ onClose }) => {
 
             Alert.alert(
                 '❌ Erreur de diagnostic',
-                `Impossible d'exécuter le diagnostic: ${error.message}`,
+                t('networkDiagnostics.impossibleDexecuterLeDiagnostic', { error_message: error.message }),
                 [{ text: 'OK' }]
             );
         } finally {
@@ -60,7 +62,7 @@ const NetworkDiagnostics: React.FC<NetworkDiagnosticsProps> = ({ onClose }) => {
             <NativeCard style={styles.card}>
                 <View style={styles.header}>
                     <SafeIcon name="wifi" size={24} color={modernColors.primary} />
-                    <Text style={styles.title}>Diagnostic réseau</Text>
+                    <Text style={styles.title}>{t('networkDiagnostics.diagnosticReseau')}</Text>
                 </View>
 
                 <Text style={styles.description}>
@@ -77,7 +79,7 @@ const NetworkDiagnostics: React.FC<NetworkDiagnosticsProps> = ({ onClose }) => {
 
                 {results && (
                     <View style={styles.results}>
-                        <Text style={styles.resultsTitle}>Résultats du diagnostic:</Text>
+                        <Text style={styles.resultsTitle}>{t('networkDiagnostics.resultatsDuDiagnostic')}</Text>
 
                         <View style={styles.resultItem}>
                             <Text style={styles.resultLabel}>Statut:</Text>
@@ -85,18 +87,18 @@ const NetworkDiagnostics: React.FC<NetworkDiagnosticsProps> = ({ onClose }) => {
                                 styles.resultValue,
                                 { color: results.isOnline && results.apiReachable ? modernColors.success : modernColors.error }
                             ]}>
-                                {results.isOnline && results.apiReachable ? '✅ Connecté' : '❌ Déconnecté'}
+                                {results.isOnline && results.apiReachable ? t('networkDiagnostics.connecte') : t('networkDiagnostics.deconnecte')}
                             </Text>
                         </View>
 
                         <View style={styles.resultItem}>
-                            <Text style={styles.resultLabel}>Temps de réponse:</Text>
+                            <Text style={styles.resultLabel}>{t('networkDiagnostics.tempsDeReponse')}</Text>
                             <Text style={styles.resultValue}>{results.responseTime}ms</Text>
                         </View>
 
                         {results.error && (
                             <View style={styles.resultItem}>
-                                <Text style={styles.resultLabel}>Erreur:</Text>
+                                <Text style={styles.resultLabel}>{t('networkDiagnostics.erreur')}</Text>
                                 <Text style={[styles.resultValue, { color: modernColors.error }]}>
                                     {results.error}
                                 </Text>
@@ -107,7 +109,7 @@ const NetworkDiagnostics: React.FC<NetworkDiagnosticsProps> = ({ onClose }) => {
 
                 {onClose && (
                     <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                        <Text style={styles.closeButtonText}>Fermer</Text>
+                        <Text style={styles.closeButtonText}>{t('networkDiagnostics.fermer')}</Text>
                     </TouchableOpacity>
                 )}
             </NativeCard>

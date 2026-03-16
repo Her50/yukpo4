@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface QRCodeScannerProps {
     visible: boolean;
@@ -31,7 +32,8 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({
     onScan,
     onError,
 }) => {
-    const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+        const { t } = useLanguageSafe();
+const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [scanned, setScanned] = useState(false);
 
     useEffect(() => {
@@ -48,14 +50,14 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
-                    'L\'accès à la caméra est nécessaire pour scanner les QR codes',
+                    'L\t('qRCodeScanner.accesALaCameraEstNecessaire'),
                     [{ text: 'OK', onPress: onClose }]
                 );
             }
         } catch (error: any) {
             console.error('[QRCodeScanner] Erreur permission:', error);
             if (onError) {
-                onError('Impossible d\'accéder à la caméra');
+                onError('Impossible d\t('qRCodeScanner.accederALaCamera'));
             }
         }
     };
@@ -89,7 +91,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({
             >
                 <View style={styles.container}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>Demande de permission</Text>
+                        <Text style={styles.title}>{t('qRCodeScanner.demandeDePermission')}/Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color="#111827" />
                         </TouchableOpacity>
@@ -113,7 +115,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({
             >
                 <View style={styles.container}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>Permission refusée</Text>
+                        <Text style={styles.title}>{t('qRCodeScanner.permissionRefusee')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color="#111827" />
                         </TouchableOpacity>
@@ -124,13 +126,13 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({
                             L'accès à la caméra a été refusé
                         </Text>
                         <Text style={styles.errorSubtext}>
-                            Veuillez autoriser l'accès à la caméra dans les paramètres de l'appareil
+                            Veuillez autoriser lt('qRCodeScanner.accesALaCameraDansLes')appareil
                         </Text>
                         <TouchableOpacity
                             style={styles.retryButton}
                             onPress={requestCameraPermission}
                         >
-                            <Text style={styles.retryButtonText}>Réessayer</Text>
+                            <Text style={styles.retryButtonText}>{t('qRCodeScanner.reessayer')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -197,7 +199,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({
                             onPress={() => setScanned(false)}
                         >
                             <SafeIcon name="refresh-cw" size={20} color={modernColors.primary} />
-                            <Text style={styles.retryScanButtonText}>Scanner à nouveau</Text>
+                            <Text style={styles.retryScanButtonText}>{t('qRCodeScanner.scannerANouveau')}</Text>
                         </TouchableOpacity>
                     )}
                 </View>

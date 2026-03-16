@@ -11,10 +11,12 @@ import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNati
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const TaxiIntelligentSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
     const [lat, setLat] = useState<number | null>(location?.coords?.latitude || null);
     const [lng, setLng] = useState<number | null>(location?.coords?.longitude || null);
     const [destinationLat, setDestinationLat] = useState<number | null>(null);
@@ -74,7 +76,7 @@ const TaxiIntelligentSearchScreen: React.FC = () => {
 
             {item.match_reasons && item.match_reasons.length > 0 && (
                 <View style={styles.reasonsContainer}>
-                    <Text style={styles.reasonsTitle}>Points positifs:</Text>
+                    <Text style={styles.reasonsTitle}>{t('taxiIntelligentSearch.pointsPositifs')}/Text>
                     {item.match_reasons.map((reason: string, index: number) => (
                         <Text key={index} style={styles.reason}>✓ {reason}</Text>
                     ))}
@@ -93,11 +95,11 @@ const TaxiIntelligentSearchScreen: React.FC = () => {
     return (
         <ScrollView style={styles.container}>
             <View style={styles.searchSection}>
-                <Text style={styles.title}>Recherche intelligente de taxi</Text>
+                <Text style={styles.title}>{t('taxiIntelligentSearch.rechercheIntelligenteDeTaxi')}/Text>
 
                 {/* Position actuelle */}
                 <View style={styles.gpsSection}>
-                    <Text style={styles.label}>Votre position *</Text>
+                    <Text style={styles.label}>{t('taxiIntelligentSearch.votrePosition')}</Text>
                     <TouchableOpacity
                         style={styles.gpsButton}
                         onPress={() => setShowGPSModal(true)}
@@ -127,7 +129,7 @@ const TaxiIntelligentSearchScreen: React.FC = () => {
 
                 {/* Préférences */}
                 <View style={styles.preferencesSection}>
-                    <Text style={styles.sectionTitle}>Préférences</Text>
+                    <Text style={styles.sectionTitle}>{t('taxiIntelligentSearch.preferences')}</Text>
 
                     <View style={styles.preferenceRow}>
                         <Text style={styles.preferenceLabel}>Climatisation</Text>
@@ -154,7 +156,7 @@ const TaxiIntelligentSearchScreen: React.FC = () => {
                     </View>
 
                     <NativeInput
-                        label="Prix maximum (XAF)"
+                        label={t('taxiIntelligentSearchScreen.prixMaximumXaf')}
                         value={prixMax}
                         onChangeText={setPrixMax}
                         placeholder="Ex: 5000"

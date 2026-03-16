@@ -80,7 +80,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             if (!serviceData.titre_service || !serviceData.description || !serviceData.category) {
                 Alert.alert(
                     'Erreur',
-                    'Données de service incomplètes. Veuillez réessayer.',
+                    t('mesServicesSpecialisesScreen.donneesDeServiceIncompletesVeuillezReessayer'),
                     [{ text: 'OK' }]
                 );
                 setCreatingService(null);
@@ -160,7 +160,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                             });
                             Alert.alert(
                                 'Erreur de navigation',
-                                `Impossible d'ouvrir le formulaire ${service.title}.\n\nRoute: ${service.route}\nErreur: ${fallbackError?.message || 'Navigation échouée'}\n\nVeuillez réessayer.`,
+                                `Impossible d'ouvrir le formulaire ${service.title}.\n\nRoute: ${service.route}\nErreur: ${fallbackError?.message || t('mesServicesSpecialises.navigationEchouee')}\n\nVeuillez réessayer.`,
                                 [
                                     { text: 'OK' },
                                     {
@@ -175,13 +175,13 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                     console.error('[MesServicesSpecialisesScreen] ❌ Service créé mais ID introuvable dans la réponse:', response);
                     Alert.alert(
                         'Erreur',
-                        `Service créé mais ID introuvable. Réponse: ${JSON.stringify(response.data)}`,
+                        t('mesServicesSpecialisesScreen.serviceCreeMaisIdIntrouvableReponse', { JSON_stringify(response_data): JSON.stringify(response.data) }),
                         [{ text: 'OK' }]
                     );
                 }
             } else {
                 // ✅ CORRECTION: Afficher le message d'erreur réel du backend avec détails
-                const errorMessage = response.error || response.message || 'Impossible de créer le service spécialisé. Veuillez réessayer.';
+                const errorMessage = response.error || response.message || t('mesServicesSpecialises.impossibleDeCreerLeService');
                 console.error('[MesServicesSpecialisesScreen] ❌ Erreur création service:', {
                     error: response.error,
                     message: response.message,
@@ -191,7 +191,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                 });
 
                 // ✅ NOUVEAU: Si l'erreur indique que le service existe déjà, essayer de récupérer les services existants
-                if (errorMessage.toLowerCase().includes('existe') || errorMessage.toLowerCase().includes('already') || errorMessage.toLowerCase().includes('déjà')) {
+                if (errorMessage.toLowerCase().includes('existe') || errorMessage.toLowerCase().includes('already') || errorMessage.toLowerCase().includes(t('mesServicesSpecialisesScreen.deja'))) {
                     console.log('[MesServicesSpecialisesScreen] Service existe peut-être déjà, tentative de récupération...');
                     try {
                         const userServices = await servicesApi.getUserServices();
@@ -232,10 +232,10 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                 // ✅ CORRECTION: Afficher un message d'erreur plus détaillé
                 const isSoldeInsuffisant = errorMessage.includes('Solde insuffisant') || errorMessage.includes('solde insuffisant');
                 const detailedMessage = isSoldeInsuffisant
-                    ? `${errorMessage}\n\nVeuillez recharger vos tokens pour créer un service.`
+                    ? t('mesServicesSpecialisesScreen.nnveuillezRechargerVosTokensPourCreer', { errorMessage: errorMessage })
                     : errorMessage.includes('Champs obligatoires')
-                        ? `${errorMessage}\n\nVeuillez vérifier que tous les champs requis sont remplis.`
-                        : `${errorMessage}\n\nSi le problème persiste, veuillez contacter le support.`;
+                        ? t('mesServicesSpecialisesScreen.nnveuillezVerifierQueTousLesChamps', { errorMessage: errorMessage })
+                        : t('mesServicesSpecialisesScreen.nnsiLeProblemePersisteVeuillezContacter', { errorMessage: errorMessage });
 
                 if (isSoldeInsuffisant) {
                     Alert.alert(
@@ -243,19 +243,19 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                         detailedMessage,
                         [
                             { text: t('common.cancel'), style: 'cancel' },
-                            { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+                            { text: t('common.reload'), onPress: () => (navigation as any).navigate('RechargeTokens') },
                         ]
                     );
                     return;
                 }
 
                 Alert.alert(
-                    'Erreur de création',
+                    t('mesServicesSpecialisesScreen.erreurDeCreation'),
                     detailedMessage,
                     [
                         { text: 'OK' },
                         {
-                            text: 'Voir les détails',
+                            text: t('common.viewDetails'),
                             onPress: () => {
                                 console.log('[MesServicesSpecialisesScreen] 📋 Détails erreur:', {
                                     service: service.title,
@@ -269,7 +269,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[MesServicesSpecialisesScreen] ❌ Exception lors de la création du service:', error);
-            const errorMessage = error?.message || error?.error || 'Une erreur est survenue lors de la création du service.';
+            const errorMessage = error?.message || error?.error || t('mesServicesSpecialises.uneErreurEstSurvenueLors');
             Alert.alert(
                 'Erreur',
                 errorMessage,
@@ -285,15 +285,15 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             id: 'pharmacie',
             title: 'Pharmacie',
             icon: 'Pill', // ✅ Icône Lucide en PascalCase
-            description: 'Enregistrer une pharmacie avec garde',
+            description: t('mesServicesSpecialisesScreen.enregistrerUnePharmacieAvecGarde'),
             route: 'PharmacieForm',
             color: '#10B981', // Vert
         },
         {
             id: 'hopital',
-            title: 'Hôpital/Clinique',
+            title: t('mesServicesSpecialises.hopitalclinique'),
             icon: 'Hospital', // ✅ Icône Lucide en PascalCase
-            description: 'Enregistrer un établissement de santé',
+            description: t('mesServicesSpecialises.enregistrerUnEtablissementDeSante'),
             route: 'HopitalForm',
             color: '#EF4444', // Rouge
         },
@@ -301,7 +301,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             id: 'laboratoire',
             title: 'Laboratoire/Imagerie',
             icon: 'Microscope', // ✅ Icône Lucide en PascalCase
-            description: 'Enregistrer un laboratoire',
+            description: t('mesServicesSpecialisesScreen.enregistrerUnLaboratoire'),
             route: 'LaboratoireForm',
             color: '#3B82F6', // Bleu
         },
@@ -309,7 +309,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             id: 'banque_sang',
             title: 'Banque de Sang',
             icon: 'Droplet', // ✅ Icône Lucide en PascalCase
-            description: 'Enregistrer une banque de sang',
+            description: t('mesServicesSpecialisesScreen.enregistrerUneBanqueDeSang'),
             route: 'BanqueSangForm',
             color: '#DC2626', // Rouge foncé
         },
@@ -318,9 +318,9 @@ const MesServicesSpecialisesScreen: React.FC = () => {
     const servicesTransport: ServiceSpecialise[] = [
         {
             id: 'agence_voyage',
-            title: 'Agence de Voyage',
+            title: t('mesServicesSpecialises.agenceDeVoyage'),
             icon: 'Bus', // ✅ Icône Lucide en PascalCase
-            description: 'Enregistrer une agence de voyage',
+            description: t('mesServicesSpecialisesScreen.enregistrerUneAgenceDeVoyage'),
             route: 'AgenceVoyageForm',
             color: '#F59E0B', // Orange
         },
@@ -328,15 +328,15 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             id: 'covoiturage',
             title: 'Covoiturage',
             icon: 'Users', // ✅ Icône Lucide en PascalCase
-            description: 'Proposer un trajet partagé',
+            description: t('mesServicesSpecialises.proposerUnTrajetPartage'),
             route: 'CovoiturageForm',
             color: '#8B5CF6', // Violet
         },
         {
             id: 'taxi',
-            title: 'Taxi de Ville',
+            title: t('mesServicesSpecialises.taxiDeVille'),
             icon: 'Car', // ✅ Icône Lucide en PascalCase
-            description: 'Enregistrer un service de taxi',
+            description: t('mesServicesSpecialisesScreen.enregistrerUnServiceDeTaxi'),
             route: 'TaxiForm',
             color: '#F97316', // Orange foncé
         },
@@ -345,9 +345,9 @@ const MesServicesSpecialisesScreen: React.FC = () => {
     const servicesCommerce: ServiceSpecialise[] = [
         {
             id: 'supermarche',
-            title: 'Supermarché',
+            title: t('mesServicesSpecialises.supermarche'),
             icon: 'Store',
-            description: 'Gérer un catalogue de supermarché',
+            description: t('mesServicesSpecialises.gererUnCatalogueDeSupermarche'),
             route: 'SupermarketPartnerDashboard',
             color: '#10B981',
         },
@@ -358,15 +358,15 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             id: 'immobilier',
             title: 'Immobilier',
             icon: 'Home',
-            description: 'Publier des annonces immobilières',
+            description: t('mesServicesSpecialises.publierDesAnnoncesImmobilieres'),
             route: 'ImmobilierForm',
             color: '#6366F1',
         },
         {
             id: 'hotel',
-            title: 'Hôtel / Meublé',
+            title: t('mesServicesSpecialises.hotelMeuble'),
             icon: 'Building',
-            description: 'Gérer un hôtel ou un meublé',
+            description: t('mesServicesSpecialises.gererUnHotelOuUn'),
             route: 'HotelDashboard',
             color: '#0891B2',
         },
@@ -375,9 +375,9 @@ const MesServicesSpecialisesScreen: React.FC = () => {
     const servicesAutres: ServiceSpecialise[] = [
         {
             id: 'offre_emploi',
-            title: 'Offres d\'emploi',
+            title: t('mesServicesSpecialises.offresDemploi'),
             icon: 'Briefcase',
-            description: 'Publier et gérer des offres d\'emploi',
+            description: t('mesServicesSpecialises.publierEtGererDesOffresDemploi'),
             route: 'OffresEmploiHub',
             color: '#7C3AED',
         },
@@ -391,17 +391,17 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         },
         {
             id: 'etablissementscolaire',
-            title: 'Établissement scolaire',
+            title: t('mesServicesSpecialises.etablissementScolaire'),
             icon: 'GraduationCap',
-            description: 'Gérer un établissement scolaire',
+            description: t('mesServicesSpecialises.gererUnEtablissementScolaire'),
             route: 'OrientationPartnerDashboard',
             color: '#2563EB',
         },
         {
             id: 'livre_scolaire',
-            title: 'Livre scolaire',
+            title: t('mesServicesSpecialises.livreScolaire'),
             icon: 'BookOpen',
-            description: 'Vendre ou échanger des livres scolaires',
+            description: t('mesServicesSpecialises.vendreOuEchangerDesLivres'),
             route: 'LivreScolaireForm',
             color: '#059669',
         },
@@ -450,7 +450,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             showsVerticalScrollIndicator={false}
         >
             <View style={styles.header}>
-                <Text style={styles.title}>Spécialisés</Text>
+                <Text style={styles.title}>{t('mesServicesSpecialises.specialises')}</Text>
                 <Text style={styles.subtitle}>
                     Gérez vos services de santé et de transport
                 </Text>
@@ -462,7 +462,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                     <SafeIcon name="search" size={20} color={modernColors.textSecondary} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Rechercher un service..."
+                        placeholder={t('mesServicesSpecialises.rechercherUnService')}
                         placeholderTextColor={modernColors.textSecondary}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
@@ -562,7 +562,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             {/* ✅ NOUVEAU: Bouton pour accéder au hub unifié */}
             <View style={styles.hubButtonContainer}>
                 <NativeButton
-                    title="📊 Voir le Hub Unifié"
+                    title={t('mesServicesSpecialises.voirLeHubUnifie')}
                     variant="primary"
                     onPress={() => {
                         (navigation as any).navigate('SpecializedServicesHub');
@@ -575,7 +575,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                 <View style={styles.group}>
                     <View style={styles.groupHeader}>
                         <SafeIcon name="heart-pulse" size={20} color="#EF4444" type="lucide" />
-                        <Text style={styles.groupTitle}>Santé</Text>
+                        <Text style={styles.groupTitle}>{t('mesServicesSpecialises.sante')}</Text>
                         {filteredSante.length < servicesSante.length && (
                             <Text style={styles.filteredCount}>
                                 ({filteredSante.length}/{servicesSante.length})
@@ -707,7 +707,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                 <View style={styles.group}>
                     <View style={styles.groupHeader}>
                         <SafeIcon name="grid" size={20} color="#8B5CF6" type="lucide" />
-                        <Text style={styles.groupTitle}>Emploi, Assurance & Autres</Text>
+                        <Text style={styles.groupTitle}>{t('mesServicesSpecialises.emploiAssuranceAutres')}/Text>
                     </View>
                     <View style={styles.servicesGrid}>
                         {filteredAutres.map((service) => (
@@ -732,7 +732,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             {filteredSante.length === 0 && filteredTransport.length === 0 && filteredCommerce.length === 0 && filteredImmobilier.length === 0 && filteredAutres.length === 0 && (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="search-x" size={48} color={modernColors.textSecondary} type="lucide" />
-                    <Text style={styles.emptyText}>Aucun service trouvé</Text>
+                    <Text style={styles.emptyText}>{t('mesServicesSpecialises.aucunServiceTrouve')}</Text>
                     <Text style={styles.emptySubtext}>
                         Essayez de modifier votre recherche ou vos filtres
                     </Text>

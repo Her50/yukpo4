@@ -165,7 +165,7 @@ const BusBoardingManagementScreen: React.FC = () => {
                 );
             } else {
                 // Track failed scan
-                trackQRScan(false, responseData.error || 'Validation échouée');
+                trackQRScan(false, responseData.error || t('busBoardingManagement.validationEchouee'));
                 if (responseData.already_boarded) {
                     Alert.alert(
                         t('busBoarding.alreadyBoarded'),
@@ -297,7 +297,7 @@ const BusBoardingManagementScreen: React.FC = () => {
                         <SafeIcon name={statusIcon} size={14} color="#fff" />
                         <Text style={styles.statusText}>
                             {passenger.display_status === 'boarded'
-                                ? 'Embarqué'
+                                ? t('busBoardingManagementScreen.embarque')
                                 : passenger.display_status === 'pending'
                                     ? 'En attente'
                                     : 'No-show'}
@@ -317,7 +317,7 @@ const BusBoardingManagementScreen: React.FC = () => {
                         onPress={() => handleManualValidation(passenger)}
                     >
                         <SafeIcon name="check" size={16} color="#fff" />
-                        <Text style={styles.validateButtonText}>Valider manuellement</Text>
+                        <Text style={styles.validateButtonText}>{t('busBoardingManagement.validerManuellement')}/Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -330,7 +330,7 @@ const BusBoardingManagementScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Gestion embarquement</Text>
+                <Text style={styles.title}>{t('busBoardingManagement.gestionEmbarquement')}/Text>
                 <View style={styles.placeholder} />
             </View>
 
@@ -343,7 +343,7 @@ const BusBoardingManagementScreen: React.FC = () => {
             {loading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('busBoardingManagement.chargement')}</Text>
                 </View>
             ) : (
                 <>
@@ -351,25 +351,25 @@ const BusBoardingManagementScreen: React.FC = () => {
                     {summary && (
                         <View style={styles.summaryContainer}>
                             <View style={styles.summaryCard}>
-                                <Text style={styles.summaryTitle}>Résumé embarquement</Text>
+                                <Text style={styles.summaryTitle}>{t('busBoardingManagement.resumeEmbarquement')}</Text>
                                 <View style={styles.summaryStats}>
                                     <View style={styles.summaryStat}>
                                         <Text style={styles.summaryValue}>
                                             {summary.boarded_passengers}/{summary.total_reservations}
                                         </Text>
-                                        <Text style={styles.summaryLabel}>Embarqués</Text>
+                                        <Text style={styles.summaryLabel}>{t('busBoardingManagement.embarques')}</Text>
                                     </View>
                                     <View style={styles.summaryStat}>
                                         <Text style={styles.summaryValue}>
                                             {summary.pending_passengers}
                                         </Text>
-                                        <Text style={styles.summaryLabel}>En attente</Text>
+                                        <Text style={styles.summaryLabel}>{t('busBoardingManagement.enAttente')}/Text>
                                     </View>
                                     <View style={styles.summaryStat}>
                                         <Text style={styles.summaryValue}>
                                             {summary.completion_percentage.toFixed(0)}%
                                         </Text>
-                                        <Text style={styles.summaryLabel}>Complété</Text>
+                                        <Text style={styles.summaryLabel}>{t('busBoardingManagement.complete')}</Text>
                                     </View>
                                 </View>
                                 <View style={styles.progressBar}>
@@ -406,7 +406,7 @@ const BusBoardingManagementScreen: React.FC = () => {
 
                     {/* Liste des passagers */}
                     <ScrollView style={styles.passengersList}>
-                        <Text style={styles.passengersTitle}>Liste des passagers</Text>
+                        <Text style={styles.passengersTitle}>{t('busBoardingManagement.listeDesPassagers')}</Text>
                         {passengers.map((passenger) => renderPassengerCard(passenger))}
                     </ScrollView>
                 </>
@@ -447,7 +447,7 @@ const BusBoardingManagementScreen: React.FC = () => {
                                 // Alternative: saisie manuelle du code
                                 Alert.prompt(
                                     'Saisie manuelle',
-                                    'Entrez le code de réservation',
+                                    t('busBoardingManagementScreen.entrezLeCodeDeReservation'),
                                     [
                                         { text: t('common.cancel'), style: 'cancel' },
                                         {

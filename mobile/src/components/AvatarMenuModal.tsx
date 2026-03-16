@@ -27,14 +27,14 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
   const handleLogout = async () => {
     Alert.alert(
       'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      t('avatarMenuModal.etesvousSurDeVouloirVousDeconnecter'),
       [
         {
           text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Déconnexion',
+          text: t('avatarMenu.deconnexion'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -53,8 +53,8 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
   const menuItems = [
     {
       id: 'settings',
-      title: '⚙️ Paramètres',
-      subtitle: 'Gérer vos préférences',
+      title: t('avatarMenu.parametres'),
+      subtitle: t('avatarMenuModal.gererVosPreferences'),
       onPress: () => {
         onNavigate('Settings');
         onClose();
@@ -109,10 +109,10 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
 
             <View style={styles.userInfo}>
               <Text style={styles.userName}>
-                👤 {user?.name || "Utilisateur"}
+                👤 {user?.name || t('avatarMenu.utilisateur')}
               </Text>
               <Text style={styles.userRole}>
-                🛡 Rôle : <Text style={styles.roleBold}>{user?.role || 'Utilisateur'}</Text>
+                🛡 Rôle : <Text style={styles.roleBold}>{user?.role || t('avatarMenu.utilisateur')}</Text>
               </Text>
               <Text style={styles.userEmail}>
                 📧 {user?.email}
@@ -161,7 +161,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
           >
             <View style={styles.logoutContent}>
               <LogOut size={24} color="#F44336" />
-              <Text style={styles.logoutText}>🚪 Déconnexion</Text>
+              <Text style={styles.logoutText}>{t('avatarMenu.deconnexion')}</Text>
             </View>
           </TouchableOpacity>
 

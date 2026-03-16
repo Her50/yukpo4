@@ -128,7 +128,7 @@ const CovoiturageBookingScreen: React.FC = () => {
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
-                        text: 'Recharger',
+                        text: t('common.reload'),
                         onPress: () => navigation.navigate('RechargeTokens' as never)
                     }
                 ]
@@ -205,11 +205,11 @@ const CovoiturageBookingScreen: React.FC = () => {
                     t('covoiturageBooking.bookingConfirmedMsg', { places: numberOfPlaces, total: calculateTotal().toLocaleString('fr-FR'), currency: covoiturage?.devise }),
                     [
                         {
-                            text: 'Voir mes réservations',
+                            text: t('covoiturageBooking.voirMesReservations'),
                             onPress: () => navigation.navigate('MesReservationsCovoiturage' as never)
                         },
                         {
-                            text: 'Voir ma réservation',
+                            text: t('covoiturageBooking.voirMaReservation'),
                             onPress: () => {
                                 (navigation as any).navigate('MesReservationsCovoiturage');
                             }
@@ -236,7 +236,7 @@ const CovoiturageBookingScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('covoiturageBooking.chargement')}</Text>
             </View>
         );
     }
@@ -244,7 +244,7 @@ const CovoiturageBookingScreen: React.FC = () => {
     if (!covoiturage) {
         return (
             <View style={styles.centerContainer}>
-                <Text style={styles.errorText}>Trajet non trouvé</Text>
+                <Text style={styles.errorText}>{t('covoiturageBooking.trajetNonTrouve')}</Text>
             </View>
         );
     }
@@ -254,7 +254,7 @@ const CovoiturageBookingScreen: React.FC = () => {
             <View style={styles.container}>
                 <View style={styles.successContainer}>
                     <SafeIcon name="check-circle" size={64} color="#10B981" />
-                    <Text style={styles.successTitle}>Réservation confirmée !</Text>
+                    <Text style={styles.successTitle}>{t('covoiturageBooking.reservationConfirmee')}</Text>
                     <Text style={styles.successText}>
                         Votre réservation a été confirmée. Vous recevrez une notification avant le départ.
                     </Text>
@@ -265,7 +265,7 @@ const CovoiturageBookingScreen: React.FC = () => {
                         </>
                     )}
                     <NativeButton
-                        title="Voir mes réservations"
+                        title={t('covoiturageBooking.voirMesReservations')}
                         onPress={() => navigation.navigate('MesReservationsCovoiturage' as never)}
                         variant="primary"
                         style={styles.button}
@@ -299,13 +299,13 @@ const CovoiturageBookingScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Réservation</Text>
+                <Text style={styles.title}>{t('covoiturageBooking.reservation')}</Text>
             </View>
 
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 {/* Récapitulatif trajet */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>Récapitulatif du trajet</Text>
+                    <Text style={styles.cardTitle}>{t('covoiturageBooking.recapitulatifDuTrajet')}</Text>
                     <View style={styles.routeRow}>
                         <View style={styles.routePoint}>
                             <View style={styles.routeDot} />
@@ -371,10 +371,10 @@ const CovoiturageBookingScreen: React.FC = () => {
 
                 {/* Détails réservation */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>Détails de la réservation</Text>
+                    <Text style={styles.cardTitle}>{t('covoiturageBooking.detailsDeLaReservation')}</Text>
 
                     <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Nombre de places:</Text>
+                        <Text style={styles.detailLabel}>{t('covoiturageBooking.nombreDePlaces')}</Text>
                         <View style={styles.placesSelector}>
                             <TouchableOpacity
                                 style={styles.selectorButton}
@@ -396,13 +396,13 @@ const CovoiturageBookingScreen: React.FC = () => {
 
                     <View style={styles.priceBreakdown}>
                         <View style={styles.priceRow}>
-                            <Text style={styles.priceLabel}>Prix par place:</Text>
+                            <Text style={styles.priceLabel}>{t('covoiturageBooking.prixParPlace')}/Text>
                             <Text style={styles.priceValue}>
                                 {covoiturage.prix_par_place.toLocaleString('fr-FR')} {covoiturage.devise}
                             </Text>
                         </View>
                         <View style={styles.priceRow}>
-                            <Text style={styles.priceLabel}>Nombre de places:</Text>
+                            <Text style={styles.priceLabel}>{t('covoiturageBooking.nombreDePlaces')}</Text>
                             <Text style={styles.priceValue}>{numberOfPlaces}</Text>
                         </View>
                         <View style={[styles.priceRow, styles.totalRow]}>
@@ -451,7 +451,7 @@ const CovoiturageBookingScreen: React.FC = () => {
                     <View style={styles.walletRow}>
                         <SafeIcon name="wallet" size={20} color={modernColors.primary} />
                         <View style={styles.walletInfo}>
-                            <Text style={styles.walletLabel}>Solde disponible:</Text>
+                            <Text style={styles.walletLabel}>{t('covoiturageBooking.soldeDisponible')}/Text>
                             <Text style={styles.walletBalance}>
                                 {balance.toLocaleString('fr-FR')} {covoiturage.devise}
                             </Text>

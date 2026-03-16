@@ -15,6 +15,7 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ServiceDetailScreenProps {
     route: {
@@ -33,7 +34,8 @@ const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({ route, naviga
     const scrollViewRef = useRef<ScrollView>(null);
     const commentsSectionY = useRef<number>(0);
 
-    const [loading, setLoading] = useState(true);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(true);
     const [service, setService] = useState<any>(null);
     const [prestataire, setPrestataire] = useState<any>(null);
     const [showChat, setShowChat] = useState(false);
@@ -186,7 +188,7 @@ const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({ route, naviga
             return (
                 <View style={styles.actionsContainer}>
                     <NativeButton
-                        title="Réserver place"
+                        title={t('serviceDetail.reserverPlace')}
                         variant="primary"
                         onPress={() => handleReservation('place')}
                         style={styles.actionButton}
@@ -224,7 +226,7 @@ const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({ route, naviga
             return (
                 <View style={styles.actionsContainer}>
                     <NativeButton
-                        title="Réserver ticket"
+                        title={t('serviceDetail.reserverTicket')}
                         variant="primary"
                         onPress={() => handleReservation('ticket')}
                         style={styles.actionButton}
@@ -270,7 +272,7 @@ const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({ route, naviga
                     {metadata.permanent_24h && (
                         <View style={styles.infoRow}>
                             <SafeIcon name="clock" size={16} color={modernColors.primary} />
-                            <Text style={styles.infoText}>⏰ Service 24/7</Text>
+                            <Text style={styles.infoText}>{t('serviceDetail.service247')}/Text>
                         </View>
                     )}
                     {metadata.services && Array.isArray(metadata.services) && (
@@ -310,7 +312,7 @@ const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({ route, naviga
                     <Text style={styles.sectionTitle}>Trajet</Text>
                     <View style={styles.infoRow}>
                         <Text style={styles.infoText}>
-                            <Text style={styles.bold}>Départ:</Text> {metadata.depart}
+                            <Text style={styles.bold}>{t('serviceDetail.depart')}</Text> {metadata.depart}
                         </Text>
                     </View>
                     <View style={styles.infoRow}>
@@ -350,7 +352,7 @@ const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({ route, naviga
     if (!service) {
         return (
             <View style={styles.center}>
-                <Text>Service non trouvé</Text>
+                <Text>{t('serviceDetail.serviceNonTrouve')}</Text>
             </View>
         );
     }

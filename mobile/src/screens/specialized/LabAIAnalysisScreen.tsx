@@ -15,6 +15,7 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { ExaminationResults, LabAnalysisResult, labService } from '../../services/labService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface LabAIAnalysisScreenParams {
     examinationId: string;
@@ -24,6 +25,7 @@ interface LabAIAnalysisScreenParams {
 
 const LabAIAnalysisScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
     const params = route.params as LabAIAnalysisScreenParams;
@@ -90,7 +92,7 @@ const LabAIAnalysisScreen: React.FC = () => {
     };
 
     const formatDate = (dateString: string | null) => {
-        if (!dateString) return 'Non spécifié';
+        if (!dateString) return t('labAIAnalysisScreen.nonSpecifie');
         try {
             const date = new Date(dateString);
             return date.toLocaleString('fr-FR', {
@@ -111,10 +113,10 @@ const LabAIAnalysisScreen: React.FC = () => {
             case 'critique':
                 return modernColors.error;
             case 'high':
-            case 'élevée':
+            case t('labAIAnalysisScreen.elevee'):
                 return '#DC2626';
             case 'moderate':
-            case 'modérée':
+            case t('labAIAnalysisScreen.moderee'):
                 return modernColors.warning;
             case 'low':
             case 'faible':
@@ -128,7 +130,7 @@ const LabAIAnalysisScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement des résultats...</Text>
+                <Text style={styles.loadingText}>{t('labAIAnalysis.chargementDesResultats')}</Text>
             </View>
         );
     }
@@ -136,7 +138,7 @@ const LabAIAnalysisScreen: React.FC = () => {
     if (!examinationResults) {
         return (
             <View style={styles.centerContainer}>
-                <Text style={styles.errorText}>Résultats non disponibles</Text>
+                <Text style={styles.errorText}>{t('labAIAnalysis.resultatsNonDisponibles')}</Text>
             </View>
         );
     }
@@ -147,31 +149,31 @@ const LabAIAnalysisScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Analyse IA des résultats</Text>
+                <Text style={styles.title}>{t('labAIAnalysis.analyseIaDesResultats')}</Text>
             </View>
 
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 {/* Informations de l'examen */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>Informations de l'examen</Text>
+                    <Text style={styles.cardTitle}>{t('labAIAnalysis.informationsDeLexamen')}/Text>
 
                     <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Type d'examen:</Text>
+                        <Text style={styles.infoLabel}>{t('labAIAnalysis.typeDexamen')}/Text>
                         <Text style={styles.infoValue}>
-                            {examinationResults.examination_type_name || 'Non spécifié'}
+                            {examinationResults.examination_type_name || t('labAIAnalysis.nonSpecifie')}
                         </Text>
                     </View>
 
                     <View style={styles.infoRow}>
                         <Text style={styles.infoLabel}>Laboratoire:</Text>
                         <Text style={styles.infoValue}>
-                            {examinationResults.laboratory_name || 'Non spécifié'}
+                            {examinationResults.laboratory_name || t('labAIAnalysis.nonSpecifie')}
                         </Text>
                     </View>
 
                     {examinationResults.completed_at && (
                         <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>Date de complétion:</Text>
+                            <Text style={styles.infoLabel}>{t('labAIAnalysis.dateDeCompletion')}</Text>
                             <Text style={styles.infoValue}>
                                 {formatDate(examinationResults.completed_at)}
                             </Text>
@@ -182,7 +184,7 @@ const LabAIAnalysisScreen: React.FC = () => {
                 {/* Résultats bruts */}
                 {examinationResults.results && (
                     <NativeCard style={styles.card}>
-                        <Text style={styles.cardTitle}>Résultats bruts</Text>
+                        <Text style={styles.cardTitle}>{t('labAIAnalysis.resultatsBruts')}</Text>
                         <View style={styles.resultsContainer}>
                             <Text style={styles.resultsText}>
                                 {typeof examinationResults.results === 'string'
@@ -196,7 +198,7 @@ const LabAIAnalysisScreen: React.FC = () => {
                 {/* Interprétation existante */}
                 {examinationResults.interpretation && (
                     <NativeCard style={styles.card}>
-                        <Text style={styles.cardTitle}>Interprétation</Text>
+                        <Text style={styles.cardTitle}>{t('labAIAnalysis.interpretation')}</Text>
                         <Text style={styles.interpretationText}>
                             {examinationResults.interpretation}
                         </Text>
@@ -208,7 +210,7 @@ const LabAIAnalysisScreen: React.FC = () => {
                     <NativeCard style={styles.card}>
                         <View style={styles.aiPromptContainer}>
                             <SafeIcon name="sparkles" size={48} color={modernColors.primary} />
-                            <Text style={styles.aiPromptTitle}>Analyse IA avancée</Text>
+                            <Text style={styles.aiPromptTitle}>{t('labAIAnalysis.analyseIaAvancee')}</Text>
                             <Text style={styles.aiPromptText}>
                                 Obtenez une analyse détaillée de vos résultats avec détection d'anomalies et recommandations personnalisées
                             </Text>
@@ -234,13 +236,13 @@ const LabAIAnalysisScreen: React.FC = () => {
                                     color={analysisResult.is_normal ? modernColors.success : modernColors.warning}
                                 />
                                 <Text style={styles.cardTitle}>
-                                    {analysisResult.is_normal ? 'Résultats normaux' : 'Anomalies détectées'}
+                                    {analysisResult.is_normal ? 'Résultats normaux' : t('labAIAnalysisScreen.anomaliesDetectees')}
                                 </Text>
                             </View>
 
                             {analysisResult.interpretation && (
                                 <View style={styles.interpretationContainer}>
-                                    <Text style={styles.interpretationTitle}>Interprétation:</Text>
+                                    <Text style={styles.interpretationTitle}>{t('labAIAnalysis.interpretation')}</Text>
                                     <Text style={styles.interpretationText}>
                                         {analysisResult.interpretation}
                                     </Text>
@@ -249,7 +251,7 @@ const LabAIAnalysisScreen: React.FC = () => {
 
                             {analysisResult.confidence && (
                                 <View style={styles.confidenceContainer}>
-                                    <Text style={styles.confidenceLabel}>Confiance de l'analyse:</Text>
+                                    <Text style={styles.confidenceLabel}>{t('labAIAnalysis.confianceDeLanalyse')}/Text>
                                     <View style={styles.confidenceBar}>
                                         <View
                                             style={[
@@ -276,7 +278,7 @@ const LabAIAnalysisScreen: React.FC = () => {
                         {analysisResult.anomalies_detected &&
                             analysisResult.anomalies_detected.length > 0 && (
                                 <NativeCard style={styles.card}>
-                                    <Text style={styles.cardTitle}>Anomalies détectées</Text>
+                                    <Text style={styles.cardTitle}>{t('labAIAnalysis.anomaliesDetectees')}</Text>
                                     {analysisResult.anomalies_detected.map((anomaly, idx) => (
                                         <View key={idx} style={styles.anomalyContainer}>
                                             <View style={styles.anomalyHeader}>
@@ -340,7 +342,7 @@ const LabAIAnalysisScreen: React.FC = () => {
                         {analysisResult.follow_up_exams &&
                             analysisResult.follow_up_exams.length > 0 && (
                                 <NativeCard style={styles.card}>
-                                    <Text style={styles.cardTitle}>Examens complémentaires suggérés</Text>
+                                    <Text style={styles.cardTitle}>{t('labAIAnalysis.examensComplementairesSuggeres')}</Text>
                                     {analysisResult.follow_up_exams.map((exam, idx) => (
                                         <View key={idx} style={styles.examItem}>
                                             <SafeIcon name="flask" size={16} color={modernColors.primary} />

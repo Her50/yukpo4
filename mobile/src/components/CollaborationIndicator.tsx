@@ -10,6 +10,7 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import { CollaborationCursor, Collaborator } from '../types/Collaboration';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface CollaborationIndicatorProps {
     collaborators: Collaborator[];
@@ -49,7 +50,7 @@ export const CollaborationIndicator: React.FC<CollaborationIndicatorProps> = ({
                     {item.isActive && (
                         <View style={styles.activeIndicator}>
                             <View style={styles.activeDot} />
-                            <Text style={styles.activeText}>En ligne</Text>
+                            <Text style={styles.activeText}>{t('collaborationIndicator.enLigne')}/Text>
                         </View>
                     )}
                 </View>
@@ -93,7 +94,7 @@ export const CollaborationIndicator: React.FC<CollaborationIndicatorProps> = ({
             {!isConnected && (
                 <View style={styles.disconnectedIndicator}>
                     <View style={styles.disconnectedDot} />
-                    <Text style={styles.disconnectedText}>Déconnecté</Text>
+                    <Text style={styles.disconnectedText}>{t('collaborationIndicator.deconnecte')}</Text>
                 </View>
             )}
         </View>

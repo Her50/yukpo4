@@ -21,6 +21,7 @@ import {
 } from '../types/ExportSettings';
 import { NativeButton } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ExportSettingsPanelProps {
     visible: boolean;
@@ -41,7 +42,8 @@ export const ExportSettingsPanel: React.FC<ExportSettingsPanelProps> = ({
     onClose,
     onExport,
 }) => {
-    const [settings, setSettings] = useState<ExportSettings>({
+        const { t } = useLanguageSafe();
+const [settings, setSettings] = useState<ExportSettings>({
         resolution: initialSettings?.resolution || '1080p',
         format: initialSettings?.format || 'mp4',
         codec: initialSettings?.codec || 'h264',
@@ -119,7 +121,7 @@ export const ExportSettingsPanel: React.FC<ExportSettingsPanelProps> = ({
                 <View style={styles.container}>
                     {/* Header */}
                     <View style={styles.header}>
-                        <Text style={styles.title}>Paramètres d'Export</Text>
+                        <Text style={styles.title}>{t('exportSettingsPanel.parametresDexport')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>
@@ -149,7 +151,7 @@ export const ExportSettingsPanel: React.FC<ExportSettingsPanelProps> = ({
                         )}
 
                         {renderOptionGroup(
-                            'Qualité',
+                            t('exportSettingsPanel.qualite'),
                             QUALITIES,
                             settings.quality,
                             (quality) => setSettings((prev) => ({ ...prev, quality })),
@@ -204,7 +206,7 @@ export const ExportSettingsPanel: React.FC<ExportSettingsPanelProps> = ({
                     {/* Actions */}
                     <View style={styles.actions}>
                         <NativeButton
-                            title="Annuler"
+                            title={t('exportSettingsPanel.annuler')}
                             onPress={onClose}
                             variant="outline"
                             style={styles.cancelButton}

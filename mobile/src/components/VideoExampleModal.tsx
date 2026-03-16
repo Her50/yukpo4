@@ -5,6 +5,7 @@ import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 80; // Largeur avec padding
@@ -53,13 +54,13 @@ const VIDEO_EXAMPLES: VideoExample[] = [
             engagement: '15%',
             creationTime: '3 min',
         },
-        features: ['Format vertical 9:16', 'Transitions rapides', 'Texte dynamique', 'Optimisé TikTok/Reels'],
+        features: ['Format vertical 9:16', 'Transitions rapides', 'Texte dynamique', t('videoExampleModal.optimiseTiktokreels')],
     },
     {
         id: 'story',
         style: 'story',
-        label: 'Story Produit',
-        description: 'Narration douce, highlight des atouts, superpositions élégantes',
+        label: t('videoExample.storyProduit'),
+        description: t('videoExample.narrationDouceHighlightDesAtouts'),
         icon: '📚',
         videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4', // ✅ Vidéo démonstrative différente
         thumbnail: undefined,
@@ -68,13 +69,13 @@ const VIDEO_EXAMPLES: VideoExample[] = [
             engagement: '22%',
             creationTime: '4 min',
         },
-        features: ['Narration douce', 'Superpositions élégantes', 'Mise en avant produits', 'Idéal Instagram Stories'],
+        features: ['Narration douce', t('videoExampleModal.superpositionsElegantes'), 'Mise en avant produits', 'Idéal Instagram Stories'],
     },
     {
         id: 'cinematic',
         style: 'cinematic',
-        label: 'Ciné Premium',
-        description: 'Animations lentes, focus sur détails, ambiance immersive',
+        label: t('videoExample.cinePremium'),
+        description: t('videoExample.animationsLentesFocusSurDetails'),
         icon: '🎨',
         videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', // ✅ Vidéo démonstrative différente
         thumbnail: undefined,
@@ -83,13 +84,13 @@ const VIDEO_EXAMPLES: VideoExample[] = [
             engagement: '18%',
             creationTime: '5 min',
         },
-        features: ['Animations lentes', 'Ambiance immersive', 'Focus sur détails', 'Premium qualité'],
+        features: ['Animations lentes', 'Ambiance immersive', t('videoExampleModal.focusSurDetails'), t('videoExampleModal.premiumQualite')],
     },
     {
         id: 'carousel',
         style: 'carousel',
         label: 'Carousel Flash',
-        description: 'Slides punchy, CTA répétés, idéal publicités express',
+        description: t('videoExample.slidesPunchyCtaRepetesIdeal'),
         icon: '🔄',
         videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4', // ✅ Vidéo démonstrative différente
         thumbnail: undefined,
@@ -98,7 +99,7 @@ const VIDEO_EXAMPLES: VideoExample[] = [
             engagement: '25%',
             creationTime: '2 min',
         },
-        features: ['Slides punchy', 'CTA répétés', 'Idéal publicités express', 'Format carousel'],
+        features: ['Slides punchy', t('videoExampleModal.ctaRepetes'), t('videoExampleModal.idealPublicitesExpress'), 'Format carousel'],
     },
 ];
 
@@ -107,7 +108,8 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
     onClose,
     onStartCreation,
 }) => {
-    const [examples, setExamples] = useState<VideoExample[]>(VIDEO_EXAMPLES);
+        const { t } = useLanguageSafe();
+const [examples, setExamples] = useState<VideoExample[]>(VIDEO_EXAMPLES);
     const [loadingExamples, setLoadingExamples] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [videoErrors, setVideoErrors] = useState<Record<string, boolean>>({});
@@ -420,13 +422,13 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
                                     />
                                     <View style={styles.thumbnailOverlay}>
                                         <ActivityIndicator size="large" color="#FFFFFF" />
-                                        <Text style={[styles.loadingText, { color: '#FFFFFF' }]}>Chargement de la vidéo...</Text>
+                                        <Text style={[styles.loadingText, { color: '#FFFFFF' }]}>{t('videoExample.chargementDeLaVideo')}</Text>
                                     </View>
                                 </View>
                             ) : (
                                 <View style={styles.loadingContainer}>
                                     <ActivityIndicator size="large" color={modernColors.primary} />
-                                    <Text style={styles.loadingText}>Chargement de la vidéo...</Text>
+                                    <Text style={styles.loadingText}>{t('videoExample.chargementDeLaVideo')}</Text>
                                 </View>
                             )}
                         </>
@@ -524,7 +526,7 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
             <View style={styles.overlay}>
                 <NativeCard style={styles.modal}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>Exemples de vidéos créées</Text>
+                        <Text style={styles.title}>{t('videoExample.exemplesDeVideosCreees')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>
@@ -539,7 +541,7 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
                         {loadingExamples && examples.length === VIDEO_EXAMPLES.length ? (
                             <View style={styles.loadingExamplesContainer}>
                                 <ActivityIndicator size="large" color={modernColors.primary} />
-                                <Text style={styles.loadingExamplesText}>Chargement des exemples réels...</Text>
+                                <Text style={styles.loadingExamplesText}>{t('videoExample.chargementDesExemplesReels')}</Text>
                             </View>
                         ) : (
                             <FlatList
@@ -611,14 +613,14 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
 
                     <View style={styles.footer}>
                         <NativeButton
-                            title="Fermer"
+                            title={t('videoExampleModal.fermer')}
                             variant="outline"
                             size="medium"
                             onPress={onClose}
                             style={styles.cancelButton}
                         />
                         <NativeButton
-                            title="Créer ma vidéo"
+                            title={t('videoExample.creerMaVideo')}
                             variant="primary"
                             size="medium"
                             onPress={() => {

@@ -2,6 +2,7 @@ import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useServiceStats } from '../hooks/useServiceStats';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ServiceStatsProps {
   serviceId: string;
@@ -35,7 +36,7 @@ const ServiceStats: React.FC<ServiceStatsProps> = ({ serviceId, compact = false 
     return (
       <View style={[styles.container, compact && styles.compactContainer]}>
         <ActivityIndicator size="small" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Chargement...</Text>
+        <Text style={styles.loadingText}>{t('serviceStats.chargement')}</Text>
       </View>
     );
   }
@@ -89,7 +90,7 @@ const ServiceStats: React.FC<ServiceStatsProps> = ({ serviceId, compact = false 
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Statistiques du service</Text>
+      <Text style={styles.title}>{t('serviceStats.statistiquesDuService')}/Text>
 
       <View style={styles.statsGrid}>
         {renderStatItem('👁️', stats.views, 'Vues')}

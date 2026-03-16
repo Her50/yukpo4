@@ -302,7 +302,7 @@ const FleetDashboardScreen: React.FC = () => {
                 <NativeCard style={styles.statCard}>
                     <SafeIcon name="truck" size={28} color="#3b82f6" type="lucide" />
                     <Text style={styles.statValue}>{stats.active_deliveries}</Text>
-                    <Text style={styles.statLabel}>En cours</Text>
+                    <Text style={styles.statLabel}>{t('fleetDashboard.enCours')}</Text>
                 </NativeCard>
             </View>
 
@@ -312,7 +312,7 @@ const FleetDashboardScreen: React.FC = () => {
                         <SafeIcon name="star" size={24} color="#f59e0b" type="lucide" />
                         <View style={styles.statCardWideText}>
                             <Text style={styles.statValue}>{stats.avg_rating.toFixed(1)}/5</Text>
-                            <Text style={styles.statLabel}>Note moyenne flotte</Text>
+                            <Text style={styles.statLabel}>{t('fleetDashboard.noteMoyenneFlotte')}/Text>
                         </View>
                     </View>
                 </NativeCard>
@@ -321,7 +321,7 @@ const FleetDashboardScreen: React.FC = () => {
                         <SafeIcon name="banknote" size={24} color="#22c55e" type="lucide" />
                         <View style={styles.statCardWideText}>
                             <Text style={styles.statValue}>{formatCurrency(stats.monthly_revenue_cents)}</Text>
-                            <Text style={styles.statLabel}>Revenus ce mois</Text>
+                            <Text style={styles.statLabel}>{t('fleetDashboard.revenusCeMois')}/Text>
                         </View>
                     </View>
                 </NativeCard>
@@ -346,7 +346,7 @@ const FleetDashboardScreen: React.FC = () => {
                     <View style={styles.quickSectionHeader}>
                         <Text style={styles.sectionSubtitle}>Meilleurs coursiers</Text>
                         <TouchableOpacity onPress={() => setActiveTab('couriers')}>
-                            <Text style={styles.seeAllLink}>Voir tous</Text>
+                            <Text style={styles.seeAllLink}>{t('fleetDashboard.voirTous')}/Text>
                         </TouchableOpacity>
                     </View>
                     {couriers
@@ -435,7 +435,7 @@ const FleetDashboardScreen: React.FC = () => {
             ) : couriers.length === 0 ? (
                 <NativeCard style={styles.emptyCard}>
                     <SafeIcon name="users" size={48} color={modernColors.textSecondary} type="lucide" />
-                    <Text style={styles.emptyTitle}>Aucun coursier</Text>
+                    <Text style={styles.emptyTitle}>{t('fleetDashboard.aucunCoursier')}</Text>
                     <Text style={styles.emptyText}>
                         Les coursiers qui s'inscrivent en selectionnant votre entreprise apparaitront ici
                         une fois approuves.
@@ -462,7 +462,7 @@ const FleetDashboardScreen: React.FC = () => {
                 <View style={styles.applicationInfo}>
                     <Text style={styles.applicationName}>{item.name}</Text>
                     <Text style={styles.applicationMeta}>
-                        {COURIER_TYPE_LABELS[item.courier_type || ''] || item.courier_type || 'Type non specifie'}
+                        {COURIER_TYPE_LABELS[item.courier_type || ''] || item.courier_type || t('fleetDashboard.typeNonSpecifie')}
                         {item.city ? ` ・ ${item.city}` : ''}
                     </Text>
                     {item.vehicle_type && (
@@ -487,7 +487,7 @@ const FleetDashboardScreen: React.FC = () => {
             {item.has_documents && (
                 <View style={styles.docBadge}>
                     <SafeIcon name="file-text" size={14} color={modernColors.primary} type="lucide" />
-                    <Text style={styles.docBadgeText}>Documents fournis</Text>
+                    <Text style={styles.docBadgeText}>{t('fleetDashboard.documentsFournis')}/Text>
                 </View>
             )}
 
@@ -547,7 +547,7 @@ const FleetDashboardScreen: React.FC = () => {
             ) : applications.length === 0 ? (
                 <NativeCard style={styles.emptyCard}>
                     <SafeIcon name="inbox" size={48} color={modernColors.textSecondary} type="lucide" />
-                    <Text style={styles.emptyTitle}>Aucune candidature</Text>
+                    <Text style={styles.emptyTitle}>{t('fleetDashboard.aucuneCandidature')}</Text>
                     <Text style={styles.emptyText}>
                         {appFilter === 'submitted'
                             ? 'Aucune candidature en attente pour le moment.'
@@ -574,7 +574,7 @@ const FleetDashboardScreen: React.FC = () => {
             <SafeNativeView style={styles.container}>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement de votre flotte...</Text>
+                    <Text style={styles.loadingText}>{t('fleetDashboard.chargementDeVotreFlotte')}</Text>
                 </View>
             </SafeNativeView>
         );
@@ -585,7 +585,7 @@ const FleetDashboardScreen: React.FC = () => {
             {/* Header */}
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.headerTitle}>Gestion de flotte</Text>
+                    <Text style={styles.headerTitle}>{t('fleetDashboard.gestionDeFlotte')}/Text>
                     <Text style={styles.headerSubtitle}>{fleetLabel}</Text>
                 </View>
                 <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
@@ -653,7 +653,7 @@ const FleetDashboardScreen: React.FC = () => {
                                     setRejectTarget(null);
                                 }}
                             >
-                                <Text style={styles.modalCancelText}>Annuler</Text>
+                                <Text style={styles.modalCancelText}>{t('fleetDashboardScreen.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={styles.modalRejectButton}
@@ -663,7 +663,7 @@ const FleetDashboardScreen: React.FC = () => {
                                 {processing ? (
                                     <ActivityIndicator size="small" color="#fff" />
                                 ) : (
-                                    <Text style={styles.modalRejectText}>Confirmer le rejet</Text>
+                                    <Text style={styles.modalRejectText}>{t('fleetDashboardScreen.confirmerLeRejet')}</Text>
                                 )}
                             </TouchableOpacity>
                         </View>

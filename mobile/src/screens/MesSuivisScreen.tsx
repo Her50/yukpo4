@@ -159,7 +159,7 @@ const MesSuivisScreen: React.FC = () => {
         return (
             <View style={styles.centered}>
                 <ActivityIndicator size="large" color="#FF2D55" />
-                <Text style={styles.loadingText}>Chargement de vos suivis...</Text>
+                <Text style={styles.loadingText}>{t('mesSuivis.chargementDeVosSuivis')}</Text>
             </View>
         );
     }
@@ -173,7 +173,7 @@ const MesSuivisScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={22} color="#111" type="lucide" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Mes Suivis</Text>
+                <Text style={styles.headerTitle}>{t('mesSuivis.mesSuivis')}</Text>
                 <View style={styles.headerRight}>
                     <Text style={styles.countBadge}>{following.length}</Text>
                 </View>
@@ -182,7 +182,7 @@ const MesSuivisScreen: React.FC = () => {
             {following.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="users" size={56} color="#D1D5DB" type="lucide" />
-                    <Text style={styles.emptyTitle}>Aucun suivi</Text>
+                    <Text style={styles.emptyTitle}>{t('mesSuivis.aucunSuivi')}</Text>
                     <Text style={styles.emptySubtitle}>
                         Suivez des vendeurs depuis le feed vidéo pour retrouver leurs produits ici.
                     </Text>
@@ -191,7 +191,7 @@ const MesSuivisScreen: React.FC = () => {
                         onPress={() => (navigation as any).navigate('VideoFeed')}
                     >
                         <SafeIcon name="play" size={16} color="#fff" type="lucide" />
-                        <Text style={styles.exploreText}>Explorer les vidéos</Text>
+                        <Text style={styles.exploreText}>{t('mesSuivis.explorerLesVideos')}</Text>
                     </TouchableOpacity>
                 </View>
             ) : (

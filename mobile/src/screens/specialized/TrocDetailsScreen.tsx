@@ -46,7 +46,7 @@ const getStatutColor = (s: string) => {
     switch (s) { case 'en_attente': return '#F59E0B'; case 'accepte': return '#10B981'; case 'refuse': return '#EF4444'; case 'complete': return '#8B5CF6'; case 'annule': return '#6B7280'; default: return '#6B7280'; }
 };
 const getStatutLabel = (s: string) => {
-    switch (s) { case 'en_attente': return 'En attente'; case 'accepte': return 'Accepté'; case 'refuse': return 'Refusé'; case 'complete': return 'Complété'; case 'annule': return 'Annulé'; default: return s; }
+    switch (s) { case 'en_attente': return 'En attente'; case 'accepte': return t('trocDetailsScreen.accepte'); case 'refuse': return 'Refusé'; case 'complete': return 'Complété'; case 'annule': return 'Annulé'; default: return s; }
 };
 
 const TrocDetailsScreen: React.FC = () => {
@@ -112,14 +112,14 @@ const TrocDetailsScreen: React.FC = () => {
         if (!troc) return;
         try {
             await Share.share({
-                message: `Troc de livres scolaires\n${troc.livre_offert?.titre || 'Livre offert'} ↔ ${troc.livre_souhaite?.titre || 'Livre souhaité'}\nStatut: ${getStatutLabel(troc.troc.statut)}\nVia Yukpo`,
+                message: `Troc de livres scolaires\n${troc.livre_offert?.titre || 'Livre offert'} ↔ ${troc.livre_souhaite?.titre || t('trocDetails.livreSouhaite')}\nStatut: ${getStatutLabel(troc.troc.statut)}\nVia Yukpo`,
                 title: 'Troc de livres',
             });
         } catch { }
     };
 
-    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#7C3AED" /><Text style={st.centerText}>Chargement...</Text></View>);
-    if (!troc) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#7C3AED" /><Text style={st.centerText}>Troc non trouvé</Text></View>);
+    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#7C3AED" /><Text style={st.centerText}>{t('trocDetails.chargement')}</Text></View>);
+    if (!troc) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#7C3AED" /><Text style={st.centerText}>{t('trocDetails.trocNonTrouve')}</Text></View>);
 
     const isInitiateur = (user?.id as any) === troc.troc.initiateur_id;
     const canAccept = !isInitiateur && troc.troc.statut === 'en_attente';
@@ -140,13 +140,13 @@ const TrocDetailsScreen: React.FC = () => {
                     <Text style={st.heroTitle}>Troc de livres</Text>
                     <View style={st.heroBadges}>
                         <View style={[st.badge, { backgroundColor: statutColor + '50' }]}><Text style={st.badgeText}>{getStatutLabel(troc.troc.statut)}</Text></View>
-                        {troc.troc.type_troc === 'chaine' && (<View style={[st.badge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}><SafeIcon name="link" size={12} color="#fff" /><Text style={st.badgeText}>Chaîne</Text></View>)}
+                        {troc.troc.type_troc === 'chaine' && (<View style={[st.badge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}><SafeIcon name="link" size={12} color="#fff" /><Text style={st.badgeText}>{t('trocDetails.chaine')}</Text></View>)}
                     </View>
                     {/* Exchange preview */}
                     <View style={st.exchangeViz}>
-                        <View style={st.exchangeEnd}><Text style={st.exchangeLabel}>{isInitiateur ? 'Vous offrez' : 'Vous recevez'}</Text><Text style={st.exchangeVal} numberOfLines={1}>{troc.livre_offert?.titre || 'Livre offert'}</Text></View>
+                        <View style={st.exchangeEnd}><Text style={st.exchangeLabel}>{isInitiateur ? 'Vous offrez' : 'Vous recevez'}</Text><Text style={st.exchangeVal} numberOfLines={1}>{troc.livre_offert?.titre || t('trocDetails.livreOffert')}</Text></View>
                         <SafeIcon name="repeat" size={18} color="rgba(255,255,255,0.7)" />
-                        <View style={st.exchangeEnd}><Text style={st.exchangeLabel}>{isInitiateur ? 'Vous recevez' : 'Vous offrez'}</Text><Text style={st.exchangeVal} numberOfLines={1}>{troc.livre_souhaite?.titre || 'Livre souhaité'}</Text></View>
+                        <View style={st.exchangeEnd}><Text style={st.exchangeLabel}>{isInitiateur ? 'Vous recevez' : 'Vous offrez'}</Text><Text style={st.exchangeVal} numberOfLines={1}>{troc.livre_souhaite?.titre || t('trocDetails.livreSouhaite')}</Text></View>
                     </View>
                 </View>
             </LinearGradient>
@@ -156,17 +156,17 @@ const TrocDetailsScreen: React.FC = () => {
 
                 {/* Exchange Details */}
                 <View style={st.card}>
-                    <View style={st.cardHeader}><SafeIcon name="book-open" size={18} color="#7C3AED" /><Text style={st.cardTitle}>Détails de l'échange</Text></View>
+                    <View style={st.cardHeader}><SafeIcon name="book-open" size={18} color="#7C3AED" /><Text style={st.cardTitle}>{t('trocDetails.detailsDeLechange')}</Text></View>
                     <View style={{ flexDirection: 'row', gap: 10 }}>
                         <View style={st.livreCard}>
                             <Text style={st.livreLabel}>{isInitiateur ? 'Vous offrez' : 'Vous recevez'}</Text>
-                            <Text style={st.livreTitle}>{troc.livre_offert?.titre || 'Livre offert'}</Text>
+                            <Text style={st.livreTitle}>{troc.livre_offert?.titre || t('trocDetails.livreOffert')}</Text>
                             {troc.livre_offert && <Text style={st.livreMeta}>{troc.livre_offert.classe_actuelle} → {troc.livre_offert.classe_souhaitee}</Text>}
                         </View>
                         <View style={{ justifyContent: 'center' }}><SafeIcon name="arrow-right" size={20} color="#7C3AED" /></View>
                         <View style={st.livreCard}>
                             <Text style={st.livreLabel}>{isInitiateur ? 'Vous recevez' : 'Vous offrez'}</Text>
-                            <Text style={st.livreTitle}>{troc.livre_souhaite?.titre || 'Livre souhaité'}</Text>
+                            <Text style={st.livreTitle}>{troc.livre_souhaite?.titre || t('trocDetails.livreSouhaite')}</Text>
                             {troc.livre_souhaite && <Text style={st.livreMeta}>{troc.livre_souhaite.classe_actuelle} → {troc.livre_souhaite.classe_souhaitee}</Text>}
                         </View>
                     </View>
@@ -176,7 +176,7 @@ const TrocDetailsScreen: React.FC = () => {
                 <View style={st.card}>
                     <View style={st.cardHeader}><SafeIcon name="info" size={18} color="#7C3AED" /><Text style={st.cardTitle}>Informations</Text></View>
                     {troc.troc.distance_km != null && (<View style={st.infoRow}><Text style={st.infoLabel}>Distance</Text><Text style={st.infoValue}>{troc.troc.distance_km.toFixed(1)} km</Text></View>)}
-                    <View style={st.infoRow}><Text style={st.infoLabel}>Créé le</Text><Text style={st.infoValue}>{new Date(troc.troc.created_at).toLocaleDateString('fr-FR')}</Text></View>
+                    <View style={st.infoRow}><Text style={st.infoLabel}>{t('trocDetails.creeLe')}</Text><Text style={st.infoValue}>{new Date(troc.troc.created_at).toLocaleDateString('fr-FR')}</Text></View>
                 </View>
 
                 {/* Validations */}
@@ -206,7 +206,7 @@ const TrocDetailsScreen: React.FC = () => {
                         {canComplete && (
                             <TouchableOpacity style={[st.primaryBtn, { backgroundColor: '#059669' }, actionLoading && { opacity: 0.5 }]} onPress={handleComplete} disabled={actionLoading}>
                                 {actionLoading ? <ActivityIndicator color="#fff" /> : <SafeIcon name="check-circle" size={20} color="#fff" />}
-                                <Text style={st.primaryBtnText}>Finaliser l'échange</Text>
+                                <Text style={st.primaryBtnText}>{t('trocDetails.finaliserLechange')}</Text>
                             </TouchableOpacity>
                         )}
                         {canRefuse && (

@@ -5,11 +5,13 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import useMyGlobalPromos from '../../hooks/useMyGlobalPromos';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const GlobalPromoSubmissionScreen: React.FC = () => {
     const { events, entries, selectedEventId, setSelectedEventId, loading, submitting, submit } =
         useMyGlobalPromos();
-    const [form, setForm] = useState({
+        const { t } = useLanguageSafe();
+const [form, setForm] = useState({
         serviceId: '',
         promoPriceCfa: '',
         discountPercentage: '',
@@ -63,7 +65,7 @@ const GlobalPromoSubmissionScreen: React.FC = () => {
                 </View>
 
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>1. Choisir la campagne</Text>
+                    <Text style={styles.sectionTitle}>{t('globalPromoSubmission.1ChoisirLaCampagne')}</Text>
                     <View style={styles.eventList}>
                         {events.map((event) => (
                             <NativeButton
@@ -75,7 +77,7 @@ const GlobalPromoSubmissionScreen: React.FC = () => {
                             />
                         ))}
                         {!events.length && !loading && (
-                            <Text style={styles.emptyText}>Aucune campagne ouverte actuellement.</Text>
+                            <Text style={styles.emptyText}>{t('globalPromoSubmission.aucuneCampagneOuverteActuellement')}</Text>
                         )}
                     </View>
                 </NativeCard>
@@ -110,7 +112,7 @@ const GlobalPromoSubmissionScreen: React.FC = () => {
                                 />
                             </View>
                             <View style={styles.rowItem}>
-                                <Text style={styles.label}>Réduction (%)</Text>
+                                <Text style={styles.label}>{t('globalPromoSubmission.reduction')}</Text>
                                 <TextInput
                                     style={styles.input}
                                     placeholder="Ex: 20"
@@ -124,7 +126,7 @@ const GlobalPromoSubmissionScreen: React.FC = () => {
                         </View>
 
                         <View style={styles.field}>
-                            <Text style={styles.label}>Stock promo (optionnel)</Text>
+                            <Text style={styles.label}>{t('globalPromoSubmission.stockPromoOptionnel')}/Text>
                             <TextInput
                                 style={styles.input}
                                 placeholder="Ex: 25"
@@ -135,10 +137,10 @@ const GlobalPromoSubmissionScreen: React.FC = () => {
                         </View>
 
                         <View style={styles.field}>
-                            <Text style={styles.label}>Note pour l’équipe Yukpo</Text>
+                            <Text style={styles.label}>{t('globalPromoSubmission.notePourLequipeYukpo')}</Text>
                             <TextInput
                                 style={[styles.input, styles.textarea]}
-                                placeholder="Ex: Live prévu samedi 18h avec démonstration"
+                                placeholder={t('globalPromoSubmission.exLivePrevuSamedi18h')}
                                 multiline
                                 numberOfLines={4}
                                 value={form.note}
@@ -155,14 +157,14 @@ const GlobalPromoSubmissionScreen: React.FC = () => {
                 )}
 
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>Mes demandes</Text>
+                    <Text style={styles.sectionTitle}>{t('globalPromoSubmission.mesDemandes')}</Text>
                     {entries.slice(0, 5).map((entry) => (
                         <View key={entry.id} style={styles.entryRow}>
                             <Text style={styles.entryService}>Service #{entry.serviceId}</Text>
                             <Text style={styles.entryStatus}>{entry.status}</Text>
                         </View>
                     ))}
-                    {!entries.length && <Text style={styles.emptyText}>Aucune demande envoyée pour l’instant.</Text>}
+                    {!entries.length && <Text style={styles.emptyText}>{t('globalPromoSubmission.aucuneDemandeEnvoyeePourLinstant')}</Text>}
                 </NativeCard>
             </ScrollView>
         </SafeNativeView>

@@ -20,6 +20,7 @@ import { mediaService } from '../../services/mediaService';
 import { UploadedFile, uploadFiles } from '../../services/uploadApi';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface MediaItem {
     uri: string;
@@ -44,9 +45,10 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
     maxImages = 10,
     maxVideos = 3,
     allowVideos = true,
-    label = 'Photos et vidéos',
+    label={t('mediaUploader.photosEtVideos')},
 }) => {
-    const [uploading, setUploading] = useState(false);
+        const { t } = useLanguageSafe();
+const [uploading, setUploading] = useState(false);
     const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
     const requestPermissions = async () => {
@@ -56,7 +58,7 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
         if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
             Alert.alert(
                 'Permissions requises',
-                'Veuillez autoriser l\'accès à la caméra et à la galerie pour ajouter des photos/vidéos.'
+                'Veuillez autoriser l\t('mediaUploader.accesALaCameraEtA')
             );
             return false;
         }
@@ -252,7 +254,7 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
                         disabled={uploading}
                     >
                         <SafeIcon name="video" size={20} color={modernColors.primary} type="lucide" />
-                        <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>Vidéo</Text>
+                        <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>{t('mediaUploader.video')}</Text>
                     </TouchableOpacity>
                 )}
             </View>

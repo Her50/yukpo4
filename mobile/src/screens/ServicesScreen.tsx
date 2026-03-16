@@ -126,8 +126,8 @@ const ServicesScreen: React.FC = () => {
 
           return {
             id: String(rawService.id),
-            title: extractValue(serviceData.titre_service) || extractValue(serviceData.titre) || extractValue(serviceData.title) || 'Service sans titre',
-            description: extractValue(serviceData.description) || 'Aucune description',
+            title: extractValue(serviceData.titre_service) || extractValue(serviceData.titre) || extractValue(serviceData.title) || t('services.serviceSansTitre'),
+            description: extractValue(serviceData.description) || t('services.aucuneDescription'),
             status: rawService.actif ? 'active' : 'inactive',
             createdAt: rawService.created_at,
             views: 0, // TODO: récupérer depuis les stats
@@ -278,7 +278,7 @@ const ServicesScreen: React.FC = () => {
     try {
       const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
       const shareUrl = `${SHARE_BASE_URL}/service/${service.id}`;
-      const titre = service.title || service.titre || 'Service <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>';
+      const titre = service.title || service.titre || t('services.serviceTextStylestylesbrandyukyuktexttex');
       const description = service.description || '';
       const prix = service.prix || service.price;
 
@@ -499,7 +499,7 @@ const ServicesScreen: React.FC = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={modernColors.primary} />
-        <Text style={styles.loadingText}>Chargement de vos services...</Text>
+        <Text style={styles.loadingText}>{t('services.chargementDeVosServices')}</Text>
       </View>
     );
   }
@@ -515,7 +515,7 @@ const ServicesScreen: React.FC = () => {
           <View style={styles.headerLeft}>
             <SafeIcon name="briefcase" size={28} color="#fff" />
             <View>
-              <Text style={styles.headerTitle}>Mes Services</Text>
+              <Text style={styles.headerTitle}>{t('services.mesServices')}</Text>
               <Text style={styles.headerSubtitle}>
                 Gérez et suivez vos services
               </Text>
@@ -559,7 +559,7 @@ const ServicesScreen: React.FC = () => {
         {showStats && (
           <View style={styles.statsContainer}>
             <View style={styles.statsTitleRow}>
-              <Text style={styles.sectionTitle}>📊 Statistiques</Text>
+              <Text style={styles.sectionTitle}>{t('services.statistiques')}/Text>
               <TouchableOpacity onPress={() => setShowStats(false)}>
                 <SafeIcon name="x" size={20} color={modernColors.textSecondary} />
               </TouchableOpacity>
@@ -588,16 +588,16 @@ const ServicesScreen: React.FC = () => {
           {sortedServices.length === 0 ? (
             <NativeCard style={styles.emptyCard}>
               <Text style={styles.emptyIcon}>📭</Text>
-              <Text style={styles.emptyTitle}>Aucun service trouvé</Text>
+              <Text style={styles.emptyTitle}>{t('services.aucunServiceTrouve')}</Text>
               <Text style={styles.emptySubtitle}>
                 {selectedCategory === 'all'
-                  ? 'Créez votre premier service pour commencer'
-                  : `Aucun service dans la catégorie "${selectedCategory}"`
+                  ? t('servicesScreen.creezVotrePremierServicePourCommencer')
+                  : t('servicesScreen.aucunServiceDansLaCategorie', { selectedCategory: selectedCategory })
                 }
               </Text>
               {selectedCategory === 'all' && (
                 <NativeButton
-                  title="Créer un service"
+                  title={t('services.creerUnService')}
                   onPress={handleCreateService}
                   variant="primary"
                   style={styles.emptyButton}

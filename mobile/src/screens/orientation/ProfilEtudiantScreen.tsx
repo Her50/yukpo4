@@ -243,7 +243,7 @@ const ProfilEtudiantScreen: React.FC = () => {
             <SafeNativeView style={styles.container}>
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('profilEtudiant.chargement')}</Text>
                 </View>
             </SafeNativeView>
         );
@@ -253,7 +253,7 @@ const ProfilEtudiantScreen: React.FC = () => {
         <SafeNativeView style={styles.container}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>Mon Profil Étudiant</Text>
+                    <Text style={styles.title}>{t('profilEtudiant.monProfilEtudiant')}</Text>
                     <Text style={styles.subtitle}>
                         Décrivez votre profil académique pour obtenir des recommandations d'orientation intelligentes
                     </Text>
@@ -268,7 +268,7 @@ const ProfilEtudiantScreen: React.FC = () => {
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={styles.textInput}
-                            placeholder="Ex: Je suis en classe de Terminale, série D. Je suis très performant en Mathématiques et Physique-Chimie, mais j'ai des difficultés en Français et Histoire. J'aimerais faire des études d'ingénierie..."
+                            placeholder={t('profilEtudiant.exJeSuisEnClasse')}ai des difficultés en Français et Histoire. J'aimerais faire des études d'ingénierie..."
                             placeholderTextColor="#9CA3AF"
                             value={profileDescription}
                             onChangeText={setProfileDescription}
@@ -287,7 +287,7 @@ const ProfilEtudiantScreen: React.FC = () => {
                                 activeOpacity={0.7}
                             >
                                 <SafeIcon name="mic" size={20} color="#FFFFFF" type="lucide" />
-                                <Text style={styles.audioButtonText}>Enregistrer en audio</Text>
+                                <Text style={styles.audioButtonText}>{t('profilEtudiantScreen.enregistrerEnAudio')}</Text>
                             </TouchableOpacity>
                         ) : (
                             <View style={styles.recordingContainer}>
@@ -303,7 +303,7 @@ const ProfilEtudiantScreen: React.FC = () => {
                                     activeOpacity={0.7}
                                 >
                                     <SafeIcon name="square" size={18} color="#FFFFFF" type="lucide" />
-                                    <Text style={styles.stopButtonText}>Arrêter</Text>
+                                    <Text style={styles.stopButtonText}>{t('profilEtudiant.arreter')}</Text>
                                 </TouchableOpacity>
                             </View>
                         )}
@@ -342,7 +342,7 @@ const ProfilEtudiantScreen: React.FC = () => {
                         ) : (
                             <>
                                 <SafeIcon name="save" size={18} color="#FFFFFF" type="lucide" />
-                                <Text style={styles.saveButtonText}>Enregistrer et obtenir recommandation</Text>
+                                <Text style={styles.saveButtonText}>{t('profilEtudiantScreen.enregistrerEtObtenirRecommandation')}</Text>
                             </>
                         )}
                     </TouchableOpacity>

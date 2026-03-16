@@ -5,6 +5,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useUserContext } from '../context/UserContext';
 import { gpsTrackingService } from '../services/gpsTrackingService';
 import { API_BASE_URL } from '../config/api';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface GPSAutoTrackerProps {
   autoStart?: boolean;
@@ -16,7 +17,8 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
   showStatus = true
 }) => {
   const { user } = useUserContext();
-  const [isTracking, setIsTracking] = useState(false);
+      const { t } = useLanguageSafe();
+const [isTracking, setIsTracking] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<string>('');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
@@ -160,7 +162,7 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
 
         {lastUpdate && (
           <View style={styles.row}>
-            <Text style={styles.label}>Dernière mise à jour:</Text>
+            <Text style={styles.label}>{t('gPSAutoTracker.derniereMiseAJour')}</Text>
             <Text style={styles.value}>
               {lastUpdate.toLocaleTimeString()}
             </Text>
@@ -174,14 +176,14 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
             onPress={startGPSTracking}
             style={[styles.button, styles.buttonStart]}
           >
-            <Text style={styles.buttonText}>Démarrer</Text>
+            <Text style={styles.buttonText}>{t('gPSAutoTracker.demarrer')}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             onPress={stopGPSTracking}
             style={[styles.button, styles.buttonStop]}
           >
-            <Text style={styles.buttonText}>Arrêter</Text>
+            <Text style={styles.buttonText}>{t('gPSAutoTracker.arreter')}</Text>
           </TouchableOpacity>
         )}
 
@@ -189,7 +191,7 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
           onPress={getCurrentLocation}
           style={[styles.button, styles.buttonRefresh]}
         >
-          <Text style={styles.buttonText}>Actualiser</Text>
+          <Text style={styles.buttonText}>{t('gPSAutoTracker.actualiser')}</Text>
         </TouchableOpacity>
       </View>
     </View>

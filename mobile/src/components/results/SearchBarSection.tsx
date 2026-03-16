@@ -19,6 +19,7 @@ import { hapticPress, hapticSelect } from '../../utils/hapticFeedback';
 import ModernGPSModal from '../ModernGPSModal';
 import SafeIcon from '../SafeIcon';
 import SearchActionsBottomSheet from './SearchActionsBottomSheet';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SearchBarSectionProps {
     searchQuery: string;
@@ -70,7 +71,8 @@ const SearchBarSection: React.FC<SearchBarSectionProps> = ({
     onGPSSelect,
     onClearGPS,
 }) => {
-    const [showSearchActions, setShowSearchActions] = useState(false);
+        const { t } = useLanguageSafe();
+const [showSearchActions, setShowSearchActions] = useState(false);
     const [showGPSModal, setShowGPSModal] = useState(false);
 
     return (
@@ -91,7 +93,7 @@ const SearchBarSection: React.FC<SearchBarSectionProps> = ({
                         style={styles.searchActionsButton}
                         onPress={() => setShowSearchActions(true)}
                         accessibilityRole="button"
-                        accessibilityLabel="Afficher les outils de recherche avancée"
+                        accessibilityLabel={t('searchBarSection.afficherLesOutilsDeRecherche')}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                         <SafeIcon name="more-horizontal" size={18} color={modernColors.primary} />
@@ -165,7 +167,7 @@ const SearchBarSection: React.FC<SearchBarSectionProps> = ({
                     </ScrollView>
                     {searchHistory.length > 0 && searchQuery.trim().length === 0 && (
                         <View style={styles.historyHeader}>
-                            <Text style={styles.historyHeaderText}>Historique</Text>
+                            <Text style={styles.historyHeaderText}>{t('searchBarSection.historique')}/Text>
                             <TouchableOpacity
                                 onPress={() => {
                                     hapticPress();
@@ -260,7 +262,7 @@ const SearchBarSection: React.FC<SearchBarSectionProps> = ({
                     setShowGPSModal(false);
                 }}
                 currentLocation={searchGPSData || undefined}
-                title="Sélection de localisation GPS"
+                title={t('searchBarSection.selectionDeLocalisationGps')}
                 allowZoneSelection
             />
         </View>

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiPatch } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 /**
  * Composant GPS Manager réécrit pour éviter les crashes
@@ -16,7 +17,8 @@ import SafeStorage from '../utils/safeStorage';
  */
 const GPSTrackingManager: React.FC = () => {
     const { user } = useAuth();
-    const [isActive, setIsActive] = useState(false);
+        const { t } = useLanguageSafe();
+const [isActive, setIsActive] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Vérifier si le GPS est activé dans les paramètres
@@ -45,7 +47,7 @@ const GPSTrackingManager: React.FC = () => {
                 }
             } catch (error) {
                 console.error('[GPSTrackingManager] Erreur vérification GPS:', error);
-                setError('Erreur vérification GPS');
+                setError(t('gPSTrackingManager.erreurVerificationGps'));
             }
         };
 
@@ -66,7 +68,7 @@ const GPSTrackingManager: React.FC = () => {
 
             if (status !== 'granted') {
                 console.log('[GPSTrackingManager] Permissions GPS refusées');
-                setError('Permissions GPS refusées');
+                setError(t('gPSTrackingManager.permissionsGpsRefusees'));
                 return;
             }
 

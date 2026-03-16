@@ -14,6 +14,7 @@ import { AudioSuggestion, audioSuggestionService } from '../services/audioSugges
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AudioSuggestionPanelProps {
     productName: string;
@@ -32,7 +33,8 @@ export const AudioSuggestionPanel: React.FC<AudioSuggestionPanelProps> = ({
     durationSeconds,
     onTrackSelected,
 }) => {
-    const [loading, setLoading] = useState(false);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(false);
     const [suggestions, setSuggestions] = useState<AudioSuggestion[]>([]);
     const [contextAnalysis, setContextAnalysis] = useState<any>(null);
     const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
@@ -103,7 +105,7 @@ export const AudioSuggestionPanel: React.FC<AudioSuggestionPanelProps> = ({
             {loading && suggestions.length === 0 ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Génération des suggestions...</Text>
+                    <Text style={styles.loadingText}>{t('audioSuggestionPanel.generationDesSuggestions')}</Text>
                 </View>
             ) : (
                 <ScrollView

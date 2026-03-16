@@ -13,6 +13,7 @@ import { NativeButton } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { immobilierService, RealEstateProperty } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type RouteParams = {
     propertyIds: number[];
@@ -21,6 +22,7 @@ type RouteParams = {
 
 const ImmobilierCompareScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute() as any;
     const propertyIds = route.params?.propertyIds || [];
     const comparisonName = route.params?.comparisonName || 'Comparaison';
@@ -33,7 +35,7 @@ const ImmobilierCompareScreen: React.FC = () => {
         if (propertyIds.length > 0) {
             loadComparison();
         } else {
-            setError('Aucun bien sélectionné pour la comparaison');
+            setError(t('immobilierCompare.aucunBienSelectionnePourLa'));
             setLoading(false);
         }
     }, [propertyIds]);
@@ -48,7 +50,7 @@ const ImmobilierCompareScreen: React.FC = () => {
             if (response.success && response.properties) {
                 setProperties(response.properties);
             } else {
-                setError('Erreur lors du chargement de la comparaison');
+                setError(t('immobilierCompare.erreurLorsDuChargementDe'));
             }
         } catch (err: any) {
             console.error('[ImmobilierCompareScreen] Erreur:', err);
@@ -74,7 +76,7 @@ const ImmobilierCompareScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement de la comparaison...</Text>
+                <Text style={styles.loadingText}>{t('immobilierCompare.chargementDeLaComparaison')}</Text>
             </View>
         );
     }
@@ -83,9 +85,9 @@ const ImmobilierCompareScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <SafeIcon name="alert-circle" size={48} color="#EF4444" />
-                <Text style={styles.errorText}>{error || 'Aucun bien à comparer'}</Text>
+                <Text style={styles.errorText}>{error || t('immobilierCompare.aucunBienAComparer')}</Text>
                 <NativeButton
-                    title="Retour"
+                    title={t('immobilierCompareScreen.retour')}
                     onPress={() => navigation.goBack()}
                     style={styles.backButton}
                 />
@@ -101,10 +103,10 @@ const ImmobilierCompareScreen: React.FC = () => {
         { key: 'nb_chambres', label: 'Chambres', type: 'number' },
         { key: 'nb_salles_bain', label: 'Salles de bain', type: 'number' },
         { key: 'standing', label: 'Standing', type: 'text' },
-        { key: 'prix_vente', label: 'Prix vente', type: 'price' },
+        { key: 'prix_vente', label: t('immobilierCompareScreen.prixVente'), type: 'price' },
         { key: 'prix_location_mensuel', label: 'Loyer mensuel', type: 'price' },
-        { key: 'quartier', label: 'Quartier', type: 'text' },
-        { key: 'ville', label: 'Ville', type: 'text' },
+        { key: 'quartier', label: t('immobilierCompare.quartier'), type: 'text' },
+        { key: 'ville', label: t('immobilierCompare.ville'), type: 'text' },
     ];
 
     return (
@@ -121,7 +123,7 @@ const ImmobilierCompareScreen: React.FC = () => {
                     {/* En-tête avec noms des biens */}
                     <View style={styles.headerRow}>
                         <View style={styles.firstColumn}>
-                            <Text style={styles.columnHeader}>Caractéristique</Text>
+                            <Text style={styles.columnHeader}>{t('immobilierCompare.caracteristique')}</Text>
                         </View>
                         {properties.map((property, index) => (
                             <TouchableOpacity
@@ -178,7 +180,7 @@ const ImmobilierCompareScreen: React.FC = () => {
                         {properties.map((property) => (
                             <View key={property.id} style={styles.propertyColumn}>
                                 <NativeButton
-                                    title="Voir détails"
+                                    title={t('immobilierCompare.voirDetails')}
                                     onPress={() => handlePropertyPress(property.id)}
                                     style={styles.detailButton}
                                 />

@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { servicesApi } from '../services/api';
 import { theme } from '../theme/theme';
 import SafeStorage from '../utils/safeStorage';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const {
     Alert,
@@ -39,7 +40,8 @@ interface InteractedService {
 }
 
 const ServicesInteragisScreen: React.FC = () => {
-    const [services, setServices] = useState<InteractedService[]>([]);
+        const { t } = useLanguageSafe();
+const [services, setServices] = useState<InteractedService[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState<string>('all');
@@ -174,7 +176,7 @@ const ServicesInteragisScreen: React.FC = () => {
             <View style={styles.container}>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={theme.colors.primary} />
-                    <Text style={styles.loadingText}>Chargement de vos services...</Text>
+                    <Text style={styles.loadingText}>{t('servicesInteragis.chargementDeVosServices')}</Text>
                 </View>
             </View>
         );
@@ -185,7 +187,7 @@ const ServicesInteragisScreen: React.FC = () => {
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.title}>Mon historique</Text>
+                    <Text style={styles.title}>{t('servicesInteragis.monHistorique')}</Text>
                     <Text style={styles.subtitle}>
                         Retrouvez tous vos �changes et interactions avec les services
                     </Text>
@@ -195,7 +197,7 @@ const ServicesInteragisScreen: React.FC = () => {
                 <View style={styles.filtersCard}>
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Rechercher un service..."
+                        placeholder={t('servicesInteragis.rechercherUnService')}
                         value={searchTerm}
                         onChangeText={setSearchTerm}
                         placeholderTextColor="#9CA3AF"
@@ -231,7 +233,7 @@ const ServicesInteragisScreen: React.FC = () => {
                     </View>
 
                     <TouchableOpacity style={styles.refreshButton} onPress={loadInteractedServices}>
-                        <Text style={styles.refreshButtonText}>?? Actualiser</Text>
+                        <Text style={styles.refreshButtonText}>{t('servicesInteragis.actualiser')}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -240,7 +242,7 @@ const ServicesInteragisScreen: React.FC = () => {
                     {filteredServices.length === 0 ? (
                         <View style={styles.emptyState}>
                             <Text style={styles.emptyIcon}>??</Text>
-                            <Text style={styles.emptyTitle}>Aucun service interagi</Text>
+                            <Text style={styles.emptyTitle}>{t('servicesInteragis.aucunServiceInteragi')}</Text>
                             <Text style={styles.emptySubtitle}>
                                 Commencez � interagir avec des services pour les voir appara�tre ici
                             </Text>

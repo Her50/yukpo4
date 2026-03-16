@@ -14,6 +14,7 @@ import { Highlight, SceneCut, videoAnalysisService } from '../services/videoAnal
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AutoCutPanelProps {
     videoUrl: string;
@@ -32,7 +33,8 @@ export const AutoCutPanel: React.FC<AutoCutPanelProps> = ({
     videoId,
     onScenesSelected,
 }) => {
-    const [loading, setLoading] = useState(false);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(false);
     const [scenes, setScenes] = useState<SceneCut[]>([]);
     const [highlights, setHighlights] = useState<Highlight[]>([]);
     const [selectedScenes, setSelectedScenes] = useState<Set<number>>(new Set());
@@ -41,8 +43,8 @@ export const AutoCutPanel: React.FC<AutoCutPanelProps> = ({
         // ✅ CORRIGÉ: Validation avant d'appeler l'API
         if (!videoUrl || videoUrl.trim() === '') {
             Alert.alert(
-                'Vidéo manquante',
-                'Aucune vidéo disponible pour le découpage automatique.\n\nVeuillez d\'abord uploader ou sélectionner une vidéo.',
+                t('autoCutPanel.videoManquante'),
+                t('autoCutPanel.aucuneVideoDisponiblePourLeDecoupageAutomatiquennveuill'),
                 [{ text: 'OK' }]
             );
             return;
@@ -52,7 +54,7 @@ export const AutoCutPanel: React.FC<AutoCutPanelProps> = ({
         if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://') && !videoUrl.startsWith('file://')) {
             Alert.alert(
                 'URL invalide',
-                'L\'URL de la vidéo n\'est pas valide.\n\nVeuillez réessayer après avoir uploadé la vidéo.',
+                'L\t('autoCutPanel.urlDeLaVideoNestPasValidennveuillez'),
                 [{ text: 'OK' }]
             );
             return;
@@ -89,15 +91,15 @@ export const AutoCutPanel: React.FC<AutoCutPanelProps> = ({
             console.error('[AutoCutPanel] Error:', error);
             
             // ✅ CORRIGÉ: Messages d'erreur plus clairs selon le type d'erreur
-            let errorMessage = 'Impossible de découper la vidéo automatiquement';
+            let errorMessage = t('autoCutPanel.impossibleDeDecouperLaVideoAutomatiquement');
             
             if (error?.message) {
                 if (error.message.includes('500') || error.message.includes('Erreur 500')) {
-                    errorMessage = 'Erreur serveur : La vidéo n\'a pas pu être analysée.\n\nVérifiez que la vidéo est bien uploadée et accessible.';
-                } else if (error.message.includes('durée') || error.message.includes('duration')) {
-                    errorMessage = 'Impossible de déterminer la durée de la vidéo.\n\nVérifiez que la vidéo est valide et complète.';
+                    errorMessage = t('autoCutPanel.erreurServeurLaVideoNaPasPu');
+                } else if (error.message.includes(t('autoCutPanel.duree')) || error.message.includes('duration')) {
+                    errorMessage = t('autoCutPanel.impossibleDeDeterminerLaDureeDe');
                 } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
-                    errorMessage = 'Le traitement prend trop de temps.\n\nVeuillez réessayer avec une vidéo plus courte.';
+                    errorMessage = t('autoCutPanel.leTraitementPrendTropDeTempsnnveuillez');
                 } else {
                     errorMessage = error.message;
                 }
@@ -112,7 +114,7 @@ export const AutoCutPanel: React.FC<AutoCutPanelProps> = ({
     return (
         <NativeCard style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Découpage Automatique</Text>
+                <Text style={styles.title}>{t('autoCutPanel.decoupageAutomatique')}</Text>
                 <TouchableOpacity
                     style={styles.autoCutButton}
                     onPress={handleAutoCut}
@@ -123,7 +125,7 @@ export const AutoCutPanel: React.FC<AutoCutPanelProps> = ({
                     ) : (
                         <>
                             <SafeIcon name="scissors" size={16} color="#FFF" />
-                            <Text style={styles.autoCutButtonText}>Découper</Text>
+                            <Text style={styles.autoCutButtonText}>{t('autoCutPanel.decouper')}</Text>
                         </>
                     )}
                 </TouchableOpacity>

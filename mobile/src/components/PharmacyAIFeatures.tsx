@@ -24,6 +24,7 @@ import {
 import { apiGet, apiPost } from '../services/api';
 import { hapticPress } from '../utils/hapticFeedback';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Medication {
     name: string;
@@ -78,7 +79,8 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
     onClose,
     initialMedications = []
 }) => {
-    const [activeTab, setActiveTab] = useState<'interactions' | 'dosage' | 'budget' | 'search'>('interactions');
+        const { t } = useLanguageSafe();
+const [activeTab, setActiveTab] = useState<'interactions' | 'dosage' | 'budget' | 'search'>('interactions');
     const [loading, setLoading] = useState(false);
 
     // État pour interactions
@@ -278,7 +280,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
                             <View style={styles.headerIconContainer}>
                                 <SafeIcon name="sparkles" size={24} color="#FFFFFF" type="lucide" />
                             </View>
-                            <Text style={styles.headerTitle}>Fonctionnalités IA</Text>
+                            <Text style={styles.headerTitle}>{t('pharmacyAIFeatures.fonctionnalitesIa')}</Text>
                             <TouchableOpacity
                                 style={styles.closeButton}
                                 onPress={onClose}
@@ -294,7 +296,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
                             { id: 'interactions', label: 'Interactions', icon: 'alert-triangle' },
                             { id: 'dosage', label: 'Dosage', icon: 'pill' },
                             { id: 'budget', label: 'Budget', icon: 'calculator' },
-                            { id: 'search', label: 'Recherche', icon: 'search' },
+                            { id: 'search', label: t('pharmacyAIFeatures.recherche'), icon: 'search' },
                         ].map((tab) => (
                             <TouchableOpacity
                                 key={tab.id}
@@ -335,7 +337,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
                         {/* Interactions Tab */}
                         {activeTab === 'interactions' && !loading && (
                             <View>
-                                <Text style={styles.sectionTitle}>Vérifier les interactions médicamenteuses</Text>
+                                <Text style={styles.sectionTitle}>{t('pharmacyAIFeatures.verifierLesInteractionsMedicamenteuses')}</Text>
                                 <Text style={styles.sectionDescription}>
                                     Ajoutez les médicaments que vous prenez pour vérifier les interactions possibles
                                 </Text>
@@ -344,7 +346,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
                                     <View key={index} style={styles.medicationCard}>
                                         <TextInput
                                             style={styles.input}
-                                            placeholder="Nom du médicament"
+                                            placeholder={t('pharmacyAIFeatures.nomDuMedicament')}
                                             value={med.name}
                                             onChangeText={(text) => updateMedication(index, 'name', text)}
                                         />
@@ -357,7 +359,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
                                             />
                                             <TextInput
                                                 style={[styles.input, styles.inputSmall]}
-                                                placeholder="Fréquence (optionnel)"
+                                                placeholder={t('pharmacyAIFeatures.frequenceOptionnel')}
                                                 value={med.frequency || ''}
                                                 onChangeText={(text) => updateMedication(index, 'frequency', text)}
                                             />
@@ -378,7 +380,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
                                     onPress={addMedication}
                                 >
                                     <SafeIcon name="plus" size={20} color="#EC4899" type="lucide" />
-                                    <Text style={styles.addButtonText}>Ajouter un médicament</Text>
+                                    <Text style={styles.addButtonText}>{t('pharmacyAIFeatures.ajouterUnMedicament')}</Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
@@ -387,7 +389,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
                                     style={[styles.actionButton, medications.length < 2 && styles.actionButtonDisabled]}
                                     activeOpacity={0.8}
                                 >
-                                    <Text style={styles.actionButtonText}>Vérifier les interactions</Text>
+                                    <Text style={styles.actionButtonText}>{t('pharmacyAIFeatures.verifierLesInteractions')}</Text>
                                 </TouchableOpacity>
 
                                 {interactionResult && (
@@ -397,7 +399,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
                                                 {interactionResult.severity.toUpperCase()}
                                             </Text>
                                         </View>
-                                        <Text style={styles.resultTitle}>Médicaments concernés:</Text>
+                                        <Text style={styles.resultTitle}>{t('pharmacyAIFeatures.medicamentsConcernes')}</Text>
                                         <Text style={styles.resultText}>{interactionResult.medications.join(', ')}</Text>
                                         <Text style={styles.resultTitle}>Description:</Text>
                                         <Text style={styles.resultText}>{interactionResult.description}</Text>
@@ -420,7 +422,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
 
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Nom du médicament *"
+                                    placeholder={t('pharmacyAIFeatures.nomDuMedicament')}
                                     value={dosageMedication}
                                     onChangeText={setDosageMedication}
                                 />
@@ -428,7 +430,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
                                 <View style={styles.row}>
                                     <TextInput
                                         style={[styles.input, styles.inputHalf]}
-                                        placeholder="Âge (années)"
+                                        placeholder={t('pharmacyAIFeatures.ageAnnees')}
                                         value={dosageAge}
                                         onChangeText={setDosageAge}
                                         keyboardType="numeric"
@@ -444,7 +446,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
 
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Condition médicale (optionnel)"
+                                    placeholder={t('pharmacyAIFeatures.conditionMedicaleOptionnel')}
                                     value={dosageCondition}
                                     onChangeText={setDosageCondition}
                                 />
@@ -460,18 +462,18 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
 
                                 {dosageResult && (
                                     <View style={styles.resultCard}>
-                                        <Text style={styles.resultTitle}>Médicament: {dosageResult.medication}</Text>
+                                        <Text style={styles.resultTitle}>{t('pharmacyAIFeatures.medication')}: {dosageResult.medication}</Text>
                                         <View style={styles.dosageInfo}>
                                             <View style={styles.dosageItem}>
-                                                <Text style={styles.dosageLabel}>Dosage suggéré:</Text>
+                                                <Text style={styles.dosageLabel}>{t('pharmacyAIFeatures.dosageSuggere')}</Text>
                                                 <Text style={styles.dosageValue}>{dosageResult.suggested_dosage}</Text>
                                             </View>
                                             <View style={styles.dosageItem}>
-                                                <Text style={styles.dosageLabel}>Fréquence:</Text>
+                                                <Text style={styles.dosageLabel}>{t('pharmacyAIFeatures.frequence')}</Text>
                                                 <Text style={styles.dosageValue}>{dosageResult.frequency}</Text>
                                             </View>
                                             <View style={styles.dosageItem}>
-                                                <Text style={styles.dosageLabel}>Durée:</Text>
+                                                <Text style={styles.dosageLabel}>{t('pharmacyAIFeatures.duree')}</Text>
                                                 <Text style={styles.dosageValue}>{dosageResult.duration}</Text>
                                             </View>
                                         </View>
@@ -502,12 +504,12 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
                                     <View key={index} style={styles.budgetItemCard}>
                                         <TextInput
                                             style={styles.input}
-                                            placeholder="Nom du produit"
+                                            placeholder={t('pharmacyAIFeatures.nomDuProduit')}
                                             value={item.name}
                                             onChangeText={(text) => updateBudgetItem(index, 'name', text)}
                                         />
                                         <View style={styles.quantityRow}>
-                                            <Text style={styles.quantityLabel}>Quantité:</Text>
+                                            <Text style={styles.quantityLabel}>{t('pharmacyAIFeatures.quantite')}</Text>
                                             <View style={styles.quantityControls}>
                                                 <TouchableOpacity
                                                     style={styles.quantityButton}
@@ -540,7 +542,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
                                     onPress={addBudgetItem}
                                 >
                                     <SafeIcon name="plus" size={20} color="#EC4899" type="lucide" />
-                                    <Text style={styles.addButtonText}>Ajouter un produit</Text>
+                                    <Text style={styles.addButtonText}>{t('pharmacyAIFeatures.ajouterUnProduit')}</Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
@@ -555,7 +557,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
                                 {budgetResult && (
                                     <View style={styles.resultCard}>
                                         <Text style={styles.resultTitle}>Budget total: {budgetResult.total} {budgetResult.currency}</Text>
-                                        <Text style={styles.resultSubtitle}>Détail des produits:</Text>
+                                        <Text style={styles.resultSubtitle}>{t('pharmacyAIFeatures.detailDesProduits')}</Text>
                                         {budgetResult.items.map((item, index) => (
                                             <View key={index} style={styles.budgetDetailItem}>
                                                 <Text style={styles.budgetDetailText}>
@@ -589,7 +591,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
                         {/* Search Tab */}
                         {activeTab === 'search' && !loading && (
                             <View>
-                                <Text style={styles.sectionTitle}>Rechercher des produits</Text>
+                                <Text style={styles.sectionTitle}>{t('pharmacyAIFeatures.rechercherDesProduits')}</Text>
                                 <Text style={styles.sectionDescription}>
                                     Trouvez des médicaments et produits pharmaceutiques disponibles
                                 </Text>
@@ -597,7 +599,7 @@ const PharmacyAIFeatures: React.FC<PharmacyAIFeaturesProps> = ({
                                 <View style={styles.searchContainer}>
                                     <TextInput
                                         style={styles.searchInput}
-                                        placeholder="Rechercher un produit..."
+                                        placeholder={t('pharmacyAIFeatures.rechercherUnProduit')}
                                         value={productSearch}
                                         onChangeText={setProductSearch}
                                         onSubmitEditing={searchProducts}

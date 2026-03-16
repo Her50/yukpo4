@@ -7,6 +7,7 @@ import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity
 import { Card } from 'react-native-paper';
 import { useLocation } from '../contexts/LocationContext';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface MultiModalInput {
   text?: string;
@@ -36,7 +37,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
   loading = false,
   onInputChange,
   showIASuggestion = false,
-  placeholder = "Décrivez votre besoin ici..."
+  placeholder={t('chatInputPanel.decrivezVotreBesoinIci')}
 }) => {
   const [texte, setTexte] = useState('');
   const [site_web, setSiteWeb] = useState('');
@@ -49,6 +50,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
 
   // GPS
   const { location } = useLocation();
+    const { t } = useLanguageSafe();
   const [gps_zone, setGpsZone] = useState<{ lat: number; lng: number } | null>(null);
 
   // Suggestions IA
@@ -78,7 +80,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
         // Simulation d'analyse IA
         setAiInsights({
           confidence: 0.8,
-          suggestions: ['Ajoutez plus de détails sur votre besoin', 'Précisez votre localisation'],
+          suggestions: [t('chatInputPanel.ajoutezPlusDeDetailsSurVotre'), 'Précisez votre localisation'],
           complexity: 'medium',
           estimatedTokens: Math.floor(texte.length / 4)
         });
@@ -283,7 +285,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
             style={styles.linkInput}
             value={site_web}
             onChangeText={setSiteWeb}
-            placeholder="Coller un lien (URL) à analyser..."
+            placeholder={t('chatInputPanel.collerUnLienUrlA')}
             keyboardType="url"
           />
         </View>

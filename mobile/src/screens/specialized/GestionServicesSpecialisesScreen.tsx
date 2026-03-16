@@ -546,11 +546,11 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
             case 'pharmacie':
                 return service.nom || 'Pharmacie';
             case 'hopital':
-                return service.nom || 'Hôpital/Clinique';
+                return service.nom || t('gestionServicesSpecialises.hopitalclinique');
             case 'laboratoire':
                 return service.nom || 'Laboratoire';
             case 'agence_voyage':
-                return service.nom_agence || 'Agence de Voyage';
+                return service.nom_agence || t('gestionServicesSpecialises.agenceDeVoyage');
             case 'covoiturage':
                 return `${service.depart} → ${service.destination}`;
             case 'taxi':
@@ -916,14 +916,14 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                         onPress={() => (navigation as any).navigate('AgencyTicketManagement')}
                     >
                         <SafeIcon name="ticket" size={18} color="#fff" />
-                        <Text style={styles.ticketsButtonText}>Gérer les tickets</Text>
+                        <Text style={styles.ticketsButtonText}>{t('gestionServicesSpecialises.gererLesTickets')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.ticketsButton, styles.agencyButton, { backgroundColor: modernColors.primary }]}
                         onPress={() => (navigation as any).navigate('ManageAgencySchedules')}
                     >
                         <SafeIcon name="clock" size={18} color="#fff" />
-                        <Text style={styles.ticketsButtonText}>Horaires de départ</Text>
+                        <Text style={styles.ticketsButtonText}>{t('gestionServicesSpecialises.horairesDeDepart')}</Text>
                     </TouchableOpacity>
                 </View>
             )}
@@ -934,7 +934,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     onPress={() => handleEdit(item)}
                 >
                     <SafeIcon name="edit" size={16} color={modernColors.primary} />
-                    <Text style={styles.actionButtonText}>Modifier</Text>
+                    <Text style={styles.actionButtonText}>{t('gestionServicesSpecialisesScreen.modifier')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -980,11 +980,11 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Gestion Services Spécialisés</Text>
+                    <Text style={styles.title}>{t('gestionServicesSpecialises.gestionServicesSpecialises')}</Text>
                 </View>
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="shield-off" size={64} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyTitle}>Accès réservé aux partenaires</Text>
+                    <Text style={styles.emptyTitle}>{t('gestionServicesSpecialises.accesReserveAuxPartenaires')}</Text>
                     <Text style={styles.emptyText}>
                         Cette section est réservée aux partenaires commerciaux. Si vous souhaitez devenir partenaire, veuillez vous inscrire depuis l'écran de connexion.
                     </Text>
@@ -992,7 +992,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                         style={styles.createButton}
                         onPress={() => navigation.goBack()}
                     >
-                        <Text style={styles.createButtonText}>Retour</Text>
+                        <Text style={styles.createButtonText}>{t('gestionServicesSpecialises.retour')}/Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -1010,7 +1010,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Gestion Services Spécialisés</Text>
+                    <Text style={styles.title}>{t('gestionServicesSpecialises.gestionServicesSpecialises')}</Text>
                 </View>
 
                 {/* Skeleton pour la barre de recherche */}
@@ -1053,7 +1053,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Gestion Services Spécialisés</Text>
+                <Text style={styles.title}>{t('gestionServicesSpecialises.gestionServicesSpecialises')}</Text>
                 <View style={styles.headerActions}>
                     {/* ✅ Phase 6.2 & 6.5: Indicateur mode hors ligne et statut sync */}
                     {isOffline && (
@@ -1116,7 +1116,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 }}
                                 style={styles.cancelSelectionButton}
                             >
-                                <Text style={styles.cancelSelectionText}>Annuler</Text>
+                                <Text style={styles.cancelSelectionText}>{t('gestionServicesSpecialisesScreen.annuler')}</Text>
                             </TouchableOpacity>
                             <Text style={styles.selectionCount}>
                                 {selectedServices.size} sélectionné{selectedServices.size > 1 ? 's' : ''}
@@ -1132,7 +1132,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 onSearchChange={setSearchQuery}
                 sortConfig={sortConfig}
                 onSortChange={setSortConfig}
-                placeholder="Rechercher dans la liste..."
+                placeholder={t('gestionServicesSpecialises.rechercherDansLaListe')}
             />
 
             {/* Filtres et Toggle */}
@@ -1246,7 +1246,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     onPress={() => (navigation as any).navigate('ServicesDashboard')}
                 >
                     <SafeIcon name="bar-chart-2" size={20} color={modernColors.primary} />
-                    <Text style={styles.dashboardButtonText}>Accéder au Dashboard</Text>
+                    <Text style={styles.dashboardButtonText}>{t('gestionServicesSpecialises.accederAuDashboard')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -1269,34 +1269,34 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     </View>
                     <Text style={styles.emptyTitle} accessibilityRole="header">
                         {searchQuery || filter !== 'tous'
-                            ? 'Aucun résultat trouvé'
+                            ? t('gestionServicesSpecialisesScreen.aucunResultatTrouve')
                             : 'Bienvenue sur votre espace partenaire'}
                     </Text>
                     <Text style={styles.emptyText} accessibilityRole="text">
                         {searchQuery || filter !== 'tous'
-                            ? 'Aucun service ne correspond à vos critères de recherche. Essayez de modifier vos filtres.'
-                            : 'Commencez par créer votre premier service pour proposer vos prestations aux utilisateurs de <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>.'}
+                            ? t('gestionServicesSpecialisesScreen.aucunServiceNeCorrespondAVos')
+                            : t('gestionServicesSpecialisesScreen.startByCreatingService')}
                     </Text>
                     {/* ✅ AMÉLIORÉ: CTA avec navigation directe vers le bon formulaire selon le partner_type */}
                     <View style={styles.emptyActions}>
                         {user?.role === 'partenaire' && (() => {
                             const partnerFormMap: Record<string, { screen: string; label: string }> = {
-                                'pharmacie': { screen: 'PharmacieForm', label: 'Enregistrer ma pharmacie' },
-                                'hopital': { screen: 'HopitalForm', label: 'Enregistrer mon hôpital' },
-                                'laboratoire': { screen: 'LaboratoireForm', label: 'Enregistrer mon laboratoire' },
-                                'banquesang': { screen: 'BanqueSangForm', label: 'Enregistrer ma banque de sang' },
-                                'agence de voyage': { screen: 'AgenceVoyageForm', label: 'Enregistrer mon agence' },
-                                'hotel': { screen: 'HotelDashboard', label: 'Gérer mon hôtel' },
-                                'meuble': { screen: 'HotelDashboard', label: 'Gérer mon meublé' },
-                                'chauffeur': { screen: 'TaxiForm', label: 'Créer mon profil chauffeur' },
-                                'supermarche': { screen: 'SupermarketHome', label: 'Gérer mon supermarché' },
+                                'pharmacie': { screen: 'PharmacieForm', label: t('gestionServicesSpecialisesScreen.enregistrerMaPharmacie') },
+                                'hopital': { screen: 'HopitalForm', label: t('gestionServicesSpecialises.enregistrerMonHopital') },
+                                'laboratoire': { screen: 'LaboratoireForm', label: t('gestionServicesSpecialisesScreen.enregistrerMonLaboratoire') },
+                                'banquesang': { screen: 'BanqueSangForm', label: t('gestionServicesSpecialisesScreen.enregistrerMaBanqueDeSang') },
+                                'agence de voyage': { screen: 'AgenceVoyageForm', label: t('gestionServicesSpecialisesScreen.enregistrerMonAgence') },
+                                'hotel': { screen: 'HotelDashboard', label: t('gestionServicesSpecialises.gererMonHotel') },
+                                'meuble': { screen: 'HotelDashboard', label: t('gestionServicesSpecialises.gererMonMeuble') },
+                                'chauffeur': { screen: 'TaxiForm', label: t('gestionServicesSpecialises.creerMonProfilChauffeur') },
+                                'supermarche': { screen: 'SupermarketHome', label: t('gestionServicesSpecialises.gererMonSupermarche') },
                                 'offres_emploi': { screen: 'CreateOffre', label: 'Publier une offre d\'emploi' },
                                 'recruteur': { screen: 'CreateOffre', label: 'Publier une offre d\'emploi' },
                                 'employeur': { screen: 'CreateOffre', label: 'Publier une offre d\'emploi' },
                             };
                             const formInfo = user.partner_type ? partnerFormMap[user.partner_type] : null;
                             const targetScreen = formInfo?.screen || 'MesServicesSpecialises';
-                            const buttonLabel = formInfo?.label || 'Créer un service';
+                            const buttonLabel = formInfo?.label || t('gestionServicesSpecialises.creerUnService');
                             return (
                                 <TouchableOpacity
                                     onPress={() => (navigation as any).navigate(targetScreen)}
@@ -1323,10 +1323,10 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 }}
                                 style={[styles.createButton, styles.clearButton]}
                                 accessibilityRole="button"
-                                accessibilityLabel="Réinitialiser tous les filtres"
+                                accessibilityLabel={t('gestionServicesSpecialises.reinitialiserTousLesFiltres')}
                             >
                                 <SafeIcon name="x" size={18} color={modernColors.textSecondary} />
-                                <Text style={styles.clearButtonText}>Réinitialiser les filtres</Text>
+                                <Text style={styles.clearButtonText}>{t('gestionServicesSpecialises.reinitialiserLesFiltres')}</Text>
                             </TouchableOpacity>
                         ) : (
                             <TouchableOpacity

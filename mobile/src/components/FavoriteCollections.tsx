@@ -10,6 +10,7 @@ import { modernColors } from '../theme/modernTheme';
 import { triggerHaptic } from '../utils/hapticFeedback';
 import SafeIcon from './SafeIcon';
 import { useToaster } from './ToasterProvider';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Collection {
     id: string;
@@ -37,6 +38,7 @@ export const FavoriteCollections: React.FC<FavoriteCollectionsProps> = ({
     const [newCollectionName, setNewCollectionName] = useState('');
     const [newCollectionColor, setNewCollectionColor] = useState('#6366F1');
     const toaster = useToaster();
+    const { t } = useLanguageSafe();
 
     const collectionColors = [
         '#6366F1', '#EF4444', '#10B981', '#F59E0B', '#EC4899',
@@ -79,7 +81,7 @@ export const FavoriteCollections: React.FC<FavoriteCollectionsProps> = ({
                 // Retirer de la collection
                 await apiDelete(`/api/collections/${collectionId}/products/${productId}`);
                 setSelectedCollections(prev => prev.filter(id => id !== collectionId));
-                toaster.success('Retiré de la collection');
+                toaster.success(t('favoriteCollections.retireDeLaCollection'));
             } else {
                 // Ajouter à la collection
                 await apiPost(`/api/collections/${collectionId}/products`, {
@@ -87,7 +89,7 @@ export const FavoriteCollections: React.FC<FavoriteCollectionsProps> = ({
                     service_id: serviceId,
                 });
                 setSelectedCollections(prev => [...prev, collectionId]);
-                toaster.success('Ajouté à la collection');
+                toaster.success(t('favoriteCollections.ajouteALaCollection'));
             }
             onCollectionChange?.();
         } catch (error) {
@@ -113,11 +115,11 @@ export const FavoriteCollections: React.FC<FavoriteCollectionsProps> = ({
                 await loadCollections();
                 setNewCollectionName('');
                 setShowCreateModal(false);
-                toaster.success('Collection créée');
+                toaster.success(t('favoriteCollections.collectionCreee'));
                 triggerHaptic('success');
             }
         } catch (error) {
-            toaster.error('Erreur lors de la création');
+            toaster.error(t('favoriteCollections.erreurLorsDeLaCreation'));
         }
     };
 
@@ -127,7 +129,7 @@ export const FavoriteCollections: React.FC<FavoriteCollectionsProps> = ({
                 style={styles.button}
                 onPress={() => setShowModal(true)}
                 accessibilityRole="button"
-                accessibilityLabel="Gérer les collections"
+                accessibilityLabel={t('favoriteCollections.gererLesCollections')}
             >
                 <SafeIcon name="folder" size={18} color={modernColors.primary} />
                 <Text style={styles.buttonText}>Collections</Text>
@@ -147,7 +149,7 @@ export const FavoriteCollections: React.FC<FavoriteCollectionsProps> = ({
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Mes Collections</Text>
+                            <Text style={styles.modalTitle}>{t('favoriteCollections.mesCollections')}</Text>
                             <TouchableOpacity onPress={() => setShowModal(false)}>
                                 <SafeIcon name="x" size={24} color="#6B7280" />
                             </TouchableOpacity>
@@ -182,7 +184,7 @@ export const FavoriteCollections: React.FC<FavoriteCollectionsProps> = ({
                             onPress={() => setShowCreateModal(true)}
                         >
                             <SafeIcon name="plus" size={20} color="#FFFFFF" />
-                            <Text style={styles.createButtonText}>Créer une collection</Text>
+                            <Text style={styles.createButtonText}>{t('favoriteCollections.creerUneCollection')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -198,19 +200,19 @@ export const FavoriteCollections: React.FC<FavoriteCollectionsProps> = ({
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Nouvelle Collection</Text>
+                            <Text style={styles.modalTitle}>{t('favoriteCollections.nouvelleCollection')}</Text>
                             <TouchableOpacity onPress={() => setShowCreateModal(false)}>
                                 <SafeIcon name="x" size={24} color="#6B7280" />
                             </TouchableOpacity>
                         </View>
 
                         <View style={styles.createForm}>
-                            <Text style={styles.label}>Nom de la collection</Text>
+                            <Text style={styles.label}>{t('favoriteCollections.nomDeLaCollection')}</Text>
                             <TextInput
                                 style={styles.input}
                                 value={newCollectionName}
                                 onChangeText={setNewCollectionName}
-                                placeholder="Ex: Mes favoris, À acheter..."
+                                placeholder={t('favoriteCollections.exMesFavorisAAcheter')}
                                 placeholderTextColor="#9CA3AF"
                             />
 
@@ -233,7 +235,7 @@ export const FavoriteCollections: React.FC<FavoriteCollectionsProps> = ({
                                 style={[styles.submitButton, { backgroundColor: newCollectionColor }]}
                                 onPress={createCollection}
                             >
-                                <Text style={styles.submitButtonText}>Créer</Text>
+                                <Text style={styles.submitButtonText}>{t('favoriteCollections.creer')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

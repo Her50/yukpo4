@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { API_BASE_URL } from '../config/api';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const ConnectionTestScreen: React.FC = () => {
-  const [testResults, setTestResults] = useState<any[]>([]);
+      const { t } = useLanguageSafe();
+const [testResults, setTestResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const addResult = (test: string, success: boolean, message: string, details?: any) => {
@@ -104,7 +106,7 @@ const ConnectionTestScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>🔧 Test de Connexion Backend</Text>
+        <Text style={styles.title}>{t('connectionTest.testDeConnexionBackend')}</Text>
         <Text style={styles.subtitle}>URL: {API_BASE_URL}</Text>
       </View>
 

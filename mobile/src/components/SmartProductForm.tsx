@@ -23,6 +23,7 @@ import { getProductSuggestions } from '../data/enrichedProductDatabase';
 import { productAutoFillService } from '../services/productAutoFillService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SmartProductFormProps {
     onSubmit: (productData: Record<string, any>) => void;
@@ -36,7 +37,8 @@ export const SmartProductForm: React.FC<SmartProductFormProps> = ({
     userId
 }) => {
     // État du formulaire
-    const [productQuery, setProductQuery] = useState('');
+        const { t } = useLanguageSafe();
+const [productQuery, setProductQuery] = useState('');
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     
@@ -95,7 +97,7 @@ export const SmartProductForm: React.FC<SmartProductFormProps> = ({
             if (result.product_found && result.fields_saved > 0) {
                 Alert.alert(
                     '✨ Super !',
-                    `${result.fields_saved} champs ont été pré-remplis automatiquement.\n\nVous n'avez plus que ${result.required_fields.length} champs à remplir !`,
+                    t('smartProductForm.champsOntEtePreremplisAutomatiquementnnvousNavez', { result_fields_saved: result.fields_saved, result_required_fields_length: result.required_fields.length }),
                     [{ text: 'OK' }]
                 );
             }
@@ -163,7 +165,7 @@ export const SmartProductForm: React.FC<SmartProductFormProps> = ({
                     <SafeIcon name="search" size={20} color={modernColors.textSecondary} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Ex: iPhone 15 Pro Max, Riz parfumé, Toyota Corolla..."
+                        placeholder={t('smartProductForm.exIphone15ProMax')}
                         value={productQuery}
                         onChangeText={handleProductSearch}
                         onFocus={() => {

@@ -67,10 +67,10 @@ const LaboratoireHomeScreen: React.FC = () => {
     // Options de tri
     const sortOptions: { value: SortOption; label: string; icon: string }[] = [
         { value: 'relevance', label: 'Pertinence', icon: 'star' },
-        { value: 'price_asc', label: 'Prix croissant', icon: 'arrow-up' },
-        { value: 'price_desc', label: 'Prix décroissant', icon: 'arrow-down' },
+        { value: 'price_asc', label: t('laboratoireHomeScreen.prixCroissant'), icon: 'arrow-up' },
+        { value: 'price_desc', label: t('laboratoireHome.prixDecroissant'), icon: 'arrow-down' },
         { value: 'distance_asc', label: 'Plus proche', icon: 'map-pin' },
-        { value: 'name_asc', label: 'Nom (A-Z)', icon: 'type' },
+        { value: 'name_asc', label: t('laboratoireHomeScreen.nomAz'), icon: 'type' },
     ];
 
     // Obtenir l'icône du tri courant
@@ -171,7 +171,7 @@ const LaboratoireHomeScreen: React.FC = () => {
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur chargement disponibilité:', err);
-            setError('Erreur lors du chargement des laboratoires disponibles');
+            setError(t('laboratoireHomeScreen.erreurLorsDuChargementDesLaboratoires'));
             setAvailableLaboratories([]);
         } finally {
             setLoading(false);
@@ -200,20 +200,20 @@ const LaboratoireHomeScreen: React.FC = () => {
                 const results = r?.results || r || [];
                 if (Array.isArray(results) && results.length > 0) {
                     setPathologyResults(results);
-                    toaster.success(`${results.length} pathologie(s) trouvée(s)`);
+                    toaster.success(t('laboratoireHomeScreen.pathologiesTrouvees', { results_length: results.length }));
                 } else {
-                    toaster.warning('Aucune pathologie trouvée. Essayez avec d\'autres symptômes.');
+                    toaster.warning(t('laboratoireHomeScreen.aucunePathologieTrouveeEssayezAvecDautresSymptomes'));
                     setPathologyResults([]);
                 }
             } else {
                 const r = response.data as any;
-                const errorMsg = r?.message || response.error || 'L\'IA de recherche pathologique n\'est pas encore opérationnelle.';
+                const errorMsg = r?.message || response.error || 'L\'IA de recherche pathologique n\t('laboratoireHomeScreen.estPasEncoreOperationnelle');
                 toaster.error(errorMsg);
                 setPathologyResults([]);
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur recherche pathologie:', err);
-            const errorMsg = err.message || err.error || 'Erreur lors de la recherche. L\'IA de recherche pathologique n\'est peut-être pas encore opérationnelle.';
+            const errorMsg = err.message || err.error || t('laboratoireHome.erreurLorsDeLaRechercheLiaDe')';
             toaster.error(errorMsg);
             setPathologyResults([]);
         } finally {
@@ -277,7 +277,7 @@ const LaboratoireHomeScreen: React.FC = () => {
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur sélection image:', err);
-            toaster.error(err.message || 'Erreur lors de la sélection de l\'image');
+            toaster.error(err.message || t('laboratoireHome.erreurLorsDeLaSelectionDeLimage'));
             setLoadingAI(false);
             setImageAnalysis(null);
         }
@@ -289,11 +289,11 @@ const LaboratoireHomeScreen: React.FC = () => {
             t('labHome.chooseSourceMsg'),
             [
                 {
-                    text: 'Caméra',
+                    text: t('common.camera'),
                     onPress: () => handlePickImage('camera'),
                 },
                 {
-                    text: 'Galerie',
+                    text: t('common.gallery'),
                     onPress: () => handlePickImage('gallery'),
                 },
                 {
@@ -312,7 +312,7 @@ const LaboratoireHomeScreen: React.FC = () => {
         try {
             const response = await laboratoryService.analyzeExaminationImage(
                 imageBase64,
-                selectedExamination?.name || 'Analyse générale',
+                selectedExamination?.name || t('laboratoireHome.analyseGenerale'),
                 undefined,
                 undefined
             );
@@ -323,21 +323,21 @@ const LaboratoireHomeScreen: React.FC = () => {
                 const analysis = r?.analysis || r;
                 if (analysis) {
                     setImageAnalysis(analysis);
-                    toaster.success('Analyse d\'image terminée');
+                    toaster.success('Analyse d\t('laboratoireHomeScreen.imageTerminee'));
                 } else {
-                    const errorMsg = 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
+                    const errorMsg = 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\t('laboratoireHomeScreen.estPeutetrePasEncoreOperationnelle');
                     toaster.error(errorMsg);
                     setImageAnalysis(null);
                 }
             } else {
                 const r = response.data as any;
-                const errorMsg = r?.message || response.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
+                const errorMsg = r?.message || response.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\t('laboratoireHomeScreen.estPeutetrePasEncoreOperationnelle');
                 toaster.error(errorMsg);
                 setImageAnalysis(null);
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur analyse image:', err);
-            const errorMsg = err.message || err.error || 'Erreur lors de l\'analyse. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
+            const errorMsg = err.message || err.error || 'Erreur lors de l\'analyse. L\'IA d\'analyse d\'images n\t('laboratoireHomeScreen.estPeutetrePasEncoreOperationnelle');
             toaster.error(errorMsg);
             setImageAnalysis(null);
         } finally {
@@ -365,7 +365,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>Laboratoires</Text>
-                            <Text style={styles.headerSubtitle}>Recherche d'examens</Text>
+                            <Text style={styles.headerSubtitle}>{t('laboratoireHome.rechercheDexamens')}/Text>
                         </View>
                         <TouchableOpacity
                             onPress={() => {
@@ -385,7 +385,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                             <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Rechercher un examen (ex: Hémogramme, Glycémie...)"
+                                placeholder={t('laboratoireHome.rechercherUnExamenExHemogramme')}
                                 placeholderTextColor="#9CA3AF"
                                 value={autocompleteQuery}
                                 onChangeText={(text) => {
@@ -467,7 +467,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                             }}
                         >
                             <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.quickActionText}>Recherche pathologie</Text>
+                            <Text style={styles.quickActionText}>{t('laboratoireHome.recherchePathologie')}/Text>
                         </TouchableOpacity>
                     </View>
                 </LinearGradient>
@@ -489,7 +489,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                             type="lucide"
                         />
                         <Text style={styles.sortButtonText}>
-                            {sortOptions.find(o => o.value === sortBy)?.label || 'Trier'}
+                            {sortOptions.find(o => o.value === sortBy)?.label || t('laboratoireHome.trier')}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -499,7 +499,7 @@ const LaboratoireHomeScreen: React.FC = () => {
             {loading && availableLaboratories.length === 0 ? (
                 <View style={styles.content}>
                     <ActivityIndicator size="large" color="#2563EB" />
-                    <Text style={styles.placeholderText}>Recherche des laboratoires disponibles...</Text>
+                    <Text style={styles.placeholderText}>{t('laboratoireHome.rechercheDesLaboratoiresDisponibles')}/Text>
                 </View>
             ) : availableLaboratories.length > 0 ? (
                 <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -527,7 +527,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                                     {lab.is_available_now && (
                                         <View style={styles.availableBadge}>
                                             <SafeIcon name="check-circle" size={14} color="#10B981" type="lucide" />
-                                            <Text style={styles.availableBadgeText}>Disponible</Text>
+                                            <Text style={styles.availableBadgeText}>{t('laboratoireHome.disponible')}</Text>
                                         </View>
                                     )}
                                 </View>
@@ -579,7 +579,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                                         }}
                                     >
                                         <SafeIcon name="calendar" size={14} color="#3B82F6" type="lucide" />
-                                        <Text style={{ marginLeft: 4, fontSize: 12, color: '#3B82F6', fontWeight: '600' }}>Réserver</Text>
+                                        <Text style={{ marginLeft: 4, fontSize: 12, color: '#3B82F6', fontWeight: '600' }}>{t('laboratoireHome.reserver')}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F0FDF4', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: '#BBF7D0' }}
@@ -723,7 +723,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                         <View style={styles.pathologySearchBar}>
                                             <TextInput
                                                 style={styles.pathologyInput}
-                                                placeholder="Ex: Maux de tête, fièvre, douleurs abdominales..."
+                                                placeholder={t('laboratoireHome.exMauxDeTeteFievre')}
                                                 placeholderTextColor="#9CA3AF"
                                                 value={pathologyQuery}
                                                 onChangeText={onPathologyQueryChange}
@@ -795,7 +795,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                                 <Text style={styles.pathologyDescription}>{result.description}</Text>
                                                 {result.recommended_examinations.length > 0 && (
                                                     <View style={styles.examsContainer}>
-                                                        <Text style={styles.examsTitle}>Examens recommandés:</Text>
+                                                        <Text style={styles.examsTitle}>{t('laboratoireHome.examensRecommandes')}</Text>
                                                         {result.recommended_examinations.map((exam, i) => (
                                                             <Text key={i} style={styles.examItem}>• {exam}</Text>
                                                         ))}
@@ -818,16 +818,16 @@ const AIModal: React.FC<AIModalProps> = ({
                                     </View>
                                 ) : imageAnalysis ? (
                                     <View style={styles.analysisContainer}>
-                                        <Text style={styles.analysisTitle}>Résultats de l'analyse</Text>
-                                        <Text style={styles.interpretation}>{String(imageAnalysis.interpretation || 'Aucune interprétation disponible')}</Text>
+                                        <Text style={styles.analysisTitle}>{t('laboratoireHome.resultatsDeLanalyse')}</Text>
+                                        <Text style={styles.interpretation}>{String(imageAnalysis.interpretation || t('laboratoireHome.aucuneInterpretationDisponible'))}</Text>
                                         {Array.isArray(imageAnalysis.anomalies_detected) && imageAnalysis.anomalies_detected.length > 0 && (
                                             <View style={styles.anomaliesContainer}>
-                                                <Text style={styles.anomaliesTitle}>Anomalies détectées:</Text>
+                                                <Text style={styles.anomaliesTitle}>{t('laboratoireHome.anomaliesDetectees')}</Text>
                                                 {imageAnalysis.anomalies_detected.map((anomaly, i) => (
                                                     <View key={i} style={styles.anomalyCard}>
-                                                        <Text style={styles.anomalyParameter}>{String(anomaly.parameter || 'Paramètre inconnu')}</Text>
+                                                        <Text style={styles.anomalyParameter}>{String(anomaly.parameter || t('laboratoireHome.parametreInconnu'))}</Text>
                                                         <Text style={styles.anomalyValue}>{String(anomaly.value || 'Valeur inconnue')}</Text>
-                                                        <Text style={styles.anomalyDescription}>{String(anomaly.description || 'Aucune description')}</Text>
+                                                        <Text style={styles.anomalyDescription}>{String(anomaly.description || t('laboratoireHome.aucuneDescription'))}</Text>
                                                     </View>
                                                 ))}
                                             </View>
@@ -842,7 +842,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                         )}
                                         {Array.isArray(imageAnalysis.follow_up_exams) && imageAnalysis.follow_up_exams.length > 0 && (
                                             <View style={styles.followUpContainer}>
-                                                <Text style={styles.followUpTitle}>Examens complémentaires suggérés:</Text>
+                                                <Text style={styles.followUpTitle}>{t('laboratoireHome.examensComplementairesSuggeres')}</Text>
                                                 {imageAnalysis.follow_up_exams.map((exam, i) => (
                                                     <Text key={i} style={styles.followUpItem}>• {String(exam)}</Text>
                                                 ))}
@@ -868,7 +868,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                             onPress={onPickImage}
                                         >
                                             <SafeIcon name="camera" size={18} color="#FFFFFF" type="lucide" />
-                                            <Text style={styles.searchButtonText}>Sélectionner une image</Text>
+                                            <Text style={styles.searchButtonText}>{t('laboratoireHome.selectionnerUneImage')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 )}

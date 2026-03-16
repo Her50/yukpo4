@@ -20,6 +20,7 @@ import { config } from '../config/environment';
 import { apiGet, mediaApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const GRID_GAP = 3;
@@ -93,7 +94,8 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
     service,
     prestataireInfo
 }) => {
-    const [media, setMedia] = useState<MediaItem[]>([]);
+        const { t } = useLanguageSafe();
+const [media, setMedia] = useState<MediaItem[]>([]);
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState<'all' | 'images' | 'videos'>('all');
@@ -135,13 +137,13 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
 
             // Bannière
             const bannerVal = service.data?.banner?.valeur || service.data?.banner;
-            if (bannerVal) addMedia('image', bannerVal, 'Bannière');
+            if (bannerVal) addMedia('image', bannerVal, t('serviceMediaGallery.banniere'));
 
             // Images du service
             extractMediaArray(service.data?.images).forEach((img: any) => addMedia('image', img, 'Image du service'));
 
             // Vidéos du service
-            extractMediaArray(service.data?.videos).forEach((vid: any) => addMedia('video', vid, 'Vidéo du service'));
+            extractMediaArray(service.data?.videos).forEach((vid: any) => addMedia('video', vid, t('serviceMediaGallery.videoDuService')));
 
             // ✅ Charger les produits depuis service_products (noms + product_data media)
             let productNameMap: Record<number, string> = {};
@@ -185,7 +187,7 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
                             const idx = m.product_index;
                             const desc = (idx !== null && idx !== undefined)
                                 ? (productNameMap[idx] || `Produit ${idx + 1}`)
-                                : (m.type === 'video' ? 'Vidéo' : 'Image');
+                                : (m.type === 'video' ? t('serviceMediaGallery.video') : 'Image');
                             addMedia(m.type === 'video' ? 'video' : 'image', path, desc, undefined, 'media_table');
                         });
                         console.log(`[ServiceMediaGallery] ✅ ${apiMedia.length} médias depuis API (service ${serviceId})`);
@@ -212,8 +214,8 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
 
             // Trier: branding d'abord (Logo, Bannière), puis produits groupés par nom, puis génériques
             mediaList.sort((a, b) => {
-                const isBrandingA = ['Logo', 'Bannière', 'Image du service', 'Vidéo du service'].includes(a.description);
-                const isBrandingB = ['Logo', 'Bannière', 'Image du service', 'Vidéo du service'].includes(b.description);
+                const isBrandingA = ['Logo', t('serviceMediaGallery.banniere'), 'Image du service', t('serviceMediaGallery.videoDuService')].includes(a.description);
+                const isBrandingB = ['Logo', t('serviceMediaGallery.banniere'), 'Image du service', t('serviceMediaGallery.videoDuService')].includes(b.description);
                 if (isBrandingA && !isBrandingB) return -1;
                 if (!isBrandingA && isBrandingB) return 1;
                 return (a.description || '').localeCompare(b.description || '');
@@ -258,7 +260,7 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
         try {
             const serviceName = service?.data?.titre_service?.valeur || service?.data?.titre_service || service?.titre || 'Yukpo';
             const emoji = item.type === 'video' ? '🎬' : '📸';
-            const typeLabel = item.type === 'video' ? 'vidéo' : 'photo';
+            const typeLabel = item.type === 'video' ? t('serviceMediaGallery.video') : 'photo';
             let shareText = `${emoji} ${item.description || typeLabel} — ${serviceName}`;
             shareText += `\n\n🔗 Voir sur Yukpo:\n${item.url}`;
             await Share.share({ message: shareText, url: item.url, title: `${item.description || typeLabel} — ${serviceName}` });
@@ -301,7 +303,7 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
                 ) : (
                     <View style={styles.failedPlaceholder}>
                         <SafeIcon name={item.type === 'video' ? 'video-off' : 'image'} size={28} color="#9CA3AF" />
-                        <Text style={styles.failedText}>Indisponible</Text>
+                        <Text style={styles.failedText}>{t('serviceMediaGallery.indisponible')}</Text>
                     </View>
                 )}
 
@@ -353,7 +355,7 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
                     {[
                         { key: 'all' as const, label: 'Tous', count: media.length, icon: 'grid' },
                         { key: 'images' as const, label: 'Photos', count: imageCount, icon: 'image' },
-                        { key: 'videos' as const, label: 'Vidéos', count: videoCount, icon: 'video' },
+                        { key: 'videos' as const, label: t('serviceMediaGallery.videos'), count: videoCount, icon: 'video' },
                     ].map(f => (
                         <TouchableOpacity
                             key={f.key}
@@ -377,7 +379,7 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
                 {loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Chargement des médias...</Text>
+                        <Text style={styles.loadingText}>{t('serviceMediaGallery.chargementDesMedias')}</Text>
                     </View>
                 ) : filteredMedia.length === 0 ? (
                     <View style={styles.emptyContainer}>
@@ -385,14 +387,14 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
                             <SafeIcon name={filter === 'videos' ? 'video-off' : 'image'} size={40} color={modernColors.textSecondary} />
                         </View>
                         <Text style={styles.emptyTitle}>
-                            {filter === 'all' ? 'Aucun média' : filter === 'images' ? 'Aucune photo' : 'Aucune vidéo'}
+                            {filter === 'all' ? t('serviceMediaGallery.aucunMedia') : filter === 'images' ? 'Aucune photo' : 'Aucune vidéo'}
                         </Text>
                         <Text style={styles.emptyText}>
-                            Ce prestataire n'a pas encore ajouté de {filter === 'all' ? 'média' : filter === 'images' ? 'photo' : 'vidéo'}
+                            Ce prestataire n'a pas encore ajouté de {filter === 'all' ? 'média' : filter === 'images' ? 'photo' : t('serviceMediaGallery.video')}
                         </Text>
                         {filter !== 'all' && (
                             <TouchableOpacity style={styles.emptyButton} onPress={() => setFilter('all')}>
-                                <Text style={styles.emptyButtonText}>Voir tous les médias</Text>
+                                <Text style={styles.emptyButtonText}>{t('serviceMediaGallery.voirTousLesMedias')}</Text>
                             </TouchableOpacity>
                         )}
                     </View>

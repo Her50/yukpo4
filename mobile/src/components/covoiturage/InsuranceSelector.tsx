@@ -4,6 +4,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeIcon } from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface InsuranceSelectorProps {
     onSelect: (coverageType: 'basic' | 'premium' | 'full') => void;
@@ -26,14 +27,14 @@ export const InsuranceSelector: React.FC<InsuranceSelectorProps> = ({
             type: 'premium' as const,
             name: 'Premium',
             amount: '200,000 XAF',
-            description: 'Couverture étendue',
+            description: t('insuranceSelector.couvertureEtendue'),
             icon: 'shield-check',
         },
         {
             type: 'full' as const,
             name: 'Full',
             amount: '500,000 XAF',
-            description: 'Couverture complète',
+            description: t('insuranceSelector.couvertureComplete'),
             icon: 'shield-star',
         },
     ];

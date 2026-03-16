@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ActivityItem {
     id: string;
@@ -70,11 +71,11 @@ const RecentActivityCard: React.FC<RecentActivityCardProps> = ({
         return (
             <View style={styles.container}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>Activité Récente</Text>
+                    <Text style={styles.title}>{t('recentActivityCard.activiteRecente')}</Text>
                 </View>
                 <View style={styles.emptyContainer}>
                     <Text style={styles.emptyIcon}>📊</Text>
-                    <Text style={styles.emptyTitle}>Aucune activité</Text>
+                    <Text style={styles.emptyTitle}>{t('recentActivityCard.aucuneActivite')}</Text>
                     <Text style={styles.emptyText}>
                         Vos interactions et activités récentes apparaîtront ici
                     </Text>
@@ -86,10 +87,10 @@ const RecentActivityCard: React.FC<RecentActivityCardProps> = ({
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Activité Récente</Text>
+                <Text style={styles.title}>{t('recentActivityCard.activiteRecente')}</Text>
                 {onViewAllPress && (
                     <TouchableOpacity onPress={onViewAllPress} style={styles.viewAllButton}>
-                        <Text style={styles.viewAllText}>Voir tout</Text>
+                        <Text style={styles.viewAllText}>{t('recentActivityCard.voirTout')}</Text>
                     </TouchableOpacity>
                 )}
             </View>

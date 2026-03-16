@@ -5,6 +5,7 @@ import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { Card, TextInput, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ServiceFormData {
   title: string;
@@ -16,6 +17,7 @@ interface ServiceFormData {
 
 const ServiceFormDynamic: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const [formData, setFormData] = useState<ServiceFormData>({
     title: '',
     description: '',
@@ -36,7 +38,7 @@ const ServiceFormDynamic: React.FC = () => {
 
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      Alert.alert('Succès', 'Service créé avec succès', [
+      Alert.alert('Succès', t('serviceFormDynamic.serviceCreeAvecSucces'), [
         {
           text: 'OK',
           onPress: () => navigation.goBack(),
@@ -55,7 +57,7 @@ const ServiceFormDynamic: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Card style={styles.formCard}>
           <Card.Content>
-            <Title style={styles.title}>Créer un Service</Title>
+            <Title style={styles.title}>{t('serviceFormDynamic.creerUnService')}</Title>
 
             <TextInput
               label="Titre du service *"
@@ -66,7 +68,7 @@ const ServiceFormDynamic: React.FC = () => {
             />
 
             <TextInput
-              label="Description *"
+              label={t('serviceFormDynamic.description')}
               value={formData.description}
               onChangeText={(text) => setFormData({ ...formData, description: text })}
               style={styles.input}
@@ -76,7 +78,7 @@ const ServiceFormDynamic: React.FC = () => {
             />
 
             <TextInput
-              label="Catégorie"
+              label={t('serviceFormDynamic.categorie')}
               value={formData.category}
               onChangeText={(text) => setFormData({ ...formData, category: text })}
               style={styles.input}
@@ -84,7 +86,7 @@ const ServiceFormDynamic: React.FC = () => {
             />
 
             <TextInput
-              label="Prix (XAF)"
+              label={t('serviceFormDynamic.prixXaf')}
               value={formData.price}
               onChangeText={(text) => setFormData({ ...formData, price: text })}
               style={styles.input}
@@ -93,7 +95,7 @@ const ServiceFormDynamic: React.FC = () => {
             />
 
             <TextInput
-              label="Localisation"
+              label={t('serviceFormDynamic.localisation')}
               value={formData.location}
               onChangeText={(text) => setFormData({ ...formData, location: text })}
               style={styles.input}
@@ -105,14 +107,14 @@ const ServiceFormDynamic: React.FC = () => {
                 onPress={() => navigation.goBack()}
                 style={styles.cancelButton}
               >
-                <Text>Annuler</Text>
+                <Text>{t('serviceFormDynamic.annuler')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleSubmit}
                 disabled={loading}
                 style={styles.submitButton}
               >
-                <Text>{loading ? 'Création...' : 'Créer le service'}</Text>
+                <Text>{loading ? t('serviceFormDynamic.creation') : t('serviceFormDynamic.creerLeService')}</Text>
               </TouchableOpacity>
             </View>
           </Card.Content>

@@ -7,6 +7,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticSelect } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 type SortOption = 'pertinence' | 'proximite' | 'prix_asc' | 'prix_desc';
 type FilterCategory = 'all' | 'with_stock' | 'with_variants' | 'nearby';
@@ -47,7 +48,7 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
             <ScrollView showsVerticalScrollIndicator={false}>
                 {/* Tri */}
                 <View style={styles.filterGroup}>
-                    <Text style={styles.filterGroupTitle}>📊 Trier par</Text>
+                    <Text style={styles.filterGroupTitle}>{t('filtersPanel.trierPar')}</Text>
                     <View style={styles.filterOptions}>
                         <TouchableOpacity
                             style={[styles.filterOption, sortBy === 'pertinence' && styles.filterOptionActive]}
@@ -89,12 +90,12 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
                             </Text>
                         </TouchableOpacity>
                     </View>
-                    <Text style={styles.filterHint}>Sélectionnez un ordre de tri pour affiner votre recherche.</Text>
+                    <Text style={styles.filterHint}>{t('filtersPanel.selectionnezUnOrdreDeTri')}</Text>
                 </View>
 
                 {/* Catégories rapides */}
                 <View style={styles.filterGroup}>
-                    <Text style={styles.filterGroupTitle}>🎯 Catégories rapides</Text>
+                    <Text style={styles.filterGroupTitle}>{t('filtersPanel.categoriesRapides')}</Text>
                     <View style={styles.filterOptions}>
                         {([
                             { key: 'all' as FilterCategory, label: 'Tous' },
@@ -123,7 +124,7 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
 
                 {/* Filtre par prix */}
                 <View style={styles.priceFilterContainer}>
-                    <Text style={styles.filterGroupTitle}>💵 Filtre de prix</Text>
+                    <Text style={styles.filterGroupTitle}>{t('filtersPanel.filtreDePrix')}</Text>
                     <View style={styles.priceFilterRow}>
                         <TextInput
                             style={styles.priceFilterInput}
@@ -158,7 +159,7 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
                             style={styles.priceFilterReset}
                             onPress={() => onPriceFilterChange({ min: null, max: null, currency: priceFilter.currency })}
                         >
-                            <Text style={styles.priceFilterResetText}>Réinitialiser</Text>
+                            <Text style={styles.priceFilterResetText}>{t('filtersPanel.reinitialiser')}</Text>
                         </TouchableOpacity>
                         <Text style={styles.priceFilterInfo}>Devise: {priceFilter.currency}</Text>
                     </View>

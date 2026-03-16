@@ -3,6 +3,7 @@ import React from 'react';
 import ReactNative from 'react-native';
 import { Card } from 'react-native-paper';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { StyleSheet, Text, View, TouchableOpacity, ScrollView } = ReactNative;
 
@@ -105,7 +106,7 @@ const PreviousContactsPanel: React.FC<PreviousContactsPanelProps> = ({
             <Card.Content>
                 <View style={styles.header}>
                     <User size={24} color={theme.colors.primary} />
-                    <Text style={styles.title}>Contacts précédents</Text>
+                    <Text style={styles.title}>{t('previousContactsPanel.contactsPrecedents')}</Text>
                 </View>
 
                 <Text style={styles.description}>
@@ -114,7 +115,7 @@ const PreviousContactsPanel: React.FC<PreviousContactsPanelProps> = ({
 
                 {loading ? (
                     <View style={styles.loadingContainer}>
-                        <Text style={styles.loadingText}>Chargement des contacts...</Text>
+                        <Text style={styles.loadingText}>{t('previousContactsPanel.chargementDesContacts')}</Text>
                     </View>
                 ) : contacts.length > 0 ? (
                     <ScrollView style={styles.contactsList} showsVerticalScrollIndicator={false}>
@@ -123,7 +124,7 @@ const PreviousContactsPanel: React.FC<PreviousContactsPanelProps> = ({
                 ) : (
                     <View style={styles.emptyState}>
                         <User size={48} color="#E0E0E0" />
-                        <Text style={styles.emptyText}>Aucun contact précédent</Text>
+                        <Text style={styles.emptyText}>{t('previousContactsPanel.aucunContactPrecedent')}</Text>
                         <Text style={styles.emptySubtext}>
                             Vos contacts seront sauvegardés ici pour une utilisation future
                         </Text>

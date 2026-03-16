@@ -13,6 +13,7 @@ import { apiGet, apiPost } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
 import { NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const modernColors = {
     primary: '#6366F1',
@@ -47,7 +48,8 @@ export const SmartModalityInput: React.FC<SmartModalityInputProps> = ({
     autoLoadLastUsed = true,
     userId,
 }) => {
-    const [suggestions, setSuggestions] = useState<string[]>([]);
+        const { t } = useLanguageSafe();
+const [suggestions, setSuggestions] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [lastUsedValue, setLastUsedValue] = useState<string>('');
@@ -246,7 +248,7 @@ export const SmartModalityInput: React.FC<SmartModalityInputProps> = ({
                                     </Text>
                                     {isLastUsed && (
                                         <View style={styles.lastUsedBadge}>
-                                            <Text style={styles.lastUsedBadgeText}>Récente</Text>
+                                            <Text style={styles.lastUsedBadgeText}>{t('smartModalityInput.recente')}</Text>
                                         </View>
                                     )}
                                     {!isLastUsed && (

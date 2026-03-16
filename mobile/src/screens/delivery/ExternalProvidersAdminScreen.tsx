@@ -110,7 +110,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                     setShowSuccessModal(true);
                 }
             } else {
-                throw new Error(data?.message || 'Erreur lors de la création');
+                throw new Error(data?.message || t('externalProvidersAdmin.erreurLorsDeLaCreation'));
             }
         } catch (error: any) {
             console.error('[ExternalProviders] Erreur création:', error);
@@ -127,7 +127,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Désactiver',
+                    text: t('externalProvidersAdmin.desactiver'),
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -150,7 +150,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
             `🚚 Yukpo - Vos identifiants de livraison\n\n` +
             `Bonjour ${provider.provider_name},\n\n` +
             `Voici vos identifiants pour commander des livraisons Yukpo :\n\n` +
-            `📋 Votre clé API : ${provider.api_key}\n\n` +
+            t('externalProvidersAdminScreen.votreCleApiNn', { provider_api_key: provider.api_key }) +
             `📱 Formulaire de commande :\n${FORM_URL}\n\n` +
             `Ouvrez le lien ci-dessus dans votre navigateur, entrez votre clé API et les détails de la livraison.\n\n` +
             `Pour toute question, contactez le support Yukpo.`;
@@ -158,7 +158,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
         try {
             await Share.share({
                 message,
-                title: 'Identifiants Yukpo Livraison',
+                title: t('externalProvidersAdmin.identifiantsYukpoLivraison'),
             });
         } catch (error) {
             console.error('[ExternalProviders] Erreur partage:', error);
@@ -252,17 +252,17 @@ const ExternalProvidersAdminScreen: React.FC = () => {
             {loading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('externalProvidersAdmin.chargement')}</Text>
                 </View>
             ) : providers.length === 0 ? (
                 <NativeCard style={styles.emptyCard}>
                     <SafeIcon name="users" size={48} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyText}>Aucun prestataire externe</Text>
+                    <Text style={styles.emptyText}>{t('externalProvidersAdmin.aucunPrestataireExterne')}</Text>
                     <Text style={styles.emptySubtext}>
                         Créez un prestataire et partagez-lui sa clé API pour qu'il puisse commander des livraisons
                     </Text>
                     <NativeButton
-                        title="Créer un prestataire"
+                        title={t('externalProvidersAdmin.creerUnPrestataire')}
                         variant="primary"
                         onPress={() => setShowCreateModal(true)}
                     />
@@ -329,7 +329,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                         style={[styles.quickAction, { backgroundColor: '#8B5CF6' }]}
                                         onPress={() => shareProviderCredentials(provider)}
                                     >
-                                        <Text style={styles.quickActionText}>Partager</Text>
+                                        <Text style={styles.quickActionText}>{t('externalProvidersAdminScreen.partager')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </NativeCard>
@@ -348,7 +348,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Nouveau prestataire</Text>
+                            <Text style={styles.modalTitle}>{t('externalProvidersAdmin.nouveauPrestataire')}</Text>
                             <TouchableOpacity
                                 onPress={() => setShowCreateModal(false)}
                                 style={styles.closeButton}
@@ -359,10 +359,10 @@ const ExternalProvidersAdminScreen: React.FC = () => {
 
                         <ScrollView style={styles.modalBody}>
                             <View style={styles.inputContainer}>
-                                <Text style={styles.inputLabel}>Nom du prestataire *</Text>
+                                <Text style={styles.inputLabel}>{t('externalProvidersAdmin.nomDuPrestataire')}/Text>
                                 <TextInput
                                     style={styles.textInput}
-                                    placeholder="Ex: Pharmacie du Centre, Restaurant Le Bon"
+                                    placeholder={t('externalProvidersAdmin.exPharmacieDuCentreRestaurant')}
                                     value={createForm.provider_name}
                                     onChangeText={(text) => setCreateForm({ ...createForm, provider_name: text })}
                                     autoFocus
@@ -370,7 +370,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Text style={styles.inputLabel}>Téléphone (WhatsApp)</Text>
+                                <Text style={styles.inputLabel}>{t('externalProvidersAdmin.telephoneWhatsapp')}</Text>
                                 <TextInput
                                     style={styles.textInput}
                                     placeholder="+237 6XX XXX XXX"
@@ -400,12 +400,12 @@ const ExternalProvidersAdminScreen: React.FC = () => {
 
                             <View style={styles.modalActions}>
                                 <NativeButton
-                                    title="Annuler"
+                                    title={t('externalProvidersAdminScreen.annuler')}
                                     variant="outline"
                                     onPress={() => setShowCreateModal(false)}
                                 />
                                 <NativeButton
-                                    title={creating ? 'Création...' : 'Créer'}
+                                    title={creating ? t('externalProvidersAdminScreen.creation') : t('externalProvidersAdminScreen.creer')}
                                     variant="primary"
                                     onPress={handleCreate}
                                     disabled={!createForm.provider_name.trim() || creating}
@@ -451,12 +451,12 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                 <View style={styles.successBanner}>
                                     <SafeIcon name="check-circle" size={40} color="#22C55E" />
                                     <Text style={styles.successTitle}>{createdProvider.provider_name}</Text>
-                                    <Text style={styles.successSubtitle}>Les identifiants ci-dessous permettent de commander des livraisons</Text>
+                                    <Text style={styles.successSubtitle}>{t('externalProvidersAdmin.lesIdentifiantsCidessousPermettentDe')}/Text>
                                 </View>
 
                                 {/* Clé API */}
                                 <NativeCard style={styles.credentialCard}>
-                                    <Text style={styles.credentialLabel}>Clé API</Text>
+                                    <Text style={styles.credentialLabel}>{t('externalProvidersAdmin.cleApi')}</Text>
                                     <View style={styles.credentialRow}>
                                         <Text style={styles.apiKeyText} selectable numberOfLines={1}>
                                             {createdProvider.api_key}
@@ -505,14 +505,14 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                 </NativeCard>
 
                                 {/* Boutons de partage */}
-                                <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Envoyer au prestataire</Text>
+                                <Text style={[styles.sectionTitle, { marginTop: 16 }]}>{t('externalProvidersAdmin.envoyerAuPrestataire')}/Text>
 
                                 <TouchableOpacity
                                     style={styles.whatsappMainBtn}
                                     onPress={() => sendViaWhatsApp(createdProvider)}
                                 >
                                     <SafeIcon name="message-circle" size={22} color="white" />
-                                    <Text style={styles.whatsappMainBtnText}>Envoyer par WhatsApp</Text>
+                                    <Text style={styles.whatsappMainBtnText}>{t('externalProvidersAdmin.envoyerParWhatsapp')}/Text>
                                 </TouchableOpacity>
 
                                 <View style={[styles.shareButtons, { marginTop: 10 }]}>
@@ -529,7 +529,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                         onPress={() => shareProviderCredentials(createdProvider)}
                                     >
                                         <SafeIcon name="Redo2" size={20} color="white" />
-                                        <Text style={styles.shareButtonText}>Partager</Text>
+                                        <Text style={styles.shareButtonText}>{t('externalProvidersAdminScreen.partager')}</Text>
                                     </TouchableOpacity>
                                 </View>
 
@@ -541,7 +541,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                         setCopiedField(null);
                                     }}
                                 >
-                                    <Text style={styles.laterBtnText}>Fermer</Text>
+                                    <Text style={styles.laterBtnText}>{t('externalProvidersAdminScreen.fermer')}</Text>
                                 </TouchableOpacity>
                             </ScrollView>
                         )}
@@ -579,14 +579,14 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                         {selectedProvider && (
                             <ScrollView style={styles.modalBody}>
                                 <NativeCard style={styles.detailCard}>
-                                    <Text style={styles.detailLabel}>Clé API</Text>
+                                    <Text style={styles.detailLabel}>{t('externalProvidersAdmin.cleApi')}</Text>
                                     <Text style={styles.apiKeyText} selectable>
                                         {selectedProvider.api_key}
                                     </Text>
                                 </NativeCard>
 
                                 <NativeCard style={styles.detailCard}>
-                                    <Text style={styles.detailLabel}>Formulaire web</Text>
+                                    <Text style={styles.detailLabel}>{t('externalProvidersAdmin.formulaireWeb')}/Text>
                                     <Text style={styles.urlText} selectable>
                                         {FORM_URL}
                                     </Text>
@@ -594,7 +594,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
 
                                 {selectedProvider.contact_phone && (
                                     <NativeCard style={styles.detailCard}>
-                                        <Text style={styles.detailLabel}>Téléphone</Text>
+                                        <Text style={styles.detailLabel}>{t('externalProvidersAdmin.telephone')}</Text>
                                         <Text style={styles.detailValue}>{selectedProvider.contact_phone}</Text>
                                     </NativeCard>
                                 )}
@@ -621,7 +621,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                     )}
                                 </NativeCard>
 
-                                <Text style={styles.sectionTitle}>Envoyer les identifiants</Text>
+                                <Text style={styles.sectionTitle}>{t('externalProvidersAdmin.envoyerLesIdentifiants')}/Text>
 
                                 <View style={styles.shareButtons}>
                                     <TouchableOpacity
@@ -645,7 +645,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                         onPress={() => shareProviderCredentials(selectedProvider)}
                                     >
                                         <SafeIcon name="Redo2" size={24} color="white" />
-                                        <Text style={styles.shareButtonText}>Partager</Text>
+                                        <Text style={styles.shareButtonText}>{t('externalProvidersAdminScreen.partager')}</Text>
                                     </TouchableOpacity>
                                 </View>
 
@@ -655,7 +655,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                         onPress={() => handleDeactivate(selectedProvider)}
                                     >
                                         <SafeIcon name="x-circle" size={18} color="#EF4444" />
-                                        <Text style={styles.deactivateText}>Désactiver ce prestataire</Text>
+                                        <Text style={styles.deactivateText}>{t('externalProvidersAdmin.desactiverCePrestataire')}</Text>
                                     </TouchableOpacity>
                                 )}
                             </ScrollView>

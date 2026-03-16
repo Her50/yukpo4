@@ -2,13 +2,15 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { API_BASE_URL } from '../config/api';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Props {
   onSuccess: () => void;
 }
 
 const CaptchaChallenge: React.FC<Props> = ({ onSuccess }) => {
-  const [question, setQuestion] = useState("");
+      const { t } = useLanguageSafe();
+const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
 
   useEffect(() => {
@@ -33,14 +35,14 @@ const CaptchaChallenge: React.FC<Props> = ({ onSuccess }) => {
         value={answer}
         onChangeText={setAnswer}
         style={styles.input}
-        placeholder="Votre réponse"
+        placeholder={t('captchaChallenge.votreReponse')}
         keyboardType="numeric"
       />
       <TouchableOpacity
         onPress={handleSubmit}
         style={styles.button}
       >
-        <Text style={styles.buttonText}>Valider</Text>
+        <Text style={styles.buttonText}>{t('captchaChallenge.valider')}/Text>
       </TouchableOpacity>
     </View>
   );

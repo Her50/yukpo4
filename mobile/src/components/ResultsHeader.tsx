@@ -6,6 +6,7 @@ import {
     View,
 } from 'react-native';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ResultsHeaderProps {
     title: string;
@@ -39,7 +40,7 @@ const ResultsHeader: React.FC<ResultsHeaderProps> = ({
                 </View>
                 <View style={styles.statItem}>
                     <Text style={styles.statIcon}>⏱️</Text>
-                    <Text style={styles.statText}>Résultats en temps réel</Text>
+                    <Text style={styles.statText}>{t('resultsHeader.resultatsEnTempsReel')}</Text>
                 </View>
             </View>
 
@@ -59,7 +60,7 @@ const ResultsHeader: React.FC<ResultsHeaderProps> = ({
                     onPress={onPriceFilterPress}
                 >
                     <Text style={styles.priceFilterIcon}>$</Text>
-                    <Text style={styles.priceFilterButtonText}>Filtre par prix</Text>
+                    <Text style={styles.priceFilterButtonText}>{t('resultsHeader.filtreParPrix')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity

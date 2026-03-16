@@ -39,9 +39,9 @@ const slugify = (value: string) =>
         .slice(0, 60);
 
 const availabilityOptions = [
-    { value: 'online', label: 'Catalogue en ligne' },
-    { value: 'live', label: 'Ventes Live uniquement' },
-    { value: 'both', label: 'Catalogue + Live' },
+    { value: 'online', label: t('globalPromoManager.catalogueEnLigne') },
+    { value: 'live', label: t('globalPromoManager.ventesLiveUniquement') },
+    { value: 'both', label: t('globalPromoManager.catalogueLive') },
 ];
 
 const GlobalPromoManagerScreen: React.FC = () => {
@@ -225,7 +225,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
             <LinearGradient colors={modernColors.primaryGradient} style={styles.header}>
                 <View style={styles.headerContent}>
                     <Text style={styles.headerTitle}>🔥 Configuration Black Friday</Text>
-                    <Text style={styles.headerSubtitle}>Gestion des campagnes globales</Text>
+                    <Text style={styles.headerSubtitle}>{t('globalPromoManager.gestionDesCampagnesGlobales')}/Text>
                 </View>
             </LinearGradient>
 
@@ -242,7 +242,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                     </View>
                     <View style={styles.statCard}>
                         <Text style={[styles.statValue, styles.statValueScheduled]}>{stats.scheduledCount}</Text>
-                        <Text style={styles.statLabel}>Programmées</Text>
+                        <Text style={styles.statLabel}>{t('globalPromoManager.programmees')}</Text>
                     </View>
                 </View>
 
@@ -254,7 +254,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
 
                 {/* Formulaire de création d'événement */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Créer / planifier un évènement</Text>
+                    <Text style={styles.sectionTitle}>{t('globalPromoManager.creerPlanifierUnEvenement')}</Text>
                     <View style={styles.form}>
                         <View style={styles.field}>
                             <Text style={styles.label}>Nom public *</Text>
@@ -277,7 +277,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                         </View>
 
                         <View style={styles.field}>
-                            <Text style={styles.label}>Thème *</Text>
+                            <Text style={styles.label}>{t('globalPromoManager.theme')}</Text>
                             <TextInput
                                 style={styles.input}
                                 value={eventForm.theme}
@@ -294,13 +294,13 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                 onChangeText={(value) => setEventForm((prev) => ({ ...prev, description: value }))}
                                 multiline
                                 numberOfLines={2}
-                                placeholder="Description de la campagne"
+                                placeholder={t('globalPromoManager.descriptionDeLaCampagne')}
                             />
                         </View>
 
                         <View style={styles.row}>
                             <View style={[styles.field, styles.fieldHalf]}>
-                                <Text style={styles.label}>Début *</Text>
+                                <Text style={styles.label}>{t('globalPromoManager.debut')}</Text>
                                 <TouchableOpacity
                                     style={styles.input}
                                     onPress={() => {
@@ -381,7 +381,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                             {submittingEvent ? (
                                 <ActivityIndicator color="#fff" />
                             ) : (
-                                <Text style={styles.buttonText}>Ajouter / mettre à jour</Text>
+                                <Text style={styles.buttonText}>{t('globalPromoManager.ajouterMettreAJour')}</Text>
                             )}
                         </TouchableOpacity>
                     </View>
@@ -435,7 +435,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                     <View style={styles.section}>
                         <View style={styles.selectedEventHeader}>
                             <View>
-                                <Text style={styles.selectedEventLabel}>Campagne sélectionnée</Text>
+                                <Text style={styles.selectedEventLabel}>{t('globalPromoManager.campagneSelectionnee')}</Text>
                                 <Text style={styles.selectedEventName}>{selectedEvent.displayName}</Text>
                                 <Text style={styles.selectedEventInfo}>
                                     {entries.length} produit(s) participant(s) – statut{' '}
@@ -468,8 +468,8 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                                 : status === 'pending_review'
                                                     ? 'En revue'
                                                     : status === 'approved'
-                                                        ? 'Approuvé'
-                                                        : 'Refusé'}
+                                                        ? t('globalPromoManagerScreen.approuve')
+                                                        : t('globalPromoManagerScreen.refuse')}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
@@ -513,9 +513,9 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                                     {entry.status === 'pending_review'
                                                         ? 'En revue'
                                                         : entry.status === 'approved'
-                                                            ? 'Approuvé'
+                                                            ? t('globalPromoManagerScreen.approuve')
                                                             : entry.status === 'rejected'
-                                                                ? 'Refusé'
+                                                                ? t('globalPromoManagerScreen.refuse')
                                                                 : entry.status}
                                                 </Text>
                                             </View>
@@ -530,14 +530,14 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                             <Text style={styles.entryDetail}>
                                                 Stock: {entry.stockCap ? entry.stockCap : '—'}
                                             </Text>
-                                            <Text style={styles.entryDetail}>Disponibilité: {entry.availability}</Text>
+                                            <Text style={styles.entryDetail}>{t('globalPromoManagerScreen.disponibilite')} {entry.availability}</Text>
                                         </View>
                                         <View style={styles.entryActions}>
                                             <TouchableOpacity
                                                 style={styles.actionButton}
                                                 onPress={() => setSelectedEntryForDetails(entry)}
                                             >
-                                                <Text style={styles.actionButtonText}>Détails</Text>
+                                                <Text style={styles.actionButtonText}>{t('globalPromoManager.details')}</Text>
                                             </TouchableOpacity>
                                             {entry.status === 'pending_review' && (
                                                 <>
@@ -570,11 +570,11 @@ const GlobalPromoManagerScreen: React.FC = () => {
 
                         {/* Formulaire d'ajout d'entrée */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Ajouter les produits des prestataires à cette campagne</Text>
+                            <Text style={styles.sectionTitle}>{t('globalPromoManager.ajouterLesProduitsDesPrestataires')}</Text>
                             <View style={styles.form}>
                                 <View style={styles.row}>
                                     <View style={[styles.field, styles.fieldHalf]}>
-                                        <Text style={styles.label}>ID Service *</Text>
+                                        <Text style={styles.label}>{t('globalPromoManager.idService')}/Text>
                                         <TextInput
                                             style={styles.input}
                                             value={entryForm.serviceId}
@@ -601,7 +601,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
 
                                 <View style={styles.row}>
                                     <View style={[styles.field, styles.fieldHalf]}>
-                                        <Text style={styles.label}>Réduction (%)</Text>
+                                        <Text style={styles.label}>{t('globalPromoManager.reduction')}</Text>
                                         <TextInput
                                             style={styles.input}
                                             value={entryForm.discountPercentage}
@@ -613,7 +613,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                         />
                                     </View>
                                     <View style={[styles.field, styles.fieldHalf]}>
-                                        <Text style={styles.label}>Stock promo</Text>
+                                        <Text style={styles.label}>{t('globalPromoManager.stockPromo')}/Text>
                                         <TextInput
                                             style={styles.input}
                                             value={entryForm.stockCap}
@@ -627,7 +627,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                 </View>
 
                                 <View style={styles.field}>
-                                    <Text style={styles.label}>Disponibilité</Text>
+                                    <Text style={styles.label}>{t('globalPromoManager.disponibilite')}</Text>
                                     <View style={styles.radioGroup}>
                                         {availabilityOptions.map((option) => (
                                             <TouchableOpacity
@@ -655,7 +655,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                 </View>
 
                                 <View style={styles.field}>
-                                    <Text style={styles.label}>Score de priorité (tri catalogue)</Text>
+                                    <Text style={styles.label}>{t('globalPromoManager.scoreDePrioriteTriCatalogue')}</Text>
                                     <TextInput
                                         style={styles.input}
                                         value={String(entryForm.priorityScore)}
@@ -684,7 +684,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                 </View>
 
                                 <View style={styles.field}>
-                                    <Text style={styles.label}>Métadonnées (JSON)</Text>
+                                    <Text style={styles.label}>{t('globalPromoManager.metadonneesJson')}</Text>
                                     <TextInput
                                         style={[styles.input, styles.textArea]}
                                         value={entryForm.metadata}
@@ -705,7 +705,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                     {submittingEntry ? (
                                         <ActivityIndicator color="#fff" />
                                     ) : (
-                                        <Text style={styles.buttonText}>Ajouter / mettre à jour ce produit</Text>
+                                        <Text style={styles.buttonText}>{t('globalPromoManager.ajouterMettreAJourCe')}</Text>
                                     )}
                                 </TouchableOpacity>
                             </View>
@@ -729,27 +729,27 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                 </TouchableOpacity>
                             </View>
                             <View style={styles.modalBody}>
-                                <Text style={styles.label}>Motif du refus (visible côté prestataire) :</Text>
+                                <Text style={styles.label}>{t('globalPromoManager.motifDuRefusVisibleCote')}</Text>
                                 <TextInput
                                     style={[styles.input, styles.textArea]}
                                     value={rejectMessage}
                                     onChangeText={setRejectMessage}
                                     multiline
                                     numberOfLines={4}
-                                    placeholder="Entrez le motif du refus..."
+                                    placeholder={t('globalPromoManager.entrezLeMotifDuRefus')}
                                 />
                                 <View style={styles.modalActions}>
                                     <TouchableOpacity
                                         style={[styles.button, styles.buttonSecondary]}
                                         onPress={() => setRejectModalVisible(false)}
                                     >
-                                        <Text style={styles.buttonSecondaryText}>Annuler</Text>
+                                        <Text style={styles.buttonSecondaryText}>{t('globalPromoManagerScreen.annuler')}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.button, styles.buttonReject]}
                                         onPress={confirmReject}
                                     >
-                                        <Text style={styles.buttonText}>Confirmer le refus</Text>
+                                        <Text style={styles.buttonText}>{t('globalPromoManagerScreen.confirmerLeRefus')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -781,7 +781,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                         <Text style={styles.detailValue}>{selectedEntryForDetails.status}</Text>
                                     </View>
                                     <View style={styles.detailRow}>
-                                        <Text style={styles.detailLabel}>Disponibilité:</Text>
+                                        <Text style={styles.detailLabel}>{t('globalPromoManager.disponibilite')}</Text>
                                         <Text style={styles.detailValue}>{selectedEntryForDetails.availability}</Text>
                                     </View>
                                     <View style={styles.detailRow}>
@@ -793,7 +793,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                         </Text>
                                     </View>
                                     <View style={styles.detailRow}>
-                                        <Text style={styles.detailLabel}>Réduction:</Text>
+                                        <Text style={styles.detailLabel}>{t('globalPromoManager.reduction')}</Text>
                                         <Text style={styles.detailValue}>
                                             {selectedEntryForDetails.discountPercentage
                                                 ? `${selectedEntryForDetails.discountPercentage}%`
@@ -801,13 +801,13 @@ const GlobalPromoManagerScreen: React.FC = () => {
                                         </Text>
                                     </View>
                                     <View style={styles.detailRow}>
-                                        <Text style={styles.detailLabel}>Stock cible:</Text>
+                                        <Text style={styles.detailLabel}>{t('globalPromoManager.stockCible')}/Text>
                                         <Text style={styles.detailValue}>
                                             {selectedEntryForDetails.stockCap ? selectedEntryForDetails.stockCap : '—'}
                                         </Text>
                                     </View>
                                     <View style={styles.detailSection}>
-                                        <Text style={styles.detailSectionTitle}>Métadonnées JSON</Text>
+                                        <Text style={styles.detailSectionTitle}>{t('globalPromoManager.metadonneesJson')}</Text>
                                         <Text style={styles.detailJson}>
                                             {JSON.stringify(selectedEntryForDetails.metadata ?? {}, null, 2)}
                                         </Text>

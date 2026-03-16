@@ -15,6 +15,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { offreEmploiService } from '../../services/offreEmploiService';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface DashboardStats {
     total_offres?: number;
@@ -29,8 +30,8 @@ interface DashboardStats {
 
 // ✅ FIX 2026-03-14: Actions rapides EMPLOYEUR (partenaire recruteur)
 const EMPLOYER_QUICK_ACTIONS = [
-    { id: 'create', label: 'Nouvelle offre', icon: 'plus-circle', color: '#7C3AED', screen: 'OffresEmploiForm' },
-    { id: 'mesoffres', label: 'Mes offres', icon: 'briefcase', color: '#6366F1', screen: 'MesOffres' },
+    { id: 'create', label: t('offresEmploiHub.nouvelleOffre'), icon: 'plus-circle', color: '#7C3AED', screen: 'OffresEmploiForm' },
+    { id: 'mesoffres', label: t('offresEmploiHub.mesOffres'), icon: 'briefcase', color: '#6366F1', screen: 'MesOffres' },
     { id: 'candidatures', label: 'Candidatures', icon: 'users', color: '#10B981', screen: 'MesOffres' },
     { id: 'matching', label: 'Matching IA', icon: 'target', color: '#8B5CF6', screen: 'MesOffres' },
     { id: 'salary', label: 'Salaire IA', icon: 'trending-up', color: '#F59E0B', screen: 'AISalaryPrediction' },
@@ -39,12 +40,12 @@ const EMPLOYER_QUICK_ACTIONS = [
 
 // Grille d'actions rapides CANDIDAT
 const CANDIDATE_QUICK_ACTIONS = [
-    { id: 'search', label: 'Rechercher', icon: 'search', color: '#6366F1', screen: 'OffresEmploiHome' },
+    { id: 'search', label: t('offresEmploiHub.rechercher'), icon: 'search', color: '#6366F1', screen: 'OffresEmploiHome' },
     { id: 'matching', label: 'Pour moi', icon: 'target', color: '#8B5CF6', screen: 'OffresEmploiHome' },
     { id: 'candidatures', label: 'Candidatures', icon: 'file-text', color: '#10B981', screen: 'OffreCandidatures' },
-    { id: 'profil', label: 'Mon profil', icon: 'user', color: '#F59E0B', screen: 'ProfilCandidat' },
+    { id: 'profil', label: t('offresEmploiHub.monProfil'), icon: 'user', color: '#F59E0B', screen: 'ProfilCandidat' },
     { id: 'alertes', label: 'Alertes', icon: 'bell', color: '#EF4444', screen: 'AlertesEmploi' },
-    { id: 'mesoffres', label: 'Mes offres', icon: 'briefcase', color: '#EC4899', screen: 'MesOffres' },
+    { id: 'mesoffres', label: t('offresEmploiHub.mesOffres'), icon: 'briefcase', color: '#EC4899', screen: 'MesOffres' },
 ];
 
 // Outils IA compacts
@@ -59,6 +60,7 @@ const EMPLOYER_PARTNER_TYPES = ['offre_emploi', 'offreemploi', 'recruteur', 'emp
 
 const OffresEmploiHubScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -137,7 +139,7 @@ const OffresEmploiHubScreen: React.FC = () => {
         return (
             <View style={s.centerContainer}>
                 <ActivityIndicator size="large" color="#6366F1" />
-                <Text style={s.loadingText}>Chargement...</Text>
+                <Text style={s.loadingText}>{t('offresEmploiHub.chargement')}</Text>
             </View>
         );
     }
@@ -186,7 +188,7 @@ const OffresEmploiHubScreen: React.FC = () => {
                         <View style={[s.statCard, { borderLeftColor: '#F59E0B' }]}>
                             <SafeIcon name="clock" size={18} color="#F59E0B" type="lucide" />
                             <Text style={s.statValue}>{String(stats.candidatures_attente || 0)}</Text>
-                            <Text style={s.statLabel}>En attente</Text>
+                            <Text style={s.statLabel}>{t('offresEmploiHub.enAttente')}/Text>
                         </View>
                         <View style={[s.statCard, { borderLeftColor: '#8B5CF6' }]}>
                             <SafeIcon name={isEmployer ? 'eye' : 'zap'} size={18} color="#8B5CF6" type="lucide" />
@@ -257,7 +259,7 @@ const OffresEmploiHubScreen: React.FC = () => {
                         <View style={s.employerActions}>
                             <TouchableOpacity style={s.employerActionBtn} onPress={() => nav('MesOffres')} activeOpacity={0.7}>
                                 <SafeIcon name="list" size={18} color="#6366F1" type="lucide" />
-                                <Text style={s.employerActionText}>Mes offres</Text>
+                                <Text style={s.employerActionText}>{t('offresEmploiHub.mesOffres')}</Text>
                             </TouchableOpacity>
                             <View style={s.employerActionDivider} />
                             <TouchableOpacity style={s.employerActionBtn} onPress={() => nav('MesOffres')} activeOpacity={0.7}>

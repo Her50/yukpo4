@@ -77,9 +77,9 @@ const BusReturnRequestsScreen: React.FC = () => {
     const getStatusLabel = (status: string) => {
         switch (status) {
             case 'pending': return 'En attente';
-            case 'matched': return 'Bus trouvé !';
-            case 'completed': return 'Confirmé';
-            case 'cancelled': return 'Annulé';
+            case 'matched': return t('busReturnRequestsScreen.busTrouve');
+            case 'completed': return t('busReturnRequestsScreen.confirme');
+            case 'cancelled': return t('busReturnRequestsScreen.annule');
             default: return status;
         }
     };
@@ -105,7 +105,7 @@ const BusReturnRequestsScreen: React.FC = () => {
 
         Alert.alert(
             'Confirmer le retour',
-            `Voulez-vous confirmer votre retour de ${request.return_from} à ${request.return_to} ?`,
+            t('busReturnRequestsScreen.voulezvousConfirmerVotreRetourDeA', { request_return_from: request.return_from, request_return_to: request.return_to }),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -132,11 +132,11 @@ const BusReturnRequestsScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Mes demandes de retour</Text>
+                    <Text style={styles.title}>{t('busReturnRequests.mesDemandesDeRetour')}</Text>
                 </View>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('busReturnRequests.chargement')}</Text>
                 </View>
             </View>
         );
@@ -151,7 +151,7 @@ const BusReturnRequestsScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mes demandes de retour</Text>
+                <Text style={styles.title}>{t('busReturnRequests.mesDemandesDeRetour')}</Text>
             </View>
 
             <ScrollView
@@ -164,7 +164,7 @@ const BusReturnRequestsScreen: React.FC = () => {
                 {requests.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <SafeIcon name="inbox" size={64} color="#9CA3AF" />
-                        <Text style={styles.emptyText}>Aucune demande de retour</Text>
+                        <Text style={styles.emptyText}>{t('busReturnRequests.aucuneDemandeDeRetour')}</Text>
                         <Text style={styles.emptySubtext}>
                             Créez une demande de retour après avoir acheté un ticket aller
                         </Text>
@@ -230,7 +230,7 @@ const BusReturnRequestsScreen: React.FC = () => {
 
                                 {request.status === 'matched' && (
                                     <NativeButton
-                                        title="Confirmer le retour"
+                                        title={t('busReturnRequestsScreen.confirmerLeRetour')}
                                         onPress={() => handleConfirmReturn(request)}
                                         variant="primary"
                                         size="medium"

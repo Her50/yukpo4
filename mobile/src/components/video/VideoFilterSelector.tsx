@@ -16,6 +16,7 @@ import {
 } from '../../services/videoEffectsService';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface VideoFilterSelectorProps {
     selectedFilter: VideoFilter;
@@ -32,7 +33,8 @@ const VideoFilterSelector: React.FC<VideoFilterSelectorProps> = ({
     showIntensity = false,
     onIntensityChange,
 }) => {
-    const [intensity, setIntensity] = useState(100);
+        const { t } = useLanguageSafe();
+const [intensity, setIntensity] = useState(100);
     const availableFilters = videoEffectsService.getAvailableFilters();
 
     const handleIntensityChange = useCallback((value: number) => {
@@ -84,7 +86,7 @@ const VideoFilterSelector: React.FC<VideoFilterSelectorProps> = ({
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Filtres Vidéo</Text>
+                <Text style={styles.headerTitle}>{t('videoFilterSelector.filtresVideo')}</Text>
                 <TouchableOpacity
                     style={styles.closeButton}
                     onPress={onClose}

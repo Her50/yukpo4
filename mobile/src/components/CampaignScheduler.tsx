@@ -4,6 +4,7 @@ import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ScheduleOptions {
     startDate: Date | null;
@@ -24,14 +25,15 @@ export const CampaignScheduler: React.FC<CampaignSchedulerProps> = ({
     schedule,
     onScheduleChange,
 }) => {
-    const [expanded, setExpanded] = useState(false);
+        const { t } = useLanguageSafe();
+const [expanded, setExpanded] = useState(false);
     const [showStartDate, setShowStartDate] = useState(false);
     const [showEndDate, setShowEndDate] = useState(false);
     const [showStartTime, setShowStartTime] = useState(false);
     const [showEndTime, setShowEndTime] = useState(false);
 
     const formatDate = (date: Date | null) => {
-        if (!date) return 'Non défini';
+        if (!date) return t('campaignScheduler.nonDefini');
         return date.toLocaleDateString('fr-FR', {
             day: '2-digit',
             month: '2-digit',
@@ -40,7 +42,7 @@ export const CampaignScheduler: React.FC<CampaignSchedulerProps> = ({
     };
 
     const formatTime = (date: Date | null) => {
-        if (!date) return 'Non défini';
+        if (!date) return t('campaignScheduler.nonDefini');
         return date.toLocaleTimeString('fr-FR', {
             hour: '2-digit',
             minute: '2-digit',
@@ -55,7 +57,7 @@ export const CampaignScheduler: React.FC<CampaignSchedulerProps> = ({
             >
                 <SafeIcon name="calendar" size={20} color={modernColors.primary} />
                 <Text style={styles.expandText}>
-                    Planification {schedule.startDate ? '(activée)' : '(optionnel)'}
+                    Planification {schedule.startDate ? t('campaignScheduler.activee') : '(optionnel)'}
                 </Text>
                 <SafeIcon name="chevron-right" size={16} color={modernColors.textSecondary} />
             </TouchableOpacity>
@@ -73,7 +75,7 @@ export const CampaignScheduler: React.FC<CampaignSchedulerProps> = ({
 
             {/* Date de début */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Date de début</Text>
+                <Text style={styles.sectionTitle}>{t('campaignScheduler.dateDeDebut')}</Text>
                 <TouchableOpacity
                     style={styles.dateButton}
                     onPress={() => setShowStartDate(true)}
@@ -105,7 +107,7 @@ export const CampaignScheduler: React.FC<CampaignSchedulerProps> = ({
             {/* Heure de début */}
             {schedule.startDate && (
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Heure de début</Text>
+                    <Text style={styles.sectionTitle}>{t('campaignScheduler.heureDeDebut')}</Text>
                     <TouchableOpacity
                         style={styles.dateButton}
                         onPress={() => setShowStartTime(true)}
@@ -136,7 +138,7 @@ export const CampaignScheduler: React.FC<CampaignSchedulerProps> = ({
 
             {/* Date de fin */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Date de fin</Text>
+                <Text style={styles.sectionTitle}>{t('campaignScheduler.dateDeFin')}</Text>
                 <TouchableOpacity
                     style={styles.dateButton}
                     onPress={() => setShowEndDate(true)}
@@ -194,7 +196,7 @@ export const CampaignScheduler: React.FC<CampaignSchedulerProps> = ({
                 <View style={styles.summaryBox}>
                     <SafeIcon name="info" size={16} color={modernColors.info} />
                     <Text style={styles.summaryText}>
-                        La campagne sera active du {formatDate(schedule.startDate)} au {formatDate(schedule.endDate)}{schedule.pauseOnWeekends ? ' (pauses weekends activées)' : ''}
+                        La campagne sera active du {formatDate(schedule.startDate)} au {formatDate(schedule.endDate)}{schedule.pauseOnWeekends ? t('campaignScheduler.pausesWeekendsActivees') : ''}
                     </Text>
                 </View>
             )}

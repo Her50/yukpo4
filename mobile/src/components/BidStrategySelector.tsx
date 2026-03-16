@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export type BidStrategyType = 'cpc' | 'cpm' | 'cpa' | 'auto';
 
@@ -23,25 +24,25 @@ const STRATEGIES: Omit<BidStrategy, 'bidAmount'>[] = [
     {
         type: 'auto',
         label: 'Optimisation automatique',
-        description: 'Le système optimise automatiquement pour le meilleur résultat',
+        description: t('bidStrategySelector.leSystemeOptimiseAutomatiquementPour'),
         icon: 'zap',
     },
     {
         type: 'cpc',
-        label: 'Coût par clic (CPC)',
+        label: t('bidStrategySelector.coutParClicCpc'),
         description: 'Vous payez uniquement quand quelqu\'un clique',
         icon: 'mouse-pointer',
     },
     {
         type: 'cpm',
-        label: 'Coût par mille impressions (CPM)',
+        label: t('bidStrategySelector.coutParMilleImpressionsCpm'),
         description: 'Vous payez pour 1000 affichages',
         icon: 'eye',
     },
     {
         type: 'cpa',
-        label: 'Coût par acquisition (CPA)',
-        description: 'Vous payez uniquement pour les conversions',
+        label: t('bidStrategySelector.coutParAcquisitionCpa'),
+        description: t('bidStrategySelector.vousPayezUniquementPourLes'),
         icon: 'target',
     },
 ];
@@ -50,7 +51,8 @@ export const BidStrategySelector: React.FC<BidStrategySelectorProps> = ({
     strategy,
     onStrategyChange,
 }) => {
-    const [expanded, setExpanded] = useState(false);
+        const { t } = useLanguageSafe();
+const [expanded, setExpanded] = useState(false);
 
     const selectStrategy = (newStrategy: Omit<BidStrategy, 'bidAmount'>) => {
         onStrategyChange({
@@ -77,7 +79,7 @@ export const BidStrategySelector: React.FC<BidStrategySelectorProps> = ({
     return (
         <NativeCard style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>💰 Stratégie d'enchères</Text>
+                <Text style={styles.title}>{t('bidStrategySelector.strategieDencheres')}</Text>
                 <TouchableOpacity onPress={() => setExpanded(false)}>
                     <SafeIcon name="x" size={20} color={modernColors.textSecondary} />
                 </TouchableOpacity>

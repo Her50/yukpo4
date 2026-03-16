@@ -18,6 +18,7 @@ import {
     type GlobalPromoCatalogItem,
 } from '../services/globalPromoService';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400x300?text=Produit';
 
@@ -39,10 +40,11 @@ const getSnapshotImage = (snapshot: any): string | undefined => {
 };
 
 const formatPrice = (value?: number | null) =>
-    value ? `${value.toLocaleString('fr-FR')} CFA` : 'Prix communiqué lors du live';
+    value ? `${value.toLocaleString('fr-FR')} CFA` : t('globalPromoCatalogScreen.prixCommuniqueLorsDuLive');
 
 const GlobalPromoCatalogScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [pageData, setPageData] = useState<GlobalPromoCatalogItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -114,7 +116,7 @@ const GlobalPromoCatalogScreen: React.FC = () => {
             <SafeNativeView style={styles.container}>
                 <View style={styles.centerContent}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement du catalogue...</Text>
+                    <Text style={styles.loadingText}>{t('globalPromoCatalog.chargementDuCatalogue')}</Text>
                 </View>
             </SafeNativeView>
         );
@@ -124,14 +126,14 @@ const GlobalPromoCatalogScreen: React.FC = () => {
         <SafeNativeView style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Text style={styles.backButtonText}>← Retour</Text>
+                    <Text style={styles.backButtonText}>{t('globalPromoCatalog.retour')}/Text>
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>🛍️ Black Friday</Text>
                 <View style={styles.placeholder} />
             </View>
 
             <View style={styles.headerBanner}>
-                <Text style={styles.bannerTitle}>Black Friday fédéré Yukpo</Text>
+                <Text style={styles.bannerTitle}>{t('globalPromoCatalog.blackFridayFedereYukpo')}</Text>
                 <Text style={styles.bannerSubtext}>
                     Toutes les promotions validées par Yukpo regroupées ici
                 </Text>
@@ -140,7 +142,7 @@ const GlobalPromoCatalogScreen: React.FC = () => {
             <View style={styles.filtersContainer}>
                 <TextInput
                     style={styles.searchInput}
-                    placeholder="Rechercher..."
+                    placeholder={t('globalPromoCatalog.rechercher')}
                     placeholderTextColor={modernColors.textSecondary}
                     value={keyword}
                     onChangeText={setKeyword}
@@ -196,7 +198,7 @@ const GlobalPromoCatalogScreen: React.FC = () => {
             >
                 {pageData.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Text style={styles.emptyStateText}>Aucun résultat</Text>
+                        <Text style={styles.emptyStateText}>{t('globalPromoCatalog.aucunResultat')}</Text>
                         <Text style={styles.emptyStateSubtext}>
                             Essayez un autre mot-clé ou modifiez les filtres
                         </Text>
@@ -220,7 +222,7 @@ const GlobalPromoCatalogScreen: React.FC = () => {
                                 snapshot.description ||
                                 snapshot.short_description ||
                                 item.entry.metadata?.description ||
-                                'Offre spéciale Black Friday validée par Yukpo.';
+                                t('globalPromoCatalogScreen.offreSpecialeBlackFridayValideePar');
 
                             return (
                                 <TouchableOpacity
@@ -264,7 +266,7 @@ const GlobalPromoCatalogScreen: React.FC = () => {
                                             )}
                                         </View>
                                         {item.product?.highlighted && (
-                                            <Text style={styles.highlightedLabel}>✨ Coup de cœur Yukpo</Text>
+                                            <Text style={styles.highlightedLabel}>{t('globalPromoCatalog.coupDeCurYukpo')}</Text>
                                         )}
                                     </View>
                                 </TouchableOpacity>
@@ -273,7 +275,7 @@ const GlobalPromoCatalogScreen: React.FC = () => {
                         {hasMore && (
                             <View style={styles.loadMoreContainer}>
                                 <ActivityIndicator size="small" color={modernColors.primary} />
-                                <Text style={styles.loadMoreText}>Chargement...</Text>
+                                <Text style={styles.loadMoreText}>{t('globalPromoCatalog.chargement')}</Text>
                             </View>
                         )}
                     </>

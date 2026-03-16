@@ -6,6 +6,7 @@ import { useUser } from "@/hooks/useUser";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
 import classNames from "classnames";
 import { isAdminUser } from "../utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const DesktopMenu: React.FC = () => {
   const { user } = useUser();
@@ -13,11 +14,11 @@ const DesktopMenu: React.FC = () => {
   const current = location.pathname;
 
   const baseLinks = [
-    { path: ROUTES.HOME, label: "Accueil" },
+    { path: ROUTES.HOME, label: t('desktopMenu.accueil') },
     { path: ROUTES.SERVICES, label: "Services" },
     { path: ROUTES.CATALOGUE, label: "Catalogue" },
     { path: ROUTES.CONTACT, label: "Contact" },
-    { path: ROUTES.ABOUT, label: "À propos" },
+    { path: ROUTES.ABOUT, label: t('desktopMenu.aPropos') },
   ];
 
   const extraLinks: { path: string; label: string }[] = [];
@@ -27,7 +28,7 @@ const DesktopMenu: React.FC = () => {
 
     // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
     if (isAdminUser(user)) {
-      extraLinks.push({ path: ROUTES.DASHBOARD_ADMIN_AUDIT, label: "Audit Sécurité" });
+      extraLinks.push({ path: ROUTES.DASHBOARD_ADMIN_AUDIT, label: t('desktopMenu.auditSecurite') });
     }
   }
 

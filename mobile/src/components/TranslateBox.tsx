@@ -2,9 +2,11 @@ import { Picker } from '@react-native-picker/picker';
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { apiPost } from '../services/api';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const TranslateBox = () => {
-  const [text, setText] = useState('');
+      const { t } = useLanguageSafe();
+const [text, setText] = useState('');
   const [targetLang, setTargetLang] = useState('en');
   const [translated, setTranslated] = useState('');
   const [loading, setLoading] = useState(false);
@@ -36,7 +38,7 @@ const TranslateBox = () => {
     <View style={styles.container}>
       <TextInput
         style={styles.textarea}
-        placeholder="Texte à traduire"
+        placeholder={t('translateBox.texteATraduire')}
         value={text}
         onChangeText={setText}
         multiline
@@ -52,8 +54,8 @@ const TranslateBox = () => {
             style={styles.picker}
           >
             <Picker.Item label="🇬🇧 English" value="en" />
-            <Picker.Item label="🇫🇷 Français" value="fr" />
-            <Picker.Item label="🇵🇹 Português" value="pt" />
+            <Picker.Item label={t('translateBox.francais')} value="fr" />
+            <Picker.Item label={t('translateBox.portugues')} value="pt" />
             <Picker.Item label="🇸🇦 العربية" value="ar" />
             <Picker.Item label="🌍 Fulfulde" value="ff" />
           </Picker>

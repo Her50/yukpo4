@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ServiceRatingModalProps {
     visible: boolean;
@@ -32,7 +33,8 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
     loading = false,
     allowCommentWithoutRating = true // ✅ NOUVEAU: Par défaut, permet les commentaires sans note
 }) => {
-    const [rating, setRating] = useState(0);
+        const { t } = useLanguageSafe();
+const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -58,8 +60,8 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
             const success = await onSubmit(rating, comment);
             if (success) {
                 Alert.alert(
-                    'Avis envoyé',
-                    'Merci pour votre avis ! Il sera visible après validation.',
+                    t('serviceRatingModal.avisEnvoye'),
+                    t('serviceRatingModal.merciPourVotreAvisIlSera'),
                     [{ text: 'OK', onPress: onClose }]
                 );
                 // Reset form
@@ -106,7 +108,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
 
     const getRatingText = () => {
         switch (rating) {
-            case 1: return 'Très déçu';
+            case 1: return t('serviceRatingModal.tresDecu');
             case 2: return 'Déçu';
             case 3: return 'Moyen';
             case 4: return 'Satisfait';
@@ -161,7 +163,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                     {/* Service info */}
                     <View style={styles.serviceInfo}>
                         <Text style={styles.serviceTitle}>{serviceTitle}</Text>
-                        <Text style={styles.serviceSubtitle}>Partagez votre expérience</Text>
+                        <Text style={styles.serviceSubtitle}>{t('serviceRating.partagezVotreExperience')}</Text>
                     </View>
 
                     {/* Rating section */}
@@ -209,7 +211,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                             style={styles.commentInput}
                             value={comment}
                             onChangeText={setComment}
-                            placeholder="Décrivez votre expérience avec ce service..."
+                            placeholder={t('serviceRating.decrivezVotreExperienceAvecCe')}
                             placeholderTextColor={modernColors.textSecondary}
                             multiline
                             numberOfLines={4}
@@ -229,7 +231,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                         onPress={handleCancel}
                         disabled={isSubmitting}
                     >
-                        <Text style={styles.cancelButtonText}>Annuler</Text>
+                        <Text style={styles.cancelButtonText}>{t('serviceRatingModal.annuler')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -241,8 +243,8 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                         onPress={(rating === 0 && comment.trim().length === 0) ? () => {
                             Alert.alert(
                                 'Champ requis',
-                                'Veuillez sélectionner une note ou saisir un commentaire.',
-                                [{ text: 'Compris' }]
+                                t('serviceRatingModal.veuillezSelectionnerUneNoteOuSaisir'),
+                                [{ text: t('common.understood') }]
                             );
                         } : handleSubmit}
                         disabled={isSubmitting || (rating === 0 && comment.trim().length === 0)}

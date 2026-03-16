@@ -19,23 +19,25 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import assuranceService, { type CreateClaimPayload, type InsurancePolicy } from '../../services/assuranceService';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const TYPES_SINISTRES = [
     { key: 'accident', label: 'Accident', icon: 'alert-triangle', color: '#DC2626' },
     { key: 'vol', label: 'Vol', icon: 'lock', color: '#7C3AED' },
     { key: 'incendie', label: 'Incendie', icon: 'zap', color: '#F59E0B' },
-    { key: 'degats_eaux', label: 'Dégâts des eaux', icon: 'droplet', color: '#3B82F6' },
+    { key: 'degats_eaux', label: t('declarationSinistre.degatsDesEaux'), icon: 'droplet', color: '#3B82F6' },
     { key: 'catastrophe_naturelle', label: 'Catastrophe naturelle', icon: 'cloud-rain', color: '#6366F1' },
     { key: 'maladie', label: 'Maladie', icon: 'heart', color: '#DC2626' },
     { key: 'hospitalisation', label: 'Hospitalisation', icon: 'activity', color: '#059669' },
-    { key: 'deces', label: 'Décès', icon: 'shield', color: '#374151' },
+    { key: 'deces', label: t('declarationSinistre.deces'), icon: 'shield', color: '#374151' },
     { key: 'bris_glace', label: 'Bris de glace', icon: 'square', color: '#2563EB' },
-    { key: 'panne', label: 'Panne mécanique', icon: 'tool', color: '#D97706' },
+    { key: 'panne', label: t('declarationSinistre.panneMecanique'), icon: 'tool', color: '#D97706' },
     { key: 'autre', label: 'Autre', icon: 'help-circle', color: '#6B7280' },
 ];
 
 const DeclarationSinistreScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const policy = (route.params as any)?.policy as InsurancePolicy | undefined;
     const devise = getCurrencyIntelligently() || 'FCFA';
@@ -84,8 +86,8 @@ const DeclarationSinistreScreen: React.FC = () => {
 
             if (result.success) {
                 Alert.alert(
-                    'Sinistre déclaré',
-                    `Votre déclaration a été enregistrée.\n\nNuméro de sinistre: ${result.numero_sinistre}\n\nVotre compagnie d'assurance sera notifiée et traitera votre dossier dans les meilleurs délais.`,
+                    t('declarationSinistreScreen.sinistreDeclare'),
+                    t('declarationSinistreScreen.votreDeclarationAEteEnregistreennnumeroDe', { result_numero_sinistre: result.numero_sinistre }),
                     [{ text: 'OK', onPress: () => navigation.goBack() }]
                 );
             } else {
@@ -100,8 +102,8 @@ const DeclarationSinistreScreen: React.FC = () => {
 
     const renderStep1 = () => (
         <>
-            <Text style={s.stepTitle}>Type de sinistre</Text>
-            <Text style={s.stepDesc}>Sélectionnez le type de sinistre que vous souhaitez déclarer.</Text>
+            <Text style={s.stepTitle}>{t('declarationSinistre.typeDeSinistre')}</Text>
+            <Text style={s.stepDesc}>{t('declarationSinistre.selectionnezLeTypeDeSinistre')}</Text>
 
             <View style={s.typesGrid}>
                 {TYPES_SINISTRES.map(t => (
@@ -122,7 +124,7 @@ const DeclarationSinistreScreen: React.FC = () => {
                 onChangeText={setDateSinistre} />
 
             <Text style={s.fieldLabel}>Lieu du sinistre</Text>
-            <TextInput style={s.input} placeholder="Adresse ou description du lieu"
+            <TextInput style={s.input} placeholder={t('declarationSinistreScreen.adresseOuDescriptionDuLieu')}
                 value={lieuSinistre} onChangeText={setLieuSinistre} />
         </>
     );
@@ -130,12 +132,12 @@ const DeclarationSinistreScreen: React.FC = () => {
     const renderStep2 = () => (
         <>
             <Text style={s.stepTitle}>Description du sinistre</Text>
-            <Text style={s.stepDesc}>Décrivez les circonstances et les dommages subis de manière détaillée (minimum 20 caractères).</Text>
+            <Text style={s.stepDesc}>{t('declarationSinistre.decrivezLesCirconstancesEtLes')}</Text>
 
-            <Text style={s.fieldLabel}>Description détaillée *</Text>
+            <Text style={s.fieldLabel}>{t('declarationSinistre.descriptionDetaillee')}</Text>
             <TextInput
                 style={[s.input, s.textArea]}
-                placeholder="Décrivez le sinistre: ce qui s'est passé, les dommages constatés, les personnes impliquées..."
+                placeholder={t('declarationSinistre.decrivezLeSinistreCeQui')}est passé, les dommages constatés, les personnes impliquées..."
                 multiline
                 numberOfLines={6}
                 textAlignVertical="top"
@@ -147,34 +149,34 @@ const DeclarationSinistreScreen: React.FC = () => {
             <Text style={s.fieldLabel}>Circonstances</Text>
             <TextInput
                 style={[s.input, s.textArea, { height: 80 }]}
-                placeholder="Détails supplémentaires sur les circonstances..."
+                placeholder={t('declarationSinistre.detailsSupplementairesSurLesCirconstance')}
                 multiline
                 textAlignVertical="top"
                 value={circonstances}
                 onChangeText={setCirconstances}
             />
 
-            <Text style={s.fieldLabel}>Témoins (noms, contacts)</Text>
-            <TextInput style={s.input} placeholder="Noms et coordonnées des témoins éventuels"
+            <Text style={s.fieldLabel}>{t('declarationSinistre.temoinsNomsContacts')}</Text>
+            <TextInput style={s.input} placeholder={t('declarationSinistre.nomsEtCoordonneesDesTemoins')}
                 value={temoins} onChangeText={setTemoins} />
         </>
     );
 
     const renderStep3 = () => (
         <>
-            <Text style={s.stepTitle}>Estimation financière</Text>
-            <Text style={s.stepDesc}>Indiquez une estimation des dommages et le montant que vous souhaitez réclamer.</Text>
+            <Text style={s.stepTitle}>{t('declarationSinistre.estimationFinanciere')}</Text>
+            <Text style={s.stepDesc}>{t('declarationSinistre.indiquezUneEstimationDesDommages')}</Text>
 
-            <Text style={s.fieldLabel}>Dommages estimés ({devise})</Text>
-            <TextInput style={s.input} placeholder="Estimation de la valeur des dommages"
+            <Text style={s.fieldLabel}>{t('declarationSinistreScreen.estimatedDamages')} ({devise})</Text>
+            <TextInput style={s.input} placeholder={t('declarationSinistre.estimationDeLaValeurDes')}
                 keyboardType="numeric" value={dommagesEstimes} onChangeText={setDommagesEstimes} />
 
-            <Text style={s.fieldLabel}>Montant réclamé ({devise})</Text>
-            <TextInput style={s.input} placeholder="Montant que vous souhaitez réclamer"
+            <Text style={s.fieldLabel}>{t('declarationSinistreScreen.claimedAmount')} ({devise})</Text>
+            <TextInput style={s.input} placeholder={t('declarationSinistre.montantQueVousSouhaitezReclamer')}
                 keyboardType="numeric" value={montantReclame} onChangeText={setMontantReclame} />
 
             <View style={s.summaryCard}>
-                <Text style={s.summaryTitle}>Récapitulatif</Text>
+                <Text style={s.summaryTitle}>{t('declarationSinistre.recapitulatif')}</Text>
                 <View style={s.summaryRow}>
                     <Text style={s.summaryLabel}>Police</Text>
                     <Text style={s.summaryValue}>{policy?.numero_police || 'N/A'}</Text>
@@ -184,7 +186,7 @@ const DeclarationSinistreScreen: React.FC = () => {
                     <Text style={s.summaryValue}>{policy?.nom_produit || 'N/A'}</Text>
                 </View>
                 <View style={s.summaryRow}>
-                    <Text style={s.summaryLabel}>Type sinistre</Text>
+                    <Text style={s.summaryLabel}>{t('declarationSinistre.typeSinistre')}/Text>
                     <Text style={s.summaryValue}>{TYPES_SINISTRES.find(t => t.key === typeSinistre)?.label || typeSinistre}</Text>
                 </View>
                 <View style={s.summaryRow}>
@@ -205,7 +207,7 @@ const DeclarationSinistreScreen: React.FC = () => {
                 ) : null}
                 {montantReclame ? (
                     <View style={s.summaryRow}>
-                        <Text style={s.summaryLabel}>Réclamé</Text>
+                        <Text style={s.summaryLabel}>{t('declarationSinistre.reclame')}</Text>
                         <Text style={[s.summaryValue, { color: '#059669', fontWeight: '700' }]}>{parseFloat(montantReclame).toLocaleString()} {devise}</Text>
                     </View>
                 ) : null}
@@ -221,7 +223,7 @@ const DeclarationSinistreScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={22} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>Déclaration de sinistre</Text>
+                        <Text style={s.headerTitle}>{t('declarationSinistre.declarationDeSinistre')}</Text>
                         {policy && <Text style={s.headerSub}>Police: {policy.numero_police}</Text>}
                     </View>
                 </View>
@@ -251,7 +253,7 @@ const DeclarationSinistreScreen: React.FC = () => {
                 {step > 1 && (
                     <TouchableOpacity style={s.prevBtn} onPress={() => setStep(s => s - 1)}>
                         <SafeIcon name="arrow-left" size={18} color="#6366F1" />
-                        <Text style={s.prevBtnText}>Précédent</Text>
+                        <Text style={s.prevBtnText}>{t('declarationSinistre.precedent')}</Text>
                     </TouchableOpacity>
                 )}
                 <View style={{ flex: 1 }} />
@@ -260,7 +262,7 @@ const DeclarationSinistreScreen: React.FC = () => {
                         style={[s.nextBtn, !(step === 1 ? canProceedStep1 : canProceedStep2) && s.btnDisabled]}
                         disabled={!(step === 1 ? canProceedStep1 : canProceedStep2)}
                         onPress={() => setStep(s => s + 1)}>
-                        <Text style={s.nextBtnText}>Suivant</Text>
+                        <Text style={s.nextBtnText}>{t('declarationSinistreScreen.suivant')}</Text>
                         <SafeIcon name="arrow-right" size={18} color="#fff" />
                     </TouchableOpacity>
                 ) : (

@@ -14,6 +14,7 @@ import { TimelineVariant, timelineVariantService } from '../services/timelineVar
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface TimelineVariantSelectorProps {
     timelineRequest: any; // TimelineVariantRequest
@@ -26,7 +27,8 @@ export const TimelineVariantSelector: React.FC<TimelineVariantSelectorProps> = (
     onVariantSelected,
     onVariantsGenerated,
 }) => {
-    const [loading, setLoading] = useState(false);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(false);
     const [variants, setVariants] = useState<TimelineVariant[]>([]);
     const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
@@ -78,7 +80,7 @@ export const TimelineVariantSelector: React.FC<TimelineVariantSelectorProps> = (
                     ) : (
                         <>
                             <SafeIcon name="sparkles" size={16} color="#FFF" />
-                            <Text style={styles.generateButtonText}>Générer</Text>
+                            <Text style={styles.generateButtonText}>{t('timelineVariantSelector.generer')}</Text>
                         </>
                     )}
                 </TouchableOpacity>

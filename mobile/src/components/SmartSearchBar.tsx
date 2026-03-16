@@ -20,6 +20,7 @@ import { autocompleteHistoryService } from '../services/autocompleteHistoryServi
 import { modernColors } from '../theme/modernTheme';
 import { extractAvailableCharacteristics } from '../utils/characteristicsExtractor';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SmartSearchBarProps {
     placeholder?: string;
@@ -41,7 +42,7 @@ interface Suggestion {
 }
 
 export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({
-    placeholder = "Rechercher...",
+    placeholder={t('smartSearchBar.rechercher')},
     onSearch,
     onClear,
     initialValue = '',
@@ -50,7 +51,8 @@ export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({
     onLocationFilterPress, // ✅ NOUVEAU
     hasLocationFilter = false, // ✅ NOUVEAU
 }) => {
-    const [searchText, setSearchText] = useState(initialValue);
+        const { t } = useLanguageSafe();
+const [searchText, setSearchText] = useState(initialValue);
     const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);

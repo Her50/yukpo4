@@ -93,18 +93,18 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
 
         if (result.is_valid) {
           Alert.alert(
-            '✅ Coursier vérifié',
-            `${result.courier_name || 'Coursier'} est bien le coursier envoyé par Yukpo.`,
+            t('providerCourierVerificationScreen.coursierVerifie'),
+            t('providerCourierVerificationScreen.estBienLeCoursierEnvoyePar', { result_courier_name || 'Coursier': result.courier_name || 'Coursier' }),
           );
         } else {
-          setError(result.message || 'Code de vérification invalide');
+          setError(result.message || t('providerCourierVerification.codeDeVerificationInvalide'));
         }
       } else {
-        setError('Erreur lors de la vérification');
+        setError(t('providerCourierVerification.erreurLorsDeLaVerification'));
       }
     } catch (err: any) {
       console.error('[ProviderVerification] Erreur:', err);
-      setError(err?.message || 'Erreur lors de la vérification');
+      setError(err?.message || t('providerCourierVerification.erreurLorsDeLaVerification'));
     } finally {
       setVerifying(false);
     }
@@ -113,7 +113,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
   const handlePinSubmit = useCallback(() => {
     const code = pinCode.join('');
     if (code.length !== 6) {
-      setError('Veuillez saisir les 6 chiffres du code');
+      setError(t('providerCourierVerificationScreen.veuillezSaisirLes6ChiffresDu'));
       return;
     }
     handleVerify(code, 'pin_code');
@@ -126,7 +126,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
       if (parsed.type === 'courier_verification' && parsed.code) {
         handleVerify(parsed.code, 'qr_scan');
       } else {
-        setError('QR code invalide. Ce n\'est pas un code de vérification coursier.');
+        setError('QR code invalide. Ce n\t('providerCourierVerificationScreen.estPasUnCodeDeVerification'));
         setMode('choose');
       }
     } catch {
@@ -182,7 +182,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <SafeIcon name="arrow-left" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Vérification réussie</Text>
+          <Text style={styles.headerTitle}>{t('providerCourierVerification.verificationReussie')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -190,7 +190,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
           {/* Bannière succès */}
           <View style={styles.successBanner}>
             <SafeIcon name="check-circle" size={48} color="#fff" />
-            <Text style={styles.successTitle}>Coursier vérifié !</Text>
+            <Text style={styles.successTitle}>{t('providerCourierVerification.coursierVerifie')}</Text>
             <Text style={styles.successSubtitle}>
               Vous pouvez remettre les produits en toute confiance
             </Text>
@@ -241,7 +241,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
                 <View style={styles.addressRow}>
                   <View style={[styles.addressDot, { backgroundColor: modernColors.error }]} />
                   <View style={styles.addressInfo}>
-                    <Text style={styles.addressLabel}>Livraison</Text>
+                    <Text style={styles.addressLabel}>{t('providerCourierVerification.livraison')}/Text>
                     <Text style={styles.addressText}>{verificationResult.dropoff_address}</Text>
                   </View>
                 </View>
@@ -293,7 +293,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
           {/* Résumé des prix - même structure que estimate_delivery_costs */}
           {(verificationResult.products_to_pickup.length > 0 || verificationResult.delivery_price || verificationResult.insurance_cost) && (
             <View style={styles.priceSummaryCard}>
-              <Text style={styles.priceSummaryTitle}>📋 Résumé des coûts</Text>
+              <Text style={styles.priceSummaryTitle}>{t('providerCourierVerification.resumeDesCouts')}</Text>
 
               {/* Total des produits */}
               {verificationResult.products_to_pickup.length > 0 && (
@@ -312,7 +312,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
               {/* Prix de livraison */}
               {verificationResult.delivery_price && (
                 <View style={styles.priceRow}>
-                  <Text style={styles.priceLabel}>🚚 Livraison</Text>
+                  <Text style={styles.priceLabel}>{t('providerCourierVerification.livraison')}/Text>
                   <Text style={styles.priceValue}>
                     {verificationResult.delivery_price.toLocaleString()} FCFA
                   </Text>
@@ -331,7 +331,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
 
               {/* Total général */}
               <View style={[styles.priceRow, styles.totalRow]}>
-                <Text style={styles.totalLabel}>💰 Total à payer</Text>
+                <Text style={styles.totalLabel}>{t('providerCourierVerification.totalAPayer')}</Text>
                 <Text style={styles.totalValue}>
                   {(
                     verificationResult.products_to_pickup
@@ -389,7 +389,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
         >
           <SafeIcon name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Vérifier le coursier</Text>
+        <Text style={styles.headerTitle}>{t('providerCourierVerification.verifierLeCoursier')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -501,7 +501,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
               ) : (
                 <>
                   <SafeIcon name="shield-check" size={20} color="#fff" />
-                  <Text style={styles.verifyButtonText}>Vérifier</Text>
+                  <Text style={styles.verifyButtonText}>{t('providerCourierVerification.verifier')}</Text>
                 </>
               )}
             </TouchableOpacity>

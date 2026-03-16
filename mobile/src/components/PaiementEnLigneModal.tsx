@@ -17,6 +17,7 @@ import { formatCardNumber, validateCardExpiry, validateCardNumber, validatePhone
 import AlerteSecurite from './AlerteSecurite';
 import SafeIcon from './SafeIcon';
 import { NativeInput } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface PaiementEnLigneModalProps {
     visible: boolean;
@@ -37,7 +38,8 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
     montant,
     devise = 'XAF'
 }) => {
-    const [step, setStep] = useState<'alerte' | 'montant' | 'methode' | 'confirmation'>('alerte');
+        const { t } = useLanguageSafe();
+const [step, setStep] = useState<'alerte' | 'montant' | 'methode' | 'confirmation'>('alerte');
     const [paymentAmount, setPaymentAmount] = useState(montant?.toString() || '');
     const [prestatairePaymentMethod, setPrestatairePaymentMethod] = useState<any>(null);
     const [loading, setLoading] = useState(false);
@@ -122,7 +124,7 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
             if (response.success) {
                 hapticPaymentSuccess(); // ✅ Haptic feedback pour paiement réussi
                 Alert.alert(
-                    '✅ Paiement initié',
+                    t('paiementEnLigneModal.paiementInitie'),
                     `Transaction ID: ${(response.data as any).transaction_id}\n\nLe paiement est en cours de traitement. Vous recevrez une notification de confirmation.`,
                     [
                         {
@@ -206,7 +208,7 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
                         {/* Étape 2: Montant */}
                         {step === 'montant' && (
                             <View style={styles.stepContainer}>
-                                <Text style={styles.stepTitle}>💰 Montant à payer</Text>
+                                <Text style={styles.stepTitle}>{t('paiementEnLigne.montantAPayer')}</Text>
                                 <View style={styles.montantContainer}>
                                     <NativeInput
                                         placeholder="Ex: 5000"
@@ -241,7 +243,7 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
                         {/* Étape 3: Méthode de paiement (selon le prestataire) */}
                         {step === 'methode' && prestatairePaymentMethod && (
                             <View style={styles.stepContainer}>
-                                <Text style={styles.stepTitle}>💳 Mode de paiement du prestataire</Text>
+                                <Text style={styles.stepTitle}>{t('paiementEnLigne.modeDePaiementDuPrestataire')}/Text>
 
                                 <View style={styles.prestataireMethodInfo}>
                                     <Text style={styles.prestataireMethodLabel}>
@@ -256,12 +258,12 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
                                     )}
                                 </View>
 
-                                <Text style={styles.yourPaymentTitle}>Vos informations de paiement</Text>
+                                <Text style={styles.yourPaymentTitle}>{t('paiementEnLigne.vosInformationsDePaiement')}</Text>
 
                                 {/* Formulaire Mobile Money / Orange Money */}
                                 {(prestatairePaymentMethod.type === 'mobile_money' || prestatairePaymentMethod.type === 'orange_money') && (
                                     <View>
-                                        <Text style={styles.fieldLabel}>Votre numéro de téléphone</Text>
+                                        <Text style={styles.fieldLabel}>{t('paiementEnLigne.votreNumeroDeTelephone')}</Text>
                                         <NativeInput
                                             placeholder="Ex: 6XX XX XX XX"
                                             value={phoneNumber}
@@ -283,7 +285,7 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
                                 {prestatairePaymentMethod.type === 'carte_bancaire' && (
                                     <View style={styles.cardForm}>
                                         <View style={styles.fieldGroup}>
-                                            <Text style={styles.fieldLabel}>Numéro de carte</Text>
+                                            <Text style={styles.fieldLabel}>{t('paiementEnLigne.numeroDeCarte')}</Text>
                                             <NativeInput
                                                 placeholder="XXXX XXXX XXXX XXXX"
                                                 value={cardNumber}
@@ -295,7 +297,7 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
                                         </View>
 
                                         <View style={styles.fieldGroup}>
-                                            <Text style={styles.fieldLabel}>Nom du titulaire</Text>
+                                            <Text style={styles.fieldLabel}>{t('paiementEnLigne.nomDuTitulaire')}/Text>
                                             <NativeInput
                                                 placeholder="JEAN DUPONT"
                                                 value={cardHolder}
@@ -347,7 +349,7 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
                                         onPress={() => setStep('montant')}
                                     >
                                         <SafeIcon name="chevron-left" size={20} color={modernColors.text} />
-                                        <Text style={styles.backButtonText}>Retour</Text>
+                                        <Text style={styles.backButtonText}>{t('paiementEnLigne.retour')}/Text>
                                     </TouchableOpacity>
 
                                     <TouchableOpacity
@@ -368,21 +370,21 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
 
                                 <View style={styles.confirmCard}>
                                     <View style={styles.confirmRow}>
-                                        <Text style={styles.confirmLabel}>Montant :</Text>
+                                        <Text style={styles.confirmLabel}>{t('paiementEnLigne.montant')}/Text>
                                         <Text style={styles.confirmValue}>{paymentAmount} {devise}</Text>
                                     </View>
                                     <View style={styles.confirmRow}>
-                                        <Text style={styles.confirmLabel}>Bénéficiaire :</Text>
+                                        <Text style={styles.confirmLabel}>{t('paiementEnLigne.beneficiaire')}</Text>
                                         <Text style={styles.confirmValue}>{prestataire?.nom_complet || 'Prestataire'}</Text>
                                     </View>
                                     <View style={styles.confirmRow}>
-                                        <Text style={styles.confirmLabel}>Service :</Text>
+                                        <Text style={styles.confirmLabel}>{t('paiementEnLigne.service')}/Text>
                                         <Text style={styles.confirmValue} numberOfLines={2}>
                                             {product ? product.nom : service.data?.titre_service?.valeur || 'Service'}
                                         </Text>
                                     </View>
                                     <View style={styles.confirmRow}>
-                                        <Text style={styles.confirmLabel}>Méthode :</Text>
+                                        <Text style={styles.confirmLabel}>{t('paiementEnLigne.methode')}</Text>
                                         <Text style={styles.confirmValue}>
                                             {prestatairePaymentMethod.type === 'mobile_money' ? 'Mobile Money' :
                                                 prestatairePaymentMethod.type === 'orange_money' ? 'Orange Money' :
@@ -405,7 +407,7 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
                                         disabled={loading}
                                     >
                                         <SafeIcon name="chevron-left" size={20} color={modernColors.text} />
-                                        <Text style={styles.backButtonText}>Retour</Text>
+                                        <Text style={styles.backButtonText}>{t('paiementEnLigne.retour')}/Text>
                                     </TouchableOpacity>
 
                                     <TouchableOpacity
@@ -418,7 +420,7 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
                                         ) : (
                                             <>
                                                 <SafeIcon name="check-circle" size={20} color="#FFFFFF" />
-                                                <Text style={styles.payButtonText}>Confirmer le paiement</Text>
+                                                <Text style={styles.payButtonText}>{t('paiementEnLigneModal.confirmerLePaiement')}</Text>
                                             </>
                                         )}
                                     </TouchableOpacity>

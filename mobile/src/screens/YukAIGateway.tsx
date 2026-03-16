@@ -4,9 +4,11 @@ import axios from "axios";
 import * as React from "react";
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const YukAIGateway: React.FC = () => {
-  const [payload, setPayload] = useState("");
+      const { t } = useLanguageSafe();
+const [payload, setPayload] = useState("");
   const [service, setService] = useState("gpt");
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,7 +30,7 @@ const YukAIGateway: React.FC = () => {
     <View style={styles.container}>
       <Text style={styles.title}>🤖 YukAI Gateway</Text>
 
-      <Text style={styles.label}>Service cible :</Text>
+      <Text style={styles.label}>{t('yukAIGateway.serviceCible')}/Text>
       <View style={styles.pickerContainer}>
         <Picker
           selectedValue={service}
@@ -41,14 +43,14 @@ const YukAIGateway: React.FC = () => {
         </Picker>
       </View>
 
-      <Text style={styles.label}>Entrée (payload) :</Text>
+      <Text style={styles.label}>{t('yukAIGateway.entreePayload')}</Text>
       <TextInput
         style={styles.textarea}
         multiline
         numberOfLines={4}
         value={payload}
         onChangeText={setPayload}
-        placeholder="Ex : Bonjour, peux-tu me décrire une maison en bord de mer ?"
+        placeholder={t('yukAIGateway.exBonjourPeuxtuMeDecrire')}
         placeholderTextColor="#9CA3AF"
       />
 
@@ -60,7 +62,7 @@ const YukAIGateway: React.FC = () => {
         {loading ? (
           <ActivityIndicator color="white" />
         ) : (
-          <Text style={styles.buttonText}>📤 Envoyer</Text>
+          <Text style={styles.buttonText}>{t('yukAIGateway.envoyer')}/Text>
         )}
       </TouchableOpacity>
 

@@ -203,6 +203,14 @@ const ResultatBesoinScreen: React.FC = () => {
         // ✅ FIX 2026-03-14: Pas de queue — la prochaine carte visible demandera elle-même la lecture
     }, []);
 
+    // ✅ FIX 2026-03-15: Objet coordinateur stable (useMemo) pour éviter de casser la memoization
+    // Avant: un nouvel objet {...} était créé dans renderProductCard à chaque appel,
+    // causant prevProps.videoCoordinator !== nextProps.videoCoordinator → re-render de TOUTES les cartes
+    const stableVideoCoordinator = useMemo(() => ({
+        requestVideoPlayback,
+        releaseVideoPlayback,
+    }), [requestVideoPlayback, releaseVideoPlayback]);
+
     // ✅ FIX 2026-03-14: Suivi des éléments visibles à l'écran (state pour déclencher re-render des cartes)
     const [visibleItemKeys, setVisibleItemKeys] = useState<Set<string>>(new Set());
     const viewabilityConfigRef = useRef({
@@ -293,7 +301,7 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ MIGRATION COMPLÈTE: Tous les produits sont maintenant dans service_products avec product_name (colonne générée)
     // Le backend retourne product_name depuis service_products, mais product_data contient nom_produit
     const getProductName = useCallback((productData: any): string => {
-        if (!productData) return 'Produit sans nom';
+        if (!productData) return t('resultatBesoin.produitSansNom');
 
         // ✅ PRIORITÉ 1: product_name depuis le backend (colonne générée PostgreSQL)
         if (productData.product_name) return String(productData.product_name);
@@ -309,7 +317,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
         // ✅ ERREUR: Si aucun nom n'est disponible, c'est une anomalie
         console.error('[ResultatBesoinScreen] ❌ ERREUR: product_name manquant (anomalie backend):', productData);
-        return 'Produit sans nom';
+        return t('resultatBesoin.produitSansNom');
     }, []);
 
     // ✅ CORRIGÉ 2026-03-05: Stop words français pour filtrer les mots non-significatifs de la requête
@@ -860,7 +868,7 @@ const ResultatBesoinScreen: React.FC = () => {
             const validServices = results.filter((service): service is Service => service !== null);
 
             if (validServices.length === 0) {
-                setError("Aucun service trouvé. Les services recherchés ne sont plus disponibles.");
+                setError(t('resultatBesoin.aucunServiceTrouve'));
                 setServices([]);
             } else {
                 // ✅ CORRIGÉ 2026-01-13: Utiliser startTransition pour les mises à jour non urgentes
@@ -1366,7 +1374,7 @@ const ResultatBesoinScreen: React.FC = () => {
             }
         } catch (error) {
             console.error('❌ Erreur lors de la récupération des services:', error);
-            setError('Erreur lors de la récupération des services');
+            setError(t('resultatBesoin.erreurRecuperationServices'));
             setServices([]);
             setPrestatairesLoaded(true); // Marquer comme chargé même en cas d'erreur
         } finally {
@@ -1516,7 +1524,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     initialResultsLength.current = 0;
                     setLoading(false);
                     setPrestatairesLoaded(true);
-                    setError('Format de résultats invalide');
+                    setError(t('resultatBesoin.formatResultatsInvalide'));
                     return;
                 }
 
@@ -1578,7 +1586,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     if (__DEV__) console.warn('⚠️ [ResultatBesoinScreen] Aucun service ID valide trouvé après extraction');
                     setLoading(false);
                     setPrestatairesLoaded(true);
-                    setError('Aucun service valide trouvé dans les résultats');
+                    setError(t('resultatBesoin.aucunServiceValideTrouveDans'));
                 }
             } catch (error: any) {
                 console.error('❌ [ResultatBesoinScreen] Erreur CRITIQUE lors du traitement des résultats:', error);
@@ -1586,7 +1594,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 console.error('❌ [ResultatBesoinScreen] Résultats initiaux:', initialResults);
                 setLoading(false);
                 setPrestatairesLoaded(true);
-                setError(`Erreur lors du traitement des résultats: ${error?.message || 'Erreur inconnue'}`);
+                setError(t('resultatBesoinScreen.erreurLorsDuTraitementDesResultats', { error?_message || 'Erreur inconnue': error?.message || 'Erreur inconnue' }));
             }
         };
 
@@ -1822,7 +1830,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const handleShare = useCallback(async (service: Service) => {
         try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
         try {
-            const titre = service.titre || service.title || service.data?.titre_service?.valeur || 'Service Yukpo';
+            const titre = service.titre || service.title || service.data?.titre_service?.valeur || t('resultatBesoin.serviceYukpo');
             const description = service.description || service.data?.description?.valeur || '';
             const prix = service.prix || service.data?.prix?.valeur;
             const devise = service.devise || 'XAF';
@@ -2078,7 +2086,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
     // Fonction utilitaire pour extraire la valeur d'un champ de service
     const getServiceFieldValue = (field: any): string => {
-        if (!field) return 'Non spécifié';
+        if (!field) return t('resultatBesoinScreen.nonSpecifie');
 
         if (typeof field === 'string') return field;
 
@@ -2268,14 +2276,12 @@ const ResultatBesoinScreen: React.FC = () => {
         // ✅ CORRIGÉ 2026-01-23: Utiliser la fonction utilitaire pour extraire le nom correctement
         // ✅ CORRIGÉ 2026-01-23: S'assurer que productData n'est jamais undefined
         const productData = product?.product_data || product || {};
-        const productName = getProductName(productData) || 'Produit sans nom';
+        const productName = getProductName(productData) || t('resultatBesoin.produitSansNom');
         const serviceId = product._serviceId || service?.id || 'unknown';
 
-        // Créer l'objet coordinateur pour ce produit
-        const videoCoordinator = {
-            requestVideoPlayback,
-            releaseVideoPlayback,
-        };
+        // ✅ FIX 2026-03-15: Utiliser l'objet coordinateur stable (useMemo) au lieu d'en créer un nouveau à chaque render
+        // L'ancien code créait { requestVideoPlayback, releaseVideoPlayback } ici → nouvelle ref à chaque appel
+        // → MemoizedProductCardWithCoordinator.memo toujours false → re-render de TOUTES les cartes
 
         // ✅ FIX 2026-03-14: Utiliser la clé FlatList réelle pour correspondre à visibleItemKeys
         const itemKey = flatListKey || `product-${serviceId}-${productName}`;
@@ -2289,7 +2295,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 userLocation={userLocationMemo}
                 isScrolling={isScrollingState}
                 isVisible={visibleItemKeys.has(itemKey)}
-                videoCoordinator={videoCoordinator}
+                videoCoordinator={stableVideoCoordinator}
                 onPress={() => {
                     // ✅ CORRIGÉ 2026-02-25: Naviguer vers la boutique du prestataire pour afficher TOUS ses produits
                     if (service?.user_id) {
@@ -2320,7 +2326,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
             />
         );
-    }, [userLocationMemo, isScrollingState, visibleItemKeys, getProductName, navigation, requestVideoPlayback, releaseVideoPlayback]);
+    }, [userLocationMemo, isScrollingState, visibleItemKeys, getProductName, navigation, stableVideoCoordinator]);
 
     // ✅ NOUVEAU 2026-01-XX: Fonction pour rendre ProductCard pour les services (utiliser le même visuel que les produits)
     // ✅ DÉPLACÉ avant renderListItem pour éviter les problèmes de dépendances
@@ -2426,7 +2432,7 @@ const ResultatBesoinScreen: React.FC = () => {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={styles.loadingText}>Recherche des services en cours...</Text>
+                <Text style={styles.loadingText}>{t('resultatBesoin.rechercheDesServicesEnCours')}</Text>
             </View>
         );
     }
@@ -2445,7 +2451,7 @@ const ResultatBesoinScreen: React.FC = () => {
                         style={styles.backButton}
                     >
                         <Text style={styles.backIcon}>←</Text>
-                        <Text style={styles.backText}>Retour</Text>
+                        <Text style={styles.backText}>{t('resultatBesoin.retour')}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -2454,7 +2460,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     <ChatInputMobile
                         onSubmit={handleSearch}
                         loading={loading}
-                        placeholder="Affiner votre recherche..."
+                        placeholder={t('resultatBesoin.affinerVotreRecherche')}
                         onGPSPress={() => setShowGPSModal(true)}
                         showSendButton={true}
                         showAutocomplete={false} // ✅ DÉSACTIVÉ: Autocomplete désactivée pour améliorer les performances
@@ -2485,7 +2491,7 @@ const ResultatBesoinScreen: React.FC = () => {
                             setShowGPSModal(false);
                         }}
                         currentLocation={selectedLocation}
-                        title="Sélectionner votre localisation"
+                        title={t('resultatBesoin.selectionnerVotreLocalisation')}
                         allowZoneSelection={true}
                     />
                 )}
@@ -2497,10 +2503,10 @@ const ResultatBesoinScreen: React.FC = () => {
                             <Text style={styles.gpsWarningIcon}>⚠️</Text>
                             <View style={styles.gpsWarningTextContainer}>
                                 <Text style={styles.gpsWarningTitle}>
-                                    Certains services utilisent la position GPS en temps réel du créateur
+                                    {t('resultatBesoin.gpsWarningTitle')}
                                 </Text>
                                 <Text style={styles.gpsWarningSubtitle}>
-                                    Les coordonnées affichées peuvent changer selon la position actuelle du prestataire
+                                    {t('resultatBesoin.gpsWarningSubtitle')}
                                 </Text>
                             </View>
                         </View>
@@ -2512,13 +2518,13 @@ const ResultatBesoinScreen: React.FC = () => {
                     <View style={styles.errorCard}>
                         <View style={[styles.cardContent, styles.errorContent]}>
                             <Text style={styles.errorIcon}>⚠️</Text>
-                            <Text style={styles.errorTitle}>Erreur de chargement</Text>
+                            <Text style={styles.errorTitle}>{t('resultatBesoin.erreurDeChargement')}</Text>
                             <Text style={styles.errorText}>{error}</Text>
                             <TouchableOpacity
                                 onPress={() => navigation.goBack()}
                                 style={styles.errorButton}
                             >
-                                <Text>Retour</Text>
+                                <Text>{t('resultatBesoin.retour')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -2530,16 +2536,16 @@ const ResultatBesoinScreen: React.FC = () => {
                         <View style={[styles.cardContent, styles.emptyContent]}>
                             <Text style={styles.emptyIcon}>🔍</Text>
                             <Text style={styles.emptyTitle}>
-                                {terminology.emptyMessage || 'Aucun résultat trouvé'}
+                                {terminology.emptyMessage || t('resultatBesoin.aucunResultatTrouve')}
                             </Text>
                             <Text style={styles.emptyText}>
-                                Aucun {terminology.providerLabel.toLowerCase()} ne correspond à vos critères pour le moment.
+                                {t('resultatBesoin.aucunPrestataire', { provider: terminology.providerLabel.toLowerCase() })}
                             </Text>
                             <TouchableOpacity
                                 onPress={() => navigation.goBack()}
                                 style={styles.emptyButton}
                             >
-                                <Text>Retour à la recherche</Text>
+                                <Text>{t('resultatBesoin.retourALaRecherche')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -2547,9 +2553,9 @@ const ResultatBesoinScreen: React.FC = () => {
                     <View style={styles.loadingCard}>
                         <View style={[styles.cardContent, styles.loadingContent]}>
                             <ActivityIndicator size="large" color={theme.colors.primary} />
-                            <Text style={styles.loadingTitle}>Chargement des informations prestataire</Text>
+                            <Text style={styles.loadingTitle}>{t('resultatBesoin.chargementDesInformationsPrestataire')}</Text>
                             <Text style={styles.loadingSubtitle}>
-                                Récupération des données GPS et des informations des prestataires...
+                                {t('resultatBesoin.recuperationDonnees')}
                             </Text>
                         </View>
                     </View>
@@ -2563,14 +2569,14 @@ const ResultatBesoinScreen: React.FC = () => {
                                     <Text style={styles.modernHeaderIcon}>{categoryStyle.icon}</Text>
                                     <View style={styles.modernHeaderText}>
                                         <Text style={styles.modernHeaderTitle} numberOfLines={1} ellipsizeMode="tail">
-                                            Résultats de recherche
+                                            {t('resultatBesoin.resultatsDeRecherche')}
                                         </Text>
                                         <Text style={styles.modernHeaderSubtitle} numberOfLines={1}>
                                             {(() => {
                                                 // ✅ CORRIGÉ 2026-02-25: Afficher uniquement allResults.length (déjà dédupliqué)
                                                 // products.length + services.length double-comptait les services ayant des produits
                                                 const total = allResults.length;
-                                                return `${total} résultat${total > 1 ? 's' : ''}`;
+                                                return `${total} ${total > 1 ? t('resultatBesoin.resultats') : t('resultatBesoin.resultat')}`;
                                             })()}
                                         </Text>
                                     </View>
@@ -2733,7 +2739,7 @@ const ResultatBesoinScreen: React.FC = () => {
                         ) : (
                             <View style={styles.emptyState}>
                                 <SafeIcon name="package" size={48} color="#D1D5DB" />
-                                <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
+                                <Text style={styles.emptyStateText}>{t('resultatBesoin.aucunResultatTrouve')}</Text>
                                 <Text style={styles.emptyStateSubtext}>
                                     {Object.keys(categoryFilters).length > 0
                                         ? 'Essayez de modifier vos filtres'

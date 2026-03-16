@@ -20,6 +20,7 @@ import {
 import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../../components/SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ProductToPickup {
   product_index: number;
@@ -52,7 +53,8 @@ const CourierVerificationCodeScreen: React.FC<CourierVerificationCodeScreenProps
   navigation,
 }) => {
   const { deliveryId } = route.params;
-  const [loading, setLoading] = useState(true);
+      const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verificationCode, setVerificationCode] = useState<VerificationCodeData | null>(null);
@@ -71,7 +73,7 @@ const CourierVerificationCodeScreen: React.FC<CourierVerificationCodeScreenProps
         setVerificationCode(response.data.verification_code || null);
         setProducts(response.data.products_to_pickup || []);
       } else {
-        setError('Aucun code de vérification trouvé pour cette livraison');
+        setError(t('courierVerificationCode.aucunCodeDeVerificationTrouve'));
       }
     } catch (err: any) {
       console.error('[CourierVerificationCode] Erreur:', err);
@@ -119,7 +121,7 @@ const CourierVerificationCodeScreen: React.FC<CourierVerificationCodeScreenProps
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={modernColors.primary} />
-        <Text style={styles.loadingText}>Chargement du code de vérification...</Text>
+        <Text style={styles.loadingText}>{t('courierVerificationCode.chargementDuCodeDeVerification')}</Text>
       </View>
     );
   }
@@ -130,7 +132,7 @@ const CourierVerificationCodeScreen: React.FC<CourierVerificationCodeScreenProps
         <SafeIcon name="alert-circle" size={48} color={modernColors.error} />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={loadVerificationCode}>
-          <Text style={styles.retryButtonText}>Réessayer</Text>
+          <Text style={styles.retryButtonText}>{t('courierVerificationCode.reessayer')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -145,7 +147,7 @@ const CourierVerificationCodeScreen: React.FC<CourierVerificationCodeScreenProps
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <SafeIcon name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mon code de vérification</Text>
+        <Text style={styles.headerTitle}>{t('courierVerificationCode.monCodeDeVerification')}</Text>
         <View style={{ width: 40 }} />
       </View>
 

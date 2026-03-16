@@ -210,7 +210,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                 console.error('[VideoCreationIntroScreen] ❌ Erreur chargement services:', error);
                 // ✅ CORRIGÉ: Gérer les erreurs de timeout et réseau de manière plus spécifique
                 const errorMessage = error?.message || error?.error || '';
-                if (errorMessage.includes('Timeout') || errorMessage.includes('expiré') || errorMessage.includes('timeout')) {
+                if (errorMessage.includes('Timeout') || errorMessage.includes(t('videoCreationIntroScreen.expire')) || errorMessage.includes('timeout')) {
                     Alert.alert(
                         t('videoIntro.slowLoading'),
                         t('videoIntro.slowLoadingMsg'),
@@ -505,7 +505,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                     [
                         { text: t('common.cancel'), style: 'cancel' },
                         {
-                            text: 'Aller à Mes Services',
+                            text: t('videoCreationIntro.allerAMesServices'),
                             onPress: () => {
                                 const parent = (navigation as any).getParent();
                                 if (parent) {
@@ -534,7 +534,7 @@ const VideoCreationIntroScreen: React.FC = () => {
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Aller à Mes Services',
+                    text: t('videoCreationIntro.allerAMesServices'),
                     onPress: () => {
                         const parent = (navigation as any).getParent();
                         if (parent) {
@@ -619,7 +619,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                 {loadingServices ? (
                     <View style={styles.servicesInfo}>
                         <ActivityIndicator size="small" color={modernColors.primary} />
-                        <Text style={styles.servicesInfoText}>Chargement de vos services...</Text>
+                        <Text style={styles.servicesInfoText}>{t('videoCreationIntro.chargementDeVosServices')}</Text>
                     </View>
                 ) : userServices.length > 0 && (
                     <Animated.View style={[styles.servicesInfo, contentAnimatedStyle]}>

@@ -16,6 +16,7 @@ import {
 import SafeIcon from './SafeIcon';
 import { NativeButton } from './SafeNativeDesign';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // ============ TYPES ============
 
@@ -82,7 +83,7 @@ const PartnerDashboardLayout: React.FC<PartnerDashboardLayoutProps> = ({
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement de votre espace...</Text>
+                <Text style={styles.loadingText}>{t('partnerDashboardLayout.chargementDeVotreEspace')}</Text>
             </View>
         );
     }
@@ -172,7 +173,7 @@ export const SectionTitle: React.FC<{ title: string; count?: number; onAction?: 
         </Text>
         {onAction && (
             <TouchableOpacity onPress={onAction} style={styles.sectionAction}>
-                <Text style={styles.sectionActionText}>{actionLabel || 'Voir tout'}</Text>
+                <Text style={styles.sectionActionText}>{actionLabel || t('partnerDashboardLayout.voirTout')}</Text>
                 <SafeIcon name="chevron-right" size={14} color={modernColors.primary} />
             </TouchableOpacity>
         )}

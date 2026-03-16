@@ -15,6 +15,7 @@ import { NotificationPreferences, pushNotificationService } from '../services/pu
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeButton } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface NotificationPreferencesModalProps {
     visible: boolean;
@@ -25,7 +26,8 @@ const NotificationPreferencesModal: React.FC<NotificationPreferencesModalProps> 
     visible,
     onClose,
 }) => {
-    const [preferences, setPreferences] = useState<NotificationPreferences>({
+        const { t } = useLanguageSafe();
+const [preferences, setPreferences] = useState<NotificationPreferences>({
         pharmacy_on_duty: true,
         carpool_match: true,
         taxi_nearby: true,
@@ -94,7 +96,7 @@ const NotificationPreferencesModal: React.FC<NotificationPreferencesModalProps> 
                         <View style={styles.iconContainer}>
                             <SafeIcon name="bell" size={32} color={modernColors.primary} />
                         </View>
-                        <Text style={styles.title}>Préférences de Notifications</Text>
+                        <Text style={styles.title}>{t('notificationPreferences.preferencesDeNotifications')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.textPrimary} />
                         </TouchableOpacity>
@@ -173,7 +175,7 @@ const NotificationPreferencesModal: React.FC<NotificationPreferencesModalProps> 
                                 <View style={styles.preferenceInfo}>
                                     <SafeIcon name="bar-chart" size={24} color={modernColors.primary} />
                                     <View style={styles.preferenceText}>
-                                        <Text style={styles.preferenceTitle}>Résumé hebdomadaire</Text>
+                                        <Text style={styles.preferenceTitle}>{t('notificationPreferences.resumeHebdomadaire')}</Text>
                                         <Text style={styles.preferenceDescription}>
                                             Recevoir un résumé hebdomadaire de vos services
                                         </Text>
@@ -239,7 +241,7 @@ const NotificationPreferencesModal: React.FC<NotificationPreferencesModalProps> 
                             variant="primary"
                             onPress={handleSave}
                             disabled={loading}
-                            title="Sauvegarder"
+                            title={t('notificationPreferences.sauvegarder')}
                         />
                     </View>
                 </View>

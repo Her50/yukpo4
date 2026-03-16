@@ -15,6 +15,7 @@ import {
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface RealTimeVideoPreviewProps {
     videoUrl: string;
@@ -50,7 +51,8 @@ export const RealTimeVideoPreview: React.FC<RealTimeVideoPreviewProps> = ({
     muted = true,
 }) => {
     const videoRef = useRef<Video>(null);
-    const [isLoading, setIsLoading] = useState(true);
+        const { t } = useLanguageSafe();
+const [isLoading, setIsLoading] = useState(true);
     const [isPlaying, setIsPlaying] = useState(autoPlay);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
@@ -72,7 +74,7 @@ export const RealTimeVideoPreview: React.FC<RealTimeVideoPreviewProps> = ({
 
     const loadVideo = useCallback(async () => {
         if (!videoUrl) {
-            setError('Aucune URL vid├®o fournie');
+            setError(t('realTimeVideoPreview.aucuneUrlVidoFournie'));
             return;
         }
 
@@ -98,7 +100,7 @@ export const RealTimeVideoPreview: React.FC<RealTimeVideoPreviewProps> = ({
             }
         } catch (err: any) {
             console.error('[RealTimeVideoPreview] Erreur chargement vid├®o:', err);
-            setError(err.message || 'Erreur lors du chargement de la vid├®o');
+            setError(err.message || t('realTimeVideoPreview.erreurLorsDuChargementDe'));
             onError?.(err.message);
         } finally {
             setIsLoading(false);
@@ -156,7 +158,7 @@ export const RealTimeVideoPreview: React.FC<RealTimeVideoPreviewProps> = ({
 
     const handleError = useCallback((error: any) => {
         console.error('[RealTimeVideoPreview] Erreur lecture vid├®o:', error);
-        setError('Erreur lors de la lecture de la vid├®o');
+        setError(t('realTimeVideoPreview.erreurLorsDeLaLecture'));
         onError?.('Erreur lecture vid├®o');
     }, [onError]);
 
@@ -247,7 +249,7 @@ export const RealTimeVideoPreview: React.FC<RealTimeVideoPreviewProps> = ({
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement de la vid├®o...</Text>
+                <Text style={styles.loadingText}>{t('realTimeVideoPreview.chargementDeLaVido')}</Text>
                 {isGeneratingPreview && (
                     <Text style={styles.generatingText}>G├®n├®ration des previews...</Text>
                 )}

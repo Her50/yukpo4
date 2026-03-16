@@ -17,6 +17,7 @@ import { analytics } from '../services/analytics';
 import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface TicketRatingProps {
     visible: boolean;
@@ -33,17 +34,18 @@ const TicketRating: React.FC<TicketRatingProps> = ({
     paymentId,
     onRatingSubmitted,
 }) => {
-    const [rating, setRating] = useState(0);
+        const { t } = useLanguageSafe();
+const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
     const ratingCategories = [
-        { id: 'punctuality', label: 'Ponctualité', icon: 'clock' },
+        { id: 'punctuality', label: t('ticketRating.ponctualite'), icon: 'clock' },
         { id: 'comfort', label: 'Confort', icon: 'seat' },
-        { id: 'cleanliness', label: 'Propreté', icon: 'sparkles' },
+        { id: 'cleanliness', label: t('ticketRating.proprete'), icon: 'sparkles' },
         { id: 'staff', label: 'Personnel', icon: 'users' },
-        { id: 'value', label: 'Rapport qualité/prix', icon: 'dollar-sign' },
+        { id: 'value', label: t('ticketRating.rapportQualiteprix'), icon: 'dollar-sign' },
     ];
 
     const handleSubmit = async () => {
@@ -114,7 +116,7 @@ const TicketRating: React.FC<TicketRatingProps> = ({
                     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                         {/* Note globale */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Note globale</Text>
+                            <Text style={styles.sectionTitle}>{t('ticketRating.noteGlobale')}/Text>
                             <View style={styles.starsContainer}>
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <TouchableOpacity
@@ -134,7 +136,7 @@ const TicketRating: React.FC<TicketRatingProps> = ({
 
                         {/* Catégories */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Catégories (optionnel)</Text>
+                            <Text style={styles.sectionTitle}>{t('ticketRating.categoriesOptionnel')}</Text>
                             <View style={styles.categoriesContainer}>
                                 {ratingCategories.map((category) => (
                                     <TouchableOpacity
@@ -176,7 +178,7 @@ const TicketRating: React.FC<TicketRatingProps> = ({
                                 style={styles.commentInput}
                                 value={comment}
                                 onChangeText={setComment}
-                                placeholder="Partagez votre expérience..."
+                                placeholder={t('ticketRating.partagezVotreExperience')}
                                 placeholderTextColor="#9CA3AF"
                                 multiline
                                 numberOfLines={4}
@@ -192,7 +194,7 @@ const TicketRating: React.FC<TicketRatingProps> = ({
                             style={[styles.button, styles.cancelButton]}
                             onPress={onClose}
                         >
-                            <Text style={styles.cancelButtonText}>Annuler</Text>
+                            <Text style={styles.cancelButtonText}>{t('ticketRating.annuler')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.button, styles.submitButton, rating === 0 && styles.submitButtonDisabled]}

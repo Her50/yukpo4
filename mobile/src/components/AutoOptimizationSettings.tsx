@@ -4,6 +4,7 @@ import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeCard } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AutoOptimizationSettings {
     enabled: boolean;
@@ -42,7 +43,8 @@ export const AutoOptimizationSettings: React.FC<AutoOptimizationSettingsProps> =
     campaignId,
     onSettingsChange,
 }) => {
-    const [expanded, setExpanded] = useState(false);
+        const { t } = useLanguageSafe();
+const [expanded, setExpanded] = useState(false);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [settings, setSettings] = useState<AutoOptimizationSettings>(defaultSettings);
@@ -122,7 +124,7 @@ export const AutoOptimizationSettings: React.FC<AutoOptimizationSettingsProps> =
                 <SafeIcon name="zap" size={20} color={modernColors.primary} />
                 <Text style={styles.expandText}>
                     Optimisation Automatique
-                    {settings.enabled && <Text style={styles.enabledBadge}> ✓ Activée</Text>}
+                    {settings.enabled && <Text style={styles.enabledBadge}>{t('autoOptimizationSettings.activee')}</Text>}
                 </Text>
                 <SafeIcon name="chevron-right" size={16} color={modernColors.textSecondary} />
             </TouchableOpacity>
@@ -235,7 +237,7 @@ export const AutoOptimizationSettings: React.FC<AutoOptimizationSettingsProps> =
 
                                 <View style={styles.settingRow}>
                                     <View style={styles.settingInfo}>
-                                        <Text style={styles.settingLabel}>Stratégie d'enchères</Text>
+                                        <Text style={styles.settingLabel}>{t('autoOptimizationSettings.strategieDencheres')}</Text>
                                         <Text style={styles.settingDescription}>
                                             Ajuster automatiquement la stratégie d'enchères
                                         </Text>
@@ -251,11 +253,11 @@ export const AutoOptimizationSettings: React.FC<AutoOptimizationSettingsProps> =
 
                             {/* Paramètres avancés */}
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Paramètres avancés</Text>
+                                <Text style={styles.sectionTitle}>{t('autoOptimizationSettings.parametresAvances')}</Text>
 
                                 <View style={styles.settingRow}>
                                     <View style={styles.settingInfo}>
-                                        <Text style={styles.settingLabel}>Fréquence d'optimisation</Text>
+                                        <Text style={styles.settingLabel}>{t('autoOptimizationSettings.frequenceDoptimisation')}</Text>
                                         <Text style={styles.settingDescription}>
                                             À quelle fréquence l'IA doit-elle analyser et optimiser ?
                                         </Text>
@@ -276,7 +278,7 @@ export const AutoOptimizationSettings: React.FC<AutoOptimizationSettingsProps> =
                                                         settings.optimization_frequency === freq && styles.frequencyButtonTextActive,
                                                     ]}
                                                 >
-                                                    {freq === 'daily' ? 'Quotidien' : freq === 'weekly' ? 'Hebdomadaire' : 'Temps réel'}
+                                                    {freq === 'daily' ? 'Quotidien' : freq === 'weekly' ? 'Hebdomadaire' : t('autoOptimizationSettings.tempsReel')}
                                                 </Text>
                                             </TouchableOpacity>
                                         ))}
@@ -381,7 +383,7 @@ export const AutoOptimizationSettings: React.FC<AutoOptimizationSettingsProps> =
                         ) : (
                             <>
                                 <SafeIcon name="save" size={18} color="#fff" />
-                                <Text style={styles.saveButtonText}>Sauvegarder les paramètres</Text>
+                                <Text style={styles.saveButtonText}>{t('autoOptimizationSettings.sauvegarderLesParametres')}</Text>
                             </>
                         )}
                     </TouchableOpacity>

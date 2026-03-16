@@ -2,6 +2,7 @@
 import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
 import {
+import { useLanguageSafe } from '../contexts/LanguageContext';
     Alert,
     Dimensions,
     Modal,
@@ -33,9 +34,10 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
     onClose,
     onSelect,
     currentLocation,
-    title = 'Sélection de localisation GPS'
+    title={t('enhancedGPS.selectionDeLocalisationGps')}
 }) => {
-    const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
+        const { t } = useLanguageSafe();
+const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
     const [loading, setLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -62,7 +64,7 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
-                    'L\'accès à la localisation est nécessaire pour utiliser cette fonctionnalité.',
+                    'L\t('enhancedGPSModal.accesALaLocalisationEstNecessaire'),
                     [{ text: 'OK' }]
                 );
             }
@@ -143,7 +145,7 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
         }
 
         setSelectedLocation({ lat, lng });
-        setAddress(`Coordonnées: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        setAddress(t('enhancedGPSModal.coordonnees', { lat_toFixed(6): lat.toFixed(6), lng_toFixed(6): lng.toFixed(6) }));
     };
 
     const clearSelection = () => {
@@ -210,10 +212,10 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                                 <Text style={styles.instructionsTitle}>Instructions</Text>
                             </View>
                             <View style={styles.instructionsList}>
-                                <Text style={styles.instructionItem}>• Cliquez sur la carte pour sélectionner un point</Text>
-                                <Text style={styles.instructionItem}>• Dessinez une zone avec l'outil polygone (icône crayon)</Text>
+                                <Text style={styles.instructionItem}>{t('enhancedGPS.cliquezSurLaCartePour')}</Text>
+                                <Text style={styles.instructionItem}>{t('enhancedGPS.dessinezUneZoneAvecLoutil')}</Text>
                                 <Text style={styles.instructionItem}>• Recherchez une adresse dans la barre de recherche</Text>
-                                <Text style={styles.instructionItem}>• Utilisez "Ma Position" pour votre GPS actuel</Text>
+                                <Text style={styles.instructionItem}>{t('enhancedGPS.utilisezMaPositionPourVotre')}</Text>
                             </View>
                         </View>
 
@@ -225,7 +227,7 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                         >
                             <View style={styles.gpsButtonContent}>
                                 <Text style={styles.gpsButtonIcon}>🎯</Text>
-                                <Text style={styles.gpsButtonText}>Ma Position GPS</Text>
+                                <Text style={styles.gpsButtonText}>{t('enhancedGPS.maPositionGps')}</Text>
                                 <Text style={styles.gpsButtonPin}>📍</Text>
                             </View>
                         </TouchableOpacity>
@@ -238,7 +240,7 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                             <View style={styles.searchContainer}>
                                 <TextInput
                                     style={styles.searchInput}
-                                    placeholder="Rechercher une adresse..."
+                                    placeholder={t('enhancedGPS.rechercherUneAdresse')}
                                     value={searchQuery}
                                     onChangeText={setSearchQuery}
                                     onSubmitEditing={searchAddress}
@@ -275,7 +277,7 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                                 <View style={styles.statusSelected}>
                                     <View style={styles.statusHeader}>
                                         <Text style={styles.statusIcon}>✅</Text>
-                                        <Text style={styles.statusTitle}>Position sélectionnée</Text>
+                                        <Text style={styles.statusTitle}>{t('enhancedGPS.positionSelectionnee')}</Text>
                                     </View>
                                     <Text style={styles.statusCoords}>
                                         {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
@@ -288,7 +290,7 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                                 <View style={styles.statusEmpty}>
                                     <View style={styles.statusHeader}>
                                         <Text style={styles.statusIcon}>⚠️</Text>
-                                        <Text style={styles.statusTitle}>Aucune position sélectionnée</Text>
+                                        <Text style={styles.statusTitle}>{t('enhancedGPS.aucunePositionSelectionnee')}</Text>
                                     </View>
                                     <Text style={styles.statusText}>
                                         Cliquez sur la carte ou utilisez la recherche pour sélectionner une position
@@ -313,7 +315,7 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                                 disabled={!selectedLocation}
                             >
                                 <Text style={styles.confirmButtonIcon}>✅</Text>
-                                <Text style={styles.confirmButtonText}>Confirmer</Text>
+                                <Text style={styles.confirmButtonText}>{t('enhancedGPSModal.confirmer')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -324,7 +326,7 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                         <View style={styles.mapControls}>
                             <View style={styles.mapModeIndicator}>
                                 <Text style={styles.mapModeIcon}>📍</Text>
-                                <Text style={styles.mapModeText}>Mode: Point</Text>
+                                <Text style={styles.mapModeText}>{t('enhancedGPS.modePoint')}/Text>
                             </View>
 
                             <View style={styles.mapStyleControls}>
@@ -341,7 +343,7 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                         <View style={styles.mapContainer}>
                             <View style={styles.mapPlaceholder}>
                                 <Text style={styles.mapPlaceholderText}>🗺️</Text>
-                                <Text style={styles.mapPlaceholderTitle}>Vue Satellite</Text>
+                                <Text style={styles.mapPlaceholderTitle}>{t('enhancedGPS.vueSatellite')}/Text>
                                 <Text style={styles.mapPlaceholderSubtitle}>
                                     {selectedLocation
                                         ? `${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`
@@ -361,7 +363,7 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                                     </View>
                                     <View style={styles.poiItem}>
                                         <Text style={styles.poiIcon}>📱</Text>
-                                        <Text style={styles.poiText}>YURI TÉLÉCOM Cell phone store</Text>
+                                        <Text style={styles.poiText}>{t('enhancedGPS.yuriTelecomCellPhoneStore')}</Text>
                                     </View>
                                     <View style={styles.poiItem}>
                                         <Text style={styles.poiIcon}>🌸</Text>

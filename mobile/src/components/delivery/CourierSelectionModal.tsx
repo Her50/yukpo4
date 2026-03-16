@@ -15,6 +15,7 @@ import { mediaService } from '../../services/mediaService';
 import { modernColors } from '../../theme/modernTheme';
 import { SafeIcon } from '../SafeIcon';
 import { NativeButton } from '../SafeNativeDesign';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface CourierSelectionModalProps {
     visible: boolean;
@@ -46,7 +47,8 @@ const CourierSelectionModal: React.FC<CourierSelectionModalProps> = ({
     deliveryId,
     onSuccess,
 }) => {
-    const [loading, setLoading] = useState(false);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(false);
     const [couriers, setCouriers] = useState<AvailableCourier[]>([]);
     const [selectedCourierId, setSelectedCourierId] = useState<string | null>(null);
     const [loadingCouriers, setLoadingCouriers] = useState(false);
@@ -176,7 +178,7 @@ const CourierSelectionModal: React.FC<CourierSelectionModalProps> = ({
                 <View style={styles.modalContent}>
                     {/* Header */}
                     <View style={styles.header}>
-                        <Text style={styles.headerTitle}>Choisir un livreur</Text>
+                        <Text style={styles.headerTitle}>{t('courierSelection.choisirUnLivreur')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>
@@ -186,7 +188,7 @@ const CourierSelectionModal: React.FC<CourierSelectionModalProps> = ({
                     {loadingCouriers ? (
                         <View style={styles.loadingContainer}>
                             <ActivityIndicator size="large" color={modernColors.primary} />
-                            <Text style={styles.loadingText}>Chargement des coursiers...</Text>
+                            <Text style={styles.loadingText}>{t('courierSelection.chargementDesCoursiers')}</Text>
                         </View>
                     ) : couriers.length === 0 ? (
                         <View style={styles.emptyContainer}>
@@ -206,7 +208,7 @@ const CourierSelectionModal: React.FC<CourierSelectionModalProps> = ({
                     {/* Footer */}
                     <View style={styles.footer}>
                         <NativeButton
-                            title="Annuler"
+                            title={t('courierSelectionModal.annuler')}
                             variant="outline"
                             onPress={onClose}
                             disabled={loading}

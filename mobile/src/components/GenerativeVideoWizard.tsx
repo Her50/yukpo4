@@ -21,6 +21,7 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface GenerativeVideoWizardProps {
     visible: boolean;
@@ -28,7 +29,7 @@ interface GenerativeVideoWizardProps {
     onVideoGenerated?: (timelineId: string, videoUrl: string) => void;
 }
 
-const STYLES = ['cinématique', 'dramatique', 'dynamique', 'calme', 'épique', 'intime'];
+const STYLES = [t('generativeVideoWizard.cinematique'), 'dramatique', 'dynamique', 'calme', 'épique', 'intime'];
 const MOODS = ['energetic', 'relaxing', 'happy', 'sad', 'dramatic', 'calm', 'epic'];
 const ASPECT_RATIOS: Array<'16:9' | '9:16' | '1:1' | '4:5' | '21:9'> = ['16:9', '9:16', '1:1', '4:5', '21:9'];
 const PROVIDERS = [
@@ -42,7 +43,8 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
     onClose,
     onVideoGenerated,
 }) => {
-    const [step, setStep] = useState<1 | 2 | 3>(1);
+        const { t } = useLanguageSafe();
+const [step, setStep] = useState<1 | 2 | 3>(1);
     const [description, setDescription] = useState('');
     const [duration, setDuration] = useState('30');
     const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
@@ -131,18 +133,18 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
 
     const renderStep1 = () => (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepTitle}>Description de la vidéo</Text>
+            <Text style={styles.stepTitle}>{t('generativeVideoWizard.descriptionDeLaVideo')}</Text>
             <TextInput
                 style={styles.textArea}
                 value={description}
                 onChangeText={setDescription}
-                placeholder="Décrivez la vidéo que vous souhaitez générer..."
+                placeholder={t('generativeVideoWizard.decrivezLaVideoQueVous')}
                 multiline
                 numberOfLines={6}
                 placeholderTextColor={modernColors.textSecondary}
             />
 
-            <Text style={styles.label}>Durée (secondes)</Text>
+            <Text style={styles.label}>{t('generativeVideoWizard.dureeSecondes')}</Text>
             <NativeInput
                 value={duration}
                 onChangeText={setDuration}
@@ -174,7 +176,7 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
             </View>
 
             <NativeButton
-                title="Suivant"
+                title={t('generativeVideoWizard.suivant')}
                 onPress={() => setStep(2)}
                 variant="primary"
                 disabled={!description.trim()}
@@ -184,7 +186,7 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
 
     const renderStep2 = () => (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepTitle}>Options de génération</Text>
+            <Text style={styles.stepTitle}>{t('generativeVideoWizard.optionsDeGeneration')}</Text>
 
             <Text style={styles.label}>Style visuel (optionnel)</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionsRow}>
@@ -232,7 +234,7 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
                 ))}
             </ScrollView>
 
-            <Text style={styles.label}>Provider IA (optionnel - auto si non spécifié)</Text>
+            <Text style={styles.label}>{t('generativeVideoWizard.providerIaOptionnelAutoSi')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionsRow}>
                 {PROVIDERS.map((provider) => (
                     <TouchableOpacity
@@ -263,13 +265,13 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
 
             <View style={styles.stepActions}>
                 <NativeButton
-                    title="Retour"
+                    title={t('generativeVideoWizard.retour')}
                     onPress={() => setStep(1)}
                     variant="outline"
                     style={styles.backButton}
                 />
                 <NativeButton
-                    title="Générer"
+                    title={t('generativeVideoWizard.generer')}
                     onPress={handleGenerate}
                     variant="primary"
                     style={styles.generateButton}
@@ -280,7 +282,7 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
 
     const renderStep3 = () => (
         <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Génération en cours...</Text>
+            <Text style={styles.stepTitle}>{t('generativeVideoWizard.generationEnCours')}</Text>
 
             {loading && (
                 <ActivityIndicator
@@ -293,9 +295,9 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
             {job && (
                 <View style={styles.progressContainer}>
                     <Text style={styles.progressLabel}>
-                        {job.progress.stage === 'generating_storyboard' ? 'Génération du storyboard...' :
-                            job.progress.stage === 'generating_clips' ? `Génération des clips (${job.progress.current_scene || 0}/${job.progress.total_scenes || 0})...` :
-                                job.progress.stage === 'assembling' ? 'Assemblage de la vidéo...' :
+                        {job.progress.stage === 'generating_storyboard' ? t('generativeVideoWizard.generationDuStoryboard') :
+                            job.progress.stage === 'generating_clips' ? t('generativeVideoWizard.generationDesClips', { job_progress_current_scene || 0: job.progress.current_scene || 0, job_progress_total_scenes || 0: job.progress.total_scenes || 0 }) :
+                                job.progress.stage === 'assembling' ? t('generativeVideoWizard.assemblageDeLaVideo') :
                                     job.progress.message || 'Traitement en cours...'}
                     </Text>
                     <View style={styles.progressBar}>
@@ -314,7 +316,7 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
 
             {storyboard && (
                 <View style={styles.storyboardContainer}>
-                    <Text style={styles.storyboardTitle}>Storyboard généré</Text>
+                    <Text style={styles.storyboardTitle}>{t('generativeVideoWizard.storyboardGenere')}</Text>
                     <Text style={styles.storyboardInfo}>
                         {String(storyboard.scenes.length)} scènes • {String(storyboard.total_duration)}s
                     </Text>
@@ -357,7 +359,7 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
             <View style={styles.overlay}>
                 <View style={styles.container}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>Génération Vidéo IA</Text>
+                        <Text style={styles.title}>{t('generativeVideoWizard.generationVideoIa')}</Text>
                         <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>

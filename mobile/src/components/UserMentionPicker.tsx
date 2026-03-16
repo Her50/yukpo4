@@ -14,6 +14,7 @@ import {
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface User {
     id: number;
@@ -46,7 +47,8 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
     onSelectUser,
     currentQuery = ''
 }) => {
-    const [searchQuery, setSearchQuery] = useState(currentQuery);
+        const { t } = useLanguageSafe();
+const [searchQuery, setSearchQuery] = useState(currentQuery);
     const [searchResults, setSearchResults] = useState<User[]>([]);
     const [tagHistory, setTagHistory] = useState<TagHistoryItem[]>([]);
     const [loading, setLoading] = useState(false);
@@ -229,10 +231,10 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
     };
 
     const categories = [
-        { key: 'livraison', label: 'Livraison', icon: '🚚' },
+        { key: 'livraison', label: t('userMentionPicker.livraison'), icon: '🚚' },
         { key: 'plombier', label: 'Plomberie', icon: '🔧' },
-        { key: 'électricien', label: 'Électricité', icon: '⚡' },
-        { key: 'mécanicien', label: 'Mécanique', icon: '🔨' },
+        { key: 'électricien', label: t('userMentionPicker.electricite'), icon: '⚡' },
+        { key: 'mécanicien', label: t('userMentionPicker.mecanique'), icon: '🔨' },
         { key: 'coiffeur', label: 'Coiffure', icon: '✂️' },
     ];
 
@@ -290,7 +292,7 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                             <SafeIcon name="search" size={20} color={modernColors.textSecondary} />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Nom ou email de la personne..."
+                                placeholder={t('userMentionPicker.nomOuEmailDeLa')}
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 autoFocus
@@ -308,7 +310,7 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                         {loading ? (
                             <View style={styles.loadingContainer}>
                                 <ActivityIndicator size="large" color={modernColors.primary} />
-                                <Text style={styles.loadingText}>Recherche en cours...</Text>
+                                <Text style={styles.loadingText}>{t('userMentionPicker.rechercheEnCours')}/Text>
                             </View>
                         ) : (
                             <>
@@ -317,7 +319,7 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                                     <View style={styles.tabContent}>
                                         {tagHistory.length > 0 ? (
                                             <>
-                                                <Text style={styles.sectionTitle}>Personnes récemment taguées</Text>
+                                                <Text style={styles.sectionTitle}>{t('userMentionPicker.personnesRecemmentTaguees')}</Text>
                                                 <FlatList
                                                     data={tagHistory}
                                                     keyExtractor={(item) => item.user_id.toString()}
@@ -328,7 +330,7 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                                         ) : (
                                             <View style={styles.emptyState}>
                                                 <SafeIcon name="clock" size={48} color={modernColors.textSecondary} />
-                                                <Text style={styles.emptyTitle}>Aucun historique</Text>
+                                                <Text style={styles.emptyTitle}>{t('userMentionPicker.aucunHistorique')}</Text>
                                                 <Text style={styles.emptyText}>
                                                     Vous n'avez encore tagué personne
                                                 </Text>
@@ -357,7 +359,7 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                                         ) : (
                                             <View style={styles.emptyState}>
                                                 <SafeIcon name="search" size={48} color={modernColors.textSecondary} />
-                                                <Text style={styles.emptyTitle}>Aucun résultat</Text>
+                                                <Text style={styles.emptyTitle}>{t('userMentionPicker.aucunResultat')}</Text>
                                                 <Text style={styles.emptyText}>
                                                     Aucun utilisateur trouvé pour "{searchQuery}"
                                                 </Text>
@@ -369,7 +371,7 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                                 {/* Onglet Catégories */}
                                 {activeTab === 'category' && (
                                     <View style={styles.tabContent}>
-                                        <Text style={styles.sectionTitle}>Rechercher par métier</Text>
+                                        <Text style={styles.sectionTitle}>{t('userMentionPicker.rechercherParMetier')}</Text>
                                         <View style={styles.categoriesGrid}>
                                             {categories.map((cat) => (
                                                 <TouchableOpacity
@@ -388,7 +390,7 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
 
                                         {searchResults.length > 0 && (
                                             <View style={styles.resultsSection}>
-                                                <Text style={styles.sectionTitle}>Résultats</Text>
+                                                <Text style={styles.sectionTitle}>{t('userMentionPicker.resultats')}</Text>
                                                 <FlatList
                                                     data={searchResults}
                                                     keyExtractor={(item) => item.id.toString()}

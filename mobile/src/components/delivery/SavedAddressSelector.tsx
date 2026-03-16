@@ -14,6 +14,7 @@ import { useSavedAddresses, UserSavedAddress } from '../../hooks/useSavedAddress
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 import { NativeButton, NativeCard } from '../SafeNativeDesign';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface SavedAddressSelectorProps {
     addressType: 'pickup' | 'dropoff';
@@ -35,10 +36,11 @@ export const SavedAddressSelector: React.FC<SavedAddressSelectorProps> = ({
     allowNew = true,
     showQuickSave = false,
     onQuickSave,
-    placeholder = 'Sélectionner une adresse...',
+    placeholder={t('savedAddressSelector.selectionnerUneAdresse')},
 }) => {
     const { addresses, loading, createAddressFromLocation, getDefaultAddress } = useSavedAddresses(addressType);
-    const [showModal, setShowModal] = useState(false);
+        const { t } = useLanguageSafe();
+const [showModal, setShowModal] = useState(false);
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [saveLocation, setSaveLocation] = useState<LocationObject | null>(null);
     const [saveLabel, setSaveLabel] = useState('');
@@ -141,7 +143,7 @@ export const SavedAddressSelector: React.FC<SavedAddressSelectorProps> = ({
                 <View style={styles.modalContainer}>
                     <View style={styles.modalHeader}>
                         <Text style={styles.modalTitle}>
-                            {addressType === 'pickup' ? 'Adresse de récupération' : 'Adresse de livraison'}
+                            {addressType === 'pickup' ? t('savedAddressSelector.adresseDeRecuperation') : 'Adresse de livraison'}
                         </Text>
                         <TouchableOpacity
                             onPress={() => setShowModal(false)}
@@ -154,12 +156,12 @@ export const SavedAddressSelector: React.FC<SavedAddressSelectorProps> = ({
                     <ScrollView style={styles.modalContent}>
                         {loading ? (
                             <View style={styles.loadingContainer}>
-                                <Text style={styles.loadingText}>Chargement...</Text>
+                                <Text style={styles.loadingText}>{t('savedAddressSelector.chargement')}</Text>
                             </View>
                         ) : filteredAddresses.length === 0 ? (
                             <View style={styles.emptyContainer}>
                                 <SafeIcon name="map-pin" size={48} color={modernColors.textSecondary} />
-                                <Text style={styles.emptyText}>Aucune adresse sauvegardée</Text>
+                                <Text style={styles.emptyText}>{t('savedAddressSelector.aucuneAdresseSauvegardee')}</Text>
                                 {allowNew && (
                                     <Text style={styles.emptyHint}>
                                         Utilisez le sélecteur GPS pour créer votre première adresse
@@ -171,7 +173,7 @@ export const SavedAddressSelector: React.FC<SavedAddressSelectorProps> = ({
                                 {/* Adresse par défaut en premier */}
                                 {defaultAddress && (
                                     <View style={styles.section}>
-                                        <Text style={styles.sectionTitle}>Adresse par défaut</Text>
+                                        <Text style={styles.sectionTitle}>{t('savedAddressSelector.adresseParDefaut')}</Text>
                                         <TouchableOpacity
                                             style={[styles.addressCard, styles.defaultCard]}
                                             onPress={() => handleSelectSaved(defaultAddress)}
@@ -180,7 +182,7 @@ export const SavedAddressSelector: React.FC<SavedAddressSelectorProps> = ({
                                                 <SafeIcon name="star" size={16} color="#F59E0B" />
                                                 <Text style={styles.addressLabel}>{defaultAddress.label}</Text>
                                                 <View style={styles.defaultBadge}>
-                                                    <Text style={styles.defaultBadgeText}>Défaut</Text>
+                                                    <Text style={styles.defaultBadgeText}>{t('savedAddressSelector.defaut')}</Text>
                                                 </View>
                                             </View>
                                             <Text style={styles.addressText} numberOfLines={2}>
@@ -198,7 +200,7 @@ export const SavedAddressSelector: React.FC<SavedAddressSelectorProps> = ({
                                 {/* Autres adresses */}
                                 {filteredAddresses.filter(a => a.id !== defaultAddress?.id).length > 0 && (
                                     <View style={styles.section}>
-                                        <Text style={styles.sectionTitle}>Mes adresses</Text>
+                                        <Text style={styles.sectionTitle}>{t('savedAddressSelector.mesAdresses')}</Text>
                                         {filteredAddresses
                                             .filter(a => a.id !== defaultAddress?.id)
                                             .map((address) => (
@@ -242,7 +244,7 @@ export const SavedAddressSelector: React.FC<SavedAddressSelectorProps> = ({
             >
                 <View style={styles.saveModalOverlay}>
                     <NativeCard style={styles.saveModalCard}>
-                        <Text style={styles.saveModalTitle}>Sauvegarder cette adresse</Text>
+                        <Text style={styles.saveModalTitle}>{t('savedAddressSelector.sauvegarderCetteAdresse')}</Text>
                         <Text style={styles.saveModalHint}>
                             Donnez un nom à cette adresse pour la retrouver facilement
                         </Text>
@@ -256,7 +258,7 @@ export const SavedAddressSelector: React.FC<SavedAddressSelectorProps> = ({
                         />
                         <View style={styles.saveModalActions}>
                             <NativeButton
-                                title="Annuler"
+                                title={t('savedAddressSelector.annuler')}
                                 onPress={() => {
                                     setShowSaveModal(false);
                                     setSaveLabel('');
@@ -265,7 +267,7 @@ export const SavedAddressSelector: React.FC<SavedAddressSelectorProps> = ({
                                 size="small"
                             />
                             <NativeButton
-                                title="Sauvegarder"
+                                title={t('savedAddressSelector.sauvegarder')}
                                 onPress={handleConfirmSave}
                                 variant="primary"
                                 size="small"

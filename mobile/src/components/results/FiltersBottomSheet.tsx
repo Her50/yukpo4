@@ -9,6 +9,7 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-nativ
 import { modernColors } from '../../theme/modernTheme';
 import { hapticSelect } from '../../utils/hapticFeedback';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 type SortOption = 'pertinence' | 'proximite' | 'prix_asc' | 'prix_desc';
 type FilterCategory = 'all' | 'with_stock' | 'with_variants' | 'nearby';
@@ -99,10 +100,10 @@ const FiltersBottomSheet: React.FC<FiltersBottomSheetProps> = ({
         >
             <BottomSheetView style={styles.headerContainer}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>Filtres et tri</Text>
+                    <Text style={styles.title}>{t('filtersBottomSheet.filtresEtTri')}/Text>
                     <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
                         <SafeIcon name="rotate-ccw" size={18} color={modernColors.primary} />
-                        <Text style={styles.resetText}>Réinitialiser</Text>
+                        <Text style={styles.resetText}>{t('filtersBottomSheet.reinitialiser')}</Text>
                     </TouchableOpacity>
                 </View>
             </BottomSheetView>
@@ -114,7 +115,7 @@ const FiltersBottomSheet: React.FC<FiltersBottomSheetProps> = ({
             >
                 {/* Tri */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>📊 Trier par</Text>
+                    <Text style={styles.sectionTitle}>{t('filtersBottomSheet.trierPar')}</Text>
                     <View style={styles.optionsRow}>
                         <TouchableOpacity
                             style={[styles.optionButton, sortBy === 'pertinence' && styles.optionButtonActive]}
@@ -175,7 +176,7 @@ const FiltersBottomSheet: React.FC<FiltersBottomSheetProps> = ({
 
                 {/* Catégories rapides */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>🎯 Catégories rapides</Text>
+                    <Text style={styles.sectionTitle}>{t('filtersBottomSheet.categoriesRapides')}</Text>
                     <View style={styles.optionsRow}>
                         {([
                             { key: 'all' as FilterCategory, label: 'Tous' },
@@ -204,7 +205,7 @@ const FiltersBottomSheet: React.FC<FiltersBottomSheetProps> = ({
 
                 {/* Filtre par prix */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>💵 Filtre de prix</Text>
+                    <Text style={styles.sectionTitle}>{t('filtersBottomSheet.filtreDePrix')}</Text>
                     <View style={styles.priceRow}>
                         <TextInput
                             style={styles.priceInput}

@@ -64,7 +64,7 @@ const AICVAnalysisScreen: React.FC = () => {
         if (!cvUrl) {
             Alert.alert(
                 'CV requis',
-                'Vous devez d\'abord télécharger votre CV dans votre profil candidat.',
+                'Vous devez d\t('aICVAnalysisScreen.abordTelechargerVotreCvDansVotre'),
                 [
                     { text: t('common.cancel') },
                     {
@@ -93,7 +93,7 @@ const AICVAnalysisScreen: React.FC = () => {
             console.error('[AICVAnalysisScreen] Erreur analyse:', error);
             Alert.alert(
                 'Erreur',
-                'Impossible d\'analyser le CV. L\'IA d\'analyse n\'est peut-être pas encore opérationnelle. Veuillez réessayer plus tard.'
+                'Impossible d\'analyser le CV. L\'IA d\'analyse n\t('aICVAnalysisScreen.estPeutetrePasEncoreOperationnelleVeuillez')
             );
         } finally {
             setLoading(false);
@@ -105,7 +105,7 @@ const AICVAnalysisScreen: React.FC = () => {
             <View style={styles.container}>
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement du profil...</Text>
+                    <Text style={styles.loadingText}>{t('aICVAnalysis.chargementDuProfil')}</Text>
                 </View>
             </View>
         );
@@ -124,12 +124,12 @@ const AICVAnalysisScreen: React.FC = () => {
                 <NativeCard style={styles.card}>
                     <View style={styles.noCVContainer}>
                         <SafeIcon name="file-text" size={64} color={modernColors.textSecondary} />
-                        <Text style={styles.noCVTitle}>Aucun CV trouvé</Text>
+                        <Text style={styles.noCVTitle}>{t('aICVAnalysis.aucunCvTrouve')}</Text>
                         <Text style={styles.noCVText}>
                             Vous devez d'abord télécharger votre CV dans votre profil candidat.
                         </Text>
                         <NativeButton
-                            title="Aller à Mon Profil"
+                            title={t('aICVAnalysis.allerAMonProfil')}
                             onPress={() => navigation.navigate('ProfilCandidat')}
                             variant="primary"
                             style={styles.button}
@@ -140,7 +140,7 @@ const AICVAnalysisScreen: React.FC = () => {
                 <NativeCard style={styles.card}>
                     <View style={styles.infoContainer}>
                         <SafeIcon name="file-check" size={48} color={modernColors.primary} />
-                        <Text style={styles.infoTitle}>CV trouvé</Text>
+                        <Text style={styles.infoTitle}>{t('aICVAnalysis.cvTrouve')}</Text>
                         <Text style={styles.infoText}>
                             Votre CV a été trouvé dans votre profil. Cliquez sur le bouton ci-dessous pour l'analyser avec l'IA.
                         </Text>
@@ -157,14 +157,14 @@ const AICVAnalysisScreen: React.FC = () => {
                 <View>
                     <NativeCard style={styles.analysisCard}>
                         <View style={styles.scoreContainer}>
-                            <Text style={styles.scoreLabel}>Score global</Text>
+                            <Text style={styles.scoreLabel}>{t('aICVAnalysis.scoreGlobal')}/Text>
                             <Text style={styles.scoreValue}>{analysis.score_global}/100</Text>
                         </View>
                     </NativeCard>
 
                     {analysis.points_forts && analysis.points_forts.length > 0 && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>Points forts</Text>
+                            <Text style={styles.sectionTitle}>{t('aICVAnalysis.pointsForts')}/Text>
                             {analysis.points_forts.map((point, i) => (
                                 <View key={i} style={styles.pointItem}>
                                     <SafeIcon name="check-circle" size={16} color={modernColors.success} />
@@ -176,7 +176,7 @@ const AICVAnalysisScreen: React.FC = () => {
 
                     {analysis.points_faibles && analysis.points_faibles.length > 0 && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>Points à améliorer</Text>
+                            <Text style={styles.sectionTitle}>{t('aICVAnalysis.pointsAAmeliorer')}</Text>
                             {analysis.points_faibles.map((point, i) => (
                                 <View key={i} style={styles.pointItem}>
                                     <SafeIcon name="alert-circle" size={16} color={modernColors.warning} />
@@ -188,7 +188,7 @@ const AICVAnalysisScreen: React.FC = () => {
 
                     {analysis.suggestions_amelioration && analysis.suggestions_amelioration.length > 0 && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>Suggestions d'amélioration</Text>
+                            <Text style={styles.sectionTitle}>{t('aICVAnalysis.suggestionsDamelioration')}</Text>
                             {analysis.suggestions_amelioration.map((suggestion, i) => (
                                 <View key={i} style={styles.suggestionItem}>
                                     <SafeIcon name="lightbulb" size={16} color={modernColors.primary} />
@@ -200,7 +200,7 @@ const AICVAnalysisScreen: React.FC = () => {
 
                     {analysis.competences_identifiees && analysis.competences_identifiees.length > 0 && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>Compétences identifiées</Text>
+                            <Text style={styles.sectionTitle}>{t('aICVAnalysis.competencesIdentifiees')}</Text>
                             <View style={styles.tagsContainer}>
                                 {analysis.competences_identifiees.map((comp, i) => (
                                     <View key={i} style={styles.tag}>
@@ -213,7 +213,7 @@ const AICVAnalysisScreen: React.FC = () => {
 
                     {analysis.competences_manquantes && analysis.competences_manquantes.length > 0 && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>Compétences manquantes</Text>
+                            <Text style={styles.sectionTitle}>{t('aICVAnalysis.competencesManquantes')}</Text>
                             <View style={styles.tagsContainer}>
                                 {analysis.competences_manquantes.map((comp, i) => (
                                     <View key={i} style={[styles.tag, styles.tagMissing]}>
@@ -238,7 +238,7 @@ const AICVAnalysisScreen: React.FC = () => {
 
                     <View style={styles.actions}>
                         <NativeButton
-                            title="Nouvelle analyse"
+                            title={t('aICVAnalysis.nouvelleAnalyse')}
                             onPress={() => {
                                 setAnalysis(null);
                                 loadCVFromProfile();

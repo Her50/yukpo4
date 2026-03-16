@@ -23,6 +23,7 @@ import {
 } from '../../data/stickersLibrary';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface StickerPickerModalProps {
     visible: boolean;
@@ -35,7 +36,8 @@ export const StickerPickerModal: React.FC<StickerPickerModalProps> = ({
     onSelect,
     onClose,
 }) => {
-    const [selectedCategory, setSelectedCategory] = useState<StickerCategory>('emojis');
+        const { t } = useLanguageSafe();
+const [selectedCategory, setSelectedCategory] = useState<StickerCategory>('emojis');
     const [searchQuery, setSearchQuery] = useState('');
 
     const getStickers = () => {
@@ -59,7 +61,7 @@ export const StickerPickerModal: React.FC<StickerPickerModalProps> = ({
         >
             <View style={styles.container}>
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Choisir un sticker</Text>
+                    <Text style={styles.headerTitle}>{t('stickerPicker.choisirUnSticker')}</Text>
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                         <SafeIcon name="x" size={20} color="#1F2937" />
                     </TouchableOpacity>
@@ -118,7 +120,7 @@ export const StickerPickerModal: React.FC<StickerPickerModalProps> = ({
                     )}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyText}>Aucun sticker trouvé</Text>
+                            <Text style={styles.emptyText}>{t('stickerPicker.aucunStickerTrouve')}</Text>
                         </View>
                     }
                 />

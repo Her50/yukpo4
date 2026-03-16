@@ -3,6 +3,7 @@ import { Menu, X } from "lucide-react-native";
 import * as React from "react";
 import { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 type SidebarLink = {
   label: string;
@@ -11,14 +12,15 @@ type SidebarLink = {
 
 const links: SidebarLink[] = [
   { label: "Dashboard", screen: "Dashboard" },
-  { label: "Utilisateurs", screen: "Users" },
+  { label: t('responsiveSidebar.utilisateurs'), screen: "Users" },
   { label: "Services", screen: "MesServices" },
   { label: "Statistiques", screen: "Stats" },
-  { label: "Paramètres", screen: "Settings" },
+  { label: t('responsiveSidebar.parametres'), screen: "Settings" },
 ];
 
 const ResponsiveSidebar: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const route = useRoute();
   const [open, setOpen] = useState(false);
 

@@ -7,6 +7,7 @@ import { apiGet } from '../services/api';
 import { theme } from '../theme/theme';
 import { isAdminUser } from '../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 import WeatherWidget from './WeatherWidget';
+import SmartLanguageSelector from './SmartLanguageSelector';
 
 interface UserAvatarMenuProps {
     onNavigate: (route: string) => void;
@@ -51,26 +52,26 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
     const menuItems = isAdmin ? [
         // ✅ SECTION ADMIN: Liens d'administration en priorité
         {
-            title: 'Gérer les coursiers',
+            title: t('userAvatarMenu.gererLesCoursiers'),
             icon: '👥',
             route: 'CourierAdmin',
-            description: 'Valider les candidatures de coursiers',
+            description: t('userAvatarMenu.validerLesCandidaturesDeCoursiers'),
             highlighted: true,
             adminOnly: true
         },
         {
-            title: 'Gérer les partenaires',
+            title: t('userAvatarMenu.gererLesPartenaires'),
             icon: '🚚',
             route: 'DeliveryPartnersAdmin',
-            description: 'Valider les candidatures et gérer les partenaires',
+            description: t('userAvatarMenu.validerLesCandidaturesEtGerer'),
             highlighted: true,
             adminOnly: true
         },
         {
-            title: 'Gestion des rôles',
+            title: t('userAvatarMenu.gestionDesRoles'),
             icon: '👤',
             route: 'UserRoleManagement',
-            description: 'Gérer les rôles des utilisateurs',
+            description: t('userAvatarMenu.gererLesRolesDesUtilisateurs'),
             highlighted: true,
             adminOnly: true
         },
@@ -78,7 +79,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
             title: 'Prestataires externes',
             icon: '🔑',
             route: 'ExternalProvidersAdmin',
-            description: 'Gérer les prestataires et envoyer les clés API',
+            description: t('userAvatarMenu.gererLesPrestatairesEtEnvoyer'),
             highlighted: true,
             adminOnly: true
         },
@@ -86,16 +87,16 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
             title: '🔥 Configuration Black Friday',
             icon: '🔥',
             route: 'BlackFridayAdminConfig',
-            description: 'Gérer les campagnes Black Friday',
+            description: t('userAvatarMenu.gererLesCampagnesBlackFriday'),
             highlighted: true,
             adminOnly: true
         },
         // ✅ SÉPARATEUR VISUEL: Déconnexion toujours visible en bas
         {
-            title: 'Déconnexion',
+            title: t('userAvatarMenu.deconnexion'),
             icon: '🚪',
             route: 'logout',
-            description: 'Se déconnecter de l\'application',
+            description: t('userAvatarMenu.seDeconnecterDeLapplication'),
             isSeparator: true
         }
     ] : [
@@ -109,48 +110,48 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         },
         // ✅ NOUVEAU 2026-01-XX: Navigation intelligente en deuxième position
         {
-            title: 'Navigation intelligente',
+            title: t('userAvatarMenu.navigationIntelligente'),
             icon: '🧭',
             route: 'NavigationScreen',
-            description: 'Trouvez le meilleur chemin avec embouteillages et points d\'intérêt',
+            description: 'Trouvez le meilleur chemin avec embouteillages et points d\t('userAvatarMenu.interet'),
             highlighted: true
         },
         // ✅ AMÉLIORÉ 2026-01-23: Produits consultés en deuxième position
         {
-            title: 'Produits consultés',
+            title: t('userAvatarMenu.produitsConsultes'),
             icon: '🕐',
             route: 'HistoriqueProduitsConsultes',
-            description: 'Voir les produits que vous avez consultés'
+            description: t('userAvatarMenu.voirLesProduitsQueVous')
         },
         {
-            title: 'Mes Suivis',
+            title: t('userAvatarMenu.mesSuivis'),
             icon: '❤️',
             route: 'MesSuivis',
             description: 'Vendeurs et prestataires que vous suivez'
         },
         {
-            title: 'Mon historique',
+            title: t('userAvatarMenu.monHistorique'),
             icon: '📊',
             route: 'SoldeDetail',
             description: 'Voir mon historique de transactions'
         },
         {
-            title: 'Devenir coursier Yukpo',
+            title: t('userAvatarMenu.devenirCoursierYukpo'),
             icon: '🚴',
             route: 'CourierRegistration',
-            description: 'Rejoignez notre équipe de coursiers'
+            description: t('userAvatarMenu.rejoignezNotreEquipeDeCoursiers')
         },
         {
-            title: 'Contacter le Support',
+            title: t('userAvatarMenu.contacterLeSupport'),
             icon: '💬',
             route: 'Contact',
-            description: 'Besoin d\'aide ?'
+            description: t('userAvatarMenu.besoinDaide')
         },
         {
-            title: 'Déconnexion',
+            title: t('userAvatarMenu.deconnexion'),
             icon: '🚪',
             route: 'logout',
-            description: 'Se déconnecter de l\'application'
+            description: t('userAvatarMenu.seDeconnecterDeLapplication')
         }
     ];
 
@@ -158,10 +159,10 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
     if (teamMembershipCount > 0 && !isAdmin) {
         // Insérer après "Navigation intelligente" (index 1 dans le menu utilisateur)
         const teamItem = {
-            title: `Mes Équipes (${teamMembershipCount})`,
+            title: t('userAvatarMenu.mesEquipes', { teamMembershipCount: teamMembershipCount }),
             icon: '👥',
             route: 'MesEquipes',
-            description: 'Services que vous co-gérez',
+            description: t('userAvatarMenu.servicesQueVousCogerez'),
             highlighted: true
         };
         menuItems.splice(2, 0, teamItem); // Après langue + navigation
@@ -221,7 +222,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                     <View style={styles.avatarPlaceholder}>
                         <Text style={styles.avatarText} numberOfLines={1} ellipsizeMode="clip">
                             {(() => {
-                                const initials = getInitials(user?.name || 'Utilisateur');
+                                const initials = getInitials(user?.name || t('userAvatarMenu.utilisateur'));
                                 // ✅ S'assurer qu'on affiche seulement les initiales (max 2 caractères)
                                 return initials.length > 2 ? initials.substring(0, 2) : initials;
                             })()}
@@ -251,7 +252,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                                 ) : (
                                     <View style={styles.menuAvatarPlaceholder}>
                                         <Text style={styles.menuAvatarText}>
-                                            {getInitials(user?.name || 'Utilisateur')}
+                                            {getInitials(user?.name || t('userAvatarMenu.utilisateur'))}
                                         </Text>
                                     </View>
                                 )}
@@ -259,7 +260,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                             <View style={styles.menuUserInfo}>
                                 <Text style={styles.menuUserName} numberOfLines={1}>
                                     {(() => {
-                                        const userName = user?.name || 'Utilisateur';
+                                        const userName = user?.name || t('userAvatarMenu.utilisateur');
                                         // ✅ Nettoyer le nom pour éviter les doublons
                                         if (typeof userName === 'string') {
                                             // Supprimer les espaces multiples
@@ -328,10 +329,10 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                                     onNavigate('SoldeDetail');
                                 }}
                             >
-                                <Text style={styles.balanceLabel}>Solde</Text>
-                                <Text style={styles.balanceAmount}>
-                                    {(balance != null ? balance : 0).toLocaleString('fr-FR')} <Text style={styles.balanceCurrency}>FCFA</Text>
-                                </Text>
+                                <Text style={styles.balanceLabel}>{t('userAvatarMenu.solde')}/Text>
+                                    <Text style={styles.balanceAmount}>
+                                        {(balance != null ? balance : 0).toLocaleString('fr-FR')} <Text style={styles.balanceCurrency}>FCFA</Text>
+                                    </Text>
                             </TouchableOpacity>
 
                             {/* Météo */}
@@ -397,47 +398,12 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                 </TouchableOpacity>
             </Modal>
 
-            {/* ✅ Modal sélecteur de langue */}
-            <Modal
+            {/* ✅ Sélecteur de langue intelligent GPS (remplace l'ancienne modal) */}
+            <SmartLanguageSelector
                 visible={showLanguagePicker}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => setShowLanguagePicker(false)}
-            >
-                <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={() => setShowLanguagePicker(false)}
-                >
-                    <View style={styles.languagePickerContainer}>
-                        <Text style={styles.languagePickerTitle}>{t('language.title')}</Text>
-                        <ScrollView bounces={false}>
-                            {SUPPORTED_LANGUAGES.map((lang) => (
-                                <TouchableOpacity
-                                    key={lang.code}
-                                    style={[
-                                        styles.languagePickerItem,
-                                        lang.code === language && styles.languagePickerItemActive
-                                    ]}
-                                    onPress={() => {
-                                        setLanguage(lang.code);
-                                        setShowLanguagePicker(false);
-                                    }}
-                                >
-                                    <Text style={styles.languagePickerFlag}>{lang.flag}</Text>
-                                    <Text style={[
-                                        styles.languagePickerLabel,
-                                        lang.code === language && styles.languagePickerLabelActive
-                                    ]}>{lang.name}</Text>
-                                    {lang.code === language && (
-                                        <Text style={styles.languagePickerCheck}>✓</Text>
-                                    )}
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
-                </TouchableOpacity>
-            </Modal>
+                onClose={() => setShowLanguagePicker(false)}
+                showCountryHint
+            />
         </>
     );
 };

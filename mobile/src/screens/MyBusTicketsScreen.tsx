@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
 import SkeletonCard from '../components/SkeletonCard';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 
@@ -48,6 +49,7 @@ interface BusTicket {
 
 const MyBusTicketsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [tickets, setTickets] = useState<BusTicket[]>([]);
@@ -181,8 +183,8 @@ const MyBusTicketsScreen: React.FC = () => {
                             {status === 'upcoming'
                                 ? 'À venir'
                                 : status === 'past'
-                                    ? 'Passé'
-                                    : 'Annulé'}
+                                    ? t('myBusTicketsScreen.passe')
+                                    : t('myBusTicketsScreen.annule')}
                         </Text>
                     </View>
                 </View>
@@ -207,14 +209,14 @@ const MyBusTicketsScreen: React.FC = () => {
                     <Text style={styles.dateText}>{formatDate(ticket.departure_date)}</Text>
                     {(ticket.is_round_trip || ticket.return_date) && (
                         <View style={{ backgroundColor: '#DBEAFE', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginLeft: 8 }}>
-                            <Text style={{ fontSize: 11, color: '#1D4ED8', fontWeight: '600' }}>Aller-Retour</Text>
+                            <Text style={{ fontSize: 11, color: '#1D4ED8', fontWeight: '600' }}>{t('myBusTicketsScreen.allerretour')}</Text>
                         </View>
                     )}
                 </View>
                 {ticket.return_date && (
                     <View style={[styles.dateRow, { marginTop: 4 }]}>
                         <SafeIcon name="rotate-ccw" size={14} color="#2563EB" type="lucide" />
-                        <Text style={[styles.dateText, { color: '#2563EB' }]}>Retour: {formatDate(ticket.return_date)}{ticket.return_time ? ` à ${ticket.return_time.substring(0, 5)}` : ''}</Text>
+                        <Text style={[styles.dateText, { color: '#2563EB' }]}>{t('myBusTicketsScreen.returnDate')}: {formatDate(ticket.return_date)}{ticket.return_time ? ` ${t('myBusTicketsScreen.at')} ${ticket.return_time.substring(0, 5)}` : ''}</Text>
                     </View>
                 )}
 
@@ -254,7 +256,7 @@ const MyBusTicketsScreen: React.FC = () => {
                         onPress={() => handleShareTicket(ticket)}
                     >
                         <SafeIcon name="share" size={16} color={modernColors.primary} />
-                        <Text style={styles.actionButtonText}>Partager</Text>
+                        <Text style={styles.actionButtonText}>{t('myBusTicketsScreen.partager')}</Text>
                     </TouchableOpacity>
                     {status === 'upcoming' && (
                         <TouchableOpacity
@@ -299,7 +301,7 @@ const MyBusTicketsScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mes tickets de voyage</Text>
+                <Text style={styles.title}>{t('myBusTickets.mesTicketsDeVoyage')}</Text>
                 <View style={styles.placeholder} />
             </View>
 
@@ -326,8 +328,8 @@ const MyBusTicketsScreen: React.FC = () => {
                                     : filterOption === 'upcoming'
                                         ? 'À venir'
                                         : filterOption === 'past'
-                                            ? 'Passés'
-                                            : 'Annulés'}
+                                            ? t('myBusTicketsScreen.passes')
+                                            : t('myBusTicketsScreen.annules')}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -342,15 +344,15 @@ const MyBusTicketsScreen: React.FC = () => {
             ) : filteredTickets.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="ticket" size={64} color="#D1D5DB" />
-                    <Text style={styles.emptyTitle}>Aucun ticket</Text>
+                    <Text style={styles.emptyTitle}>{t('myBusTickets.aucunTicket')}</Text>
                     <Text style={styles.emptyText}>
                         {filter === 'all'
                             ? 'Vous n\'avez pas encore de tickets de voyage'
                             : filter === 'upcoming'
-                                ? 'Aucun ticket à venir'
+                                ? t('myBusTicketsScreen.aucunTicketAVenir')
                                 : filter === 'past'
-                                    ? 'Aucun ticket passé'
-                                    : 'Aucun ticket annulé'}
+                                    ? t('myBusTicketsScreen.aucunTicketPasse')
+                                    : t('myBusTicketsScreen.aucunTicketAnnule')}
                     </Text>
                 </View>
             ) : (

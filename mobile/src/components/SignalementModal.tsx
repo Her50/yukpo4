@@ -14,6 +14,7 @@ import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeInput } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SignalementModalProps {
     visible: boolean;
@@ -30,34 +31,35 @@ const SignalementModal: React.FC<SignalementModalProps> = ({
     productId,
     productName
 }) => {
-    const [selectedType, setSelectedType] = useState<string | null>(null);
+        const { t } = useLanguageSafe();
+const [selectedType, setSelectedType] = useState<string | null>(null);
     const [selectedMotifs, setSelectedMotifs] = useState<string[]>([]);
     const [motifLibre, setMotifLibre] = useState('');
     const [loading, setLoading] = useState(false);
 
     const typesSignalement = [
-        { id: 'contenu_inapproprie', label: 'Contenu inapproprié', icon: '⚠️', color: '#EF4444' },
-        { id: 'arnaque_suspectee', label: 'Arnaque suspectée', icon: '🚨', color: '#DC2626' },
-        { id: 'prix_trompeur', label: 'Prix trompeur', icon: '💰', color: '#F59E0B' },
-        { id: 'produit_contrefait', label: 'Produit contrefait', icon: '🔍', color: '#F97316' },
-        { id: 'photo_trompeuse', label: 'Photo trompeuse', icon: '📷', color: '#FB923C' },
-        { id: 'harcèlement', label: 'Harcèlement', icon: '🛑', color: '#B91C1C' },
-        { id: 'spam', label: 'Spam / Publicité', icon: '📢', color: '#EA580C' },
-        { id: 'informations_fausses', label: 'Informations fausses', icon: '❌', color: '#DC2626' },
+        { id: 'contenu_inapproprie', label: t('signalement.contenuInapproprie'), icon: '⚠️', color: '#EF4444' },
+        { id: 'arnaque_suspectee', label: t('signalement.arnaqueSuspectee'), icon: '🚨', color: '#DC2626' },
+        { id: 'prix_trompeur', label: t('signalementModal.prixTrompeur'), icon: '💰', color: '#F59E0B' },
+        { id: 'produit_contrefait', label: t('signalement.produitContrefait'), icon: '🔍', color: '#F97316' },
+        { id: 'photo_trompeuse', label: t('signalement.photoTrompeuse'), icon: '📷', color: '#FB923C' },
+        { id: 'harcèlement', label: t('signalement.harcelement'), icon: '🛑', color: '#B91C1C' },
+        { id: 'spam', label: t('signalement.spamPublicite'), icon: '📢', color: '#EA580C' },
+        { id: 'informations_fausses', label: t('signalement.informationsFausses'), icon: '❌', color: '#DC2626' },
         { id: 'autre', label: 'Autre', icon: '📝', color: '#6B7280' },
     ];
 
     const motifsFrequents = [
-        'Le prestataire ne répond pas',
+        t('signalementModal.lePrestataireNeRepondPas'),
         'Les photos ne correspondent pas au produit',
-        'Prix différent de l\'annonce',
+        t('signalementModal.prixDifferentDeLannonce'),
         'Produit non disponible',
         'Demande d\'argent avant prestation',
         'Comportement suspect',
-        'Coordonnées invalides',
-        'Service de mauvaise qualité',
-        'Délais non respectés',
-        'Produit défectueux',
+        t('signalementModal.coordonneesInvalides'),
+        t('signalementModal.serviceDeMauvaiseQualite'),
+        t('signalementModal.delaisNonRespectes'),
+        t('signalementModal.produitDefectueux'),
     ];
 
     const handleSubmit = async () => {
@@ -84,8 +86,8 @@ const SignalementModal: React.FC<SignalementModalProps> = ({
 
             if (response.success) {
                 Alert.alert(
-                    '✅ Signalement enregistré',
-                    `Référence: ${(response.data as any).reference}\n\n${(response.data as any).message}`,
+                    t('signalementModal.signalementEnregistre'),
+                    t('signalementModal.referenceNn', { (response_data as any)_reference: (response.data as any).reference, (response_data as any)_message: (response.data as any).message }),
                     [
                         {
                             text: 'OK',
@@ -103,7 +105,7 @@ const SignalementModal: React.FC<SignalementModalProps> = ({
             console.error('[SignalementModal] Erreur:', error);
             Alert.alert(
                 'Erreur',
-                error.message || 'Impossible d\'enregistrer le signalement. Réessayez.'
+                error.message || 'Impossible d\t('signalementModal.enregistrerLeSignalementReessayez')
             );
         } finally {
             setLoading(false);
@@ -139,7 +141,7 @@ const SignalementModal: React.FC<SignalementModalProps> = ({
                             <SafeIcon name="flag" size={24} color={modernColors.error} />
                         </View>
                         <View style={styles.headerTextContainer}>
-                            <Text style={styles.headerTitle}>Signaler un problème</Text>
+                            <Text style={styles.headerTitle}>{t('signalement.signalerUnProbleme')}</Text>
                             <Text style={styles.headerSubtitle}>
                                 {productName ? `Produit: ${productName}` : 'Service'}
                             </Text>
@@ -152,7 +154,7 @@ const SignalementModal: React.FC<SignalementModalProps> = ({
                     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                         {/* Type de signalement */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Type de problème</Text>
+                            <Text style={styles.sectionTitle}>{t('signalement.typeDeProbleme')}</Text>
                             <View style={styles.typesGrid}>
                                 {typesSignalement.map((type) => (
                                     <TouchableOpacity
@@ -179,7 +181,7 @@ const SignalementModal: React.FC<SignalementModalProps> = ({
                         {/* Motifs fréquents */}
                         {selectedType && (
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Motifs fréquents (optionnel)</Text>
+                                <Text style={styles.sectionTitle}>{t('signalement.motifsFrequentsOptionnel')}</Text>
                                 <Text style={styles.sectionHint}>Cochez tout ce qui s'applique</Text>
                                 {motifsFrequents.map((motif) => (
                                     <TouchableOpacity
@@ -204,10 +206,10 @@ const SignalementModal: React.FC<SignalementModalProps> = ({
                         {/* Description libre */}
                         {selectedType && (
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Description du problème</Text>
-                                <Text style={styles.sectionHint}>Décrivez en détail le problème rencontré</Text>
+                                <Text style={styles.sectionTitle}>{t('signalement.descriptionDuProbleme')}</Text>
+                                <Text style={styles.sectionHint}>{t('signalement.decrivezEnDetailLeProbleme')}</Text>
                                 <NativeInput
-                                    placeholder="Ex: Le prestataire demande le paiement intégral avant la prestation sans garantie..."
+                                    placeholder={t('signalement.exLePrestataireDemandeLe')}
                                     value={motifLibre}
                                     onChangeText={setMotifLibre}
                                     multiline
@@ -239,7 +241,7 @@ const SignalementModal: React.FC<SignalementModalProps> = ({
                             }}
                             disabled={loading}
                         >
-                            <Text style={styles.cancelButtonText}>Annuler</Text>
+                            <Text style={styles.cancelButtonText}>{t('signalementModal.annuler')}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -255,7 +257,7 @@ const SignalementModal: React.FC<SignalementModalProps> = ({
                             ) : (
                                 <>
                                     <SafeIcon name="flag" size={18} color="#FFFFFF" />
-                                    <Text style={styles.submitButtonText}>Envoyer le signalement</Text>
+                                    <Text style={styles.submitButtonText}>{t('signalement.envoyerLeSignalement')}/Text>
                                 </>
                             )}
                         </TouchableOpacity>

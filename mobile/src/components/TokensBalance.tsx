@@ -81,7 +81,7 @@ export const TokensBalance: React.FC<TokensBalanceProps> = ({
   return (
     <View style={[styles.container, style]}>
       {showLabel && (
-        <Text style={styles.label}>{t?.('yourBalance') || 'Solde'}:</Text>
+        <Text style={styles.label}>{t?.('yourBalance') || t('tokensBalance.solde')}:</Text>
       )}
       <View style={styles.balanceContainer}>
         <Text style={[styles.balanceText, getBalanceColor(tokensBalance)]}>

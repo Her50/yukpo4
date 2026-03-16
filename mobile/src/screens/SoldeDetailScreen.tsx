@@ -12,6 +12,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { userApi } from '../services/api';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 type UsageLog = {
   date: string;
@@ -36,6 +37,7 @@ type PaymentLog = {
 
 const SoldeDetailScreen: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const { user, refreshUser } = useAuth(); // ✅ Ajout de refreshUser
   const [logs, setLogs] = useState<UsageLog[]>([]);
   const [paymentLogs, setPaymentLogs] = useState<PaymentLog[]>([]);
@@ -175,7 +177,7 @@ const SoldeDetailScreen: React.FC = () => {
 
   const renderPeriodSelector = () => (
     <View style={styles.periodSelector}>
-      <Text style={styles.periodLabel}>Période:</Text>
+      <Text style={styles.periodLabel}>{t('soldeDetail.periode')}</Text>
       <View style={styles.periodButtons}>
         {[
           { key: '7d', label: '7j' },
@@ -233,7 +235,7 @@ const SoldeDetailScreen: React.FC = () => {
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>💰</Text>
           <Text style={styles.statValue}>{formatCurrency(totalConsumed)}</Text>
-          <Text style={styles.statLabel}>Total consommé</Text>
+          <Text style={styles.statLabel}>{t('soldeDetail.totalConsomme')}</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>📈</Text>
@@ -251,11 +253,11 @@ const SoldeDetailScreen: React.FC = () => {
 
       {/* Liste des utilisations */}
       <View style={styles.listContainer}>
-        <Text style={styles.listTitle}>Détail des utilisations <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text></Text>
+        <Text style={styles.listTitle}>{t('soldeDetail.detailDesUtilisations')}<Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text></Text>
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={styles.loadingText}>Chargement...</Text>
+            <Text style={styles.loadingText}>{t('soldeDetail.chargement')}</Text>
           </View>
         ) : logs.length > 0 ? (
           logs.map((log, index) => (
@@ -281,7 +283,7 @@ const SoldeDetailScreen: React.FC = () => {
         ) : (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📭</Text>
-            <Text style={styles.emptyText}>Aucune utilisation <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text> enregistrée</Text>
+            <Text style={styles.emptyText}>{t('soldeDetail.aucuneUtilisation')}Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>{t('soldeDetail.enregistree')}</Text>
           </View>
         )}
       </View>
@@ -295,12 +297,12 @@ const SoldeDetailScreen: React.FC = () => {
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>💳</Text>
           <Text style={styles.statValue}>{formatCurrency(totalPaid)}</Text>
-          <Text style={styles.statLabel}>Total payé</Text>
+          <Text style={styles.statLabel}>{t('soldeDetail.totalPaye')}</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>🪙</Text>
           <Text style={styles.statValue}>{totalTokensAdded.toLocaleString()}</Text>
-          <Text style={styles.statLabel}>Tokens ajoutés</Text>
+          <Text style={styles.statLabel}>{t('soldeDetail.tokensAjoutes')}</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>📝</Text>
@@ -311,11 +313,11 @@ const SoldeDetailScreen: React.FC = () => {
 
       {/* Liste des paiements */}
       <View style={styles.listContainer}>
-        <Text style={styles.listTitle}>Historique des paiements</Text>
+        <Text style={styles.listTitle}>{t('soldeDetail.historiqueDesPaiements')}/Text>
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={styles.loadingText}>Chargement...</Text>
+            <Text style={styles.loadingText}>{t('soldeDetail.chargement')}</Text>
           </View>
         ) : paymentLogs.length > 0 ? (
           paymentLogs.map((payment) => (
@@ -344,7 +346,7 @@ const SoldeDetailScreen: React.FC = () => {
         ) : (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>💳</Text>
-            <Text style={styles.emptyText}>Aucun paiement enregistré</Text>
+            <Text style={styles.emptyText}>{t('soldeDetail.aucunPaiementEnregistre')}</Text>
           </View>
         )}
       </View>
@@ -356,20 +358,20 @@ const SoldeDetailScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Historique de Consommation</Text>
+          <Text style={styles.headerTitle}>{t('soldeDetail.historiqueDeConsommation')}/Text>
         </View>
 
         {/* Solde actuel */}
         <View style={styles.balanceCard}>
           <View style={styles.balanceContent}>
             <View style={styles.balanceLeft}>
-              <Text style={styles.balanceLabel}>Solde actuel</Text>
+              <Text style={styles.balanceLabel}>{t('soldeDetail.soldeActuel')}/Text>
               <Text style={styles.balanceValue}>
                 {currentBalance.toFixed(0)} FCFA
               </Text>
             </View>
             <View style={styles.balanceRight}>
-              <Text style={styles.balanceSubLabel}>Total consommé</Text>
+              <Text style={styles.balanceSubLabel}>{t('soldeDetail.totalConsomme')}</Text>
               <Text style={styles.balanceSubValue}>
                 {formatCurrency(totalConsumed)}
               </Text>

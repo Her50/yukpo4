@@ -21,11 +21,13 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import PropertyPhotoGallery from '../../components/specialized/PropertyPhotoGallery';
 import { immobilierService, RealEstateProperty } from '../../services/immobilierService';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type RouteParams = { propertyId: number };
 
 const ImmobilierDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute() as any;
     const propertyId = route.params?.propertyId;
 
@@ -60,7 +62,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
             if (response.success && response.data) {
                 setProperty((response as any).data);
                 try { const fav = await immobilierService.getMyFavorites(); if (fav.success && fav.data) setIsFavorite(((fav.data as unknown) as any[]).some((p: any) => p.id === propertyId)); } catch { }
-            } else { setError('Bien non trouvé'); }
+            } else { setError(t('immobilierDetails.bienNonTrouve')); }
         } catch (err: any) { setError(err.message || 'Erreur lors du chargement'); }
         finally { setLoading(false); }
     };
@@ -99,7 +101,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
                 const monthlyRate = rate / 100 / 12;
                 const nbMonths = duration * 12;
                 const mensualite = montant * (monthlyRate * Math.pow(1 + monthlyRate, nbMonths)) / (Math.pow(1 + monthlyRate, nbMonths) - 1);
-                setLoanResult({ property_price: price, down_payment: Math.round(apport), loan_amount: Math.round(montant), interest_rate: rate, loan_duration_years: duration, monthly_payment: Math.round(mensualite), total_interest: Math.round(mensualite * nbMonths - montant), total_cost: Math.round(mensualite * nbMonths), affordability_analysis: 'Calcul local (le serveur n\'a pas répondu)' });
+                setLoanResult({ property_price: price, down_payment: Math.round(apport), loan_amount: Math.round(montant), interest_rate: rate, loan_duration_years: duration, monthly_payment: Math.round(mensualite), total_interest: Math.round(mensualite * nbMonths - montant), total_cost: Math.round(mensualite * nbMonths), affordability_analysis: 'Calcul local (le serveur n\t('immobilierDetailsScreen.aPasRepondu') });
             }
         } catch { Alert.alert('Erreur', 'Impossible de simuler le prêt'); }
         finally { setLoadingLoan(false); }
@@ -154,8 +156,8 @@ const ImmobilierDetailsScreen: React.FC = () => {
         return `${(price / 1000).toFixed(0)}K FCFA`;
     };
 
-    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#6366F1" /><Text style={st.centerText}>Chargement...</Text></View>);
-    if (error || !property) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#6366F1" /><Text style={st.centerText}>{error || 'Bien non trouvé'}</Text><TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16 }}><Text style={{ color: '#6366F1', fontWeight: '600' }}>Retour</Text></TouchableOpacity></View>);
+    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#6366F1" /><Text style={st.centerText}>{t('immobilierDetails.chargement')}</Text></View>);
+    if (error || !property) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#6366F1" /><Text style={st.centerText}>{error || t('immobilierDetails.bienNonTrouve')}</Text><TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16 }}><Text style={{ color: '#6366F1', fontWeight: '600' }}>Retour</Text></TouchableOpacity></View>);
 
     return (
         <View style={st.container}>
@@ -207,7 +209,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
                 ) : (
                     <View style={{ height: 120, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3F4F6', marginHorizontal: 16, marginTop: 12, borderRadius: 12 }}>
                         <SafeIcon name="image" size={40} color="#9CA3AF" />
-                        <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 6 }}>Aucune photo</Text>
+                        <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 6 }}>{t('immobilierDetails.aucunePhoto')}</Text>
                     </View>
                 )}
 
@@ -217,7 +219,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
                         (property as any).telephone && { icon: 'phone', label: 'Appeler', color: '#6366F1', onPress: () => Linking.openURL(`tel:${(property as any).telephone}`) },
                         (property as any).whatsapp && { icon: 'message-circle', label: 'WhatsApp', color: '#25D366', onPress: () => Linking.openURL(`https://wa.me/${((property as any).whatsapp || '').replace(/[^0-9]/g, '')}`) },
                         { icon: isFavorite ? 'heart' : 'heart', label: isFavorite ? 'Favori ♥' : 'Favoris', color: '#EF4444', onPress: handleToggleFavorite },
-                        { icon: 'share-2', label: 'Partager', color: '#8B5CF6', onPress: handleShare },
+                        { icon: 'share-2', label: t('immobilierDetailsScreen.partager'), color: '#8B5CF6', onPress: handleShare },
                     ].filter(Boolean).map((a: any, i) => (
                         <TouchableOpacity key={i} style={st.quickAction} onPress={a.onPress}>
                             <View style={[st.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon} size={20} color={a.color} /></View>
@@ -228,7 +230,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
 
                 {/* Characteristics Card */}
                 <View style={st.card}>
-                    <View style={st.cardHeader}><SafeIcon name="list" size={18} color="#6366F1" /><Text style={st.cardTitle}>Caractéristiques</Text></View>
+                    <View style={st.cardHeader}><SafeIcon name="list" size={18} color="#6366F1" /><Text style={st.cardTitle}>{t('immobilierDetails.caracteristiques')}</Text></View>
                     <View style={st.detailsGrid}>
                         {property.type_bien && (<View style={st.detailItem}><SafeIcon name="home" size={20} color="#6366F1" /><Text style={st.detailLabel}>Type</Text><Text style={st.detailValue}>{property.type_bien}</Text></View>)}
                         {property.superficie_m2 && (<View style={st.detailItem}><SafeIcon name="maximize" size={20} color="#6366F1" /><Text style={st.detailLabel}>Superficie</Text><Text style={st.detailValue}>{property.superficie_m2} m²</Text></View>)}
@@ -250,7 +252,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
                     <View style={st.cardHeader}><SafeIcon name="trending-up" size={18} color="#059669" /><Text style={st.cardTitle}>Estimation IA du prix</Text></View>
                     {priceEstimate ? (
                         <View>
-                            <View style={st.estimateRow}><Text style={st.estimateLabel}>Prix estimé</Text><Text style={st.estimateValue}>{priceEstimate.estimated_price?.toLocaleString() || 'N/A'} FCFA</Text></View>
+                            <View style={st.estimateRow}><Text style={st.estimateLabel}>{t('immobilierDetails.prixEstime')}</Text><Text style={st.estimateValue}>{priceEstimate.estimated_price?.toLocaleString() || 'N/A'} FCFA</Text></View>
                             <View style={st.estimateRow}><Text style={st.estimateLabel}>Fourchette</Text><Text style={st.estimateSubvalue}>{(priceEstimate.price_range_min || 0).toLocaleString()} - {(priceEstimate.price_range_max || 0).toLocaleString()} FCFA</Text></View>
                             <View style={st.estimateRow}><Text style={st.estimateLabel}>Prix/m²</Text><Text style={st.estimateSubvalue}>{priceEstimate.price_per_m2?.toLocaleString() || 'N/A'} FCFA</Text></View>
                             {priceEstimate.confidence_level && (<View style={st.confBadge}><Text style={st.confText}>Confiance: {Math.round(priceEstimate.confidence_level * 100)}%</Text></View>)}
@@ -286,12 +288,12 @@ const ImmobilierDetailsScreen: React.FC = () => {
                 <View style={{ paddingHorizontal: 16, gap: 10, marginBottom: 12 }}>
                     <TouchableOpacity style={st.primaryBtn} onPress={handleBookVisit}>
                         <SafeIcon name={isHotelOrMeuble ? 'bed' : 'calendar'} size={20} color="#fff" />
-                        <Text style={st.primaryBtnText}>{isHotelOrMeuble ? 'Réserver un séjour' : 'Réserver une visite'}</Text>
+                        <Text style={st.primaryBtnText}>{isHotelOrMeuble ? t('immobilierDetailsScreen.reserverUnSejour') : 'Réserver une visite'}</Text>
                     </TouchableOpacity>
                     {property.prix_vente && (
                         <TouchableOpacity style={[st.primaryBtn, { backgroundColor: '#4F46E5' }]} onPress={handleSimulateLoan}>
                             <SafeIcon name="calculator" size={20} color="#fff" />
-                            <Text style={st.primaryBtnText}>Simuler un prêt</Text>
+                            <Text style={st.primaryBtnText}>{t('immobilierDetails.simulerUnPret')}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -305,15 +307,15 @@ const ImmobilierDetailsScreen: React.FC = () => {
                     <ScrollView style={st.modalContainer} contentContainerStyle={st.modalContent}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                             <View>
-                                <Text style={st.modalTitle}>Simulation de prêt</Text>
+                                <Text style={st.modalTitle}>{t('immobilierDetails.simulationDePret')}</Text>
                                 <Text style={st.modalSub}>{property.titre} - {formatPrice(property.prix_vente)}</Text>
                             </View>
                             <TouchableOpacity onPress={() => { setShowLoanModal(false); setLoanResult(null); }} style={{ padding: 4 }}><SafeIcon name="x" size={24} color="#6B7280" /></TouchableOpacity>
                         </View>
 
                         <View style={st.loanGroup}><Text style={st.loanLabel}>Apport personnel (%)</Text><TextInput style={st.loanInput} value={loanDownPayment} onChangeText={setLoanDownPayment} keyboardType="numeric" placeholder="10" placeholderTextColor="#9CA3AF" /></View>
-                        <View style={st.loanGroup}><Text style={st.loanLabel}>Durée (années)</Text><TextInput style={st.loanInput} value={loanDuration} onChangeText={setLoanDuration} keyboardType="numeric" placeholder="20" placeholderTextColor="#9CA3AF" /></View>
-                        <View style={st.loanGroup}><Text style={st.loanLabel}>Revenu mensuel (optionnel, FCFA)</Text><TextInput style={st.loanInput} value={loanMonthlyIncome} onChangeText={setLoanMonthlyIncome} keyboardType="numeric" placeholder="500000" placeholderTextColor="#9CA3AF" /></View>
+                        <View style={st.loanGroup}><Text style={st.loanLabel}>{t('immobilierDetails.dureeAnnees')}</Text><TextInput style={st.loanInput} value={loanDuration} onChangeText={setLoanDuration} keyboardType="numeric" placeholder="20" placeholderTextColor="#9CA3AF" /></View>
+                        <View style={st.loanGroup}><Text style={st.loanLabel}>{t('immobilierDetails.revenuMensuelOptionnelFcfa')}/Text><TextInput style={st.loanInput} value={loanMonthlyIncome} onChangeText={setLoanMonthlyIncome} keyboardType="numeric" placeholder="500000" placeholderTextColor="#9CA3AF" /></View>
 
                         {!loanResult ? (
                             <TouchableOpacity style={st.primaryBtn} onPress={handleConfirmLoanSimulation} disabled={loadingLoan}>
@@ -322,13 +324,13 @@ const ImmobilierDetailsScreen: React.FC = () => {
                             </TouchableOpacity>
                         ) : (
                             <View style={st.loanResult}>
-                                <Text style={st.loanResultTitle}>Résultat</Text>
-                                <View style={st.loanRow}><Text style={st.loanRowLabel}>Montant emprunté</Text><Text style={st.loanRowVal}>{loanResult.loan_amount?.toLocaleString()} FCFA</Text></View>
+                                <Text style={st.loanResultTitle}>{t('immobilierDetails.resultat')}</Text>
+                                <View style={st.loanRow}><Text style={st.loanRowLabel}>{t('immobilierDetails.montantEmprunte')}</Text><Text style={st.loanRowVal}>{loanResult.loan_amount?.toLocaleString()} FCFA</Text></View>
                                 <View style={st.loanRow}><Text style={st.loanRowLabel}>Apport</Text><Text style={st.loanRowVal}>{loanResult.down_payment?.toLocaleString()} FCFA</Text></View>
                                 <View style={st.loanRow}><Text style={st.loanRowLabel}>Taux</Text><Text style={st.loanRowVal}>{loanResult.interest_rate}%</Text></View>
-                                <View style={[st.loanRow, st.loanHighlight]}><Text style={st.loanHighlightLabel}>Mensualité</Text><Text style={st.loanHighlightVal}>{loanResult.monthly_payment?.toLocaleString()} FCFA/mois</Text></View>
-                                <View style={st.loanRow}><Text style={st.loanRowLabel}>Coût total</Text><Text style={st.loanRowVal}>{loanResult.total_cost?.toLocaleString()} FCFA</Text></View>
-                                <View style={st.loanRow}><Text style={st.loanRowLabel}>Total intérêts</Text><Text style={[st.loanRowVal, { color: '#EF4444' }]}>{loanResult.total_interest?.toLocaleString()} FCFA</Text></View>
+                                <View style={[st.loanRow, st.loanHighlight]}><Text style={st.loanHighlightLabel}>{t('immobilierDetails.mensualite')}</Text><Text style={st.loanHighlightVal}>{loanResult.monthly_payment?.toLocaleString()} FCFA/mois</Text></View>
+                                <View style={st.loanRow}><Text style={st.loanRowLabel}>{t('immobilierDetails.coutTotal')}</Text><Text style={st.loanRowVal}>{loanResult.total_cost?.toLocaleString()} FCFA</Text></View>
+                                <View style={st.loanRow}><Text style={st.loanRowLabel}>{t('immobilierDetails.totalInterets')}</Text><Text style={[st.loanRowVal, { color: '#EF4444' }]}>{loanResult.total_interest?.toLocaleString()} FCFA</Text></View>
                                 {loanResult.affordability_analysis && (<Text style={st.loanAnalysis}>{loanResult.affordability_analysis}</Text>)}
                                 {loanResult.recommendations && (<Text style={st.loanRec}>{loanResult.recommendations}</Text>)}
                             </View>

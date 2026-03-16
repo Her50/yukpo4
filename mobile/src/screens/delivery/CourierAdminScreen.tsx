@@ -230,9 +230,9 @@ const CourierAdminScreen: React.FC = () => {
             case 'under_review':
                 return 'En examen';
             case 'approved':
-                return 'Approuvé';
+                return t('courierAdminScreen.approuve');
             case 'rejected':
-                return 'Rejeté';
+                return t('courierAdminScreen.rejete');
             default:
                 return status;
         }
@@ -323,7 +323,7 @@ const CourierAdminScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Gestion des coursiers</Text>
+                <Text style={styles.title}>{t('courierAdmin.gestionDesCoursiers')}/Text>
             </View>
 
             {/* Filtres */}
@@ -360,12 +360,12 @@ const CourierAdminScreen: React.FC = () => {
             {loading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('courierAdmin.chargement')}</Text>
                 </View>
             ) : applications.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="inbox" size={64} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyText}>Aucune candidature trouvée</Text>
+                    <Text style={styles.emptyText}>{t('courierAdmin.aucuneCandidatureTrouvee')}</Text>
                 </View>
             ) : (
                 <FlatList
@@ -391,7 +391,7 @@ const CourierAdminScreen: React.FC = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Détails de la candidature</Text>
+                            <Text style={styles.modalTitle}>{t('courierAdmin.detailsDeLaCandidature')}</Text>
                             <TouchableOpacity
                                 onPress={() => {
                                     setShowDetailModal(false);
@@ -406,7 +406,7 @@ const CourierAdminScreen: React.FC = () => {
                         {selectedApplication ? (
                             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={true}>
                                 <NativeCard style={styles.detailCard}>
-                                    <Text style={styles.detailLabel}>Informations candidat</Text>
+                                    <Text style={styles.detailLabel}>{t('courierAdmin.informationsCandidat')}/Text>
                                     <Text style={styles.detailValue}>
                                         {selectedApplication.user_name}
                                     </Text>
@@ -460,7 +460,7 @@ const CourierAdminScreen: React.FC = () => {
                                 </NativeCard>
 
                                 <NativeCard style={styles.detailCard}>
-                                    <Text style={styles.detailLabel}>Informations personnelles</Text>
+                                    <Text style={styles.detailLabel}>{t('courierAdmin.informationsPersonnelles')}/Text>
                                     {selectedApplication.profile_data?.personal && (
                                         <View style={styles.profileSection}>
                                             <Text style={styles.profileText}>
@@ -503,14 +503,14 @@ const CourierAdminScreen: React.FC = () => {
                                 {/* Documents */}
                                 {selectedApplication.documents && (
                                     <NativeCard style={styles.detailCard}>
-                                        <Text style={styles.detailLabel}>Documents soumis</Text>
+                                        <Text style={styles.detailLabel}>{t('courierAdmin.documentsSoumis')}/Text>
                                         {Object.entries(selectedApplication.documents).map(([key, doc]: [string, any]) => {
                                             const docLabels: Record<string, string> = {
-                                                id_document: 'Pièce d\'identité',
+                                                id_document: t('courierAdminScreen.pieceDidentite'),
                                                 driver_license: 'Permis de conduire',
                                                 vehicle_registration: 'Carte grise',
-                                                insurance: 'Assurance véhicule',
-                                                vehicle_image: 'Photo du véhicule',
+                                                insurance: t('courierAdminScreen.assuranceVehicule'),
+                                                vehicle_image: t('courierAdminScreen.photoDuVehicule'),
                                                 location_plan: 'Plan de localisation',
                                             };
                                             const label = docLabels[key] || key;
@@ -535,7 +535,7 @@ const CourierAdminScreen: React.FC = () => {
                                                                 Alert.alert(t('courierAdmin.document'), `Document: ${label}`);
                                                             }}
                                                         >
-                                                            <Text style={styles.viewButtonText}>Voir</Text>
+                                                            <Text style={styles.viewButtonText}>{t('courierAdminScreen.voir')}</Text>
                                                         </TouchableOpacity>
                                                     ) : (
                                                         <Text style={styles.missingText}>Manquant</Text>
@@ -617,7 +617,7 @@ const CourierAdminScreen: React.FC = () => {
                             </Text>
                             <TextInput
                                 style={styles.textInput}
-                                placeholder="Ex: Documents incomplets, informations manquantes..."
+                                placeholder={t('courierAdmin.exDocumentsIncompletsInformationsManquan')}
                                 value={rejectionReason}
                                 onChangeText={setRejectionReason}
                                 multiline
@@ -625,7 +625,7 @@ const CourierAdminScreen: React.FC = () => {
                             />
                             <View style={styles.modalActions}>
                                 <NativeButton
-                                    title="Annuler"
+                                    title={t('courierAdminScreen.annuler')}
                                     variant="outline"
                                     onPress={() => {
                                         setShowRejectModal(false);

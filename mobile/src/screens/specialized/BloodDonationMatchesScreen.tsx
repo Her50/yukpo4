@@ -16,6 +16,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface DonorMatch {
     match_id: string;
@@ -44,6 +45,7 @@ interface RequestInfo {
 
 const BloodDonationMatchesScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
     const requestId = (route.params as any)?.requestId as string;
@@ -156,13 +158,13 @@ const BloodDonationMatchesScreen: React.FC = () => {
     const getStatusLabel = (status: string) => {
         switch (status) {
             case 'accepted':
-                return 'Accepté';
+                return t('bloodDonationMatchesScreen.accepte');
             case 'declined':
-                return 'Refusé';
+                return t('bloodDonationMatchesScreen.refuse');
             case 'notified':
-                return 'Notifié';
+                return t('bloodDonationMatchesScreen.notifie');
             case 'completed':
-                return 'Complété';
+                return t('bloodDonationMatchesScreen.complete');
             default:
                 return 'En attente';
         }
@@ -182,7 +184,7 @@ const BloodDonationMatchesScreen: React.FC = () => {
                 </View>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('bloodDonationMatches.chargement')}</Text>
                 </View>
             </View>
         );
@@ -230,7 +232,7 @@ const BloodDonationMatchesScreen: React.FC = () => {
                                 <Text style={styles.statValue}>{requestInfo.matches_count}</Text>
                             </View>
                             <View style={styles.statItem}>
-                                <Text style={styles.statLabel}>Acceptés</Text>
+                                <Text style={styles.statLabel}>{t('bloodDonationMatches.acceptes')}</Text>
                                 <Text style={[styles.statValue, { color: '#10B981' }]}>
                                     {requestInfo.accepted_matches_count}
                                 </Text>
@@ -261,7 +263,7 @@ const BloodDonationMatchesScreen: React.FC = () => {
                     {matches.length === 0 ? (
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="users" size={48} color="#9CA3AF" />
-                            <Text style={styles.emptyText}>Aucun donneur compatible trouvé</Text>
+                            <Text style={styles.emptyText}>{t('bloodDonationMatches.aucunDonneurCompatibleTrouve')}</Text>
                             <Text style={styles.emptySubtext}>
                                 Les donneurs seront automatiquement trouvés selon leur localisation
                             </Text>

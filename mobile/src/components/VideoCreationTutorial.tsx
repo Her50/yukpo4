@@ -3,6 +3,7 @@ import { Animated, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpa
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface TutorialStep {
     id: string;
@@ -21,38 +22,38 @@ interface VideoCreationTutorialProps {
 const TUTORIAL_STEPS: TutorialStep[] = [
     {
         id: 'welcome',
-        title: 'Bienvenue dans la création vidéo',
-        description: 'Créez des vidéos promotionnelles professionnelles en quelques clics avec l\'intelligence artificielle de Yukpo.',
+        title: t('videoCreationTutorial.bienvenueDansLaCreationVideo'),
+        description: t('videoCreationTutorial.creezDesVideosPromotionnellesProfessionnellesEnQuelques'),
         icon: 'sparkles',
     },
     {
         id: 'select-product',
-        title: 'Sélectionnez votre produit',
-        description: 'Choisissez le produit ou service pour lequel vous souhaitez créer une vidéo. Vous pouvez sélectionner parmi vos produits existants.',
+        title: t('videoCreationTutorial.selectionnezVotreProduit'),
+        description: t('videoCreationTutorial.choisissezLeProduitOuServicePour'),
         icon: 'package',
     },
     {
         id: 'brief',
-        title: 'Rédigez votre brief',
-        description: 'Décrivez votre produit, votre message clé et votre objectif. L\'IA générera automatiquement un script adapté.',
+        title: t('videoCreationTutorial.redigezVotreBrief'),
+        description: t('videoCreationTutorial.decrivezVotreProduitVotreMessageCleEt'),
         icon: 'edit',
     },
     {
         id: 'media',
-        title: 'Ajoutez vos médias',
-        description: 'Sélectionnez les images et vidéos que vous souhaitez utiliser. L\'IA les intégrera intelligemment dans votre vidéo.',
+        title: t('videoCreationTutorial.ajoutezVosMedias'),
+        description: t('videoCreationTutorial.selectionnezLesImagesEtVideosQueVous'),
         icon: 'image',
     },
     {
         id: 'style',
         title: 'Personnalisez le style',
-        description: 'Choisissez le style visuel, la musique et les effets qui correspondent à votre marque.',
+        description: t('videoCreationTutorial.choisissezLeStyleVisuelLa'),
         icon: 'palette',
     },
     {
         id: 'generate',
-        title: 'Générez votre vidéo',
-        description: 'Lancez la génération et suivez la progression en temps réel. Votre vidéo sera prête en quelques minutes !',
+        title: t('videoCreationTutorial.generezVotreVideo'),
+        description: t('videoCreationTutorial.lancezLaGenerationEtSuivez'),
         icon: 'play-circle',
     },
 ];
@@ -64,7 +65,8 @@ const VideoCreationTutorial: React.FC<VideoCreationTutorialProps> = ({
     onClose,
     onSkip,
 }) => {
-    const [currentStep, setCurrentStep] = useState(0);
+        const { t } = useLanguageSafe();
+const [currentStep, setCurrentStep] = useState(0);
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(50)).current;
 
@@ -221,7 +223,7 @@ const VideoCreationTutorial: React.FC<VideoCreationTutorialProps> = ({
                         <View style={styles.footer}>
                             {currentStep > 0 && (
                                 <NativeButton
-                                    title="Précédent"
+                                    title={t('videoCreationTutorial.precedent')}
                                     variant="outline"
                                     size="medium"
                                     onPress={handlePrevious}
@@ -230,7 +232,7 @@ const VideoCreationTutorial: React.FC<VideoCreationTutorialProps> = ({
                             )}
                             <View style={{ flex: 1 }} />
                             <NativeButton
-                                title={currentStep === TUTORIAL_STEPS.length - 1 ? 'Commencer' : 'Suivant'}
+                                title={currentStep === TUTORIAL_STEPS.length - 1 ? t('videoCreationTutorial.commencer') : t('videoCreationTutorial.suivant')}
                                 variant="primary"
                                 size="medium"
                                 onPress={handleNext}

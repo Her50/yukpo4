@@ -12,9 +12,11 @@ import {
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const OffreSearchScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [secteur, setSecteur] = useState('');
     const [typeContrat, setTypeContrat] = useState<string[]>([]);
     const [salaireMin, setSalaireMin] = useState('');
@@ -22,8 +24,8 @@ const OffreSearchScreen: React.FC = () => {
     const [remote, setRemote] = useState(false);
 
     const secteurs = [
-        'Informatique', 'Commerce', 'Santé', 'Éducation', 'Finance',
-        'Marketing', 'Ressources Humaines', 'Ingénierie', 'Design', 'Autre'
+        'Informatique', 'Commerce', t('offreSearchScreen.sante'), 'Éducation', 'Finance',
+        'Marketing', 'Ressources Humaines', t('offreSearchScreen.ingenierie'), 'Design', 'Autre'
     ];
 
     const typesContrat = ['CDI', 'CDD', 'Stage', 'Freelance', 'Temps partiel', 'Alternance'];
@@ -47,12 +49,12 @@ const OffreSearchScreen: React.FC = () => {
 
     return (
         <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.title}>Rechercher une offre</Text>
+            <Text style={styles.title}>{t('offreSearch.rechercherUneOffre')}</Text>
 
             <NativeCard style={styles.card}>
                 {/* Secteur */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Secteur d'activité</Text>
+                    <Text style={styles.label}>{t('offreSearch.secteurDactivite')}</Text>
                     <View style={styles.pickerContainer}>
                         {secteurs.map((s) => (
                             <TouchableOpacity
@@ -78,7 +80,7 @@ const OffreSearchScreen: React.FC = () => {
 
                 {/* Type de contrat */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Type de contrat</Text>
+                    <Text style={styles.label}>{t('offreSearch.typeDeContrat')}</Text>
                     <View style={styles.chipContainer}>
                         {typesContrat.map((type) => (
                             <TouchableOpacity
@@ -116,19 +118,19 @@ const OffreSearchScreen: React.FC = () => {
 
                 {/* Lieu de travail */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Lieu de travail</Text>
+                    <Text style={styles.label}>{t('offreSearch.lieuDeTravail')}</Text>
                     <TextInput
                         style={styles.input}
                         value={lieuTravail}
                         onChangeText={setLieuTravail}
-                        placeholder="Ex: Douala, Yaoundé"
+                        placeholder={t('offreSearch.exDoualaYaounde')}
                     />
                 </View>
 
                 {/* Remote */}
                 <View style={styles.field}>
                     <View style={styles.switchRow}>
-                        <Text style={styles.label}>Télétravail possible</Text>
+                        <Text style={styles.label}>{t('offreSearch.teletravailPossible')}</Text>
                         <Switch
                             value={remote}
                             onValueChange={setRemote}
@@ -138,7 +140,7 @@ const OffreSearchScreen: React.FC = () => {
                 </View>
 
                 <NativeButton
-                    title="Rechercher"
+                    title={t('offreSearch.rechercher')}
                     onPress={handleSearch}
                     style={styles.searchButton}
                 />

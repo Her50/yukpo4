@@ -19,6 +19,7 @@ import { config } from '../config/environment';
 import { apiGet, mediaApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const GRID_GAP = 3;
@@ -99,7 +100,8 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
     onClose,
 }) => {
     const [media, setMedia] = React.useState<GalleryItem[]>([]);
-    const [filter, setFilter] = useState<'all' | 'images' | 'videos'>('all');
+        const { t } = useLanguageSafe();
+const [filter, setFilter] = useState<'all' | 'images' | 'videos'>('all');
     const [selectedMedia, setSelectedMedia] = useState<GalleryItem | null>(null);
     const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(false);
@@ -255,7 +257,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                 ) : (
                     <View style={styles.failedPlaceholder}>
                         <SafeIcon name={item.type === 'video' ? 'video-off' : 'image'} size={24} color="#9CA3AF" />
-                        <Text style={styles.failedText}>Indisponible</Text>
+                        <Text style={styles.failedText}>{t('serviceGallery.indisponible')}</Text>
                     </View>
                 )}
                 <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={styles.itemGradient}>
@@ -316,14 +318,14 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                 {loading ? (
                     <View style={styles.emptyContainer}>
                         <SafeIcon name="loader" size={36} color={modernColors.primary} />
-                        <Text style={styles.emptyTitle}>Chargement des médias...</Text>
+                        <Text style={styles.emptyTitle}>{t('serviceGallery.chargementDesMedias')}</Text>
                     </View>
                 ) : media.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <View style={styles.emptyIconCircle}>
                             <SafeIcon name="image" size={36} color="#9CA3AF" />
                         </View>
-                        <Text style={styles.emptyTitle}>Aucun media disponible</Text>
+                        <Text style={styles.emptyTitle}>{t('serviceGallery.aucunMediaDisponible')}</Text>
                         <Text style={styles.emptyText}>
                             Ce service ne contient pas d'images ou de videos pour le moment.
                         </Text>
@@ -333,9 +335,9 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                         <View style={styles.emptyIconCircle}>
                             <SafeIcon name={filter === 'videos' ? 'video-off' : 'image'} size={36} color="#9CA3AF" />
                         </View>
-                        <Text style={styles.emptyTitle}>Aucun resultat</Text>
+                        <Text style={styles.emptyTitle}>{t('serviceGallery.aucunResultat')}</Text>
                         <TouchableOpacity style={styles.emptyButton} onPress={() => setFilter('all')}>
-                            <Text style={styles.emptyButtonText}>Voir tous les medias</Text>
+                            <Text style={styles.emptyButtonText}>{t('serviceGallery.voirTousLesMedias')}/Text>
                         </TouchableOpacity>
                     </View>
                 ) : (
@@ -392,7 +394,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                     try {
                                         const serviceName = service?.titre || service?.data?.titre_service?.valeur || 'Yukpo';
                                         const emoji = selectedMedia.type === 'video' ? '🎬' : '📸';
-                                        const typeLabel = selectedMedia.type === 'video' ? 'vidéo' : 'photo';
+                                        const typeLabel = selectedMedia.type === 'video' ? t('serviceGalleryModal.video') : 'photo';
                                         let shareText = `${emoji} ${selectedMedia.label || typeLabel} — ${serviceName}`;
                                         shareText += `\n\n🔗 Voir sur Yukpo:\n${selectedMedia.url}`;
                                         await Share.share({ message: shareText, url: selectedMedia.url, title: `${selectedMedia.label || typeLabel} — ${serviceName}` });

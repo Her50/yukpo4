@@ -70,10 +70,10 @@ const HopitalHomeScreen: React.FC = () => {
     // Options de tri
     const sortOptions: { value: SortOption; label: string; icon: string }[] = [
         { value: 'relevance', label: 'Pertinence', icon: 'star' },
-        { value: 'price_asc', label: 'Prix croissant', icon: 'arrow-up' },
-        { value: 'price_desc', label: 'Prix décroissant', icon: 'arrow-down' },
+        { value: 'price_asc', label: t('hopitalHomeScreen.prixCroissant'), icon: 'arrow-up' },
+        { value: 'price_desc', label: t('hopitalHome.prixDecroissant'), icon: 'arrow-down' },
         { value: 'distance_asc', label: 'Plus proche', icon: 'map-pin' },
-        { value: 'name_asc', label: 'Nom (A-Z)', icon: 'type' },
+        { value: 'name_asc', label: t('hopitalHomeScreen.nomAz'), icon: 'type' },
     ];
 
     // Obtenir l'icône du tri courant
@@ -174,7 +174,7 @@ const HopitalHomeScreen: React.FC = () => {
             }
         } catch (err: any) {
             console.error('[HopitalHomeScreen] Erreur chargement disponibilité:', err);
-            setError('Erreur lors du chargement des services disponibles');
+            setError(t('hopitalHomeScreen.erreurLorsDuChargementDesServices'));
             setAvailableServices([]);
         } finally {
             setLoading(false);
@@ -281,17 +281,17 @@ const HopitalHomeScreen: React.FC = () => {
                     // Gérer différents formats de réponse
                     const analysis = ar?.analysis || ar;
                     setImageAnalysis(analysis);
-                    toaster.success('Analyse d\'image terminée');
+                    toaster.success('Analyse d\t('hopitalHomeScreen.imageTerminee'));
                 } else {
                     const ar = analysisResponse.data as any;
-                    const errorMsg = analysisResponse.error || ar?.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
+                    const errorMsg = analysisResponse.error || ar?.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\t('hopitalHomeScreen.estPeutetrePasEncoreOperationnelle');
                     toaster.error(errorMsg);
                     setImageAnalysis(null);
                 }
             }
         } catch (err: any) {
             console.error('[HopitalHomeScreen] Erreur sélection image:', err);
-            toaster.error(err.message || 'Erreur lors de la sélection de l\'image');
+            toaster.error(err.message || t('hopitalHome.erreurLorsDeLaSelectionDeLimage'));
             setLoadingAI(false);
             setImageAnalysis(null);
         } finally {
@@ -305,11 +305,11 @@ const HopitalHomeScreen: React.FC = () => {
             t('hopitalHome.howToAddImage'),
             [
                 {
-                    text: 'Caméra',
+                    text: t('common.camera'),
                     onPress: () => handlePickImage('camera'),
                 },
                 {
-                    text: 'Galerie',
+                    text: t('common.gallery'),
                     onPress: () => handlePickImage('gallery'),
                 },
                 {
@@ -333,8 +333,8 @@ const HopitalHomeScreen: React.FC = () => {
                     onPress: async () => {
                         try {
                             const resp = await hospitalService.bookAppointment(service.service_id, {
-                                service_name: searchQuery || 'Consultation générale',
-                                notes: 'Réservé depuis l\'application',
+                                service_name: searchQuery || t('hopitalHome.consultationGenerale'),
+                                notes: t('hopitalHomeScreen.reserveDepuisLapplication'),
                             });
                             if ((resp as any).success) {
                                 Alert.alert(t('message.success'), t('hopitalHome.appointmentBooked'));
@@ -354,7 +354,7 @@ const HopitalHomeScreen: React.FC = () => {
     const handleAITriage = async () => {
         hapticPress();
         if (!pathologyQuery.trim()) {
-            toaster.warning('Décrivez vos symptômes pour obtenir une évaluation.');
+            toaster.warning(t('hopitalHomeScreen.decrivezVosSymptomesPourObtenirUne'));
             return;
         }
         setLoadingAI(true);
@@ -366,10 +366,10 @@ const HopitalHomeScreen: React.FC = () => {
             );
             if ((resp as any).success && (resp as any).data?.recommendation) {
                 const reco = (resp as any).data.recommendation;
-                const msg = reco.preliminary_analysis || reco.advice?.join('\n') || 'Consultez un médecin.';
+                const msg = reco.preliminary_analysis || reco.advice?.join('\n') || t('hopitalHome.consultezUnMedecin');
                 Alert.alert(t('hopitalHome.aiEvaluation'), msg);
             }
-        } catch (e) { toaster.error('Service IA momentanément indisponible.'); }
+        } catch (e) { toaster.error(t('hopitalHomeScreen.serviceIaMomentanementIndisponible')); }
         finally { setLoadingAI(false); }
     };
 
@@ -392,8 +392,8 @@ const HopitalHomeScreen: React.FC = () => {
                             <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>Hôpitaux</Text>
-                            <Text style={styles.headerSubtitle}>Recherche de prestations médicales</Text>
+                            <Text style={styles.headerTitle}>{t('hopitalHome.hopitaux')}</Text>
+                            <Text style={styles.headerSubtitle}>{t('hopitalHome.rechercheDePrestationsMedicales')}</Text>
                         </View>
                         <TouchableOpacity
                             onPress={() => {
@@ -413,7 +413,7 @@ const HopitalHomeScreen: React.FC = () => {
                             <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Rechercher une prestation (ex: Consultation, Urgences, Chirurgie...)"
+                                placeholder={t('hopitalHome.rechercherUnePrestationExConsultation')}
                                 placeholderTextColor="#9CA3AF"
                                 value={autocompleteQuery}
                                 onChangeText={(text) => {
@@ -498,7 +498,7 @@ const HopitalHomeScreen: React.FC = () => {
                             }}
                         >
                             <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.quickActionText}>Recherche pathologie</Text>
+                            <Text style={styles.quickActionText}>{t('hopitalHome.recherchePathologie')}/Text>
                         </TouchableOpacity>
                     </View>
                 </LinearGradient>
@@ -520,7 +520,7 @@ const HopitalHomeScreen: React.FC = () => {
                             type="lucide"
                         />
                         <Text style={styles.sortButtonText}>
-                            {sortOptions.find(o => o.value === sortBy)?.label || 'Trier'}
+                            {sortOptions.find(o => o.value === sortBy)?.label || t('hopitalHome.trier')}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -530,7 +530,7 @@ const HopitalHomeScreen: React.FC = () => {
             {loading && availableServices.length === 0 ? (
                 <View style={styles.content}>
                     <ActivityIndicator size="large" color="#DC2626" />
-                    <Text style={styles.placeholderText}>Recherche des services disponibles...</Text>
+                    <Text style={styles.placeholderText}>{t('hopitalHome.rechercheDesServicesDisponibles')}/Text>
                 </View>
             ) : availableServices.length > 0 ? (
                 <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -552,7 +552,7 @@ const HopitalHomeScreen: React.FC = () => {
                             </View>
                             {service.available_services.length > 0 && (
                                 <View style={styles.servicesList}>
-                                    <Text style={styles.servicesListTitle}>Services disponibles :</Text>
+                                    <Text style={styles.servicesListTitle}>{t('hopitalHome.servicesDisponibles')}/Text>
                                     {service.available_services.slice(0, 5).map((s, index) => (
                                         <Text key={index} style={styles.serviceItem}>• {s}</Text>
                                     ))}
@@ -723,7 +723,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                         <View style={styles.pathologySearchBar}>
                                             <TextInput
                                                 style={styles.pathologyInput}
-                                                placeholder="Ex: Maux de tête, fièvre, douleurs abdominales..."
+                                                placeholder={t('hopitalHome.exMauxDeTeteFievre')}
                                                 placeholderTextColor="#9CA3AF"
                                                 value={pathologyQuery}
                                                 onChangeText={onPathologyQueryChange}
@@ -798,7 +798,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                                             <Text style={styles.urgencyText}>
                                                                 {result.urgency_level === 'critical' ? 'Critique' :
                                                                     result.urgency_level === 'high' ? 'Urgent' :
-                                                                        result.urgency_level === 'moderate' ? 'Modéré' : 'Faible'}
+                                                                        result.urgency_level === 'moderate' ? t('hopitalHomeScreen.modere') : 'Faible'}
                                                             </Text>
                                                         </View>
                                                     )}
@@ -809,7 +809,7 @@ const AIModal: React.FC<AIModalProps> = ({
 
                                                 {result.symptoms && Array.isArray(result.symptoms) && result.symptoms.length > 0 && (
                                                     <View style={styles.symptomsContainer}>
-                                                        <Text style={styles.symptomsTitle}>Symptômes:</Text>
+                                                        <Text style={styles.symptomsTitle}>{t('hopitalHome.symptomes')}</Text>
                                                         {result.symptoms
                                                             .filter(s => s != null)
                                                             .map((symptom, i) => (
@@ -820,7 +820,7 @@ const AIModal: React.FC<AIModalProps> = ({
 
                                                 {result.recommended_services && Array.isArray(result.recommended_services) && result.recommended_services.length > 0 && (
                                                     <View style={styles.servicesContainer}>
-                                                        <Text style={styles.servicesTitle}>Services recommandés:</Text>
+                                                        <Text style={styles.servicesTitle}>{t('hopitalHome.servicesRecommandes')}</Text>
                                                         {result.recommended_services
                                                             .filter(s => s != null)
                                                             .map((service, i) => (
@@ -831,7 +831,7 @@ const AIModal: React.FC<AIModalProps> = ({
 
                                                 {result.recommended_examinations && Array.isArray(result.recommended_examinations) && result.recommended_examinations.length > 0 && (
                                                     <View style={styles.examsContainer}>
-                                                        <Text style={styles.examsTitle}>Examens recommandés:</Text>
+                                                        <Text style={styles.examsTitle}>{t('hopitalHome.examensRecommandes')}</Text>
                                                         {result.recommended_examinations
                                                             .filter(e => e != null)
                                                             .map((exam, i) => (
@@ -842,7 +842,7 @@ const AIModal: React.FC<AIModalProps> = ({
 
                                                 {result.hospitals_suggested && Array.isArray(result.hospitals_suggested) && result.hospitals_suggested.length > 0 && (
                                                     <View style={styles.hospitalsContainer}>
-                                                        <Text style={styles.hospitalsTitle}>Hôpitaux suggérés:</Text>
+                                                        <Text style={styles.hospitalsTitle}>{t('hopitalHome.hopitauxSuggeres')}</Text>
                                                         {result.hospitals_suggested.map((hospital, i) => (
                                                             <View key={i} style={styles.hospitalItem}>
                                                                 {hospital.hospital_name && (
@@ -890,7 +890,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                     <View style={styles.analysisContainer}>
                                         <View style={styles.analysisHeader}>
                                             <SafeIcon name="check-circle" size={24} color="#DC2626" type="lucide" />
-                                            <Text style={styles.analysisTitle}>Rapport d'analyse IA</Text>
+                                            <Text style={styles.analysisTitle}>{t('hopitalHome.rapportDanalyseIa')}/Text>
                                         </View>
 
                                         {imageAnalysis.description && (
@@ -902,14 +902,14 @@ const AIModal: React.FC<AIModalProps> = ({
 
                                         {imageAnalysis.interpretation && (
                                             <View style={styles.analysisSection}>
-                                                <Text style={styles.analysisSectionTitle}>Interprétation</Text>
+                                                <Text style={styles.analysisSectionTitle}>{t('hopitalHome.interpretation')}</Text>
                                                 <Text style={styles.analysisText}>{String(imageAnalysis.interpretation)}</Text>
                                             </View>
                                         )}
 
                                         {imageAnalysis.tags && Array.isArray(imageAnalysis.tags) && imageAnalysis.tags.length > 0 && (
                                             <View style={styles.analysisSection}>
-                                                <Text style={styles.analysisSectionTitle}>Éléments détectés</Text>
+                                                <Text style={styles.analysisSectionTitle}>{t('hopitalHome.elementsDetectes')}</Text>
                                                 <View style={styles.tagsContainer}>
                                                     {imageAnalysis.tags
                                                         .filter(t => t != null)
@@ -965,7 +965,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                             onPress={onPickImage}
                                         >
                                             <SafeIcon name="camera" size={18} color="#FFFFFF" type="lucide" />
-                                            <Text style={styles.searchButtonText}>Sélectionner une image</Text>
+                                            <Text style={styles.searchButtonText}>{t('hopitalHome.selectionnerUneImage')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 )}

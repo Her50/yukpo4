@@ -5,6 +5,7 @@ import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } fr
 import { Button, Card, Title } from 'react-native-paper';
 import { theme } from '../theme/theme';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ReceiptData {
     id: string;
@@ -38,16 +39,16 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
     const handleShare = () => {
         Alert.alert(
-            'Partager le reçu',
-            'Fonctionnalité de partage à implémenter',
+            t('receiptModal.partagerLeRecu'),
+            t('receiptModal.fonctionnaliteDePartageAImplementer'),
             [{ text: 'OK' }]
         );
     };
 
     const handleSave = () => {
         Alert.alert(
-            'Sauvegarder le reçu',
-            'Fonctionnalité de sauvegarde à implémenter',
+            t('receiptModal.sauvegarderLeRecu'),
+            t('receiptModal.fonctionnaliteDeSauvegardeAImplementer'),
             [{ text: 'OK' }]
         );
     };
@@ -64,7 +65,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                         <Ionicons name="close" size={24} color={theme.colors.text} />
                     </TouchableOpacity>
-                    <Title style={styles.title}>Reçu de recharge</Title>
+                    <Title style={styles.title}>{t('receipt.recuDeRecharge')}</Title>
                 </View>
 
                 <ScrollView style={styles.content}>
@@ -73,13 +74,13 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
                             {/* En-tête du reçu */}
                             <View style={styles.receiptHeader}>
                                 <Text style={styles.logo}>Yukpo</Text>
-                                <Text style={styles.receiptTitle}>Reçu de recharge</Text>
+                                <Text style={styles.receiptTitle}>{t('receipt.recuDeRecharge')}</Text>
                             </View>
 
                             {/* Informations client */}
                             <View style={styles.section}>
                                 <Text style={styles.sectionTitle}>Client</Text>
-                                <Text style={styles.sectionValue}>{user?.name || 'Utilisateur'}</Text>
+                                <Text style={styles.sectionValue}>{user?.name || t('receipt.utilisateur')}</Text>
                                 <Text style={styles.sectionSubValue}>{user?.email || 'N/A'}</Text>
                             </View>
 
@@ -96,22 +97,22 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
                             {/* Méthode de paiement */}
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Méthode de paiement</Text>
+                                <Text style={styles.sectionTitle}>{t('receipt.methodeDePaiement')}</Text>
                                 <Text style={styles.sectionValue}>{receiptData.paymentMethod}</Text>
                             </View>
 
                             {/* Détails du paiement */}
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Détails du paiement</Text>
+                                <Text style={styles.sectionTitle}>{t('receipt.detailsDuPaiement')}</Text>
                                 <View style={styles.paymentDetails}>
                                     <View style={styles.paymentRow}>
-                                        <Text style={styles.paymentLabel}>Montant payé:</Text>
+                                        <Text style={styles.paymentLabel}>{t('receipt.montantPaye')}</Text>
                                         <Text style={styles.paymentValue}>
                                             {formatAmount(receiptData.amount)}
                                         </Text>
                                     </View>
                                     <View style={styles.paymentRow}>
-                                        <Text style={styles.paymentLabel}>Tokens reçus:</Text>
+                                        <Text style={styles.paymentLabel}>{t('receipt.tokensRecus')}</Text>
                                         <Text style={styles.paymentValue}>
                                             {receiptData.tokens.toLocaleString()} tokens
                                         </Text>
@@ -125,7 +126,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
                                         </View>
                                     )}
                                     <View style={[styles.paymentRow, styles.totalRow]}>
-                                        <Text style={styles.totalLabel}>Total tokens:</Text>
+                                        <Text style={styles.totalLabel}>{t('receipt.totalTokens')}/Text>
                                         <Text style={styles.totalValue}>
                                             {(receiptData.tokens + receiptData.bonus).toLocaleString()} tokens
                                         </Text>
@@ -149,8 +150,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
                                         styles.statusText,
                                         receiptData.status === 'completed' && styles.statusTextCompleted
                                     ]}>
-                                        {receiptData.status === 'completed' ? 'Complété' : 
-                                         receiptData.status === 'pending' ? 'En attente' : 'Échoué'}
+                                        {receiptData.status === 'completed' ? t('receiptModal.complete') : 
+                                         receiptData.status === 'pending' ? 'En attente' : t('receiptModal.echoue')}
                                     </Text>
                                 </View>
                             </View>

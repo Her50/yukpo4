@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface Gift {
     id: string;
@@ -20,24 +21,24 @@ export interface Gift {
 const giftsLibrary: Gift[] = [
     // Cheap (10-50 tokens)
     { id: 'gift-1', name: 'Rose', emoji: '🌹', price: 10, category: 'cheap' },
-    { id: 'gift-2', name: 'Cœur', emoji: '❤️', price: 20, category: 'cheap' },
-    { id: 'gift-3', name: 'Étoile', emoji: '⭐', price: 30, category: 'cheap' },
+    { id: 'gift-2', name: t('giftSelector.cur'), emoji: '❤️', price: 20, category: 'cheap' },
+    { id: 'gift-3', name: t('giftSelector.etoile'), emoji: '⭐', price: 30, category: 'cheap' },
     { id: 'gift-4', name: 'Clap', emoji: '👏', price: 40, category: 'cheap' },
     { id: 'gift-5', name: 'Feu', emoji: '🔥', price: 50, category: 'cheap' },
 
     // Medium (100-500 tokens)
     { id: 'gift-6', name: 'Bouquet', emoji: '💐', price: 100, category: 'medium' },
     { id: 'gift-7', name: 'Cadeau', emoji: '🎁', price: 200, category: 'medium' },
-    { id: 'gift-8', name: 'Trophée', emoji: '🏆', price: 300, category: 'medium' },
+    { id: 'gift-8', name: t('giftSelector.trophee'), emoji: '🏆', price: 300, category: 'medium' },
     { id: 'gift-9', name: 'Diamant', emoji: '💎', price: 400, category: 'medium' },
     { id: 'gift-10', name: 'Couronne', emoji: '👑', price: 500, category: 'medium' },
 
     // Expensive (1000-5000 tokens)
     { id: 'gift-11', name: 'Ferrari', emoji: '🏎️', price: 1000, category: 'expensive' },
     { id: 'gift-12', name: 'Yacht', emoji: '🛥️', price: 2000, category: 'expensive' },
-    { id: 'gift-13', name: 'Château', emoji: '🏰', price: 3000, category: 'expensive' },
+    { id: 'gift-13', name: t('giftSelector.chateau'), emoji: '🏰', price: 3000, category: 'expensive' },
     { id: 'gift-14', name: 'Rocket', emoji: '🚀', price: 4000, category: 'expensive' },
-    { id: 'gift-15', name: 'Météore', emoji: '☄️', price: 5000, category: 'expensive' },
+    { id: 'gift-15', name: t('giftSelector.meteore'), emoji: '☄️', price: 5000, category: 'expensive' },
 
     // Premium (10000+ tokens)
     { id: 'gift-16', name: 'Supernova', emoji: '🌟', price: 10000, category: 'premium' },
@@ -51,14 +52,15 @@ interface GiftSelectorProps {
 }
 
 export const GiftSelector: React.FC<GiftSelectorProps> = ({ onSelect, onClose }) => {
-    const [selectedCategory, setSelectedCategory] = useState<'cheap' | 'medium' | 'expensive' | 'premium'>('cheap');
+        const { t } = useLanguageSafe();
+const [selectedCategory, setSelectedCategory] = useState<'cheap' | 'medium' | 'expensive' | 'premium'>('cheap');
 
     const filteredGifts = giftsLibrary.filter(gift => gift.category === selectedCategory);
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Envoyer un gift</Text>
+                <Text style={styles.headerTitle}>{t('giftSelector.envoyerUnGift')}/Text>
                 <TouchableOpacity onPress={onClose}>
                     <SafeIcon name="x" size={18} color="#1F2937" />
                 </TouchableOpacity>

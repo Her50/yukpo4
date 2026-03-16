@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const DAYS_OF_WEEK = [
     { value: 1, label: 'Lundi', short: 'Lun' },
@@ -53,7 +54,8 @@ const WeekScheduleSelector: React.FC<WeekScheduleSelectorProps> = ({
     initialSchedule,
     title = 'Planification hebdomadaire'
 }) => {
-    const [schedule, setSchedule] = useState<ScheduleDay[]>(
+        const { t } = useLanguageSafe();
+const [schedule, setSchedule] = useState<ScheduleDay[]>(
         initialSchedule || DAYS_OF_WEEK.map(day => ({
             day: day.value,
             enabled: false,
@@ -163,7 +165,7 @@ const WeekScheduleSelector: React.FC<WeekScheduleSelectorProps> = ({
                                                 <View key={slotIndex} style={styles.timeSlotRow}>
                                                     <View style={styles.timeInputs}>
                                                         <View style={styles.timeInput}>
-                                                            <Text style={styles.timeLabel}>Début</Text>
+                                                            <Text style={styles.timeLabel}>{t('weekScheduleSelector.debut')}</Text>
                                                             <ScrollView
                                                                 horizontal
                                                                 showsHorizontalScrollIndicator={false}
@@ -230,7 +232,7 @@ const WeekScheduleSelector: React.FC<WeekScheduleSelectorProps> = ({
                                                 onPress={() => addTimeSlot(dayInfo.value)}
                                             >
                                                 <SafeIcon name="plus" size={18} color={modernColors.primary} />
-                                                <Text style={styles.addSlotText}>Ajouter une plage horaire</Text>
+                                                <Text style={styles.addSlotText}>{t('weekScheduleSelector.ajouterUnePlageHoraire')}</Text>
                                             </TouchableOpacity>
                                         </View>
                                     )}
@@ -244,13 +246,13 @@ const WeekScheduleSelector: React.FC<WeekScheduleSelectorProps> = ({
                             style={styles.cancelButton}
                             onPress={onClose}
                         >
-                            <Text style={styles.cancelButtonText}>Annuler</Text>
+                            <Text style={styles.cancelButtonText}>{t('weekScheduleSelector.annuler')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.saveButton}
                             onPress={handleSave}
                         >
-                            <Text style={styles.saveButtonText}>Enregistrer</Text>
+                            <Text style={styles.saveButtonText}>{t('weekScheduleSelector.enregistrer')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

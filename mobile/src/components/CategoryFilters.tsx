@@ -18,6 +18,7 @@ import { trackFilterSuggestion } from '../utils/analytics'; // ✅ OPTIMISATION 
 import SafeStorage from '../utils/safeStorage';
 import { SmartFilterSuggestion } from '../utils/smartFilterSuggestions';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -44,7 +45,8 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
     const categoryStyle = getCategoryStyle(category);
     const terminology = getCategoryTerminology(category);
 
-    const [filters, setFilters] = useState<Record<string, any>>(initialFilters);
+        const { t } = useLanguageSafe();
+const [filters, setFilters] = useState<Record<string, any>>(initialFilters);
     const [showSuggestions, setShowSuggestions] = useState(true);
     const [showHistory, setShowHistory] = useState(false);
     const [fadeAnim] = useState(new Animated.Value(0));
@@ -516,9 +518,9 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
     const getSectionTitle = (sectionKey: string): string => {
         switch (sectionKey) {
             case 'essentials': return '⭐ Filtres Essentiels';
-            case 'specs': return '🔧 Spécifications Techniques';
-            case 'features': return '✨ Fonctionnalités';
-            case 'other': return '📋 Autres Critères';
+            case 'specs': return t('categoryFilters.specificationsTechniques');
+            case 'features': return t('categoryFilters.fonctionnalites');
+            case 'other': return t('categoryFilters.autresCriteres');
             default: return 'Filtres';
         }
     };
@@ -564,7 +566,7 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                             {/* ✅ NOUVEAU: Indicateur de chargement des options dynamiques */}
                             {loadingDynamicOptions && (
                                 <View style={styles.dynamicLoadingBadge}>
-                                    <Text style={styles.dynamicLoadingText}>⏳ Chargement...</Text>
+                                    <Text style={styles.dynamicLoadingText}>{t('categoryFilters.chargement')}</Text>
                                 </View>
                             )}
                         </View>
@@ -752,7 +754,7 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                             onPress={handleReset}
                         >
                             <SafeIcon name="refresh-cw" size={18} color="#6B7280" />
-                            <Text style={styles.resetButtonText}>Réinitialiser</Text>
+                            <Text style={styles.resetButtonText}>{t('categoryFilters.reinitialiser')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.applyButton, { backgroundColor: categoryStyle.primaryColor }]}

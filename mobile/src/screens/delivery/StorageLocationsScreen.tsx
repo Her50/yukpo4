@@ -230,13 +230,13 @@ const StorageLocationsScreen: React.FC = () => {
             </View>
             <View style={styles.locationActions}>
                 <NativeButton
-                    title="Modifier"
+                    title={t('storageLocationsScreen.modifier')}
                     variant="secondary"
                     size="small"
                     onPress={() => handleEdit(item)}
                 />
                 <NativeButton
-                    title="Supprimer"
+                    title={t('storageLocationsScreen.supprimer')}
                     variant="secondary"
                     size="small"
                     onPress={() => handleDelete(item.id)}
@@ -263,17 +263,17 @@ const StorageLocationsScreen: React.FC = () => {
 
             {loading ? (
                 <View style={styles.centerContainer}>
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('storageLocations.chargement')}</Text>
                 </View>
             ) : locations.length === 0 ? (
                 <View style={styles.centerContainer}>
                     <SafeIcon name="warehouse" size={64} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyTitle}>Aucun lieu de stock</Text>
+                    <Text style={styles.emptyTitle}>{t('storageLocations.aucunLieuDeStock')}</Text>
                     <Text style={styles.emptyText}>
                         Créez votre premier lieu de stock pour optimiser vos livraisons
                     </Text>
                     <NativeButton
-                        title="Créer un lieu de stock"
+                        title={t('storageLocations.creerUnLieuDeStock')}
                         variant="primary"
                         onPress={handleCreate}
                         style={styles.createButton}
@@ -310,11 +310,11 @@ const StorageLocationsScreen: React.FC = () => {
 
                         <KeyboardAwareScreen style={styles.modalBody} showsVerticalScrollIndicator={false}>
                             <View style={styles.formGroup}>
-                                <Text style={styles.label}>Nom du lieu de stock *</Text>
+                                <Text style={styles.label}>{t('storageLocations.nomDuLieuDeStock')}/Text>
                                 <NativeInput
                                     value={formData.name}
                                     onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
-                                    placeholder="Ex: Entrepôt principal, Magasin centre-ville..."
+                                    placeholder={t('storageLocations.exEntrepotPrincipalMagasinCentreville')}
                                 />
                             </View>
 
@@ -323,7 +323,7 @@ const StorageLocationsScreen: React.FC = () => {
                                 <NativeInput
                                     value={formData.address}
                                     onChangeText={(text) => setFormData(prev => ({ ...prev, address: text }))}
-                                    placeholder="Adresse complète"
+                                    placeholder={t('storageLocations.adresseComplete')}
                                     multiline
                                 />
                             </View>
@@ -350,12 +350,12 @@ const StorageLocationsScreen: React.FC = () => {
 
                             {/* ✅ Phase 9 - Amélioration : Sélection de la zone géographique */}
                             <View style={styles.formGroup}>
-                                <Text style={styles.label}>Zone de livraison (optionnel)</Text>
+                                <Text style={styles.label}>{t('storageLocations.zoneDeLivraisonOptionnel')}/Text>
                                 <TouchableOpacity
                                     style={styles.selectButton}
                                     onPress={() => {
                                         const options = [
-                                            { text: 'Aucune zone', onPress: () => setFormData(prev => ({ ...prev, zone_id: null })) },
+                                            { text: t('storageLocations.aucuneZone'), onPress: () => setFormData(prev => ({ ...prev, zone_id: null })) },
                                             ...zones.map(zone => ({
                                                 text: `${zone.name}${zone.description ? ` - ${zone.description}` : ''}`,
                                                 onPress: () => setFormData(prev => ({ ...prev, zone_id: zone.id }))
@@ -367,13 +367,13 @@ const StorageLocationsScreen: React.FC = () => {
                                 >
                                     <Text style={styles.selectButtonText}>
                                         {formData.zone_id
-                                            ? zones.find(z => z.id === formData.zone_id)?.name || 'Zone sélectionnée'
+                                            ? zones.find(z => z.id === formData.zone_id)?.name || t('storageLocations.zoneSelectionnee')
                                             : 'Aucune zone'}
                                     </Text>
                                     <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
                                 </TouchableOpacity>
                                 {loadingZones && (
-                                    <Text style={styles.hintText}>Chargement des zones...</Text>
+                                    <Text style={styles.hintText}>{t('storageLocations.chargementDesZones')}</Text>
                                 )}
                             </View>
 
@@ -387,20 +387,20 @@ const StorageLocationsScreen: React.FC = () => {
                                         size={20}
                                         color={modernColors.primary}
                                     />
-                                    <Text style={styles.checkboxLabel}>Lieu de stock actif</Text>
+                                    <Text style={styles.checkboxLabel}>{t('storageLocations.lieuDeStockActif')}</Text>
                                 </TouchableOpacity>
                             </View>
                         </KeyboardAwareScreen>
 
                         <View style={styles.modalFooter}>
                             <NativeButton
-                                title="Annuler"
+                                title={t('storageLocationsScreen.annuler')}
                                 variant="secondary"
                                 onPress={() => setShowModal(false)}
                                 style={styles.cancelButton}
                             />
                             <NativeButton
-                                title={editingLocation ? 'Mettre à jour' : 'Créer'}
+                                title={editingLocation ? t('storageLocationsScreen.mettreAJour') : t('storageLocationsScreen.creer')}
                                 variant="primary"
                                 onPress={handleSave}
                             />

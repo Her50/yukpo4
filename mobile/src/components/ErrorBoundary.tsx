@@ -1,4 +1,4 @@
-import React, { Component, ReactNode } from 'react';
+import { Component, ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as Sentry from 'sentry-expo';
 
@@ -40,7 +40,7 @@ class ErrorBoundary extends Component<Props, State> {
             const { componentDebugger } = require('../utils/componentDebugger');
             const problematicLogs = componentDebugger.getProblematicLogs();
             if (problematicLogs.length > 0) {
-                const errorMessage = `🚨 [ErrorBoundary] ${problematicLogs.length} composant(s) avec children primitifs détectés`;
+                const errorMessage = t('errorBoundary.errorboundaryComposantsAvecChildrenPrimitifsDetect', { problematicLogs_length: problematicLogs.length });
                 console.error(errorMessage, problematicLogs);
 
                 // ✅ CRITIQUE: Envoyer au backend via remoteLoggingService
@@ -90,10 +90,10 @@ class ErrorBoundary extends Component<Props, State> {
                     <View style={styles.errorCard}>
                         <Text style={styles.errorIcon}>⚠️</Text>
 
-                        <Text style={styles.errorTitle}>Oups ! Une erreur s'est produite</Text>
+                        <Text style={styles.errorTitle}>{t('errorBoundary.oupsUneErreurSestProduite')}</Text>
 
                         <Text style={styles.errorMessage}>
-                            L'application a rencontré une erreur inattendue. Veuillez redémarrer l'application ou contacter le support si le problème persiste.
+                            {t('errorBoundary.unexpectedErrorMessage')}
                         </Text>
 
                         {true && this.state.error && ( // TOUJOURS AFFICHER EN PRODUCTION
@@ -110,7 +110,7 @@ class ErrorBoundary extends Component<Props, State> {
                                 onPress={this.handleRetry}
                             >
                                 <Text style={styles.buttonIcon}>🔄</Text>
-                                <Text style={styles.retryButtonText}>Redémarrer</Text>
+                                <Text style={styles.retryButtonText}>{t('errorBoundary.redemarrer')}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity

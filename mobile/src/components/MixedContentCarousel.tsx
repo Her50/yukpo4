@@ -344,7 +344,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('mixedContentCarousel.chargement')}</Text>
             </View>
         );
     }
@@ -354,7 +354,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         return (
             <View style={styles.emptyContainer}>
                 <SafeIcon name="package" size={48} color="#D1D5DB" />
-                <Text style={styles.emptyText}>Aucun contenu disponible</Text>
+                <Text style={styles.emptyText}>{t('mixedContentCarousel.aucunContenuDisponible')}</Text>
             </View>
         );
     }
@@ -411,7 +411,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                                 color="#FFFFFF"
                             />
                             <Text style={styles.badgeText}>
-                                {item.is_paid ? 'Sponsorisé' : 'Pour vous'}
+                                {item.is_paid ? t('mixedContentCarousel.sponsorise') : 'Pour vous'}
                             </Text>
                             {item.is_paid && item.boost_level && (
                                 <Text style={styles.boostLevel}>

@@ -3,6 +3,7 @@ import React, { Component, ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Platform } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Props {
     children: ReactNode;
@@ -88,7 +89,7 @@ ${errorInfo?.componentStack}
                 <View style={styles.container}>
                     <View style={styles.header}>
                         <Ionicons name="warning" size={64} color="#EF4444" />
-                        <Text style={styles.title}>Oups ! Une erreur est survenue</Text>
+                        <Text style={styles.title}>{t('errorBoundaryWithDebug.oupsUneErreurEstSurvenue')}/Text>
                         <Text style={styles.subtitle}>
                             L'application a rencontré un problème
                         </Text>
@@ -96,7 +97,7 @@ ${errorInfo?.componentStack}
 
                     <ScrollView style={styles.errorContainer}>
                         <View style={styles.errorSection}>
-                            <Text style={styles.errorLabel}>Type d'erreur:</Text>
+                            <Text style={styles.errorLabel}>{t('errorBoundaryWithDebug.typeDerreur')}/Text>
                             <Text style={styles.errorText}>{error?.name}</Text>
                         </View>
 
@@ -128,7 +129,7 @@ ${errorInfo?.componentStack}
                             onPress={this.copyErrorToClipboard}
                         >
                             <Ionicons name="copy" size={20} color="#FFF" />
-                            <Text style={styles.buttonText}>Copier l'erreur</Text>
+                            <Text style={styles.buttonText}>{t('errorBoundaryWithDebug.copierLerreur')}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -136,7 +137,7 @@ ${errorInfo?.componentStack}
                             onPress={this.resetError}
                         >
                             <Ionicons name="refresh" size={20} color="#FFF" />
-                            <Text style={styles.buttonText}>Réessayer</Text>
+                            <Text style={styles.buttonText}>{t('errorBoundaryWithDebug.reessayer')}</Text>
                         </TouchableOpacity>
                     </View>
 

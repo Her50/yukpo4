@@ -2,15 +2,17 @@
 import { useNavigation, useRoute } from "@react-navigation/native";
 import * as React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const links = [
-  { label: "🏠 Tableau de bord", screen: "Dashboard" },
-  { label: "📄 Mes services", screen: "MesServices" },
-  { label: "⚙️ Paramètres", screen: "Settings" },
+  { label: t('clientSidebar.tableauDeBord'), screen: "Dashboard" },
+  { label: t('clientSidebar.mesServices'), screen: "MesServices" },
+  { label: t('clientSidebar.parametres'), screen: "Settings" },
 ];
 
 const ClientSidebar: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const route = useRoute();
   const isActive = (screen: string) => route.name === screen;
 

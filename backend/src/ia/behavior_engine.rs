@@ -29,7 +29,7 @@ pub fn is_suspicious(score: u32, ip: &str, path: &str) -> bool {
 
         if let Some(_duration) = should_block(ip) {
             let msg = format!("?? R?cidive d?tect?e sur IP {} (score {})", ip, score);
-            let _ = send_email("admin@yukpomnang.com", "Alerte s?curit? IA", &msg);
+            let _ = send_email("admin@yukpo.com", "Alerte s?curit? IA", &msg);
             let _ = send_whatsapp("+237699999999", &msg);
             return true;
         }

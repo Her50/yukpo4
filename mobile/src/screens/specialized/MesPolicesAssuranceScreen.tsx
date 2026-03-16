@@ -16,19 +16,21 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import assuranceService, { type InsurancePolicy } from '../../services/assuranceService';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: string }> = {
     brouillon: { label: 'Brouillon', color: '#6B7280', bg: '#F3F4F6', icon: 'edit' },
-    en_attente: { label: 'En attente', color: '#D97706', bg: '#FEF3C7', icon: 'clock' },
+    en_attente: { label: t('mesPolicesAssurance.enAttente'), color: '#D97706', bg: '#FEF3C7', icon: 'clock' },
     active: { label: 'Active', color: '#059669', bg: '#D1FAE5', icon: 'check-circle' },
     suspendue: { label: 'Suspendue', color: '#D97706', bg: '#FEF3C7', icon: 'pause-circle' },
-    resiliee: { label: 'Résiliée', color: '#DC2626', bg: '#FEE2E2', icon: 'x-circle' },
-    expiree: { label: 'Expirée', color: '#6B7280', bg: '#F3F4F6', icon: 'clock' },
-    annulee: { label: 'Annulée', color: '#DC2626', bg: '#FEE2E2', icon: 'x-circle' },
+    resiliee: { label: t('mesPolicesAssurance.resiliee'), color: '#DC2626', bg: '#FEE2E2', icon: 'x-circle' },
+    expiree: { label: t('mesPolicesAssurance.expiree'), color: '#6B7280', bg: '#F3F4F6', icon: 'clock' },
+    annulee: { label: t('mesPolicesAssurance.annulee'), color: '#DC2626', bg: '#FEE2E2', icon: 'x-circle' },
 };
 
 const MesPolicesAssuranceScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
@@ -58,7 +60,7 @@ const MesPolicesAssuranceScreen: React.FC = () => {
     }).length;
 
     if (loading) {
-        return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#6366F1" /><Text style={s.loadingText}>Chargement...</Text></View>;
+        return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#6366F1" /><Text style={s.loadingText}>{t('mesPolicesAssurance.chargement')}</Text></View>;
     }
 
     return (
@@ -69,7 +71,7 @@ const MesPolicesAssuranceScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={22} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>Mes polices d'assurance</Text>
+                        <Text style={s.headerTitle}>{t('mesPolicesAssurance.mesPolicesDassurance')}</Text>
                         <Text style={s.headerSub}>{policies.length} police(s) - {activesCount} active(s)</Text>
                     </View>
                 </View>
@@ -87,7 +89,7 @@ const MesPolicesAssuranceScreen: React.FC = () => {
                     { key: 'all', label: 'Toutes' },
                     { key: 'active', label: 'Actives' },
                     { key: 'suspendue', label: 'Suspendues' },
-                    { key: 'expiree', label: 'Expirées' },
+                    { key: 'expiree', label: t('mesPolicesAssurance.expirees') },
                 ].map(f => (
                     <TouchableOpacity key={f.key} style={[s.filterChip, filter === f.key && s.filterChipActive]} onPress={() => setFilter(f.key)}>
                         <Text style={[s.filterText, filter === f.key && s.filterTextActive]}>{f.label}</Text>
@@ -100,11 +102,11 @@ const MesPolicesAssuranceScreen: React.FC = () => {
                 {filtered.length === 0 ? (
                     <View style={s.emptyState}>
                         <SafeIcon name="file-text" size={48} color="#9CA3AF" />
-                        <Text style={s.emptyTitle}>Aucune police</Text>
-                        <Text style={s.emptyText}>Vos polices d'assurance souscrites apparaîtront ici.</Text>
+                        <Text style={s.emptyTitle}>{t('mesPolicesAssurance.aucunePolice')}</Text>
+                        <Text style={s.emptyText}>{t('mesPolicesAssurance.vosPolicesDassuranceSouscritesApparaitro')}</Text>
                         <TouchableOpacity style={s.searchBtn} onPress={() => (navigation as any).navigate('InsuranceServicesSearch')}>
                             <SafeIcon name="search" size={16} color="#fff" />
-                            <Text style={s.searchBtnText}>Rechercher une assurance</Text>
+                            <Text style={s.searchBtnText}>{t('mesPolicesAssurance.rechercherUneAssurance')}</Text>
                         </TouchableOpacity>
                     </View>
                 ) : (
@@ -116,7 +118,7 @@ const MesPolicesAssuranceScreen: React.FC = () => {
                                 <View style={s.policyHeader}>
                                     <View style={{ flex: 1 }}>
                                         <Text style={s.policyNum}>{p.numero_police}</Text>
-                                        <Text style={s.policyProduct}>{p.nom_produit || 'Produit d\'assurance'}</Text>
+                                        <Text style={s.policyProduct}>{p.nom_produit || t('mesPolicesAssurance.produitDassurance')}</Text>
                                     </View>
                                     <View style={[s.badge, { backgroundColor: st.bg }]}>
                                         <SafeIcon name={st.icon as any} size={12} color={st.color} />
@@ -130,7 +132,7 @@ const MesPolicesAssuranceScreen: React.FC = () => {
 
                                     <View style={s.datesRow}>
                                         <View style={s.dateItem}>
-                                            <Text style={s.dateLabel}>Début</Text>
+                                            <Text style={s.dateLabel}>{t('mesPolicesAssurance.debut')}</Text>
                                             <Text style={s.dateValue}>{p.date_effet ? new Date(p.date_effet).toLocaleDateString('fr-FR') : '—'}</Text>
                                         </View>
                                         <View style={s.dateSep} />
@@ -168,11 +170,11 @@ const MesPolicesAssuranceScreen: React.FC = () => {
                                     <View style={s.actionRow}>
                                         <TouchableOpacity style={s.actionBtn} onPress={() => (navigation as any).navigate('DeclarationSinistre', { policy: p })}>
                                             <SafeIcon name="alert-triangle" size={14} color="#D97706" />
-                                            <Text style={[s.actionText, { color: '#D97706' }]}>Déclarer un sinistre</Text>
+                                            <Text style={[s.actionText, { color: '#D97706' }]}>{t('mesPolicesAssurance.declarerUnSinistre')}</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity style={s.actionBtn} onPress={() => (navigation as any).navigate('SuiviSinistre', { policy_id: p.id })}>
                                             <SafeIcon name="eye" size={14} color="#6366F1" />
-                                            <Text style={[s.actionText, { color: '#6366F1' }]}>Mes sinistres</Text>
+                                            <Text style={[s.actionText, { color: '#6366F1' }]}>{t('mesPolicesAssurance.mesSinistres')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 )}

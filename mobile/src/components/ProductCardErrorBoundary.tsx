@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Props {
     children: ReactNode;
@@ -68,7 +69,7 @@ class ProductCardErrorBoundary extends Component<Props, State> {
                 <View style={styles.errorContainer}>
                     <View style={styles.errorCard}>
                         <SafeIcon name="alert-circle" size={32} color="#EF4444" />
-                        <Text style={styles.errorTitle}>⚠️ Erreur d'affichage</Text>
+                        <Text style={styles.errorTitle}>{t('productCardErrorBoundary.erreurDaffichage')}</Text>
                         <Text style={styles.errorMessage}>
                             Ce produit ne peut pas être affiché correctement
                         </Text>
@@ -79,7 +80,7 @@ class ProductCardErrorBoundary extends Component<Props, State> {
                         )}
                         <TouchableOpacity style={styles.retryButton} onPress={this.handleRetry}>
                             <SafeIcon name="refresh" size={16} color="#FFFFFF" />
-                            <Text style={styles.retryButtonText}>Réessayer</Text>
+                            <Text style={styles.retryButtonText}>{t('productCardErrorBoundary.reessayer')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

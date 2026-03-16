@@ -10,6 +10,7 @@ import { useLanguageSafe } from '../contexts/LanguageContext';
 const HeaderController: React.FC = () => {
   const { user, logout } = useAuth();
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const [tokensBalance, setTokensBalance] = useState<number | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [hasFetchedBalance, setHasFetchedBalance] = useState(false);
@@ -81,11 +82,11 @@ const HeaderController: React.FC = () => {
   const handleLogout = async () => {
     Alert.alert(
       'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      t('headerController.etesvousSurDeVouloirVousDeconnecter'),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Déconnexion',
+          text: t('headerController.deconnexion'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -172,7 +173,7 @@ const HeaderController: React.FC = () => {
             style={styles.logoutButton}
             onPress={handleLogout}
           >
-            <Text style={styles.logoutText}>Déconnexion</Text>
+            <Text style={styles.logoutText}>{t('headerController.deconnexion')}</Text>
           </TouchableOpacity>
         </View>
       </View>

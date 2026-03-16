@@ -15,6 +15,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import OptimizedImage from './OptimizedImage';
 import SafeIcon from './SafeIcon';
 
@@ -52,6 +53,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
     onVideoPlaybackRequest,
     onVideoRelease,
 }) => {
+    const { t } = useLanguageSafe();
     const [currentIndex, setCurrentIndex] = useState(0);
     const [playingVideoIndex, setPlayingVideoIndex] = useState<number | null>(null);
     const [fullscreenMedia, setFullscreenMedia] = useState<{ type: 'image' | 'video'; uri: string } | null>(null);
@@ -187,8 +189,10 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
             setTimeout(() => {
                 const videoRef = videoRefs.current.get(index);
                 if (videoRef && !isScrolling && videoPlayingRef.current === index && isVisible === true) {
+                    // ✅ FIX 2026-03-15: NE PLUS appeler setPlayingVideoIndex ici — handleVideoPlay
+                    // le fait déjà via le coordinateur. L'ancien code le faisait inconditionnellement,
+                    // ce qui contournait le coordinateur et causait 2 vidéos simultanées avec son.
                     handleVideoPlay(index);
-                    setPlayingVideoIndex(index);
                 } else {
                     videoPlayingRef.current = null;
                     videoActivePlayingRef.current = null;
@@ -349,7 +353,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                 <View style={styles.placeholderIcon}>
                     <SafeIcon name="image" size={36} color="#6366F1" />
                 </View>
-                <Text style={styles.placeholderText}>Aucun média disponible</Text>
+                <Text style={styles.placeholderText}>{t('productMediaCarousel.aucunMediaDisponible')}</Text>
             </View>
         );
     }
@@ -396,9 +400,9 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             source={{ uri: media.uri }}
                             style={styles.media}
                             resizeMode={ResizeMode.COVER} // ✅ CORRIGÉ: COVER au lieu de CONTAIN pour éviter les espaces noirs
-                            shouldPlay={playingVideoIndex === index && !isScrolling}
+                            shouldPlay={playingVideoIndex === index && !isScrolling && isVisible !== false}
                             isLooping={false}
-                            isMuted={playingVideoIndex !== index}
+                            isMuted={playingVideoIndex !== index || isVisible === false}
                             useNativeControls={false}
                             onPlaybackStatusUpdate={(status) => {
                                 // ✅ FIX 2026-03-14: didJustFinish en PREMIER pour poser le sentinel
@@ -549,7 +553,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             color="#FFF"
                         />
                         <Text style={styles.mediaBadgeText}>
-                            {allMedia[currentIndex].type === 'video' ? 'Vidéo' : 'Image'}
+                            {allMedia[currentIndex].type === 'video' ? t('productMediaCarousel.video') : 'Image'}
                         </Text>
                     </View>
                 )}

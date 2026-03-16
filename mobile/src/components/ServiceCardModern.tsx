@@ -117,7 +117,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
     const handleDelete = () => {
         Alert.alert(
             'Supprimer le service',
-            `Êtes-vous sûr de vouloir supprimer définitivement le service "${service.title}" ?\n\nCette action est irréversible.`,
+            t('serviceCardModern.etesvousSurDeVouloirSupprimerDefinitivement', { service_title: service.title }),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -198,7 +198,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
             <View style={styles.header}>
                 <View style={styles.titleContainer}>
                     <Text style={styles.title} numberOfLines={2}>
-                        {service.title || 'Service sans titre'}
+                        {service.title || t('serviceCardModern.serviceSansTitre')}
                     </Text>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(service?.status) }]}>
                         <Text style={styles.statusText}>
@@ -210,14 +210,14 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
 
             {/* Description */}
             <Text style={styles.description} numberOfLines={3}>
-                {service.description || 'Aucune description'}
+                {service.description || t('serviceCardModern.aucuneDescription')}
             </Text>
 
             {/* Informations du service */}
             <View style={styles.serviceInfo}>
                 <View style={styles.infoRow}>
                     <SafeIcon name="calendar" size={14} color="#666" />
-                    <Text style={styles.infoText}>Créé le {formatDate(service.createdAt || service.created_at || '')}</Text>
+                    <Text style={styles.infoText}>{t('serviceCardModern.createdOn')} {formatDate(service.createdAt || service.created_at || '')}</Text>
                 </View>
                 {service.views !== undefined && service.views != null && (
                     <View style={styles.infoRow}>
@@ -293,7 +293,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         activeOpacity={0.7}
                     >
                         <SafeIcon name="edit" size={18} color="#6B7280" />
-                        <Text style={styles.actionLabel}>Modifier</Text>
+                        <Text style={styles.actionLabel}>{t('serviceCardModern.modifier')}</Text>
                     </TouchableOpacity>
 
                     {/* Voir */}
@@ -303,7 +303,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         activeOpacity={0.7}
                     >
                         <SafeIcon name="eye" size={18} color="#6B7280" />
-                        <Text style={styles.actionLabel}>Voir</Text>
+                        <Text style={styles.actionLabel}>{t('serviceCardModern.voir')}</Text>
                     </TouchableOpacity>
 
                     {/* Partager */}
@@ -313,7 +313,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         activeOpacity={0.7}
                     >
                         <SafeIcon name="Redo2" size={18} color="#3B82F6" />
-                        <Text style={[styles.actionLabel, { color: '#3B82F6' }]}>Partager</Text>
+                        <Text style={[styles.actionLabel, { color: '#3B82F6' }]}>{t('serviceCardModern.partager')}</Text>
                     </TouchableOpacity>
 
                     {/* Supprimer */}
@@ -323,7 +323,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         activeOpacity={0.7}
                     >
                         <SafeIcon name="trash-2" size={18} color="#EF4444" />
-                        <Text style={[styles.actionLabel, { color: '#EF4444' }]}>Supprimer</Text>
+                        <Text style={[styles.actionLabel, { color: '#EF4444' }]}>{t('serviceCardModern.supprimer')}</Text>
                     </TouchableOpacity>
                 </View>
 

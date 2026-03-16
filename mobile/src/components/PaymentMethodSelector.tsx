@@ -8,6 +8,7 @@ import { modernColors } from '../theme/modernTheme';
 import { formatCardNumber, validateCardExpiry, validateCardNumber, validatePhoneNumber } from '../utils/paymentValidation';
 import SafeIcon from './SafeIcon';
 import { NativeInput } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // ✅ CORRIGÉ: Interface compatible avec le backend PaymentMatchingService
 export interface PaymentMethodsData {
@@ -29,7 +30,8 @@ interface PaymentMethodSelectorProps {
 
 const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPaymentChange, readonly = false }) => {
     // ✅ CORRIGÉ: États séparés pour chaque mode de paiement mobile money
-    const [mtnEnabled, setMtnEnabled] = useState(false);
+        const { t } = useLanguageSafe();
+const [mtnEnabled, setMtnEnabled] = useState(false);
     const [mtnPhoneNumber, setMtnPhoneNumber] = useState('');
     const [mtnPhoneError, setMtnPhoneError] = useState<string | null>(null);
 
@@ -128,7 +130,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
             <View style={styles.taxIdSection}>
                 <View style={styles.taxIdHeader}>
                     <SafeIcon name="file-text" size={18} color={modernColors.textSecondary} />
-                    <Text style={styles.taxIdTitle}>Numéro de contribuable (optionnel)</Text>
+                    <Text style={styles.taxIdTitle}>{t('paymentMethodSelector.numeroDeContribuableOptionnel')}</Text>
                 </View>
                 <NativeInput
                     placeholder="Ex: M012345678901C"
@@ -160,7 +162,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                 </View>
                 {mtnEnabled && (
                     <View style={styles.providerForm}>
-                        <Text style={styles.formLabel}>Numéro MTN Money</Text>
+                        <Text style={styles.formLabel}>{t('paymentMethodSelector.numeroMtnMoney')}</Text>
                         <Text style={styles.formHint}>
                             Votre numéro MTN pour recevoir les paiements (ex: 670 XX XX XX)
                         </Text>
@@ -182,7 +184,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                         {mtnPhoneNumber.length > 0 && !mtnPhoneError && (
                             <View style={styles.successContainer}>
                                 <SafeIcon name="check-circle" size={16} color={modernColors.success} />
-                                <Text style={styles.successText}>Numéro MTN valide</Text>
+                                <Text style={styles.successText}>{t('paymentMethodSelector.numeroMtnValide')}</Text>
                             </View>
                         )}
                     </View>
@@ -206,7 +208,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                 </View>
                 {orangeEnabled && (
                     <View style={styles.providerForm}>
-                        <Text style={styles.formLabel}>Numéro Orange Money</Text>
+                        <Text style={styles.formLabel}>{t('paymentMethodSelector.numeroOrangeMoney')}</Text>
                         <Text style={styles.formHint}>
                             Votre numéro Orange pour recevoir les paiements (ex: 690 XX XX XX)
                         </Text>
@@ -228,7 +230,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                         {orangePhoneNumber.length > 0 && !orangePhoneError && (
                             <View style={styles.successContainer}>
                                 <SafeIcon name="check-circle" size={16} color={modernColors.success} />
-                                <Text style={styles.successText}>Numéro Orange valide</Text>
+                                <Text style={styles.successText}>{t('paymentMethodSelector.numeroOrangeValide')}</Text>
                             </View>
                         )}
                     </View>
@@ -240,7 +242,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                 <View style={styles.providerHeader}>
                     <View style={styles.providerTitleRow}>
                         <Text style={styles.providerEmoji}>💳</Text>
-                        <Text style={[styles.providerTitle, showBankCard && styles.providerTitleActiveCard]}>Carte Bancaire</Text>
+                        <Text style={[styles.providerTitle, showBankCard && styles.providerTitleActiveCard]}>{t('paymentMethodSelector.carteBancaire')}/Text>
                     </View>
                     <Switch
                         value={showBankCard}
@@ -254,11 +256,11 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                     <View style={styles.providerForm}>
                         <View style={styles.cardPreview}>
                             <Text style={styles.cardType}>
-                                {validateCardNumber(cardNumber.replace(/\s/g, '')).type || 'Carte Bancaire'}
+                                {validateCardNumber(cardNumber.replace(/\s/g, '')).type || t('paymentMethodSelector.carteBancaire')}
                             </Text>
                         </View>
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.formLabel}>Numéro de carte</Text>
+                            <Text style={styles.formLabel}>{t('paymentMethodSelector.numeroDeCarte')}</Text>
                             <NativeInput
                                 placeholder="XXXX XXXX XXXX XXXX"
                                 value={cardNumber}
@@ -276,7 +278,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                             )}
                         </View>
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.formLabel}>Nom du titulaire</Text>
+                            <Text style={styles.formLabel}>{t('paymentMethodSelector.nomDuTitulaire')}/Text>
                             <NativeInput
                                 placeholder="JEAN DUPONT"
                                 value={cardHolder}
@@ -317,7 +319,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                         {cardNumber.length >= 13 && !cardError && cardExpiry.length >= 5 && !expiryError && cardCVV.length >= 3 && cardHolder.length > 0 && (
                             <View style={styles.successContainer}>
                                 <SafeIcon name="check-circle" size={16} color={modernColors.success} />
-                                <Text style={styles.successText}>Informations de carte valides</Text>
+                                <Text style={styles.successText}>{t('paymentMethodSelector.informationsDeCarteValides')}/Text>
                             </View>
                         )}
                     </View>

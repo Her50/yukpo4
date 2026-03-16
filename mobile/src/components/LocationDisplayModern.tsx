@@ -37,7 +37,8 @@ export const LocationDisplayModern: React.FC<LocationDisplayModernProps> = ({
   compact = false,
   customStyle
 }) => {
-  const [locationText, setLocationText] = useState<string>('');
+      const { t } = useLanguageSafe();
+const [locationText, setLocationText] = useState<string>('');
   const [locationType, setLocationType] = useState<'gps' | 'address' | 'distance' | 'unknown'>('unknown');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -47,7 +48,7 @@ export const LocationDisplayModern: React.FC<LocationDisplayModernProps> = ({
 
       // Priorité 1: Coordonnées GPS fixes du service
       const gpsFixe = service.data?.gps_fixe;
-      if (gpsFixe && gpsFixe !== 'Non spécifié') {
+      if (gpsFixe && gpsFixe !== t('locationDisplayModern.nonSpecifie')) {
         setLocationText(gpsFixe);
         setLocationType('gps');
         setIsLoading(false);
@@ -56,7 +57,7 @@ export const LocationDisplayModern: React.FC<LocationDisplayModernProps> = ({
 
       // Priorité 2: Adresse du service
       const adresse = service.data?.adresse;
-      if (adresse && adresse !== 'Non spécifié') {
+      if (adresse && adresse !== t('locationDisplayModern.nonSpecifie')) {
         setLocationText(adresse);
         setLocationType('address');
         setIsLoading(false);
@@ -96,11 +97,11 @@ export const LocationDisplayModern: React.FC<LocationDisplayModernProps> = ({
       // Ouvrir la carte avec les coordonnées GPS
       Alert.alert(
         'Localisation GPS',
-        `Coordonnées: ${locationText}\n\nVoulez-vous ouvrir dans l'application de cartes ?`,
+        t('locationDisplayModern.coordonneesNnvoulezvousOuvrirDansLapplicationDe', { locationText: locationText }),
         [
           { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Ouvrir', onPress: () => {
+            text: t('locationDisplayModern.ouvrir'), onPress: () => {
               // Ici on pourrait ouvrir l'app de cartes native
               console.log('Ouverture de la carte avec:', locationText);
             }
@@ -110,7 +111,7 @@ export const LocationDisplayModern: React.FC<LocationDisplayModernProps> = ({
     } else if (locationType === 'distance') {
       Alert.alert(
         'Distance',
-        `Le service est situé à ${locationText} de votre position actuelle.`
+        t('locationDisplayModern.leServiceEstSitueADe', { locationText: locationText })
       );
     }
   };
@@ -146,7 +147,7 @@ export const LocationDisplayModern: React.FC<LocationDisplayModernProps> = ({
       <View style={[styles.container, compact && styles.compactContainer, customStyle]}>
         <View style={styles.loadingContainer}>
           <MapPin size={16} color="#E0E0E0" />
-          <Text style={styles.loadingText}>Localisation en cours...</Text>
+          <Text style={styles.loadingText}>{t('locationDisplayModern.localisationEnCours')}/Text>
         </View>
       </View>
     );
@@ -192,7 +193,7 @@ export const LocationDisplayModern: React.FC<LocationDisplayModernProps> = ({
 
         {serviceCreatorInfo && (
           <View style={styles.creatorInfo}>
-            <Text style={styles.creatorLabel}>Créateur:</Text>
+            <Text style={styles.creatorLabel}>{t('locationDisplayModern.createur')}</Text>
             <Text style={styles.creatorName}>{serviceCreatorInfo.name}</Text>
           </View>
         )}

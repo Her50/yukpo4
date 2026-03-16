@@ -242,7 +242,7 @@ const DeliveryHomeScreen: React.FC = () => {
                 >
                     <DeliveryAvatarBubble
                         message="Livraison intelligente Yukpo"
-                        subtitle="Orchestre tes courses supermarché, tracking temps réel et notifications destinataire."
+                        subtitle={t('deliveryHome.orchestreTesCoursesSupermarcheTracking')}
                     />
 
                     {/* ✅ CORRIGÉ: Afficher uniquement si réseau offline (pas pour WebSocket limité) */}
@@ -255,7 +255,7 @@ const DeliveryHomeScreen: React.FC = () => {
                                 Votre connexion internet est indisponible. Les actions seront synchronisées automatiquement dès le retour en ligne.
                             </Text>
                             <NativeButton
-                                title="Vérifier la connexion"
+                                title={t('deliveryHome.verifierLaConnexion')}
                                 variant='outline'
                                 onPress={() => {
                                     console.log('[DeliveryHomeScreen] 🔄 Tentative de reconnexion...');
@@ -298,7 +298,7 @@ const DeliveryHomeScreen: React.FC = () => {
                     {activeDeliveries.length > 0 && (
                         <>
                             <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionTitle}>Vos livraisons actives</Text>
+                                <Text style={styles.sectionTitle}>{t('deliveryHome.vosLivraisonsActives')}</Text>
                                 <TouchableOpacity
                                     onPress={handleRefresh}
                                     disabled={loading || refreshing}
@@ -343,12 +343,12 @@ const DeliveryHomeScreen: React.FC = () => {
 
                     {/* ✅ NOUVEAU: Section pour créer une nouvelle livraison */}
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Nouvelle livraison</Text>
+                        <Text style={styles.sectionTitle}>{t('deliveryHome.nouvelleLivraison')}</Text>
                     </View>
 
                     {/* ✅ CORRIGÉ: Livraison de colis AVANT courses supermarché */}
                     <NativeCard style={styles.card}>
-                        <Text style={styles.cardTitle}>Livraison de colis</Text>
+                        <Text style={styles.cardTitle}>{t('deliveryHome.livraisonDeColis')}/Text>
                         <Text style={styles.cardSubtitle}>
                             Précisez les caractéristiques du colis que vous souhaitez faire transporter par un coursier.
                         </Text>
@@ -358,7 +358,7 @@ const DeliveryHomeScreen: React.FC = () => {
                             disabled={navigating}
                         >
                             <NativeButton
-                                title="Expédier un colis"
+                                title={t('deliveryHome.expedierUnColis')}
                                 variant="primary"
                                 onPress={handleStartParcel}
                                 disabled={navigating}
@@ -368,7 +368,7 @@ const DeliveryHomeScreen: React.FC = () => {
                     </NativeCard>
 
                     <NativeCard style={styles.card}>
-                        <Text style={styles.cardTitle}>Courses supermarché</Text>
+                        <Text style={styles.cardTitle}>{t('deliveryHome.coursesSupermarche')}</Text>
                         <Text style={styles.cardSubtitle}>
                             Compose ton panier, nous avançons l'achat et tu suis ton coursier en direct.
                         </Text>
@@ -378,7 +378,7 @@ const DeliveryHomeScreen: React.FC = () => {
                             disabled={navigating}
                         >
                             <NativeButton
-                                title="Commander au supermarché"
+                                title={t('deliveryHome.commanderAuSupermarche')}
                                 variant="outline"
                                 onPress={handleStartShopping}
                                 disabled={navigating}
@@ -393,7 +393,7 @@ const DeliveryHomeScreen: React.FC = () => {
                             <View style={styles.emptyIconContainer}>
                                 <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
                             </View>
-                            <Text style={styles.emptyTitle}>Aucune livraison en cours</Text>
+                            <Text style={styles.emptyTitle}>{t('deliveryHome.aucuneLivraisonEnCours')}</Text>
                             <Text style={styles.emptySubtitle}>
                                 Lance une commande supermarché ou une livraison de colis pour suivre ton coursier en temps réel.
                             </Text>

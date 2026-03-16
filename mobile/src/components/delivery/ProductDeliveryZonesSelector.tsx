@@ -15,6 +15,7 @@ import { NativeButton } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
 // ✅ CORRIGÉ: Utiliser SafeStorage au lieu d'AsyncStorage directement
 import SafeStorage from '../../utils/safeStorage';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface DeliveryZone {
     id: string;
@@ -38,7 +39,8 @@ const ProductDeliveryZonesSelector: React.FC<ProductDeliveryZonesSelectorProps> 
     onChange,
     readonly = false,
 }) => {
-    const [zones, setZones] = useState<DeliveryZone[]>([]);
+        const { t } = useLanguageSafe();
+const [zones, setZones] = useState<DeliveryZone[]>([]);
     const [loading, setLoading] = useState(false);
     const [selected, setSelected] = useState<string[]>(selectedZoneIds);
     const [saving, setSaving] = useState(false);
@@ -136,7 +138,7 @@ const ProductDeliveryZonesSelector: React.FC<ProductDeliveryZonesSelectorProps> 
                 </View>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="small" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement des zones...</Text>
+                    <Text style={styles.loadingText}>{t('productDeliveryZonesSelector.chargementDesZones')}</Text>
                 </View>
             </View>
         );
@@ -164,7 +166,7 @@ const ProductDeliveryZonesSelector: React.FC<ProductDeliveryZonesSelectorProps> 
 
             {zones.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>Aucune zone de livraison disponible</Text>
+                    <Text style={styles.emptyText}>{t('productDeliveryZonesSelector.aucuneZoneDeLivraisonDisponible')}</Text>
                 </View>
             ) : (
                 <ScrollView style={styles.zonesList} showsVerticalScrollIndicator={false}>

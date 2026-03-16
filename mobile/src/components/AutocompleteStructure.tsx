@@ -11,6 +11,7 @@ import {
 import { apiGet, apiPost } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AutocompleteStructureProps {
     type: 'hopital_clinique' | 'pharmacie' | 'laboratoire';
@@ -40,13 +41,14 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
     type,
     value,
     onChangeText,
-    placeholder = 'Nom de la structure',
+    placeholder={t('autocompleteStructure.nomDeLaStructure')},
     label,
     required = false,
     autoLoadLastUsed = true,
     userId,
 }) => {
-    const [suggestions, setSuggestions] = useState<string[]>([]);
+        const { t } = useLanguageSafe();
+const [suggestions, setSuggestions] = useState<string[]>([]);
     const [allStructures, setAllStructures] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
@@ -343,7 +345,7 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
                                     </Text>
                                     {isLastUsed && (
                                         <View style={styles.lastUsedBadge}>
-                                            <Text style={styles.lastUsedBadgeText}>Récente</Text>
+                                            <Text style={styles.lastUsedBadgeText}>{t('autocompleteStructure.recente')}</Text>
                                         </View>
                                     )}
                                 </TouchableOpacity>

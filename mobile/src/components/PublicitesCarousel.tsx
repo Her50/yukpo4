@@ -743,7 +743,7 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                                             >
                                                 <SafeIcon name="play" size={28} color="#fff" />
                                                 <Text style={styles.manualPlayText}>
-                                                    {t('publicite.play_video') ?? 'Lire la vidéo'}
+                                                    {t('publicite.play_video') ?? t('publicitesCarousel.lireLaVideo')}
                                                 </Text>
                                             </TouchableOpacity>
                                         )}
@@ -757,7 +757,7 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                                             }}
                                         >
                                             <View style={styles.ctaOverlayContent}>
-                                                <Text style={styles.ctaOverlayText}>Voir le produit</Text>
+                                                <Text style={styles.ctaOverlayText}>{t('publicitesCarousel.voirLeProduit')}</Text>
                                                 <SafeIcon name="arrow-right" size={18} color="#fff" />
                                             </View>
                                         </TouchableOpacity>
@@ -800,7 +800,7 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                                     >
                                         <SafeIcon name="refresh-cw" size={26} color="#fff" />
                                         <Text style={styles.manualPlayText}>
-                                            {t('publicite.retry_video') ?? 'Relancer la vidéo'}
+                                            {t('publicite.retry_video') ?? t('publicitesCarousel.relancerLaVideo')}
                                         </Text>
                                     </TouchableOpacity>
                                 )}
@@ -816,7 +816,7 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
 
                             <View style={styles.contentSection}>
                                 <Text style={styles.title} numberOfLines={2}>
-                                    {pub.titre || 'Promotion Yukpo'}
+                                    {pub.titre || t('publicitesCarousel.promotionYukpo')}
                                 </Text>
                                 {pub.description ? (
                                     <Text style={styles.description} numberOfLines={2}>
@@ -861,7 +861,7 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                                         style={styles.ctaPill}
                                         onPress={(event) => handleCTAClick(pub, event)}
                                     >
-                                        <Text style={styles.ctaText}>Voir le produit</Text>
+                                        <Text style={styles.ctaText}>{t('publicitesCarousel.voirLeProduit')}</Text>
                                         <SafeIcon name="arrow-right" size={14} color="#fff" />
                                     </TouchableOpacity>
                                 </View>

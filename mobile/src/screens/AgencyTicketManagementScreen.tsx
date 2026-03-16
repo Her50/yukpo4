@@ -20,6 +20,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { requireAgency } from '../utils/navigationGuards';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AgencyTicket {
     payment_id: string;
@@ -49,6 +50,7 @@ interface AgencyTicket {
 
 const AgencyTicketManagementScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -171,7 +173,7 @@ const AgencyTicketManagementScreen: React.FC = () => {
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
                         <Text style={styles.statusText}>
-                            {status === 'upcoming' ? 'À venir' : 'Passé'}
+                            {status === 'upcoming' ? 'À venir' : t('agencyTicketManagementScreen.passe')}
                         </Text>
                     </View>
                 </View>
@@ -217,7 +219,7 @@ const AgencyTicketManagementScreen: React.FC = () => {
                             onPress={() => handleViewBoarding(ticket)}
                         >
                             <SafeIcon name="users" size={16} color="#fff" />
-                            <Text style={styles.primaryButtonText}>Gérer embarquement</Text>
+                            <Text style={styles.primaryButtonText}>{t('agencyTicketManagement.gererEmbarquement')}</Text>
                         </TouchableOpacity>
                     )}
                     <TouchableOpacity
@@ -229,7 +231,7 @@ const AgencyTicketManagementScreen: React.FC = () => {
                         }}
                     >
                         <SafeIcon name="settings" size={16} color={modernColors.primary} />
-                        <Text style={styles.secondaryButtonText}>Gérer places</Text>
+                        <Text style={styles.secondaryButtonText}>{t('agencyTicketManagement.gererPlaces')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -242,7 +244,7 @@ const AgencyTicketManagementScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Gestion des tickets</Text>
+                <Text style={styles.title}>{t('agencyTicketManagement.gestionDesTickets')}/Text>
                 <View style={styles.placeholder} />
             </View>
 
@@ -250,7 +252,7 @@ const AgencyTicketManagementScreen: React.FC = () => {
             <View style={styles.statsContainer}>
                 <View style={styles.statCard}>
                     <Text style={styles.statValue}>{stats.total}</Text>
-                    <Text style={styles.statLabel}>Total tickets</Text>
+                    <Text style={styles.statLabel}>{t('agencyTicketManagement.totalTickets')}/Text>
                 </View>
                 <View style={styles.statCard}>
                     <Text style={styles.statValue}>{stats.todayCount}</Text>
@@ -288,7 +290,7 @@ const AgencyTicketManagementScreen: React.FC = () => {
                                         ? "Aujourd'hui"
                                         : filterOption === 'upcoming'
                                             ? 'À venir'
-                                            : 'Passés'}
+                                            : t('agencyTicketManagementScreen.passes')}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -303,15 +305,15 @@ const AgencyTicketManagementScreen: React.FC = () => {
             ) : filteredTickets.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="ticket" size={64} color="#D1D5DB" />
-                    <Text style={styles.emptyTitle}>Aucun ticket</Text>
+                    <Text style={styles.emptyTitle}>{t('agencyTicketManagement.aucunTicket')}</Text>
                     <Text style={styles.emptyText}>
                         {filter === 'all'
                             ? 'Aucun ticket vendu pour le moment'
                             : filter === 'today'
                                 ? 'Aucun ticket aujourd\'hui'
                                 : filter === 'upcoming'
-                                    ? 'Aucun ticket à venir'
-                                    : 'Aucun ticket passé'}
+                                    ? t('agencyTicketManagementScreen.aucunTicketAVenir')
+                                    : t('agencyTicketManagementScreen.aucunTicketPasse')}
                     </Text>
                 </View>
             ) : (

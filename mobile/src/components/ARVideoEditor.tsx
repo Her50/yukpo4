@@ -52,11 +52,11 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
             if (!cameraPermission.granted) {
                 Alert.alert(
                     'Permission requise',
-                    'Veuillez autoriser l\'accès à la caméra pour enregistrer une vidéo.',
+                    'Veuillez autoriser l\t('aRVideoEditor.accesALaCameraPourEnregistrer'),
                     [
                         { text: t('common.cancel'), style: 'cancel' },
                         {
-                            text: 'Ouvrir les paramètres',
+                            text: t('aRVideoEditor.ouvrirLesParametres'),
                             onPress: () => {
                                 if (Platform.OS === 'ios') {
                                     Linking.openURL('app-settings:');
@@ -95,7 +95,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
             console.error('[ARVideoEditor] ❌ Erreur capture vidéo:', error);
             Alert.alert(
                 'Erreur',
-                `Impossible de capturer la vidéo: ${error?.message || 'Erreur inconnue'}`
+                t('aRVideoEditor.impossibleDeCapturerLaVideo', { error?_message || 'Erreur inconnue': error?.message || 'Erreur inconnue' })
             );
         } finally {
             setIsCapturing(false);
@@ -195,7 +195,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                     {isUploading && (
                         <View style={styles.uploadingContainer}>
                             <ActivityIndicator size="small" color={modernColors.primary} />
-                            <Text style={styles.uploadingText}>Upload de la vidéo en cours...</Text>
+                            <Text style={styles.uploadingText}>{t('aRVideoEditor.uploadDeLaVideoEn')}</Text>
                         </View>
                     )}
                 </View>
@@ -226,7 +226,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                 {/* Instructions */}
                 <View style={styles.instructionsContainer}>
                     <SafeIcon name="video" size={64} color={modernColors.primary} />
-                    <Text style={styles.instructionsTitle}>Vidéo AR Immersive</Text>
+                    <Text style={styles.instructionsTitle}>{t('aRVideoEditor.videoArImmersive')}</Text>
                     <Text style={styles.instructionsText}>
                         Cliquez sur le bouton ci-dessous pour ouvrir la caméra et enregistrer une vidéo de votre produit.
                         {'\n\n'}
@@ -237,7 +237,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                 {/* Bouton de capture */}
                 <View style={styles.buttonContainer}>
                     <NativeButton
-                        title={isCapturing ? 'Capture en cours...' : '📹 Capturer une vidéo'}
+                        title={isCapturing ? 'Capture en cours...' : t('aRVideoEditor.capturerUneVideo')}
                         variant="primary"
                         size="large"
                         onPress={handleCaptureVideo}
@@ -247,7 +247,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                     {isCapturing && (
                         <View style={styles.loadingContainer}>
                             <ActivityIndicator size="small" color={modernColors.primary} />
-                            <Text style={styles.loadingText}>Ouvrir la caméra...</Text>
+                            <Text style={styles.loadingText}>{t('aRVideoEditor.ouvrirLaCamera')}</Text>
                         </View>
                     )}
                 </View>

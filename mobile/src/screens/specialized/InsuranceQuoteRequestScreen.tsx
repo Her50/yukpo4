@@ -17,12 +17,14 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import assuranceService, { InsuranceProfile, InsuranceQuote } from '../../services/assuranceService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
-const TYPES_ASSURANCE = ['Auto', 'Santé', 'Habitation', 'Vie', 'Voyage', 'Professionnelle', 'Responsabilité civile'];
+const TYPES_ASSURANCE = ['Auto', t('insuranceQuoteRequestScreen.sante'), 'Habitation', 'Vie', 'Voyage', 'Professionnelle', t('insuranceQuoteRequestScreen.responsabiliteCivile')];
 const SITUATIONS_FAMILIALES = ['Célibataire', 'Marié(e)', 'Divorcé(e)', 'Veuf/Veuve', 'Union libre'];
 
 const InsuranceQuoteRequestScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const params = route.params as { typeAssurance?: string; compagnie?: string; ville?: string } | undefined;
 
@@ -94,7 +96,7 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
                         </TouchableOpacity>
                         <View style={styles.headerContent}>
                             <SafeIcon name="file-text" size={28} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.headerTitle}>Votre devis IA</Text>
+                            <Text style={styles.headerTitle}>{t('insuranceQuoteRequest.votreDevisIa')}</Text>
                         </View>
                     </View>
                 </LinearGradient>
@@ -110,7 +112,7 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
                             </View>
                         </View>
                         <View style={styles.scoreContainer}>
-                            <Text style={styles.scoreLabel}>Score d'adéquation</Text>
+                            <Text style={styles.scoreLabel}>{t('insuranceQuoteRequest.scoreDadequation')}</Text>
                             <View style={styles.scoreBadge}>
                                 <Text style={styles.scoreText}>{Math.round(quote.score_adequation * 100)}%</Text>
                             </View>
@@ -119,7 +121,7 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
 
                     {/* Primes */}
                     <NativeCard style={styles.sectionCard}>
-                        <Text style={styles.sectionTitle}>💰 Primes estimées</Text>
+                        <Text style={styles.sectionTitle}>{t('insuranceQuoteRequest.primesEstimees')}</Text>
                         <View style={styles.primeRow}>
                             <Text style={styles.primeLabel}>Mensuelle</Text>
                             <Text style={styles.primeValue}>{formatPrice(quote.prime_mensuelle_estimee)}</Text>
@@ -174,7 +176,7 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
                     {/* Actions */}
                     <View style={styles.actionsContainer}>
                         <NativeButton
-                            title="Nouveau devis"
+                            title={t('insuranceQuoteRequest.nouveauDevis')}
                             onPress={() => { hapticPress(); setShowResults(false); }}
                             style={styles.secondaryButton}
                         />
@@ -198,14 +200,14 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
                             <SafeIcon name="file-text" size={32} color="#FFFFFF" type="lucide" />
                         </View>
                         <Text style={styles.headerTitle}>Demander un devis IA</Text>
-                        <Text style={styles.headerSubtitle}>Notre IA génère un devis personnalisé en quelques secondes</Text>
+                        <Text style={styles.headerSubtitle}>{t('insuranceQuoteRequest.notreIaGenereUnDevis')}</Text>
                     </View>
                 </View>
             </LinearGradient>
 
             <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollContainer}>
                 {/* Type d'assurance */}
-                <Text style={styles.fieldLabel}>Type d'assurance *</Text>
+                <Text style={styles.fieldLabel}>{t('insuranceQuoteRequest.typeDassurance')}/Text>
                 <View style={styles.chipContainer}>
                     {TYPES_ASSURANCE.map((type) => (
                         <TouchableOpacity
@@ -219,12 +221,12 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
                 </View>
 
                 {/* Profil personnel */}
-                <Text style={styles.sectionLabel}>Votre profil</Text>
+                <Text style={styles.sectionLabel}>{t('insuranceQuoteRequest.votreProfil')}</Text>
 
                 <View style={styles.row}>
                     <View style={styles.halfField}>
                         <NativeInput
-                            placeholder="Âge"
+                            placeholder={t('insuranceQuoteRequest.age')}
                             value={age}
                             onChangeText={setAge}
                             keyboardType="numeric"
@@ -247,7 +249,7 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
                 />
 
                 <NativeInput
-                    placeholder="Ville"
+                    placeholder={t('insuranceQuoteRequest.ville')}
                     value={ville}
                     onChangeText={setVille}
                 />
@@ -275,14 +277,14 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
                 {/* Champs conditionnels Auto */}
                 {(typeAssurance === 'Auto') && (
                     <>
-                        <Text style={styles.sectionLabel}>Véhicule</Text>
+                        <Text style={styles.sectionLabel}>{t('insuranceQuoteRequest.vehicule')}</Text>
                         <NativeInput
-                            placeholder="Type de véhicule (berline, SUV, moto...)"
+                            placeholder={t('insuranceQuoteRequest.typeDeVehiculeBerlineSuv')}
                             value={vehiculeType}
                             onChangeText={setVehiculeType}
                         />
                         <NativeInput
-                            placeholder="Valeur du véhicule (FCFA)"
+                            placeholder={t('insuranceQuoteRequest.valeurDuVehiculeFcfa')}
                             value={vehiculeValeur}
                             onChangeText={setVehiculeValeur}
                             keyboardType="numeric"
@@ -293,9 +295,9 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
                 {/* Champs conditionnels Habitation */}
                 {(typeAssurance === 'Habitation') && (
                     <>
-                        <Text style={styles.sectionLabel}>Bien immobilier</Text>
+                        <Text style={styles.sectionLabel}>{t('insuranceQuoteRequest.bienImmobilier')}/Text>
                         <NativeInput
-                            placeholder="Type de bien (appartement, maison, villa...)"
+                            placeholder={t('insuranceQuoteRequest.typeDeBienAppartementMaison')}
                             value={bienType}
                             onChangeText={setBienType}
                         />
@@ -313,12 +315,12 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
                     {loading ? (
                         <View style={styles.loadingContainer}>
                             <ActivityIndicator size="large" color={modernColors.primary} />
-                            <Text style={styles.loadingText}>Génération du devis en cours...</Text>
-                            <Text style={styles.loadingSubtext}>Notre IA analyse votre profil</Text>
+                            <Text style={styles.loadingText}>{t('insuranceQuoteRequest.generationDuDevisEnCours')}</Text>
+                            <Text style={styles.loadingSubtext}>{t('insuranceQuoteRequest.notreIaAnalyseVotreProfil')}/Text>
                         </View>
                     ) : (
                         <NativeButton
-                            title="🤖 Générer mon devis IA"
+                            title={t('insuranceQuoteRequest.genererMonDevisIa')}
                             onPress={handleGenerateQuote}
                             style={styles.generateButton}
                         />

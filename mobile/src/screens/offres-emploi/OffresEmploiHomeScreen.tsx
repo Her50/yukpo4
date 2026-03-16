@@ -98,7 +98,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                 setOffres(response.data.data);
                 setTotalResults(response.data.total || 0);
             } else {
-                setError('Aucune offre trouvée');
+                setError(t('offresEmploiHome.aucuneOffreTrouvee'));
                 setOffres([]);
             }
         } catch (err: any) {
@@ -189,10 +189,10 @@ const OffresEmploiHomeScreen: React.FC = () => {
 
     const formatSalary = (min?: number, max?: number, devise?: string) => {
         const currency = devise || 'FCFA';
-        if (!min && !max) return 'Salaire non spécifié';
+        if (!min && !max) return t('offresEmploiHomeScreen.salaireNonSpecifie');
         if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()} ${currency}`;
         if (min) return `À partir de ${min.toLocaleString()} ${currency}`;
-        return `Jusqu'à ${max?.toLocaleString()} ${currency}`;
+        return t('offresEmploiHomeScreen.jusqua', { max?_toLocaleString(): max?.toLocaleString(), currency: currency });
     };
 
     return (
@@ -214,7 +214,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                             <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>Recherche d'Emploi</Text>
+                            <Text style={styles.headerTitle}>{t('offresEmploiHome.rechercheDemploi')}/Text>
                             {totalResults > 0 && (
                                 <Text style={styles.headerSubtitle}>
                                     {totalResults} offre{totalResults > 1 ? 's' : ''} disponible{totalResults > 1 ? 's' : ''}
@@ -239,7 +239,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                             <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Rechercher un emploi (titre, secteur, compétences)..."
+                                placeholder={t('offresEmploiHome.rechercherUnEmploiTitreSecteur')}
                                 placeholderTextColor="#9CA3AF"
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
@@ -270,7 +270,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                             }}
                         >
                             <SafeIcon name="user" size={16} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.quickActionText}>Mon CV</Text>
+                            <Text style={styles.quickActionText}>{t('offresEmploiHome.monCv')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.quickActionButton}
@@ -316,15 +316,15 @@ const OffresEmploiHomeScreen: React.FC = () => {
                                 if (response.success && matchData.length > 0) {
                                     (navigation as any).navigate('OffreList', {
                                         offres: matchData,
-                                        title: 'Offres recommandées pour vous',
+                                        title: t('offresEmploiHome.offresRecommandeesPourVous'),
                                     });
                                 } else {
                                     Alert.alert(
                                         'Aucune suggestion',
-                                        'Créez votre profil candidat pour recevoir des suggestions personnalisées d\'offres.',
+                                        t('offresEmploiHomeScreen.creezVotreProfilCandidatPourRecevoirDes'),
                                         [
                                             { text: t('common.cancel') },
-                                            { text: 'Créer mon profil', onPress: () => (navigation as any).navigate('ProfilCandidat') },
+                                            { text: t('offresEmploiHome.creerMonProfil'), onPress: () => (navigation as any).navigate('ProfilCandidat') },
                                         ]
                                     );
                                 }
@@ -332,17 +332,17 @@ const OffresEmploiHomeScreen: React.FC = () => {
                                 console.error('[OffresEmploiHomeScreen] Erreur suggestions:', err);
                                 Alert.alert(
                                     'Suggestions',
-                                    'Créez votre profil candidat pour recevoir des suggestions personnalisées.',
+                                    t('offresEmploiHomeScreen.creezVotreProfilCandidatPourRecevoir'),
                                     [
                                         { text: t('common.cancel') },
-                                        { text: 'Créer mon profil', onPress: () => (navigation as any).navigate('ProfilCandidat') },
+                                        { text: t('offresEmploiHome.creerMonProfil'), onPress: () => (navigation as any).navigate('ProfilCandidat') },
                                     ]
                                 );
                             }
                         }}
                     >
                         <SafeIcon name="sparkles" size={20} color="#6366F1" type="lucide" />
-                        <Text style={styles.suggestionsButtonText}>Voir les offres recommandées</Text>
+                        <Text style={styles.suggestionsButtonText}>{t('offresEmploiHome.voirLesOffresRecommandees')}</Text>
                     </TouchableOpacity>
                 </LinearGradient>
             </View>
@@ -380,7 +380,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                 {loading && offres.length === 0 ? (
                     <View style={styles.centerContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Recherche d'offres...</Text>
+                        <Text style={styles.loadingText}>{t('offresEmploiHome.rechercheDoffres')}/Text>
                     </View>
                 ) : error && offres.length === 0 ? (
                     <View style={styles.centerContainer}>
@@ -390,7 +390,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                             style={styles.retryButton}
                             onPress={() => loadOffres(true)}
                         >
-                            <Text style={styles.retryButtonText}>Réessayer</Text>
+                            <Text style={styles.retryButtonText}>{t('offresEmploiHome.reessayer')}</Text>
                         </TouchableOpacity>
                     </View>
                 ) : (
@@ -415,7 +415,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                                     >
                                         <SafeIcon name="bookmark" size={14} color={savedOffers.has(item.id.toString()) ? '#6366F1' : '#9CA3AF'} type="lucide" />
                                         <Text style={[styles.quickActionRowButtonText, savedOffers.has(item.id.toString()) && styles.quickActionRowButtonTextSaved]}>
-                                            {savedOffers.has(item.id.toString()) ? 'Sauvegardé' : 'Sauvegarder'}
+                                            {savedOffers.has(item.id.toString()) ? t('offresEmploiHomeScreen.sauvegarde') : 'Sauvegarder'}
                                         </Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
@@ -442,7 +442,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                         ListEmptyComponent={
                             <View style={styles.emptyContainer}>
                                 <SafeIcon name="briefcase" size={64} color="#9CA3AF" />
-                                <Text style={styles.emptyText}>Aucune offre trouvée</Text>
+                                <Text style={styles.emptyText}>{t('offresEmploiHome.aucuneOffreTrouvee')}</Text>
                                 <Text style={styles.emptySubtext}>
                                     Essayez de modifier vos critères de recherche
                                 </Text>
@@ -521,7 +521,7 @@ const OffreCard: React.FC<OffreCardProps> = ({ offre, onPress, onApply, formatSa
                 {offre.remote && (
                     <View style={styles.offreMetaItem}>
                         <SafeIcon name="wifi" size={14} color="#6B7280" type="lucide" />
-                        <Text style={styles.offreMetaText}>Télétravail</Text>
+                        <Text style={styles.offreMetaText}>{t('offresEmploiHome.teletravail')}</Text>
                     </View>
                 )}
             </View>
@@ -577,7 +577,7 @@ const AIModal: React.FC<AIModalProps> = ({
                 <View style={styles.modalContent}>
                     <View style={styles.modalHeader}>
                         <Text style={styles.modalTitle}>
-                            {mode === 'cv' ? 'Analyse CV IA' : mode === 'salary' ? 'Prédiction Salaire IA' : 'Suggestions Formations IA'}
+                            {mode === 'cv' ? 'Analyse CV IA' : mode === 'salary' ? t('offresEmploiHomeScreen.predictionSalaireIa') : 'Suggestions Formations IA'}
                         </Text>
                         <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
                             <SafeIcon name="x" size={24} color="#111827" type="lucide" />
@@ -595,7 +595,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                 <Text style={styles.analysisTitle}>Score global: {cvAnalysis.score_global}/100</Text>
                                 {cvAnalysis.points_forts.length > 0 && (
                                     <View style={styles.pointsContainer}>
-                                        <Text style={styles.pointsTitle}>Points forts:</Text>
+                                        <Text style={styles.pointsTitle}>{t('offresEmploiHome.pointsForts')}/Text>
                                         {cvAnalysis.points_forts.map((point, i) => (
                                             <Text key={i} style={styles.pointText}>• {point}</Text>
                                         ))}
@@ -603,7 +603,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                 )}
                                 {cvAnalysis.suggestions_amelioration.length > 0 && (
                                     <View style={styles.suggestionsContainer}>
-                                        <Text style={styles.suggestionsTitle}>Suggestions d'amélioration:</Text>
+                                        <Text style={styles.suggestionsTitle}>{t('offresEmploiHome.suggestionsDamelioration')}</Text>
                                         {cvAnalysis.suggestions_amelioration.map((suggestion, i) => (
                                             <Text key={i} style={styles.suggestionText}>• {suggestion}</Text>
                                         ))}
@@ -612,7 +612,7 @@ const AIModal: React.FC<AIModalProps> = ({
                             </View>
                         ) : mode === 'salary' && salaryPrediction ? (
                             <View style={styles.salaryContainer}>
-                                <Text style={styles.salaryTitle}>Salaire estimé</Text>
+                                <Text style={styles.salaryTitle}>{t('offresEmploiHome.salaireEstime')}</Text>
                                 <Text style={styles.salaryValue}>
                                     {salaryPrediction.salaire_estime_min.toLocaleString()} - {salaryPrediction.salaire_estime_max.toLocaleString()} {salaryPrediction.devise}
                                 </Text>
@@ -641,7 +641,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                 ))}
                             </View>
                         ) : (
-                            <Text style={styles.placeholderText}>Aucune donnée disponible</Text>
+                            <Text style={styles.placeholderText}>{t('offresEmploiHome.aucuneDonneeDisponible')}</Text>
                         )}
                     </ScrollView>
                 </View>

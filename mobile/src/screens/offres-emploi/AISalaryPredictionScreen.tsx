@@ -16,9 +16,11 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const AISalaryPredictionScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const [loading, setLoading] = useState(false);
     const [prediction, setPrediction] = useState<any>(null);
 
@@ -31,7 +33,7 @@ const AISalaryPredictionScreen: React.FC = () => {
     const [competences, setCompetences] = useState('');
 
     const niveauxEtude = ['Bac', 'Bac+2', 'Bac+3', 'Bac+4', 'Bac+5', 'Doctorat'];
-    const secteurs = ['Informatique', 'Finance', 'Marketing', 'Ressources Humaines', 'Commerce', 'Santé', 'Éducation', 'Autre'];
+    const secteurs = ['Informatique', 'Finance', 'Marketing', 'Ressources Humaines', 'Commerce', t('aISalaryPredictionScreen.sante'), 'Éducation', 'Autre'];
 
     const handlePredict = async () => {
         if (!titrePoste.trim()) {
@@ -53,7 +55,7 @@ const AISalaryPredictionScreen: React.FC = () => {
                 const pred = (response as any).prediction || (response as any).data?.prediction || (response as any).data;
                 setPrediction(pred);
             } else {
-                Alert.alert('Erreur', (response as any).message || 'Impossible de prédire le salaire');
+                Alert.alert('Erreur', (response as any).message || t('aISalaryPrediction.impossibleDePredireLeSalaire'));
             }
         } catch (error: any) {
             console.error('[AISalaryPrediction] Erreur:', error);
@@ -66,7 +68,7 @@ const AISalaryPredictionScreen: React.FC = () => {
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
             <View style={styles.header}>
-                <Text style={styles.title}>Prédiction Salaire IA</Text>
+                <Text style={styles.title}>{t('aISalaryPrediction.predictionSalaireIa')}</Text>
                 <Text style={styles.subtitle}>
                     Estimez votre valeur sur le marché du travail
                 </Text>
@@ -74,13 +76,13 @@ const AISalaryPredictionScreen: React.FC = () => {
 
             {!prediction ? (
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>Informations du poste</Text>
+                    <Text style={styles.sectionTitle}>{t('aISalaryPrediction.informationsDuPoste')}/Text>
 
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Titre du poste *</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Ex: Développeur Full Stack"
+                            placeholder={t('aISalaryPrediction.exDeveloppeurFullStack')}
                             value={titrePoste}
                             onChangeText={setTitrePoste}
                             placeholderTextColor={modernColors.textSecondary}
@@ -111,7 +113,7 @@ const AISalaryPredictionScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Ville</Text>
+                        <Text style={styles.label}>{t('aISalaryPrediction.ville')}/Text>
                         <TextInput
                             style={styles.input}
                             placeholder="Ex: Douala"
@@ -123,7 +125,7 @@ const AISalaryPredictionScreen: React.FC = () => {
 
                     <View style={styles.row}>
                         <View style={[styles.inputGroup, styles.halfWidth]}>
-                            <Text style={styles.label}>Expérience (années)</Text>
+                            <Text style={styles.label}>{t('aISalaryPrediction.experienceAnnees')}</Text>
                             <TextInput
                                 style={styles.input}
                                 placeholder="Ex: 3"
@@ -135,7 +137,7 @@ const AISalaryPredictionScreen: React.FC = () => {
                         </View>
 
                         <View style={[styles.inputGroup, styles.halfWidth]}>
-                            <Text style={styles.label}>Niveau d'étude</Text>
+                            <Text style={styles.label}>{t('aISalaryPrediction.niveauDetude')}</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
                                 {niveauxEtude.map(niveau => (
                                     <TouchableOpacity
@@ -159,7 +161,7 @@ const AISalaryPredictionScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Compétences (séparées par des virgules)</Text>
+                        <Text style={styles.label}>{t('aISalaryPrediction.competencesSepareesParDesVirgules')}</Text>
                         <TextInput
                             style={styles.textArea}
                             placeholder="Ex: React, Node.js, PostgreSQL"
@@ -172,7 +174,7 @@ const AISalaryPredictionScreen: React.FC = () => {
                     </View>
 
                     <NativeButton
-                        title={loading ? 'Prédiction en cours...' : 'Prédire le salaire'}
+                        title={loading ? t('aISalaryPredictionScreen.predictionEnCours') : t('aISalaryPredictionScreen.predireLeSalaire')}
                         onPress={handlePredict}
                         variant="primary"
                         disabled={loading}
@@ -182,7 +184,7 @@ const AISalaryPredictionScreen: React.FC = () => {
             ) : (
                 <View>
                     <NativeCard style={styles.predictionCard}>
-                        <Text style={styles.predictionTitle}>Prédiction de salaire</Text>
+                        <Text style={styles.predictionTitle}>{t('aISalaryPrediction.predictionDeSalaire')}</Text>
                         <View style={styles.salaryRange}>
                             <View style={styles.salaryItem}>
                                 <Text style={styles.salaryLabel}>Minimum</Text>
@@ -191,7 +193,7 @@ const AISalaryPredictionScreen: React.FC = () => {
                                 </Text>
                             </View>
                             <View style={styles.salaryItem}>
-                                <Text style={styles.salaryLabel}>Médian</Text>
+                                <Text style={styles.salaryLabel}>{t('aISalaryPrediction.median')}</Text>
                                 <Text style={[styles.salaryValue, styles.salaryMedian]}>
                                     {(prediction.salaire_estime_median || prediction.salaire_predicted_median)?.toLocaleString() || 'N/A'} {prediction.devise || 'XAF'}
                                 </Text>
@@ -219,14 +221,14 @@ const AISalaryPredictionScreen: React.FC = () => {
 
                     {prediction.comparaison_marche && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>Comparaison marché</Text>
+                            <Text style={styles.sectionTitle}>{t('aISalaryPrediction.comparaisonMarche')}</Text>
                             <Text style={styles.comparaisonText}>{prediction.comparaison_marche}</Text>
                         </NativeCard>
                     )}
 
                     <View style={styles.actions}>
                         <NativeButton
-                            title="Nouvelle prédiction"
+                            title={t('aISalaryPrediction.nouvellePrediction')}
                             onPress={() => {
                                 setPrediction(null);
                                 setTitrePoste('');
@@ -246,7 +248,7 @@ const AISalaryPredictionScreen: React.FC = () => {
             {loading && (
                 <View style={styles.loadingOverlay}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Prédiction en cours...</Text>
+                    <Text style={styles.loadingText}>{t('aISalaryPrediction.predictionEnCours')}</Text>
                 </View>
             )}
         </ScrollView>

@@ -36,7 +36,8 @@ interface Reservation {
 
 const PrestataireReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     const { user } = useAuth();
-    const [reservations, setReservations] = useState<Reservation[]>([]);
+        const { t } = useLanguageSafe();
+const [reservations, setReservations] = useState<Reservation[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -84,8 +85,8 @@ const PrestataireReservationsScreen: React.FC<{ navigation: any }> = ({ navigati
 
     const handleComplete = async (reservationId: number) => {
         Alert.alert(
-            'Marquer comme terminée',
-            'Êtes-vous sûr que cette réservation est terminée ?',
+            t('prestataireReservationsScreen.marquerCommeTerminee'),
+            t('prestataireReservationsScreen.etesvousSurQueCetteReservationEst'),
             [
                 { text: t('common.no'), style: 'cancel' },
                 {
@@ -119,18 +120,18 @@ const PrestataireReservationsScreen: React.FC<{ navigation: any }> = ({ navigati
             case 'pending':
                 return 'En attente';
             case 'confirmed':
-                return 'Confirmée';
+                return t('prestataireReservationsScreen.confirmee');
             case 'completed':
-                return 'Terminée';
+                return t('prestataireReservationsScreen.terminee');
             case 'cancelled':
-                return 'Annulée';
+                return t('prestataireReservationsScreen.annulee');
             default:
                 return status;
         }
     };
 
     const formatDate = (dateString: string | null) => {
-        if (!dateString) return 'Non spécifié';
+        if (!dateString) return t('prestataireReservationsScreen.nonSpecifie');
         try {
             const date = new Date(dateString);
             return date.toLocaleString('fr-FR', {
@@ -161,19 +162,19 @@ const PrestataireReservationsScreen: React.FC<{ navigation: any }> = ({ navigati
                 </View>
             </View>
 
-            <Text style={styles.dateLabel}>Date demandée:</Text>
+            <Text style={styles.dateLabel}>{t('prestataireReservations.dateDemandee')}</Text>
             <Text style={styles.date}>{formatDate(item.requested_date)}</Text>
 
             {item.confirmed_date && (
                 <>
-                    <Text style={styles.dateLabel}>Date confirmée:</Text>
+                    <Text style={styles.dateLabel}>{t('prestataireReservations.dateConfirmee')}</Text>
                     <Text style={styles.date}>{formatDate(item.confirmed_date)}</Text>
                 </>
             )}
 
             {item.notes && (
                 <View style={styles.notesContainer}>
-                    <Text style={styles.notesLabel}>Notes client:</Text>
+                    <Text style={styles.notesLabel}>{t('prestataireReservations.notesClient')}/Text>
                     <Text style={styles.notes}>{item.notes}</Text>
                 </View>
             )}
@@ -182,7 +183,7 @@ const PrestataireReservationsScreen: React.FC<{ navigation: any }> = ({ navigati
                 {item.status === 'pending' && (
                     <>
                         <NativeButton
-                            title="Confirmer"
+                            title={t('prestataireReservationsScreen.confirmer')}
                             variant="primary"
                             onPress={() => handleConfirm(item.id)}
                             style={styles.actionButton}
@@ -198,7 +199,7 @@ const PrestataireReservationsScreen: React.FC<{ navigation: any }> = ({ navigati
 
                 {item.status === 'confirmed' && (
                     <NativeButton
-                        title="Marquer comme terminée"
+                        title={t('prestataireReservations.marquerCommeTerminee')}
                         variant="primary"
                         onPress={() => handleComplete(item.id)}
                         style={styles.actionButton}
@@ -212,7 +213,7 @@ const PrestataireReservationsScreen: React.FC<{ navigation: any }> = ({ navigati
                         })
                     }
                 >
-                    <Text style={styles.detailLink}>Voir le service</Text>
+                    <Text style={styles.detailLink}>{t('prestataireReservations.voirLeService')}</Text>
                 </TouchableOpacity>
             </View>
         </NativeCard>
@@ -221,7 +222,7 @@ const PrestataireReservationsScreen: React.FC<{ navigation: any }> = ({ navigati
     if (loading && reservations.length === 0) {
         return (
             <View style={styles.center}>
-                <Text>Chargement...</Text>
+                <Text>{t('prestataireReservations.chargement')}</Text>
             </View>
         );
     }
@@ -239,7 +240,7 @@ const PrestataireReservationsScreen: React.FC<{ navigation: any }> = ({ navigati
                     style={[styles.filterButton, statusFilter === 'pending' && styles.filterActive]}
                     onPress={() => setStatusFilter('pending')}
                 >
-                    <Text style={styles.filterText}>En attente</Text>
+                    <Text style={styles.filterText}>{t('prestataireReservations.enAttente')}/Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[
@@ -248,7 +249,7 @@ const PrestataireReservationsScreen: React.FC<{ navigation: any }> = ({ navigati
                     ]}
                     onPress={() => setStatusFilter('confirmed')}
                 >
-                    <Text style={styles.filterText}>Confirmées</Text>
+                    <Text style={styles.filterText}>{t('prestataireReservations.confirmees')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -262,7 +263,7 @@ const PrestataireReservationsScreen: React.FC<{ navigation: any }> = ({ navigati
                 ListEmptyComponent={
                     <View style={styles.center}>
                         <SafeIcon name="calendar" size={48} color={modernColors.textSecondary} />
-                        <Text style={styles.emptyText}>Aucune réservation</Text>
+                        <Text style={styles.emptyText}>{t('prestataireReservations.aucuneReservation')}</Text>
                     </View>
                 }
             />

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // Types de services spécialisés disponibles avec icônes SafeIcon
 export const SPECIALIZED_SERVICES = [
@@ -21,16 +22,16 @@ export const SPECIALIZED_SERVICES = [
         iconType: 'lucide' as const,
         emoji: '💊', // Fallback emoji
         specialized_type: 'pharmacie',
-        description: 'Pharmacies et médicaments',
+        description: t('specializedServicesSelector.pharmaciesEtMedicaments'),
     },
     {
         id: 'hopital_clinique',
-        name: 'Hôpital / Clinique',
+        name: t('specializedServicesSelector.hopitalClinique'),
         iconName: 'hospital',
         iconType: 'lucide' as const,
         emoji: '🏥',
         specialized_type: 'hopital_clinique',
-        description: 'Hôpitaux, cliniques, médecins',
+        description: t('specializedServicesSelector.hopitauxCliniquesMedecins'),
     },
     {
         id: 'laboratoire_imagerie',
@@ -39,7 +40,7 @@ export const SPECIALIZED_SERVICES = [
         iconType: 'lucide' as const,
         emoji: '🔬',
         specialized_type: 'laboratoire_imagerie',
-        description: 'Analyses médicales, radiologie',
+        description: t('specializedServicesSelector.analysesMedicalesRadiologie'),
     },
     {
         id: 'agence_voyage',
@@ -48,7 +49,7 @@ export const SPECIALIZED_SERVICES = [
         iconType: 'lucide' as const,
         emoji: '✈️',
         specialized_type: 'agence_voyage',
-        description: 'Tickets de bus, billets d\'avion',
+        description: t('specializedServicesSelector.ticketsDeBusBilletsDavion'),
     },
     {
         id: 'covoiturage',
@@ -57,7 +58,7 @@ export const SPECIALIZED_SERVICES = [
         iconType: 'lucide' as const,
         emoji: '🚗',
         specialized_type: 'covoiturage',
-        description: 'Partage de trajets',
+        description: t('specializedServicesSelector.partageDeTrajets'),
     },
     {
         id: 'taxi_ville',
@@ -87,6 +88,7 @@ const SpecializedServicesSelector: React.FC<SpecializedServicesSelectorProps> = 
     compact = true,
 }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [menuVisible, setMenuVisible] = useState(false);
 
     const handleServiceSelect = (service: typeof SPECIALIZED_SERVICES[0]) => {
@@ -112,7 +114,7 @@ const SpecializedServicesSelector: React.FC<SpecializedServicesSelectorProps> = 
                     <View style={styles.compactButtonContent}>
                         {/* ✅ CORRIGÉ: Utiliser une icône de recherche au lieu de grid-3x3 pour éviter la confusion avec le texte Yukpo */}
                         <SafeIcon name="search" size={18} color="#fff" type="lucide" />
-                        <Text style={styles.compactButtonText}>Spécialisé</Text>
+                        <Text style={styles.compactButtonText}>{t('specializedServicesSelector.specialise')}</Text>
                     </View>
                 </TouchableOpacity>
 
@@ -134,7 +136,7 @@ const SpecializedServicesSelector: React.FC<SpecializedServicesSelectorProps> = 
                                 <View style={styles.menuHeader}>
                                     <View style={styles.menuTitleContainer}>
                                         <SafeIcon name="sparkles" size={20} color={modernColors.primary} />
-                                        <Text style={styles.menuTitle}>Services Spécialisés</Text>
+                                        <Text style={styles.menuTitle}>{t('specializedServicesSelector.servicesSpecialises')}</Text>
                                     </View>
                                     <TouchableOpacity
                                         onPress={() => setMenuVisible(false)}

@@ -18,6 +18,7 @@ import Reanimated, { useAnimatedGestureHandler, useAnimatedStyle, useSharedValue
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface SelectedSeat {
     seat_id: string;
@@ -55,7 +56,8 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
     currency = 'XAF',
     onReserve,
 }) => {
-    const [loading, setLoading] = useState(true);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(true);
     const [seatMap, setSeatMap] = useState<any[]>([]);
     const [reservedSeats, setReservedSeats] = useState<string[]>([]);
     const [blockedSeats, setBlockedSeats] = useState<string[]>([]);
@@ -123,7 +125,7 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
             if (!reserved.includes(seat.seat_id) && seat.is_window) {
                 recs.push({
                     seat_id: seat.seat_id,
-                    reason: 'Fenêtre avec vue',
+                    reason: t('enhancedBusSeatSelector.fenetreAvecVue'),
                     priority: 'high',
                 });
             }
@@ -137,7 +139,7 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
             if (seat1.row === seat2.row && Math.abs(seat1.col - seat2.col) === 1) {
                 recs.push({
                     seat_id: seat1.seat_id,
-                    reason: 'Sièges côte à côte disponibles',
+                    reason: t('enhancedBusSeatSelector.siegesCoteACoteDisponibles'),
                     priority: 'medium',
                 });
             }
@@ -169,7 +171,7 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
             Alert.alert(
                 'Place non disponible',
                 status === 'reserved'
-                    ? 'Cette place est déjà réservée'
+                    ? t('enhancedBusSeatSelector.cettePlaceEstDejaReservee')
                     : 'Cette place n\'est pas disponible (bloquée manuellement)'
             );
             return;
@@ -294,13 +296,13 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                         <SafeIcon name="x" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Sélection des places</Text>
+                    <Text style={styles.title}>{t('enhancedBusSeatSelector.selectionDesPlaces')}</Text>
                     <View style={styles.placeholder} />
                 </View>
 
                 {loading ? (
                     <View style={styles.loadingContainer}>
-                        <Text style={styles.loadingText}>Chargement...</Text>
+                        <Text style={styles.loadingText}>{t('enhancedBusSeatSelector.chargement')}</Text>
                     </View>
                 ) : (
                     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -359,19 +361,19 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
                             <View style={styles.legendRow}>
                                 <View style={styles.legendItem}>
                                     <View style={[styles.legendSeat, styles.seatAvailable]} />
-                                    <Text style={styles.legendText}>Disponible</Text>
+                                    <Text style={styles.legendText}>{t('enhancedBusSeatSelector.disponible')}</Text>
                                 </View>
                                 <View style={styles.legendItem}>
                                     <View style={[styles.legendSeat, styles.seatRecommended]} />
-                                    <Text style={styles.legendText}>Recommandé</Text>
+                                    <Text style={styles.legendText}>{t('enhancedBusSeatSelector.recommande')}</Text>
                                 </View>
                                 <View style={styles.legendItem}>
                                     <View style={[styles.legendSeat, styles.seatSelected]} />
-                                    <Text style={styles.legendText}>Sélectionné</Text>
+                                    <Text style={styles.legendText}>{t('enhancedBusSeatSelector.selectionne')}</Text>
                                 </View>
                                 <View style={styles.legendItem}>
                                     <View style={[styles.legendSeat, styles.seatReserved]} />
-                                    <Text style={styles.legendText}>Réservé</Text>
+                                    <Text style={styles.legendText}>{t('enhancedBusSeatSelector.reserve')}</Text>
                                 </View>
                             </View>
                         </View>
@@ -380,7 +382,7 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
                         <GestureHandlerRootView>
                             <PinchGestureHandler onGestureEvent={pinchHandler}>
                                 <Reanimated.View style={[styles.seatsContainer, animatedStyle]}>
-                                    <Text style={styles.sectionTitle}>Plan des sièges (pincez pour zoomer)</Text>
+                                    <Text style={styles.sectionTitle}>{t('enhancedBusSeatSelector.planDesSiegesPincezPour')}</Text>
                                     {rows.map((row) => (
                                         <View key={row} style={styles.row}>
                                             <Text style={styles.rowLabel}>R{row}</Text>
@@ -434,7 +436,7 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
 
                         {/* Détail du paiement */}
                         <View style={styles.paymentBreakdown}>
-                            <Text style={styles.breakdownTitle}>Détail du paiement</Text>
+                            <Text style={styles.breakdownTitle}>{t('enhancedBusSeatSelector.detailDuPaiement')}</Text>
                             <View style={styles.breakdownRow}>
                                 <Text style={styles.breakdownLabel}>
                                     Prix tickets ({numberOfTickets}x)
@@ -445,14 +447,14 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
                             </View>
                             {premiumFee > 0 && (
                                 <View style={styles.breakdownRow}>
-                                    <Text style={styles.breakdownLabel}>Supplément premium</Text>
+                                    <Text style={styles.breakdownLabel}>{t('enhancedBusSeatSelector.supplementPremium')}</Text>
                                     <Text style={styles.breakdownValue}>
                                         {premiumFee.toLocaleString()} {currency}
                                     </Text>
                                 </View>
                             )}
                             <View style={styles.breakdownRow}>
-                                <Text style={styles.breakdownLabel}>Frais de réservation</Text>
+                                <Text style={styles.breakdownLabel}>{t('enhancedBusSeatSelector.fraisDeReservation')}</Text>
                                 <Text style={styles.breakdownValue}>
                                     {bookingFee.toLocaleString()} {currency}
                                 </Text>

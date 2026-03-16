@@ -18,6 +18,7 @@ import { modernColors } from '../theme/modernTheme';
 import { formatCoordinates, geocodeLocation } from '../utils/geocoding';
 import LocationSelector from './LocationSelector';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export type LocationMode = 'current' | 'custom' | 'anywhere';
 
@@ -33,7 +34,8 @@ export const LocationProximityFilter: React.FC<LocationProximityFilterProps> = (
     initialRadius = 10
 }) => {
     const { location, isLoading: locationLoading, calculateDistance } = useLocation();
-    const [mode, setMode] = useState<LocationMode>(initialMode);
+        const { t } = useLanguageSafe();
+const [mode, setMode] = useState<LocationMode>(initialMode);
     const [customLocation, setCustomLocation] = useState('');
     const [customCoords, setCustomCoords] = useState<{ lat: number, lon: number } | null>(null);
     const [radius, setRadius] = useState<number | null>(initialRadius);
@@ -95,13 +97,13 @@ export const LocationProximityFilter: React.FC<LocationProximityFilterProps> = (
         { value: 10, label: '10 km' },
         { value: 20, label: '20 km' },
         { value: 50, label: '50 km' },
-        { value: null, label: 'Illimité' }
+        { value: null, label: t('locationProximityFilter.illimite') }
     ];
 
     return (
         <View style={styles.container}>
             {/* Titre de section */}
-            <Text style={styles.sectionTitle}>📍 Localisation et proximité</Text>
+            <Text style={styles.sectionTitle}>{t('locationProximityFilter.localisationEtProximite')}</Text>
             <Text style={styles.sectionDescription}>
                 Filtrez par zone géographique
             </Text>
@@ -171,7 +173,7 @@ export const LocationProximityFilter: React.FC<LocationProximityFilterProps> = (
                     {isGeocoding && (
                         <View style={styles.geocodingIndicator}>
                             <ActivityIndicator size="small" color={modernColors.primary} />
-                            <Text style={styles.geocodingText}>Géolocalisation...</Text>
+                            <Text style={styles.geocodingText}>{t('locationProximityFilter.geolocalisation')}</Text>
                         </View>
                     )}
                 </View>
@@ -209,7 +211,7 @@ export const LocationProximityFilter: React.FC<LocationProximityFilterProps> = (
                     {locationLoading ? (
                         <>
                             <ActivityIndicator size="small" color={modernColors.primary} />
-                            <Text style={styles.infoText}>Localisation en cours...</Text>
+                            <Text style={styles.infoText}>{t('locationProximityFilter.localisationEnCours')}/Text>
                         </>
                     ) : location ? (
                         <>
@@ -252,7 +254,7 @@ export const LocationProximityFilter: React.FC<LocationProximityFilterProps> = (
                 >
                     <View style={styles.modalContainer}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Rechercher un lieu</Text>
+                            <Text style={styles.modalTitle}>{t('locationProximityFilter.rechercherUnLieu')}</Text>
                             <TouchableOpacity
                                 onPress={() => setShowLocationSelector(false)}
                                 style={styles.modalCloseButton}
@@ -262,10 +264,10 @@ export const LocationProximityFilter: React.FC<LocationProximityFilterProps> = (
                         </View>
 
                         <LocationSelector
-                            label="Ville ou quartier"
+                            label={t('locationProximityFilter.villeOuQuartier')}
                             value={customLocation}
                             onSelect={handleLocationSelect as any}
-                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            placeholder={t('locationProximityFilter.rechercherUnLieuVilleQuartier')}
                             scope="all"
                         />
                     </View>

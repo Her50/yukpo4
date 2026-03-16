@@ -2,6 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Copy, Facebook, Link as LinkIcon, Mail, MessageCircle, Share2, Twitter, X } from 'lucide-react-native';
 import React from 'react';
 import { Alert, Linking, Modal, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ShareServiceModalProps {
   open: boolean;
@@ -32,7 +33,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
 
   const handleShare = async (platform: 'whatsapp' | 'facebook' | 'twitter' | 'email' | 'linkedin' | 'telegram') => {
     let shareUrl = '';
-    const serviceTitle = titre || 'Service Yukpo';
+    const serviceTitle = titre || t('shareService.serviceYukpo');
     const deviseStr = devise || 'XAF';
     let serviceDescription = `🛍️ ${serviceTitle}`;
     if (description) serviceDescription += `\n\n${description}`;
@@ -79,7 +80,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
 
   const handleNativeShare = async () => {
     try {
-      const serviceTitle = titre || 'Service Yukpo';
+      const serviceTitle = titre || t('shareService.serviceYukpo');
       const deviseStr = devise || 'XAF';
       let shareText = `🛍️ ${serviceTitle}`;
       if (description) shareText += `\n\n${description}`;
@@ -112,7 +113,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
           <View style={styles.header}>
             <View style={styles.headerTitleContainer}>
               <Share2 size={20} color="#2563EB" />
-              <Text style={styles.headerTitle}>Partager ce service</Text>
+              <Text style={styles.headerTitle}>{t('shareServiceModal.partagerCeService')}</Text>
             </View>
             <TouchableOpacity
               style={styles.closeButton}
@@ -145,7 +146,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
 
             {/* Share Options */}
             <View style={styles.shareSection}>
-              <Text style={styles.shareTitle}>Partager sur</Text>
+              <Text style={styles.shareTitle}>{t('shareServiceModal.partagerSur')}</Text>
               <View style={styles.shareGrid}>
                 <TouchableOpacity
                   style={[styles.shareButton, styles.whatsappButton]}
@@ -202,7 +203,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
                 onPress={handleNativeShare}
               >
                 <LinkIcon size={16} color="white" />
-                <Text style={styles.nativeShareButtonText}>Partage natif</Text>
+                <Text style={styles.nativeShareButtonText}>{t('shareService.partageNatif')}/Text>
               </TouchableOpacity>
             </View>
           </View>

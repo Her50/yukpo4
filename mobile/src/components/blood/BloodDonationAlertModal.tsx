@@ -95,7 +95,7 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
 
                 Alert.alert(
                     '✅ Merci !',
-                    'Votre acceptation a été enregistrée. La banque de sang vous contactera bientôt.',
+                    t('bloodDonationAlertModal.votreAcceptationAEteEnregistreeLa'),
                     [
                         {
                             text: 'OK',
@@ -120,7 +120,7 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
     const handleDecline = async () => {
         Alert.alert(
             'Refuser la demande',
-            'Êtes-vous sûr de vouloir refuser cette demande de don ?',
+            t('bloodDonationAlertModal.etesvousSurDeVouloirRefuserCette'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -133,7 +133,7 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
                             const response = await apiPost('/api/blood-donation/matches/update-status', {
                                 match_id: requestData.match_id,
                                 new_status: 'declined',
-                                declined_reason: 'Refusé par le donneur',
+                                declined_reason: t('bloodDonationAlertModal.refuseParLeDonneur'),
                             });
 
                             if (response.success) {
@@ -244,7 +244,7 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
                             <View style={styles.infoRow}>
                                 <SafeIcon name="navigation" size={18} color={modernColors.primary} />
                                 <View style={styles.infoTextContainer}>
-                                    <Text style={styles.infoLabel}>Localisation</Text>
+                                    <Text style={styles.infoLabel}>{t('bloodDonationAlert.localisation')}/Text>
                                     <Text style={styles.infoValue}>{requestData.location}</Text>
                                 </View>
                             </View>
@@ -265,7 +265,7 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
                             <View style={styles.infoRow}>
                                 <SafeIcon name="hospital" size={18} color={modernColors.primary} />
                                 <View style={styles.infoTextContainer}>
-                                    <Text style={styles.infoLabel}>Hôpital</Text>
+                                    <Text style={styles.infoLabel}>{t('bloodDonationAlert.hopital')}</Text>
                                     <Text style={styles.infoValue}>{requestData.hospital_name}</Text>
                                 </View>
                             </View>
@@ -285,7 +285,7 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
 
                         {/* Informations importantes */}
                         <View style={styles.importantInfo}>
-                            <Text style={styles.importantInfoTitle}>ℹ️ Informations importantes</Text>
+                            <Text style={styles.importantInfoTitle}>{t('bloodDonationAlert.informationsImportantes')}/Text>
                             <Text style={styles.importantInfoText}>
                                 • Vous avez été sélectionné car votre groupe sanguin ({requestData.groupe_sanguin}) est compatible
                             </Text>

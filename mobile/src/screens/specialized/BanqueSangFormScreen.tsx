@@ -200,7 +200,7 @@ const BanqueSangFormScreen: React.FC = () => {
         } catch (e: any) { Alert.alert(t('message.error'), e.message || t('banqueSang.genericError')); } finally { setLoading(false); }
     };
 
-    if (initialLoading) return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#DC2626" /><Text style={s.loadingText}>Chargement...</Text></View>;
+    if (initialLoading) return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#DC2626" /><Text style={s.loadingText}>{t('banqueSangForm.chargement')}</Text></View>;
 
     // ─── RENDER: Overview ────────────────────────────────────────────────
     const renderOverview = () => (
@@ -209,7 +209,7 @@ const BanqueSangFormScreen: React.FC = () => {
             <View style={s.statsGrid}>
                 {[
                     { label: 'Groupes dispo', value: groupsWithStock, icon: 'droplets', color: '#DC2626' },
-                    { label: 'Stock total', value: `${totalStock} u.`, icon: 'package', color: '#3B82F6' },
+                    { label: t('banqueSangForm.stockTotal'), value: `${totalStock} u.`, icon: 'package', color: '#3B82F6' },
                     { label: 'Dons', value: formData.accepte_dons ? '✓' : '✗', icon: 'heart', color: '#10B981' },
                 ].map((st, i) => (
                     <View key={i} style={[s.statCard, { borderLeftColor: st.color }]}>
@@ -224,7 +224,7 @@ const BanqueSangFormScreen: React.FC = () => {
             <View style={[s.urgenceCard, { backgroundColor: formData.urgence_24h ? '#FEF2F2' : '#F3F4F6' }]}>
                 <SafeIcon name="alert-triangle" size={20} color={formData.urgence_24h ? '#DC2626' : '#6B7280'} />
                 <Text style={[s.urgenceText, { color: formData.urgence_24h ? '#DC2626' : '#6B7280' }]}>
-                    {formData.urgence_24h ? 'Service d\'urgence 24h activé' : 'Service d\'urgence désactivé'}
+                    {formData.urgence_24h ? 'Service d\t('banqueSangFormScreen.urgence24hActive') : 'Service d\'urgence désactivé'}
                 </Text>
             </View>
 
@@ -232,18 +232,18 @@ const BanqueSangFormScreen: React.FC = () => {
             <View style={s.quickRow}>
                 <TouchableOpacity style={s.quickAction} onPress={() => setActiveTab('stocks')}>
                     <View style={[s.quickIcon, { backgroundColor: '#DC262615' }]}><SafeIcon name="droplets" size={22} color="#DC2626" /></View>
-                    <Text style={s.quickLabel}>Gérer stocks</Text>
+                    <Text style={s.quickLabel}>{t('banqueSangForm.gererStocks')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.quickAction} onPress={() => setActiveTab('service')}>
                     <View style={[s.quickIcon, { backgroundColor: '#6B728015' }]}><SafeIcon name="settings" size={22} color="#6B7280" /></View>
-                    <Text style={s.quickLabel}>Mon service</Text>
+                    <Text style={s.quickLabel}>{t('banqueSangForm.monService')}</Text>
                 </TouchableOpacity>
             </View>
 
             {/* Stock Summary */}
             {groupsWithStock > 0 && (
                 <>
-                    <Text style={s.sectionTitle}>Stocks disponibles</Text>
+                    <Text style={s.sectionTitle}>{t('banqueSangForm.stocksDisponibles')}/Text>
                     <View style={s.bloodGrid}>
                         {GROUPES_SANGUINS.map(g => {
                             const qty = parseInt(stocks[g]?.quantite || '0');
@@ -264,8 +264,8 @@ const BanqueSangFormScreen: React.FC = () => {
                 <>
                     <Text style={[s.sectionTitle, { marginTop: 16 }]}>Statistiques</Text>
                     {[
-                        statistics.total_donations !== undefined && { l: 'Dons reçus', v: statistics.total_donations },
-                        statistics.total_requests !== undefined && { l: 'Demandes traitées', v: statistics.total_requests },
+                        statistics.total_donations !== undefined && { l: t('banqueSangFormScreen.donsRecus'), v: statistics.total_donations },
+                        statistics.total_requests !== undefined && { l: t('banqueSangFormScreen.demandesTraitees'), v: statistics.total_requests },
                         statistics.urgent_requests !== undefined && { l: 'Urgences', v: statistics.urgent_requests },
                     ].filter(Boolean).map((r: any, i) => (
                         <View key={i} style={s.statRow}><Text style={s.statRowLbl}>{r.l}</Text><Text style={s.statRowVal}>{r.v}</Text></View>
@@ -279,33 +279,33 @@ const BanqueSangFormScreen: React.FC = () => {
     const renderServiceForm = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
             {user?.role !== 'partenaire' && (
-                <View style={s.field}><NativeInput label="Nom *" value={formData.nom} onChangeText={t => setFormData({ ...formData, nom: t })} placeholder="Ex: Banque de Sang Centrale" /></View>
+                <View style={s.field}><NativeInput label={t('banqueSangFormScreen.nom')} value={formData.nom} onChangeText={t => setFormData({ ...formData, nom: t })} placeholder="Ex: Banque de Sang Centrale" /></View>
             )}
             <View style={s.field}>
                 <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
                     <SafeIcon name="map-pin" size={20} color="#DC2626" />
-                    <Text style={s.gpsBtnText}>{selectedGPS ? '✓ GPS sélectionné' : 'Sélectionner sur la carte'}</Text>
+                    <Text style={s.gpsBtnText}>{selectedGPS ? t('banqueSangFormScreen.gpsSelectionne') : 'Sélectionner sur la carte'}</Text>
                     <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                 </TouchableOpacity>
             </View>
-            {user?.role !== 'partenaire' && <View style={s.field}><NativeInput label="Adresse" value={formData.adresse} onChangeText={t => setFormData({ ...formData, adresse: t })} placeholder="Adresse complète" multiline /></View>}
+            {user?.role !== 'partenaire' && <View style={s.field}><NativeInput label="Adresse" value={formData.adresse} onChangeText={t => setFormData({ ...formData, adresse: t })} placeholder={t('banqueSangForm.adresseComplete')} multiline /></View>}
             <View style={s.field}>
-                <LocationSelector label="Quartier / Ville" value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => {
+                <LocationSelector label={t('banqueSangForm.quartierVille')} value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => {
                     setFormData({ ...formData, quartier: loc, ville: loc.components?.ville || formData.ville, pays: loc.components?.pays || formData.pays });
-                }} placeholder="Rechercher..." scope="all" enrichWithBackend />
+                }} placeholder={t('banqueSangForm.rechercher')} scope="all" enrichWithBackend />
             </View>
-            <View style={s.switchRow}><View><Text style={s.switchLbl}>Accepte les dons</Text><Text style={s.hint}>Les donneurs peuvent vous contacter</Text></View><Switch value={formData.accepte_dons} onValueChange={v => setFormData({ ...formData, accepte_dons: v })} trackColor={{ false: '#D1D5DB', true: '#DC2626' }} /></View>
-            <View style={s.switchRow}><View><Text style={s.switchLbl}>Accepte les demandes</Text><Text style={s.hint}>Les patients peuvent demander du sang</Text></View><Switch value={formData.accepte_demandes} onValueChange={v => setFormData({ ...formData, accepte_demandes: v })} trackColor={{ false: '#D1D5DB', true: '#DC2626' }} /></View>
-            <View style={s.switchRow}><View><Text style={s.switchLbl}>Urgence 24h</Text><Text style={s.hint}>Service d'urgence disponible en permanence</Text></View><Switch value={formData.urgence_24h} onValueChange={v => setFormData({ ...formData, urgence_24h: v })} trackColor={{ false: '#D1D5DB', true: '#DC2626' }} /></View>
+            <View style={s.switchRow}><View><Text style={s.switchLbl}>Accepte les dons</Text><Text style={s.hint}>{t('banqueSangForm.lesDonneursPeuventVousContacter')}/Text></View><Switch value={formData.accepte_dons} onValueChange={v => setFormData({ ...formData, accepte_dons: v })} trackColor={{ false: '#D1D5DB', true: '#DC2626' }} /></View>
+            <View style={s.switchRow}><View><Text style={s.switchLbl}>Accepte les demandes</Text><Text style={s.hint}>{t('banqueSangForm.lesPatientsPeuventDemanderDu')}/Text></View><Switch value={formData.accepte_demandes} onValueChange={v => setFormData({ ...formData, accepte_demandes: v })} trackColor={{ false: '#D1D5DB', true: '#DC2626' }} /></View>
+            <View style={s.switchRow}><View><Text style={s.switchLbl}>Urgence 24h</Text><Text style={s.hint}>{t('banqueSangForm.serviceDurgenceDisponibleEnPermanence')}/Text></View><Switch value={formData.urgence_24h} onValueChange={v => setFormData({ ...formData, urgence_24h: v })} trackColor={{ false: '#D1D5DB', true: '#DC2626' }} /></View>
             {user?.role !== 'partenaire' && (
                 <>
-                    <View style={s.field}><NativeInput label="Téléphone" value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label={t('banqueSangForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="Urgence" value={formData.telephone_urgence} onChangeText={t => setFormData({ ...formData, telephone_urgence: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="Email" value={formData.email} onChangeText={t => setFormData({ ...formData, email: t })} placeholder="banque@example.com" keyboardType="email-address" autoCapitalize="none" /></View>
                 </>
             )}
-            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? 'Mettre à jour' : 'Enregistrer')} onPress={handleSubmit} disabled={loading || !formData.nom.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
+            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? t('banqueSangFormScreen.mettreAJour') : 'Enregistrer')} onPress={handleSubmit} disabled={loading || !formData.nom.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
         </ScrollView>
     );
 
@@ -313,7 +313,7 @@ const BanqueSangFormScreen: React.FC = () => {
     const renderStocksTab = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
             <View style={s.stockHeader}>
-                <Text style={s.sectionTitle}>Gestion des stocks</Text>
+                <Text style={s.sectionTitle}>{t('banqueSangForm.gestionDesStocks')}/Text>
                 <Text style={s.stockSummary}>{groupsWithStock}/{GROUPES_SANGUINS.length} groupes · {totalStock} unités</Text>
             </View>
             {GROUPES_SANGUINS.map(group => {
@@ -341,14 +341,14 @@ const BanqueSangFormScreen: React.FC = () => {
                     </View>
                 );
             })}
-            <NativeButton title={loading ? 'Mise à jour...' : 'Mettre à jour les stocks'} onPress={handleUpdateStocks} disabled={loading} variant="primary" size="large" style={{ marginTop: 24 }} />
+            <NativeButton title={loading ? t('banqueSangFormScreen.miseAJour') : t('banqueSangFormScreen.mettreAJourLesStocks')} onPress={handleUpdateStocks} disabled={loading} variant="primary" size="large" style={{ marginTop: 24 }} />
         </ScrollView>
     );
 
     // ─── RENDER: Dashboard ───────────────────────────────────────────────
     if (isDashboardMode || (user?.role === 'partenaire' && serviceId)) {
         const tabs: { key: TabType; label: string; icon: string }[] = [
-            { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
+            { key: 'overview', label: t('banqueSangForm.accueil'), icon: 'layout-dashboard' },
             { key: 'service', label: 'Service', icon: 'settings' },
             { key: 'stocks', label: 'Stocks', icon: 'droplets' },
         ];
@@ -384,7 +384,7 @@ const BanqueSangFormScreen: React.FC = () => {
         <View style={s.container}>
             <LinearGradient colors={['#7F1D1D', '#DC2626']} style={s.createHeader}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
-                <Text style={s.createTitle}>Enregistrer une Banque de Sang</Text>
+                <Text style={s.createTitle}>{t('banqueSangFormScreen.enregistrerUneBanqueDeSang')}</Text>
             </LinearGradient>
             {renderServiceForm()}
             <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={handleGPSSelect} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation" />

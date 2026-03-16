@@ -40,7 +40,8 @@ let logBuffer: LogEntry[] = [];
 const MAX_LOGS = 500;
 
 export const DebugPanel: React.FC<DebugPanelProps> = ({ visible, onClose }) => {
-    const [logs, setLogs] = useState<LogEntry[]>([]);
+        const { t } = useLanguageSafe();
+const [logs, setLogs] = useState<LogEntry[]>([]);
     const [filter, setFilter] = useState<'all' | 'info' | 'warn' | 'error' | 'debug'>('all');
     const [autoScroll, setAutoScroll] = useState(true);
     const scrollViewRef = useRef<ScrollView>(null);
@@ -282,7 +283,7 @@ ${logText}
                         style={[styles.actionButton, styles.copyButton]}
                     >
                         <Ionicons name="copy" size={18} color="#FFF" />
-                        <Text style={styles.actionButtonText}>Copier</Text>
+                        <Text style={styles.actionButtonText}>{t('debugPanel.copier')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity 
@@ -290,7 +291,7 @@ ${logText}
                         style={[styles.actionButton, styles.shareButton]}
                     >
                         <Ionicons name="share-social" size={18} color="#FFF" />
-                        <Text style={styles.actionButtonText}>Partager</Text>
+                        <Text style={styles.actionButtonText}>{t('debugPanel.partager')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity 
@@ -326,7 +327,7 @@ ${logText}
                     {filteredLogs.length === 0 ? (
                         <View style={styles.emptyState}>
                             <Ionicons name="document-text-outline" size={64} color="#9CA3AF" />
-                            <Text style={styles.emptyStateText}>Aucun log pour le moment</Text>
+                            <Text style={styles.emptyStateText}>{t('debugPanel.aucunLogPourLeMoment')}</Text>
                             <Text style={styles.emptyStateSubtext}>
                                 Les logs apparaîtront ici automatiquement
                             </Text>

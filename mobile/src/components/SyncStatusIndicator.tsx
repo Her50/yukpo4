@@ -4,6 +4,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export type SyncStatus = 'synced' | 'syncing' | 'error' | 'offline' | 'pending';
 
@@ -24,7 +25,7 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
                 return {
                     icon: 'check-circle',
                     color: modernColors.success,
-                    text: 'Synchronisé',
+                    text: t('syncStatusIndicator.synchronise'),
                     bgColor: modernColors.success + '15',
                 };
             case 'syncing':
@@ -38,14 +39,14 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
                 return {
                     icon: 'alert-circle',
                     color: modernColors.error,
-                    text: 'Erreur de sync',
+                    text: t('syncStatusIndicator.erreurDeSync'),
                     bgColor: modernColors.error + '15',
                 };
             case 'offline':
                 return {
                     icon: 'wifi-off',
                     color: modernColors.warning,
-                    text: 'Mode hors ligne',
+                    text: t('syncStatusIndicator.modeHorsLigne'),
                     bgColor: modernColors.warning + '15',
                 };
             case 'pending':

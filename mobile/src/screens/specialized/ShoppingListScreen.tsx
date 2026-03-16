@@ -20,6 +20,7 @@ import { useLocation } from '../../contexts/LocationContext';
 import { deliveryApi } from '../../services/api';
 import { menuPlanningService, ShoppingList, ShoppingListItem } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -38,6 +39,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
     const [supermarkets, setSupermarkets] = useState<any[]>([]);
     const [loadingSupermarkets, setLoadingSupermarkets] = useState(false);
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     useFocusEffect(
         useCallback(() => {
@@ -158,7 +160,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement de la liste...</Text>
+                <Text style={styles.loadingText}>{t('shoppingList.chargementDeLaListe')}</Text>
             </View>
         );
     }
@@ -184,7 +186,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
                     </TouchableOpacity>
                     <View style={styles.headerTitleContainer}>
                         <SafeIcon name="ShoppingCart" size={32} color="#fff" type="lucide" />
-                        <Text style={styles.headerTitle}>Liste de Courses</Text>
+                        <Text style={styles.headerTitle}>{t('shoppingList.listeDeCourses')}/Text>
                     </View>
                     {shoppingList && (
                         <Text style={styles.headerSubtitle}>
@@ -239,7 +241,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
                         {shoppingList.total_estimated_cost && (
                             <NativeCard style={styles.totalCard}>
                                 <View style={styles.totalRow}>
-                                    <Text style={styles.totalLabel}>Total estimé</Text>
+                                    <Text style={styles.totalLabel}>{t('shoppingList.totalEstime')}</Text>
                                     <Text style={styles.totalValue}>
                                         {shoppingList.total_estimated_cost.toLocaleString()} FCFA
                                     </Text>
@@ -257,7 +259,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
                             La liste sera générée automatiquement depuis votre menu
                         </Text>
                         <NativeButton
-                            title="Générer la liste"
+                            title={t('shoppingList.genererLaListe')}
                             onPress={generateShoppingList}
                             loading={loading}
                             style={styles.generateButton}
@@ -295,15 +297,15 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
                                             } as never);
                                         } else {
                                             Alert.alert(
-                                                'Aucun marché',
-                                                'Aucun marché trouvé à proximité. Vous pouvez créer une demande de livraison manuelle.',
+                                                t('shoppingListScreen.aucunMarche'),
+                                                t('shoppingListScreen.aucunMarcheTrouveAProximiteVous'),
                                                 [{ text: 'OK' }]
                                             );
                                         }
                                     } else {
                                         Alert.alert(
                                             'Localisation requise',
-                                            'Veuillez activer la localisation pour trouver les marchés à proximité.',
+                                            t('shoppingListScreen.veuillezActiverLaLocalisationPourTrouver'),
                                             [{ text: 'OK' }]
                                         );
                                     }

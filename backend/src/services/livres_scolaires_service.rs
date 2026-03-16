@@ -256,6 +256,8 @@ impl LivresScolairesService {
                         is_active: row.get::<bool, _>("is_active"),
                         created_at: row.get::<DateTime<Utc>, _>("created_at"),
                         updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
+                        disponibilite_debut: None,
+                        disponibilite_fin: None,
                     },
                     distance_km: row.get::<Option<f64>, _>("distance_km"),
                 }

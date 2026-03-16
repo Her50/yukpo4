@@ -21,6 +21,7 @@ import { LiveKitChatMessage, liveKitService } from '../../services/liveKitServic
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 import { GiftSelector } from './GiftSelector';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface LiveChatModalProps {
     visible: boolean;
@@ -35,7 +36,8 @@ export const LiveChatModal: React.FC<LiveChatModalProps> = ({
     userId,
     onClose,
 }) => {
-    const [messages, setMessages] = useState<LiveKitChatMessage[]>([]);
+        const { t } = useLanguageSafe();
+const [messages, setMessages] = useState<LiveKitChatMessage[]>([]);
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(false);
     const [showStickers, setShowStickers] = useState(false);
@@ -142,7 +144,7 @@ export const LiveChatModal: React.FC<LiveChatModalProps> = ({
             {loading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Connexion au chat...</Text>
+                    <Text style={styles.loadingText}>{t('liveChat.connexionAuChat')}</Text>
                 </View>
             ) : (
                 <>
@@ -160,8 +162,8 @@ export const LiveChatModal: React.FC<LiveChatModalProps> = ({
                         )}
                         ListEmptyComponent={
                             <View style={styles.emptyContainer}>
-                                <Text style={styles.emptyText}>Aucun message pour l'instant</Text>
-                                <Text style={styles.emptySubtext}>Soyez le premier à écrire !</Text>
+                                <Text style={styles.emptyText}>{t('liveChat.aucunMessagePourLinstant')}</Text>
+                                <Text style={styles.emptySubtext}>{t('liveChat.soyezLePremierAEcrire')}</Text>
                             </View>
                         }
                     />
@@ -203,7 +205,7 @@ export const LiveChatModal: React.FC<LiveChatModalProps> = ({
                             style={styles.input}
                             value={inputText}
                             onChangeText={setInputText}
-                            placeholder="Tapez un message..."
+                            placeholder={t('liveChat.tapezUnMessage')}
                             placeholderTextColor="#9CA3AF"
                             multiline
                             onSubmitEditing={handleSendMessage}

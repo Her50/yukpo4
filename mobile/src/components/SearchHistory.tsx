@@ -12,6 +12,7 @@ import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SearchHistoryItem {
     id: number;
@@ -28,7 +29,8 @@ interface Props {
 }
 
 const SearchHistory: React.FC<Props> = ({ onSelect, specializedType, maxItems = 10 }) => {
-    const [history, setHistory] = useState<SearchHistoryItem[]>([]);
+        const { t } = useLanguageSafe();
+const [history, setHistory] = useState<SearchHistoryItem[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -79,7 +81,7 @@ const SearchHistory: React.FC<Props> = ({ onSelect, specializedType, maxItems = 
         <View style={styles.container}>
             <View style={styles.header}>
                 <SafeIcon name="clock" size={18} color={modernColors.textSecondary} type="lucide" />
-                <Text style={styles.title}>Recherches récentes</Text>
+                <Text style={styles.title}>{t('searchHistory.recherchesRecentes')}</Text>
             </View>
             <FlatList
                 data={history}

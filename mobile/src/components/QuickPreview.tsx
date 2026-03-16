@@ -17,6 +17,7 @@ import { modernColors } from '../theme/modernTheme';
 import { VideoTimeline } from '../types/VideoGeneration';
 import SafeIcon from './SafeIcon';
 import { NativeCard } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface QuickPreviewProps {
     timeline: VideoTimeline;
@@ -27,7 +28,8 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
     timeline,
     onPreviewReady,
 }) => {
-    const [loading, setLoading] = useState(false);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(false);
     const [preview, setPreview] = useState<QuickPreviewResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -138,7 +140,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
         if (!timeline) {
             Alert.alert(
                 'Timeline manquante',
-                'Aucune timeline disponible pour générer le preview.\n\nVeuillez d\'abord créer une timeline avec des médias.',
+                t('quickPreview.aucuneTimelineDisponiblePourGenererLePreviewnnveuillez'),
                 [{ text: 'OK' }]
             );
             return;
@@ -148,7 +150,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
         if (!timeline.scenes || !Array.isArray(timeline.scenes) || timeline.scenes.length === 0) {
             Alert.alert(
                 'Timeline vide',
-                'La timeline ne contient aucune scène.\n\nVeuillez d\'abord générer une timeline avec des scènes.',
+                t('quickPreview.laTimelineNeContientAucuneScenennveuillezDabord'),
                 [{ text: 'OK' }]
             );
             return;
@@ -199,12 +201,12 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
             });
 
             Alert.alert(
-                'Aucun média valide',
-                'Aucun média valide trouvé dans la timeline.\n\n' +
+                t('quickPreview.aucunMediaValide'),
+                t('quickPreview.aucunMediaValideTrouveDansLa') +
                 'Veuillez :\n' +
                 '• Ajouter des médias (images, vidéos) à la timeline\n' +
-                '• Vérifier que les médias ont des URLs valides\n' +
-                '• Régénérer la timeline si nécessaire',
+                t('quickPreview.verifierQueLesMediasOntDes') +
+                t('quickPreview.regenererLaTimelineSiNecessaire'),
                 [{ text: 'OK' }]
             );
             return;
@@ -233,7 +235,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
             });
 
             if (!response || !response.success) {
-                throw new Error(response?.error || 'Réponse invalide du serveur');
+                throw new Error(response?.error || t('quickPreview.reponseInvalideDuServeur'));
             }
 
             setPreview(response);
@@ -261,22 +263,22 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
             });
 
             // ✅ CORRIGÉ: Messages d'erreur plus clairs selon le type d'erreur
-            let errorMessage = 'Erreur lors de la génération du preview';
+            let errorMessage = t('quickPreview.erreurLorsDeLaGenerationDu');
 
             if (err?.response?.status === 500 || err?.message?.includes('500') || err?.message?.includes('Erreur 500')) {
                 const serverError = err?.response?.data?.error || err?.response?.data?.message || '';
                 if (serverError.includes('média') || serverError.includes('media') || serverError.includes('timeline')) {
-                    errorMessage = `Erreur serveur : ${serverError || 'Aucun média trouvé dans la timeline'}\n\nVérifiez que tous les médias de la timeline sont accessibles.`;
+                    errorMessage = `Erreur serveur : ${serverError || t('quickPreview.aucunMediaTrouveDansLa')}\n\nVérifiez que tous les médias de la timeline sont accessibles.`;
                 } else {
-                    errorMessage = `Erreur serveur (500) : ${serverError || 'Le preview n\'a pas pu être généré'}\n\nVérifiez que tous les médias de la timeline sont accessibles.`;
+                    errorMessage = `Erreur serveur (500) : ${serverError || t('quickPreview.lePreviewNaPasPuEtreGenere')}\n\nVérifiez que tous les médias de la timeline sont accessibles.`;
                 }
             } else if (err?.response?.status === 400) {
                 const badRequestError = err?.response?.data?.error || err?.response?.data?.message || '';
-                errorMessage = `Requête invalide : ${badRequestError || 'Vérifiez que la timeline est correctement formatée'}`;
+                errorMessage = `Requête invalide : ${badRequestError || t('quickPreview.verifiezQueLaTimelineEst')}`;
             } else if (err?.message?.includes('média') || err?.message?.includes('media') || err?.message?.includes('timeline')) {
-                errorMessage = 'Aucun média trouvé dans la timeline.\n\nVeuillez ajouter des médias avant de générer le preview.';
+                errorMessage = t('quickPreview.aucunMediaTrouveDansLaTimelinennveuillez');
             } else if (err?.message?.includes('timeout') || err?.message?.includes('Timeout')) {
-                errorMessage = 'Le traitement prend trop de temps.\n\nVeuillez réessayer avec moins de médias.';
+                errorMessage = t('quickPreview.leTraitementPrendTropDeTempsnnveuillez');
             } else if (err?.message) {
                 errorMessage = err.message;
             }
@@ -315,7 +317,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                         <>
                             <SafeIcon name="play" size={16} color="#FFF" />
                             <Text style={styles.generateButtonText}>
-                                {timelineIsValid ? 'Générer' : 'Médias requis'}
+                                {timelineIsValid ? t('quickPreview.generer') : 'Médias requis'}
                             </Text>
                         </>
                     )}
@@ -325,7 +327,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
             {loading && (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Génération du preview...</Text>
+                    <Text style={styles.loadingText}>{t('quickPreview.generationDuPreview')}</Text>
                 </View>
             )}
 
@@ -356,7 +358,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                     ) : (
                         <View style={styles.placeholder}>
                             <SafeIcon name="film" size={48} color={modernColors.textSecondary} />
-                            <Text style={styles.placeholderText}>Preview généré</Text>
+                            <Text style={styles.placeholderText}>{t('quickPreview.previewGenere')}</Text>
                         </View>
                     )}
                     <View style={styles.previewInfo}>
@@ -387,7 +389,7 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                         }}
                     >
                         <SafeIcon name="play-circle" size={20} color="#FFF" />
-                        <Text style={styles.playButtonText}>Voir le preview</Text>
+                        <Text style={styles.playButtonText}>{t('quickPreview.voirLePreview')}</Text>
                     </TouchableOpacity>
                 </View>
             )}

@@ -5,6 +5,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface TimelineScene {
     scene_index: number;
@@ -90,7 +91,7 @@ export const TimelinePreview: React.FC<TimelinePreviewProps> = ({
                     {onEdit && (
                         <TouchableOpacity onPress={onEdit} style={styles.editButton}>
                             <SafeIcon name="edit" size={16} color={modernColors.primary} />
-                            <Text style={styles.editButtonText}>Modifier</Text>
+                            <Text style={styles.editButtonText}>{t('timelinePreview.modifier')}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -155,7 +156,7 @@ export const TimelinePreview: React.FC<TimelinePreviewProps> = ({
                                 {scene.media_id && (
                                     <View style={styles.metaBadge}>
                                         <SafeIcon name="image" size={12} color={modernColors.primary} />
-                                        <Text style={styles.metaText}>Média</Text>
+                                        <Text style={styles.metaText}>{t('timelinePreview.media')}</Text>
                                     </View>
                                 )}
                                 {scene.transition && scene.transition !== 'none' && (

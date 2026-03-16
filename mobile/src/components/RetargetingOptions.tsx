@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface RetargetingRule {
     id: string;
@@ -22,22 +23,22 @@ const DEFAULT_RULES: Omit<RetargetingRule, 'id' | 'enabled'>[] = [
     {
         type: 'viewed_product',
         label: 'A vu un produit',
-        description: 'Cibler les utilisateurs qui ont consulté vos produits',
+        description: t('retargetingOptions.ciblerLesUtilisateursQuiOnt'),
     },
     {
         type: 'abandoned_cart',
-        label: 'Panier abandonné',
-        description: 'Cibler les utilisateurs qui ont ajouté au panier sans acheter',
+        label: t('retargetingOptions.panierAbandonne'),
+        description: t('retargetingOptions.ciblerLesUtilisateursQuiOnt'),
     },
     {
         type: 'visited_service',
-        label: 'A visité un service',
-        description: 'Cibler les utilisateurs qui ont visité votre page service',
+        label: t('retargetingOptions.aVisiteUnService'),
+        description: t('retargetingOptions.ciblerLesUtilisateursQuiOnt'),
     },
     {
         type: 'searched',
-        label: 'A recherché',
-        description: 'Cibler les utilisateurs qui ont recherché des mots-clés liés',
+        label: t('retargetingOptions.aRecherche'),
+        description: t('retargetingOptions.ciblerLesUtilisateursQuiOnt'),
     },
 ];
 
@@ -45,7 +46,8 @@ export const RetargetingOptions: React.FC<RetargetingOptionsProps> = ({
     rules,
     onRulesChange,
 }) => {
-    const [expanded, setExpanded] = useState(false);
+        const { t } = useLanguageSafe();
+const [expanded, setExpanded] = useState(false);
 
     const toggleRule = (id: string) => {
         const updated = rules.map(r =>

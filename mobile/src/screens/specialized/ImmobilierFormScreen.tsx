@@ -35,21 +35,21 @@ import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 const STORAGE_KEY = '@immobilier_form';
 
 const TYPES_BIEN = [
-    { key: 'maison', label: 'Maison', icon: 'home' },
+    { key: 'maison', label: t('immobilierForm.maison'), icon: 'home' },
     { key: 'appartement', label: 'Appartement', icon: 'building' },
     { key: 'terrain', label: 'Terrain', icon: 'map' },
     { key: 'bureau', label: 'Bureau', icon: 'briefcase' },
     { key: 'local_commercial', label: 'Local commercial', icon: 'store' },
-    { key: 'hotel', label: 'Hôtel', icon: 'building' },
-    { key: 'meuble', label: 'Meublé / Location meublée', icon: 'home' },
+    { key: 'hotel', label: t('immobilierForm.hotel'), icon: 'building' },
+    { key: 'meuble', label: t('immobilierForm.meubleLocationMeublee'), icon: 'home' },
 ];
 const STATUTS = [
     { key: 'vente', label: 'Vente', icon: 'tag' },
     { key: 'location', label: 'Location', icon: 'key' },
-    { key: 'les_deux', label: 'Les deux', icon: 'layers' },
+    { key: 'les_deux', label: t('immobilierForm.lesDeux'), icon: 'layers' },
 ];
 const STANDINGS = ['économique', 'moyen', 'haut_de_gamme', 'luxe'];
-const ETATS = ['neuf', 'bon_etat', 'à_rénover', 'rénové'];
+const ETATS = ['neuf', 'bon_etat', t('immobilierFormScreen.arenover'), t('immobilierFormScreen.renove')];
 
 const ImmobilierFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -104,7 +104,7 @@ const ImmobilierFormScreen: React.FC = () => {
         if (!serviceId && user?.id && formData.titre) {
             (async () => {
                 try {
-                    const resp = await servicesApi.createService({ titre_service: formData.titre || 'Bien immobilier', description: `Bien: ${formData.type_bien}`, category: 'immobilier', specialized_type: 'immobilier' });
+                    const resp = await servicesApi.createService({ titre_service: formData.titre || t('immobilierForm.bienImmobilier'), description: `Bien: ${formData.type_bien}`, category: 'immobilier', specialized_type: 'immobilier' });
                     if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) setServiceId((resp.data as any).id);
                 } catch (e) { console.error('[Immobilier] Service:', e); }
             })();
@@ -226,15 +226,15 @@ const ImmobilierFormScreen: React.FC = () => {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
                 {/* Section: Informations */}
                 <View style={st.section}>
-                    <View style={st.sectionHdr}><SafeIcon name="file-text" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>Informations générales</Text></View>
+                    <View style={st.sectionHdr}><SafeIcon name="file-text" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>{t('immobilierForm.informationsGenerales')}</Text></View>
                     <View style={st.field}><NativeInput label="Titre *" value={formData.titre} onChangeText={t => setFormData({ ...formData, titre: t })} placeholder="Ex: Belle maison 4 chambres" /></View>
-                    <View style={st.field}><NativeInput label="Description *" value={formData.description} onChangeText={t => setFormData({ ...formData, description: t })} placeholder="Description détaillée du bien..." multiline style={{ minHeight: 100, textAlignVertical: 'top' }} /></View>
+                    <View style={st.field}><NativeInput label="Description *" value={formData.description} onChangeText={t => setFormData({ ...formData, description: t })} placeholder={t('immobilierForm.descriptionDetailleeDuBien')} multiline style={{ minHeight: 100, textAlignVertical: 'top' }} /></View>
                 </View>
 
                 {/* Section: Type & Statut */}
                 <View style={st.section}>
-                    <View style={st.sectionHdr}><SafeIcon name="home" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>Type et statut</Text></View>
-                    <Text style={st.label}>Type de bien *</Text>
+                    <View style={st.sectionHdr}><SafeIcon name="home" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>{t('immobilierForm.typeEtStatut')}</Text></View>
+                    <Text style={st.label}>{t('immobilierForm.typeDeBien')}</Text>
                     <View style={st.typeGrid}>
                         {TYPES_BIEN.map(t => (
                             <TouchableOpacity key={t.key} style={[st.typeCard, formData.type_bien === t.key && st.typeCardOn]} onPress={() => setFormData({ ...formData, type_bien: t.key })}>
@@ -256,15 +256,15 @@ const ImmobilierFormScreen: React.FC = () => {
 
                 {/* Section: Localisation */}
                 <View style={st.section}>
-                    <View style={st.sectionHdr}><SafeIcon name="map-pin" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>Localisation</Text></View>
+                    <View style={st.sectionHdr}><SafeIcon name="map-pin" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>{t('immobilierForm.localisation')}</Text></View>
                     <View style={st.field}>
-                        <LocationSelector label="Ville *" value={formData.ville ? (typeof formData.ville === 'string' ? { raw: formData.ville, place_name: formData.ville } : formData.ville) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, ville: loc })} placeholder="Rechercher la ville..." scope="all" enrichWithBackend />
+                        <LocationSelector label="Ville *" value={formData.ville ? (typeof formData.ville === 'string' ? { raw: formData.ville, place_name: formData.ville } : formData.ville) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, ville: loc })} placeholder={t('immobilierForm.rechercherLaVille')} scope="all" enrichWithBackend />
                     </View>
                     <View style={st.field}>
-                        <LocationSelector label="Quartier" value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, quartier: loc })} placeholder="Quartier, rue..." scope="all" cityContext={formData.ville?.raw || formData.ville?.place_name || ''} enrichWithBackend />
+                        <LocationSelector label={t('immobilierForm.quartier')} value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, quartier: loc })} placeholder={t('immobilierForm.quartierRue')} scope="all" cityContext={formData.ville?.raw || formData.ville?.place_name || ''} enrichWithBackend />
                     </View>
                     <View style={st.field}>
-                        <LocationSelector label="Adresse complète" value={formData.adresse ? { raw: formData.adresse, place_name: formData.adresse } as any : ''} onSelect={(loc: LocationObject) => {
+                        <LocationSelector label={t('immobilierForm.adresseComplete')} value={formData.adresse ? { raw: formData.adresse, place_name: formData.adresse } as any : ''} onSelect={(loc: LocationObject) => {
                             setFormData(p => ({
                                 ...p, adresse: loc.raw || loc.place_name || p.adresse,
                                 ville: p.ville || (loc.components?.ville ? { raw: loc.components.ville, place_name: loc.components.ville } as any : p.ville),
@@ -272,19 +272,19 @@ const ImmobilierFormScreen: React.FC = () => {
                             }));
                             if (loc.coordinates?.lat && loc.coordinates?.lng) setSelectedGPS(`${loc.coordinates.lat},${loc.coordinates.lng}`);
                             if (loc.place_id) importGooglePlacePhotos(loc.place_id);
-                        }} placeholder="Adresse exacte..." scope="all" cityContext={formData.ville?.raw || formData.ville?.place_name || ''} enrichWithBackend />
+                        }} placeholder={t('immobilierFormScreen.adresseExacte')} scope="all" cityContext={formData.ville?.raw || formData.ville?.place_name || ''} enrichWithBackend />
                         {importingGoogleMedia && <Text style={st.hint}>📥 Import photos Google en cours...</Text>}
                     </View>
                     <TouchableOpacity style={st.gpsBtn} onPress={() => setShowGPSModal(true)}>
                         <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                        <Text style={st.gpsBtnText}>{selectedGPS ? '✓ GPS sélectionné' : 'Sélectionner sur la carte'}</Text>
+                        <Text style={st.gpsBtnText}>{selectedGPS ? t('immobilierFormScreen.gpsSelectionne') : 'Sélectionner sur la carte'}</Text>
                         <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                     </TouchableOpacity>
                 </View>
 
                 {/* Section: Caractéristiques */}
                 <View style={st.section}>
-                    <View style={st.sectionHdr}><SafeIcon name="ruler" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>Caractéristiques principales</Text></View>
+                    <View style={st.sectionHdr}><SafeIcon name="ruler" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>{t('immobilierForm.caracteristiquesPrincipales')}</Text></View>
 
                     {/* ✅ AMÉLIORÉ: Design plus intuitif avec icônes et labels clairs */}
                     <View style={st.characteristicsGrid}>
@@ -330,7 +330,7 @@ const ImmobilierFormScreen: React.FC = () => {
 
                     <Text style={st.label}>Standing du bien</Text>
                     <View style={st.chips}>{STANDINGS.map(s => <TouchableOpacity key={s} style={[st.chip, formData.standing === s && st.chipOn]} onPress={() => setFormData({ ...formData, standing: s })}><Text style={[st.chipText, formData.standing === s && st.chipTextOn]}>{formatLabel(s)}</Text></TouchableOpacity>)}</View>
-                    <Text style={[st.label, { marginTop: 16 }]}>État général</Text>
+                    <Text style={[st.label, { marginTop: 16 }]}>{t('immobilierForm.etatGeneral')}</Text>
                     <View style={st.chips}>{ETATS.map(e => <TouchableOpacity key={e} style={[st.chip, formData.etat_general === e && st.chipOn]} onPress={() => setFormData({ ...formData, etat_general: e })}><Text style={[st.chipText, formData.etat_general === e && st.chipTextOn]}>{formatLabel(e)}</Text></TouchableOpacity>)}</View>
                 </View>
 
@@ -338,23 +338,23 @@ const ImmobilierFormScreen: React.FC = () => {
                 <View style={st.section}>
                     <View style={st.sectionHdr}><SafeIcon name="banknote" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>Prix</Text></View>
                     {(formData.statut === 'vente' || formData.statut === 'les_deux') && (
-                        <View style={st.field}><NativeInput label={`Prix de vente (${devise}) *`} value={formData.prix_vente} onChangeText={t => setFormData({ ...formData, prix_vente: t })} placeholder="0" keyboardType="numeric" /></View>
+                        <View style={st.field}><NativeInput label={`${t('immobilierFormScreen.salePrice')} (${devise}) *`} value={formData.prix_vente} onChangeText={t => setFormData({ ...formData, prix_vente: t })} placeholder="0" keyboardType="numeric" /></View>
                     )}
                     {(formData.statut === 'location' || formData.statut === 'les_deux') && (
-                        <View style={st.field}><NativeInput label={`Loyer mensuel (${devise}) *`} value={formData.prix_location_mensuel} onChangeText={t => setFormData({ ...formData, prix_location_mensuel: t })} placeholder="0" keyboardType="numeric" /></View>
+                        <View style={st.field}><NativeInput label={`${t('immobilierFormScreen.monthlyRent')} (${devise}) *`} value={formData.prix_location_mensuel} onChangeText={t => setFormData({ ...formData, prix_location_mensuel: t })} placeholder="0" keyboardType="numeric" /></View>
                     )}
                 </View>
 
                 {/* Section: Médias */}
                 <View style={st.section}>
-                    <View style={st.sectionHdr}><SafeIcon name="image" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>Photos & Vidéos</Text></View>
-                    <MediaUploader media={media} onMediaChange={setMedia} maxImages={10} maxVideos={3} allowVideos label="Ajoutez des photos et vidéos" />
+                    <View style={st.sectionHdr}><SafeIcon name="image" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>{t('immobilierForm.photosVideos')}</Text></View>
+                    <MediaUploader media={media} onMediaChange={setMedia} maxImages={10} maxVideos={3} allowVideos label={t('immobilierForm.ajoutezDesPhotosEtVideos')} />
                 </View>
 
                 {/* Submit */}
                 <View style={{ paddingHorizontal: 16 }}>
                     <NativeButton
-                        title={loading ? 'Enregistrement...' : mode === 'edit' ? 'Modifier le bien' : 'Publier le bien'}
+                        title={loading ? 'Enregistrement...' : mode === 'edit' ? t('immobilierFormScreen.modifierLeBien') : 'Publier le bien'}
                         onPress={handleSubmit}
                         disabled={loading || !formData.titre.trim() || !serviceId || (!formData.ville && !selectedGPS)}
                         variant="primary" size="large" style={{ marginTop: 8 }}

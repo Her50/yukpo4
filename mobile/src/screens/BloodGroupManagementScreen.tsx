@@ -137,7 +137,7 @@ const BloodGroupManagementScreen: React.FC = () => {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('bloodGroupManagement.chargement')}</Text>
             </View>
         );
     }
@@ -147,7 +147,7 @@ const BloodGroupManagementScreen: React.FC = () => {
             {/* Header */}
             <View style={styles.header}>
                 <SafeIcon name="droplet" size={48} color={modernColors.primary} />
-                <Text style={styles.title}>Gestion du don de sang</Text>
+                <Text style={styles.title}>{t('bloodGroupManagement.gestionDuDonDeSang')}/Text>
                 <Text style={styles.subtitle}>
                     Enregistrez votre groupe sanguin pour être notifié en cas de besoin urgent
                 </Text>
@@ -155,7 +155,7 @@ const BloodGroupManagementScreen: React.FC = () => {
 
             {/* Sélection groupe sanguin */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Votre groupe sanguin</Text>
+                <Text style={styles.sectionTitle}>{t('bloodGroupManagement.votreGroupeSanguin')}</Text>
                 <View style={styles.bloodGroupGrid}>
                     {BLOOD_GROUPS.map((group) => (
                         <TouchableOpacity
@@ -183,7 +183,7 @@ const BloodGroupManagementScreen: React.FC = () => {
             <View style={styles.section}>
                 <View style={styles.settingRow}>
                     <View style={styles.settingInfo}>
-                        <Text style={styles.settingTitle}>Disponible pour don</Text>
+                        <Text style={styles.settingTitle}>{t('bloodGroupManagement.disponiblePourDon')}</Text>
                         <Text style={styles.settingDescription}>
                             Vous serez notifié en cas de demande urgente compatible avec votre groupe
                         </Text>
@@ -200,7 +200,7 @@ const BloodGroupManagementScreen: React.FC = () => {
             {/* Informations dernier don */}
             {lastDonationDate && (
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Historique de don</Text>
+                    <Text style={styles.sectionTitle}>{t('bloodGroupManagement.historiqueDeDon')}/Text>
                     <View style={styles.infoCard}>
                         <View style={styles.infoRow}>
                             <SafeIcon name="calendar" size={20} color={modernColors.primary} />
@@ -236,7 +236,7 @@ const BloodGroupManagementScreen: React.FC = () => {
                             disabled={saving}
                         >
                             <SafeIcon name="edit" size={16} color={modernColors.primary} />
-                            <Text style={styles.updateButtonText}>Mettre à jour le dernier don</Text>
+                            <Text style={styles.updateButtonText}>{t('bloodGroupManagement.mettreAJourLeDernier')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -247,7 +247,7 @@ const BloodGroupManagementScreen: React.FC = () => {
                 <View style={styles.importantInfo}>
                     <SafeIcon name="info" size={20} color={modernColors.primary} />
                     <View style={styles.importantInfoText}>
-                        <Text style={styles.importantInfoTitle}>ℹ️ Informations importantes</Text>
+                        <Text style={styles.importantInfoTitle}>{t('bloodGroupManagement.informationsImportantes')}/Text>
                         <Text style={styles.importantInfoItem}>
                             • Le délai minimum entre deux dons est de 8 semaines (56 jours)
                         </Text>
@@ -275,7 +275,7 @@ const BloodGroupManagementScreen: React.FC = () => {
                 ) : (
                     <>
                         <SafeIcon name="check-circle" size={20} color="#fff" />
-                        <Text style={styles.saveButtonText}>Enregistrer</Text>
+                        <Text style={styles.saveButtonText}>{t('bloodGroupManagementScreen.enregistrer')}</Text>
                     </>
                 )}
             </TouchableOpacity>

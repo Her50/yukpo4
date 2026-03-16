@@ -22,6 +22,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface PrestataireBoutiqueScreenProps { }
 
@@ -30,6 +31,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
   const route = useRoute();
   const { user } = useAuth();
   const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
   const routeParams = (route.params as any) || {};
   const prestataireUserId = routeParams.userId || routeParams.user_id;
@@ -222,7 +224,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
       console.log(`📊 [PrestataireBoutiqueScreen] Total produits chargés: ${extractedProducts.length}`, {
         servicesProcessed: serviceIds.length,
         productsPerService: productsArrays.map((arr, idx) => ({ serviceId: serviceIds[idx], count: arr.length })),
-        note: 'Le produit cliqué est déjà inclus dans les résultats de l\'API'
+        note: t('prestataireBoutiqueScreen.leProduitCliqueEstDejaInclusDans')
       });
 
       if (extractedProducts.length === 0) {
@@ -314,7 +316,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
       }
     } catch (error: any) {
       console.error('[PrestataireBoutiqueScreen] Erreur chargement données:', error);
-      setError(error.message || 'Erreur lors du chargement des données');
+      setError(error.message || t('prestataireBoutique.erreurLorsDuChargementDes'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -367,7 +369,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
         <SafeNativeView style={styles.container}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={modernColors.primary} />
-            <Text style={styles.loadingText}>Chargement de la boutique...</Text>
+            <Text style={styles.loadingText}>{t('prestataireBoutique.chargementDeLaBoutique')}</Text>
           </View>
         </SafeNativeView>
       </KeyboardAwareScreen>

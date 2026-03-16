@@ -16,6 +16,7 @@ import {
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface SelectedSeat {
     seat_id: string;
@@ -41,7 +42,8 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     currency = 'XAF',
     onReserve,
 }) => {
-    const [loading, setLoading] = useState(true);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(true);
     const [seatMap, setSeatMap] = useState<any[]>([]);
     const [reservedSeats, setReservedSeats] = useState<string[]>([]);
     const [blockedSeats, setBlockedSeats] = useState<string[]>([]);
@@ -102,7 +104,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
             Alert.alert(
                 'Place non disponible',
                 status === 'reserved'
-                    ? 'Cette place est déjà réservée'
+                    ? t('busSeatSelector.cettePlaceEstDejaReservee')
                     : 'Cette place n\'est pas disponible (bloquée manuellement)'
             );
             return;
@@ -197,43 +199,43 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                         <SafeIcon name="x" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Sélection des places</Text>
+                    <Text style={styles.title}>{t('busSeatSelector.selectionDesPlaces')}</Text>
                     <View style={styles.placeholder} />
                 </View>
 
                 {loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Chargement de la disponibilité...</Text>
+                        <Text style={styles.loadingText}>{t('busSeatSelector.chargementDeLaDisponibilite')}</Text>
                     </View>
                 ) : (
                     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                         {/* Légende */}
                         <View style={styles.legendContainer}>
-                            <Text style={styles.legendTitle}>Légende</Text>
+                            <Text style={styles.legendTitle}>{t('busSeatSelector.legende')}</Text>
                             <View style={styles.legendRow}>
                                 <View style={styles.legendItem}>
                                     <View style={[styles.legendSeat, styles.seatAvailable]} />
-                                    <Text style={styles.legendText}>Disponible</Text>
+                                    <Text style={styles.legendText}>{t('busSeatSelector.disponible')}</Text>
                                 </View>
                                 <View style={styles.legendItem}>
                                     <View style={[styles.legendSeat, styles.seatReserved]} />
-                                    <Text style={styles.legendText}>Réservé</Text>
+                                    <Text style={styles.legendText}>{t('busSeatSelector.reserve')}</Text>
                                 </View>
                                 <View style={styles.legendItem}>
                                     <View style={[styles.legendSeat, styles.seatBlocked]} />
-                                    <Text style={styles.legendText}>Bloqué</Text>
+                                    <Text style={styles.legendText}>{t('busSeatSelector.bloque')}</Text>
                                 </View>
                                 <View style={styles.legendItem}>
                                     <View style={[styles.legendSeat, styles.seatSelected]} />
-                                    <Text style={styles.legendText}>Sélectionné</Text>
+                                    <Text style={styles.legendText}>{t('busSeatSelector.selectionne')}</Text>
                                 </View>
                             </View>
                         </View>
 
                         {/* Plan des sièges */}
                         <View style={styles.seatsContainer}>
-                            <Text style={styles.sectionTitle}>Plan des sièges</Text>
+                            <Text style={styles.sectionTitle}>{t('busSeatSelector.planDesSieges')}</Text>
                             {rows.map((row) => (
                                 <View key={row} style={styles.row}>
                                     <Text style={styles.rowLabel}>R{row}</Text>
@@ -289,7 +291,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
 
                         {/* Détail du paiement */}
                         <View style={styles.paymentBreakdown}>
-                            <Text style={styles.breakdownTitle}>Détail du paiement</Text>
+                            <Text style={styles.breakdownTitle}>{t('busSeatSelector.detailDuPaiement')}</Text>
                             <View style={styles.breakdownRow}>
                                 <Text style={styles.breakdownLabel}>
                                     Prix tickets ({numberOfTickets}x)
@@ -299,7 +301,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                 </Text>
                             </View>
                             <View style={styles.breakdownRow}>
-                                <Text style={styles.breakdownLabel}>Frais de réservation</Text>
+                                <Text style={styles.breakdownLabel}>{t('busSeatSelector.fraisDeReservation')}</Text>
                                 <Text style={styles.breakdownValue}>
                                     {bookingFee.toLocaleString()} {currency}
                                 </Text>
@@ -313,7 +315,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                 </Text>
                             </View>
                             <View style={[styles.breakdownRow, styles.totalRow]}>
-                                <Text style={styles.totalLabel}>TOTAL À PAYER</Text>
+                                <Text style={styles.totalLabel}>{t('busSeatSelector.totalAPayer')}</Text>
                                 <Text style={styles.totalValue}>
                                     {totalPrice.toLocaleString()} {currency}
                                 </Text>

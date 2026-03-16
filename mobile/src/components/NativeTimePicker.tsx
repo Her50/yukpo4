@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface NativeTimePickerProps {
     label: string;
@@ -17,9 +18,10 @@ const NativeTimePicker: React.FC<NativeTimePickerProps> = ({
     value,
     onChange,
     required = false,
-    placeholder = "Sélectionner l'heure"
+    placeholder={t('nativeTimePicker.selectionnerL')}heure"
 }) => {
-    const [showPicker, setShowPicker] = useState(false);
+        const { t } = useLanguageSafe();
+const [showPicker, setShowPicker] = useState(false);
     const [tempTime, setTempTime] = useState<Date>(() => {
         if (value) {
             const [hours, minutes] = value.split(':').map(Number);
@@ -81,7 +83,7 @@ const NativeTimePicker: React.FC<NativeTimePickerProps> = ({
                         style={[styles.iosButton, styles.cancelButton]}
                         onPress={() => setShowPicker(false)}
                     >
-                        <Text style={styles.cancelButtonText}>Annuler</Text>
+                        <Text style={styles.cancelButtonText}>{t('nativeTimePicker.annuler')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.iosButton, styles.confirmButton]}
@@ -92,7 +94,7 @@ const NativeTimePicker: React.FC<NativeTimePickerProps> = ({
                             setShowPicker(false);
                         }}
                     >
-                        <Text style={styles.confirmButtonText}>Confirmer</Text>
+                        <Text style={styles.confirmButtonText}>{t('nativeTimePicker.confirmer')}</Text>
                     </TouchableOpacity>
                 </View>
             )}

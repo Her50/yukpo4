@@ -27,6 +27,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function LiveHostScreen() {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const route = useRoute();
   const { user } = useAuth();
   const { sessionId, streamKey, rtmpUrl } = (route.params as any) || {};
@@ -56,10 +57,10 @@ export default function LiveHostScreen() {
       if (isLive) {
         Alert.alert(
           'Live en cours',
-          'Êtes-vous sûr de vouloir terminer votre live?',
+          t('liveHostScreen.etesvousSurDeVouloirTerminerVotre'),
           [
             { text: t('common.no'), style: 'cancel' },
-            { text: 'Terminer', style: 'destructive', onPress: () => endLive() },
+            { text: t('common.finish'), style: 'destructive', onPress: () => endLive() },
           ]
         );
         return true;
@@ -160,7 +161,7 @@ export default function LiveHostScreen() {
         }}
       >
         <SafeIcon name="zap" size={20} color="#FFFFFF" />
-        <Text style={styles.controlButtonText}>Vente Flash</Text>
+        <Text style={styles.controlButtonText}>{t('liveHost.venteFlash')}/Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -168,10 +169,10 @@ export default function LiveHostScreen() {
         onPress={() => {
           Alert.alert(
             'Terminer le Live',
-            'Êtes-vous sûr de vouloir terminer votre live?',
+            t('liveHostScreen.etesvousSurDeVouloirTerminerVotre'),
             [
               { text: t('common.no'), style: 'cancel' },
-              { text: 'Terminer', style: 'destructive', onPress: endLive },
+              { text: t('common.finish'), style: 'destructive', onPress: endLive },
             ]
           );
         }}
@@ -186,10 +187,10 @@ export default function LiveHostScreen() {
     <View style={styles.previewContainer}>
       <View style={styles.previewPlaceholder}>
         <SafeIcon name="video-off" size={48} color="#9CA3AF" />
-        <Text style={styles.previewText}>Préparation du live...</Text>
+        <Text style={styles.previewText}>{t('liveHost.preparationDuLive')}</Text>
         {streamKey && rtmpUrl && (
           <View style={styles.streamInfo}>
-            <Text style={styles.streamInfoText}>Clé de stream: {streamKey}</Text>
+            <Text style={styles.streamInfoText}>{t('liveHostScreen.cleDeStream')} {streamKey}</Text>
             <Text style={styles.streamInfoText}>URL RTMP: {rtmpUrl}</Text>
           </View>
         )}
@@ -218,10 +219,10 @@ export default function LiveHostScreen() {
             if (isLive) {
               Alert.alert(
                 'Live en cours',
-                'Êtes-vous sûr de vouloir terminer votre live?',
+                t('liveHostScreen.etesvousSurDeVouloirTerminerVotre'),
                 [
                   { text: t('common.no'), style: 'cancel' },
-                  { text: 'Terminer', style: 'destructive', onPress: endLive },
+                  { text: t('common.finish'), style: 'destructive', onPress: endLive },
                 ]
               );
             } else {

@@ -253,7 +253,7 @@ export const PubliciteStories: React.FC<PubliciteStoriesProps> = ({
                     <TouchableOpacity onPress={() => (navigation as any).goBack()}>
                         <SafeIcon name="x" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.sponsorLabel}>Publicité</Text>
+                    <Text style={styles.sponsorLabel}>{t('publiciteStories.publicite')}</Text>
                 </View>
 
                 <View style={styles.content}>
@@ -270,7 +270,7 @@ export const PubliciteStories: React.FC<PubliciteStoriesProps> = ({
                 </View>
 
                 <TouchableOpacity style={styles.ctaButton} onPress={() => handleCTAClick(activePub)}>
-                    <Text style={styles.ctaText}>Voir le produit</Text>
+                    <Text style={styles.ctaText}>{t('publiciteStories.voirLeProduit')}</Text>
                 </TouchableOpacity>
             </View>
 

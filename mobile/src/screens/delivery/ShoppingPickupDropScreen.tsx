@@ -9,6 +9,7 @@ import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useShoppingBasket } from '../../hooks/useShoppingBasket';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type ModalType = 'pickup' | 'dropoff' | null;
 
@@ -26,6 +27,7 @@ const parseCoordinates = (value: string) => {
 
 const ShoppingPickupDropScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const { pickup, setPickup, dropoff, setDropoff } = useShoppingBasket();
     const [modalType, setModalType] = useState<ModalType>(null);
     const [pickupLabel, setPickupLabel] = useState(pickup?.label ?? '');
@@ -71,14 +73,14 @@ const ShoppingPickupDropScreen: React.FC = () => {
 
         if (modalType === 'pickup') {
             setPickup({
-                label: pickupLabel || 'Supermarché',
+                label: pickupLabel || t('shoppingPickupDrop.supermarche'),
                 latitude: coords.lat,
                 longitude: coords.lng,
                 address: value,
             });
         } else if (modalType === 'dropoff') {
             setDropoff({
-                label: dropoffLabel || 'Livraison',
+                label: dropoffLabel || t('shoppingPickupDrop.livraison'),
                 latitude: coords.lat,
                 longitude: coords.lng,
                 address: value,
@@ -101,12 +103,12 @@ const ShoppingPickupDropScreen: React.FC = () => {
             <KeyboardAwareScreen contentContainerStyle={styles.scroll}>
                 <DeliveryAvatarBubble
                     mood='excited'
-                    message='Sélectionne le supermarché et l’adresse du destinataire.'
-                    subtitle='Tu peux choisir sur la carte ou utiliser une adresse enregistrée.'
+                    message=t('shoppingPickupDropScreen.selectionneLeSupermarcheEtLadresseDu')
+                    subtitle={t('shoppingPickupDrop.tuPeuxChoisirSurLa')}
                 />
 
                 <View style={styles.section}>
-                    <Text style={styles.label}>Point de retrait (supermarché)</Text>
+                    <Text style={styles.label}>{t('shoppingPickupDrop.pointDeRetraitSupermarche')}</Text>
                     <NativeInput
                         value={pickupLabel}
                         onChangeText={value => {
@@ -119,7 +121,7 @@ const ShoppingPickupDropScreen: React.FC = () => {
                         placeholder='Ex: Super U Bonapriso'
                     />
                     <NativeButton
-                        title={pickup?.latitude ? 'Modifier sur la carte' : 'Choisir sur la carte'}
+                        title={pickup?.latitude ? t('shoppingPickupDropScreen.modifierSurLaCarte') : 'Choisir sur la carte'}
                         variant='outline'
                         onPress={() => handleOpenModal('pickup')}
                     />
@@ -131,7 +133,7 @@ const ShoppingPickupDropScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.section}>
-                    <Text style={styles.label}>Point de livraison (destinataire)</Text>
+                    <Text style={styles.label}>{t('shoppingPickupDrop.pointDeLivraisonDestinataire')}</Text>
                     <NativeInput
                         value={dropoffLabel}
                         onChangeText={value => {
@@ -141,10 +143,10 @@ const ShoppingPickupDropScreen: React.FC = () => {
                                 label: value,
                             }));
                         }}
-                        placeholder='Adresse complète du destinataire'
+                        placeholder={t('shoppingPickupDrop.adresseCompleteDuDestinataire')}
                     />
                     <NativeButton
-                        title={dropoff?.latitude ? 'Modifier sur la carte' : 'Choisir sur la carte'}
+                        title={dropoff?.latitude ? t('shoppingPickupDropScreen.modifierSurLaCarte') : 'Choisir sur la carte'}
                         variant='outline'
                         onPress={() => handleOpenModal('dropoff')}
                     />
@@ -157,12 +159,12 @@ const ShoppingPickupDropScreen: React.FC = () => {
 
                 <View style={styles.infoCard}>
                     <Text style={styles.infoTitle}>Estimation du trajet</Text>
-                    <Text style={styles.infoText}>Le temps total est calculé lors de la confirmation.</Text>
+                    <Text style={styles.infoText}>{t('shoppingPickupDrop.leTempsTotalEstCalcule')}</Text>
                 </View>
             </KeyboardAwareScreen>
 
             <View style={styles.footer}>
-                <NativeButton title='Récapitulatif' onPress={handleContinue} />
+                <NativeButton title={t('shoppingPickupDrop.recapitulatif')} onPress={handleContinue} />
             </View>
 
             <ModernGPSModal
@@ -170,7 +172,7 @@ const ShoppingPickupDropScreen: React.FC = () => {
                 onClose={() => setModalType(null)}
                 onSelect={handleSelectLocation}
                 currentLocation={modalType === 'pickup' ? pickupCoordinates ?? undefined : dropoffCoordinates ?? undefined}
-                title={modalType === 'pickup' ? 'Choisir le supermarché' : 'Point de livraison'}
+                title={modalType === 'pickup' ? t('shoppingPickupDropScreen.choisirLeSupermarche') : 'Point de livraison'}
             />
         </SafeNativeView>
     );

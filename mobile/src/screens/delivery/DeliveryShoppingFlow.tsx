@@ -333,11 +333,11 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
         }
 
         if (newItemQuantity && (parseInt(newItemQuantity) <= 0 || isNaN(parseInt(newItemQuantity)))) {
-            newErrors.itemQuantity = 'La quantité doit être supérieure à 0';
+            newErrors.itemQuantity = t('deliveryShoppingFlow.laQuantiteDoitEtreSuperieureA');
         }
 
         if (newItemPrice && (parseFloat(newItemPrice) < 0 || isNaN(parseFloat(newItemPrice)))) {
-            newErrors.itemPrice = 'Le prix ne peut pas être négatif';
+            newErrors.itemPrice = t('deliveryShoppingFlow.lePrixNePeutPasEtre');
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -383,7 +383,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
         const newErrors: Record<string, string> = {};
 
         if (!selectedSupermarket) {
-            newErrors.supermarket = 'Veuillez sélectionner un supermarché';
+            newErrors.supermarket = t('deliveryShoppingFlow.veuillezSelectionnerUnSupermarche');
         }
 
         if (basketItems.length === 0) {
@@ -391,7 +391,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
         }
 
         if (!dropoffLocation) {
-            newErrors.dropoff = 'Veuillez sélectionner une adresse de livraison';
+            newErrors.dropoff = t('deliveryShoppingFlow.veuillezSelectionnerUneAdresseDeLivraison');
         }
 
         setErrors(newErrors);
@@ -414,7 +414,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                 preferred_vehicle_type: preferredVehicleType || undefined,
                 parcel: {
                     type_id: 1, // Type shopping
-                    notes: notes || `Courses supermarché: ${selectedSupermarket.name}`,
+                    notes: notes || t('deliveryShoppingFlow.coursesSupermarche', { selectedSupermarket_name: selectedSupermarket.name }),
                     // ✅ CORRIGÉ : photos et constraints doivent être présents (même vides)
                     photos: [],
                     constraints: {},
@@ -493,7 +493,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                         <View style={styles.headerContent}>
                             <SafeIcon name="shopping-cart" size={24} color="#FFFFFF" />
                             <View style={styles.headerText}>
-                                <Text style={styles.headerTitle}>Courses supermarché</Text>
+                                <Text style={styles.headerTitle}>{t('deliveryShoppingFlow.coursesSupermarche')}</Text>
                                 <Text style={styles.headerSubtitle}>Composez votre panier et suivez votre coursier</Text>
                             </View>
                         </View>
@@ -512,7 +512,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
                                 <SafeIcon name="store" size={18} color={modernColors.success} />
-                                <Text style={styles.sectionTitle}>Sélectionner un marché *</Text>
+                                <Text style={styles.sectionTitle}>{t('deliveryShoppingFlow.selectionnerUnMarche')}</Text>
                                 {supermarkets.length > 0 && (
                                     <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>
                                         {filteredAndSortedSupermarkets.length} résultat(s)
@@ -525,7 +525,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                 <View style={{ marginBottom: 12, gap: 8 }}>
                                     <TextInput
                                         style={styles.input}
-                                        placeholder="Rechercher un marché..."
+                                        placeholder={t('deliveryShoppingFlow.rechercherUnMarche')}
                                         value={searchQuery}
                                         onChangeText={setSearchQuery}
                                         placeholderTextColor={modernColors.textSecondary}
@@ -597,7 +597,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                             }}
                                         >
                                             <SafeIcon name="external-link" size={16} color={modernColors.primary} />
-                                            <Text style={styles.websiteButtonText}>Acheter sur le site du marché</Text>
+                                            <Text style={styles.websiteButtonText}>{t('deliveryShoppingFlow.acheterSurLeSiteDu')}</Text>
                                         </TouchableOpacity>
                                     )}
                                     <View style={styles.supermarketActions}>
@@ -617,14 +617,14 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                 <View>
                                     {loadingSupermarkets ? (
                                         <View style={styles.loadingContainer}>
-                                            <Text style={styles.loadingText}>Chargement des marchés...</Text>
+                                            <Text style={styles.loadingText}>{t('deliveryShoppingFlow.chargementDesMarches')}</Text>
                                         </View>
                                     ) : (
                                         <View>
                                             {filteredAndSortedSupermarkets.length === 0 ? (
                                                 <View style={styles.emptyContainer}>
                                                     <Text style={styles.emptyText}>
-                                                        {searchQuery ? 'Aucun marché trouvé pour votre recherche' : 'Aucun marché disponible'}
+                                                        {searchQuery ? t('deliveryShoppingFlow.aucunMarcheTrouvePourVotreRecherche') : t('deliveryShoppingFlow.aucunMarcheDisponible')}
                                                     </Text>
                                                 </View>
                                             ) : (
@@ -666,14 +666,14 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
                                 <SafeIcon name="shopping-bag" size={18} color={modernColors.primary} />
-                                <Text style={styles.sectionTitle}>Panier *</Text>
+                                <Text style={styles.sectionTitle}>{t('deliveryShoppingFlow.panier')}/Text>
                                 {!showAddItem && (
                                     <TouchableOpacity
                                         style={styles.addButton}
                                         onPress={() => setShowAddItem(true)}
                                     >
                                         <SafeIcon name="plus" size={16} color={modernColors.primary} />
-                                        <Text style={styles.addButtonText}>Ajouter</Text>
+                                        <Text style={styles.addButtonText}>{t('deliveryShoppingFlow.ajouter')}</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -691,7 +691,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                     <View>
                                         <TextInput
                                             style={[styles.input, errors.itemName && styles.inputError]}
-                                            placeholder="Nom du produit *"
+                                            placeholder={t('deliveryShoppingFlow.nomDuProduit')}
                                             value={newItemName}
                                             onChangeText={(text) => {
                                                 setNewItemName(text);
@@ -706,12 +706,12 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                         <View style={styles.formItem}>
                                             <TextInput
                                                 style={[styles.input, errors.itemQuantity && styles.inputError]}
-                                                placeholder="Quantité"
+                                                placeholder={t('deliveryShoppingFlow.quantite')}
                                                 value={newItemQuantity}
                                                 onChangeText={(text) => {
                                                     setNewItemQuantity(text);
                                                     if (text && (parseInt(text) <= 0 || isNaN(parseInt(text)))) {
-                                                        setErrors(prev => ({ ...prev, itemQuantity: 'Quantité invalide' }));
+                                                        setErrors(prev => ({ ...prev, itemQuantity: t('deliveryShoppingFlow.quantiteInvalide') }));
                                                     } else {
                                                         setErrors(prev => ({ ...prev, itemQuantity: '' }));
                                                     }
@@ -725,7 +725,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                         <View style={styles.formItem}>
                                             <TextInput
                                                 style={styles.input}
-                                                placeholder="Unité (kg, L, etc.)"
+                                                placeholder={t('deliveryShoppingFlow.uniteKgLEtc')}
                                                 value={newItemUnit}
                                                 onChangeText={setNewItemUnit}
                                             />
@@ -734,7 +734,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                     <View>
                                         <TextInput
                                             style={[styles.input, errors.itemPrice && styles.inputError]}
-                                            placeholder="Prix estimé (FCFA)"
+                                            placeholder={t('deliveryShoppingFlow.prixEstimeFcfa')}
                                             value={newItemPrice}
                                             onChangeText={(text) => {
                                                 setNewItemPrice(text);
@@ -761,13 +761,13 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                                 setNewItemPrice('');
                                             }}
                                         >
-                                            <Text style={styles.cancelButtonText}>Annuler</Text>
+                                            <Text style={styles.cancelButtonText}>{t('deliveryShoppingFlow.annuler')}</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             style={[styles.button, styles.addItemButton]}
                                             onPress={addBasketItem}
                                         >
-                                            <Text style={styles.addItemButtonText}>Ajouter</Text>
+                                            <Text style={styles.addItemButtonText}>{t('deliveryShoppingFlow.ajouter')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 </View>
@@ -790,7 +790,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                             <View style={styles.basketItemInfo}>
                                                 <Text style={styles.basketItemName}>{item.name}</Text>
                                                 <Text style={styles.basketItemDetails}>
-                                                    {item.quantity} {item.unit || 'unité(s)'}
+                                                    {item.quantity} {item.unit || t('deliveryShoppingFlow.unites')}
                                                     {item.estimatedPrice && ` • ${item.estimatedPrice.toLocaleString('fr-FR')} FCFA`}
                                                 </Text>
                                             </View>
@@ -803,7 +803,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                         </View>
                                     ))}
                                     <View style={styles.basketTotal}>
-                                        <Text style={styles.basketTotalLabel}>Total estimé</Text>
+                                        <Text style={styles.basketTotalLabel}>{t('deliveryShoppingFlow.totalEstime')}</Text>
                                         <Text style={styles.basketTotalValue}>
                                             {calculateBasketTotal().toLocaleString('fr-FR')} FCFA
                                         </Text>
@@ -817,7 +817,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
                                     <SafeIcon name="map-pin" size={18} color={modernColors.success} />
-                                    <Text style={styles.sectionTitle}>Point de collecte</Text>
+                                    <Text style={styles.sectionTitle}>{t('deliveryShoppingFlow.pointDeCollecte')}</Text>
                                 </View>
                                 <View style={styles.locationCard}>
                                     <Text style={styles.locationText}>
@@ -831,7 +831,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
                                 <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
-                                <Text style={styles.sectionTitle}>Point de livraison *</Text>
+                                <Text style={styles.sectionTitle}>{t('deliveryShoppingFlow.pointDeLivraison')}</Text>
                             </View>
                             {dropoffLocation ? (
                                 <View style={[styles.locationCard, errors.dropoff && styles.locationCardError]}>
@@ -846,7 +846,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                                             setErrors(prev => ({ ...prev, dropoff: '' }));
                                         }}
                                     >
-                                        <Text style={styles.modifyButtonText}>Modifier</Text>
+                                        <Text style={styles.modifyButtonText}>{t('deliveryShoppingFlow.modifier')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             ) : (
@@ -891,7 +891,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
 
                         {/* ✅ NOUVEAU : Type de véhicule préféré */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Type de transport souhaité (optionnel)</Text>
+                            <Text style={styles.sectionTitle}>{t('deliveryShoppingFlow.typeDeTransportSouhaiteOptionnel')}</Text>
                             <Text style={styles.sectionSubtitle}>
                                 Choisissez le type de véhicule pour votre livraison
                             </Text>
@@ -927,7 +927,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                             <TextInput
                                 value={notes}
                                 onChangeText={setNotes}
-                                placeholder="Ex: Produits frais uniquement, vérifier les dates..."
+                                placeholder={t('deliveryShoppingFlow.exProduitsFraisUniquementVerifier')}
                                 style={styles.notesInput}
                                 multiline
                                 numberOfLines={3}
@@ -943,7 +943,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                             onPress={onClose}
                             disabled={loading}
                         >
-                            <Text style={styles.cancelButtonText}>Annuler</Text>
+                            <Text style={styles.cancelButtonText}>{t('deliveryShoppingFlow.annuler')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[
@@ -956,7 +956,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                             disabled={loading || !selectedSupermarket || basketItems.length === 0 || !dropoffLocation}
                         >
                             <Text style={styles.submitButtonText}>
-                                {loading ? 'Création...' : 'Créer la commande'}
+                                {loading ? t('deliveryShoppingFlow.creation') : t('deliveryShoppingFlow.creerLaCommande')}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -975,7 +975,7 @@ const DeliveryShoppingFlow: React.FC<DeliveryShoppingFlowProps> = ({
                             ? { lat: userLocation.coords.latitude, lng: userLocation.coords.longitude }
                             : null
                 }
-                title="Sélectionner le point de livraison"
+                title={t('deliveryShoppingFlow.selectionnerLePointDeLivraison')}
                 allowZoneSelection={false}
             />
         </>

@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface BudgetSliderProps {
     value: number;
@@ -103,7 +104,7 @@ export const BudgetSlider: React.FC<BudgetSliderProps> = ({
                     {!!estimatedReach && (
                         <View style={styles.estimateItem}>
                             <SafeIcon name="users" size={14} color={modernColors.primary} />
-                            <Text style={styles.estimateLabel}>Portée estimée:</Text>
+                            <Text style={styles.estimateLabel}>{t('budgetSlider.porteeEstimee')}</Text>
                             <Text style={styles.estimateValue}>
                                 {formatNumber(estimatedReach)} personnes
                             </Text>

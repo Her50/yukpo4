@@ -84,7 +84,7 @@ const OtpVerificationScreen: React.FC = () => {
       console.log('[OTP] Code envoyé à', data.phone_masked);
     } catch (err: any) {
       console.error('[OTP] Erreur envoi:', err);
-      setError('Impossible d\'envoyer le code. Vérifiez votre connexion.');
+      setError('Impossible d\t('otpVerificationScreen.envoyerLeCodeVerifiezVotreConnexion'));
     }
   }, [params]);
 
@@ -178,7 +178,7 @@ const OtpVerificationScreen: React.FC = () => {
 
       // Rediriger après un court délai
       setTimeout(() => {
-        toaster.success('Bienvenue sur Yukpo ! Votre compte est prêt.');
+        toaster.success(t('otpVerificationScreen.bienvenueSurYukpoVotreCompteEst'));
         (navigation as any).reset({
           index: 0,
           routes: [{ name: 'Main' }],
@@ -187,7 +187,7 @@ const OtpVerificationScreen: React.FC = () => {
 
     } catch (err: any) {
       console.error('[OTP] Erreur vérification:', err);
-      setError('Erreur de connexion. Réessayez.');
+      setError(t('otpVerification.erreurDeConnexionReessayez'));
     } finally {
       setLoading(false);
     }
@@ -195,14 +195,14 @@ const OtpVerificationScreen: React.FC = () => {
 
   const skipVerification = useCallback(() => {
     Alert.alert(
-      'Passer la vérification ?',
-      'Vous pourrez vérifier votre numéro plus tard depuis votre profil. Certaines fonctionnalités seront limitées.',
+      t('otpVerificationScreen.passerLaVerification'),
+      t('otpVerificationScreen.vousPourrezVerifierVotreNumeroPlus'),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
           text: 'Passer',
           onPress: () => {
-            toaster.success('Bienvenue sur Yukpo ! Votre compte est prêt.');
+            toaster.success(t('otpVerificationScreen.bienvenueSurYukpoVotreCompteEst'));
             (navigation as any).reset({
               index: 0,
               routes: [{ name: 'Main' }],
@@ -219,7 +219,7 @@ const OtpVerificationScreen: React.FC = () => {
       <View style={styles.container}>
         <View style={styles.successContainer}>
           <Text style={styles.successIcon}>✅</Text>
-          <Title style={styles.successTitle}>Numéro vérifié !</Title>
+          <Title style={styles.successTitle}>{t('otpVerification.numeroVerifie')}</Title>
           <Paragraph style={styles.successText}>
             Votre compte est maintenant activé. Redirection en cours...
           </Paragraph>
@@ -234,7 +234,7 @@ const OtpVerificationScreen: React.FC = () => {
         <Card.Content style={styles.cardContent}>
           {/* Header */}
           <Text style={styles.headerIcon}>📱</Text>
-          <Title style={styles.title}>Vérification du téléphone</Title>
+          <Title style={styles.title}>{t('otpVerification.verificationDuTelephone')}</Title>
           <Paragraph style={styles.subtitle}>
             Un code à 6 chiffres a été envoyé par SMS/WhatsApp au numéro :
           </Paragraph>
@@ -296,7 +296,7 @@ const OtpVerificationScreen: React.FC = () => {
 
           {/* Passer */}
           <TouchableOpacity style={styles.skipButton} onPress={skipVerification}>
-            <Text style={styles.skipText}>Passer cette étape</Text>
+            <Text style={styles.skipText}>{t('otpVerification.passerCetteEtape')}</Text>
           </TouchableOpacity>
         </Card.Content>
       </Card>

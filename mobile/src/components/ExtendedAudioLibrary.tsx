@@ -20,6 +20,7 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import { NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ExtendedAudioLibraryProps {
     onTrackSelected?: (track: AudioMetadata) => void;
@@ -30,7 +31,8 @@ export const ExtendedAudioLibrary: React.FC<ExtendedAudioLibraryProps> = ({
     onTrackSelected,
     selectedTrackId,
 }) => {
-    const [tracks, setTracks] = useState<AudioMetadata[]>([]);
+        const { t } = useLanguageSafe();
+const [tracks, setTracks] = useState<AudioMetadata[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -86,7 +88,7 @@ export const ExtendedAudioLibrary: React.FC<ExtendedAudioLibraryProps> = ({
             setTracks(response.tracks || []);
         } catch (err: any) {
             console.error('[ExtendedAudioLibrary] Erreur recherche audio:', err);
-            setError(err.message || 'Erreur lors de la recherche audio');
+            setError(err.message || t('extendedAudioLibrary.erreurLorsDeLaRecherche'));
         } finally {
             setLoading(false);
         }
@@ -124,7 +126,7 @@ export const ExtendedAudioLibrary: React.FC<ExtendedAudioLibraryProps> = ({
             });
         } catch (err: any) {
             console.error('[ExtendedAudioLibrary] Erreur lecture preview:', err);
-            setError('Impossible de lire la preview');
+            setError(t('extendedAudioLibrary.impossibleDeLireLaPreview'));
         }
     };
 
@@ -230,7 +232,7 @@ export const ExtendedAudioLibrary: React.FC<ExtendedAudioLibraryProps> = ({
             {/* Recherche et Filtres */}
             <View style={styles.controls}>
                 <NativeInput
-                    placeholder="Rechercher un titre, artiste..."
+                    placeholder={t('extendedAudioLibrary.rechercherUnTitreArtiste')}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     style={styles.searchInput}

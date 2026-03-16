@@ -13,6 +13,7 @@ import {
   View
 } from 'react-native';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -43,7 +44,8 @@ const ChatModalAdvanced: React.FC<ChatModalAdvancedProps> = ({
   onClose,
   onSendMessage
 }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+      const { t } = useLanguageSafe();
+const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
@@ -58,7 +60,7 @@ const ChatModalAdvanced: React.FC<ChatModalAdvancedProps> = ({
 
   // Fonction utilitaire pour extraire la valeur d'un champ
   const getServiceFieldValue = (field: any): string => {
-    if (!field) return 'Non spécifié';
+    if (!field) return t('chatModalAdvanced.nonSpecifie');
     if (typeof field === 'string') return field;
     if (field && typeof field === 'object') {
       if (field.valeur !== undefined) {
@@ -70,7 +72,7 @@ const ChatModalAdvanced: React.FC<ChatModalAdvancedProps> = ({
         return String(value);
       }
     }
-    return 'Non spécifié';
+    return t('chatModalAdvanced.nonSpecifie');
   };
 
   // Initialiser le WebSocket
@@ -372,7 +374,7 @@ const ChatModalAdvanced: React.FC<ChatModalAdvancedProps> = ({
           {isTyping && (
             <View style={[styles.messageContainer, styles.prestataireMessage]}>
               <View style={[styles.messageBubble, styles.prestataireBubble]}>
-                <Text style={styles.typingText}>Prestataire en train d'écrire...</Text>
+                <Text style={styles.typingText}>{t('chatModalAdvanced.prestataireEnTrainDecrire')}</Text>
               </View>
             </View>
           )}
@@ -395,7 +397,7 @@ const ChatModalAdvanced: React.FC<ChatModalAdvancedProps> = ({
               style={styles.textInput}
               value={newMessage}
               onChangeText={setNewMessage}
-              placeholder="Tapez votre message..."
+              placeholder={t('chatModalAdvanced.tapezVotreMessage')}
               multiline
               maxLength={1000}
             />
@@ -421,7 +423,7 @@ const ChatModalAdvanced: React.FC<ChatModalAdvancedProps> = ({
           {/* Status WebSocket */}
           <View style={styles.statusContainer}>
             <Text style={styles.statusText}>
-              {wsConnected ? '🟢 Connecté' : '🔴 Déconnecté'}
+              {wsConnected ? t('chatModalAdvanced.connecte') : t('chatModalAdvanced.deconnecte')}
             </Text>
           </View>
         </View>

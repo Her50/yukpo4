@@ -8,9 +8,11 @@ import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNati
 import { CompatibilityScoreBadge } from '../../components/covoiturage/CompatibilityScoreBadge';
 import { IntelligentMatchingFilters, MatchingFilters } from '../../components/covoiturage/IntelligentMatchingFilters';
 import { apiPost } from '../../services/api';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const CovoiturageIntelligentSearchScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [depart, setDepart] = useState('');
     const [destination, setDestination] = useState('');
     const [dateDepart, setDateDepart] = useState('');
@@ -59,7 +61,7 @@ const CovoiturageIntelligentSearchScreen: React.FC = () => {
 
             {item.match_reasons && item.match_reasons.length > 0 && (
                 <View style={styles.reasonsContainer}>
-                    <Text style={styles.reasonsTitle}>Points positifs:</Text>
+                    <Text style={styles.reasonsTitle}>{t('covoiturageIntelligentSearch.pointsPositifs')}/Text>
                     {item.match_reasons.map((reason: string, index: number) => (
                         <Text key={index} style={styles.reason}>✓ {reason}</Text>
                     ))}
@@ -79,19 +81,19 @@ const CovoiturageIntelligentSearchScreen: React.FC = () => {
         <ScrollView style={styles.container}>
             <View style={styles.searchSection}>
                 <NativeInput
-                    label="Ville de départ"
+                    label={t('covoiturageIntelligentSearch.villeDeDepart')}
                     value={depart}
                     onChangeText={setDepart}
                     placeholder="Ex: Douala"
                 />
                 <NativeInput
-                    label="Ville de destination"
+                    label={t('covoiturageIntelligentSearch.villeDeDestination')}
                     value={destination}
                     onChangeText={setDestination}
-                    placeholder="Ex: Yaoundé"
+                    placeholder={t('covoiturageIntelligentSearch.exYaounde')}
                 />
                 <NativeInput
-                    label="Date de départ"
+                    label={t('covoiturageIntelligentSearch.dateDeDepart')}
                     value={dateDepart}
                     onChangeText={setDateDepart}
                     placeholder="YYYY-MM-DD"

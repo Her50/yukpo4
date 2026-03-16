@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface TopService {
     id: string;
@@ -49,11 +50,11 @@ const TopServicesCard: React.FC<TopServicesCardProps> = ({
         return (
             <View style={styles.container}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>Services les Plus Performants</Text>
+                    <Text style={styles.title}>{t('topServicesCard.servicesLesPlusPerformants')}/Text>
                 </View>
                 <View style={styles.emptyContainer}>
                     <Text style={styles.emptyIcon}>💼</Text>
-                    <Text style={styles.emptyTitle}>Aucun service</Text>
+                    <Text style={styles.emptyTitle}>{t('topServicesCard.aucunService')}</Text>
                     <Text style={styles.emptyText}>
                         Créez votre premier service pour voir les statistiques de performance
                     </Text>
@@ -65,10 +66,10 @@ const TopServicesCard: React.FC<TopServicesCardProps> = ({
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Services les Plus Performants</Text>
+                <Text style={styles.title}>{t('topServicesCard.servicesLesPlusPerformants')}/Text>
                 {onViewAllPress && (
                     <TouchableOpacity onPress={onViewAllPress} style={styles.viewAllButton}>
-                        <Text style={styles.viewAllText}>Voir tout</Text>
+                        <Text style={styles.viewAllText}>{t('topServicesCard.voirTout')}</Text>
                     </TouchableOpacity>
                 )}
             </View>

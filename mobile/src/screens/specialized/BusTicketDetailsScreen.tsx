@@ -79,10 +79,10 @@ const BusTicketDetailsScreen: React.FC = () => {
 
     const handleCancel = () => {
         if (!ticket) return;
-        Alert.alert('Annuler la réservation', 'Êtes-vous sûr de vouloir annuler ?', [
+        Alert.alert('Annuler la réservation', t('busTicketDetails.etesvousSurDeVouloirAnnuler'), [
             { text: t('common.no'), style: 'cancel' },
             {
-                text: 'Oui, annuler', style: 'destructive', onPress: async () => {
+                text: t('busTicketDetails.ouiAnnuler'), style: 'destructive', onPress: async () => {
                     try { setCancelling(true); for (const rid of ticket.reservation_ids) await apiPatch(`/api/bus-tickets/reservations/${rid}/cancel`, {}); Alert.alert('Succès', 'Réservation annulée'); navigation.goBack(); }
                     catch (e: any) { Alert.alert('Erreur', e.message || 'Impossible d\'annuler'); }
                     finally { setCancelling(false); }
@@ -103,8 +103,8 @@ const BusTicketDetailsScreen: React.FC = () => {
 
     const formatDate = (dateStr: string) => { try { return new Date(dateStr).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); } catch { return dateStr; } };
 
-    if (loading) return (<View style={st.container}><LinearGradient colors={['#0C4A6E', '#0284C7', '#38BDF8']} style={st.hero}><View style={st.heroTop}><TouchableOpacity onPress={() => navigation.goBack()} style={st.heroBtn}><SafeIcon name="arrow-left" size={22} color="#fff" /></TouchableOpacity></View><View style={st.heroContent}><View style={st.heroIconWrap}><SafeIcon name="bus" size={28} color="#0284C7" /></View><Text style={st.heroTitle}>Chargement...</Text></View></LinearGradient><ScrollView style={{ flex: 1, padding: 16 }}><SkeletonCard count={3} /></ScrollView></View>);
-    if (!ticket) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#0284C7" /><Text style={st.centerText}>Ticket non trouvé</Text></View>);
+    if (loading) return (<View style={st.container}><LinearGradient colors={['#0C4A6E', '#0284C7', '#38BDF8']} style={st.hero}><View style={st.heroTop}><TouchableOpacity onPress={() => navigation.goBack()} style={st.heroBtn}><SafeIcon name="arrow-left" size={22} color="#fff" /></TouchableOpacity></View><View style={st.heroContent}><View style={st.heroIconWrap}><SafeIcon name="bus" size={28} color="#0284C7" /></View><Text style={st.heroTitle}>{t('busTicketDetails.chargement')}</Text></View></LinearGradient><ScrollView style={{ flex: 1, padding: 16 }}><SkeletonCard count={3} /></ScrollView></View>);
+    if (!ticket) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#0284C7" /><Text style={st.centerText}>{t('busTicketDetails.ticketNonTrouve')}</Text></View>);
 
     const qrData = JSON.stringify({ id: ticket.reservation_ids[0], payment_id: ticket.payment_id, product_id: ticket.product_id, timestamp: new Date().toISOString(), type: 'bus_ticket' });
     const isPaid = ticket.payment_status === 'completed';
@@ -126,7 +126,7 @@ const BusTicketDetailsScreen: React.FC = () => {
                     </View>
                     <View style={st.heroBadges}>
                         <View style={[st.badge, { backgroundColor: isPaid ? 'rgba(52,211,153,0.3)' : 'rgba(251,191,36,0.3)' }]}>
-                            <Text style={st.badgeText}>{isPaid ? 'Payé' : 'En attente'}</Text>
+                            <Text style={st.badgeText}>{isPaid ? t('busTicketDetailsScreen.paye') : 'En attente'}</Text>
                         </View>
                         <View style={[st.badge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
                             <Text style={st.badgeText}>{ticket.number_of_tickets} ticket{ticket.number_of_tickets > 1 ? 's' : ''}</Text>
@@ -144,14 +144,14 @@ const BusTicketDetailsScreen: React.FC = () => {
                 <View style={[st.card, { alignItems: 'center' }]}>
                     <View style={st.cardHeader}><SafeIcon name="maximize" size={18} color="#0284C7" /><Text style={st.cardTitle}>Code QR d'embarquement</Text></View>
                     <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 12, marginVertical: 12 }}><QRCode value={qrData} size={180} backgroundColor="#fff" color="#000" /></View>
-                    <Text style={{ fontSize: 12, color: '#6B7280', textAlign: 'center' }}>Présentez ce code QR lors de l'embarquement</Text>
+                    <Text style={{ fontSize: 12, color: '#6B7280', textAlign: 'center' }}>{t('busTicketDetails.presentezCeCodeQrLors')}</Text>
                 </View>
 
                 {/* Trip Info */}
                 <View style={st.card}>
-                    <View style={st.cardHeader}><SafeIcon name="map" size={18} color="#0284C7" /><Text style={st.cardTitle}>Informations du trajet</Text></View>
+                    <View style={st.cardHeader}><SafeIcon name="map" size={18} color="#0284C7" /><Text style={st.cardTitle}>{t('busTicketDetails.informationsDuTrajet')}/Text></View>
                     <View style={st.infoRow}><Text style={st.infoLabel}>Date</Text><Text style={st.infoValue}>{formatDate(ticket.departure_date)}</Text></View>
-                    {(ticket as any).duration_minutes && (<View style={st.infoRow}><Text style={st.infoLabel}>Durée</Text><Text style={st.infoValue}>{(ticket as any).duration_minutes} min</Text></View>)}
+                    {(ticket as any).duration_minutes && (<View style={st.infoRow}><Text style={st.infoLabel}>{t('busTicketDetails.duree')}</Text><Text style={st.infoValue}>{(ticket as any).duration_minutes} min</Text></View>)}
                     {ticket.bus_number && (<View style={st.infoRow}><Text style={st.infoLabel}>Bus</Text><Text style={st.infoValue}>#{ticket.bus_number}</Text></View>)}
                     <View style={{ marginTop: 12 }}><TripMap departureCity={ticket.departure_city} arrivalCity={ticket.arrival_city} distanceKm={(ticket as any).distance_km} durationMinutes={(ticket as any).duration_minutes} /></View>
                 </View>
@@ -159,7 +159,7 @@ const BusTicketDetailsScreen: React.FC = () => {
                 {/* Seats */}
                 {ticket.reservations_details && ticket.reservations_details.length > 0 && (
                     <View style={st.card}>
-                        <View style={st.cardHeader}><SafeIcon name="users" size={18} color="#0284C7" /><Text style={st.cardTitle}>Places réservées</Text></View>
+                        <View style={st.cardHeader}><SafeIcon name="users" size={18} color="#0284C7" /><Text style={st.cardTitle}>{t('busTicketDetails.placesReservees')}</Text></View>
                         {ticket.reservations_details.map((r, i) => (
                             <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: i < ticket.reservations_details!.length - 1 ? 1 : 0, borderBottomColor: '#F3F4F6' }}>
                                 <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>Place {r.seat_number}</Text>
@@ -176,24 +176,24 @@ const BusTicketDetailsScreen: React.FC = () => {
                     <View style={st.infoRow}><Text style={st.infoLabel}>Prix unitaire</Text><Text style={st.infoValue}>{ticket.ticket_price.toLocaleString('fr-FR')} {ticket.currency}</Text></View>
                     <View style={[st.infoRow, { marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#E5E7EB' }]}><Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>Total</Text><Text style={{ fontSize: 18, fontWeight: '800', color: '#0284C7' }}>{ticket.total_amount.toLocaleString('fr-FR')} {ticket.currency}</Text></View>
                     <View style={{ marginTop: 10, padding: 10, backgroundColor: isPaid ? '#F0FDF4' : '#FFFBEB', borderRadius: 8, alignItems: 'center' }}>
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: isPaid ? '#10B981' : '#D97706' }}>{isPaid ? 'Payé' : 'En attente de paiement'}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: isPaid ? '#10B981' : '#D97706' }}>{isPaid ? t('busTicketDetailsScreen.paye') : 'En attente de paiement'}</Text>
                     </View>
                 </View>
 
                 {/* Actions */}
                 <View style={{ paddingHorizontal: 16, gap: 10 }}>
-                    <TouchableOpacity style={st.actionBtn} onPress={handleShare}><SafeIcon name="share" size={18} color="#0284C7" /><Text style={st.actionBtnText}>Partager le ticket</Text><SafeIcon name="chevron-right" size={18} color="#9CA3AF" /></TouchableOpacity>
+                    <TouchableOpacity style={st.actionBtn} onPress={handleShare}><SafeIcon name="share" size={18} color="#0284C7" /><Text style={st.actionBtnText}>{t('busTicketDetailsScreen.partagerLeTicket')}</Text><SafeIcon name="chevron-right" size={18} color="#9CA3AF" /></TouchableOpacity>
 
                     {isPaid && !ticket.is_round_trip && (
                         <TouchableOpacity style={[st.primaryBtn, { backgroundColor: '#0284C7' }]} onPress={() => navigation.navigate('BusReturnRequestForm' as never, { outboundPaymentId: ticket.payment_id, outboundTicket: ticket } as never)}>
-                            <SafeIcon name="repeat" size={20} color="#fff" /><Text style={st.primaryBtnText}>Demande de retour</Text>
+                            <SafeIcon name="repeat" size={20} color="#fff" /><Text style={st.primaryBtnText}>{t('busTicketDetails.demandeDeRetour')}/Text>
                         </TouchableOpacity>
                     )}
 
                     {isPaid && (
                         <TouchableOpacity style={[st.actionBtn, { borderLeftWidth: 3, borderLeftColor: '#EF4444' }]} onPress={handleCancel} disabled={cancelling}>
                             {cancelling ? <ActivityIndicator size="small" color="#EF4444" /> : <SafeIcon name="x-circle" size={18} color="#EF4444" />}
-                            <Text style={[st.actionBtnText, { color: '#DC2626' }]}>Annuler la réservation</Text>
+                            <Text style={[st.actionBtnText, { color: '#DC2626' }]}>{t('busTicketDetails.annulerLaReservation')}</Text>
                         </TouchableOpacity>
                     )}
                 </View>

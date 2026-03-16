@@ -3,13 +3,14 @@
 import { Picker } from '@react-native-picker/picker';
 import * as React from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 // Note: useTranslation doit être adapté pour React Native ou remplacé
 // import { useTranslation } from "@/hooks/useTranslation";
 
 const languages = [
-  { code: "fr", label: "🇫🇷 Français" },
+  { code: "fr", label: t('langSwitcher.francais') },
   { code: "en", label: "🇬🇧 English" },
-  { code: "pt", label: "🇵🇹 Português" },
+  { code: "pt", label: t('langSwitcher.portugues') },
   { code: "ar", label: "🇸🇦 العربية" },
   { code: "ff", label: "🌍 Fula" },
 ];

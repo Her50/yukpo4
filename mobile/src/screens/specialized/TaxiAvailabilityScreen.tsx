@@ -141,7 +141,7 @@ const TaxiAvailabilityScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('taxiAvailability.chargement')}</Text>
             </View>
         );
     }
@@ -149,7 +149,7 @@ const TaxiAvailabilityScreen: React.FC = () => {
     if (!taxi) {
         return (
             <View style={styles.centerContainer}>
-                <Text style={styles.errorText}>Taxi non trouvé</Text>
+                <Text style={styles.errorText}>{t('taxiAvailability.taxiNonTrouve')}</Text>
             </View>
         );
     }
@@ -163,7 +163,7 @@ const TaxiAvailabilityScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mettre à jour disponibilité</Text>
+                <Text style={styles.title}>{t('taxiAvailability.mettreAJourDisponibilite')}</Text>
             </View>
 
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -177,7 +177,7 @@ const TaxiAvailabilityScreen: React.FC = () => {
                 <NativeCard style={styles.card}>
                     <View style={styles.switchRow}>
                         <View style={styles.switchInfo}>
-                            <Text style={styles.switchLabel}>Disponible maintenant</Text>
+                            <Text style={styles.switchLabel}>{t('taxiAvailability.disponibleMaintenant')}</Text>
                             <Text style={styles.switchDescription}>
                                 Activez cette option si votre taxi est disponible pour des courses
                             </Text>
@@ -192,7 +192,7 @@ const TaxiAvailabilityScreen: React.FC = () => {
                 </NativeCard>
 
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>Position GPS actuelle</Text>
+                    <Text style={styles.sectionTitle}>{t('taxiAvailability.positionGpsActuelle')}/Text>
                     <Text style={styles.sectionDescription}>
                         Mettez à jour votre position GPS pour que les clients puissent vous trouver facilement
                     </Text>
@@ -204,10 +204,10 @@ const TaxiAvailabilityScreen: React.FC = () => {
                         <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
                         <View style={styles.gpsButtonContent}>
                             <Text style={styles.gpsButtonText}>
-                                {gpsString || 'Sélectionner un point GPS'}
+                                {gpsString || t('taxiAvailability.selectionnerUnPointGps')}
                             </Text>
                             <Text style={styles.gpsButtonSubtext}>
-                                {gpsString ? 'Appuyez pour modifier' : 'Appuyez pour sélectionner'}
+                                {gpsString ? 'Appuyez pour modifier' : t('taxiAvailabilityScreen.appuyezPourSelectionner')}
                             </Text>
                         </View>
                         <SafeIcon name="chevron-right" size={20} color={modernColors.textSecondary} />
@@ -236,7 +236,7 @@ const TaxiAvailabilityScreen: React.FC = () => {
                 </NativeCard>
 
                 <NativeButton
-                    title="Enregistrer les modifications"
+                    title={t('taxiAvailabilityScreen.enregistrerLesModifications')}
                     onPress={handleSave}
                     disabled={saving}
                     icon="save"

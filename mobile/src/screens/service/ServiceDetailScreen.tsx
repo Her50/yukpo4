@@ -55,7 +55,7 @@ const ServiceDetailScreen: React.FC = () => {
         `Voulez-vous contacter ${service.provider.name} ?`,
         [
           { text: t('common.cancel'), style: 'cancel' },
-          { text: 'Contacter', onPress: () => {
+          { text: t('common.contact'), onPress: () => {
             // Ici on pourrait ouvrir l'email ou le t�l�phone
             Alert.alert('Contact', `Contact: ${service.contact}`);
           }},
@@ -80,7 +80,7 @@ const ServiceDetailScreen: React.FC = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text>Chargement...</Text>
+        <Text>{t('serviceDetail.chargement')}</Text>
       </View>
     );
   }
@@ -88,7 +88,7 @@ const ServiceDetailScreen: React.FC = () => {
   if (!service) {
     return (
       <View style={styles.errorContainer}>
-        <Text>Service non trouv�</Text>
+        <Text>{t('serviceDetail.serviceNonTrouv')}/Text>
       </View>
     );
   }
@@ -145,14 +145,14 @@ const ServiceDetailScreen: React.FC = () => {
             
             {service.location && (
               <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>?? Localisation</Text>
+                <Text style={styles.detailLabel}>{t('serviceDetail.localisation')}/Text>
                 <Text style={styles.detailValue}>{service.location}</Text>
               </View>
             )}
 
             {service.rating && (
               <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>? Note</Text>
+                <Text style={styles.detailLabel}>{t('serviceDetail.note')}/Text>
                 <Text style={styles.detailValue}>
                   {service.rating}/5 ({service.reviews || 0} avis)
                 </Text>
@@ -161,7 +161,7 @@ const ServiceDetailScreen: React.FC = () => {
 
             {service.contact && (
               <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>?? Contact</Text>
+                <Text style={styles.detailLabel}>{t('serviceDetail.contact')}/Text>
                 <Text style={styles.detailValue}>{service.contact}</Text>
               </View>
             )}

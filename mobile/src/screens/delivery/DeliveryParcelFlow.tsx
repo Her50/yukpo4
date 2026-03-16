@@ -120,20 +120,20 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
         switch (field) {
             case 'weight':
                 if (value && parseFloat(value) <= 0) {
-                    return 'Le poids doit être supérieur à 0';
+                    return t('deliveryParcelFlow.lePoidsDoitEtreSuperieurA');
                 }
                 if (value && parseFloat(value) > 1000) {
-                    return 'Le poids ne peut pas dépasser 1000 kg';
+                    return t('deliveryParcelFlow.lePoidsNePeutPasDepasser');
                 }
                 return '';
             case 'volume':
                 if (value && parseFloat(value) <= 0) {
-                    return 'Le volume doit être supérieur à 0';
+                    return t('deliveryParcelFlow.leVolumeDoitEtreSuperieurA');
                 }
                 return '';
             case 'declaredValue':
                 if (value && parseFloat(value) < 0) {
-                    return 'La valeur déclarée ne peut pas être négative';
+                    return t('deliveryParcelFlow.laValeurDeclareeNePeutPas');
                 }
                 return '';
             case 'preferredDeliveryDate':
@@ -142,7 +142,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     if (date < today) {
-                        return 'La date ne peut pas être dans le passé';
+                        return t('deliveryParcelFlow.laDateNePeutPasEtre');
                     }
                 }
                 return '';
@@ -151,7 +151,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                     const [startH, startM] = value.split(':').map(Number);
                     const [endH, endM] = preferredDeliveryTimeEnd.split(':').map(Number);
                     if (startH > endH || (startH === endH && startM >= endM)) {
-                        return 'L\'heure de début doit être avant l\'heure de fin';
+                        return 'L\t('deliveryParcelFlow.heureDeDebutDoitEtreAvantLheure');
                     }
                 }
                 return '';
@@ -464,8 +464,8 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                         <View style={styles.headerContent}>
                             <SafeIcon name="package" size={24} color="#FFFFFF" />
                             <View style={styles.headerText}>
-                                <Text style={styles.headerTitle}>Livraison de colis</Text>
-                                <Text style={styles.headerSubtitle}>Expédiez un colis ou un document</Text>
+                                <Text style={styles.headerTitle}>{t('deliveryParcelFlow.livraisonDeColis')}/Text>
+                                <Text style={styles.headerSubtitle}>{t('deliveryParcelFlow.expediezUnColisOuUn')}</Text>
                             </View>
                         </View>
                         <TouchableOpacity
@@ -483,15 +483,15 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
                                 <SafeIcon name="package" size={18} color={modernColors.primary} />
-                                <Text style={styles.sectionTitle}>Type de colis *</Text>
+                                <Text style={styles.sectionTitle}>{t('deliveryParcelFlow.typeDeColis')}</Text>
                             </View>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeSelectorScroll}>
                                 <View style={styles.typeSelector}>
                                     {([
                                         { key: 'document', label: 'Document', icon: 'file-text' },
                                         { key: 'package', label: 'Paquet', icon: 'package' },
-                                        { key: 'moving', label: 'Déménagement', icon: 'truck' },
-                                        { key: 'cake', label: 'Gâteau', icon: 'cake' },
+                                        { key: 'moving', label: t('deliveryParcelFlow.demenagement'), icon: 'truck' },
+                                        { key: 'cake', label: t('deliveryParcelFlow.gateau'), icon: 'cake' },
                                         { key: 'other', label: 'Autres', icon: 'box' },
                                     ] as const).map(({ key, label, icon }) => (
                                         <TouchableOpacity
@@ -527,7 +527,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
                                     <SafeIcon name="info" size={18} color={modernColors.accent} />
-                                    <Text style={styles.sectionTitle}>Informations du colis</Text>
+                                    <Text style={styles.sectionTitle}>{t('deliveryParcelFlow.informationsDuColis')}/Text>
                                 </View>
                                 {/* Poids et volume uniquement pour document, paquet et gâteau */}
                                 {(parcelType === 'document' || parcelType === 'package' || parcelType === 'cake') && (
@@ -550,7 +550,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                             ) : null}
                                         </View>
                                         <View style={styles.formItem}>
-                                            <Text style={styles.label}>Volume (cm³)</Text>
+                                            <Text style={styles.label}>{t('deliveryParcelFlow.volumeCm')}/Text>
                                             <TextInput
                                                 style={[styles.input, errors.volume && styles.inputError]}
                                                 placeholder="Ex: 5000"
@@ -571,7 +571,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                 {/* Valeur déclarée pour tous sauf autres */}
                                 {parcelType !== 'moving' && (
                                     <View style={styles.formItem}>
-                                        <Text style={styles.label}>Valeur déclarée (FCFA)</Text>
+                                        <Text style={styles.label}>{t('deliveryParcelFlow.valeurDeclareeFcfa')}</Text>
                                         <TextInput
                                             style={[styles.input, errors.declaredValue && styles.inputError]}
                                             placeholder="Ex: 50000"
@@ -602,7 +602,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                     <Text style={styles.label}>Description *</Text>
                                     <TextInput
                                         style={[styles.input, styles.textArea]}
-                                        placeholder="Décrivez votre colis (nature, taille approximative, poids, etc.)"
+                                        placeholder={t('deliveryParcelFlow.decrivezVotreColisNatureTaille')}
                                         value={notes}
                                         onChangeText={setNotes}
                                         multiline
@@ -612,7 +612,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                 </View>
                                 <View style={styles.formGrid}>
                                     <View style={styles.formItem}>
-                                        <Text style={styles.label}>Poids estimé (kg)</Text>
+                                        <Text style={styles.label}>{t('deliveryParcelFlow.poidsEstimeKg')}</Text>
                                         <TextInput
                                             style={[styles.input, errors.weight && styles.inputError]}
                                             placeholder="Ex: 5"
@@ -626,7 +626,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                         />
                                     </View>
                                     <View style={styles.formItem}>
-                                        <Text style={styles.label}>Valeur estimée (FCFA)</Text>
+                                        <Text style={styles.label}>{t('deliveryParcelFlow.valeurEstimeeFcfa')}</Text>
                                         <TextInput
                                             style={[styles.input, errors.declaredValue && styles.inputError]}
                                             placeholder="Ex: 30000"
@@ -647,7 +647,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
                                 <SafeIcon name="truck" size={18} color={modernColors.accent} />
-                                <Text style={styles.sectionTitle}>Mode de transport souhaité (optionnel)</Text>
+                                <Text style={styles.sectionTitle}>{t('deliveryParcelFlow.modeDeTransportSouhaiteOptionnel')}</Text>
                             </View>
                             <TouchableOpacity
                                 style={styles.pickerButton}
@@ -658,8 +658,8 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                             >
                                 <Text style={styles.pickerText}>
                                     {transportMode
-                                        ? VEHICLE_TRANSPORT_OPTIONS_FOR_ALERT.find(opt => opt.value === transportMode)?.label || 'Sélectionner...'
-                                        : 'Aucune préférence'}
+                                        ? VEHICLE_TRANSPORT_OPTIONS_FOR_ALERT.find(opt => opt.value === transportMode)?.label || t('deliveryParcelFlow.selectionner')
+                                        : t('deliveryParcelFlow.aucunePreference')}
                                 </Text>
                                 <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
                             </TouchableOpacity>
@@ -669,7 +669,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                         <View style={[styles.section, styles.sectionCompact]}>
                             <View style={styles.sectionHeader}>
                                 <SafeIcon name="camera" size={16} color={modernColors.accent} />
-                                <Text style={[styles.sectionTitle, styles.sectionTitleCompact]}>Photos du colis (optionnel)</Text>
+                                <Text style={[styles.sectionTitle, styles.sectionTitleCompact]}>{t('deliveryParcelFlow.photosDuColisOptionnel')}/Text>
                                 <Text style={styles.sectionSubtitleCompact}>{photos.length}/5</Text>
                             </View>
                             <View style={styles.mediaUploadWrapper}>
@@ -724,11 +724,11 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
                                     <SafeIcon name="gift" size={18} color={modernColors.warning} />
-                                    <Text style={styles.sectionTitle}>Détails du gâteau</Text>
+                                    <Text style={styles.sectionTitle}>{t('deliveryParcelFlow.detailsDuGateau')}</Text>
                                 </View>
                                 <View style={styles.formGrid}>
                                     <View style={styles.formItem}>
-                                        <Text style={styles.label}>Température</Text>
+                                        <Text style={styles.label}>{t('deliveryParcelFlow.temperature')}</Text>
                                         <TouchableOpacity
                                             style={styles.pickerButton}
                                             onPress={() => {
@@ -736,7 +736,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                                     t('deliveryParcel.temperature'),
                                                     t('deliveryParcel.temperatureMsg'),
                                                     [
-                                                        { text: 'Tempéré', onPress: () => setCakeTemperature('tempéré') },
+                                                        { text: t('deliveryParcelFlow.tempere'), onPress: () => setCakeTemperature('tempéré') },
                                                         { text: 'Froid', onPress: () => setCakeTemperature('froid') },
                                                         { text: 'Chaud', onPress: () => setCakeTemperature('chaud') },
                                                         { text: t('common.cancel'), style: 'cancel' },
@@ -745,13 +745,13 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                             }}
                                         >
                                             <Text style={styles.pickerText}>
-                                                {cakeTemperature || 'Sélectionner...'}
+                                                {cakeTemperature || t('deliveryParcelFlow.selectionner')}
                                             </Text>
                                             <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
                                         </TouchableOpacity>
                                     </View>
                                     <View style={styles.formItem}>
-                                        <Text style={styles.label}>Niveau de fragilité</Text>
+                                        <Text style={styles.label}>{t('deliveryParcelFlow.niveauDeFragilite')}</Text>
                                         <TouchableOpacity
                                             style={styles.pickerButton}
                                             onPress={() => {
@@ -761,24 +761,24 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                                     [
                                                         { text: 'Standard', onPress: () => setCakeFragility('standard') },
                                                         { text: 'Fragile', onPress: () => setCakeFragility('fragile') },
-                                                        { text: 'Très fragile', onPress: () => setCakeFragility('très fragile') },
+                                                        { text: t('deliveryParcelFlow.tresFragile'), onPress: () => setCakeFragility('très fragile') },
                                                         { text: t('common.cancel'), style: 'cancel' },
                                                     ]
                                                 );
                                             }}
                                         >
                                             <Text style={styles.pickerText}>
-                                                {cakeFragility || 'Sélectionner...'}
+                                                {cakeFragility || t('deliveryParcelFlow.selectionner')}
                                             </Text>
                                             <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
                                         </TouchableOpacity>
                                     </View>
                                 </View>
                                 <View style={styles.formItem}>
-                                    <Text style={styles.label}>Instructions spéciales (optionnel)</Text>
+                                    <Text style={styles.label}>{t('deliveryParcelFlow.instructionsSpecialesOptionnel')}</Text>
                                     <TextInput
                                         style={[styles.input, styles.textAreaCompact]}
-                                        placeholder="Ex: Manipuler avec précaution, maintenir droit..."
+                                        placeholder={t('deliveryParcelFlow.exManipulerAvecPrecautionMaintenir')}
                                         value={cakeInstructions}
                                         onChangeText={setCakeInstructions}
                                         multiline
@@ -794,10 +794,10 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
                                     <SafeIcon name="truck" size={18} color={modernColors.warning} />
-                                    <Text style={styles.sectionTitle}>Détails déménagement</Text>
+                                    <Text style={styles.sectionTitle}>{t('deliveryParcelFlow.detailsDemenagement')}</Text>
                                 </View>
                                 <View style={styles.formItem}>
-                                    <Text style={styles.label}>Nombre de cartons</Text>
+                                    <Text style={styles.label}>{t('deliveryParcelFlow.nombreDeCartons')}</Text>
                                     <TextInput
                                         style={styles.input}
                                         placeholder="Ex: 10"
@@ -807,20 +807,20 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                     />
                                 </View>
                                 <View style={styles.formItem}>
-                                    <Text style={styles.label}>Meubles à transporter</Text>
+                                    <Text style={styles.label}>{t('deliveryParcelFlow.meublesATransporter')}</Text>
                                     <TextInput
                                         style={styles.input}
-                                        placeholder="Ex: Canapé, Table, Armoire"
+                                        placeholder={t('deliveryParcelFlow.exCanapeTableArmoire')}
                                         value={movingFurniture}
                                         onChangeText={setMovingFurniture}
                                         multiline
                                     />
                                 </View>
                                 <View style={styles.formItem}>
-                                    <Text style={styles.label}>Accès (étage, ascenseur, etc.)</Text>
+                                    <Text style={styles.label}>{t('deliveryParcelFlow.accesEtageAscenseurEtc')}</Text>
                                     <TextInput
                                         style={styles.input}
-                                        placeholder="Ex: 3ème étage, ascenseur disponible"
+                                        placeholder={t('deliveryParcelFlow.ex3emeEtageAscenseurDisponible')}
                                         value={movingAccess}
                                         onChangeText={setMovingAccess}
                                         multiline
@@ -833,7 +833,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
                                 <SafeIcon name="map-pin" size={18} color={modernColors.success} />
-                                <Text style={styles.sectionTitle}>Point de collecte *</Text>
+                                <Text style={styles.sectionTitle}>{t('deliveryParcelFlow.pointDeCollecte')}</Text>
                             </View>
                             {pickupLocation ? (
                                 <View style={[styles.locationCard, errors.pickup && styles.locationCardError]}>
@@ -848,7 +848,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                             setErrors(prev => ({ ...prev, pickup: '' }));
                                         }}
                                     >
-                                        <Text style={styles.modifyButtonText}>Modifier</Text>
+                                        <Text style={styles.modifyButtonText}>{t('deliveryParcelFlow.modifier')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             ) : (
@@ -887,7 +887,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
                                 <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
-                                <Text style={styles.sectionTitle}>Point de livraison *</Text>
+                                <Text style={styles.sectionTitle}>{t('deliveryParcelFlow.pointDeLivraison')}</Text>
                             </View>
                             {dropoffLocation ? (
                                 <View style={[styles.locationCard, errors.dropoff && styles.locationCardError]}>
@@ -902,7 +902,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                             setErrors(prev => ({ ...prev, dropoff: '' }));
                                         }}
                                     >
-                                        <Text style={styles.modifyButtonText}>Modifier</Text>
+                                        <Text style={styles.modifyButtonText}>{t('deliveryParcelFlow.modifier')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             ) : (
@@ -963,20 +963,20 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                         <View style={[styles.section, { borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 24 }]}>
                             <View style={styles.sectionHeader}>
                                 <SafeIcon name="clock" size={18} color={modernColors.accent} />
-                                <Text style={styles.sectionTitle}>Préférences de livraison (optionnel)</Text>
+                                <Text style={styles.sectionTitle}>{t('deliveryParcelFlow.preferencesDeLivraisonOptionnel')}</Text>
                             </View>
 
                             <View style={styles.preferencesGrid}>
                                 <View style={styles.preferenceItem}>
                                     <NativeDatePicker
-                                        label="Date de livraison"
+                                        label={t('deliveryParcelFlow.dateDeLivraison')}
                                         value={preferredDeliveryDate}
                                         onChange={(date) => {
                                             setPreferredDeliveryDate(date);
                                             const error = validateField('preferredDeliveryDate', date);
                                             setErrors(prev => ({ ...prev, preferredDeliveryDate: error }));
                                         }}
-                                        placeholder="Sélectionner une date"
+                                        placeholder={t('deliveryParcelFlow.selectionnerUneDate')}
                                         minimumDate={new Date()}
                                     />
                                     {errors.preferredDeliveryDate ? (
@@ -995,7 +995,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                                 [
                                                     { text: 'Standard', onPress: () => setUrgencyLevel('standard') },
                                                     { text: 'Urgent', onPress: () => setUrgencyLevel('urgent') },
-                                                    { text: 'Programmé', onPress: () => setUrgencyLevel('scheduled') },
+                                                    { text: t('deliveryParcelFlow.programme'), onPress: () => setUrgencyLevel('scheduled') },
                                                 ]
                                             );
                                         }}
@@ -1005,7 +1005,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                                 ? 'Standard'
                                                 : urgencyLevel === 'urgent'
                                                     ? 'Urgent'
-                                                    : 'Programmé'}
+                                                    : t('deliveryParcelFlow.programme')}
                                         </Text>
                                         <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
                                     </TouchableOpacity>
@@ -1016,14 +1016,14 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                 <View style={styles.preferencesGrid}>
                                     <View style={styles.preferenceItem}>
                                         <NativeTimePicker
-                                            label="Heure de début"
+                                            label={t('deliveryParcelFlow.heureDeDebut')}
                                             value={preferredDeliveryTimeStart}
                                             onChange={(time) => {
                                                 setPreferredDeliveryTimeStart(time);
                                                 const error = validateField('preferredDeliveryTimeStart', time);
                                                 setErrors(prev => ({ ...prev, preferredDeliveryTimeStart: error }));
                                             }}
-                                            placeholder="Sélectionner l'heure"
+                                            placeholder={t('deliveryParcelFlow.selectionnerL')}heure"
                                         />
                                         {errors.preferredDeliveryTimeStart ? (
                                             <Text style={styles.errorText}>{errors.preferredDeliveryTimeStart}</Text>
@@ -1031,14 +1031,14 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                     </View>
                                     <View style={styles.preferenceItem}>
                                         <NativeTimePicker
-                                            label="Heure de fin"
+                                            label={t('deliveryParcelFlow.heureDeFin')}
                                             value={preferredDeliveryTimeEnd}
                                             onChange={(time) => {
                                                 setPreferredDeliveryTimeEnd(time);
                                                 const error = validateField('preferredDeliveryTimeStart', preferredDeliveryTimeStart);
                                                 setErrors(prev => ({ ...prev, preferredDeliveryTimeStart: error }));
                                             }}
-                                            placeholder="Sélectionner l'heure"
+                                            placeholder={t('deliveryParcelFlow.selectionnerL')}heure"
                                         />
                                     </View>
                                 </View>
@@ -1059,7 +1059,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
 
                                 {isFlexible && (
                                     <View style={styles.flexibilityInput}>
-                                        <Text style={styles.preferenceLabel}>Fenêtre de flexibilité (jours)</Text>
+                                        <Text style={styles.preferenceLabel}>{t('deliveryParcelFlow.fenetreDeFlexibiliteJours')}</Text>
                                         <TextInput
                                             style={styles.preferenceInput}
                                             keyboardType="numeric"
@@ -1079,7 +1079,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                             onPress={onClose}
                             disabled={loading}
                         >
-                            <Text style={styles.cancelButtonText}>Annuler</Text>
+                            <Text style={styles.cancelButtonText}>{t('deliveryParcelFlow.annuler')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[
@@ -1091,7 +1091,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                             disabled={loading || !pickupLocation || !dropoffLocation}
                         >
                             <Text style={styles.submitButtonText}>
-                                {loading ? 'Création...' : 'Créer la livraison'}
+                                {loading ? t('deliveryParcelFlow.creation') : t('deliveryParcelFlow.creerLaLivraison')}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -1110,7 +1110,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                             ? { lat: userLocation.coords.latitude, lng: userLocation.coords.longitude }
                             : null
                 }
-                title="Sélectionner le point de collecte"
+                title={t('deliveryParcelFlow.selectionnerLePointDeCollecte')}
                 allowZoneSelection={false}
             />
             <ModernGPSModal
@@ -1124,7 +1124,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                             ? { lat: userLocation.coords.latitude, lng: userLocation.coords.longitude }
                             : null
                 }
-                title="Sélectionner le point de livraison"
+                title={t('deliveryParcelFlow.selectionnerLePointDeLivraison')}
                 allowZoneSelection={false}
             />
 
@@ -1138,7 +1138,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                 <View style={styles.transportModalOverlay}>
                     <View style={styles.transportModalContent}>
                         <View style={styles.transportModalHeader}>
-                            <Text style={styles.transportModalTitle}>Mode de transport</Text>
+                            <Text style={styles.transportModalTitle}>{t('deliveryParcelFlow.modeDeTransport')}/Text>
                             <TouchableOpacity
                                 onPress={() => setShowTransportModal(false)}
                                 style={styles.transportModalCloseButton}

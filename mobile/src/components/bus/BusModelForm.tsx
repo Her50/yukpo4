@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface BusModel {
     id?: string;
@@ -43,7 +44,8 @@ const BusModelForm: React.FC<BusModelFormProps> = ({
     onSave,
     initialModel
 }) => {
-    const [model, setModel] = useState<BusModel>(
+        const { t } = useLanguageSafe();
+const [model, setModel] = useState<BusModel>(
         initialModel || {
             nom_modele: '',
             total_seats: 50,
@@ -66,8 +68,8 @@ const BusModelForm: React.FC<BusModelFormProps> = ({
         'Climatisation',
         'Toilettes',
         'Écrans TV',
-        'Prise électrique',
-        'Eau minérale',
+        t('busModelForm.priseElectrique'),
+        t('busModelForm.eauMinerale'),
         'Snacks',
         'Couverture',
     ];
@@ -123,18 +125,18 @@ const BusModelForm: React.FC<BusModelFormProps> = ({
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
                     <Text style={styles.title}>
-                        {initialModel ? 'Modifier le modèle' : 'Nouveau modèle de bus'}
+                        {initialModel ? t('busModelForm.modifierLeModele') : t('busModelForm.nouveauModeleDeBus')}
                     </Text>
                 </View>
 
                 <ScrollView style={styles.content}>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Nom du modèle *</Text>
+                        <Text style={styles.label}>{t('busModelForm.nomDuModele')}</Text>
                         <TextInput
                             style={styles.input}
                             value={model.nom_modele}
                             onChangeText={(text) => setModel({ ...model, nom_modele: text })}
-                            placeholder="Ex: Luxury VIP, Standard, Économique"
+                            placeholder={t('busModelForm.exLuxuryVipStandardEconomique')}
                         />
                     </View>
 
@@ -165,7 +167,7 @@ const BusModelForm: React.FC<BusModelFormProps> = ({
 
                     <View style={styles.row}>
                         <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                            <Text style={styles.label}>Nombre de places *</Text>
+                            <Text style={styles.label}>{t('busModelForm.nombreDePlaces')}</Text>
                             <TextInput
                                 style={styles.input}
                                 value={model.total_seats.toString()}
@@ -179,7 +181,7 @@ const BusModelForm: React.FC<BusModelFormProps> = ({
                         </View>
 
                         <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>Prix de base (FCFA) *</Text>
+                            <Text style={styles.label}>{t('busModelForm.prixDeBaseFcfa')}/Text>
                             <TextInput
                                 style={styles.input}
                                 value={model.prix_base.toString()}
@@ -194,14 +196,14 @@ const BusModelForm: React.FC<BusModelFormProps> = ({
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Configuration des sièges (optionnel)</Text>
+                        <Text style={styles.label}>{t('busModelForm.configurationDesSiegesOptionnel')}</Text>
                         <Text style={styles.hint}>
                             Laissez vide pour configuration automatique
                         </Text>
 
                         <View style={styles.row}>
                             <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                                <Text style={styles.sublabel}>Nombre de rangées</Text>
+                                <Text style={styles.sublabel}>{t('busModelForm.nombreDeRangees')}</Text>
                                 <TextInput
                                     style={styles.input}
                                     value={model.rows?.toString() || ''}
@@ -218,7 +220,7 @@ const BusModelForm: React.FC<BusModelFormProps> = ({
                             </View>
 
                             <View style={[styles.inputGroup, { flex: 1, marginLeft: 4, marginRight: 4 }]}>
-                                <Text style={styles.sublabel}>Places par rangée</Text>
+                                <Text style={styles.sublabel}>{t('busModelForm.placesParRangee')}</Text>
                                 <TextInput
                                     style={styles.input}
                                     value={model.seatsPerRow?.toString() || ''}
@@ -235,7 +237,7 @@ const BusModelForm: React.FC<BusModelFormProps> = ({
                             </View>
 
                             <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                                <Text style={styles.sublabel}>1ère rangée</Text>
+                                <Text style={styles.sublabel}>{t('busModelForm.1ereRangee')}</Text>
                                 <TextInput
                                     style={styles.input}
                                     value={model.firstRowSeats?.toString() || ''}
@@ -254,7 +256,7 @@ const BusModelForm: React.FC<BusModelFormProps> = ({
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Équipements</Text>
+                        <Text style={styles.label}>{t('busModelForm.equipements')}</Text>
                         <View style={styles.chipsContainer}>
                             {equipementOptions.map((equipement) => (
                                 <TouchableOpacity
@@ -281,7 +283,7 @@ const BusModelForm: React.FC<BusModelFormProps> = ({
                     </View>
 
                     <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                        <Text style={styles.saveButtonText}>Enregistrer le modèle</Text>
+                        <Text style={styles.saveButtonText}>{t('busModelForm.enregistrerLeModele')}</Text>
                     </TouchableOpacity>
                 </ScrollView>
             </View>

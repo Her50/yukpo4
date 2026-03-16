@@ -4,11 +4,8 @@ use axum::{
     response::Json as JsonResponse,
     Json,
 };
-use hex;
-use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sha2::Sha256;
 use std::sync::Arc;
 
 use crate::state::AppState;
@@ -36,8 +33,6 @@ struct PaymentAttemptWebhookRow {
     _created_at: DateTime<Utc>,
     _confirmed_at: Option<DateTime<Utc>>,
 }
-
-type HmacSha256 = Hmac<Sha256>;
 
 #[derive(Debug, Deserialize)]
 pub struct OrangeMoneyWebhook {

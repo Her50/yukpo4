@@ -104,6 +104,9 @@ ALTER TABLE troc_livres_scolaires ADD COLUMN IF NOT EXISTS type_transaction TEXT
 ALTER TABLE troc_livres_scolaires ADD COLUMN IF NOT EXISTS montant_paye DECIMAL(12,2);
 ALTER TABLE troc_livres_scolaires ADD COLUMN IF NOT EXISTS devise_paiement TEXT DEFAULT 'XAF';
 
+-- Flag: troc déjà inclus dans un paquet de livraison (constitution intelligente)
+ALTER TABLE troc_livres_scolaires ADD COLUMN IF NOT EXISTS is_packaged BOOLEAN DEFAULT false;
+
 -- ============================================================================
 -- 5. INDEX ADDITIONNELS
 -- ============================================================================
@@ -114,6 +117,68 @@ CREATE INDEX IF NOT EXISTS idx_book_packages_type ON book_delivery_packages(type
 CREATE INDEX IF NOT EXISTS idx_troc_type_transaction ON troc_livres_scolaires(type_transaction, statut);
 
 -- ============================================================================
+-- 6. CHAÎNE TROC V3: DAG sans réciprocité, vendeurs, livraison multi-jours
+-- ============================================================================
+
+-- Transferts directionnels (arêtes du DAG): qui envoie quoi à qui
+ALTER TABLE chaines_troc_livres ADD COLUMN IF NOT EXISTS transfers JSONB;
+  -- [{sender_id, receiver_id, livre_id, livre_titre, valeur, statut}]
+
+-- Route optimisée du coursier (waypoints ordonnés)
+ALTER TABLE chaines_troc_livres ADD COLUMN IF NOT EXISTS route_optimisee JSONB;
+  -- [{ordre, user_id, gps, adresse, type, pickup_livre_ids, dropoff_livre_ids}]
+
+-- Planning de livraison multi-jours
+ALTER TABLE chaines_troc_livres ADD COLUMN IF NOT EXISTS delivery_schedule JSONB;
+  -- [{jour, user_id, creneau_debut, creneau_fin, type}]
+
+-- Référence lisible
+ALTER TABLE chaines_troc_livres ADD COLUMN IF NOT EXISTS reference TEXT;
+
+-- Nombre de vendeurs dans la chaîne
+ALTER TABLE chaines_troc_livres ADD COLUMN IF NOT EXISTS nombre_vendeurs INTEGER DEFAULT 0;
+
+-- IDs des paquets générés
+ALTER TABLE chaines_troc_livres ADD COLUMN IF NOT EXISTS package_ids JSONB;
+
+-- ============================================================================
+-- 7. LOG D'ANNULATION LIVRE PAR COURSIER (aléas terrain)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS book_cancellation_log (
+    id SERIAL PRIMARY KEY,
+    package_id INTEGER NOT NULL,
+    livre_id INTEGER NOT NULL,
+    chaine_id INTEGER,
+    coursier_id INTEGER NOT NULL,
+    destinataire_id INTEGER NOT NULL,  -- user qui devait recevoir le livre
+    raison TEXT,                        -- raison de l'annulation
+    valeur_livre DECIMAL(12,2) DEFAULT 0,
+    commission_remboursee DECIMAL(12,2) DEFAULT 0,
+    -- Le destinataire est crédité de valeur_livre + commission_remboursee
+    -- Les frais de livraison NE SONT PAS impactés
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cancel_log_package ON book_cancellation_log(package_id);
+CREATE INDEX IF NOT EXISTS idx_cancel_log_chaine ON book_cancellation_log(chaine_id) WHERE chaine_id IS NOT NULL;
+
+-- Solde wallet pour crédits (remboursements livres annulés)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_balance DECIMAL(12,2) DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_devise TEXT DEFAULT 'XAF';
+
+-- ============================================================================
+-- 8. DISPONIBILITÉ PARTICIPANT POUR LIVRAISON
+-- ============================================================================
+
+ALTER TABLE troc_livres_scolaires ADD COLUMN IF NOT EXISTS disponibilite_debut TIMESTAMPTZ;
+ALTER TABLE troc_livres_scolaires ADD COLUMN IF NOT EXISTS disponibilite_fin TIMESTAMPTZ;
+
+-- Disponibilité directement sur les livres aussi (pour scheduling)
+ALTER TABLE livres_scolaires ADD COLUMN IF NOT EXISTS disponibilite_debut TIMESTAMPTZ;
+ALTER TABLE livres_scolaires ADD COLUMN IF NOT EXISTS disponibilite_fin TIMESTAMPTZ;
+
+-- ============================================================================
 -- COMMENTAIRES
 -- ============================================================================
 
@@ -121,3 +186,6 @@ COMMENT ON TABLE book_purchases IS 'Achats directs de livres sans échange (pas 
 COMMENT ON COLUMN programmes_scolaires.fichier_url IS 'URL du fichier source (PDF/Excel/Image) uploadé par admin';
 COMMENT ON COLUMN programmes_scolaires.livres_extraits IS 'Liste de livres extraits par IA du fichier programme';
 COMMENT ON COLUMN book_delivery_packages.type_livraison IS 'depot_seulement = pas de pickup, juste dépôt chez le destinataire';
+COMMENT ON TABLE book_cancellation_log IS 'Log des livres annulés par le coursier sur le terrain — déclenche crédit wallet du destinataire';
+COMMENT ON COLUMN chaines_troc_livres.transfers IS 'DAG: arêtes directionnelles [{sender_id, receiver_id, livre_id, ...}] sans réciprocité';
+COMMENT ON COLUMN chaines_troc_livres.route_optimisee IS 'Waypoints ordonnés du coursier, vendeurs en premier';

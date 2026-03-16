@@ -244,7 +244,7 @@ const TaxiBookingScreen: React.FC = () => {
                 departure_gps: departureGPS,
                 arrival_gps: arrivalGPS,
                 estimated_price: estimatedPrice,
-                notes: notes || 'Réservation depuis l\'application mobile',
+                notes: notes || t('taxiBooking.reservationDepuisLapplicationMobile'),
             });
 
             const r = response.data as any;
@@ -284,7 +284,7 @@ const TaxiBookingScreen: React.FC = () => {
                     t('taxiBooking.bookingConfirmedMsg', { price: estimatedPrice ? `\n${t('taxiBooking.estimatedPrice')}: ${estimatedPrice.toLocaleString('fr-FR')} FCFA` : '' }),
                     [
                         {
-                            text: 'Voir mes réservations',
+                            text: t('taxiBooking.voirMesReservations'),
                             onPress: () => navigation.navigate('MesReservations' as never)
                         },
                         {
@@ -312,7 +312,7 @@ const TaxiBookingScreen: React.FC = () => {
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
-                        text: 'Appeler',
+                        text: t('common.call'),
                         onPress: () => {
                             Linking.openURL(`tel:${taxi.telephone}`);
                         },
@@ -333,7 +333,7 @@ const TaxiBookingScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('taxiBooking.chargement')}</Text>
             </View>
         );
     }
@@ -341,7 +341,7 @@ const TaxiBookingScreen: React.FC = () => {
     if (!taxi) {
         return (
             <View style={styles.centerContainer}>
-                <Text style={styles.errorText}>Taxi non trouvé</Text>
+                <Text style={styles.errorText}>{t('taxiBooking.taxiNonTrouve')}</Text>
             </View>
         );
     }
@@ -351,7 +351,7 @@ const TaxiBookingScreen: React.FC = () => {
             <View style={styles.container}>
                 <View style={styles.successContainer}>
                     <SafeIcon name="check-circle" size={64} color="#10B981" />
-                    <Text style={styles.successTitle}>Réservation confirmée !</Text>
+                    <Text style={styles.successTitle}>{t('taxiBooking.reservationConfirmee')}</Text>
                     <Text style={styles.successText}>
                         Votre réservation a été créée. Le chauffeur vous contactera bientôt.
                     </Text>
@@ -362,7 +362,7 @@ const TaxiBookingScreen: React.FC = () => {
                         </>
                     )}
                     <NativeButton
-                        title="Voir mes réservations"
+                        title={t('taxiBooking.voirMesReservations')}
                         onPress={() => navigation.navigate('MesReservations' as never)}
                         variant="primary"
                         style={styles.button}
@@ -381,13 +381,13 @@ const TaxiBookingScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Réservation taxi</Text>
+                <Text style={styles.title}>{t('taxiBooking.reservationTaxi')}</Text>
             </View>
 
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 {/* Récapitulatif taxi */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>Informations du taxi</Text>
+                    <Text style={styles.cardTitle}>{t('taxiBooking.informationsDuTaxi')}/Text>
                     {taxi.nom_chauffeur && (
                         <View style={styles.infoRow}>
                             <SafeIcon name="user" size={16} color={modernColors.textSecondary} />
@@ -404,7 +404,7 @@ const TaxiBookingScreen: React.FC = () => {
                     <View style={styles.statusRow}>
                         <View style={[styles.statusBadge, taxi.is_available_now && styles.statusBadgeAvailable]}>
                             <Text style={[styles.statusText, taxi.is_available_now && styles.statusTextAvailable]}>
-                                {taxi.is_available_now ? 'Disponible' : 'Occupé'}
+                                {taxi.is_available_now ? 'Disponible' : t('taxiBookingScreen.occupe')}
                             </Text>
                         </View>
                     </View>
@@ -412,7 +412,7 @@ const TaxiBookingScreen: React.FC = () => {
 
                 {/* Sélection GPS */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>Votre trajet</Text>
+                    <Text style={styles.cardTitle}>{t('taxiBooking.votreTrajet')}</Text>
 
                     <TouchableOpacity
                         style={styles.gpsButton}
@@ -421,9 +421,9 @@ const TaxiBookingScreen: React.FC = () => {
                         <View style={styles.gpsButtonContent}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
                             <View style={styles.gpsButtonTextContainer}>
-                                <Text style={styles.gpsButtonLabel}>Point de départ</Text>
+                                <Text style={styles.gpsButtonLabel}>{t('taxiBooking.pointDeDepart')}</Text>
                                 <Text style={styles.gpsButtonValue} numberOfLines={1}>
-                                    {departureGPS || 'Sélectionner votre position'}
+                                    {departureGPS || t('taxiBooking.selectionnerVotrePosition')}
                                 </Text>
                             </View>
                         </View>
@@ -439,7 +439,7 @@ const TaxiBookingScreen: React.FC = () => {
                             <View style={styles.gpsButtonTextContainer}>
                                 <Text style={styles.gpsButtonLabel}>Destination</Text>
                                 <Text style={styles.gpsButtonValue} numberOfLines={1}>
-                                    {arrivalGPS || 'Sélectionner votre destination'}
+                                    {arrivalGPS || t('taxiBooking.selectionnerVotreDestination')}
                                 </Text>
                             </View>
                         </View>
@@ -512,9 +512,9 @@ const TaxiBookingScreen: React.FC = () => {
 
                 {/* Notes */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>Notes (optionnel)</Text>
+                    <Text style={styles.cardTitle}>{t('taxiBooking.notesOptionnel')}/Text>
                     <NativeInput
-                        placeholder="Informations supplémentaires pour le chauffeur..."
+                        placeholder={t('taxiBooking.informationsSupplementairesPourLeChauffe')}
                         value={notes}
                         onChangeText={setNotes}
                         multiline
@@ -558,7 +558,7 @@ const TaxiBookingScreen: React.FC = () => {
                 {/* Contact rapide */}
                 {(taxi.telephone || taxi.whatsapp) && (
                     <NativeCard style={styles.card}>
-                        <Text style={styles.cardTitle}>Contact rapide</Text>
+                        <Text style={styles.cardTitle}>{t('taxiBooking.contactRapide')}/Text>
                         <View style={styles.contactButtons}>
                             {taxi.telephone && (
                                 <TouchableOpacity
@@ -584,7 +584,7 @@ const TaxiBookingScreen: React.FC = () => {
 
                 {/* Bouton réservation */}
                 <NativeButton
-                    title={booking ? 'Réservation en cours...' : estimatedPrice ? `Réserver - ${estimatedPrice.toLocaleString('fr-FR')} FCFA` : 'Réserver'}
+                    title={booking ? 'Réservation en cours...t('taxiBookingScreen.estimatedpriceReserverEstimatedpricetolocalestringfrfr'))} FCFA` : 'Réserver'}
                     onPress={handleBook}
                     disabled={booking || !departureGPS || !arrivalGPS || !taxi.is_available_now}
                     variant="primary"
@@ -599,7 +599,7 @@ const TaxiBookingScreen: React.FC = () => {
                 visible={showDepartureGPSModal}
                 onClose={() => setShowDepartureGPSModal(false)}
                 onSelect={(coordinates) => handleGPSSelect(coordinates, 'departure')}
-                title="Point de départ"
+                title={t('taxiBooking.pointDeDepart')}
                 initialCoordinates={departureGPS}
             />
 

@@ -45,7 +45,8 @@ import { hapticError, hapticPress } from '../utils/hapticFeedback';
 
 // NOUVEAU: Composant pour menu promotions regroup├®
 const PromotionsMenu: React.FC<{ navigate: (route: string) => boolean }> = ({ navigate }) => {
-    const [expanded, setExpanded] = useState(false);
+        const { t } = useLanguageSafe();
+const [expanded, setExpanded] = useState(false);
     const scaleAnim = useRef(new Animated.Value(0)).current;
 
     const promotions = [
@@ -108,7 +109,7 @@ const PromotionsMenu: React.FC<{ navigate: (route: string) => boolean }> = ({ na
                         <Text style={styles.promotionsMainIcon}>­ƒÄ»</Text>
                     </View>
                     <View style={styles.promotionsMainText}>
-                        <Text style={styles.promotionsMainTitle}>Promotions & Lives</Text>
+                        <Text style={styles.promotionsMainTitle}>{t('homeScreen.working.promotionsLives')}/Text>
                         <Text style={styles.promotionsMainSubtitle}>3 options disponibles</Text>
                     </View>
                     <Animated.View
@@ -294,7 +295,7 @@ const HomeScreen: React.FC = () => {
             if (!result.success) {
                 // Ô£à AM├ëLIOR├ë: Messages d'erreur plus clairs selon le type d'erreur
                 let errorTitle = 'Erreur de recherche';
-                let errorMessage = result.message || 'Une erreur est survenue lors de la recherche';
+                let errorMessage = result.message || t('homeScreen.working.uneErreurEstSurvenueLors');
                 
                 if (result.error === 'TIMEOUT') {
                     errorTitle = 'Recherche trop longue';
@@ -408,7 +409,7 @@ const HomeScreen: React.FC = () => {
             
             // Ô£à AM├ëLIOR├ë: Messages d'erreur plus clairs selon le type d'erreur
             let errorTitle = 'Erreur de recherche';
-            let errorMessage = error?.message || 'Une erreur est survenue lors de la recherche';
+            let errorMessage = error?.message || t('homeScreen.working.uneErreurEstSurvenueLors');
             
             if (error?.name === 'AbortError' || error?.message?.includes('timeout') || error?.message?.includes('Timeout')) {
                 errorTitle = 'Recherche trop longue';
@@ -572,7 +573,7 @@ const HomeScreen: React.FC = () => {
                             }
                         },
                         {
-                            text: 'Oui, cr├®er',
+                            text: t('homeScreen.working.ouiCrer'),
                             style: 'default',
                             onPress: async () => {
                                 console.log('[HomeScreen] Confirmation cr├®ation de service accept├®e');

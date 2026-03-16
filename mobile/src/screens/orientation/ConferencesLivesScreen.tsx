@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Conference {
     id: number;
@@ -29,6 +30,7 @@ interface Conference {
 
 const ConferencesLivesScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const route = useRoute();
     const programmeesOnly = (route.params as any)?.programmees === true;
@@ -103,8 +105,8 @@ const ConferencesLivesScreen: React.FC = () => {
             if (data?.success && data.data?.token) {
                 // Note: L'implémentation complète nécessiterait l'intégration LiveKit mobile
                 Alert.alert(
-                    'Conférence',
-                    `Token généré pour ${data.data.room_name}. L'intégration LiveKit mobile sera disponible prochainement.`
+                    t('conferencesLivesScreen.conference'),
+                    t('conferencesLivesScreen.tokenGenerePourLintegrationLivekitMobile', { data_data_room_name: data.data.room_name })
                 );
             }
         } catch (error) {
@@ -139,7 +141,7 @@ const ConferencesLivesScreen: React.FC = () => {
                     )}
                     {upcoming && !live && (
                         <View style={styles.upcomingBadge}>
-                            <Text style={styles.upcomingText}>À venir</Text>
+                            <Text style={styles.upcomingText}>{t('conferencesLives.aVenir')}</Text>
                         </View>
                     )}
                 </View>
@@ -175,7 +177,7 @@ const ConferencesLivesScreen: React.FC = () => {
                             style={styles.linkButton}
                             onPress={() => navigation.navigate('EtablissementDetails', { id: item.etablissement_id })}
                         >
-                            <Text style={styles.linkButtonText}>Voir établissement</Text>
+                            <Text style={styles.linkButtonText}>{t('conferencesLives.voirEtablissement')}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -188,7 +190,7 @@ const ConferencesLivesScreen: React.FC = () => {
             {loading ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color="#3B82F6" />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('conferencesLives.chargement')}</Text>
                 </View>
             ) : conferences.length > 0 ? (
                 <>
@@ -210,7 +212,7 @@ const ConferencesLivesScreen: React.FC = () => {
                 </>
             ) : (
                 <View style={styles.centerContainer}>
-                    <Text style={styles.emptyText}>Aucune conférence trouvée</Text>
+                    <Text style={styles.emptyText}>{t('conferencesLives.aucuneConferenceTrouvee')}</Text>
                 </View>
             )}
         </View>

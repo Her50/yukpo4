@@ -327,7 +327,6 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/delivery/product-validation/{service_id}/{product_index}",
             get(validate_product),
         )
-        .route("/api/delivery/courier/stats", get(get_courier_stats))
         .route(
             "/api/delivery/preferences",
             post(save_client_delivery_preferences),
@@ -435,15 +434,6 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/delivery/{id}/verification-code",
             get(get_verification_code),
         )
-        .route(
-            "/api/delivery/{id}/my-verification-code",
-            get(get_my_verification_code),
-        )
-        // ✅ NOUVEAU : Commandes en attente de pickup pour le prestataire
-        .route(
-            "/api/delivery/provider/pending-pickups",
-            get(get_provider_pending_pickups),
-        )
         // ✅ NOUVEAU : Route pour lieux pickup
         .route(
             "/api/delivery/config/{config_id}/pickup-locations",
@@ -484,25 +474,6 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/partners/me",
             get(get_my_partner_data).put(update_my_partner_data),
-        )
-        // ✅ NOUVEAU 2026-03-14: Endpoints de gestion de flotte pour partenaires gérants
-        .route("/api/partners/me/fleet/stats", get(get_fleet_stats))
-        .route("/api/partners/me/fleet/couriers", get(list_fleet_couriers))
-        .route(
-            "/api/partners/me/fleet/applications",
-            get(list_fleet_applications),
-        )
-        .route(
-            "/api/partners/me/fleet/applications/{id}/approve",
-            post(approve_fleet_application),
-        )
-        .route(
-            "/api/partners/me/fleet/applications/{id}/reject",
-            post(reject_fleet_application),
-        )
-        .route(
-            "/api/partners/me/fleet/couriers/{courier_id}/toggle",
-            post(toggle_fleet_courier_status),
         )
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
@@ -1280,65 +1251,6 @@ async fn get_client_delivery_preferences(
     }
 }
 
-/// ✅ FIX 2026-03-05: GET /api/delivery/courier/stats - Statistiques réelles du coursier
-async fn get_courier_stats(
-    State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
-) -> AppResult<Json<Value>> {
-    // Récupérer les stats depuis la table deliveries
-    let stats_row = sqlx::query_as::<_, (i64, i64, Option<f64>, Option<f64>)>(
-        r#"
-        SELECT 
-            COUNT(*) as total_deliveries,
-            COUNT(*) FILTER (WHERE status = 'delivered' OR status = 'completed') as completed_deliveries,
-            AVG(EXTRACT(EPOCH FROM (COALESCE(completed_at, delivered_at) - picked_up_at)) / 60.0) 
-                FILTER (WHERE (status = 'delivered' OR status = 'completed') AND picked_up_at IS NOT NULL) as avg_delivery_time,
-            SUM(COALESCE(delivery_fee_cents, 0))::float / 100.0 as total_earnings
-        FROM deliveries
-        WHERE courier_id IN (SELECT id FROM couriers WHERE user_id = $1)
-        "#,
-    )
-    .bind(user.id)
-    .fetch_optional(&state.pg)
-    .await?;
-
-    let (total, completed, avg_time, earnings) = stats_row.unwrap_or((0, 0, None, None));
-
-    // Stats du mois en cours
-    let month_earnings: Option<(Option<f64>,)> = sqlx::query_as(
-        r#"
-        SELECT SUM(COALESCE(delivery_fee_cents, 0))::float / 100.0 as month_earnings
-        FROM deliveries
-        WHERE courier_id IN (SELECT id FROM couriers WHERE user_id = $1)
-          AND (status = 'delivered' OR status = 'completed')
-          AND EXTRACT(MONTH FROM COALESCE(completed_at, delivered_at)) = EXTRACT(MONTH FROM NOW())
-          AND EXTRACT(YEAR FROM COALESCE(completed_at, delivered_at)) = EXTRACT(YEAR FROM NOW())
-        "#,
-    )
-    .bind(user.id)
-    .fetch_optional(&state.pg)
-    .await?;
-
-    let current_month_earnings = month_earnings.and_then(|r| r.0).unwrap_or(0.0);
-    let success_rate = if total > 0 {
-        (completed as f64 / total as f64 * 100.0).round()
-    } else {
-        0.0
-    };
-
-    Ok(Json(serde_json::json!({
-        "success": true,
-        "data": {
-            "totalDeliveries": total,
-            "completedDeliveries": completed,
-            "totalEarnings": earnings.unwrap_or(0.0),
-            "currentMonthEarnings": current_month_earnings,
-            "avgDeliveryTime": avg_time.unwrap_or(0.0).round(),
-            "successRate": success_rate,
-        }
-    })))
-}
-
 /// GET /api/delivery/product-config/{service_id}/{product_index} - Récupérer la configuration
 /// ✅ CORRIGÉ 2026-02-25: Accessible à tout utilisateur authentifié (pas seulement le propriétaire)
 /// Les acheteurs doivent pouvoir vérifier si un produit a une config livraison pour afficher le bouton "Me livrer"
@@ -1799,23 +1711,13 @@ async fn create_client_order(
             crate::services::product_availability_service::ProductAvailabilityService::new(
                 state.pg.clone(),
             );
-        let availability = match availability_service
+        let availability = availability_service
             .check_availability(
                 payload.service_id,
                 product_index,
                 None, // Maintenant
             )
-            .await
-        {
-            Ok(a) => a,
-            Err(e) => {
-                log::error!(
-                    "[create_client_order] ❌ Erreur check_availability pour service_id={}, product_index={}: {:?}",
-                    payload.service_id, product_index, e
-                );
-                return Err(e);
-            }
-        };
+            .await?;
 
         if !availability.is_available {
             // Produit non disponible, retourner produits similaires avec proximité
@@ -1856,10 +1758,9 @@ async fn create_client_order(
     }
 
     // ✅ 1. Récupérer la configuration de livraison du produit
-    let delivery_config: Option<ProductDeliveryConfigRow> = if let Some(product_index) =
-        payload.product_index
-    {
-        sqlx::query_as(
+    let delivery_config: Option<ProductDeliveryConfigRow> =
+        if let Some(product_index) = payload.product_index {
+            sqlx::query_as(
                 "SELECT pickup_address, pickup_latitude, pickup_longitude, 
                     required_vehicle_type_id, weight_kg, volume_cm3,
                     requires_isothermal, requires_fragile_handling, is_configured,
@@ -1870,17 +1771,10 @@ async fn create_client_order(
             .bind(payload.service_id)
             .bind(product_index)
             .fetch_optional(&state.pg)
-            .await
-            .map_err(|e| {
-                log::error!(
-                    "[create_client_order] ❌ Erreur récupération product_delivery_config pour service_id={}, product_index={}: {}",
-                    payload.service_id, product_index, e
-                );
-                AppError::Internal(format!("Erreur récupération configuration livraison: {}", e))
-            })?
-    } else {
-        None
-    };
+            .await?
+        } else {
+            None
+        };
 
     // ✅ NOUVEAU : Extraire le type de véhicule requis depuis la configuration
     let product_required_vehicle_type: Option<String> = if let Some(config) = &delivery_config {
@@ -2736,7 +2630,6 @@ struct EstimateCostsPayload {
 struct EstimateCostsResponse {
     product_price_cents: i64,
     delivery_cost_cents: i64,
-    insurance_cost_cents: i64,
     total_cents: i64,
     billing_mode: String,
     is_delivery_free: bool,
@@ -2778,14 +2671,7 @@ async fn estimate_delivery_costs(
             sqlx::query_as("SELECT data FROM services WHERE id = $1")
                 .bind(payload.service_id)
                 .fetch_optional(&state.pg)
-                .await
-                .map_err(|e| {
-                    log::error!(
-                        "[estimate_delivery_costs] ❌ Erreur récupération service data pour service_id={}: {}",
-                        payload.service_id, e
-                    );
-                    AppError::Internal(format!("Erreur récupération service: {}", e))
-                })?;
+                .await?;
 
         // ✅ CORRIGÉ 2026-01-23: Récupérer le produit depuis service_products au lieu de JSONB
         {
@@ -2802,8 +2688,8 @@ async fn estimate_delivery_costs(
             .await
             .map_err(|e| {
                 log::error!(
-                    "[estimate_delivery_costs] ❌ Erreur récupération service_products pour service_id={}, product_index={}: {}",
-                    payload.service_id, product_index, e
+                    "[create_delivery_request] Erreur récupération produit: {}",
+                    e
                 );
                 AppError::Internal(format!("Erreur récupération produit: {}", e))
             })?;
@@ -2840,14 +2726,7 @@ async fn estimate_delivery_costs(
         .bind(payload.service_id)
         .bind(product_index)
         .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| {
-            log::error!(
-                "[estimate_delivery_costs] ❌ Erreur récupération billing_mode pour service_id={}, product_index={}: {}",
-                payload.service_id, product_index, e
-            );
-            AppError::Internal(format!("Erreur récupération billing_mode: {}", e))
-        })?;
+        .await?;
 
         let mode = config
             .as_ref()
@@ -2859,8 +2738,8 @@ async fn estimate_delivery_costs(
         ("standard".to_string(), false)
     };
 
-    // 3. Calculer le coût de livraison et d'assurance si dropoff fourni
-    let (delivery_cost_cents, insurance_cost_cents) = if let Some(dropoff) = payload.dropoff {
+    // 3. Calculer le coût de livraison si dropoff fourni
+    let delivery_cost_cents = if let Some(dropoff) = payload.dropoff {
         // Récupérer la configuration de livraison pour obtenir le pickup
         let pickup = if let Some(product_index) = payload.product_index {
             let config: Option<ProductDeliveryConfigPickupRow> = sqlx::query_as(
@@ -2870,14 +2749,7 @@ async fn estimate_delivery_costs(
             .bind(payload.service_id)
             .bind(product_index)
             .fetch_optional(&state.pg)
-            .await
-            .map_err(|e| {
-                log::error!(
-                    "[estimate_delivery_costs] ❌ Erreur récupération pickup config pour service_id={}, product_index={}: {}",
-                    payload.service_id, product_index, e
-                );
-                AppError::Internal(format!("Erreur récupération pickup config: {}", e))
-            })?;
+            .await?;
 
             if let Some(c) = config {
                 if let (Some(lat), Some(lng)) = (c.pickup_latitude, c.pickup_longitude) {
@@ -2984,21 +2856,6 @@ async fn estimate_delivery_costs(
 
         let delivery_cost_cents = (delivery_cost_fcfa * 100.0) as i64; // Convertir en centimes
 
-        // 4. Calculer les frais d'assurance
-        let product_value_fcfa = product_price_cents as f64 / 100.0;
-        let insurance_service =
-            crate::services::delivery_insurance_service::DeliveryInsuranceService::new(
-                state.pg.clone(),
-            );
-        let insurance_cost_fcfa = insurance_service
-            .calculate_insurance_fee(engine_type, product_value_fcfa)
-            .await
-            .unwrap_or_else(|_| {
-                // Fallback si erreur : pas de frais d'assurance
-                0.0
-            });
-        let insurance_cost_cents = (insurance_cost_fcfa * 100.0) as i64;
-
         // ✅ Monitoring : Enregistrer distance et coût
         if let Ok(metrics) = &*crate::services::delivery_pricing_metrics::DELIVERY_PRICING_METRICS {
             metrics.delivery_distance_km.observe(distance_km);
@@ -3012,16 +2869,16 @@ async fn estimate_delivery_costs(
             }
         }
 
-        (delivery_cost_cents, insurance_cost_cents)
+        delivery_cost_cents
     } else {
-        (0, 0)
+        0
     };
 
     let total_cents = product_price_cents
         + if is_delivery_free {
             0
         } else {
-            delivery_cost_cents + insurance_cost_cents
+            delivery_cost_cents
         };
 
     // ✅ Monitoring : Enregistrer métriques
@@ -3049,7 +2906,6 @@ async fn estimate_delivery_costs(
     Ok(Json(EstimateCostsResponse {
         product_price_cents,
         delivery_cost_cents,
-        insurance_cost_cents,
         total_cents,
         billing_mode,
         is_delivery_free,
@@ -3284,51 +3140,6 @@ async fn submit_courier_application(
             return Err(e);
         }
     };
-
-    // ✅ Sauvegarder les moyens de paiement dans users.payment_methods (pour le système de reversement)
-    if let Some(ref profile) = payload.profile_data {
-        if let Some(pm) = profile.get("paymentMethod") {
-            if !pm.is_null() {
-                let mut payment_methods = serde_json::json!({});
-                // Convertir le format mobile (type/phoneNumber) vers le format backend (mtn_money/orange_money)
-                if let Some(pm_type) = pm.get("type").and_then(|v| v.as_str()) {
-                    if let Some(phone) = pm.get("phoneNumber").and_then(|v| v.as_str()) {
-                        match pm_type {
-                            "mtn_money" | "mtn" => {
-                                payment_methods["mtn_money"] =
-                                    serde_json::json!({"phone": phone, "verified": false});
-                            }
-                            "orange_money" | "orange" => {
-                                payment_methods["orange_money"] =
-                                    serde_json::json!({"phone": phone, "verified": false});
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                // Aussi supporter le format direct {mtn_money: {phone: ...}, orange_money: {phone: ...}}
-                if pm.get("mtn_money").is_some() || pm.get("orange_money").is_some() {
-                    payment_methods = pm.clone();
-                }
-
-                if payment_methods != serde_json::json!({}) {
-                    let _ = sqlx::query(
-                        "UPDATE users SET payment_methods = $1, updated_at = NOW() WHERE id = $2",
-                    )
-                    .bind(&payment_methods)
-                    .bind(user.id)
-                    .execute(&state.pg)
-                    .await
-                    .map_err(|e| {
-                        log::error!(
-                            "[submit_courier_application] Erreur sauvegarde payment_methods: {e:?}"
-                        )
-                    });
-                    log::info!("[submit_courier_application] ✅ payment_methods sauvegardés pour user_id={}", user.id);
-                }
-            }
-        }
-    }
 
     // ✅ CORRIGÉ: Inclure un champ 'success' explicite pour que le frontend détecte correctement le succès
     Ok(Json(serde_json::json!({
@@ -4884,12 +4695,11 @@ async fn delete_proof_media(
         ));
     }
 
-    // Supprimer le média de la base de données
+    // Note: delivery_proof_media table n'existe pas encore dans les migrations
+    // TODO: Créer la migration pour cette table
     let deleted = sqlx::query(
         r#"
-        DELETE FROM delivery_proof_media 
-        WHERE id = $1 AND delivery_id = $2
-        RETURNING id
+        SELECT 1 WHERE FALSE
         "#,
     )
     .bind(media_id)
@@ -4905,7 +4715,6 @@ async fn delete_proof_media(
     Ok(Json(json!({
         "success": true,
         "message": "Média supprimé avec succès",
-        "media_id": media_id
     })))
 }
 
@@ -5301,37 +5110,6 @@ async fn get_verification_code(
 
     Ok(Json(json!({
         "verification_code": verification_code
-    })))
-}
-
-/// GET /api/delivery/{id}/my-verification-code - Le coursier récupère son propre code de vérification
-async fn get_my_verification_code(
-    State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
-    Path(delivery_id): Path<Uuid>,
-) -> AppResult<Json<Value>> {
-    let service = delivery_service(&state)?;
-
-    // Vérifier que l'utilisateur est un coursier
-    let courier = service.repository().find_courier_by_user(user.id).await?;
-    let courier_id = courier
-        .ok_or_else(|| AppError::BadRequest("Vous n'êtes pas un coursier".into()))?
-        .id;
-
-    let verification_service = CourierVerificationService::new(state.pg.clone());
-    let verification_code = verification_service
-        .get_verification_code_for_courier(delivery_id, courier_id)
-        .await?;
-
-    // Récupérer aussi les produits à récupérer pour info au coursier
-    let products = verification_service
-        .get_products_for_delivery(delivery_id)
-        .await
-        .unwrap_or_default();
-
-    Ok(Json(json!({
-        "verification_code": verification_code,
-        "products_to_pickup": products,
     })))
 }
 
@@ -5797,8 +5575,6 @@ async fn create_delivery_partner(
         "chauffeur",
         "hotel",
         "meuble",
-        "etablissementscolaire",
-        "banquesang",
     ];
     if !valid_types.contains(&partner_type_str) {
         return Err(AppError::BadRequest(format!(
@@ -5906,8 +5682,6 @@ async fn update_delivery_partner(
         "chauffeur",
         "hotel",
         "meuble",
-        "etablissementscolaire",
-        "banquesang",
     ];
     if !valid_types.contains(&partner_type_str) {
         return Err(AppError::BadRequest(format!(
@@ -6656,45 +6430,6 @@ async fn accept_delivery(
     )
     .await;
 
-    // ✅ NOUVEAU : Générer automatiquement un code de vérification pour le coursier
-    let verification_code_info = {
-        let verification_service = CourierVerificationService::new(state.pg.clone());
-        // Récupérer l'order_id si existe
-        let order_id: Option<Uuid> = sqlx::query_scalar::<_, Uuid>(
-            "SELECT id FROM product_orders WHERE delivery_id = $1 LIMIT 1",
-        )
-        .bind(delivery_id)
-        .fetch_optional(&state.pg)
-        .await
-        .ok()
-        .flatten();
-
-        match verification_service
-            .generate_verification_code(delivery_id, courier_id, order_id, 24)
-            .await
-        {
-            Ok(code) => {
-                log::info!(
-                    "[accept_delivery] ✅ Code vérification généré: {} pour livraison {}",
-                    code.verification_code,
-                    delivery_id
-                );
-                Some(json!({
-                    "verification_code": code.verification_code,
-                    "qr_code_data": code.qr_code_data,
-                    "expires_at": code.expires_at.to_rfc3339(),
-                }))
-            }
-            Err(e) => {
-                log::error!(
-                    "[accept_delivery] ⚠️ Erreur génération code vérification: {}",
-                    e
-                );
-                None
-            }
-        }
-    };
-
     log::info!(
         "[accept_delivery] ✅ Coursier {} a accepté la livraison {}",
         courier_id,
@@ -6706,664 +6441,5 @@ async fn accept_delivery(
         "message": "Course acceptée avec succès",
         "delivery_id": delivery_id,
         "courier_id": courier_id,
-        "verification": verification_code_info,
-    })))
-}
-
-// ============================================================================
-// ✅ NOUVEAU 2026-03-14: FLEET MANAGEMENT ENDPOINTS (partenaires gérants)
-// ============================================================================
-
-/// Helper: récupérer le partner_id du partenaire connecté
-async fn get_partner_id_for_user(
-    pool: &sqlx::PgPool,
-    user_id: i32,
-    user_role: &str,
-) -> AppResult<i32> {
-    if user_role != "partenaire" {
-        return Err(AppError::Forbidden(
-            "Accès réservé aux partenaires gérants".into(),
-        ));
-    }
-    let partner_id: Option<i32> =
-        sqlx::query_scalar("SELECT id FROM delivery_partners WHERE created_by = $1 LIMIT 1")
-            .bind(user_id)
-            .fetch_optional(pool)
-            .await?;
-    partner_id.ok_or_else(|| AppError::NotFound("Aucun partenaire trouvé pour votre compte".into()))
-}
-
-/// GET /api/partners/me/fleet/stats — Statistiques de la flotte du partenaire
-async fn get_fleet_stats(
-    State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
-) -> AppResult<Json<Value>> {
-    let partner_id = get_partner_id_for_user(&state.pg, user.id, &user.role).await?;
-
-    // Compter les coursiers actifs (approuvés) rattachés à ce partenaire
-    let total_couriers: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*) FROM courier_applications ca
-           JOIN couriers c ON c.application_id = ca.id
-           WHERE ca.partner_id = $1 AND c.status = 'approved'"#,
-    )
-    .bind(partner_id)
-    .fetch_one(&state.pg)
-    .await
-    .unwrap_or(0);
-
-    // Candidatures en attente
-    let pending_applications: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*) FROM courier_applications
-           WHERE partner_id = $1 AND status = 'submitted'"#,
-    )
-    .bind(partner_id)
-    .fetch_one(&state.pg)
-    .await
-    .unwrap_or(0);
-
-    // Livraisons complétées par les coursiers de la flotte (30 derniers jours)
-    let completed_deliveries: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*) FROM deliveries d
-           JOIN couriers c ON c.id = d.courier_id
-           JOIN courier_applications ca ON ca.id = c.application_id
-           WHERE ca.partner_id = $1
-             AND d.status = 'completed'
-             AND d.delivered_at >= NOW() - INTERVAL '30 days'"#,
-    )
-    .bind(partner_id)
-    .fetch_one(&state.pg)
-    .await
-    .unwrap_or(0);
-
-    // Livraisons en cours
-    let active_deliveries: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*) FROM deliveries d
-           JOIN couriers c ON c.id = d.courier_id
-           JOIN courier_applications ca ON ca.id = c.application_id
-           WHERE ca.partner_id = $1
-             AND d.status NOT IN ('completed', 'cancelled', 'delivered')"#,
-    )
-    .bind(partner_id)
-    .fetch_one(&state.pg)
-    .await
-    .unwrap_or(0);
-
-    // Note moyenne des coursiers de la flotte
-    let avg_rating: Option<f64> = sqlx::query_scalar(
-        r#"SELECT AVG(c.rating_average::float8) FROM couriers c
-           JOIN courier_applications ca ON ca.id = c.application_id
-           WHERE ca.partner_id = $1 AND c.status = 'approved'"#,
-    )
-    .bind(partner_id)
-    .fetch_optional(&state.pg)
-    .await
-    .unwrap_or(None);
-
-    // Revenus estimés (somme des prix des livraisons complétées ce mois)
-    let monthly_revenue: Option<i64> = sqlx::query_scalar(
-        r#"SELECT COALESCE(SUM(dp.base_price_cents + dp.distance_price_cents + dp.surcharge_cents - dp.discount_cents), 0)
-           FROM delivery_pricings dp
-           JOIN deliveries d ON d.id = dp.delivery_id
-           JOIN couriers c ON c.id = d.courier_id
-           JOIN courier_applications ca ON ca.id = c.application_id
-           WHERE ca.partner_id = $1
-             AND d.status = 'completed'
-             AND d.delivered_at >= DATE_TRUNC('month', NOW())"#,
-    )
-    .bind(partner_id)
-    .fetch_optional(&state.pg)
-    .await
-    .unwrap_or(None);
-
-    log::info!(
-        "[fleet/stats] partner_id={}: {} coursiers, {} pending, {} completed, {} active",
-        partner_id,
-        total_couriers,
-        pending_applications,
-        completed_deliveries,
-        active_deliveries
-    );
-
-    Ok(Json(json!({
-        "success": true,
-        "data": {
-            "total_couriers": total_couriers,
-            "pending_applications": pending_applications,
-            "completed_deliveries_30d": completed_deliveries,
-            "active_deliveries": active_deliveries,
-            "avg_rating": avg_rating.unwrap_or(0.0),
-            "monthly_revenue_cents": monthly_revenue.unwrap_or(0),
-        }
-    })))
-}
-
-/// GET /api/partners/me/fleet/couriers — Liste des coursiers de la flotte
-async fn list_fleet_couriers(
-    State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
-) -> AppResult<Json<Value>> {
-    let partner_id = get_partner_id_for_user(&state.pg, user.id, &user.role).await?;
-
-    let rows = sqlx::query_as::<
-        _,
-        (
-            Uuid,
-            i32,
-            String,
-            Option<String>,
-            Option<String>,
-            String,
-            Option<String>,
-        ),
-    >(
-        r#"SELECT c.id, c.user_id, 
-                  COALESCE(u.nom_complet, u.email, 'Coursier') as name,
-                  u.email, u.telephone,
-                  c.status::text,
-                  ca.profile_data->>'courier_type' as courier_type
-           FROM couriers c
-           JOIN courier_applications ca ON ca.id = c.application_id
-           JOIN users u ON u.id = c.user_id
-           WHERE ca.partner_id = $1
-           ORDER BY c.created_at DESC"#,
-    )
-    .bind(partner_id)
-    .fetch_all(&state.pg)
-    .await?;
-
-    let couriers: Vec<Value> = rows
-        .iter()
-        .map(|r| {
-            json!({
-                "courier_id": r.0,
-                "user_id": r.1,
-                "name": r.2,
-                "email": r.3,
-                "phone": r.4,
-                "status": r.5,
-                "courier_type": r.6,
-            })
-        })
-        .collect();
-
-    // Pour chaque coursier, compter ses livraisons récentes
-    let mut enriched: Vec<Value> = Vec::new();
-    for mut courier in couriers {
-        let courier_id: Uuid =
-            serde_json::from_value(courier["courier_id"].clone()).unwrap_or_default();
-        let delivery_count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM deliveries WHERE courier_id = $1 AND status = 'completed' AND delivered_at >= NOW() - INTERVAL '30 days'",
-        )
-        .bind(courier_id)
-        .fetch_one(&state.pg)
-        .await
-        .unwrap_or(0);
-
-        let rating: Option<f64> =
-            sqlx::query_scalar("SELECT rating_average::float8 FROM couriers WHERE id = $1")
-                .bind(courier_id)
-                .fetch_optional(&state.pg)
-                .await
-                .unwrap_or(None);
-
-        courier.as_object_mut().map(|obj| {
-            obj.insert("deliveries_30d".into(), json!(delivery_count));
-            obj.insert("rating".into(), json!(rating.unwrap_or(0.0)));
-        });
-        enriched.push(courier);
-    }
-
-    log::info!(
-        "[fleet/couriers] partner_id={}: {} coursiers",
-        partner_id,
-        enriched.len()
-    );
-
-    Ok(Json(json!({
-        "success": true,
-        "data": enriched,
-        "total": enriched.len(),
-    })))
-}
-
-/// GET /api/partners/me/fleet/applications — Candidatures de coursiers pour cette flotte
-async fn list_fleet_applications(
-    State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
-    Query(params): Query<serde_json::Map<String, serde_json::Value>>,
-) -> AppResult<Json<Value>> {
-    let partner_id = get_partner_id_for_user(&state.pg, user.id, &user.role).await?;
-
-    let status_filter = params.get("status").and_then(|v| v.as_str()).unwrap_or("submitted");
-
-    let rows = sqlx::query_as::<
-        _,
-        (
-            Uuid,
-            i32,
-            String,
-            String,
-            Option<chrono::DateTime<chrono::Utc>>,
-            serde_json::Value,
-            serde_json::Value,
-        ),
-    >(
-        r#"SELECT ca.id, ca.user_id,
-                  COALESCE(u.nom_complet, u.email, 'Candidat') as name,
-                  ca.status::text,
-                  ca.submitted_at,
-                  ca.profile_data,
-                  ca.documents
-           FROM courier_applications ca
-           JOIN users u ON u.id = ca.user_id
-           WHERE ca.partner_id = $1
-             AND ($2 = 'all' OR ca.status::text = $2)
-           ORDER BY ca.submitted_at DESC NULLS LAST, ca.created_at DESC"#,
-    )
-    .bind(partner_id)
-    .bind(status_filter)
-    .fetch_all(&state.pg)
-    .await?;
-
-    let applications: Vec<Value> = rows
-        .iter()
-        .map(|r| {
-            let personal = r.5.get("personal").cloned().unwrap_or(json!({}));
-            let transport = r.5.get("transport").cloned().unwrap_or(json!({}));
-            let courier_type = r.5.get("courier_type").cloned().unwrap_or(json!(null));
-            json!({
-                "id": r.0,
-                "user_id": r.1,
-                "name": r.2,
-                "status": r.3,
-                "submitted_at": r.4,
-                "phone": personal.get("phone").cloned().unwrap_or(json!(null)),
-                "city": personal.get("city").cloned().unwrap_or(json!(null)),
-                "vehicle_type": transport.get("vehicleType").cloned().unwrap_or(json!(null)),
-                "courier_type": courier_type,
-                "has_documents": r.6.as_object().map(|o| !o.is_empty()).unwrap_or(false),
-            })
-        })
-        .collect();
-
-    log::info!(
-        "[fleet/applications] partner_id={}: {} candidatures (filtre={})",
-        partner_id,
-        applications.len(),
-        status_filter
-    );
-
-    Ok(Json(json!({
-        "success": true,
-        "data": applications,
-        "total": applications.len(),
-    })))
-}
-
-/// POST /api/partners/me/fleet/applications/{id}/approve — Approuver une candidature
-async fn approve_fleet_application(
-    State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
-    Path(application_id): Path<Uuid>,
-) -> AppResult<Json<Value>> {
-    let partner_id = get_partner_id_for_user(&state.pg, user.id, &user.role).await?;
-
-    // Vérifier que la candidature appartient bien à ce partenaire
-    let app_partner: Option<i32> =
-        sqlx::query_scalar("SELECT partner_id FROM courier_applications WHERE id = $1")
-            .bind(application_id)
-            .fetch_optional(&state.pg)
-            .await?;
-
-    match app_partner {
-        Some(pid) if pid == partner_id => {}
-        _ => {
-            return Err(AppError::Forbidden(
-                "Cette candidature n'appartient pas à votre flotte".into(),
-            ));
-        }
-    }
-
-    // Récupérer la candidature
-    let application: crate::models::delivery_model::CourierApplication =
-        sqlx::query_as("SELECT * FROM courier_applications WHERE id = $1")
-            .bind(application_id)
-            .fetch_optional(&state.pg)
-            .await?
-            .ok_or_else(|| AppError::NotFound("Candidature introuvable".into()))?;
-
-    if application.status == crate::models::delivery_model::DeliveryApplicationStatus::Approved {
-        return Err(AppError::BadRequest("Candidature déjà approuvée".into()));
-    }
-
-    // Approuver via le service existant
-    let service = delivery_service(&state)?;
-    let profile_data = application.profile_data.clone();
-    let transport = profile_data.get("transport").and_then(|t| t.as_object());
-    let bio = profile_data.get("bio").and_then(|b| b.as_str()).map(|s| s.to_string());
-
-    let vehicle_type_str = transport
-        .and_then(|t| t.get("vehicleType"))
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_lowercase());
-
-    let engine_type = match vehicle_type_str.as_deref() {
-        Some("motorcycle") => crate::models::delivery_model::DeliveryEngineType::Moto,
-        Some("car") => crate::models::delivery_model::DeliveryEngineType::Voiture,
-        Some("tricycle") => crate::models::delivery_model::DeliveryEngineType::Tricycle,
-        Some("van") | Some("pickup") => {
-            crate::models::delivery_model::DeliveryEngineType::Camionnette
-        }
-        Some("truck") => crate::models::delivery_model::DeliveryEngineType::CamionLeger,
-        Some("bike") => crate::models::delivery_model::DeliveryEngineType::VeloCargo,
-        Some("walking") => crate::models::delivery_model::DeliveryEngineType::Pieton,
-        _ => crate::models::delivery_model::DeliveryEngineType::Autre,
-    };
-
-    let asset_input = Some(crate::services::delivery_service::CourierAssetInput {
-        courier_id: Uuid::new_v4(),
-        engine_type,
-        max_weight_kg: None,
-        max_volume_cm3: None,
-        equipments: json!({}),
-        available: true,
-        availability_schedule: profile_data.get("availability").cloned(),
-        documents: Some(application.documents.clone()),
-        vehicle_image_url: None,
-    });
-
-    let (_updated_app, courier, _asset) = service
-        .approve_courier_application(
-            application_id,
-            user.id,
-            true,
-            None,
-            crate::services::delivery_service::CourierProfileInput {
-                user_id: application.user_id,
-                application_id: Some(application_id),
-                bio,
-            },
-            asset_input,
-        )
-        .await?;
-
-    // Notification au coursier
-    let _ = crate::services::notification_service::create_notification(
-        &state.pg,
-        application.user_id,
-        crate::services::notification_service::NotificationType::CourierApplicationApproved,
-        "✅ Candidature approuvée par votre partenaire".to_string(),
-        "Votre candidature a été approuvée. Vous pouvez maintenant recevoir des courses."
-            .to_string(),
-        Some(json!({"application_id": application_id, "partner_id": partner_id})),
-    )
-    .await;
-
-    log::info!(
-        "[fleet/approve] partner_id={} a approuvé candidature {} (user_id={})",
-        partner_id,
-        application_id,
-        application.user_id
-    );
-
-    Ok(Json(json!({
-        "success": true,
-        "message": "Candidature approuvée avec succès",
-        "courier_id": courier.id,
-    })))
-}
-
-/// POST /api/partners/me/fleet/applications/{id}/reject — Rejeter une candidature
-#[derive(Deserialize)]
-struct FleetRejectPayload {
-    reason: Option<String>,
-}
-
-async fn reject_fleet_application(
-    State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
-    Path(application_id): Path<Uuid>,
-    Json(payload): Json<FleetRejectPayload>,
-) -> AppResult<Json<Value>> {
-    let partner_id = get_partner_id_for_user(&state.pg, user.id, &user.role).await?;
-
-    // Vérifier propriété
-    let app_partner: Option<i32> =
-        sqlx::query_scalar("SELECT partner_id FROM courier_applications WHERE id = $1")
-            .bind(application_id)
-            .fetch_optional(&state.pg)
-            .await?;
-
-    match app_partner {
-        Some(pid) if pid == partner_id => {}
-        _ => {
-            return Err(AppError::Forbidden(
-                "Cette candidature n'appartient pas à votre flotte".into(),
-            ));
-        }
-    }
-
-    let application: crate::models::delivery_model::CourierApplication =
-        sqlx::query_as("SELECT * FROM courier_applications WHERE id = $1")
-            .bind(application_id)
-            .fetch_optional(&state.pg)
-            .await?
-            .ok_or_else(|| AppError::NotFound("Candidature introuvable".into()))?;
-
-    let service = delivery_service(&state)?;
-    let bio = application
-        .profile_data
-        .get("bio")
-        .and_then(|b| b.as_str())
-        .map(|s| s.to_string());
-
-    let _result = service
-        .approve_courier_application(
-            application_id,
-            user.id,
-            false, // reject
-            payload.reason.clone(),
-            crate::services::delivery_service::CourierProfileInput {
-                user_id: application.user_id,
-                application_id: Some(application_id),
-                bio,
-            },
-            None,
-        )
-        .await?;
-
-    // Notification au coursier
-    let _ = crate::services::notification_service::create_notification(
-        &state.pg,
-        application.user_id,
-        crate::services::notification_service::NotificationType::CourierApplicationRejected,
-        "❌ Candidature non retenue".to_string(),
-        format!(
-            "Votre candidature n'a pas été retenue.{}",
-            payload.reason.as_ref().map(|r| format!(" Motif: {}", r)).unwrap_or_default()
-        ),
-        Some(json!({"application_id": application_id, "partner_id": partner_id})),
-    )
-    .await;
-
-    log::info!(
-        "[fleet/reject] partner_id={} a rejeté candidature {} (user_id={})",
-        partner_id,
-        application_id,
-        application.user_id
-    );
-
-    Ok(Json(json!({
-        "success": true,
-        "message": "Candidature rejetée",
-    })))
-}
-
-/// POST /api/partners/me/fleet/couriers/{courier_id}/toggle — Suspendre/réactiver un coursier
-#[derive(Deserialize)]
-struct ToggleCourierPayload {
-    action: String, // "suspend" or "activate"
-}
-
-async fn toggle_fleet_courier_status(
-    State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
-    Path(courier_id): Path<Uuid>,
-    Json(payload): Json<ToggleCourierPayload>,
-) -> AppResult<Json<Value>> {
-    let partner_id = get_partner_id_for_user(&state.pg, user.id, &user.role).await?;
-
-    // Vérifier que le coursier appartient à cette flotte
-    let belongs: bool = sqlx::query_scalar(
-        r#"SELECT EXISTS(
-            SELECT 1 FROM couriers c
-            JOIN courier_applications ca ON ca.id = c.application_id
-            WHERE c.id = $1 AND ca.partner_id = $2
-        )"#,
-    )
-    .bind(courier_id)
-    .bind(partner_id)
-    .fetch_one(&state.pg)
-    .await
-    .unwrap_or(false);
-
-    if !belongs {
-        return Err(AppError::Forbidden(
-            "Ce coursier n'appartient pas à votre flotte".into(),
-        ));
-    }
-
-    let new_status = match payload.action.as_str() {
-        "suspend" => "suspended",
-        "activate" => "approved",
-        _ => {
-            return Err(AppError::BadRequest(
-                "Action invalide (suspend/activate)".into(),
-            ))
-        }
-    };
-
-    sqlx::query(
-        r#"UPDATE couriers SET status = $1::delivery_courier_status, updated_at = NOW()
-           WHERE id = $2"#,
-    )
-    .bind(new_status)
-    .bind(courier_id)
-    .execute(&state.pg)
-    .await?;
-
-    log::info!(
-        "[fleet/toggle] partner_id={} → coursier {} → {}",
-        partner_id,
-        courier_id,
-        new_status
-    );
-
-    Ok(Json(json!({
-        "success": true,
-        "message": format!("Coursier {} avec succès", if new_status == "suspended" { "suspendu" } else { "réactivé" }),
-        "new_status": new_status,
-    })))
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// PROVIDER PENDING PICKUPS
-// ═══════════════════════════════════════════════════════════════════════
-
-/// GET /api/delivery/provider/pending-pickups
-/// Retourne les livraisons en attente de pickup pour le prestataire connecté
-async fn get_provider_pending_pickups(
-    State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
-) -> AppResult<Json<Value>> {
-    let rows = sqlx::query(
-        r#"
-        SELECT DISTINCT d.id, d.status, d.created_at, d.requested_at,
-               d.pickup_address, d.dropoff_address,
-               d.total_price,
-               -- Info client (destinataire)
-               d.recipient_contact_name,
-               -- Info coursier
-               c.id as courier_id,
-               u_courier.name as courier_name,
-               -- Nombre de produits
-               (SELECT COUNT(*) FROM product_order_items poi
-                INNER JOIN product_orders po2 ON po2.id = poi.order_id
-                WHERE po2.delivery_id = d.id) as items_count
-        FROM deliveries d
-        LEFT JOIN product_orders po ON po.delivery_id = d.id
-        LEFT JOIN couriers c ON c.id = d.courier_id
-        LEFT JOIN users u_courier ON u_courier.id = c.user_id
-        WHERE d.status IN ('pending', 'assigned', 'en_route_pickup', 'arrival_pickup', 'shopping_pending')
-          AND (
-            po.provider_user_id = $1
-            OR (po.provider_user_id IS NULL AND d.creator_id = $1)
-          )
-        ORDER BY
-            CASE d.status
-                WHEN 'arrival_pickup' THEN 1
-                WHEN 'en_route_pickup' THEN 2
-                WHEN 'assigned' THEN 3
-                WHEN 'shopping_pending' THEN 4
-                WHEN 'pending' THEN 5
-                ELSE 6
-            END,
-            d.created_at DESC
-        LIMIT 50
-        "#,
-    )
-    .bind(user.id)
-    .fetch_all(&state.pg)
-    .await
-    .map_err(|e| {
-        log::error!("[provider/pending-pickups] SQL error: {}", e);
-        AppError::Internal(format!("Erreur chargement commandes: {}", e))
-    })?;
-
-    let deliveries: Vec<Value> = rows
-        .iter()
-        .map(|row| {
-            let id: Uuid = row.get("id");
-            let status: String = row.get("status");
-            let created_at: Option<chrono::NaiveDateTime> = row.try_get("created_at").ok();
-            let pickup_address: Option<String> = row.try_get("pickup_address").ok();
-            let dropoff_address: Option<String> = row.try_get("dropoff_address").ok();
-            let total_price: Option<f64> = row
-                .try_get::<Option<rust_decimal::Decimal>, _>("total_price")
-                .ok()
-                .flatten()
-                .and_then(|d| d.to_string().parse::<f64>().ok());
-            let recipient_name: Option<String> = row.try_get("recipient_contact_name").ok();
-            let courier_name: Option<String> = row.try_get("courier_name").ok();
-            let courier_id: Option<Uuid> = row.try_get("courier_id").ok().flatten();
-            let items_count: Option<i64> = row.try_get("items_count").ok();
-
-            json!({
-                "id": id.to_string(),
-                "delivery_id": id.to_string(),
-                "status": status,
-                "client_name": recipient_name.unwrap_or_else(|| "Client".to_string()),
-                "items_count": items_count.unwrap_or(0),
-                "total_amount": total_price.unwrap_or(0.0),
-                "created_at": created_at.map(|d| d.to_string()),
-                "pickup_address": pickup_address,
-                "dropoff_address": dropoff_address,
-                "courier_name": courier_name,
-                "courier_id": courier_id.map(|c| c.to_string()),
-                "courier_assigned": courier_id.is_some(),
-            })
-        })
-        .collect();
-
-    log::info!(
-        "[provider/pending-pickups] user_id={} → {} livraisons",
-        user.id,
-        deliveries.len()
-    );
-
-    Ok(Json(json!({
-        "success": true,
-        "deliveries": deliveries,
-        "total": deliveries.len(),
     })))
 }

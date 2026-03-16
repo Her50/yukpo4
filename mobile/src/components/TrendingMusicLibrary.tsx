@@ -17,6 +17,7 @@ import { modernColors } from '../theme/modernTheme';
 import type { CuratedPlaylist, MusicTrack } from '../types/Music';
 import { SafeIcon } from './SafeIcon';
 import { NativeButton, NativeInput } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface TrendingMusicLibraryProps {
     onTrackSelected?: (track: MusicTrack) => void;
@@ -29,7 +30,7 @@ interface TrendingMusicLibraryProps {
 
 const MUSIC_CATEGORIES = [
     { key: 'viral', label: '🔥 Viral', icon: 'trending-up', color: '#FF0050' },
-    { key: 'cinematic', label: '🎬 Ciné', icon: 'film', color: '#8B5CF6' },
+    { key: 'cinematic', label: t('trendingMusicLibrary.cine'), icon: 'film', color: '#8B5CF6' },
     { key: 'corporate', label: '💼 Business', icon: 'briefcase', color: '#3B82F6' },
     { key: 'chill', label: '🌊 Chill', icon: 'waves', color: '#10B981' },
     { key: 'energy', label: '⚡ Energy', icon: 'zap', color: '#F59E0B' },
@@ -37,11 +38,11 @@ const MUSIC_CATEGORIES = [
 ];
 
 const MOOD_FILTERS = [
-    { key: 'energetic', label: 'Énergique', emoji: '🔥' },
+    { key: 'energetic', label: t('trendingMusicLibrary.energique'), emoji: '🔥' },
     { key: 'happy', label: 'Joyeux', emoji: '😊' },
     { key: 'romantic', label: 'Romantique', emoji: '💕' },
     { key: 'sad', label: 'Triste', emoji: '😢' },
-    { key: 'chill', label: 'Détendu', emoji: '😌' },
+    { key: 'chill', label: t('trendingMusicLibrary.detendu'), emoji: '😌' },
     { key: 'dramatic', label: 'Dramatique', emoji: '🎭' },
 ];
 
@@ -58,7 +59,8 @@ export const TrendingMusicLibrary: React.FC<TrendingMusicLibraryProps> = ({
     enableVideoAnalysis = false,
     videoUrl,
 }) => {
-    const [trendingTracks, setTrendingTracks] = useState<MusicTrack[]>([]);
+        const { t } = useLanguageSafe();
+const [trendingTracks, setTrendingTracks] = useState<MusicTrack[]>([]);
     const [curatedPlaylists, setCuratedPlaylists] = useState<CuratedPlaylist[]>([]);
     const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
@@ -118,7 +120,7 @@ export const TrendingMusicLibrary: React.FC<TrendingMusicLibraryProps> = ({
             }
         } catch (err: any) {
             console.error('[TrendingMusicLibrary] Erreur chargement:', err);
-            setError(err.message || 'Erreur lors du chargement de la musique');
+            setError(err.message || t('trendingMusicLibrary.erreurLorsDuChargementDe'));
         } finally {
             setLoading(false);
         }
@@ -359,7 +361,7 @@ export const TrendingMusicLibrary: React.FC<TrendingMusicLibraryProps> = ({
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement de la musique trending...</Text>
+                <Text style={styles.loadingText}>{t('trendingMusicLibrary.chargementDeLaMusiqueTrending')}</Text>
             </View>
         );
     }
@@ -369,7 +371,7 @@ export const TrendingMusicLibrary: React.FC<TrendingMusicLibraryProps> = ({
             <View style={styles.errorContainer}>
                 <SafeIcon name="alert-circle" size={24} color={modernColors.error} />
                 <Text style={styles.errorText}>{error}</Text>
-                <NativeButton title="Réessayer" onPress={loadTrendingData} />
+                <NativeButton title={t('trendingMusicLibrary.reessayer')} onPress={loadTrendingData} />
             </View>
         );
     }
@@ -454,7 +456,7 @@ export const TrendingMusicLibrary: React.FC<TrendingMusicLibraryProps> = ({
                 </ScrollView>
 
                 <NativeInput
-                    placeholder="Rechercher un titre, artiste..."
+                    placeholder={t('trendingMusicLibrary.rechercherUnTitreArtiste')}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     onSubmitEditing={searchTracks}
@@ -494,7 +496,7 @@ export const TrendingMusicLibrary: React.FC<TrendingMusicLibraryProps> = ({
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="music" size={48} color={modernColors.textSecondary} />
-                            <Text style={styles.emptyText}>Aucun titre trouvé</Text>
+                            <Text style={styles.emptyText}>{t('trendingMusicLibrary.aucunTitreTrouve')}</Text>
                             <Text style={styles.emptySubtext}>Essayez d'autres filtres</Text>
                         </View>
                     }

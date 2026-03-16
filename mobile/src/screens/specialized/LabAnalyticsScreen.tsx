@@ -17,6 +17,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { LabAnalytics, labService } from '../../services/labService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +27,7 @@ interface LabAnalyticsScreenParams {
 
 const LabAnalyticsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
     const params = route.params as LabAnalyticsScreenParams;
@@ -67,8 +69,8 @@ const LabAnalyticsScreen: React.FC = () => {
 
                 if (!isOwner) {
                     Alert.alert(
-                        'Accès refusé',
-                        'Vous n\'êtes pas autorisé à voir les analytics de ce laboratoire. Seul le propriétaire peut accéder à ces données.',
+                        t('labAnalyticsScreen.accesRefuse'),
+                        'Vous n\t('labAnalyticsScreen.etesPasAutoriseAVoirLes'),
                         [{ text: 'OK', onPress: () => navigation.goBack() }]
                     );
                 }
@@ -151,7 +153,7 @@ const LabAnalyticsScreen: React.FC = () => {
             <View style={styles.centerContainer}>
                 <Text style={styles.errorText}>Analytics non disponibles</Text>
                 <NativeButton
-                    title="Réessayer"
+                    title={t('labAnalytics.reessayer')}
                     onPress={loadAnalytics}
                     variant="primary"
                     style={styles.retryButton}
@@ -256,24 +258,24 @@ const LabAnalyticsScreen: React.FC = () => {
                     />
                     <StatCard
                         icon="check-circle"
-                        title="Complétés"
+                        title={t('labAnalytics.completes')}
                         value={formatNumber(analytics.completed_count)}
-                        subtitle={`${completionRate}% de complétion`}
+                        subtitle={t('labAnalyticsScreen.deCompletion', { completionRate: completionRate })}
                         color={modernColors.success}
                     />
                 </View>
 
                 {/* Statistiques détaillées */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>📊 Détails</Text>
+                    <Text style={styles.cardTitle}>{t('labAnalytics.details')}</Text>
                     <View style={styles.detailsRow}>
-                        <Text style={styles.detailsLabel}>Nombre de types d'examens:</Text>
+                        <Text style={styles.detailsLabel}>{t('labAnalytics.nombreDeTypesDexamens')}</Text>
                         <Text style={styles.detailsValue}>
                             {formatNumber(analytics.examination_types_count)}
                         </Text>
                     </View>
                     <View style={styles.detailsRow}>
-                        <Text style={styles.detailsLabel}>Taux de complétion:</Text>
+                        <Text style={styles.detailsLabel}>{t('labAnalytics.tauxDeCompletion')}</Text>
                         <Text style={[styles.detailsValue, { color: modernColors.success }]}>
                             {completionRate}%
                         </Text>
@@ -284,7 +286,7 @@ const LabAnalyticsScreen: React.FC = () => {
                 <NativeCard style={styles.card}>
                     <View style={styles.summaryHeader}>
                         <SafeIcon name="bar-chart" size={24} color={modernColors.primary} />
-                        <Text style={styles.cardTitle}>Résumé de la période</Text>
+                        <Text style={styles.cardTitle}>{t('labAnalytics.resumeDeLaPeriode')}</Text>
                     </View>
                     <Text style={styles.summaryText}>
                         Vous avez effectué {formatNumber(analytics.examinations_7d)} examens au cours des 7 derniers jours

@@ -15,6 +15,7 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeButton, NativeInput } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface SearchFilters {
     minPrice: number | null;
@@ -45,7 +46,8 @@ const SearchFiltersComponent: React.FC<SearchFiltersProps> = ({
     onApply,
     companies = [],
 }) => {
-    const [filters, setFilters] = useState<SearchFilters>(initialFilters);
+        const { t } = useLanguageSafe();
+const [filters, setFilters] = useState<SearchFilters>(initialFilters);
     const [minPriceText, setMinPriceText] = useState(
         initialFilters.minPrice?.toString() || ''
     );
@@ -79,15 +81,15 @@ const SearchFiltersComponent: React.FC<SearchFiltersProps> = ({
 
     const timeRanges = [
         { value: 'morning', label: 'Matin (6h-12h)' },
-        { value: 'afternoon', label: 'Après-midi (12h-18h)' },
+        { value: 'afternoon', label: t('searchFilters.apresmidi12h18h') },
         { value: 'evening', label: 'Soir (18h-24h)' },
     ] as const;
 
     const sortOptions = [
-        { value: 'price', label: 'Prix' },
-        { value: 'time', label: 'Horaire' },
-        { value: 'duration', label: 'Durée' },
-        { value: 'popularity', label: 'Popularité' },
+        { value: 'price', label: t('searchFilters.prix') },
+        { value: 'time', label: t('searchFilters.horaire') },
+        { value: 'duration', label: t('searchFilters.duree') },
+        { value: 'popularity', label: t('searchFilters.popularite') },
     ] as const;
 
     return (
@@ -100,7 +102,7 @@ const SearchFiltersComponent: React.FC<SearchFiltersProps> = ({
             <View style={styles.overlay}>
                 <View style={styles.modal}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>Filtres et tri</Text>
+                        <Text style={styles.title}>{t('searchFilters.filtresEtTri')}/Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color="#111827" />
                         </TouchableOpacity>
@@ -134,7 +136,7 @@ const SearchFiltersComponent: React.FC<SearchFiltersProps> = ({
 
                         {/* Horaire */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Horaire de départ</Text>
+                            <Text style={styles.sectionTitle}>{t('searchFilters.horaireDeDepart')}</Text>
                             <View style={styles.chipsContainer}>
                                 {timeRanges.map((range) => (
                                     <TouchableOpacity
@@ -204,7 +206,7 @@ const SearchFiltersComponent: React.FC<SearchFiltersProps> = ({
 
                         {/* Tri */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Trier par</Text>
+                            <Text style={styles.sectionTitle}>{t('searchFilters.trierPar')}</Text>
                             <View style={styles.sortContainer}>
                                 {sortOptions.map((option) => (
                                     <TouchableOpacity
@@ -289,7 +291,7 @@ const SearchFiltersComponent: React.FC<SearchFiltersProps> = ({
                     {/* Actions */}
                     <View style={styles.actions}>
                         <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
-                            <Text style={styles.resetButtonText}>Réinitialiser</Text>
+                            <Text style={styles.resetButtonText}>{t('searchFilters.reinitialiser')}</Text>
                         </TouchableOpacity>
                         <NativeButton
                             title="Appliquer"

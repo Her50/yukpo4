@@ -15,6 +15,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface BanqueSang {
     id: number;
@@ -32,6 +33,7 @@ interface BanqueSang {
 
 const BanqueSangListScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const params = route.params as any;
 
@@ -139,7 +141,7 @@ const BanqueSangListScreen: React.FC = () => {
 
                 {item.stocks && Object.keys(item.stocks).length > 0 && (
                     <View style={styles.stocksContainer}>
-                        <Text style={styles.stocksLabel}>Stocks disponibles:</Text>
+                        <Text style={styles.stocksLabel}>{t('banqueSangList.stocksDisponibles')}/Text>
                         <View style={styles.stocksRow}>
                             {Object.entries(item.stocks).slice(0, 4).map(([groupe, qty]) => (
                                 <View key={groupe} style={styles.stockBadge}>
@@ -162,7 +164,7 @@ const BanqueSangListScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement des banques de sang...</Text>
+                <Text style={styles.loadingText}>{t('banqueSangList.chargementDesBanquesDeSang')}</Text>
             </View>
         );
     }
@@ -171,13 +173,13 @@ const BanqueSangListScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <SafeIcon name="droplet" size={64} color={modernColors.textSecondary} />
-                <Text style={styles.emptyTitle}>Aucune banque de sang trouvée</Text>
-                <Text style={styles.emptyText}>Essayez de modifier vos critères de recherche</Text>
+                <Text style={styles.emptyTitle}>{t('banqueSangList.aucuneBanqueDeSangTrouvee')}</Text>
+                <Text style={styles.emptyText}>{t('banqueSangList.essayezDeModifierVosCriteres')}</Text>
                 <TouchableOpacity
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Text style={styles.backButtonText}>Nouvelle recherche</Text>
+                    <Text style={styles.backButtonText}>{t('banqueSangList.nouvelleRecherche')}</Text>
                 </TouchableOpacity>
             </View>
         );

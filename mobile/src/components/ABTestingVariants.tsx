@@ -31,7 +31,8 @@ export const ABTestingVariants: React.FC<ABTestingVariantsProps> = ({
     onAddVariant,
     onRemoveVariant,
 }) => {
-    const [expanded, setExpanded] = useState(false);
+        const { t } = useLanguageSafe();
+const [expanded, setExpanded] = useState(false);
 
     const updateVariant = (id: string, field: keyof Variant, value: any) => {
         const updated = variants.map(v =>
@@ -105,7 +106,7 @@ export const ABTestingVariants: React.FC<ABTestingVariantsProps> = ({
                                     onPress={() => {
                                         Alert.alert(
                                             'Supprimer la variante',
-                                            'Êtes-vous sûr de vouloir supprimer cette variante ?',
+                                            t('aBTestingVariants.etesvousSurDeVouloirSupprimerCette'),
                                             [
                                                 { text: t('common.cancel'), style: 'cancel' },
                                                 {
@@ -127,7 +128,7 @@ export const ABTestingVariants: React.FC<ABTestingVariantsProps> = ({
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Titre *</Text>
                             <NativeInput
-                                placeholder="Titre de la variante"
+                                placeholder={t('aBTestingVariants.titreDeLaVariante')}
                                 value={variant.titre}
                                 onChangeText={(text) => updateVariant(variant.id, 'titre', text)}
                                 style={styles.input}
@@ -137,7 +138,7 @@ export const ABTestingVariants: React.FC<ABTestingVariantsProps> = ({
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Description</Text>
                             <NativeInput
-                                placeholder="Description de la variante"
+                                placeholder={t('aBTestingVariants.descriptionDeLaVariante')}
                                 value={variant.description}
                                 onChangeText={(text) => updateVariant(variant.id, 'description', text)}
                                 style={styles.input}
@@ -180,7 +181,7 @@ export const ABTestingVariants: React.FC<ABTestingVariantsProps> = ({
                 onPress={onAddVariant}
             >
                 <SafeIcon name="plus" size={20} color={modernColors.primary} />
-                <Text style={styles.addButtonText}>Ajouter une variante</Text>
+                <Text style={styles.addButtonText}>{t('aBTestingVariants.ajouterUneVariante')}</Text>
             </TouchableOpacity>
 
             <View style={styles.infoBox}>

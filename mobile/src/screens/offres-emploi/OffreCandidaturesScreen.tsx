@@ -136,7 +136,7 @@ const OffreCandidaturesScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('offreCandidatures.chargement')}</Text>
             </View>
         );
     }
@@ -157,7 +157,7 @@ const OffreCandidaturesScreen: React.FC = () => {
                         <View style={styles.matchingHeader}>
                             <SafeIcon name="target" size={24} color={modernColors.primary} type="lucide" />
                             <View style={styles.matchingHeaderText}>
-                                <Text style={styles.matchingTitle}>Candidats recommandés (IA)</Text>
+                                <Text style={styles.matchingTitle}>{t('offreCandidatures.candidatsRecommandesIa')}</Text>
                                 <Text style={styles.matchingSubtitle}>
                                     {matchingCandidats.length} profil{matchingCandidats.length > 1 ? 's' : ''} correspondant{matchingCandidats.length > 1 ? 's' : ''} à votre offre
                                 </Text>
@@ -195,7 +195,7 @@ const OffreCandidaturesScreen: React.FC = () => {
                 {candidatures.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <SafeIcon name="users" size={64} color="#9CA3AF" />
-                        <Text style={styles.emptyText}>Aucune candidature pour le moment</Text>
+                        <Text style={styles.emptyText}>{t('offreCandidatures.aucuneCandidaturePourLeMoment')}</Text>
                         <Text style={styles.emptySubtext}>
                             Les candidatures apparaîtront ici une fois que des candidats auront postulé
                         </Text>
@@ -262,9 +262,9 @@ const CandidatureCard: React.FC<CandidatureCardProps> = ({
     const getStatutLabel = (statut: string) => {
         switch (statut) {
             case 'accepted':
-                return 'Accepté';
+                return t('offreCandidaturesScreen.accepte');
             case 'rejected':
-                return 'Rejeté';
+                return t('offreCandidaturesScreen.rejete');
             case 'reviewed':
                 return 'En cours';
             default:
@@ -300,7 +300,7 @@ const CandidatureCard: React.FC<CandidatureCardProps> = ({
 
             {candidature.score_matching && (
                 <View style={styles.scoreContainer}>
-                    <Text style={styles.scoreLabel}>Score de matching:</Text>
+                    <Text style={styles.scoreLabel}>{t('offreCandidatures.scoreDeMatching')}/Text>
                     <Text style={styles.scoreValue}>{candidature.score_matching.toFixed(0)}%</Text>
                 </View>
             )}
@@ -373,7 +373,7 @@ const CVAnalysisModal: React.FC<CVAnalysisModalProps> = ({ visible, candidature,
                             <View>
                                 {analysis.score_global && (
                                     <View style={styles.analysisScore}>
-                                        <Text style={styles.analysisScoreLabel}>Score global</Text>
+                                        <Text style={styles.analysisScoreLabel}>{t('offreCandidatures.scoreGlobal')}/Text>
                                         <Text style={styles.analysisScoreValue}>
                                             {analysis.score_global}/100
                                         </Text>
@@ -381,7 +381,7 @@ const CVAnalysisModal: React.FC<CVAnalysisModalProps> = ({ visible, candidature,
                                 )}
                                 {analysis.points_forts && analysis.points_forts.length > 0 && (
                                     <View style={styles.analysisSection}>
-                                        <Text style={styles.analysisSectionTitle}>Points forts</Text>
+                                        <Text style={styles.analysisSectionTitle}>{t('offreCandidatures.pointsForts')}/Text>
                                         {analysis.points_forts.map((point: string, i: number) => (
                                             <Text key={i} style={styles.analysisPoint}>
                                                 • {point}
@@ -406,7 +406,7 @@ const CVAnalysisModal: React.FC<CVAnalysisModalProps> = ({ visible, candidature,
                                     )}
                             </View>
                         ) : (
-                            <Text style={styles.placeholderText}>Aucune analyse disponible</Text>
+                            <Text style={styles.placeholderText}>{t('offreCandidatures.aucuneAnalyseDisponible')}</Text>
                         )}
                     </ScrollView>
                 </View>

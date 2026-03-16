@@ -843,7 +843,7 @@ async fn whatsapp_delivery_webhook(
                         format!(
                             "⚠️ Votre numéro ({}) n'est pas enregistré comme partenaire Yukpo.\n\n\
                             Contactez-nous pour obtenir votre accès partenaire.\n\
-                            📧 support@yukpomnang.com",
+                            📧 support@yukpo.com",
                             sender_phone
                         )
                     }

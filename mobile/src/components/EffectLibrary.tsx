@@ -14,6 +14,7 @@ import { Effect, effectLibraryService } from '../services/effectLibraryService';
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export type EffectCategory = 'transitions' | 'visual_effects' | 'animations' | 'special' | 'all';
 
@@ -30,7 +31,7 @@ const CATEGORIES: { key: EffectCategory; label: string; icon: string }[] = [
     { key: 'transitions', label: 'Transitions', icon: 'repeat' },
     { key: 'visual_effects', label: 'Effets Visuels', icon: 'sparkles' },
     { key: 'animations', label: 'Animations', icon: 'play' },
-    { key: 'special', label: 'Spéciaux', icon: 'star' },
+    { key: 'special', label: t('effectLibrary.speciaux'), icon: 'star' },
 ];
 
 export const EffectLibrary: React.FC<EffectLibraryProps> = ({
@@ -40,7 +41,8 @@ export const EffectLibrary: React.FC<EffectLibraryProps> = ({
     filterCategory = 'all',
     maxSelection,
 }) => {
-    const [effects, setEffects] = useState<Effect[]>([]);
+        const { t } = useLanguageSafe();
+const [effects, setEffects] = useState<Effect[]>([]);
     const [filteredEffects, setFilteredEffects] = useState<Effect[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -175,7 +177,7 @@ export const EffectLibrary: React.FC<EffectLibraryProps> = ({
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement des effets...</Text>
+                <Text style={styles.loadingText}>{t('effectLibrary.chargementDesEffets')}</Text>
             </View>
         );
     }
@@ -187,7 +189,7 @@ export const EffectLibrary: React.FC<EffectLibraryProps> = ({
                 <Text style={styles.errorText}>{error}</Text>
                 <NativeButton
                     variant="primary"
-                    label="Réessayer"
+                    label={t('effectLibrary.reessayer')}
                     onPress={loadEffects}
                     style={styles.retryButton}
                 />
@@ -202,7 +204,7 @@ export const EffectLibrary: React.FC<EffectLibraryProps> = ({
                 <NativeInput
                     value={searchQuery}
                     onChangeText={setSearchQuery}
-                    placeholder="Rechercher un effet..."
+                    placeholder={t('effectLibrary.rechercherUnEffet')}
                     style={styles.searchInput}
                 />
                 <TouchableOpacity
@@ -269,7 +271,7 @@ export const EffectLibrary: React.FC<EffectLibraryProps> = ({
                         <SafeIcon name="inbox" size={48} color={modernColors.textSecondary} />
                         <Text style={styles.emptyText}>
                             {searchQuery
-                                ? 'Aucun effet trouvé pour votre recherche'
+                                ? t('effectLibrary.aucunEffetTrouvePourVotreRecherche')
                                 : 'Aucun effet disponible'}
                         </Text>
                     </View>

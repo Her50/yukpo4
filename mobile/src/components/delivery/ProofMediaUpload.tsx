@@ -105,11 +105,11 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
 
         // Demander à l'utilisateur s'il veut prendre une photo ou une vidéo
         Alert.alert(
-            'Type de média',
+            t('proofMediaUpload.typeDeMedia'),
             'Que souhaitez-vous capturer ?',
             [
                 {
-                    text: 'Photo',
+                    text: t('proofMediaUpload.photo'),
                     onPress: async () => {
                         // ✅ CORRIGÉ: Utiliser 'images' as any pour compatibilité avec toutes les versions d'expo-image-picker
                         const result = await ImagePicker.launchCameraAsync({
@@ -123,7 +123,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                     },
                 },
                 {
-                    text: 'Vidéo',
+                    text: t('proofMediaUpload.video'),
                     onPress: () => {
                         // ✅ NOUVEAU: Utiliser le système évolué DeliveryProofVideoRecorder
                         setShowVideoRecorder(true);
@@ -182,8 +182,8 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
             const result = await response.json();
 
             Alert.alert(
-                'Succès',
-                `${isImage ? 'Image' : 'Vidéo'} de ${proofType === 'pickup' ? 'récupération' : 'livraison'} ajoutée avec succès`
+                t('proofMediaUpload.succes'),
+                `${isImage ? 'Image' : 'Vidéo'} de ${proofType === 'pickup' ? t('proofMediaUpload.recuperation') : 'livraison'} ajoutée avec succès`
             );
 
             loadMedia();
@@ -199,7 +199,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
     const handleDelete = async (mediaId: number) => {
         Alert.alert(
             'Confirmation',
-            'Êtes-vous sûr de vouloir supprimer ce média ?',
+            t('proofMediaUpload.etesvousSurDeVouloirSupprimerCe'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -228,17 +228,17 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
         <NativeCard style={styles.card}>
             <View style={styles.header}>
                 <Text style={styles.title}>
-                    {proofType === 'pickup' ? '📸 Preuve de récupération' : '📦 Preuve de livraison'}
+                    {proofType === 'pickup' ? t('proofMediaUpload.preuveDeRecuperation') : '📦 Preuve de livraison'}
                 </Text>
                 {isCourier && (
                     <View style={styles.actions}>
                         <TouchableOpacity
                             onPress={() => {
                                 Alert.alert(
-                                    'Ajouter un média',
+                                    t('proofMediaUpload.ajouterUnMedia'),
                                     'Choisissez une option',
                                     [
-                                        { text: '📸 Prendre une photo/vidéo', onPress: handleTakePhoto },
+                                        { text: t('proofMediaUpload.prendreUnePhotovideo'), onPress: handleTakePhoto },
                                         { text: '🖼️ Choisir depuis la galerie', onPress: handlePickImage },
                                         { text: t('common.cancel'), style: 'cancel' },
                                     ]
@@ -254,12 +254,12 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
             </View>
 
             {loading ? (
-                <Text style={styles.emptyText}>Chargement...</Text>
+                <Text style={styles.emptyText}>{t('proofMediaUpload.chargement')}</Text>
             ) : currentMedia.length === 0 ? (
                 <Text style={styles.emptyText}>
                     {isCourier
-                        ? `Aucune ${proofType === 'pickup' ? 'preuve de récupération' : 'preuve de livraison'} pour le moment`
-                        : `Aucune ${proofType === 'pickup' ? 'preuve de récupération' : 'preuve de livraison'} disponible`}
+                        ? `Aucune ${proofType === 'pickup' ? t('proofMediaUpload.preuveDeRecuperation') : 'preuve de livraison'} pour le moment`
+                        : `Aucune ${proofType === 'pickup' ? t('proofMediaUpload.preuveDeRecuperation') : 'preuve de livraison'} disponible`}
                 </Text>
             ) : (
                 <FlatList
@@ -306,10 +306,10 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
             {/* Comparaison pickup vs delivery si les deux existent */}
             {pickupMedia.length > 0 && deliveryMedia.length > 0 && proofType === 'delivery' && (
                 <View style={styles.comparisonSection}>
-                    <Text style={styles.comparisonTitle}>🔍 Comparaison état initial vs final</Text>
+                    <Text style={styles.comparisonTitle}>{t('proofMediaUpload.comparaisonEtatInitialVsFinal')}</Text>
                     <View style={styles.comparisonGrid}>
                         <View style={styles.comparisonItem}>
-                            <Text style={styles.comparisonLabel}>État initial (récupération)</Text>
+                            <Text style={styles.comparisonLabel}>{t('proofMediaUpload.etatInitialRecuperation')}</Text>
                             {pickupMedia[0].media_type === 'image' ? (
                                 <Image
                                     source={{ uri: resolveProofMediaUrl(pickupMedia[0].media_url) }}
@@ -325,7 +325,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                             )}
                         </View>
                         <View style={styles.comparisonItem}>
-                            <Text style={styles.comparisonLabel}>État final (livraison)</Text>
+                            <Text style={styles.comparisonLabel}>{t('proofMediaUpload.etatFinalLivraison')}</Text>
                             {deliveryMedia[0].media_type === 'image' ? (
                                 <Image
                                     source={{ uri: resolveProofMediaUrl(deliveryMedia[0].media_url) }}

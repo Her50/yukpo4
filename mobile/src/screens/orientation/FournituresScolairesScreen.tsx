@@ -13,6 +13,7 @@ import {
     View,
 } from 'react-native';
 import { apiGet } from '../../services/api';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Fourniture {
     id: number;
@@ -27,6 +28,7 @@ interface Fourniture {
 
 const FournituresScolairesScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const etablissementId = (route.params as any)?.etablissement_id;
 
@@ -94,11 +96,11 @@ const FournituresScolairesScreen: React.FC = () => {
                     style={styles.downloadButton}
                     onPress={() => handleDownload(item.url_liste!)}
                 >
-                    <Text style={styles.downloadButtonText}>📥 Télécharger PDF</Text>
+                    <Text style={styles.downloadButtonText}>{t('fournituresScolaires.telechargerPdf')}</Text>
                 </TouchableOpacity>
             ) : (
                 <View style={styles.infoBox}>
-                    <Text style={styles.infoText}>Liste disponible en ligne</Text>
+                    <Text style={styles.infoText}>{t('fournituresScolaires.listeDisponibleEnLigne')}/Text>
                 </View>
             )}
             {item.etablissement_id && (
@@ -106,7 +108,7 @@ const FournituresScolairesScreen: React.FC = () => {
                     style={styles.linkButton}
                     onPress={() => navigation.navigate('EtablissementDetails', { id: item.etablissement_id })}
                 >
-                    <Text style={styles.linkButtonText}>Voir l'établissement</Text>
+                    <Text style={styles.linkButtonText}>{t('fournituresScolaires.voirLetablissement')}</Text>
                 </TouchableOpacity>
             )}
         </View>
@@ -118,13 +120,13 @@ const FournituresScolairesScreen: React.FC = () => {
             <View style={styles.filtersContainer}>
                 <TextInput
                     style={styles.input}
-                    placeholder="Niveau (ex: 6ème)"
+                    placeholder={t('fournituresScolaires.niveauEx6eme')}
                     value={niveau}
                     onChangeText={setNiveau}
                 />
                 <TextInput
                     style={styles.input}
-                    placeholder="Année (ex: 2024-2025)"
+                    placeholder={t('fournituresScolaires.anneeEx20242025')}
                     value={annee}
                     onChangeText={setAnnee}
                 />
@@ -135,7 +137,7 @@ const FournituresScolairesScreen: React.FC = () => {
                         searchFournitures();
                     }}
                 >
-                    <Text style={styles.searchButtonText}>Rechercher</Text>
+                    <Text style={styles.searchButtonText}>{t('fournituresScolaires.rechercher')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -143,7 +145,7 @@ const FournituresScolairesScreen: React.FC = () => {
             {loading ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color="#3B82F6" />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('fournituresScolaires.chargement')}</Text>
                 </View>
             ) : fournitures.length > 0 ? (
                 <>
@@ -165,7 +167,7 @@ const FournituresScolairesScreen: React.FC = () => {
                 </>
             ) : (
                 <View style={styles.centerContainer}>
-                    <Text style={styles.emptyText}>Aucune liste trouvée</Text>
+                    <Text style={styles.emptyText}>{t('fournituresScolaires.aucuneListeTrouvee')}</Text>
                 </View>
             )}
         </View>

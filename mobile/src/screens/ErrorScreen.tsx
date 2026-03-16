@@ -3,6 +3,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ErrorScreenProps {
   error?: string;
@@ -14,6 +15,7 @@ const ErrorScreen: React.FC<ErrorScreenProps> = ({
   onRetry 
 }) => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
   const handleRetry = () => {
     if (onRetry) {
@@ -33,7 +35,7 @@ const ErrorScreen: React.FC<ErrorScreenProps> = ({
       <View style={styles.errorCard}>
         <Ionicons name="warning" size={48} color="#FF6B6B" style={styles.errorIcon} />
         
-        <Text style={styles.errorTitle}>Oups ! Une erreur s'est produite</Text>
+        <Text style={styles.errorTitle}>{t('error.oupsUneErreurSestProduite')}/Text>
         
         <Text style={styles.errorMessage}>
           {error}
@@ -45,7 +47,7 @@ const ErrorScreen: React.FC<ErrorScreenProps> = ({
             onPress={handleRetry}
           >
             <Ionicons name="refresh" size={20} color="#FFF" />
-            <Text style={styles.retryButtonText}>Réessayer</Text>
+            <Text style={styles.retryButtonText}>{t('error.reessayer')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -53,7 +55,7 @@ const ErrorScreen: React.FC<ErrorScreenProps> = ({
             onPress={handleGoHome}
           >
             <Ionicons name="home" size={20} color="#6366F1" />
-            <Text style={styles.homeButtonText}>Accueil</Text>
+            <Text style={styles.homeButtonText}>{t('error.accueil')}/Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -36,6 +36,7 @@ const TaxiHomeScreen: React.FC = () => {
     const { user } = useAuth();
     const { location, getLocationAddress } = useLocation();
     const toaster = useToaster();
+    const { t } = useLanguageSafe();
 
     // ✅ NOUVEAU: Vérifier si l'utilisateur est un chauffeur validé
     const [isDriverValidated, setIsDriverValidated] = useState(false);
@@ -222,7 +223,7 @@ const TaxiHomeScreen: React.FC = () => {
                 setTaxis(filteredTaxis);
                 setTotalResults(filteredTaxis.length);
             } else {
-                setError('Aucun taxi trouvé à proximité');
+                setError(t('taxiHome.aucunTaxiTrouveAProximite'));
                 setTaxis([]);
             }
         } catch (err: any) {
@@ -364,13 +365,13 @@ const TaxiHomeScreen: React.FC = () => {
                 setHasSearched(true); // ✅ NOUVEAU: Marquer qu'une recherche a été effectuée
                 setError(null);
             } else {
-                setError('Aucun taxi trouvé pour ce trajet');
+                setError(t('taxiHome.aucunTaxiTrouvePourCe'));
                 setTaxis([]);
                 setHasSearched(true);
             }
         } catch (err: any) {
             console.error('[TaxiHomeScreen] Erreur recherche:', err);
-            setError(err.message || 'Erreur lors de la recherche');
+            setError(err.message || t('taxiHome.erreurLorsDeLaRecherche'));
             setTaxis([]);
         } finally {
             setLoading(false);
@@ -386,7 +387,7 @@ const TaxiHomeScreen: React.FC = () => {
         if (!taxiForm.service_id) {
             Alert.alert(
                 'Service requis',
-                'Vous devez d\'abord créer un service. Voulez-vous le faire maintenant ?',
+                'Vous devez d\t('taxiHomeScreen.abordCreerUnServiceVoulezvousLe'),
                 [
                     { text: t('common.cancel') },
                     {
@@ -427,7 +428,7 @@ const TaxiHomeScreen: React.FC = () => {
             const response = await taxiService.createTaxi(taxiData);
 
             if (response.success) {
-                Alert.alert('Succès', 'Service taxi créé avec succès !', [
+                Alert.alert('Succès', t('taxiHome.serviceTaxiCreeAvecSucces'), [
                     {
                         text: 'OK',
                         onPress: () => {
@@ -532,7 +533,7 @@ const TaxiHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>
-                                {viewMode === 'search' ? 'Rechercher un taxi' : 'Créer un service taxi'}
+                                {viewMode === 'search' ? 'Rechercher un taxi' : t('taxiHomeScreen.creerUnServiceTaxi')}
                             </Text>
                             {viewMode === 'search' && totalResults > 0 && (
                                 <Text style={[styles.headerSubtitle, { color: '#ffffffCC' }]}>
@@ -552,7 +553,7 @@ const TaxiHomeScreen: React.FC = () => {
                             ]}>
                                 <View style={styles.labelRow}>
                                     <SafeIcon name="map-pin" size={14} color="#06B6D4" type="lucide" />
-                                    <Text style={styles.routeLabel}>Départ</Text>
+                                    <Text style={styles.routeLabel}>{t('taxiHome.depart')}</Text>
                                 </View>
                                 <LocationSelector
                                     label=""
@@ -617,7 +618,7 @@ const TaxiHomeScreen: React.FC = () => {
                                         }}
                                     >
                                         <SafeIcon name="crosshair" size={12} color="#06B6D4" type="lucide" />
-                                        <Text style={styles.useCurrentLocationText}>Ma position</Text>
+                                        <Text style={styles.useCurrentLocationText}>{t('taxiHome.maPosition')}</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -649,7 +650,7 @@ const TaxiHomeScreen: React.FC = () => {
                                             }, 150);
                                         }
                                     }}
-                                    placeholder="Adresse précise..."
+                                    placeholder={t('taxiHome.adressePrecise')}
                                     scope="all"
                                     enrichWithBackend={true}
                                 />
@@ -719,7 +720,7 @@ const TaxiHomeScreen: React.FC = () => {
                                 <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
                                     <View style={{ alignItems: 'center', marginBottom: 16 }}>
                                         <SafeIcon name="map-pin" size={48} color="#9CA3AF" />
-                                        <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
+                                        <Text style={styles.emptyText}>{t('taxiHome.selectionnezVotreTrajet')}</Text>
                                         <Text style={[styles.emptySubtext, { marginBottom: 8 }]} numberOfLines={3}>
                                             Choisissez un point de départ et une destination précise, puis cliquez sur "Rechercher"
                                         </Text>
@@ -730,7 +731,7 @@ const TaxiHomeScreen: React.FC = () => {
                                         <View style={styles.iaDemandCard}>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                                                 <SafeIcon name="trending-up" size={16} color="#06B6D4" type="lucide" />
-                                                <Text style={styles.iaDemandTitle}>Demande en temps réel</Text>
+                                                <Text style={styles.iaDemandTitle}>{t('taxiHome.demandeEnTempsReel')}</Text>
                                             </View>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                                 <View style={[
@@ -767,7 +768,7 @@ const TaxiHomeScreen: React.FC = () => {
                                     {(loadingRecommendations || recommendations.length > 0) && (
                                         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
                                             <SafeIcon name="sparkles" size={16} color="#06B6D4" type="lucide" />
-                                            <Text style={styles.iaRecoTitle}>Recommandés pour vous</Text>
+                                            <Text style={styles.iaRecoTitle}>{t('taxiHome.recommandesPourVous')}</Text>
                                             {loadingRecommendations && (
                                                 <ActivityIndicator size="small" color="#06B6D4" style={{ marginLeft: 8 }} />
                                             )}
@@ -806,7 +807,7 @@ const TaxiHomeScreen: React.FC = () => {
                     ) : loading && taxis.length === 0 ? (
                         <View style={styles.centerContainer}>
                             <ActivityIndicator size="large" color={modernColors.primary} />
-                            <Text style={styles.loadingText}>Recherche de taxis...</Text>
+                            <Text style={styles.loadingText}>{t('taxiHome.rechercheDeTaxis')}/Text>
                         </View>
                     ) : error && taxis.length === 0 ? (
                         <View style={styles.centerContainer}>
@@ -816,7 +817,7 @@ const TaxiHomeScreen: React.FC = () => {
                                 style={styles.retryButton}
                                 onPress={loadNearbyTaxis}
                             >
-                                <Text style={styles.retryButtonText}>Réessayer</Text>
+                                <Text style={styles.retryButtonText}>{t('taxiHome.reessayer')}</Text>
                             </TouchableOpacity>
                         </View>
                     ) : (
@@ -869,7 +870,7 @@ const TaxiHomeScreen: React.FC = () => {
                             ListEmptyComponent={
                                 <View style={styles.emptyContainer}>
                                     <SafeIcon name="taxi" size={64} color="#9CA3AF" />
-                                    <Text style={styles.emptyText}>Aucun taxi trouvé</Text>
+                                    <Text style={styles.emptyText}>{t('taxiHome.aucunTaxiTrouve')}</Text>
                                     <Text style={styles.emptySubtext} numberOfLines={2}>
                                         Essayez de modifier vos critères de recherche
                                     </Text>
@@ -937,11 +938,11 @@ const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, onWhatsApp, 
                 {taxi.is_available ? (
                     <View style={styles.availableBadge}>
                         <View style={styles.availableDot} />
-                        <Text style={styles.availableText}>Disponible</Text>
+                        <Text style={styles.availableText}>{t('taxiHome.disponible')}</Text>
                     </View>
                 ) : (
                     <View style={styles.unavailableBadge}>
-                        <Text style={styles.unavailableText}>Occupé</Text>
+                        <Text style={styles.unavailableText}>{t('taxiHome.occupe')}</Text>
                     </View>
                 )}
             </View>
@@ -1038,7 +1039,7 @@ const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, onWhatsApp, 
                         }}
                     >
                         <SafeIcon name="navigation" size={16} color="#FFFFFF" type="lucide" />
-                        <Text style={styles.bookButtonText}>Réserver</Text>
+                        <Text style={styles.bookButtonText}>{t('taxiHome.reserver')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -1065,15 +1066,15 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
     return (
         <KeyboardAwareScreen style={styles.formContainer} contentContainerStyle={styles.formContent}>
             <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Informations du chauffeur *</Text>
+                <Text style={styles.formSectionTitle}>{t('taxiHome.informationsDuChauffeur')}/Text>
                 <NativeInput
-                    placeholder="Nom du chauffeur"
+                    placeholder={t('taxiHome.nomDuChauffeur')}
                     value={taxiForm.nom_chauffeur || ''}
                     onChangeText={(text) => onFormChange({ ...taxiForm, nom_chauffeur: text })}
                     style={styles.formInput}
                 />
                 <NativeInput
-                    placeholder="Téléphone *"
+                    placeholder={t('taxiHome.telephone')}
                     value={taxiForm.telephone || ''}
                     onChangeText={(text) => onFormChange({ ...taxiForm, telephone: text })}
                     keyboardType="phone-pad"
@@ -1089,15 +1090,15 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
             </View>
 
             <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Véhicule</Text>
+                <Text style={styles.formSectionTitle}>{t('taxiHome.vehicule')}</Text>
                 <NativeInput
-                    placeholder="Type de véhicule (ex: Berline, SUV)"
+                    placeholder={t('taxiHome.typeDeVehiculeExBerline')}
                     value={taxiForm.type_vehicule || ''}
                     onChangeText={(text) => onFormChange({ ...taxiForm, type_vehicule: text })}
                     style={styles.formInput}
                 />
                 <NativeInput
-                    placeholder="Marque et modèle (ex: Toyota Corolla)"
+                    placeholder={t('taxiHome.marqueEtModeleExToyota')}
                     value={taxiForm.marque_modele || ''}
                     onChangeText={(text) => onFormChange({ ...taxiForm, marque_modele: text })}
                     style={styles.formInput}
@@ -1115,7 +1116,7 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
                     style={styles.formInput}
                 />
                 <NativeInput
-                    placeholder="Année"
+                    placeholder={t('taxiHome.annee')}
                     value={taxiForm.annee?.toString() || ''}
                     onChangeText={(text) => onFormChange({ ...taxiForm, annee: parseInt(text) || undefined })}
                     keyboardType="numeric"
@@ -1172,7 +1173,7 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
                     >
                         {taxiForm.paiement_cash && <SafeIcon name="check" size={16} color="#06B6D4" type="lucide" />}
                     </TouchableOpacity>
-                    <Text style={styles.checkboxLabel}>Espèces</Text>
+                    <Text style={styles.checkboxLabel}>{t('taxiHome.especes')}</Text>
                 </View>
                 <View style={styles.checkboxRow}>
                     <TouchableOpacity
@@ -1190,12 +1191,12 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
                     >
                         {taxiForm.paiement_carte && <SafeIcon name="check" size={16} color="#06B6D4" type="lucide" />}
                     </TouchableOpacity>
-                    <Text style={styles.checkboxLabel}>Carte bancaire</Text>
+                    <Text style={styles.checkboxLabel}>{t('taxiHome.carteBancaire')}/Text>
                 </View>
             </View>
 
             <NativeButton
-                title={creating ? 'Création en cours...' : 'Créer le service taxi'}
+                title={creating ? t('taxiHomeScreen.creationEnCours') : t('taxiHomeScreen.creerLeServiceTaxi')}
                 onPress={onCreate}
                 variant="primary"
                 disabled={creating}

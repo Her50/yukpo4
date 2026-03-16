@@ -12,6 +12,7 @@ import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import LocationSelector, { LocationObject } from './LocationSelector';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface GoogleBusinessModalProps {
   visible: boolean;
@@ -24,7 +25,8 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
   onClose,
   onSelectBusiness,
 }) => {
-  const [hasGoogleBusiness, setHasGoogleBusiness] = useState<boolean | null>(null);
+      const { t } = useLanguageSafe();
+const [hasGoogleBusiness, setHasGoogleBusiness] = useState<boolean | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<LocationObject | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
@@ -33,7 +35,7 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
     if (!location.place_id) {
       Alert.alert(
         'Erreur',
-        'Ce lieu ne contient pas d\'identifiant Google Places. Veuillez sélectionner un établissement Google Business.'
+        'Ce lieu ne contient pas d\t('googleBusinessModal.identifiantGooglePlacesVeuillezSelectionnerUn')
       );
       return;
     }
@@ -107,7 +109,7 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
                   activeOpacity={0.8}
                 >
                   <SafeIcon name="Check" size={20} color="white" />
-                  <Text style={styles.buttonText}>Oui, j'ai un Google Business</Text>
+                  <Text style={styles.buttonText}>{t('googleBusiness.ouiJaiUnGoogleBusiness')}/Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -126,7 +128,7 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
                 <TouchableOpacity onPress={() => setHasGoogleBusiness(null)} style={styles.backButton}>
                   <SafeIcon name="ArrowLeft" size={20} color={modernColors.primary} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Rechercher votre business</Text>
+                <Text style={styles.title}>{t('googleBusiness.rechercherVotreBusiness')}</Text>
               </View>
 
               <Text style={styles.subtitle}>
@@ -145,7 +147,7 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
                     handleSelectBusiness(location);
                   }
                 }}
-                placeholder="Ex: Restaurant Le Gourmet, Douala"
+                placeholder={t('googleBusiness.exRestaurantLeGourmetDouala')}
                 scope="establishment"
                 style={styles.locationSelector}
                 enrichWithBackend={true}
@@ -154,12 +156,12 @@ const GoogleBusinessModal: React.FC<GoogleBusinessModalProps> = ({
               {loadingDetails && (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color={modernColors.primary} />
-                  <Text style={styles.loadingText}>Récupération des informations...</Text>
+                  <Text style={styles.loadingText}>{t('googleBusiness.recuperationDesInformations')}</Text>
                 </View>
               )}
 
               <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
-                <Text style={styles.skipText}>Passer cette étape</Text>
+                <Text style={styles.skipText}>{t('googleBusiness.passerCetteEtape')}</Text>
               </TouchableOpacity>
             </View>
           ) : null}

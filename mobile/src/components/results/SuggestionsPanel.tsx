@@ -8,6 +8,7 @@ import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import { modernColors } from '../../theme/modernTheme';
 import { hapticSelect } from '../../utils/hapticFeedback';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface CombinationSuggestion {
     service_id: number;
@@ -53,7 +54,7 @@ const SuggestionsPanel: React.FC<SuggestionsPanelProps> = ({
     if (loading) {
         return (
             <View style={styles.container}>
-                <Text style={styles.loadingText}>Chargement des suggestions...</Text>
+                <Text style={styles.loadingText}>{t('suggestionsPanel.chargementDesSuggestions')}</Text>
             </View>
         );
     }
@@ -61,13 +62,13 @@ const SuggestionsPanel: React.FC<SuggestionsPanelProps> = ({
     if (suggestions.length === 0) {
         return (
             <View style={styles.noSuggestionsContainer}>
-                <Text style={styles.noSuggestionsText}>Aucune suggestion</Text>
+                <Text style={styles.noSuggestionsText}>{t('suggestionsPanel.aucuneSuggestion')}</Text>
                 <TouchableOpacity
                     style={styles.manualSearchButton}
                     onPress={onSearchWithoutSuggestion}
                 >
                     <SafeIcon name="search" size={16} color={modernColors.primary} />
-                    <Text style={styles.manualSearchText}>Rechercher quand même</Text>
+                    <Text style={styles.manualSearchText}>{t('suggestionsPanel.rechercherQuandMeme')}</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -78,7 +79,7 @@ const SuggestionsPanel: React.FC<SuggestionsPanelProps> = ({
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
                     <SafeIcon name="sparkles" size={18} color={modernColors.primary} />
-                    <Text style={styles.title}>Caractéristiques recommandées</Text>
+                    <Text style={styles.title}>{t('suggestionsPanel.caracteristiquesRecommandees')}</Text>
                     <Text style={styles.count}>({suggestions.length})</Text>
                 </View>
                 <TouchableOpacity
@@ -86,7 +87,7 @@ const SuggestionsPanel: React.FC<SuggestionsPanelProps> = ({
                     onPress={onSearchWithoutSuggestion}
                 >
                     <SafeIcon name="search" size={16} color={modernColors.primary} />
-                    <Text style={styles.manualSearchText}>Rechercher sans suggestion</Text>
+                    <Text style={styles.manualSearchText}>{t('suggestionsPanel.rechercherSansSuggestion')}</Text>
                 </TouchableOpacity>
             </View>
 

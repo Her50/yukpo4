@@ -18,6 +18,7 @@ import { NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Taxi {
     id: number;
@@ -41,6 +42,7 @@ interface Taxi {
 
 const MesTaxisScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
 
     const [taxis, setTaxis] = useState<Taxi[]>([]);
@@ -162,7 +164,7 @@ const MesTaxisScreen: React.FC = () => {
                     </View>
                     <View style={[styles.statusBadge, item.is_available_now && styles.statusBadgeAvailable]}>
                         <Text style={[styles.statusText, item.is_available_now && styles.statusTextAvailable]}>
-                            {item.is_available_now ? 'Disponible' : 'Occupé'}
+                            {item.is_available_now ? 'Disponible' : t('mesTaxisScreen.occupe')}
                         </Text>
                     </View>
                 </View>
@@ -196,7 +198,7 @@ const MesTaxisScreen: React.FC = () => {
 
                 <View style={styles.taxiActions}>
                     <View style={styles.availabilityRow}>
-                        <Text style={styles.availabilityLabel}>Disponibilité</Text>
+                        <Text style={styles.availabilityLabel}>{t('mesTaxis.disponibilite')}</Text>
                         {updatingAvailability === item.id ? (
                             <ActivityIndicator size="small" color={modernColors.primary} />
                         ) : (
@@ -213,7 +215,7 @@ const MesTaxisScreen: React.FC = () => {
                         onPress={() => handleTaxiPress(item)}
                     >
                         <SafeIcon name="edit" size={16} color={modernColors.primary} />
-                        <Text style={styles.editButtonText}>Modifier</Text>
+                        <Text style={styles.editButtonText}>{t('mesTaxisScreen.modifier')}</Text>
                     </TouchableOpacity>
                 </View>
             </NativeCard>
@@ -236,11 +238,11 @@ const MesTaxisScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Mes taxis</Text>
+                    <Text style={styles.title}>{t('mesTaxis.mesTaxis')}</Text>
                 </View>
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement de vos taxis...</Text>
+                    <Text style={styles.loadingText}>{t('mesTaxis.chargementDeVosTaxis')}</Text>
                 </View>
             </View>
         );
@@ -255,7 +257,7 @@ const MesTaxisScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mes taxis</Text>
+                <Text style={styles.title}>{t('mesTaxis.mesTaxis')}</Text>
                 <TouchableOpacity
                     onPress={() => navigation.navigate('TaxiForm' as never, { mode: 'create' } as never)}
                     style={styles.addButton}
@@ -295,10 +297,10 @@ const MesTaxisScreen: React.FC = () => {
             {taxis.length === 0 ? (
                 <View style={styles.centerContainer}>
                     <SafeIcon name="car" size={64} color="#D1D5DB" />
-                    <Text style={styles.emptyText}>Aucun taxi trouvé</Text>
+                    <Text style={styles.emptyText}>{t('mesTaxis.aucunTaxiTrouve')}</Text>
                     <Text style={styles.emptySubtext}>
                         {statusFilter === 'all'
-                            ? 'Créez votre premier taxi'
+                            ? t('mesTaxisScreen.creezVotrePremierTaxi')
                             : `Aucun taxi avec le statut "${statusFilters.find(f => f.key === statusFilter)?.label}"`}
                     </Text>
                     <TouchableOpacity
@@ -308,7 +310,7 @@ const MesTaxisScreen: React.FC = () => {
                         }}
                     >
                         <SafeIcon name="plus" size={20} color="#fff" />
-                        <Text style={styles.createButtonText}>Créer un taxi</Text>
+                        <Text style={styles.createButtonText}>{t('mesTaxis.creerUnTaxi')}</Text>
                     </TouchableOpacity>
                 </View>
             ) : (

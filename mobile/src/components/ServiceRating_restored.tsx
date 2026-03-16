@@ -4,6 +4,7 @@ import ReactNative from 'react-native';
 import { Card, TextInput } from 'react-native-paper';
 import { theme } from '../theme/theme';
 import UserMentionPicker from './UserMentionPicker';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { Alert, StyleSheet, Text, TouchableOpacity, View } = ReactNative;
 
@@ -49,7 +50,8 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
   customStyle,
   onContactUser
 }) => {
-  const [showReviewFormLocal, setShowReviewFormLocal] = useState(showReviewForm);
+      const { t } = useLanguageSafe();
+const [showReviewFormLocal, setShowReviewFormLocal] = useState(showReviewForm);
   const [rating, setRating] = useState(service.user_rating || 0);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -225,7 +227,7 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
             <Text style={styles.formTitle}>Donnez votre avis</Text>
 
             <View style={styles.ratingInput}>
-              <Text style={styles.ratingLabel}>Note :</Text>
+              <Text style={styles.ratingLabel}>{t('serviceRating_restored.note')}/Text>
               {renderStars(rating, true, 24)}
               {rating > 0 && (
                 <Text style={[styles.ratingText, { color: getRatingColor(rating) }]}>
@@ -250,7 +252,7 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
                 style={styles.cancelButton}
                 onPress={() => setShowReviewFormLocal(false)}
               >
-                <Text style={styles.cancelButtonText}>Annuler</Text>
+                <Text style={styles.cancelButtonText}>{t('serviceRatingRestored.annuler')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -277,7 +279,7 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
           onPress={() => setShowReviewFormLocal(true)}
         >
           <Star size={16} color={theme.colors.primary} />
-          <Text style={styles.addReviewText}>Ajouter un avis</Text>
+          <Text style={styles.addReviewText}>{t('serviceRating_restored.ajouterUnAvis')}</Text>
         </TouchableOpacity>
       )}
 
@@ -359,7 +361,7 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
       {reviews.length === 0 && !showReviewFormLocal && (
         <View style={styles.noReviews}>
           <ChatCircle size={32} color="#E0E0E0" />
-          <Text style={styles.noReviewsText}>Aucun avis pour le moment</Text>
+          <Text style={styles.noReviewsText}>{t('serviceRating_restored.aucunAvisPourLeMoment')}</Text>
           <Text style={styles.noReviewsSubtext}>
             Soyez le premier ├á donner votre avis !
           </Text>

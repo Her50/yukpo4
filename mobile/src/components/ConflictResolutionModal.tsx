@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface ConflictInfo {
     conflict_type: 'timestamp_mismatch' | 'concurrent_edit' | 'deleted_while_editing';
@@ -35,7 +36,8 @@ const ConflictResolutionModal: React.FC<ConflictResolutionModalProps> = ({
     onResolve,
     onClose,
 }) => {
-    const [resolving, setResolving] = useState(false);
+        const { t } = useLanguageSafe();
+const [resolving, setResolving] = useState(false);
 
     if (!conflict) return null;
 
@@ -55,13 +57,13 @@ const ConflictResolutionModal: React.FC<ConflictResolutionModalProps> = ({
     const getConflictMessage = () => {
         switch (conflict.conflict_type) {
             case 'timestamp_mismatch':
-                return 'Le service a été modifié sur le serveur pendant que vous le modifiiez localement.';
+                return t('conflictResolutionModal.leServiceAEteModifieSur');
             case 'concurrent_edit':
-                return 'Le service a été modifié simultanément par plusieurs utilisateurs.';
+                return t('conflictResolutionModal.leServiceAEteModifieSimultanement');
             case 'deleted_while_editing':
-                return 'Le service a été supprimé sur le serveur pendant que vous le modifiiez.';
+                return t('conflictResolutionModal.leServiceAEteSupprimeSur');
             default:
-                return 'Un conflit a été détecté lors de la synchronisation.';
+                return t('conflictResolutionModal.unConflitAEteDetecteLors');
         }
     };
 
@@ -88,19 +90,19 @@ const ConflictResolutionModal: React.FC<ConflictResolutionModalProps> = ({
                         <Text style={styles.message}>{getConflictMessage()}</Text>
 
                         <View style={styles.infoSection}>
-                            <Text style={styles.sectionTitle}>Détails du conflit</Text>
+                            <Text style={styles.sectionTitle}>{t('conflictResolution.detailsDuConflit')}</Text>
                             <View style={styles.infoRow}>
-                                <Text style={styles.infoLabel}>Service ID:</Text>
+                                <Text style={styles.infoLabel}>{t('conflictResolution.serviceId')}/Text>
                                 <Text style={styles.infoValue}>{conflict.service_id}</Text>
                             </View>
                             <View style={styles.infoRow}>
-                                <Text style={styles.infoLabel}>Modifié localement:</Text>
+                                <Text style={styles.infoLabel}>{t('conflictResolution.modifieLocalement')}</Text>
                                 <Text style={styles.infoValue}>
                                     {new Date(conflict.local_updated_at).toLocaleString('fr-FR')}
                                 </Text>
                             </View>
                             <View style={styles.infoRow}>
-                                <Text style={styles.infoLabel}>Modifié sur serveur:</Text>
+                                <Text style={styles.infoLabel}>{t('conflictResolution.modifieSurServeur')}</Text>
                                 <Text style={styles.infoValue}>
                                     {new Date(conflict.server_updated_at).toLocaleString('fr-FR')}
                                 </Text>
@@ -108,7 +110,7 @@ const ConflictResolutionModal: React.FC<ConflictResolutionModalProps> = ({
                         </View>
 
                         <View style={styles.resolutionSection}>
-                            <Text style={styles.sectionTitle}>Choisir une résolution</Text>
+                            <Text style={styles.sectionTitle}>{t('conflictResolution.choisirUneResolution')}</Text>
 
                             <TouchableOpacity
                                 onPress={() => handleResolve('use_server')}

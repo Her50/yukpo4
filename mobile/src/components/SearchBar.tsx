@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SearchBarProps {
     placeholder?: string;
@@ -17,13 +18,14 @@ interface SearchBarProps {
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({
-    placeholder = "Rechercher...",
+    placeholder={t('searchBar.rechercher')},
     onSubmit,
     onGPSPress,
     showSendButton = true,
     initialValue = ""
 }) => {
-    const [query, setQuery] = useState(initialValue);
+        const { t } = useLanguageSafe();
+const [query, setQuery] = useState(initialValue);
 
     const handleSubmit = () => {
         if (query.trim()) {

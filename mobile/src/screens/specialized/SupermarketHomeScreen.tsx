@@ -23,6 +23,7 @@ import { useLocation } from '../../contexts/LocationContext';
 import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { PriceComparison, Supermarket, SupermarketProduct, SupermarketPromotion, supermarketService } from '../../services/supermarketService';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type ViewMode = 'select' | 'products' | 'compare' | 'promotions';
 
@@ -37,6 +38,7 @@ const SupermarketHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     // ✅ Détecter si on vient de BayamSelam ou du flux de livraison
     const isBayamSelam = route.name === 'BayamSelamSearch' || (route.params as any)?.fromBayamSelam;
@@ -300,7 +302,7 @@ const SupermarketHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>
-                                {viewMode === 'select' ? (isBayamSelam ? 'BayamSelam' : 'Supermarchés') :
+                                {viewMode === 'select' ? (isBayamSelam ? 'BayamSelam' : t('supermarketHomeScreen.supermarches')) :
                                     viewMode === 'products' ? selectedSupermarket?.name || 'Produits' :
                                         viewMode === 'compare' ? 'Comparaison de prix' :
                                             'Promotions'}
@@ -328,7 +330,7 @@ const SupermarketHomeScreen: React.FC = () => {
                                 <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                                 <TextInput
                                     style={styles.searchInput}
-                                    placeholder="Rechercher un supermarché..."
+                                    placeholder={t('supermarketHome.rechercherUnSupermarche')}
                                     placeholderTextColor="#9CA3AF"
                                     value={searchSupermarketQuery}
                                     onChangeText={setSearchSupermarketQuery}
@@ -351,7 +353,7 @@ const SupermarketHomeScreen: React.FC = () => {
                                 <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                                 <TextInput
                                     style={styles.searchInput}
-                                    placeholder="Rechercher un produit..."
+                                    placeholder={t('supermarketHome.rechercherUnProduit')}
                                     placeholderTextColor="#9CA3AF"
                                     value={productSearchQuery}
                                     onChangeText={(text) => {
@@ -388,7 +390,7 @@ const SupermarketHomeScreen: React.FC = () => {
                                 <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                                 <TextInput
                                     style={styles.searchInput}
-                                    placeholder="Nom du produit à comparer..."
+                                    placeholder={t('supermarketHome.nomDuProduitAComparer')}
                                     placeholderTextColor="#9CA3AF"
                                     value={compareProductQuery}
                                     onChangeText={setCompareProductQuery}
@@ -549,7 +551,7 @@ const SupermarketSelectionView: React.FC<SupermarketSelectionViewProps> = ({
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color="#10B981" />
-                <Text style={styles.loadingText}>Recherche de supermarchés...</Text>
+                <Text style={styles.loadingText}>{t('supermarketHome.rechercheDeSupermarches')}</Text>
             </View>
         );
     }
@@ -576,7 +578,7 @@ const SupermarketSelectionView: React.FC<SupermarketSelectionViewProps> = ({
             ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="shopping-bag" size={64} color="#9CA3AF" />
-                    <Text style={styles.emptyText}>Aucun supermarché trouvé</Text>
+                    <Text style={styles.emptyText}>{t('supermarketHome.aucunSupermarcheTrouve')}</Text>
                     <Text style={styles.emptySubtext}>
                         Essayez d'activer votre localisation ou d'élargir la zone de recherche
                     </Text>
@@ -704,7 +706,7 @@ const ProductsView: React.FC<ProductsViewProps> = ({
             {loading && products.length === 0 ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color="#10B981" />
-                    <Text style={styles.loadingText}>Chargement des produits...</Text>
+                    <Text style={styles.loadingText}>{t('supermarketHome.chargementDesProduits')}</Text>
                 </View>
             ) : (
                 <FlatList
@@ -728,7 +730,7 @@ const ProductsView: React.FC<ProductsViewProps> = ({
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="package" size={64} color="#9CA3AF" />
-                            <Text style={styles.emptyText}>Aucun produit trouvé</Text>
+                            <Text style={styles.emptyText}>{t('supermarketHome.aucunProduitTrouve')}</Text>
                             <Text style={styles.emptySubtext}>
                                 Essayez de modifier vos filtres de recherche
                             </Text>
@@ -942,7 +944,7 @@ const PromotionsView: React.FC<PromotionsViewProps> = ({
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color="#10B981" />
-                <Text style={styles.loadingText}>Chargement des promotions...</Text>
+                <Text style={styles.loadingText}>{t('supermarketHome.chargementDesPromotions')}</Text>
             </View>
         );
     }
@@ -969,11 +971,11 @@ const PromotionsView: React.FC<PromotionsViewProps> = ({
             ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="tag" size={64} color="#9CA3AF" />
-                    <Text style={styles.emptyText}>Aucune promotion disponible</Text>
+                    <Text style={styles.emptyText}>{t('supermarketHome.aucunePromotionDisponible')}</Text>
                     <Text style={styles.emptySubtext}>
                         {selectedSupermarket
                             ? `Aucune promotion active pour ${selectedSupermarket.name}`
-                            : 'Aucune promotion dans les supermarchés à proximité'}
+                            : t('supermarketHomeScreen.aucunePromotionDansLesSupermarchesA')}
                     </Text>
                 </View>
             }

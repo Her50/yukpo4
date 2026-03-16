@@ -509,7 +509,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         },
                     },
                     {
-                        text: 'Recharger',
+                        text: t('common.reload'),
                         onPress: () => {
                             onClose();
                             (navigation as any).navigate('RechargeTokens');
@@ -663,17 +663,17 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     // Composants d'étapes
     const ParcelInfoStep = (
         <KeyboardAwareScreen style={styles.stepContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepTitle}>Informations du colis</Text>
-            <Text style={styles.stepSubtitle}>Décrivez votre colis pour une meilleure estimation</Text>
+            <Text style={styles.stepTitle}>{t('deliveryParcelFlowNew.informationsDuColis')}/Text>
+            <Text style={styles.stepSubtitle}>{t('deliveryParcelFlowNew.decrivezVotreColisPourUne')}</Text>
 
             <View style={styles.typeSelector}>
-                <Text style={styles.label}>Type de colis</Text>
+                <Text style={styles.label}>{t('deliveryParcelFlowNew.typeDeColis')}</Text>
                 <View style={styles.typeButtonsGrid}>
                     {[
                         { id: 'document', label: 'Document', icon: 'file-text', desc: 'Courrier, dossier, contrat...' },
-                        { id: 'package', label: 'Paquet/Sac', icon: 'package', desc: 'Carton, sac, objet emballé...' },
-                        { id: 'moving', label: 'Déménagement', icon: 'truck', desc: 'Meubles, appareils, cartons...' },
-                        { id: 'cake', label: 'Gâteau', icon: 'cake', desc: 'Pâtisserie, gâteau fragile...' },
+                        { id: 'package', label: 'Paquet/Sac', icon: 'package', desc: t('deliveryParcelFlowNew.cartonSacObjetEmballe') },
+                        { id: 'moving', label: t('deliveryParcelFlowNew.demenagement'), icon: 'truck', desc: 'Meubles, appareils, cartons...' },
+                        { id: 'cake', label: t('deliveryParcelFlowNew.gateau'), icon: 'cake', desc: 'Pâtisserie, gâteau fragile...' },
                     ].map((type) => (
                         <HapticTouchable
                             key={type.id}
@@ -712,7 +712,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             {/* Formulaire adaptatif selon le type de colis */}
             {parcelType === 'document' && (
                 <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Nombre de pages / documents</Text>
+                    <Text style={styles.label}>{t('deliveryParcelFlowNew.nombreDePagesDocuments')}</Text>
                     <NativeInput
                         placeholder="Ex: 10"
                         value={numberOfPages}
@@ -725,7 +725,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             {parcelType === 'moving' && (
                 <>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Nombre de cartons / boîtes</Text>
+                        <Text style={styles.label}>{t('deliveryParcelFlowNew.nombreDeCartonsBoites')}</Text>
                         <NativeInput
                             placeholder="Ex: 5"
                             value={numberOfBoxes}
@@ -734,7 +734,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         />
                     </View>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Meubles à transporter</Text>
+                        <Text style={styles.label}>{t('deliveryParcelFlowNew.meublesATransporter')}</Text>
                         <NativeInput
                             placeholder="Ex: lit, armoire, frigo..."
                             value={movingFurniture}
@@ -742,9 +742,9 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         />
                     </View>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Accès (étage, escalier, ascenseur)</Text>
+                        <Text style={styles.label}>{t('deliveryParcelFlowNew.accesEtageEscalierAscenseur')}</Text>
                         <NativeInput
-                            placeholder="Ex: 3ème étage sans ascenseur"
+                            placeholder={t('deliveryParcelFlowNew.ex3emeEtageSansAscenseur')}
                             value={movingAccess}
                             onChangeText={setMovingAccess}
                         />
@@ -755,15 +755,15 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             {parcelType === 'cake' && (
                 <>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Taille du gâteau</Text>
+                        <Text style={styles.label}>{t('deliveryParcelFlowNew.tailleDuGateau')}</Text>
                         <NativeInput
-                            placeholder="Ex: 30 cm de diamètre"
+                            placeholder={t('deliveryParcelFlowNew.ex30CmDeDiametre')}
                             value={cakeSize}
                             onChangeText={setCakeSize}
                         />
                     </View>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Nombre d'étages</Text>
+                        <Text style={styles.label}>{t('deliveryParcelFlowNew.nombreDetages')}</Text>
                         <NativeInput
                             placeholder="Ex: 3"
                             value={cakeLayers}
@@ -776,9 +776,9 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
             {/* Champ Nombre */}
             <View style={styles.inputGroup}>
-                <Text style={styles.label}>Nombre d'éléments</Text>
+                <Text style={styles.label}>{t('deliveryParcelFlowNew.nombreDelements')}</Text>
                 <NativeInput
-                    placeholder="Nombre d'éléments à transporter"
+                    placeholder={t('deliveryParcelFlowNew.nombreD')}éléments à transporter"
                     value={numberOfItems}
                     onChangeText={setNumberOfItems}
                     keyboardType="numeric"
@@ -787,7 +787,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
             {/* Champ Valeur déclarée - OBLIGATOIRE */}
             <View style={styles.inputGroup}>
-                <Text style={styles.label}>Valeur déclarée (FCFA) *</Text>
+                <Text style={styles.label}>{t('deliveryParcelFlowNew.valeurDeclareeFcfa')}</Text>
                 <NativeInput
                     placeholder="Ex: 50000"
                     value={declaredValue}
@@ -805,9 +805,9 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             </View>
 
             <View style={styles.inputGroup}>
-                <Text style={styles.label}>Notes (optionnel)</Text>
+                <Text style={styles.label}>{t('deliveryParcelFlowNew.notesOptionnel')}/Text>
                 <NativeInput
-                    placeholder="Instructions spéciales..."
+                    placeholder={t('deliveryParcelFlowNew.instructionsSpeciales')}
                     value={notes}
                     onChangeText={setNotes}
                     multiline
@@ -817,7 +817,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
             {/* Type de transport remonté avant les photos */}
             <View style={styles.inputGroup}>
-                <Text style={styles.label}>Type de transport souhaité</Text>
+                <Text style={styles.label}>{t('deliveryParcelFlowNew.typeDeTransportSouhaite')}</Text>
                 <View style={styles.vehicleGridContainer}>
                     {VEHICLE_TRANSPORT_OPTIONS.map((type) => (
                         <TouchableOpacity
@@ -873,7 +873,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                                         `${returnPickupLocation.latitude.toFixed(6)}, ${returnPickupLocation.longitude.toFixed(6)}`}
                                 </Text>
                                 <NativeButton
-                                    title="Modifier"
+                                    title={t('deliveryParcelFlowNew.modifier')}
                                     variant="outline"
                                     size="small"
                                     onPress={() => setShowReturnPickupGPS(true)}
@@ -882,7 +882,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                             </NativeCard>
                         ) : (
                             <NativeButton
-                                title="Sélectionner le point de collecte retour"
+                                title={t('deliveryParcelFlowNew.selectionnerLePointDeCollecte')}
                                 variant="outline"
                                 onPress={() => setShowReturnPickupGPS(true)}
                             />
@@ -902,7 +902,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                                     </Text>
                                 )}
                                 <NativeButton
-                                    title="Modifier"
+                                    title={t('deliveryParcelFlowNew.modifier')}
                                     variant="outline"
                                     size="small"
                                     onPress={() => setShowReturnDropoffGPS(true)}
@@ -911,7 +911,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                             </NativeCard>
                         ) : (
                             <NativeButton
-                                title="Sélectionner le point de livraison retour"
+                                title={t('deliveryParcelFlowNew.selectionnerLePointDeLivraison')}
                                 variant="outline"
                                 onPress={() => setShowReturnDropoffGPS(true)}
                             />
@@ -944,7 +944,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 {isScheduled && (
                     <>
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Date de livraison *</Text>
+                            <Text style={styles.label}>{t('deliveryParcelFlowNew.dateDeLivraison')}</Text>
                             <TouchableOpacity
                                 onPress={() => setShowDatePicker(true)}
                                 style={styles.dateTimeButton}
@@ -982,7 +982,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                             )}
                         </View>
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Heure de livraison *</Text>
+                            <Text style={styles.label}>{t('deliveryParcelFlowNew.heureDeLivraison')}</Text>
                             <TouchableOpacity
                                 onPress={() => setShowTimePicker(true)}
                                 style={styles.dateTimeButton}
@@ -1024,7 +1024,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                                         {matchingMode === 'immediate' && <View style={styles.radioInner} />}
                                     </View>
                                     <View style={styles.radioLabelContainer}>
-                                        <Text style={styles.radioLabel}>Maintenant (par défaut - contact à l'avance)</Text>
+                                        <Text style={styles.radioLabel}>{t('deliveryParcelFlowNew.maintenantParDefautContactA')}</Text>
                                         <Text style={styles.radioDescription}>
                                             ✅ Le coursier sera assigné maintenant. Vous pourrez le contacter et préparer la livraison. Il devra déclencher la livraison au moment planifié.
                                         </Text>
@@ -1038,7 +1038,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                                         {matchingMode === 'scheduled' && <View style={styles.radioInner} />}
                                     </View>
                                     <View style={styles.radioLabelContainer}>
-                                        <Text style={styles.radioLabel}>Au moment planifié</Text>
+                                        <Text style={styles.radioLabel}>{t('deliveryParcelFlowNew.auMomentPlanifie')}</Text>
                                         <Text style={styles.radioDescription}>
                                             Le coursier sera recherché automatiquement à la date et heure planifiée.
                                         </Text>
@@ -1051,7 +1051,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             </View>
 
             <View style={styles.inputGroup}>
-                <Text style={styles.label}>Photos du colis</Text>
+                <Text style={styles.label}>{t('deliveryParcelFlowNew.photosDuColis')}/Text>
                 <MediaUploadManager
                     mediaUris={photos}
                     onMediaChange={setPhotos}
@@ -1088,8 +1088,8 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
     const PickupAddressStep = (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepTitle}>Adresse de collecte</Text>
-            <Text style={styles.stepSubtitle}>Où se trouve le colis actuellement ?</Text>
+            <Text style={styles.stepTitle}>{t('deliveryParcelFlowNew.adresseDeCollecte')}</Text>
+            <Text style={styles.stepSubtitle}>{t('deliveryParcelFlowNew.ouSeTrouveLeColis')}</Text>
 
             {/* ✅ NOUVEAU : Sélecteur d'adresse sauvegardée */}
             <SavedAddressSelector
@@ -1108,7 +1108,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 <NativeCard style={styles.locationCard}>
                     <View style={styles.locationHeader}>
                         <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                        <Text style={styles.locationLabel}>Adresse sélectionnée</Text>
+                        <Text style={styles.locationLabel}>{t('deliveryParcelFlowNew.adresseSelectionnee')}</Text>
                     </View>
                     <Text style={styles.locationText}>
                         {pickupLocation.address ||
@@ -1132,7 +1132,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         style={styles.locationButton}
                     />
                     <NativeButton
-                        title="Sélectionner sur la carte"
+                        title={t('deliveryParcelFlowNew.selectionnerSurLaCarte')}
                         variant="outline"
                         onPress={() => setShowPickupGPS(true)}
                         style={styles.locationButton}
@@ -1168,8 +1168,8 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
     const DropoffAddressStep = (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepTitle}>Adresse de livraison</Text>
-            <Text style={styles.stepSubtitle}>Où souhaitez-vous que le colis soit livré ?</Text>
+            <Text style={styles.stepTitle}>{t('deliveryParcelFlowNew.adresseDeLivraison')}</Text>
+            <Text style={styles.stepSubtitle}>{t('deliveryParcelFlowNew.ouSouhaitezvousQueLeColis')}</Text>
 
             {/* ✅ NOUVEAU : Sélecteur d'adresse sauvegardée */}
             <SavedAddressSelector
@@ -1188,7 +1188,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 <NativeCard style={styles.locationCard}>
                     <View style={styles.locationHeader}>
                         <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                        <Text style={styles.locationLabel}>Adresse sélectionnée</Text>
+                        <Text style={styles.locationLabel}>{t('deliveryParcelFlowNew.adresseSelectionnee')}</Text>
                     </View>
                     <Text style={styles.locationText}>
                         {dropoffLocation.address ||
@@ -1200,7 +1200,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         </Text>
                     )}
                     <NativeButton
-                        title="Sélectionner sur la carte (nouveau)"
+                        title={t('deliveryParcelFlowNew.selectionnerSurLaCarteNouveau')}
                         variant="outline"
                         size="small"
                         onPress={() => setShowDropoffGPS(true)}
@@ -1217,7 +1217,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         style={styles.locationButton}
                     />
                     <NativeButton
-                        title="Sélectionner sur la carte"
+                        title={t('deliveryParcelFlowNew.selectionnerSurLaCarte')}
                         variant="outline"
                         onPress={() => setShowDropoffGPS(true)}
                         style={styles.locationButton}
@@ -1229,11 +1229,11 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
     const RecipientInfoStep = (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepTitle}>Informations du destinataire</Text>
+            <Text style={styles.stepTitle}>{t('deliveryParcelFlowNew.informationsDuDestinataire')}/Text>
             <Text style={styles.stepSubtitle}>Qui va recevoir le colis ?</Text>
 
             <View style={styles.inputGroup}>
-                <Text style={styles.label}>Nom du destinataire *</Text>
+                <Text style={styles.label}>{t('deliveryParcelFlowNew.nomDuDestinataire')}/Text>
                 <NativeInput
                     placeholder="Ex: Jean Dupont"
                     value={recipientName}
@@ -1246,7 +1246,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             </View>
 
             <View style={styles.inputGroup}>
-                <Text style={styles.label}>Téléphone *</Text>
+                <Text style={styles.label}>{t('deliveryParcelFlowNew.telephone')}</Text>
                 <View style={styles.phoneInputContainer}>
                     <NativeInput
                         placeholder="+237"
@@ -1318,18 +1318,18 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
     const SummaryStep = (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepTitle}>Récapitulatif</Text>
-            <Text style={styles.stepSubtitle}>Vérifiez les informations avant de confirmer</Text>
+            <Text style={styles.stepTitle}>{t('deliveryParcelFlowNew.recapitulatif')}</Text>
+            <Text style={styles.stepSubtitle}>{t('deliveryParcelFlowNew.verifiezLesInformationsAvantDe')}</Text>
 
             {/* Informations du colis */}
             <NativeCard style={styles.summaryCard}>
-                <Text style={styles.summaryCardTitle}>Informations du colis</Text>
+                <Text style={styles.summaryCardTitle}>{t('deliveryParcelFlowNew.informationsDuColis')}/Text>
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>Type</Text>
                     <Text style={styles.summaryValue}>
                         {parcelType === 'document' ? 'Document' :
                             parcelType === 'package' ? 'Paquet/Sac' :
-                                parcelType === 'moving' ? 'Déménagement' :
+                                parcelType === 'moving' ? t('deliveryParcelFlowNew.demenagement') :
                                     parcelType === 'cake' ? 'Gâteau' : parcelType}
                     </Text>
                 </View>
@@ -1353,7 +1353,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 )}
                 {declaredValue && (
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Valeur déclarée</Text>
+                        <Text style={styles.summaryLabel}>{t('deliveryParcelFlowNew.valeurDeclaree')}</Text>
                         <Text style={styles.summaryValue}>{parseFloat(declaredValue).toLocaleString('fr-FR')} FCFA</Text>
                     </View>
                 )}
@@ -1368,7 +1368,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 {isRoundTrip && (
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Aller-retour</Text>
-                        <Text style={styles.summaryValue}>Oui (réduction 10%)</Text>
+                        <Text style={styles.summaryValue}>{t('deliveryParcelFlowNew.ouiReduction10')}</Text>
                     </View>
                 )}
                 {notes && (
@@ -1386,14 +1386,14 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                     <Text style={styles.summaryLabel}>Collecte</Text>
                     <Text style={[styles.summaryValue, { flex: 2 }]}>
                         {pickupLocation?.address ||
-                            (pickupLocation ? `${pickupLocation.latitude.toFixed(6)}, ${pickupLocation.longitude.toFixed(6)}` : 'Non défini')}
+                            (pickupLocation ? `${pickupLocation.latitude.toFixed(6)}, ${pickupLocation.longitude.toFixed(6)}` : t('deliveryParcelFlowNew.nonDefini'))}
                     </Text>
                 </View>
                 <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>Livraison</Text>
+                    <Text style={styles.summaryLabel}>{t('deliveryParcelFlowNew.livraison')}/Text>
                     <Text style={[styles.summaryValue, { flex: 2 }]}>
                         {dropoffLocation?.address ||
-                            (dropoffLocation ? `${dropoffLocation.latitude.toFixed(6)}, ${dropoffLocation.longitude.toFixed(6)}` : 'Non défini')}
+                            (dropoffLocation ? `${dropoffLocation.latitude.toFixed(6)}, ${dropoffLocation.longitude.toFixed(6)}` : t('deliveryParcelFlowNew.nonDefini'))}
                     </Text>
                 </View>
                 {estimatedDistance !== null && (
@@ -1412,7 +1412,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                             </Text>
                         </View>
                         <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>Livraison retour</Text>
+                            <Text style={styles.summaryLabel}>{t('deliveryParcelFlowNew.livraisonRetour')}/Text>
                             <Text style={[styles.summaryValue, { flex: 2 }]}>
                                 {returnDropoffLocation.address ||
                                     `${returnDropoffLocation.latitude.toFixed(6)}, ${returnDropoffLocation.longitude.toFixed(6)}`}
@@ -1455,7 +1455,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Matching</Text>
                         <Text style={styles.summaryValue}>
-                            {matchingMode === 'immediate' ? 'Maintenant' : 'Au moment planifié'}
+                            {matchingMode === 'immediate' ? 'Maintenant' : t('deliveryParcelFlowNew.auMomentPlanifie')}
                         </Text>
                     </View>
                 </NativeCard>
@@ -1469,7 +1469,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                     <Text style={styles.summaryValue}>{recipientName}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>Téléphone</Text>
+                    <Text style={styles.summaryLabel}>{t('deliveryParcelFlowNew.telephone')}</Text>
                     <Text style={styles.summaryValue}>{recipientCountryCode} {recipientPhone}</Text>
                 </View>
                 {recipientInstructions && (
@@ -1482,14 +1482,14 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
 
             {/* Coûts */}
             <NativeCard style={styles.summaryCard}>
-                <Text style={styles.summaryCardTitle}>Coûts</Text>
+                <Text style={styles.summaryCardTitle}>{t('deliveryParcelFlowNew.couts')}</Text>
                 {loadingCosts ? (
-                    <Text style={styles.loadingText}>Calcul des coûts...</Text>
+                    <Text style={styles.loadingText}>{t('deliveryParcelFlowNew.calculDesCouts')}</Text>
                 ) : (
                     <>
                         {deliveryCost !== null && (
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Livraison</Text>
+                                <Text style={styles.summaryLabel}>{t('deliveryParcelFlowNew.livraison')}/Text>
                                 <Text style={styles.summaryValue}>{deliveryCost.toLocaleString('fr-FR')} FCFA</Text>
                             </View>
                         )}
@@ -1506,7 +1506,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                             </Text>
                         </View>
                         <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>Solde disponible</Text>
+                            <Text style={styles.summaryLabel}>{t('deliveryParcelFlowNew.soldeDisponible')}/Text>
                             <Text style={[styles.summaryValue, userBalance < (deliveryCost || 0) + insuranceCost && styles.insufficientBalance]}>
                                 {userBalance.toLocaleString('fr-FR')} FCFA
                             </Text>
@@ -1552,7 +1552,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         },
         {
             id: 'dropoff',
-            label: 'Livraison',
+            label: t('deliveryParcelFlowNew.livraison'),
             icon: 'navigation',
             component: DropoffAddressStep,
             validation: () => !!dropoffLocation,
@@ -1566,7 +1566,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         },
         {
             id: 'summary',
-            label: 'Récapitulatif',
+            label: t('deliveryParcelFlowNew.recapitulatif'),
             icon: 'check-circle',
             component: SummaryStep,
             validation: () => true, // Toujours valide, la validation se fait dans handleComplete
@@ -1592,8 +1592,8 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         <View style={styles.headerContent}>
                             <SafeIcon name="package" size={24} color="#FFFFFF" />
                             <View style={styles.headerText}>
-                                <Text style={styles.headerTitle}>Livraison de colis</Text>
-                                <Text style={styles.headerSubtitle}>Expédiez votre colis en toute sécurité</Text>
+                                <Text style={styles.headerTitle}>{t('deliveryParcelFlowNew.livraisonDeColis')}/Text>
+                                <Text style={styles.headerSubtitle}>{t('deliveryParcelFlowNew.expediezVotreColisEnToute')}</Text>
                             </View>
                         </View>
                         <TouchableOpacity
@@ -1628,7 +1628,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                             ? { lat: userLocation.coords.latitude, lng: userLocation.coords.longitude }
                             : null
                 }
-                title="Sélectionner le point de collecte"
+                title={t('deliveryParcelFlowNew.selectionnerLePointDeCollecte')}
                 allowZoneSelection={false}
             />
 
@@ -1643,7 +1643,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                             ? { lat: userLocation.coords.latitude, lng: userLocation.coords.longitude }
                             : null
                 }
-                title="Sélectionner le point de livraison"
+                title={t('deliveryParcelFlowNew.selectionnerLePointDeLivraison')}
                 allowZoneSelection={false}
             />
 
@@ -1677,7 +1677,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                                 ? { lat: userLocation.coords.latitude, lng: userLocation.coords.longitude }
                                 : null
                 }
-                title="Sélectionner le point de collecte retour"
+                title={t('deliveryParcelFlowNew.selectionnerLePointDeCollecte')}
                 allowZoneSelection={false}
             />
 
@@ -1710,7 +1710,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                                 ? { lat: userLocation.coords.latitude, lng: userLocation.coords.longitude }
                                 : null
                 }
-                title="Sélectionner le point de livraison retour"
+                title={t('deliveryParcelFlowNew.selectionnerLePointDeLivraison')}
                 allowZoneSelection={false}
             />
         </>

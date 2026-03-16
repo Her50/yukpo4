@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface HelpItem {
     field: string;
@@ -28,7 +29,8 @@ interface Props {
 }
 
 const ContextualHelp: React.FC<Props> = ({ field, helpItems, position = 'bottom' }) => {
-    const [showTooltip, setShowTooltip] = useState(false);
+        const { t } = useLanguageSafe();
+const [showTooltip, setShowTooltip] = useState(false);
     const [showModal, setShowModal] = useState(false);
 
     const helpItem = helpItems.find((item) => item.field === field);
@@ -99,7 +101,7 @@ const ContextualHelp: React.FC<Props> = ({ field, helpItems, position = 'bottom'
                             {helpItem.docLink && (
                                 <TouchableOpacity style={styles.modalDocLink}>
                                     <SafeIcon name="external-link" size={18} color={modernColors.primary} type="lucide" />
-                                    <Text style={styles.modalDocLinkText}>Voir la documentation</Text>
+                                    <Text style={styles.modalDocLinkText}>{t('contextualHelp.voirLaDocumentation')}</Text>
                                 </TouchableOpacity>
                             )}
                         </ScrollView>

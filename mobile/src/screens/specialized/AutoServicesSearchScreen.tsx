@@ -19,6 +19,7 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet } from '../../services/api';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface SearchFilters {
     q?: string;
@@ -65,6 +66,7 @@ const ACCENT_BG = '#EFF6FF';
 const AutoServicesSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     // Filtres dynamiques depuis la base
     const [dynamicFilters, setDynamicFilters] = useState<AutoFilters | null>(null);
@@ -234,7 +236,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="car" size={28} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>Recherche Automobile</Text>
+                        <Text style={styles.headerTitle}>{t('autoServicesSearch.rechercheAutomobile')}/Text>
                         <Text style={styles.headerSubtitle}>
                             {dynamicFilters
                                 ? `${dynamicFilters.total_products} vehicule${dynamicFilters.total_products > 1 ? 's' : ''} disponible${dynamicFilters.total_products > 1 ? 's' : ''}`
@@ -250,7 +252,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                     <NativeInput
                         value={searchText}
                         onChangeText={setSearchText}
-                        placeholder="Rechercher marque, modèle, type..."
+                        placeholder={t('autoServicesSearch.rechercherMarqueModeleType')}
                         placeholderTextColor="rgba(255,255,255,0.5)"
                         style={styles.searchBarInput}
                         onSubmitEditing={handleSearch}
@@ -324,12 +326,12 @@ const AutoServicesSearchScreen: React.FC = () => {
                 {filtersLoading ? (
                     <View style={styles.loadingFilters}>
                         <ActivityIndicator size="small" color={ACCENT_LIGHT} />
-                        <Text style={styles.loadingText}>Chargement des filtres intelligents...</Text>
+                        <Text style={styles.loadingText}>{t('autoServicesSearch.chargementDesFiltresIntelligents')}</Text>
                     </View>
                 ) : dynamicFilters ? (
                     <View style={styles.filtersCard}>
                         <View style={styles.filterHeaderRow}>
-                            <Text style={styles.sectionTitle}>Filtres intelligents</Text>
+                            <Text style={styles.sectionTitle}>{t('autoServicesSearch.filtresIntelligents')}/Text>
                             {activeFiltersCount > 0 && (
                                 <TouchableOpacity onPress={resetFilters} style={styles.resetButton}>
                                     <SafeIcon name="x" size={14} color={ACCENT_LIGHT} type="lucide" />
@@ -362,7 +364,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                         {dynamicFilters.etats.length > 0 && (
                             <View style={styles.filterGroup}>
                                 <Text style={styles.filterLabel}>
-                                    <SafeIcon name="check-circle" size={14} color={ACCENT_COLOR} type="lucide" /> État
+                                    <SafeIcon name="check-circle" size={14} color={ACCENT_COLOR} type="lucide" /> {t('autoServicesSearchScreen.condition')}
                                 </Text>
                                 {renderFilterChips(dynamicFilters.etats, etat, setEtat)}
                             </View>
@@ -402,7 +404,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                         {/* Année */}
                         <View style={styles.filterGroup}>
                             <Text style={styles.filterLabel}>
-                                <SafeIcon name="calendar" size={14} color={ACCENT_COLOR} type="lucide" /> Année
+                                <SafeIcon name="calendar" size={14} color={ACCENT_COLOR} type="lucide" />{t('autoServicesSearchScreen.annee')}
                                 {dynamicFilters.annee_range.min != null && dynamicFilters.annee_range.max != null && (
                                     <Text style={styles.rangeHint}>
                                         {' '}({dynamicFilters.annee_range.min} - {dynamicFilters.annee_range.max})
@@ -423,7 +425,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                                     <NativeInput
                                         value={anneeMax}
                                         onChangeText={setAnneeMax}
-                                        placeholder={dynamicFilters.annee_range.max ? `Jusqu'à ${dynamicFilters.annee_range.max}` : "Jusqu'à"}
+                                        placeholder={dynamicFilters.annee_range.max ? t('autoServicesSearchScreen.jusqua', { dynamicFilters_annee_range_max: dynamicFilters.annee_range.max }) : "Jusqu'à"}
                                         keyboardType="numeric"
                                     />
                                 </View>
@@ -437,7 +439,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                         >
                             <SafeIcon name={showAdvancedFilters ? 'chevron-up' : 'chevron-down'} size={16} color={ACCENT_LIGHT} type="lucide" />
                             <Text style={styles.advancedToggleText}>
-                                {showAdvancedFilters ? 'Masquer les filtres avancés' : 'Plus de filtres'}
+                                {showAdvancedFilters ? t('autoServicesSearchScreen.masquerLesFiltresAvances') : 'Plus de filtres'}
                             </Text>
                         </TouchableOpacity>
 
@@ -482,7 +484,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                                         label=""
                                         value={typeof ville === 'string' ? (ville ? { raw: ville, place_name: ville } : '') : ville}
                                         onSelect={(loc: LocationObject) => setVille(loc)}
-                                        placeholder="Ville, quartier, adresse..."
+                                        placeholder={t('autoServicesSearchScreen.villeQuartierAdresse')}
                                         scope="all"
                                         enrichWithBackend={true}
                                     />
@@ -536,7 +538,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                         style={styles.searchButtonGradient}
                     >
                         <SafeIcon name="search" size={22} color="#FFFFFF" type="lucide" />
-                        <Text style={styles.searchButtonText}>Rechercher</Text>
+                        <Text style={styles.searchButtonText}>{t('autoServicesSearch.rechercher')}</Text>
                         {activeFiltersCount > 0 && (
                             <View style={styles.filterBadge}>
                                 <Text style={styles.filterBadgeText}>{activeFiltersCount}</Text>

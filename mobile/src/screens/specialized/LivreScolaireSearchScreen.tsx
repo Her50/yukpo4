@@ -19,6 +19,7 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface SearchFilters {
     classe_actuelle?: string;
@@ -36,6 +37,7 @@ interface SearchFilters {
 const LivreScolaireSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     const [classeActuelle, setClasseActuelle] = useState('');
     const [classeSouhaitee, setClasseSouhaitee] = useState('');
@@ -92,9 +94,9 @@ const LivreScolaireSearchScreen: React.FC = () => {
         navigation.navigate('LivreScolaireList' as never, { filters } as never);
     };
 
-    const niveaux = ['Primaire', 'Collège', 'Lycée'];
+    const niveaux = ['Primaire', t('livreScolaireSearchScreen.college'), t('livreScolaireSearchScreen.lycee')];
     const etats = ['Neuf', 'Très bon', 'Bon', 'Acceptable'];
-    const matieres = ['Mathématiques', 'Français', 'Anglais', 'SVT', 'Physique-Chimie', 'Histoire-Géo', 'Philosophie'];
+    const matieres = [t('livreScolaireSearchScreen.mathematiques'), t('livreScolaireSearchScreen.francais'), 'Anglais', 'SVT', 'Physique-Chimie', t('livreScolaireSearchScreen.histoiregeo'), 'Philosophie'];
 
     // ✅ NOUVEAU: État pour fonctionnalités avancées
     const [showMatching, setShowMatching] = useState(false);
@@ -105,9 +107,9 @@ const LivreScolaireSearchScreen: React.FC = () => {
     const quickSearches = [
         {
             id: 'echange',
-            title: 'Échange',
+            title: t('livreScolaireSearch.echange'),
             icon: 'repeat',
-            description: 'Trouver un échange',
+            description: t('livreScolaireSearch.trouverUnEchange'),
             action: () => {
                 hapticPress();
                 navigation.navigate('MesTrocs' as never);
@@ -125,9 +127,9 @@ const LivreScolaireSearchScreen: React.FC = () => {
         },
         {
             id: 'chaines',
-            title: 'Chaînes de troc',
+            title: t('livreScolaireSearch.chainesDeTroc'),
             icon: 'link',
-            description: 'Troc en chaîne',
+            description: t('livreScolaireSearch.trocEnChaine'),
             action: () => {
                 hapticPress();
                 setShowTradeChains(true);
@@ -137,7 +139,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
             id: 'proche',
             title: 'Plus proche',
             icon: 'map-pin',
-            description: 'À proximité',
+            description: t('livreScolaireSearch.aProximite'),
             action: () => {
                 hapticPress();
                 setRayonKm(5);
@@ -147,7 +149,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
             id: 'neuf',
             title: 'Neuf',
             icon: 'star',
-            description: 'Livres neufs',
+            description: t('livreScolaireSearch.livresNeufs'),
             action: () => {
                 hapticPress();
                 setEtatLivre('Neuf');
@@ -176,7 +178,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="book-open" size={32} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>Rechercher un livre scolaire</Text>
+                        <Text style={styles.headerTitle}>{t('livreScolaireSearch.rechercherUnLivreScolaire')}</Text>
                         <Text style={styles.headerSubtitle}>
                             Trouvez ou échangez des livres scolaires près de chez vous
                         </Text>
@@ -232,7 +234,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
                                 <SafeIcon name="link" size={24} color="#FFFFFF" type="lucide" />
                             </View>
                             <View style={styles.tradeChainsBannerText}>
-                                <Text style={styles.tradeChainsBannerTitle}>Chaînes de troc</Text>
+                                <Text style={styles.tradeChainsBannerTitle}>{t('livreScolaireSearch.chainesDeTroc')}</Text>
                                 <Text style={styles.tradeChainsBannerSubtitle}>
                                     Participez à des échanges en chaîne
                                 </Text>
@@ -270,7 +272,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>📚 Informations du livre</Text>
+                    <Text style={styles.sectionTitle}>{t('livreScolaireSearch.informationsDuLivre')}/Text>
                     {/* Classe actuelle */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
@@ -279,31 +281,31 @@ const LivreScolaireSearchScreen: React.FC = () => {
                         <NativeInput
                             value={classeActuelle}
                             onChangeText={setClasseActuelle}
-                            placeholder="Ex: 6ème, 5ème, Terminale"
+                            placeholder={t('livreScolaireSearch.ex6eme5emeTerminale')}
                         />
                     </View>
 
                     {/* Classe souhaitée */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="target" size={14} color={modernColors.primary} type="lucide" /> Classe souhaitée *
+                            <SafeIcon name="target" size={14} color={modernColors.primary} type="lucide" />{t('livreScolaireSearchScreen.classeSouhaitee')}
                         </Text>
                         <NativeInput
                             value={classeSouhaitee}
                             onChangeText={setClasseSouhaitee}
-                            placeholder="Ex: 5ème, 4ème, 1ère"
+                            placeholder={t('livreScolaireSearch.ex5eme4eme1ere')}
                         />
                     </View>
 
                     {/* Matière */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="book" size={14} color={modernColors.primary} type="lucide" /> Matière *
+                            <SafeIcon name="book" size={14} color={modernColors.primary} type="lucide" />{t('livreScolaireSearchScreen.matiere')}
                         </Text>
                         <NativeInput
                             value={matiere}
                             onChangeText={setMatiere}
-                            placeholder="Ex: Mathématiques, Français"
+                            placeholder={t('livreScolaireSearch.exMathematiquesFrancais')}
                         />
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
                             {matieres.map((m) => (
@@ -349,7 +351,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
                     {/* État du livre */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="check-circle" size={14} color={modernColors.primary} type="lucide" /> État du livre
+                            <SafeIcon name="check-circle" size={14} color={modernColors.primary} type="lucide" /> {t('livreScolaireSearchScreen.bookCondition')}
                         </Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
                             {etats.map((etat) => (
@@ -370,17 +372,17 @@ const LivreScolaireSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Localisation */}
-                    <Text style={styles.sectionTitle}>📍 Localisation</Text>
+                    <Text style={styles.sectionTitle}>{t('livreScolaireSearch.localisation')}/Text>
 
                     {/* Ville */}
                     <View style={styles.inputGroup}>
                         <LocationSelector
-                            label="Ville"
+                            label={t('livreScolaireSearch.ville')}
                             value={typeof ville === 'string' ? (ville ? { raw: ville, place_name: ville } : '') : ville}
                             onSelect={(location: LocationObject) => {
                                 setVille(location);
                             }}
-                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            placeholder={t('livreScolaireSearch.rechercherUnLieuVilleQuartier')}
                             scope="all"
                             enrichWithBackend={true}
                         />
@@ -389,12 +391,12 @@ const LivreScolaireSearchScreen: React.FC = () => {
                     {/* Quartier */}
                     <View style={styles.inputGroup}>
                         <LocationSelector
-                            label="Quartier (optionnel)"
+                            label={t('livreScolaireSearch.quartierOptionnel')}
                             value={typeof quartier === 'string' ? (quartier ? { raw: quartier, place_name: quartier } : '') : quartier}
                             onSelect={(location: LocationObject) => {
                                 setQuartier(location);
                             }}
-                            placeholder="Rechercher un lieu précis (quartier, rue, adresse...)"
+                            placeholder={t('livreScolaireSearch.rechercherUnLieuPrecisQuartier')}
                             scope="all"
                             cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
                             enrichWithBackend={true}
@@ -462,7 +464,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
                                     <SafeIcon name="repeat" size={20} color="#059669" type="lucide" />
                                 </View>
                                 <View style={styles.optionTextContainer}>
-                                    <Text style={styles.optionTitle}>Rechercher des échanges</Text>
+                                    <Text style={styles.optionTitle}>{t('livreScolaireSearch.rechercherDesEchanges')}</Text>
                                     <Text style={styles.optionDescription}>
                                         Trouver des utilisateurs intéressés par un échange
                                     </Text>
@@ -504,7 +506,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
                 <View style={styles.infoCard}>
                     <View style={styles.infoHeader}>
                         <SafeIcon name="info" size={20} color="#059669" type="lucide" />
-                        <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
+                        <Text style={styles.infoTitle}>{t('livreScolaireSearch.bonASavoir')}</Text>
                     </View>
                     <Text style={styles.infoText}>
                         • Vous pouvez échanger vos livres scolaires avec d'autres utilisateurs{'\n'}

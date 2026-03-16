@@ -20,6 +20,7 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface PharmacieSearchFilters {
     ville?: string;
@@ -38,6 +39,7 @@ interface PharmacieSearchFilters {
 const PharmacieSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     const [ville, setVille] = useState<LocationObject | string>('');
     const [quartier, setQuartier] = useState<LocationObject | string>('');
@@ -129,9 +131,9 @@ const PharmacieSearchScreen: React.FC = () => {
     const quickSearches = [
         {
             id: 'produits',
-            title: 'Recherche produits',
+            title: t('pharmacieSearch.rechercheProduits'),
             icon: 'search',
-            description: 'Médicaments disponibles',
+            description: t('pharmacieSearch.medicamentsDisponibles'),
             action: () => {
                 hapticPress();
                 setShowAdvancedFilters(true);
@@ -151,9 +153,9 @@ const PharmacieSearchScreen: React.FC = () => {
         },
         {
             id: 'proche',
-            title: 'À proximité',
+            title: t('pharmacieSearch.aProximite'),
             icon: 'map-pin',
-            description: 'Produits près de moi',
+            description: t('pharmacieSearch.produitsPresDeMoi'),
             action: () => {
                 hapticPress();
                 setMaxDistance(10);
@@ -174,8 +176,8 @@ const PharmacieSearchScreen: React.FC = () => {
         { value: 'test_rapide', label: 'Tests rapides' },
         { value: 'vaccination', label: 'Vaccination' },
         { value: 'conseil', label: 'Conseil pharmaceutique' },
-        { value: 'dermato', label: 'Produits dermatologiques' },
-        { value: 'pediatrie', label: 'Pédiatrie' },
+        { value: 'dermato', label: t('pharmacieSearch.produitsDermatologiques') },
+        { value: 'pediatrie', label: t('pharmacieSearch.pediatrie') },
     ];
 
     return (
@@ -199,7 +201,7 @@ const PharmacieSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="pill" size={32} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>Rechercher une pharmacie</Text>
+                        <Text style={styles.headerTitle}>{t('pharmacieSearch.rechercherUnePharmacie')}</Text>
                         <Text style={styles.headerSubtitle}>
                             Trouvez rapidement une pharmacie près de chez vous
                         </Text>
@@ -223,7 +225,7 @@ const PharmacieSearchScreen: React.FC = () => {
                                 <SafeIcon name="sparkles" size={24} color="#FFFFFF" type="lucide" />
                             </View>
                             <View style={styles.aiFeaturesBannerText}>
-                                <Text style={styles.aiFeaturesBannerTitle}>Fonctionnalités IA</Text>
+                                <Text style={styles.aiFeaturesBannerTitle}>{t('pharmacieSearch.fonctionnalitesIa')}</Text>
                                 <Text style={styles.aiFeaturesBannerSubtitle}>
                                     Interactions, dosage, budget, recherche produits
                                 </Text>
@@ -269,7 +271,7 @@ const PharmacieSearchScreen: React.FC = () => {
 
                 {/* ✅ RÉORIENTÉ: Formulaire de recherche - Priorité sur produits/services */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>🔍 Recherche de produits</Text>
+                    <Text style={styles.sectionTitle}>{t('pharmacieSearch.rechercheDeProduits')}/Text>
                     <Text style={styles.sectionDescription}>
                         Recherchez des médicaments ou produits pharmaceutiques disponibles
                     </Text>
@@ -277,18 +279,18 @@ const PharmacieSearchScreen: React.FC = () => {
                     {/* Recherche de produits (PRIORITAIRE) */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="search" size={14} color={modernColors.primary} type="lucide" /> Nom du produit ou médicament *
+                            <SafeIcon name="search" size={14} color={modernColors.primary} type="lucide" />{t('pharmacieSearchScreen.nomDuProduitOuMedicament')}
                         </Text>
                         <NativeInput
                             value={productSearch}
                             onChangeText={setProductSearch}
-                            placeholder="Ex: Paracétamol, Doliprane, Amoxicilline..."
+                            placeholder={t('pharmacieSearch.exParacetamolDolipraneAmoxicilline')}
                             autoCapitalize="none"
                         />
                     </View>
 
                     {/* Localisation (optionnelle pour recherche de produits) */}
-                    <Text style={styles.sectionTitle}>📍 Localisation (optionnelle)</Text>
+                    <Text style={styles.sectionTitle}>{t('pharmacieSearch.localisationOptionnelle')}/Text>
                     <Text style={styles.sectionDescription}>
                         Ajoutez votre position pour trouver des produits à proximité
                     </Text>
@@ -347,12 +349,12 @@ const PharmacieSearchScreen: React.FC = () => {
                     {/* ✅ NOUVEAU: Recherche de produits */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="pill" size={14} color={modernColors.primary} type="lucide" /> Rechercher un médicament/produit (optionnel)
+                            <SafeIcon name="pill" size={14} color={modernColors.primary} type="lucide" />{t('pharmacieSearchScreen.rechercherUnMedicamentproduitOptionnel')}
                         </Text>
                         <NativeInput
                             value={productSearch}
                             onChangeText={setProductSearch}
-                            placeholder="Ex: Paracétamol, Amoxicilline..."
+                            placeholder={t('pharmacieSearch.exParacetamolAmoxicilline')}
                         />
                     </View>
 
@@ -445,7 +447,7 @@ const PharmacieSearchScreen: React.FC = () => {
                                         <SafeIcon name="truck" size={20} color="#10B981" type="lucide" />
                                     </View>
                                     <View style={styles.optionTextContainer}>
-                                        <Text style={styles.optionTitle}>Livraison à domicile</Text>
+                                        <Text style={styles.optionTitle}>{t('pharmacieSearch.livraisonADomicile')}</Text>
                                         <Text style={styles.optionDescription}>
                                             Afficher seulement les pharmacies avec service de livraison
                                         </Text>
@@ -466,7 +468,7 @@ const PharmacieSearchScreen: React.FC = () => {
 
                     {/* Options */}
                     <View style={styles.optionsSection}>
-                        <Text style={styles.sectionTitle}>⚙️ Options de recherche</Text>
+                        <Text style={styles.sectionTitle}>{t('pharmacieSearch.optionsDeRecherche')}/Text>
 
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>
@@ -535,7 +537,7 @@ const PharmacieSearchScreen: React.FC = () => {
                 <View style={styles.infoCard}>
                     <View style={styles.infoHeader}>
                         <SafeIcon name="info" size={20} color="#3B82F6" type="lucide" />
-                        <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
+                        <Text style={styles.infoTitle}>{t('pharmacieSearch.bonASavoir')}</Text>
                     </View>
                     <Text style={styles.infoText}>
                         • Les pharmacies de garde sont disponibles 24h/24 et 7j/7{'\n'}

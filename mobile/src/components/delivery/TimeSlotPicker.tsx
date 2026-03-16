@@ -10,6 +10,7 @@ import {
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 import { NativeButton } from '../SafeNativeDesign';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface TimeSlot {
     start: string;
@@ -41,7 +42,8 @@ const HOURS = Array.from({ length: 24 }, (_, i) => {
 });
 
 const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({ value, onChange }) => {
-    const [schedule, setSchedule] = useState<DaySchedule>({});
+        const { t } = useLanguageSafe();
+const [schedule, setSchedule] = useState<DaySchedule>({});
     const [modalVisible, setModalVisible] = useState(false);
     const [editingSlot, setEditingSlot] = useState<{ day: string; index: number; field: 'start' | 'end' } | null>(null);
 
@@ -115,7 +117,7 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({ value, onChange }) => {
 
     const getDaySummary = (day: string): string => {
         const slots = schedule[day];
-        if (!slots || slots.length === 0) return 'Fermé';
+        if (!slots || slots.length === 0) return t('timeSlotPicker.ferme');
         return slots.map(s => `${s.start}-${s.end}`).join(', ');
     };
 
@@ -157,7 +159,7 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({ value, onChange }) => {
             >
                 <View style={styles.modalContainer}>
                     <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Plages horaires de départ</Text>
+                        <Text style={styles.modalTitle}>{t('timeSlotPicker.plagesHorairesDeDepart')}</Text>
                         <TouchableOpacity onPress={() => setModalVisible(false)}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>
@@ -176,13 +178,13 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({ value, onChange }) => {
                                                 onPress={() => addSlot(day.key)}
                                             >
                                                 <SafeIcon name="plus" size={16} color={modernColors.primary} />
-                                                <Text style={styles.addButtonText}>Ajouter</Text>
+                                                <Text style={styles.addButtonText}>{t('timeSlotPicker.ajouter')}</Text>
                                             </TouchableOpacity>
                                         </View>
                                     </View>
 
                                     {slots.length === 0 ? (
-                                        <Text style={styles.closedText}>Fermé</Text>
+                                        <Text style={styles.closedText}>{t('timeSlotPicker.ferme')}</Text>
                                     ) : (
                                         slots.map((slot, index) => (
                                             <View key={index} style={styles.slotRow}>
@@ -224,12 +226,12 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({ value, onChange }) => {
                             <SafeIcon name="check-circle" size={16} color={configuredDays.length > 0 ? '#10B981' : '#9CA3AF'} />
                             <Text style={[styles.footerSummaryText, configuredDays.length > 0 && styles.footerSummaryTextActive]}>
                                 {configuredDays.length === 0
-                                    ? 'Aucun jour configuré'
+                                    ? t('timeSlotPicker.aucunJourConfigure')
                                     : `${configuredDays.length} jour(s), ${totalSlots} plage(s) horaire(s)`}
                             </Text>
                         </View>
                         <NativeButton
-                            title="✅ Valider les horaires"
+                            title={t('timeSlotPicker.validerLesHoraires')}
                             variant="primary"
                             onPress={() => setModalVisible(false)}
                         />
@@ -248,7 +250,7 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({ value, onChange }) => {
                     <View style={styles.timeModalOverlay}>
                         <View style={styles.timeModalContent}>
                             <Text style={styles.timeModalTitle}>
-                                Heure {editingSlot.field === 'start' ? 'de début' : 'de fin'}
+                                Heure {editingSlot.field === 'start' ? t('timeSlotPicker.deDebut') : 'de fin'}
                             </Text>
                             <ScrollView style={styles.hoursList}>
                                 {HOURS.map(hour => (
@@ -270,7 +272,7 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({ value, onChange }) => {
                                 style={styles.cancelButton}
                                 onPress={() => setEditingSlot(null)}
                             >
-                                <Text style={styles.cancelButtonText}>Annuler</Text>
+                                <Text style={styles.cancelButtonText}>{t('timeSlotPicker.annuler')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

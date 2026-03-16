@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import ReactNative from 'react-native';
 import { Button, Card, IconButton } from 'react-native-paper';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert } = ReactNative;
 
@@ -21,7 +22,8 @@ interface MediaManagerProps {
 }
 
 const MediaManager: React.FC<MediaManagerProps> = ({ mediaFiles, onMediaChange, compact = false }) => {
-    const [activeTab, setActiveTab] = useState<'general' | 'branding'>('general');
+        const { t } = useLanguageSafe();
+const [activeTab, setActiveTab] = useState<'general' | 'branding'>('general');
 
     const addMedia = (type: string) => {
         // TODO: Implémenter la sélection de fichiers réelle
@@ -50,7 +52,7 @@ const MediaManager: React.FC<MediaManagerProps> = ({ mediaFiles, onMediaChange, 
                 {getIcon()}
                 <Text style={styles.mediaName} numberOfLines={1}>
                     {type === 'images' ? `Image ${index + 1}` :
-                        type === 'videos' ? `Vidéo ${index + 1}` :
+                        type === 'videos' ? t('mediaManager.video', { index + 1: index + 1 }) :
                             type === 'audios' ? `Audio ${index + 1}` :
                                 `Document ${index + 1}`}
                 </Text>
@@ -66,7 +68,7 @@ const MediaManager: React.FC<MediaManagerProps> = ({ mediaFiles, onMediaChange, 
 
     const tabs = [
         { key: 'images', label: 'Images', icon: <Image size={16} /> },
-        { key: 'videos', label: 'Vidéos', icon: <Video size={16} /> },
+        { key: 'videos', label: t('mediaManager.videos'), icon: <Video size={16} /> },
         { key: 'audios', label: 'Audios', icon: <MusicNote size={16} /> },
         { key: 'documents', label: 'Documents', icon: <FileText size={16} /> },
     ];
@@ -84,7 +86,7 @@ const MediaManager: React.FC<MediaManagerProps> = ({ mediaFiles, onMediaChange, 
     return (
         <Card style={styles.container}>
             <Card.Content>
-                <Text style={styles.title}>Gestion des médias</Text>
+                <Text style={styles.title}>{t('mediaManager.gestionDesMedias')}</Text>
 
                 {/* Tabs */}
                 <ScrollView
@@ -116,7 +118,7 @@ const MediaManager: React.FC<MediaManagerProps> = ({ mediaFiles, onMediaChange, 
                     {(!mediaFiles[activeTab as keyof typeof mediaFiles] ||
                         mediaFiles[activeTab as keyof typeof mediaFiles].length === 0) && (
                             <View style={styles.emptyState}>
-                                <Text style={styles.emptyText}>Aucun {activeTab} ajouté</Text>
+                                <Text style={styles.emptyText}>{t('mediaManager.noItemAdded', { tab: activeTab })}</Text>
                             </View>
                         )}
                 </View>

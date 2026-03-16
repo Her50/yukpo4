@@ -56,7 +56,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     conversationId: privateConversationId,
     isPrivateConversation = false
 }) => {
-    const [newMessage, setNewMessage] = useState('');
+        const { t } = useLanguageSafe();
+const [newMessage, setNewMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
     const [editingContent, setEditingContent] = useState('');
@@ -295,7 +296,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
-                        text: 'Appeler',
+                        text: t('common.call'),
                         onPress: () => {
                             // Ici vous pouvez impl├®menter l'appel t├®l├®phonique
                             Alert.alert('Appel', `Appel vers ${cleanPhone}`);
@@ -390,7 +391,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         }
     };
 
-    const popularEmojis = ['­ƒÿè', '­ƒÿé', 'ÔØñ´©Å', '­ƒæì', '­ƒæÄ', '­ƒÿì', '­ƒñö', '­ƒÿó', '­ƒÿ«', '­ƒöÑ', '­ƒÆ»', '­ƒÄë', '­ƒæÅ', '­ƒÖÅ', '­ƒÆ¬'];
+    const popularEmojis = [t('chatModalMobileRestored.ye'), t('chatModalMobileRestored.ye'), 'ÔØñ´©Å', '­ƒæì', '­ƒæÄ', '­ƒÿì', '­ƒñö', '­ƒÿó', '­ƒÿ«', t('chatModalMobileRestored.on'), '­ƒÆ»', t('chatModalMobileRestored.ae'), '­ƒæÅ', '­ƒÖÅ', '­ƒÆ¬'];
 
     // Fonction pour convertir fichier en base64 (React Native compatible)
     const convertFileToBase64 = async (uri: string): Promise<string> => {
@@ -751,7 +752,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 >
                                     {/* Logo WhatsApp officiel */}
                                     <View style={styles.whatsappIconContainer}>
-                                        <Text style={styles.whatsappIcon}>­ƒô▒</Text>
+                                        <Text style={styles.whatsappIcon}>{t('chatModalMobileRestored.o')}</Text>
                                     </View>
                                     <View style={styles.whatsappBadge}>
                                         <Text style={styles.whatsappBadgeText}>WA</Text>
@@ -890,10 +891,10 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                     </Text>
                                                     <Text style={styles.quotedMessageText} numberOfLines={2}>
                                                         {message.reply_to.content_type === 'text' && message.reply_to.content}
-                                                        {message.reply_to.content_type === 'audio' && '­ƒÄñ Message audio'}
-                                                        {message.reply_to.content_type === 'image' && '­ƒû╝´©Å Image'}
-                                                        {message.reply_to.content_type === 'file' && '­ƒôä Fichier'}
-                                                        {message.reply_to.content_type === 'video' && '­ƒÄÑ Vid├®o'}
+                                                        {message.reply_to.content_type === 'audio' && t('chatModalMobile_restored.anMessageAudio')}
+                                                        {message.reply_to.content_type === 'image' && t('chatModalMobile_restored.uaImage')}
+                                                        {message.reply_to.content_type === 'file' && t('chatModalMobile_restored.oaFichier')}
+                                                        {message.reply_to.content_type === 'video' && t('chatModalMobile_restored.anVido')}
                                                     </Text>
                                                 </View>
                                             </View>
@@ -1008,7 +1009,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         style={styles.removeMediaButton}
                                         onPress={() => setSelectedImages(selectedImages.filter((_, i) => i !== idx))}
                                     >
-                                        <Text style={styles.removeMediaText}>├ù</Text>
+                                        <Text style={styles.removeMediaText}>{t('chatModalMobileRestored.u')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             ))}
@@ -1057,7 +1058,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         style={styles.removeMediaButton}
                                         onPress={() => setSelectedDocuments(selectedDocuments.filter((_, i) => i !== idx))}
                                     >
-                                        <Text style={styles.removeMediaText}>├ù</Text>
+                                        <Text style={styles.removeMediaText}>{t('chatModalMobileRestored.u')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             ))}
@@ -1102,10 +1103,10 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 </View>
                                 <Text style={styles.replyText} numberOfLines={2}>
                                     {replyingTo.content_type === 'text' && replyingTo.content}
-                                    {replyingTo.content_type === 'audio' && '­ƒÄñ Message audio'}
-                                    {replyingTo.content_type === 'image' && '­ƒû╝´©Å Image'}
-                                    {replyingTo.content_type === 'file' && '­ƒôä Fichier'}
-                                    {replyingTo.content_type === 'video' && '­ƒÄÑ Vid├®o'}
+                                    {replyingTo.content_type === 'audio' && t('chatModalMobile_restored.anMessageAudio')}
+                                    {replyingTo.content_type === 'image' && t('chatModalMobile_restored.uaImage')}
+                                    {replyingTo.content_type === 'file' && t('chatModalMobile_restored.oaFichier')}
+                                    {replyingTo.content_type === 'video' && t('chatModalMobile_restored.anVido')}
                                 </Text>
                             </View>
                             <TouchableOpacity
@@ -1237,8 +1238,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         <View style={styles.participantDetails}>
                                             <Text style={styles.participantName}>{participant.user_name}</Text>
                                             <Text style={styles.participantRole}>
-                                                {participant.role === 'owner' ? '­ƒææ Propri├®taire' :
-                                                    participant.invited_by ? '­ƒæñ Invit├®' : '­ƒæÑ Participant'}
+                                                {participant.role === 'owner' ? t('chatModalMobileRestored.propritaire') :
+                                                    participant.invited_by ? t('chatModalMobileRestored.nInvit') : t('chatModalMobileRestored.nParticipant')}
                                             </Text>
                                         </View>
                                     </View>

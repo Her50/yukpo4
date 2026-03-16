@@ -57,6 +57,7 @@ import OptionsPrimesManager, { OptionPrime } from './OptionsPrimesManager';
 import ProductVariantManager, { ProductVariant } from './ProductVariantManager';
 import SelectModalitySelector from './SelectModalitySelector';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import i18n from '../i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -133,14 +134,14 @@ const ModernSelectField = ({
                         { text: t('common.cancel'), style: 'cancel' }
                     ];
 
-                    Alert.alert(label, 'Sélectionnez une option :', alertButtons);
+                    Alert.alert(label, t('productManagerMobile.selectionnezUneOption'), alertButtons);
                 }}
             >
                 <Text style={[
                     styles.selectText,
                     !value && styles.selectPlaceholder
                 ]}>
-                    {value || 'Sélectionner...'}
+                    {value || t('productManagerMobile.selectionner')}
                 </Text>
                 <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
             </TouchableOpacity>
@@ -1442,66 +1443,75 @@ interface ProductManagerMobileProps {
 
 // Configuration des types de produits avec noms adaptés
 export const PRODUCT_TYPES = [
-    { value: 'agroalimentaire', label: 'Alimentation & Produits Alimentaires', icon: '🍽️', color: '#10B981', description: 'Alimentation complète : produits frais (fruits, légumes, viandes, poissons) et produits secs/transformés (riz, pâtes, conserves, boissons)', keywords: ['riz', 'pâtes', 'macaroni', 'spaghetti', 'farine', 'huile', 'arachide', 'palme', 'tournesol', 'olive', 'sucre', 'sel', 'épices', 'poivre', 'curry', 'curcuma', 'gingembre', 'piment', 'sauce', 'ketchup', 'mayonnaise', 'moutarde', 'maggi', 'jumbo', 'bouillon', 'cube', 'conserve', 'sardine', 'thon', 'maquereau', 'haricot', 'pois', 'maïs', 'boisson', 'eau', 'jus', 'soda', 'cola', 'sprite', 'fanta', 'café', 'nescafé', 'thé', 'lipton', 'lait', 'nido', 'peak', 'chocolat', 'cacao', 'biscuit', 'chips', 'snack', 'bonbon', 'confiserie', 'céréale', 'avoine', 'blé', 'mil', 'sorgho', 'manioc', 'couscous', 'semoule', 'légume', 'sec', 'lentille', 'fève', 'pois chiche', 'condiment', 'vinaigre', 'miel', 'confiture', 'beurre', 'cacahuète', 'noix', 'cajou', 'amande', 'produit', 'alimentaire', 'agro', 'transformation', 'conserverie', 'biscuiterie', 'huilerie', 'meunerie', 'rizerie', 'sucrerie', 'chocolaterie', 'confiserie', 'fruit', 'légume', 'viande', 'poisson', 'bœuf', 'poulet', 'porc', 'mouton', 'chèvre', 'tomate', 'oignon', 'pomme', 'banane', 'orange', 'mangue', 'avocat', 'ananas', 'carotte', 'chou', 'salade', 'frais', 'marché', 'alimentaire', 'épicerie', 'supermarché', 'nourriture', 'aliment', 'consommation', 'nutrition'] },
-    { value: 'assurance', label: 'Assurance et Protection', icon: '🛡️', color: '#14B8A6', description: 'Assurance auto, santé, habitation, vie, protection sociale', keywords: ['assurance', 'protection', 'garantie', 'prime', 'contrat', 'couverture', 'police', 'assureur', 'sinistre', 'indemnisation', 'franchise', 'souscription', 'mutuelle', 'prévoyance', 'responsabilité civile', 'tous risques', 'assurance vie', 'assurance auto', 'assurance habitation', 'assurance santé', 'assurance maladie', 'hospitalisation', 'accident', 'décès', 'invalidité', 'capital', 'rente', 'bénéficiaire', 'AXA', 'ACTIVA', 'ALLIANZ', 'SUNU', 'NSIA', 'mensuel', 'annuel', 'renouvellement', 'résiliation', 'clause', 'exclusion', 'risque', 'dommage', 'cotisation', 'assurance voyage', 'rapatriement'] },
-    { value: 'automobile', label: 'Automobiles et Véhicules', icon: '🚗', color: '#EF4444', description: 'Voitures, motos, camions, véhicules utilitaires', keywords: ['voiture', 'auto', 'véhicule', 'automobile', 'moto', 'scooter', 'camion', '4x4', 'SUV', 'berline', 'coupé', 'cabriolet', 'Toyota', 'Honda', 'Mercedes', 'Peugeot', 'Renault', 'Nissan', 'occasion', 'neuf', 'kilométrage', 'essence', 'diesel', 'hybride', 'électrique', 'automatique', 'manuelle', 'pickup', 'break', 'monospace', 'citadine', 'BMW', 'Audi', 'Volkswagen', 'Ford', 'Hyundai', 'Kia', 'Mazda', 'Mitsubishi', 'Lexus', 'Land Rover', 'Jeep', 'climatisation', 'GPS', 'cuir', 'jante', 'airbag', 'ABS', 'première main', 'papiers en règle', 'contrôle technique', 'carnet d\'entretien', 'révision', 'km', 'transmission', 'carburant', 'cylindrée', 'puissance'] },
-    { value: 'chaussure', label: 'Chaussures et Accessoires', icon: '👟', color: '#6366F1', description: 'Chaussures, baskets, sandales, bottes', keywords: ['chaussure', 'soulier', 'basket', 'sneaker', 'sandale', 'tong', 'botte', 'bottine', 'escarpin', 'talon', 'mocassin', 'ballerine', 'pointure', 'semelle', 'cuir', 'sport', 'ville', 'Nike', 'Adidas', 'Puma', 'Reebok', 'New Balance', 'Converse', 'Vans', 'Jordan', 'Air Max', 'running', 'football', 'tennis', 'toile', 'daim', 'synthétique', 'homme', 'femme', 'enfant', 'neuf', 'occasion', 'pointure 38', 'pointure 39', 'pointure 40', 'pointure 41', 'pointure 42', 'pointure 43', 'pointure 44', 'chaussures de mariage', 'chaussures de soirée', 'casual', 'élégant', 'confortable', 'lacet', 'scratch'] },
-    { value: 'covoiturage', label: 'Covoiturage et Trajets', icon: '🚙', color: '#F59E0B', description: 'Trajets partagés, carpooling, transport collectif', keywords: ['covoiturage', 'trajet', 'partage', 'carpooling', 'transport partagé', 'passager', 'conducteur', 'départ', 'arrivée', 'itinéraire', 'route', 'place disponible', 'voyage partagé', 'économique', 'écologique', 'voiture', 'auto', 'véhicule', 'trajets quotidiens', 'navette', 'domicile-travail', 'ville à ville', 'interurbain', 'économie carburant', 'convivial', 'rencontre', 'frais partagés', 'co-voiturage', 'BlaBlaCar', 'partage frais', 'trajet régulier', 'ponctuel', 'aller-retour'] },
-    { value: 'decoration', label: 'Décoration Intérieure', icon: '🖼️', color: '#E91E63', description: 'Tableaux, luminaires, tapis, accessoires déco', keywords: ['décoration', 'déco', 'tableau', 'toile', 'peinture', 'affiche', 'cadre', 'luminaire', 'lampe', 'lustre', 'applique', 'tapis', 'carpette', 'coussin', 'rideau', 'vase', 'sculpture', 'miroir', 'horloge', 'bougie', 'moderne', 'classique', 'vintage', 'contemporain'] },
-    { value: 'electricite', label: 'Électricité et Éclairage', icon: '⚡', color: '#FFC107', description: 'Câbles, prises, interrupteurs, lampes, disjoncteurs', keywords: ['électricité', 'électrique', 'câble', 'fil', 'interrupteur', 'prise', 'disjoncteur', 'tableau électrique', 'lampe', 'ampoule', 'LED', 'néon', 'spot', 'variateur', 'minuterie', 'détecteur', 'multiprise', 'rallonge', '220V', 'installation électrique'] },
-    { value: 'electromenager', label: 'Électroménager Domestique', icon: '🔌', color: '#14B8A6', description: 'Frigos, fours, machines à laver, micro-ondes', keywords: ['électroménager', 'frigo', 'réfrigérateur', 'congélateur', 'four', 'cuisinière', 'micro-ondes', 'lave-linge', 'machine à laver', 'lave-vaisselle', 'aspirateur', 'climatiseur', 'ventilateur', 'Samsung', 'LG', 'Bosch', 'Whirlpool', 'appareil', 'domestique', 'ménager', 'cuisine', 'gros électroménager', 'petit électroménager', 'neuf', 'occasion', 'garantie', 'économie énergie', 'A++', 'inverter', 'no frost', 'inox', 'mixeur', 'blender', 'robot', 'cafetière', 'bouilloire', 'grille-pain', 'fer à repasser', 'sèche-linge', 'Hisense', 'Midea', 'Haier'] },
-    { value: 'hopital_clinique', label: 'Établissements de Santé', icon: '🏥', color: '#DC2626', description: 'Hôpitaux, cliniques, centres médicaux, spécialités', keywords: ['hôpital', 'clinique', 'centre médical', 'centre de santé', 'médecin', 'docteur', 'consultation', 'urgence', 'soins', 'chirurgie', 'imagerie', 'radio', 'scanner', 'IRM', 'maternité', 'pédiatrie', 'cardiologie', 'dentiste', 'rendez-vous'] },
-    { value: 'laboratoire', label: 'Laboratoires & Imagerie médicale', icon: '🔬', color: '#7C3AED', description: 'Laboratoires d\'analyses, centres d\'imagerie, scanner, IRM, échographie', keywords: ['laboratoire', 'labo', 'analyse', 'examen', 'biologie', 'prise de sang', 'NFS', 'glycémie', 'sérologie', 'VIH', 'hépatite', 'paludisme', 'parasitologie', 'bactériologie', 'ECBU', 'hormonologie', 'bilan', 'résultat', 'prélèvement', 'biochimie', 'hématologie', 'PCR', 'imagerie', 'radiographie', 'radio', 'scanner', 'IRM', 'échographie', 'écho', 'doppler', 'mammographie', 'panoramique', 'scintigraphie', 'PET scan', 'fibroscopie', 'endoscopie'] },
-    { value: 'hotellerie', label: 'Hôtellerie et Hébergement', icon: '🏨', color: '#EC4899', description: 'Hôtels, chambres d\'hôtes, auberges, gîtes, réservations', keywords: ['hôtel', 'hébergement', 'chambre', 'chambre d\'hôtes', 'auberge', 'gîte', 'motel', 'palace', 'réservation', 'booking', 'nuitée', 'séjour', 'étoile', 'luxe', 'petit-déjeuner', 'Wi-Fi', 'piscine', 'restaurant', 'spa', 'climatisation'] },
-    { value: 'image_son', label: 'Image et Son', icon: '📺', color: '#9C27B0', description: 'TV, home cinéma, enceintes, projecteurs, systèmes audio', keywords: ['télévision', 'TV', 'téléviseur', 'écran', 'home cinéma', 'enceinte', 'haut-parleur', 'barre de son', 'amplificateur', 'projecteur', 'casque', 'écouteurs', '4K', '8K', 'HD', 'OLED', 'QLED', 'LCD', 'LED', 'Samsung', 'Sony', 'LG'] },
-    { value: 'immobilier_batiment', label: 'Immobilier - Vente/Location Long Terme', icon: '🏢', color: '#3B82F6', description: 'Appartements, villas, maisons à vendre ou louer (bail long terme)', keywords: ['immobilier', 'appartement', 'appart', 'F2', 'F3', 'F4', 'villa', 'maison', 'studio', 'duplex', 'loft', 'vente', 'location', 'louer', 'acheter', 'bail', 'loyer', 'chambre', 'salon', 'cuisine', 'salle de bain', 'balcon', 'terrasse', 'jardin', 'garage', 'meublé', 'standing'] },
-    { value: 'immobilier_location_courte', label: 'Location Courte Durée (Airbnb)', icon: '🏠', color: '#F59E0B', description: 'Locations vacances, séjours courts, nuitées (type Airbnb/Booking)', keywords: ['location courte', 'airbnb', 'booking', 'vacances', 'séjour', 'nuitée', 'week-end', 'hébergement temporaire', 'tourisme', 'meublé vacances', 'villa vacances', 'appartement vacances', 'court séjour', 'par nuit'] },
-    { value: 'immobilier_terrain', label: 'Immobilier - Terrains', icon: '🏞️', color: '#10B981', description: 'Terrains constructibles, parcelles, lots', keywords: ['terrain', 'parcelle', 'lot', 'terrain constructible', 'constructible', 'viabilisé', 'terrain agricole', 'champ', 'plantation', 'titre foncier', 'cadastre', 'superficie', 'hectare', 'mètre carré', 'clôturé', 'lotissement'] },
-    { value: 'jouets_enfants', label: 'Jouets et Articles pour Enfants', icon: '🧸', color: '#FF69B4', description: 'Jouets éducatifs, peluches, jeux, puzzles, livres enfants', keywords: ['jouet', 'jeu', 'enfant', 'bébé', 'peluche', 'poupée', 'figurine', 'voiture miniature', 'puzzle', 'lego', 'construction', 'éducatif', 'éveil', 'jeu de société', 'ballon', 'vélo', 'trottinette', 'poussette', 'berceau', 'hochet', 'doudou', '0-3 ans', '3-6 ans'] },
-    { value: 'livres_fournitures', label: 'Livres et Fournitures Scolaires', icon: '📚', color: '#7C3AED', description: 'Manuels, livres, cahiers, stylos, fournitures', keywords: ['livre', 'manuel', 'manuel scolaire', 'cahier', 'classeur', 'feuille', 'papier', 'stylo', 'crayon', 'gomme', 'règle', 'trousse', 'cartable', 'sac à dos', 'marqueur', 'feutre', 'calculatrice', 'dictionnaire', 'roman', 'BD', 'maternelle', 'primaire', 'secondaire', 'lycée', 'université', 'mathématiques', 'français'] },
-    { value: 'mobilier', label: 'Mobilier et Ameublement', icon: '🪑', color: '#F97316', description: 'Meubles salon, chambre, bureau, rangement', keywords: ['meuble', 'mobilier', 'ameublement', 'canapé', 'fauteuil', 'chaise', 'table', 'bureau', 'armoire', 'placard', 'commode', 'étagère', 'bibliothèque', 'lit', 'matelas', 'rangement', 'salon', 'chambre', 'salle à manger', 'bois', 'métal', 'cuir', 'moderne', 'vintage', 'IKEA'] },
-    { value: 'ordinateur', label: 'Ordinateurs et Informatique', icon: '💻', color: '#00BCD4', description: 'PC portables, bureaux, tablettes, accessoires', keywords: ['ordinateur', 'PC', 'laptop', 'portable', 'desktop', 'MacBook', 'iMac', 'tablette', 'iPad', 'processeur', 'CPU', 'Intel', 'AMD', 'RAM', 'disque dur', 'SSD', 'carte graphique', 'clavier', 'souris', 'Windows', 'macOS', 'Dell', 'HP', 'Lenovo', 'Asus', 'Apple', 'gaming'] },
-    { value: 'pharmacie', label: 'Pharmacies et Gardes', icon: '💊', color: '#059669', description: 'Pharmacies, planning de garde, services pharmaceutiques', keywords: ['pharmacie', 'pharmacien', 'médicament', 'ordonnance', 'prescription', 'garde', 'pharmacie de garde', 'urgence', 'parapharmacie', 'vitamine', 'complément', 'pansement', 'sirop', 'comprimé', 'gélule', 'crème', 'antiseptique', 'doliprane', 'paracétamol'] },
-    { value: 'demenagement', label: 'Déménagement et Transport', icon: '📦', color: '#F97316', description: 'Services de déménagement local, national et international', keywords: ['déménagement', 'déménager', 'déménageur', 'manutention', 'transport', 'camion', 'camionnette', 'carton', 'emballage', 'meuble', 'monte-meuble', 'garde-meuble', 'stockage', 'local', 'national', 'international', 'express', 'assurance', 'devis', 'tarif'] },
-    { value: 'cosmetique_parfum', label: 'Cosmétique & Parfum', icon: '✨', color: '#E91E63', description: 'Parfums, maquillage, soins beauté, huiles, crèmes', keywords: ['cosmétique', 'parfum', 'maquillage', 'beauté', 'soin', 'crème', 'lotion', 'sérum', 'masque', 'fond de teint', 'rouge à lèvres', 'mascara', 'vernis', 'eau de toilette', 'déodorant', 'gel douche', 'shampoing', 'Chanel', 'Dior', 'L\'Oréal', 'Nivea', 'naturel', 'bio'] },
-    { value: 'bijoux', label: 'Bijoux & Accessoires', icon: '💎', color: '#FFD700', description: 'Colliers, bagues, bracelets, montres, pierres précieuses', keywords: ['bijou', 'bijouterie', 'collier', 'pendentif', 'bague', 'alliance', 'bracelet', 'gourmette', 'boucle d\'oreille', 'montre', 'chaîne', 'médaille', 'or', 'argent', 'platine', 'diamant', 'pierre précieuse', 'rubis', 'saphir', 'perle', '18k', '14k', 'plaqué or', 'Cartier', 'Tiffany'] },
-    { value: 'coiffure_beaute', label: 'Coiffure & Beauté', icon: '💇‍♀️', color: '#E91E63', description: 'Mèches, extensions, perruques, accessoires de coiffure, soins cheveux', keywords: ['coiffure', 'cheveu', 'mèche', 'extension', 'perruque', 'tissage', 'tresse', 'défrisage', 'lissage', 'bouclage', 'coloration', 'teinture', 'balayage', 'coupe', 'brushing', 'lisse', 'bouclé', 'naturel', 'synthétique', 'brésilienne', 'indienne', 'remy hair', 'clip', 'pose'] },
-    { value: 'couturier', label: 'Couturier / Tailleur', icon: '✂️', color: '#EC4899', description: 'Couture sur mesure, retouches, confection vêtements traditionnels et modernes', keywords: ['couturier', 'tailleur', 'couture', 'sur mesure', 'retouche', 'confection', 'vêtement', 'robe', 'costume', 'boubou', 'bazin', 'wax', 'pagne', 'traditionnel', 'moderne', 'mariage', 'soirée', 'essayage', 'patron', 'coupe', 'couture', 'broderie', 'surjeteuse', 'machine à coudre', 'atelier', 'mesures', 'tissu', 'finition', 'haute couture', 'prêt-à-porter', 'créateur', 'styliste', 'modéliste', 'assemblage', 'ourlet', 'zip', 'bouton', 'doublure', 'parement'] },
-    { value: 'pieces_auto', label: 'Pièces Détachées Auto', icon: '🔧', color: '#607D8B', description: 'Pièces moteur, freins, carrosserie, filtres, batteries', keywords: ['pièce auto', 'pièce détachée', 'pièce automobile', 'moteur', 'frein', 'disque', 'plaquette', 'carrosserie', 'pare-choc', 'aile', 'capot', 'phare', 'feu', 'filtre', 'huile', 'batterie', 'alternateur', 'bougie', 'courroie', 'embrayage', 'suspension', 'amortisseur', 'vidange', 'garage'] },
-    { value: 'pieces_industrielles', label: 'Pièces Industrielles', icon: '⚙️', color: '#455A64', description: 'Roulements, courroies, moteurs, pompes, pièces machines', keywords: ['pièce industrielle', 'pièce machine', 'roulement', 'palier', 'courroie', 'chaîne', 'poulie', 'pignon', 'engrenage', 'moteur électrique', 'hydraulique', 'pneumatique', 'pompe', 'compresseur', 'vanne', 'vérin', 'tuyau', 'joint', 'acier', 'inox', 'industriel', 'usine', 'maintenance'] },
-    { value: 'prestation_service', label: 'Prestation de Service', icon: '🎯', color: '#8B5CF6', description: 'Services professionnels divers : coaching, consulting, développement, services non classés ailleurs', keywords: ['prestation', 'service', 'serrurier', 'vitrier', 'couvreur', 'tapissier', 'soudeur', 'photographe', 'vidéaste', 'graphiste', 'designer', 'développeur', 'programmeur', 'webmaster', 'informaticien', 'coach', 'formateur', 'tuteur', 'traducteur', 'interprète', 'rédacteur', 'secrétaire', 'assistant', 'comptable', 'consultant', 'conseiller', 'expert', 'avocat', 'juriste', 'notaire', 'huissier', 'dresseur', 'toiletteur', 'DJ', 'musicien', 'animateur', 'artiste', 'comédien', 'danseur', 'maquilleur', 'styliste', 'cordonnier', 'sellier', 'horloger', 'opticien', 'guide', 'moniteur', 'analyste', 'data scientist', 'économiste', 'chercheur', 'scientifique', 'agent immobilier', 'promoteur', 'gestionnaire', 'administrateur', 'manager', 'chef de projet', 'coordinateur', 'superviseur', 'expert-comptable', 'fiscaliste', 'banquier', 'conseiller financier', 'vendeur', 'commercial', 'représentant', 'logisticien', 'magasinier', 'wedding planner', 'organisateur', 'traiteur événementiel', 'décorateur', 'fleuriste', 'imprimeur', 'relieur', 'graveur'] },
-    { value: 'ingenieur_archi', label: 'Ingénieur / Architecte', icon: '📐', color: '#0891B2', description: 'Bureau d\'études, plans, conception, suivi chantier, permis de construire', keywords: ['architecte', 'ingénieur', 'ingénieur bâtiment', 'ingénieur génie civil', 'bureau d\'études', 'bureau étude', 'BET', 'plan architecte', 'plan maison', 'plan architecture', 'conception architecturale', 'étude architecturale', 'permis de construire', 'dossier permis', 'déclaration préalable', 'étude technique', 'étude de sol', 'étude géotechnique', 'calcul structure', 'calcul béton', 'note de calcul', 'dimensionnement', 'maîtrise d\'œuvre', 'maître d\'œuvre', 'MOE', 'suivi de chantier', 'supervision travaux', 'coordination chantier', 'réception chantier', 'métrés', 'quantitatifs', 'avant-projet', 'APD', 'APS', 'plans d\'exécution', 'plans techniques', 'géomètre', 'topographe', 'levé topographique', 'bornage', 'implantation', 'urbanisme', 'étude urbanisme', 'PLU', 'rénovation énergétique', 'audit énergétique', 'thermique', 'RT2012', 'conception 3D', 'modélisation 3D', 'maquette 3D', 'dessinateur', 'projeteur', 'architecte d\'intérieur', 'aménagement intérieur', 'décoration architecturale'] },
-    { value: 'macon', label: 'Maçon', icon: '🧱', color: '#78716C', description: 'Maçonnerie, béton, construction, fondations, murs, dalles', keywords: ['maçon', 'maçonnerie', 'service maçonnerie', 'construction', 'bâtiment', 'fondation', 'dalle', 'mur', 'béton', 'ciment', 'parpaing', 'brique', 'agglo', 'coffrage', 'ferraillage', 'coulage béton', 'gros œuvre', 'soubassement', 'chaînage', 'linteau', 'poteau', 'poutre', 'plancher', 'chape', 'enduit', 'crépi', 'mortier', 'jointoiement', 'maçon urgence', 'dépanneur maçonnerie', 'réparation fissure', 'reprise sous-œuvre', 'rénovation mur', 'extension maison', 'surélévation', 'agrandissement', 'maçon qualifié', 'entreprise maçonnerie', 'travaux maçonnerie', 'devis maçonnerie', 'maçonnerie générale', 'maçonnerie traditionnelle', 'maçonnerie moderne'] },
-    { value: 'plombier', label: 'Plombier', icon: '🔧', color: '#00BCD4', description: 'Services de plomberie : installation, réparation, dépannage urgence', keywords: ['plombier', 'plomberie', 'service plomberie', 'dépannage plomberie', 'urgence plomberie', 'installation plomberie', 'réparation plomberie', 'fuite eau', 'fuite', 'débouchage', 'déboucher', 'canalisation', 'tuyau', 'robinet', 'chauffe-eau', 'ballon eau chaude', 'chaudière', 'WC bouché', 'toilette bouchée', 'évier bouché', 'douche bouchée', 'lavabo', 'évier', 'salle de bain', 'sanitaire installation', 'raccordement eau', 'vidange', 'évacuation', 'siphon', 'mitigeur', 'installation sanitaire', 'rénovation salle de bain', 'plombier urgence', 'dépanneur plomberie', 'plombier 24h', 'intervention rapide', 'détection fuite', 'recherche fuite'] },
-    { value: 'electricien', label: 'Électricien', icon: '⚡', color: '#FFC107', description: 'Services électricité : installation, dépannage, mise aux normes, urgence', keywords: ['électricien', 'électricité service', 'service électricité', 'dépannage électricité', 'urgence électricité', 'installation électrique', 'réparation électrique', 'panne électricité', 'panne courant', 'court-circuit', 'disjoncteur saute', 'tableau électrique', 'câblage maison', 'mise aux normes', 'norme électrique', 'raccordement électrique', 'branchement électrique', 'électricité bâtiment', 'installation lampe', 'lustre', 'plafonnier', 'éclairage maison', 'prise électrique installation', 'interrupteur installation', 'électricien urgence', 'dépanneur électricité', 'électricien 24h', 'intervention rapide électricité', 'diagnostic électrique', 'recherche panne', 'rénovation électrique', 'travaux électricité'] },
-    { value: 'electricien_auto', label: 'Électricien Automobile', icon: '🔋', color: '#FF6B35', description: 'Électricité auto : diagnostic, réparation, installation équipements électroniques', keywords: ['électricien auto', 'électricité automobile', 'électricité voiture', 'électricité moto', 'électronique auto', 'diagnostic électronique', 'réparation électronique voiture', 'batterie auto', 'alternateur', 'démarreur', 'faisceau électrique', 'câblage auto', 'phare voiture', 'feu arrière', 'clignotant', 'klaxon', 'essuie-glace moteur', 'lève-vitre électrique', 'centralisation', 'autoradio installation', 'alarme voiture', 'GPS voiture', 'caméra recul installation', 'capteur parking', 'OBD diagnostic', 'valise diagnostic', 'calculateur moteur', 'boîtier électronique', 'panne électrique voiture', 'court-circuit auto', 'problème batterie', 'alternateur défaillant', 'voyant moteur', 'diagnostic panne électrique', 'réparation faisceau', 'installation équipement électronique'] },
-    { value: 'peintre', label: 'Peintre en Bâtiment', icon: '🎨', color: '#8B5CF6', description: 'Services de peinture : intérieur, extérieur, décoration, ravalement de façade', keywords: ['peintre', 'peinture', 'service peinture', 'peinture bâtiment', 'peinture intérieur', 'peinture extérieur', 'peinture murale', 'peinture plafond', 'ravalement façade', 'crépi façade', 'enduit', 'décoration murale', 'papier peint', 'pose papier peint', 'revêtement mural', 'lessivage', 'préparation support', 'ponçage', 'rebouchage', 'impression', 'sous-couche', 'finition', 'laque', 'glycéro', 'acrylique', 'satinée', 'mate', 'brillante', 'peinture décorative', 'effet décoratif', 'pochoir', 'frise', 'trompe-l\'œil', 'peintre professionnel', 'peintre qualifié', 'devis peinture', 'tarif peinture', 'rénovation peinture', 'rafraîchissement peinture', 'travaux peinture'] },
-    { value: 'staffeur', label: 'Staffeur / Plâtrier', icon: '🏛️', color: '#64748B', description: 'Plâtrerie, staff, faux plafonds, cloisons, décoration plâtre', keywords: ['staffeur', 'plâtrier', 'plâtrerie', 'staff', 'plâtre', 'platrerie', 'faux plafond', 'plafond suspendu', 'cloison', 'cloison sèche', 'placo', 'placoplâtre', 'BA13', 'isolation phonique', 'isolation thermique', 'doublage', 'enduit plâtre', 'enduit intérieur', 'lissage', 'ragréage', 'rebouchage', 'bandes joints', 'joints placo', 'corniche', 'moulure', 'rosace', 'modénature', 'décoration plâtre', 'ornementation', 'staff décoratif', 'plâtre décoratif', 'arc', 'voûte', 'colonne', 'pilastre', 'aménagement intérieur', 'rénovation intérieure', 'finition plâtre', 'staffeur qualifié', 'plâtrier professionnel'] },
-    { value: 'quincaillerie', label: 'Quincaillerie & Accessoires Construction', icon: '🔨', color: '#F59E0B', description: 'Outils, matériaux construction, visserie, peinture, accessoires électriques, accessoires plomberie', keywords: ['quincaillerie', 'outil', 'marteau', 'tournevis', 'clé', 'pince', 'scie', 'vis', 'boulon', 'écrou', 'cheville', 'serrure', 'cadenas', 'verrou', 'charnière', 'matériaux', 'ciment', 'sable', 'gravier', 'brique', 'parpaing', 'fer', 'acier', 'béton', 'mortier', 'chaux', 'plâtre', 'peinture', 'vernis', 'colle', 'mastic', 'silicone', 'joint', 'colle carrelage', 'joint carrelage', 'croisillon', 'peigne colle', 'domino électrique', 'wago', 'gaine', 'douille', 'rallonge', 'multiprise', 'téflon', 'pâte joint', 'raccord', 'coude', 'flexible', 'collier', 'siphon', 'ruban isolant'] },
-    { value: 'carrelage', label: 'Carrelage & Revêtements de Sol', icon: '🏗️', color: '#78716C', description: 'Carrelage sol, mural, faïence, mosaïque, grès cérame, marbre', keywords: ['carrelage', 'carreau', 'carreaux', 'faïence', 'faience', 'mosaïque', 'mosaique', 'revêtement sol', 'revetement sol', 'revêtement mural', 'dalle', 'dalles', 'pavé', 'paves', 'grès', 'grès cérame', 'gres cerame', 'céramique', 'ceramique', 'porcelaine', 'marbre', 'granit', 'granite', 'pierre naturelle', 'pierre', 'travertin', 'ardoise', 'terre cuite', 'tomette', 'zellige', 'carrelage piscine', 'carrelage extérieur', 'carrelage exterieur', 'carrelage terrasse', 'carrelage salle de bain', 'carrelage cuisine', 'carrelage intérieur', 'carrelage interieur', 'carrelage commercial', 'carrelage résidentiel', 'residentiel', 'brillant', 'mat', 'antidérapant', 'antiderapant', 'anti-glisse', 'glissant', '10x10', '15x15', '20x20', '25x25', '30x30', '40x40', '45x45', '60x60', '80x80', '120x60', 'grand format', 'petit format', 'dimensions', 'format', 'finition', 'poli', 'satiné', 'satine', 'structuré', 'structure', 'lappato', 'adouci', 'effet bois', 'imitation bois', 'effet pierre', 'imitation pierre', 'effet marbre', 'imitation marbre', 'effet béton', 'beton', 'imitation', 'uni', 'marbré', 'veiné', 'veine', 'motif', 'géométrique', 'geometrique', 'hexagonal', 'métro', 'décor', 'decor', 'durable', 'résistant', 'resistant', 'qualité', 'qualite', 'premium', 'luxe', 'haut de gamme', 'économique', 'economique', 'neuf', 'stock', 'disponible', 'promotion', 'destockage', 'déstockage', 'import', 'importation', 'espagne', 'espagnol', 'italie', 'italien', 'portugal', 'portugais', 'turquie', 'turc', 'chine', 'chinois', 'inde', 'indien', 'egypte', 'égypte', 'egyptien', 'maroc', 'marocain', 'tunisie', 'tunisien', 'afrique du sud', 'sud-africain'] },
-    { value: 'telephone', label: 'Téléphones et Accessoires', icon: '📱', color: '#FF9800', description: 'Smartphones, accessoires, coques, écouteurs', keywords: ['téléphone', 'smartphone', 'mobile', 'portable', 'cellulaire', 'iPhone', 'Samsung', 'Huawei', 'Xiaomi', 'Oppo', 'Tecno', 'Infinix', 'Nokia', 'Galaxy', 'Android', 'iOS', 'écran', 'tactile', 'appareil photo', 'caméra', 'double SIM', '4G', '5G', 'Wi-Fi', 'Bluetooth', 'stockage', '64GB', '128GB', '256GB', 'RAM', 'batterie', 'chargeur', 'coque', 'écouteurs', 'neuf', 'occasion', 'débloqué'] },
-    { value: 'ticket_voyage', label: 'Tickets et Billets de Transport', icon: '🎫', color: '#8B5CF6', description: 'Bus, train, avion avec sélection de place', keywords: ['ticket', 'billet', 'voyage', 'transport', 'bus', 'car', 'autobus', 'train', 'avion', 'vol', 'bateau', 'ferry', 'départ', 'arrivée', 'destination', 'trajet', 'place', 'siège', 'réservation', 'aller simple', 'aller-retour', 'économique', 'affaires', 'première classe', 'VIP', 'escale', 'direct', 'compagnie', 'horaire'] },
-    { value: 'ustensiles_cuisine', label: 'Ustensiles de Cuisine', icon: '🍴', color: '#FF5722', description: 'Casseroles, poêles, couteaux, mixers, batterie cuisine', keywords: ['ustensile', 'cuisine', 'casserole', 'poêle', 'faitout', 'marmite', 'cocotte', 'wok', 'couteau', 'planche à découper', 'râpe', 'fouet', 'louche', 'spatule', 'cuillère', 'mixer', 'mixeur', 'blender', 'robot cuisine', 'balance', 'batterie cuisine', 'inox', 'aluminium', 'téflon', 'anti-adhésif', 'set'] },
-    { value: 'vetement', label: 'Vêtements et Prêt-à-Porter', icon: '👕', color: '#EC4899', description: 'Vêtements, habits, articles de mode', keywords: ['vêtement', 'habit', 'mode', 'fashion', 'prêt-à-porter', 'textile', 'chemise', 'polo', 'T-shirt', 'pull', 'sweat', 'gilet', 'veste', 'manteau', 'blouson', 'pantalon', 'jean', 'short', 'jupe', 'robe', 'costume', 'tailleur', 'sous-vêtement', 'chaussette', 'écharpe', 'cravate', 'ceinture', 'gant', 'bonnet', 'chapeau', 'casquette', 'homme', 'femme', 'enfant', 'taille', 'coton', 'soie', 'lin', 'laine', 'Zara', 'H&M'] },
-    { value: 'restauration', label: 'Restauration & Traiteur', icon: '🍽️', color: '#F97316', description: 'Restaurants, cafés, bars, traiteurs, food trucks', keywords: ['restaurant', 'resto', 'café', 'bar', 'traiteur', 'food truck', 'cuisine', 'menu', 'plat', 'repas', 'déjeuner', 'dîner', 'petit-déjeuner', 'brunch', 'buffet', 'chef', 'cuisinier', 'gastronomie', 'mets', 'service', 'réservation', 'table', 'terrasse', 'livraison', 'à emporter', 'fast-food', 'snack', 'brasserie', 'bistrot', 'pizzeria', 'boulangerie', 'pâtisserie'] },
-    { value: 'electronique', label: 'Électronique & High-Tech', icon: '⚡', color: '#00BCD4', description: 'Appareils électroniques, gadgets, accessoires tech', keywords: ['électronique', 'high-tech', 'technologie', 'gadget', 'appareil', 'accessoire', 'tech', 'numérique', 'digital', 'connecté', 'smart', 'intelligent', 'console', 'PlayStation', 'Xbox', 'Nintendo', 'drone', 'caméra', 'GoPro', 'stabilisateur', 'microphone', 'audio', 'vidéo', 'streaming', 'gaming', 'esport'] },
-    { value: 'musique_instruments', label: 'Musique & Instruments', icon: '🎸', color: '#9C27B0', description: 'Instruments de musique, équipements audio, accessoires', keywords: ['musique', 'instrument', 'musical', 'guitare', 'piano', 'clavier', 'synthétiseur', 'batterie', 'percussion', 'saxophone', 'trompette', 'violon', 'flûte', 'harmonica', 'accordéon', 'djembé', 'tam-tam', 'balafon', 'kora', 'ampli', 'amplificateur', 'enceinte', 'micro', 'table de mixage', 'sono', 'sonorisation', 'studio', 'enregistrement'] },
-    { value: 'soutien_scolaire_repetiteur', label: 'Soutien Scolaire / Répétiteur', icon: '📚', color: '#10B981', description: 'Cours particuliers primaire/secondaire, aide aux devoirs, répétiteur', keywords: ['soutien scolaire', 'répétiteur', 'cours particuliers', 'aide devoirs', 'rattrapage scolaire', 'révisions', 'professeur particulier', 'enseignant', 'prof à domicile', 'cours à domicile', 'maths', 'français', 'anglais', 'physique', 'primaire', 'collège', 'lycée', 'CP', 'CE1', 'CE2', 'CM1', 'CM2', '6ème', '5ème', '4ème', '3ème', 'seconde', 'première', 'terminale', 'BEPC', 'probatoire', 'baccalauréat', 'bac'] },
-    { value: 'formation_education', label: 'Formation & Éducation', icon: '🎓', color: '#7C3AED', description: 'Formation professionnelle, préparation concours, certifications', keywords: ['formation', 'éducation', 'formation professionnelle', 'certification', 'diplôme', 'stage', 'atelier', 'séminaire', 'workshop', 'préparation concours', 'polytechnique', 'ENAM', 'ENS', 'grandes écoles', 'concours', 'webinaire', 'e-learning', 'en ligne', 'langue', 'informatique', 'bureautique', 'management', 'formateur', 'coach', 'mentor'] },
-    { value: 'evenementiel', label: 'Événementiel & Organisation', icon: '🎉', color: '#EC4899', description: 'Organisation d\'événements, mariages, fêtes, célébrations', keywords: ['événement', 'évènement', 'organisation', 'mariage', 'fête', 'anniversaire', 'baptême', 'communion', 'célébration', 'cérémonie', 'réception', 'soirée', 'gala', 'conférence', 'séminaire', 'salon', 'exposition', 'concert', 'spectacle', 'animation', 'DJ', 'sono', 'décoration', 'traiteur', 'location', 'salle', 'tente', 'chapiteau', 'wedding planner', 'organisateur'] },
-    { value: 'agriculture', label: 'Agriculture & Élevage', icon: '🌱', color: '#10B981', description: 'Produits agricoles, élevage, matériel agricole', keywords: ['agriculture', 'agricole', 'ferme', 'exploitation', 'élevage', 'culture', 'plantation', 'récolte', 'moisson', 'semence', 'graine', 'engrais', 'pesticide', 'herbicide', 'tracteur', 'charrue', 'moissonneuse', 'batteuse', 'irrigation', 'arrosage', 'serre', 'pépinière', 'maraîchage', 'légume', 'fruit', 'céréale', 'maïs', 'riz', 'mil', 'sorgho', 'manioc', 'bétail', 'vache', 'bœuf', 'mouton', 'chèvre', 'porc', 'volaille', 'poulet', 'canard', 'lapin'] },
-    { value: 'sport_fitness', label: 'Sport & Fitness', icon: '💪', color: '#EF4444', description: 'Salles de sport, coaching, équipements sportifs', keywords: ['sport', 'fitness', 'gym', 'salle de sport', 'musculation', 'cardio', 'crossfit', 'yoga', 'pilates', 'zumba', 'danse', 'aerobic', 'spinning', 'cycling', 'running', 'course', 'jogging', 'marathon', 'natation', 'piscine', 'aquagym', 'tennis', 'foot', 'football', 'basketball', 'volleyball', 'handball', 'rugby', 'boxe', 'MMA', 'arts martiaux', 'karaté', 'judo', 'taekwondo', 'coach sportif', 'personal trainer', 'entraîneur', 'préparateur physique', 'nutrition', 'diététique'] },
-    { value: 'bien_etre_spa', label: 'Bien-être & Spa', icon: '🧘', color: '#14B8A6', description: 'Spa, massage, relaxation, soins bien-être', keywords: ['bien-être', 'spa', 'massage', 'relaxation', 'détente', 'soin', 'hammam', 'sauna', 'jacuzzi', 'balnéothérapie', 'thalasso', 'aromathérapie', 'réflexologie', 'shiatsu', 'ayurveda', 'thai', 'suédois', 'californien', 'pierre chaude', 'huile', 'gommage', 'enveloppement', 'modelage', 'drainage lymphatique', 'méditation', 'yoga', 'sophrologie', 'hypnose', 'reiki', 'énergétique'] },
-    { value: 'nettoyage_entretien', label: 'Nettoyage & Entretien', icon: '🧹', color: '#6B7280', description: 'Services de nettoyage, ménage, entretien', keywords: ['nettoyage', 'ménage', 'entretien', 'propreté', 'nettoyeur', 'femme de ménage', 'homme de ménage', 'agent d\'entretien', 'société de nettoyage', 'lavage', 'dépoussiérage', 'aspirateur', 'balai', 'serpillière', 'désinfection', 'décontamination', 'vitre', 'carrelage', 'moquette', 'tapis', 'canapé', 'bureaux', 'locaux', 'immeuble', 'copropriété', 'commercial', 'industriel', 'après chantier', 'fin de chantier'] },
-    { value: 'jardinage_paysagisme', label: 'Jardinage & Paysagisme', icon: '🌳', color: '#059669', description: 'Entretien jardins, création espaces verts, paysagiste', keywords: ['jardinage', 'jardin', 'paysagisme', 'paysagiste', 'espaces verts', 'entretien', 'création', 'aménagement', 'plantation', 'arbre', 'arbuste', 'fleur', 'plante', 'pelouse', 'gazon', 'tonte', 'taille', 'élagage', 'débroussaillage', 'arrosage', 'irrigation', 'clôture', 'haie', 'allée', 'terrasse', 'pergola', 'potager', 'verger', 'compost', 'engrais', 'tondeuse', 'taille-haie', 'tronçonneuse'] },
-    { value: 'securite_surveillance', label: 'Sécurité & Surveillance', icon: '🛡️', color: '#DC2626', description: 'Agents de sécurité, gardiennage, vidéosurveillance', keywords: ['sécurité', 'surveillance', 'gardiennage', 'agent de sécurité', 'vigile', 'garde', 'protection', 'sûreté', 'ronde', 'patrouille', 'contrôle', 'accès', 'badge', 'portique', 'caméra', 'vidéosurveillance', 'CCTV', 'alarme', 'détecteur', 'sirène', 'télésurveillance', 'centrale', 'digicode', 'interphone', 'portail', 'barrière', 'gardien', 'concierge', 'veilleur', 'nuit', 'événement', 'magasin', 'entreprise', 'chantier'] },
-    { value: 'plomberie_sanitaire', label: 'Plomberie & Sanitaire', icon: '🚰', color: '#00BCD4', description: 'Vente de matériel plomberie et sanitaire', keywords: ['plomberie', 'sanitaire', 'matériel', 'robinet', 'robinetterie', 'lavabo', 'évier', 'WC', 'toilette', 'douche', 'baignoire', 'chauffe-eau', 'tuyauterie', 'canalisation', 'raccord', 'joint', 'siphon', 'vidange', 'évacuation', 'cuivre', 'PVC', 'inox', 'chrome', 'céramique', 'porcelaine', 'grohe', 'geberit', 'roca', 'hansgrohe', 'duravit', 'installation', 'garantie', 'neuf', 'occasion'] },
-    { value: 'menuiserie', label: 'Menuiserie & Ébénisterie', icon: '🪵', color: '#F97316', description: 'Fabrication, pose, réparation bois et meubles', keywords: ['menuiserie', 'menuisier', 'ébénisterie', 'ébéniste', 'bois', 'boiserie', 'charpente', 'charpentier', 'parquet', 'plancher', 'lambris', 'porte', 'fenêtre', 'volet', 'portail', 'portillon', 'clôture', 'pergola', 'terrasse', 'deck', 'escalier', 'garde-corps', 'rambarde', 'placard', 'dressing', 'bibliothèque', 'meuble', 'sur mesure', 'fabrication', 'pose', 'installation', 'réparation', 'restauration', 'rénovation', 'agencement', 'aménagement'] },
-    { value: 'reparateur_frigo', label: 'Frigoriste / Réparateur Frigo', icon: '❄️', color: '#06B6D4', description: 'Réparation frigos, congélateurs, dépannage urgence, recharge gaz, toutes marques', keywords: ['frigoriste', 'réparateur', 'dépanneur', 'frigo', 'réfrigérateur', 'congélateur', 'dépannage', 'réparation', 'panne', 'fuite', 'gaz', 'recharge', 'compresseur', 'thermostat', 'Samsung', 'LG', 'Hisense', 'Haier', 'Bosch', 'Whirlpool', 'Beko', 'TCL', 'Midea', 'urgence', 'intervention', 'technicien', 'froid', 'climatisation', 'No Frost', 'Inverter', 'service', 'diagnostic', 'réparation circuit', 'gaz réfrigérant', 'R134a', 'R600a', 'entretien', 'maintenance', 'installation', 'domicile', '24h/24'] },
-    { value: 'reparateur_climatiseur', label: 'Réparateur Climatiseur / AC', icon: '❄️', color: '#0EA5E9', description: 'Réparation, installation, maintenance climatiseurs, dépannage urgence 24h/24, toutes marques', keywords: ['climatiseur', 'climatisation', 'clim', 'AC', 'air conditionné', 'réparateur', 'dépanneur', 'frigoriste', 'technicien', 'dépannage', 'réparation', 'installation', 'maintenance', 'entretien', 'nettoyage', 'recharge gaz', 'R22', 'R410A', 'R32', 'fuite', 'panne', 'compresseur', 'ventilateur', 'filtre', 'drainage', 'condensats', 'split', 'window', 'cassette', 'inverter', 'Midea', 'Gree', 'Haier', 'Hisense', 'LG', 'Samsung', 'Daikin', 'Mitsubishi', 'urgence', '24h/24', 'diagnostic', 'devis gratuit', 'intervention', 'domicile', 'bureau', 'froid', 'BTU'] },
-    { value: 'reparateur_electronique', label: 'Réparateur Électronique (TV/Radio)', icon: '📺', color: '#9C27B0', description: 'Réparation TV, radio, home cinéma, décodeur satellite, vidéoprojecteur, toutes marques', keywords: ['réparateur', 'dépanneur', 'technicien', 'électronique', 'TV', 'télévision', 'téléviseur', 'écran', 'réparation TV', 'dépannage TV', 'panne TV', 'TV cassée', 'Samsung TV', 'LG TV', 'Hisense TV', 'TCL TV', 'Sony TV', 'Nasco', 'Bruhm', 'Polystar', 'QLED', 'OLED', 'LED', 'Smart TV', '4K', 'dalle', 'écran noir', 'lignes', 'pixels', 'rétro-éclairage', 'carte mère', 'alimentation', 'HDMI', 'radio', 'poste radio', 'transistor', 'home cinéma', 'barre de son', 'enceinte', 'amplificateur', 'audio', 'son', 'vidéo', 'décodeur', 'satellite', 'CANAL+', 'TNT', 'parabole', 'antenne', 'vidéoprojecteur', 'projecteur', 'DVD', 'lecteur', 'diagnostic', 'intervention', 'domicile', 'urgence', 'service', 'installation', 'configuration', 'Smart TV'] },
-    { value: 'animaux_veterinaire', label: 'Animaux & Vétérinaire', icon: '🐾', color: '#FF69B4', description: 'Vétérinaires, toilettage, dressage, accessoires animaux', keywords: ['animal', 'animaux', 'vétérinaire', 'véto', 'clinique vétérinaire', 'soin', 'consultation', 'vaccination', 'stérilisation', 'castration', 'vermifuge', 'antiparasitaire', 'urgence', 'chirurgie', 'toilettage', 'toiletteur', 'coupe', 'lavage', 'brushing', 'chien', 'chat', 'chiot', 'chaton', 'oiseau', 'lapin', 'rongeur', 'reptile', 'dressage', 'éducation', 'comportementaliste', 'pension', 'garde', 'promenade', 'dog sitter', 'accessoire', 'collier', 'laisse', 'gamelle', 'cage', 'niche', 'litière', 'jouet', 'nourriture', 'croquette', 'pâtée'] },
+    { value: 'agroalimentaire', label: _t('productManagerMobile.alimentationProduitsAlimentaires'), icon: '🍽️', color: '#10B981', description: _t('productManagerMobile.desc_alimentationCompleteProduitsFraisFruits'), keywords: ['riz', 'pâtes', 'macaroni', 'spaghetti', 'farine', 'huile', 'arachide', 'palme', 'tournesol', 'olive', 'sucre', 'sel', 'épices', 'poivre', 'curry', 'curcuma', 'gingembre', 'piment', 'sauce', 'ketchup', 'mayonnaise', 'moutarde', 'maggi', 'jumbo', 'bouillon', 'cube', 'conserve', 'sardine', 'thon', 'maquereau', 'haricot', 'pois', 'maïs', 'boisson', 'eau', 'jus', 'soda', 'cola', 'sprite', 'fanta', 'café', 'nescafé', 'thé', 'lipton', 'lait', 'nido', 'peak', 'chocolat', 'cacao', 'biscuit', 'chips', 'snack', 'bonbon', 'confiserie', 'céréale', 'avoine', 'blé', 'mil', 'sorgho', 'manioc', 'couscous', 'semoule', 'légume', 'sec', 'lentille', 'fève', 'pois chiche', 'condiment', 'vinaigre', 'miel', 'confiture', 'beurre', 'cacahuète', 'noix', 'cajou', 'amande', 'produit', 'alimentaire', 'agro', 'transformation', 'conserverie', 'biscuiterie', 'huilerie', 'meunerie', 'rizerie', 'sucrerie', 'chocolaterie', 'confiserie', 'fruit', 'légume', 'viande', 'poisson', 'bœuf', 'poulet', 'porc', 'mouton', 'chèvre', 'tomate', 'oignon', 'pomme', 'banane', 'orange', 'mangue', 'avocat', 'ananas', 'carotte', 'chou', 'salade', 'frais', 'marché', 'alimentaire', 'épicerie', 'supermarché', 'nourriture', 'aliment', 'consommation', 'nutrition'] },
+    { value: 'assurance', label: _t('productManagerMobile.assuranceEtProtection'), icon: '🛡️', color: '#14B8A6', description: _t('productManagerMobile.assuranceAutoSanteHabitationVie'), keywords: ['assurance', 'protection', 'garantie', 'prime', 'contrat', 'couverture', 'police', 'assureur', 'sinistre', 'indemnisation', 'franchise', 'souscription', 'mutuelle', 'prévoyance', 'responsabilité civile', 'tous risques', 'assurance vie', 'assurance auto', 'assurance habitation', 'assurance santé', 'assurance maladie', 'hospitalisation', 'accident', 'décès', 'invalidité', 'capital', 'rente', 'bénéficiaire', 'AXA', 'ACTIVA', 'ALLIANZ', 'SUNU', 'NSIA', 'mensuel', 'annuel', 'renouvellement', 'résiliation', 'clause', 'exclusion', 'risque', 'dommage', 'cotisation', 'assurance voyage', 'rapatriement'] },
+    { value: 'automobile', label: _t('productManagerMobile.automobilesEtVehicules'), icon: '🚗', color: '#EF4444', description: _t('productManagerMobile.voituresMotosCamionsVehiculesUtilitaires'), keywords: ['voiture', 'auto', 'véhicule', 'automobile', 'moto', 'scooter', 'camion', '4x4', 'SUV', 'berline', 'coupé', 'cabriolet', 'Toyota', 'Honda', 'Mercedes', 'Peugeot', 'Renault', 'Nissan', 'occasion', 'neuf', 'kilométrage', 'essence', 'diesel', 'hybride', 'électrique', 'automatique', 'manuelle', 'pickup', 'break', 'monospace', 'citadine', 'BMW', 'Audi', 'Volkswagen', 'Ford', 'Hyundai', 'Kia', 'Mazda', 'Mitsubishi', 'Lexus', 'Land Rover', 'Jeep', 'climatisation', 'GPS', 'cuir', 'jante', 'airbag', 'ABS', 'première main', 'papiers en règle', 'contrôle technique', 'carnet d\'entretien', 'révision', 'km', 'transmission', 'carburant', 'cylindrée', 'puissance'] },
+    { value: 'chaussure', label: _t('productManagerMobile.chaussuresEtAccessoires'), icon: '👟', color: '#6366F1', description: _t('productManagerMobile.desc_chaussuresBasketsSandalesBottes'), keywords: ['chaussure', 'soulier', 'basket', 'sneaker', 'sandale', 'tong', 'botte', 'bottine', 'escarpin', 'talon', 'mocassin', 'ballerine', 'pointure', 'semelle', 'cuir', 'sport', 'ville', 'Nike', 'Adidas', 'Puma', 'Reebok', 'New Balance', 'Converse', 'Vans', 'Jordan', 'Air Max', 'running', 'football', 'tennis', 'toile', 'daim', 'synthétique', 'homme', 'femme', 'enfant', 'neuf', 'occasion', 'pointure 38', 'pointure 39', 'pointure 40', 'pointure 41', 'pointure 42', 'pointure 43', 'pointure 44', 'chaussures de mariage', 'chaussures de soirée', 'casual', 'élégant', 'confortable', 'lacet', 'scratch'] },
+    { value: 'covoiturage', label: _t('productManagerMobile.covoiturageEtTrajets'), icon: '🚙', color: '#F59E0B', description: _t('productManagerMobile.trajetsPartagesCarpoolingTransportCollec'), keywords: ['covoiturage', 'trajet', 'partage', 'carpooling', 'transport partagé', 'passager', 'conducteur', 'départ', 'arrivée', 'itinéraire', 'route', 'place disponible', 'voyage partagé', 'économique', 'écologique', 'voiture', 'auto', 'véhicule', 'trajets quotidiens', 'navette', 'domicile-travail', 'ville à ville', 'interurbain', 'économie carburant', 'convivial', 'rencontre', 'frais partagés', 'co-voiturage', 'BlaBlaCar', 'partage frais', 'trajet régulier', 'ponctuel', 'aller-retour'] },
+    { value: 'decoration', label: _t('productManagerMobile.decorationInterieure'), icon: '🖼️', color: '#E91E63', description: _t('productManagerMobile.tableauxLuminairesTapisAccessoiresDeco'), keywords: ['décoration', 'déco', 'tableau', 'toile', 'peinture', 'affiche', 'cadre', 'luminaire', 'lampe', 'lustre', 'applique', 'tapis', 'carpette', 'coussin', 'rideau', 'vase', 'sculpture', 'miroir', 'horloge', 'bougie', 'moderne', 'classique', 'vintage', 'contemporain'] },
+    { value: 'electricite', label: _t('productManagerMobile.electriciteEtEclairage'), icon: '⚡', color: '#FFC107', description: _t('productManagerMobile.cablesPrisesInterrupteursLampesDisjoncte'), keywords: ['électricité', 'électrique', 'câble', 'fil', 'interrupteur', 'prise', 'disjoncteur', 'tableau électrique', 'lampe', 'ampoule', 'LED', 'néon', 'spot', 'variateur', 'minuterie', 'détecteur', 'multiprise', 'rallonge', '220V', 'installation électrique'] },
+    { value: 'electromenager', label: _t('productManagerMobile.electromenagerDomestique'), icon: '🔌', color: '#14B8A6', description: _t('productManagerMobile.frigosFoursMachinesALaver'), keywords: ['électroménager', 'frigo', 'réfrigérateur', 'congélateur', 'four', 'cuisinière', 'micro-ondes', 'lave-linge', 'machine à laver', 'lave-vaisselle', 'aspirateur', 'climatiseur', 'ventilateur', 'Samsung', 'LG', 'Bosch', 'Whirlpool', 'appareil', 'domestique', 'ménager', 'cuisine', 'gros électroménager', 'petit électroménager', 'neuf', 'occasion', 'garantie', 'économie énergie', 'A++', 'inverter', 'no frost', 'inox', 'mixeur', 'blender', 'robot', 'cafetière', 'bouilloire', 'grille-pain', 'fer à repasser', 'sèche-linge', 'Hisense', 'Midea', 'Haier'] },
+    { value: 'hopital_clinique', label: _t('productManagerMobile.etablissementsDeSante'), icon: '🏥', color: '#DC2626', description: _t('productManagerMobile.hopitauxCliniquesCentresMedicauxSpeciali'), keywords: ['hôpital', 'clinique', 'centre médical', 'centre de santé', 'médecin', 'docteur', 'consultation', 'urgence', 'soins', 'chirurgie', 'imagerie', 'radio', 'scanner', 'IRM', 'maternité', 'pédiatrie', 'cardiologie', 'dentiste', 'rendez-vous'] },
+    { value: 'laboratoire', label: _t('productManagerMobile.laboratoiresImagerieMedicale'), icon: '🔬', color: '#7C3AED', description: _t('productManagerMobile.laboratoiresDanalysesCentresD')'imagerie, scanner, IRM, échographie', keywords: ['laboratoire', 'labo', 'analyse', 'examen', 'biologie', 'prise de sang', 'NFS', 'glycémie', 'sérologie', 'VIH', 'hépatite', 'paludisme', 'parasitologie', 'bactériologie', 'ECBU', 'hormonologie', 'bilan', 'résultat', 'prélèvement', 'biochimie', 'hématologie', 'PCR', 'imagerie', 'radiographie', 'radio', 'scanner', 'IRM', 'échographie', 'écho', 'doppler', 'mammographie', 'panoramique', 'scintigraphie', 'PET scan', 'fibroscopie', 'endoscopie'] },
+    { value: 'hotellerie', label: _t('productManagerMobile.hotellerieEtHebergement'), icon: '🏨', color: '#EC4899', description: _t('productManagerMobile.hotelsChambresDhotesAubergesGitesReservations')', keywords: ['hôtel', 'hébergement', 'chambre', 'chambre d\'hôtes', 'auberge', 'gîte', 'motel', 'palace', 'réservation', 'booking', 'nuitée', 'séjour', 'étoile', 'luxe', 'petit-déjeuner', 'Wi-Fi', 'piscine', 'restaurant', 'spa', 'climatisation'] },
+    { value: 'image_son', label: _t('productManagerMobile.imageEtSon'), icon: '📺', color: '#9C27B0', description: _t('productManagerMobile.tvHomeCinemaEnceintesProjecteurs'), keywords: ['télévision', 'TV', 'téléviseur', 'écran', 'home cinéma', 'enceinte', 'haut-parleur', 'barre de son', 'amplificateur', 'projecteur', 'casque', 'écouteurs', '4K', '8K', 'HD', 'OLED', 'QLED', 'LCD', 'LED', 'Samsung', 'Sony', 'LG'] },
+    { value: 'immobilier_batiment', label: _t('productManagerMobile.immobilierVentelocationLongTerme'), icon: '🏢', color: '#3B82F6', description: _t('productManagerMobile.appartementsVillasMaisonsAVendre'), keywords: ['immobilier', 'appartement', 'appart', 'F2', 'F3', 'F4', 'villa', 'maison', 'studio', 'duplex', 'loft', 'vente', 'location', 'louer', 'acheter', 'bail', 'loyer', 'chambre', 'salon', 'cuisine', 'salle de bain', 'balcon', 'terrasse', 'jardin', 'garage', 'meublé', 'standing'] },
+    { value: 'immobilier_location_courte', label: _t('productManagerMobile.locationCourteDureeAirbnb'), icon: '🏠', color: '#F59E0B', description: _t('productManagerMobile.locationsVacancesSejoursCourtsNuitees'), keywords: ['location courte', 'airbnb', 'booking', 'vacances', 'séjour', 'nuitée', 'week-end', 'hébergement temporaire', 'tourisme', 'meublé vacances', 'villa vacances', 'appartement vacances', 'court séjour', 'par nuit'] },
+    { value: 'immobilier_terrain', label: _t('productManagerMobile.immobilierTerrains'), icon: '🏞️', color: '#10B981', description: _t('productManagerMobile.desc_terrainsConstructiblesParcellesLots'), keywords: ['terrain', 'parcelle', 'lot', 'terrain constructible', 'constructible', 'viabilisé', 'terrain agricole', 'champ', 'plantation', 'titre foncier', 'cadastre', 'superficie', 'hectare', 'mètre carré', 'clôturé', 'lotissement'] },
+    { value: 'jouets_enfants', label: _t('productManagerMobile.jouetsEtArticlesPourEnfants'), icon: '🧸', color: '#FF69B4', description: _t('productManagerMobile.jouetsEducatifsPeluchesJeuxPuzzles'), keywords: ['jouet', 'jeu', 'enfant', 'bébé', 'peluche', 'poupée', 'figurine', 'voiture miniature', 'puzzle', 'lego', 'construction', 'éducatif', 'éveil', 'jeu de société', 'ballon', 'vélo', 'trottinette', 'poussette', 'berceau', 'hochet', 'doudou', '0-3 ans', '3-6 ans'] },
+    { value: 'livres_fournitures', label: _t('productManagerMobile.livresEtFournituresScolaires'), icon: '📚', color: '#7C3AED', description: _t('productManagerMobile.desc_manuelsLivresCahiersStylosFournitures'), keywords: ['livre', 'manuel', 'manuel scolaire', 'cahier', 'classeur', 'feuille', 'papier', 'stylo', 'crayon', 'gomme', 'règle', 'trousse', 'cartable', 'sac à dos', 'marqueur', 'feutre', 'calculatrice', 'dictionnaire', 'roman', 'BD', 'maternelle', 'primaire', 'secondaire', 'lycée', 'université', 'mathématiques', 'français'] },
+    { value: 'mobilier', label: _t('productManagerMobile.mobilierEtAmeublement'), icon: '🪑', color: '#F97316', description: _t('productManagerMobile.desc_meublesSalonChambreBureauRangement'), keywords: ['meuble', 'mobilier', 'ameublement', 'canapé', 'fauteuil', 'chaise', 'table', 'bureau', 'armoire', 'placard', 'commode', 'étagère', 'bibliothèque', 'lit', 'matelas', 'rangement', 'salon', 'chambre', 'salle à manger', 'bois', 'métal', 'cuir', 'moderne', 'vintage', 'IKEA'] },
+    { value: 'ordinateur', label: _t('productManagerMobile.ordinateursEtInformatique'), icon: '💻', color: '#00BCD4', description: _t('productManagerMobile.desc_pcPortablesBureauxTablettesAccessoires'), keywords: ['ordinateur', 'PC', 'laptop', 'portable', 'desktop', 'MacBook', 'iMac', 'tablette', 'iPad', 'processeur', 'CPU', 'Intel', 'AMD', 'RAM', 'disque dur', 'SSD', 'carte graphique', 'clavier', 'souris', 'Windows', 'macOS', 'Dell', 'HP', 'Lenovo', 'Asus', 'Apple', 'gaming'] },
+    { value: 'pharmacie', label: _t('productManagerMobile.pharmaciesEtGardes'), icon: '💊', color: '#059669', description: _t('productManagerMobile.desc_pharmaciesPlanningDeGardeServices'), keywords: ['pharmacie', 'pharmacien', 'médicament', 'ordonnance', 'prescription', 'garde', 'pharmacie de garde', 'urgence', 'parapharmacie', 'vitamine', 'complément', 'pansement', 'sirop', 'comprimé', 'gélule', 'crème', 'antiseptique', 'doliprane', 'paracétamol'] },
+    { value: 'demenagement', label: _t('productManagerMobile.demenagementEtTransport'), icon: '📦', color: '#F97316', description: _t('productManagerMobile.servicesDeDemenagementLocalNational'), keywords: ['déménagement', 'déménager', 'déménageur', 'manutention', 'transport', 'camion', 'camionnette', 'carton', 'emballage', 'meuble', 'monte-meuble', 'garde-meuble', 'stockage', 'local', 'national', 'international', 'express', 'assurance', 'devis', 'tarif'] },
+    { value: 'cosmetique_parfum', label: _t('productManagerMobile.cosmetiqueParfum'), icon: '✨', color: '#E91E63', description: _t('productManagerMobile.parfumsMaquillageSoinsBeauteHuiles'), keywords: ['cosmétique', 'parfum', 'maquillage', 'beauté', 'soin', 'crème', 'lotion', 'sérum', 'masque', 'fond de teint', 'rouge à lèvres', 'mascara', 'vernis', 'eau de toilette', 'déodorant', 'gel douche', 'shampoing', 'Chanel', 'Dior', 'L\'Oréal', 'Nivea', 'naturel', 'bio'] },
+    { value: 'bijoux', label: _t('productManagerMobile.bijouxAccessoires'), icon: '💎', color: '#FFD700', description: _t('productManagerMobile.colliersBaguesBraceletsMontresPierres'), keywords: ['bijou', 'bijouterie', 'collier', 'pendentif', 'bague', 'alliance', 'bracelet', 'gourmette', 'boucle d\'oreille', 'montre', 'chaîne', 'médaille', 'or', 'argent', 'platine', 'diamant', 'pierre précieuse', 'rubis', 'saphir', 'perle', '18k', '14k', 'plaqué or', 'Cartier', 'Tiffany'] },
+    { value: 'coiffure_beaute', label: _t('productManagerMobile.coiffureBeaute'), icon: '💇‍♀️', color: '#E91E63', description: _t('productManagerMobile.mechesExtensionsPerruquesAccessoiresDe'), keywords: ['coiffure', 'cheveu', 'mèche', 'extension', 'perruque', 'tissage', 'tresse', 'défrisage', 'lissage', 'bouclage', 'coloration', 'teinture', 'balayage', 'coupe', 'brushing', 'lisse', 'bouclé', 'naturel', 'synthétique', 'brésilienne', 'indienne', 'remy hair', 'clip', 'pose'] },
+    { value: 'couturier', label: _t('productManagerMobile.couturierTailleur'), icon: '✂️', color: '#EC4899', description: _t('productManagerMobile.coutureSurMesureRetouchesConfection'), keywords: ['couturier', 'tailleur', 'couture', 'sur mesure', 'retouche', 'confection', 'vêtement', 'robe', 'costume', 'boubou', 'bazin', 'wax', 'pagne', 'traditionnel', 'moderne', 'mariage', 'soirée', 'essayage', 'patron', 'coupe', 'couture', 'broderie', 'surjeteuse', 'machine à coudre', 'atelier', 'mesures', 'tissu', 'finition', 'haute couture', 'prêt-à-porter', 'créateur', 'styliste', 'modéliste', 'assemblage', 'ourlet', 'zip', 'bouton', 'doublure', 'parement'] },
+    { value: 'pieces_auto', label: _t('productManagerMobile.piecesDetacheesAuto'), icon: '🔧', color: '#607D8B', description: _t('productManagerMobile.piecesMoteurFreinsCarrosserieFiltres'), keywords: ['pièce auto', 'pièce détachée', 'pièce automobile', 'moteur', 'frein', 'disque', 'plaquette', 'carrosserie', 'pare-choc', 'aile', 'capot', 'phare', 'feu', 'filtre', 'huile', 'batterie', 'alternateur', 'bougie', 'courroie', 'embrayage', 'suspension', 'amortisseur', 'vidange', 'garage'] },
+    { value: 'pieces_industrielles', label: _t('productManagerMobile.piecesIndustrielles'), icon: '⚙️', color: '#455A64', description: _t('productManagerMobile.roulementsCourroiesMoteursPompesPieces'), keywords: ['pièce industrielle', 'pièce machine', 'roulement', 'palier', 'courroie', 'chaîne', 'poulie', 'pignon', 'engrenage', 'moteur électrique', 'hydraulique', 'pneumatique', 'pompe', 'compresseur', 'vanne', 'vérin', 'tuyau', 'joint', 'acier', 'inox', 'industriel', 'usine', 'maintenance'] },
+    { value: 'prestation_service', label: _t('productManagerMobile.prestationDeService'), icon: '🎯', color: '#8B5CF6', description: _t('productManagerMobile.servicesProfessionnelsDiversCoachingCons'), keywords: ['prestation', 'service', 'serrurier', 'vitrier', 'couvreur', 'tapissier', 'soudeur', 'photographe', 'vidéaste', 'graphiste', 'designer', 'développeur', 'programmeur', 'webmaster', 'informaticien', 'coach', 'formateur', 'tuteur', 'traducteur', 'interprète', 'rédacteur', 'secrétaire', 'assistant', 'comptable', 'consultant', 'conseiller', 'expert', 'avocat', 'juriste', 'notaire', 'huissier', 'dresseur', 'toiletteur', 'DJ', 'musicien', 'animateur', 'artiste', 'comédien', 'danseur', 'maquilleur', 'styliste', 'cordonnier', 'sellier', 'horloger', 'opticien', 'guide', 'moniteur', 'analyste', 'data scientist', 'économiste', 'chercheur', 'scientifique', 'agent immobilier', 'promoteur', 'gestionnaire', 'administrateur', 'manager', 'chef de projet', 'coordinateur', 'superviseur', 'expert-comptable', 'fiscaliste', 'banquier', 'conseiller financier', 'vendeur', 'commercial', 'représentant', 'logisticien', 'magasinier', 'wedding planner', 'organisateur', 'traiteur événementiel', 'décorateur', 'fleuriste', 'imprimeur', 'relieur', 'graveur'] },
+    { value: 'ingenieur_archi', label: _t('productManagerMobile.ingenieurArchitecte'), icon: '📐', color: '#0891B2', description: _t('productManagerMobile.bureauDetudesPlansConceptionSuiviChantierPermis')', keywords: ['architecte', 'ingénieur', 'ingénieur bâtiment', 'ingénieur génie civil', 'bureau d\'études', 'bureau étude', 'BET', 'plan architecte', 'plan maison', 'plan architecture', 'conception architecturale', 'étude architecturale', 'permis de construire', 'dossier permis', 'déclaration préalable', 'étude technique', 'étude de sol', 'étude géotechnique', 'calcul structure', 'calcul béton', 'note de calcul', 'dimensionnement', 'maîtrise d\'œuvre', 'maître d\'œuvre', 'MOE', 'suivi de chantier', 'supervision travaux', 'coordination chantier', 'réception chantier', 'métrés', 'quantitatifs', 'avant-projet', 'APD', 'APS', 'plans d\'exécution', 'plans techniques', 'géomètre', 'topographe', 'levé topographique', 'bornage', 'implantation', 'urbanisme', 'étude urbanisme', 'PLU', 'rénovation énergétique', 'audit énergétique', 'thermique', 'RT2012', 'conception 3D', 'modélisation 3D', 'maquette 3D', 'dessinateur', 'projeteur', 'architecte d\'intérieur', 'aménagement intérieur', 'décoration architecturale'] },
+    { value: 'macon', label: _t('productManagerMobile.macon'), icon: '🧱', color: '#78716C', description: _t('productManagerMobile.maconnerieBetonConstructionFondationsMur'), keywords: ['maçon', 'maçonnerie', 'service maçonnerie', 'construction', 'bâtiment', 'fondation', 'dalle', 'mur', 'béton', 'ciment', 'parpaing', 'brique', 'agglo', 'coffrage', 'ferraillage', 'coulage béton', 'gros œuvre', 'soubassement', 'chaînage', 'linteau', 'poteau', 'poutre', 'plancher', 'chape', 'enduit', 'crépi', 'mortier', 'jointoiement', 'maçon urgence', 'dépanneur maçonnerie', 'réparation fissure', 'reprise sous-œuvre', 'rénovation mur', 'extension maison', 'surélévation', 'agrandissement', 'maçon qualifié', 'entreprise maçonnerie', 'travaux maçonnerie', 'devis maçonnerie', 'maçonnerie générale', 'maçonnerie traditionnelle', 'maçonnerie moderne'] },
+    { value: 'plombier', label: _t('productManagerMobile.plombier'), icon: '🔧', color: '#00BCD4', description: _t('productManagerMobile.servicesDePlomberieInstallationReparatio'), keywords: ['plombier', 'plomberie', 'service plomberie', 'dépannage plomberie', 'urgence plomberie', 'installation plomberie', 'réparation plomberie', 'fuite eau', 'fuite', 'débouchage', 'déboucher', 'canalisation', 'tuyau', 'robinet', 'chauffe-eau', 'ballon eau chaude', 'chaudière', 'WC bouché', 'toilette bouchée', 'évier bouché', 'douche bouchée', 'lavabo', 'évier', 'salle de bain', 'sanitaire installation', 'raccordement eau', 'vidange', 'évacuation', 'siphon', 'mitigeur', 'installation sanitaire', 'rénovation salle de bain', 'plombier urgence', 'dépanneur plomberie', 'plombier 24h', 'intervention rapide', 'détection fuite', 'recherche fuite'] },
+    { value: 'electricien', label: _t('productManagerMobile.electricien'), icon: '⚡', color: '#FFC107', description: _t('productManagerMobile.servicesElectriciteInstallationDepannage'), keywords: ['électricien', 'électricité service', 'service électricité', 'dépannage électricité', 'urgence électricité', 'installation électrique', 'réparation électrique', 'panne électricité', 'panne courant', 'court-circuit', 'disjoncteur saute', 'tableau électrique', 'câblage maison', 'mise aux normes', 'norme électrique', 'raccordement électrique', 'branchement électrique', 'électricité bâtiment', 'installation lampe', 'lustre', 'plafonnier', 'éclairage maison', 'prise électrique installation', 'interrupteur installation', 'électricien urgence', 'dépanneur électricité', 'électricien 24h', 'intervention rapide électricité', 'diagnostic électrique', 'recherche panne', 'rénovation électrique', 'travaux électricité'] },
+    { value: 'electricien_auto', label: _t('productManagerMobile.electricienAutomobile'), icon: '🔋', color: '#FF6B35', description: _t('productManagerMobile.electriciteAutoDiagnosticReparationInsta'), keywords: ['électricien auto', 'électricité automobile', 'électricité voiture', 'électricité moto', 'électronique auto', 'diagnostic électronique', 'réparation électronique voiture', 'batterie auto', 'alternateur', 'démarreur', 'faisceau électrique', 'câblage auto', 'phare voiture', 'feu arrière', 'clignotant', 'klaxon', 'essuie-glace moteur', 'lève-vitre électrique', 'centralisation', 'autoradio installation', 'alarme voiture', 'GPS voiture', 'caméra recul installation', 'capteur parking', 'OBD diagnostic', 'valise diagnostic', 'calculateur moteur', 'boîtier électronique', 'panne électrique voiture', 'court-circuit auto', 'problème batterie', 'alternateur défaillant', 'voyant moteur', 'diagnostic panne électrique', 'réparation faisceau', 'installation équipement électronique'] },
+    { value: 'peintre', label: _t('productManagerMobile.peintreEnBatiment'), icon: '🎨', color: '#8B5CF6', description: _t('productManagerMobile.servicesDePeintureInterieurExterieur'), keywords: ['peintre', 'peinture', 'service peinture', 'peinture bâtiment', 'peinture intérieur', 'peinture extérieur', 'peinture murale', 'peinture plafond', 'ravalement façade', 'crépi façade', 'enduit', 'décoration murale', 'papier peint', 'pose papier peint', 'revêtement mural', 'lessivage', 'préparation support', 'ponçage', 'rebouchage', 'impression', 'sous-couche', 'finition', 'laque', 'glycéro', 'acrylique', 'satinée', 'mate', 'brillante', 'peinture décorative', 'effet décoratif', 'pochoir', 'frise', 'trompe-l\'œil', 'peintre professionnel', 'peintre qualifié', 'devis peinture', 'tarif peinture', 'rénovation peinture', 'rafraîchissement peinture', 'travaux peinture'] },
+    { value: 'staffeur', label: _t('productManagerMobile.staffeurPlatrier'), icon: '🏛️', color: '#64748B', description: _t('productManagerMobile.platrerieStaffFauxPlafondsCloisons'), keywords: ['staffeur', 'plâtrier', 'plâtrerie', 'staff', 'plâtre', 'platrerie', 'faux plafond', 'plafond suspendu', 'cloison', 'cloison sèche', 'placo', 'placoplâtre', 'BA13', 'isolation phonique', 'isolation thermique', 'doublage', 'enduit plâtre', 'enduit intérieur', 'lissage', 'ragréage', 'rebouchage', 'bandes joints', 'joints placo', 'corniche', 'moulure', 'rosace', 'modénature', 'décoration plâtre', 'ornementation', 'staff décoratif', 'plâtre décoratif', 'arc', 'voûte', 'colonne', 'pilastre', 'aménagement intérieur', 'rénovation intérieure', 'finition plâtre', 'staffeur qualifié', 'plâtrier professionnel'] },
+    { value: 'quincaillerie', label: _t('productManagerMobile.quincaillerieAccessoiresConstruction'), icon: '🔨', color: '#F59E0B', description: _t('productManagerMobile.outilsMateriauxConstructionVisseriePeint'), keywords: ['quincaillerie', 'outil', 'marteau', 'tournevis', 'clé', 'pince', 'scie', 'vis', 'boulon', 'écrou', 'cheville', 'serrure', 'cadenas', 'verrou', 'charnière', 'matériaux', 'ciment', 'sable', 'gravier', 'brique', 'parpaing', 'fer', 'acier', 'béton', 'mortier', 'chaux', 'plâtre', 'peinture', 'vernis', 'colle', 'mastic', 'silicone', 'joint', 'colle carrelage', 'joint carrelage', 'croisillon', 'peigne colle', 'domino électrique', 'wago', 'gaine', 'douille', 'rallonge', 'multiprise', 'téflon', 'pâte joint', 'raccord', 'coude', 'flexible', 'collier', 'siphon', 'ruban isolant'] },
+    { value: 'carrelage', label: _t('productManagerMobile.carrelageRevetementsDeSol'), icon: '🏗️', color: '#78716C', description: _t('productManagerMobile.carrelageSolMuralFaienceMosaique'), keywords: ['carrelage', 'carreau', 'carreaux', 'faïence', 'faience', 'mosaïque', 'mosaique', 'revêtement sol', 'revetement sol', 'revêtement mural', 'dalle', 'dalles', 'pavé', 'paves', 'grès', 'grès cérame', 'gres cerame', 'céramique', 'ceramique', 'porcelaine', 'marbre', 'granit', 'granite', 'pierre naturelle', 'pierre', 'travertin', 'ardoise', 'terre cuite', 'tomette', 'zellige', 'carrelage piscine', 'carrelage extérieur', 'carrelage exterieur', 'carrelage terrasse', 'carrelage salle de bain', 'carrelage cuisine', 'carrelage intérieur', 'carrelage interieur', 'carrelage commercial', 'carrelage résidentiel', 'residentiel', 'brillant', 'mat', 'antidérapant', 'antiderapant', 'anti-glisse', 'glissant', '10x10', '15x15', '20x20', '25x25', '30x30', '40x40', '45x45', '60x60', '80x80', '120x60', 'grand format', 'petit format', 'dimensions', 'format', 'finition', 'poli', 'satiné', 'satine', 'structuré', 'structure', 'lappato', 'adouci', 'effet bois', 'imitation bois', 'effet pierre', 'imitation pierre', 'effet marbre', 'imitation marbre', 'effet béton', 'beton', 'imitation', 'uni', 'marbré', 'veiné', 'veine', 'motif', 'géométrique', 'geometrique', 'hexagonal', 'métro', 'décor', 'decor', 'durable', 'résistant', 'resistant', 'qualité', 'qualite', 'premium', 'luxe', 'haut de gamme', 'économique', 'economique', 'neuf', 'stock', 'disponible', 'promotion', 'destockage', 'déstockage', 'import', 'importation', 'espagne', 'espagnol', 'italie', 'italien', 'portugal', 'portugais', 'turquie', 'turc', 'chine', 'chinois', 'inde', 'indien', 'egypte', 'égypte', 'egyptien', 'maroc', 'marocain', 'tunisie', 'tunisien', 'afrique du sud', 'sud-africain'] },
+    { value: 'telephone', label: _t('productManagerMobile.telephonesEtAccessoires'), icon: '📱', color: '#FF9800', description: _t('productManagerMobile.smartphonesAccessoiresCoquesEcouteurs'), keywords: ['téléphone', 'smartphone', 'mobile', 'portable', 'cellulaire', 'iPhone', 'Samsung', 'Huawei', 'Xiaomi', 'Oppo', 'Tecno', 'Infinix', 'Nokia', 'Galaxy', 'Android', 'iOS', 'écran', 'tactile', 'appareil photo', 'caméra', 'double SIM', '4G', '5G', 'Wi-Fi', 'Bluetooth', 'stockage', '64GB', '128GB', '256GB', 'RAM', 'batterie', 'chargeur', 'coque', 'écouteurs', 'neuf', 'occasion', 'débloqué'] },
+    { value: 'ticket_voyage', label: _t('productManagerMobile.ticketsEtBilletsDeTransport'), icon: '🎫', color: '#8B5CF6', description: _t('productManagerMobile.busTrainAvionAvecSelection'), keywords: ['ticket', 'billet', 'voyage', 'transport', 'bus', 'car', 'autobus', 'train', 'avion', 'vol', 'bateau', 'ferry', 'départ', 'arrivée', 'destination', 'trajet', 'place', 'siège', 'réservation', 'aller simple', 'aller-retour', 'économique', 'affaires', 'première classe', 'VIP', 'escale', 'direct', 'compagnie', 'horaire'] },
+    { value: 'ustensiles_cuisine', label: _t('productManagerMobile.ustensilesDeCuisine'), icon: '🍴', color: '#FF5722', description: _t('productManagerMobile.casserolesPoelesCouteauxMixersBatterie'), keywords: ['ustensile', 'cuisine', 'casserole', 'poêle', 'faitout', 'marmite', 'cocotte', 'wok', 'couteau', 'planche à découper', 'râpe', 'fouet', 'louche', 'spatule', 'cuillère', 'mixer', 'mixeur', 'blender', 'robot cuisine', 'balance', 'batterie cuisine', 'inox', 'aluminium', 'téflon', 'anti-adhésif', 'set'] },
+    { value: 'vetement', label: _t('productManagerMobile.vetementsEtPretaporter'), icon: '👕', color: '#EC4899', description: _t('productManagerMobile.vetementsHabitsArticlesDeMode'), keywords: ['vêtement', 'habit', 'mode', 'fashion', 'prêt-à-porter', 'textile', 'chemise', 'polo', 'T-shirt', 'pull', 'sweat', 'gilet', 'veste', 'manteau', 'blouson', 'pantalon', 'jean', 'short', 'jupe', 'robe', 'costume', 'tailleur', 'sous-vêtement', 'chaussette', 'écharpe', 'cravate', 'ceinture', 'gant', 'bonnet', 'chapeau', 'casquette', 'homme', 'femme', 'enfant', 'taille', 'coton', 'soie', 'lin', 'laine', 'Zara', 'H&M'] },
+    { value: 'restauration', label: _t('productManagerMobile.restaurationTraiteur'), icon: '🍽️', color: '#F97316', description: _t('productManagerMobile.restaurantsCafesBarsTraiteursFood'), keywords: ['restaurant', 'resto', 'café', 'bar', 'traiteur', 'food truck', 'cuisine', 'menu', 'plat', 'repas', 'déjeuner', 'dîner', 'petit-déjeuner', 'brunch', 'buffet', 'chef', 'cuisinier', 'gastronomie', 'mets', 'service', 'réservation', 'table', 'terrasse', 'livraison', 'à emporter', 'fast-food', 'snack', 'brasserie', 'bistrot', 'pizzeria', 'boulangerie', 'pâtisserie'] },
+    { value: 'electronique', label: _t('productManagerMobile.electroniqueHightech'), icon: '⚡', color: '#00BCD4', description: _t('productManagerMobile.appareilsElectroniquesGadgetsAccessoires'), keywords: ['électronique', 'high-tech', 'technologie', 'gadget', 'appareil', 'accessoire', 'tech', 'numérique', 'digital', 'connecté', 'smart', 'intelligent', 'console', 'PlayStation', 'Xbox', 'Nintendo', 'drone', 'caméra', 'GoPro', 'stabilisateur', 'microphone', 'audio', 'vidéo', 'streaming', 'gaming', 'esport'] },
+    { value: 'musique_instruments', label: _t('productManagerMobile.musiqueInstruments'), icon: '🎸', color: '#9C27B0', description: _t('productManagerMobile.instrumentsDeMusiqueEquipementsAudio'), keywords: ['musique', 'instrument', 'musical', 'guitare', 'piano', 'clavier', 'synthétiseur', 'batterie', 'percussion', 'saxophone', 'trompette', 'violon', 'flûte', 'harmonica', 'accordéon', 'djembé', 'tam-tam', 'balafon', 'kora', 'ampli', 'amplificateur', 'enceinte', 'micro', 'table de mixage', 'sono', 'sonorisation', 'studio', 'enregistrement'] },
+    { value: 'soutien_scolaire_repetiteur', label: _t('productManagerMobile.soutienScolaireRepetiteur'), icon: '📚', color: '#10B981', description: _t('productManagerMobile.coursParticuliersPrimairesecondaireAideA'), keywords: ['soutien scolaire', 'répétiteur', 'cours particuliers', 'aide devoirs', 'rattrapage scolaire', 'révisions', 'professeur particulier', 'enseignant', 'prof à domicile', 'cours à domicile', 'maths', 'français', 'anglais', 'physique', 'primaire', 'collège', 'lycée', 'CP', 'CE1', 'CE2', 'CM1', 'CM2', '6ème', '5ème', '4ème', '3ème', 'seconde', 'première', 'terminale', 'BEPC', 'probatoire', 'baccalauréat', 'bac'] },
+    { value: 'formation_education', label: _t('productManagerMobile.formationEducation'), icon: '🎓', color: '#7C3AED', description: _t('productManagerMobile.formationProfessionnellePreparationConco'), keywords: ['formation', 'éducation', 'formation professionnelle', 'certification', 'diplôme', 'stage', 'atelier', 'séminaire', 'workshop', 'préparation concours', 'polytechnique', 'ENAM', 'ENS', 'grandes écoles', 'concours', 'webinaire', 'e-learning', 'en ligne', 'langue', 'informatique', 'bureautique', 'management', 'formateur', 'coach', 'mentor'] },
+    { value: 'evenementiel', label: _t('productManagerMobile.evenementielOrganisation'), icon: '🎉', color: '#EC4899', description: _t('productManagerMobile.organisationDevenementsMariagesFetesCelebrations')', keywords: ['événement', 'évènement', 'organisation', 'mariage', 'fête', 'anniversaire', 'baptême', 'communion', 'célébration', 'cérémonie', 'réception', 'soirée', 'gala', 'conférence', 'séminaire', 'salon', 'exposition', 'concert', 'spectacle', 'animation', 'DJ', 'sono', 'décoration', 'traiteur', 'location', 'salle', 'tente', 'chapiteau', 'wedding planner', 'organisateur'] },
+    { value: 'agriculture', label: _t('productManagerMobile.agricultureElevage'), icon: '🌱', color: '#10B981', description: _t('productManagerMobile.produitsAgricolesElevageMaterielAgricole'), keywords: ['agriculture', 'agricole', 'ferme', 'exploitation', 'élevage', 'culture', 'plantation', 'récolte', 'moisson', 'semence', 'graine', 'engrais', 'pesticide', 'herbicide', 'tracteur', 'charrue', 'moissonneuse', 'batteuse', 'irrigation', 'arrosage', 'serre', 'pépinière', 'maraîchage', 'légume', 'fruit', 'céréale', 'maïs', 'riz', 'mil', 'sorgho', 'manioc', 'bétail', 'vache', 'bœuf', 'mouton', 'chèvre', 'porc', 'volaille', 'poulet', 'canard', 'lapin'] },
+    { value: 'sport_fitness', label: _t('productManagerMobile.sportFitness'), icon: '💪', color: '#EF4444', description: _t('productManagerMobile.sallesDeSportCoachingEquipements'), keywords: ['sport', 'fitness', 'gym', 'salle de sport', 'musculation', 'cardio', 'crossfit', 'yoga', 'pilates', 'zumba', 'danse', 'aerobic', 'spinning', 'cycling', 'running', 'course', 'jogging', 'marathon', 'natation', 'piscine', 'aquagym', 'tennis', 'foot', 'football', 'basketball', 'volleyball', 'handball', 'rugby', 'boxe', 'MMA', 'arts martiaux', 'karaté', 'judo', 'taekwondo', 'coach sportif', 'personal trainer', 'entraîneur', 'préparateur physique', 'nutrition', 'diététique'] },
+    { value: 'bien_etre_spa', label: _t('productManagerMobile.bienetreSpa'), icon: '🧘', color: '#14B8A6', description: _t('productManagerMobile.spaMassageRelaxationSoinsBienetre'), keywords: ['bien-être', 'spa', 'massage', 'relaxation', 'détente', 'soin', 'hammam', 'sauna', 'jacuzzi', 'balnéothérapie', 'thalasso', 'aromathérapie', 'réflexologie', 'shiatsu', 'ayurveda', 'thai', 'suédois', 'californien', 'pierre chaude', 'huile', 'gommage', 'enveloppement', 'modelage', 'drainage lymphatique', 'méditation', 'yoga', 'sophrologie', 'hypnose', 'reiki', 'énergétique'] },
+    { value: 'nettoyage_entretien', label: _t('productManagerMobile.nettoyageEntretien'), icon: '🧹', color: '#6B7280', description: _t('productManagerMobile.servicesDeNettoyageMenageEntretien'), keywords: ['nettoyage', 'ménage', 'entretien', 'propreté', 'nettoyeur', 'femme de ménage', 'homme de ménage', 'agent d\'entretien', 'société de nettoyage', 'lavage', 'dépoussiérage', 'aspirateur', 'balai', 'serpillière', 'désinfection', 'décontamination', 'vitre', 'carrelage', 'moquette', 'tapis', 'canapé', 'bureaux', 'locaux', 'immeuble', 'copropriété', 'commercial', 'industriel', 'après chantier', 'fin de chantier'] },
+    { value: 'jardinage_paysagisme', label: _t('productManagerMobile.jardinagePaysagisme'), icon: '🌳', color: '#059669', description: _t('productManagerMobile.entretienJardinsCreationEspacesVerts'), keywords: ['jardinage', 'jardin', 'paysagisme', 'paysagiste', 'espaces verts', 'entretien', 'création', 'aménagement', 'plantation', 'arbre', 'arbuste', 'fleur', 'plante', 'pelouse', 'gazon', 'tonte', 'taille', 'élagage', 'débroussaillage', 'arrosage', 'irrigation', 'clôture', 'haie', 'allée', 'terrasse', 'pergola', 'potager', 'verger', 'compost', 'engrais', 'tondeuse', 'taille-haie', 'tronçonneuse'] },
+    { value: 'securite_surveillance', label: _t('productManagerMobile.securiteSurveillance'), icon: '🛡️', color: '#DC2626', description: _t('productManagerMobile.agentsDeSecuriteGardiennageVideosurveill'), keywords: ['sécurité', 'surveillance', 'gardiennage', 'agent de sécurité', 'vigile', 'garde', 'protection', 'sûreté', 'ronde', 'patrouille', 'contrôle', 'accès', 'badge', 'portique', 'caméra', 'vidéosurveillance', 'CCTV', 'alarme', 'détecteur', 'sirène', 'télésurveillance', 'centrale', 'digicode', 'interphone', 'portail', 'barrière', 'gardien', 'concierge', 'veilleur', 'nuit', 'événement', 'magasin', 'entreprise', 'chantier'] },
+    { value: 'plomberie_sanitaire', label: _t('productManagerMobile.plomberieSanitaire'), icon: '🚰', color: '#00BCD4', description: _t('productManagerMobile.venteDeMaterielPlomberieEt'), keywords: ['plomberie', 'sanitaire', 'matériel', 'robinet', 'robinetterie', 'lavabo', 'évier', 'WC', 'toilette', 'douche', 'baignoire', 'chauffe-eau', 'tuyauterie', 'canalisation', 'raccord', 'joint', 'siphon', 'vidange', 'évacuation', 'cuivre', 'PVC', 'inox', 'chrome', 'céramique', 'porcelaine', 'grohe', 'geberit', 'roca', 'hansgrohe', 'duravit', 'installation', 'garantie', 'neuf', 'occasion'] },
+    { value: 'menuiserie', label: _t('productManagerMobile.menuiserieEbenisterie'), icon: '🪵', color: '#F97316', description: _t('productManagerMobile.fabricationPoseReparationBoisEt'), keywords: ['menuiserie', 'menuisier', 'ébénisterie', 'ébéniste', 'bois', 'boiserie', 'charpente', 'charpentier', 'parquet', 'plancher', 'lambris', 'porte', 'fenêtre', 'volet', 'portail', 'portillon', 'clôture', 'pergola', 'terrasse', 'deck', 'escalier', 'garde-corps', 'rambarde', 'placard', 'dressing', 'bibliothèque', 'meuble', 'sur mesure', 'fabrication', 'pose', 'installation', 'réparation', 'restauration', 'rénovation', 'agencement', 'aménagement'] },
+    { value: 'reparateur_frigo', label: _t('productManagerMobile.frigoristeReparateurFrigo'), icon: '❄️', color: '#06B6D4', description: _t('productManagerMobile.reparationFrigosCongelateursDepannageUrg'), keywords: ['frigoriste', 'réparateur', 'dépanneur', 'frigo', 'réfrigérateur', 'congélateur', 'dépannage', 'réparation', 'panne', 'fuite', 'gaz', 'recharge', 'compresseur', 'thermostat', 'Samsung', 'LG', 'Hisense', 'Haier', 'Bosch', 'Whirlpool', 'Beko', 'TCL', 'Midea', 'urgence', 'intervention', 'technicien', 'froid', 'climatisation', 'No Frost', 'Inverter', 'service', 'diagnostic', 'réparation circuit', 'gaz réfrigérant', 'R134a', 'R600a', 'entretien', 'maintenance', 'installation', 'domicile', '24h/24'] },
+    { value: 'reparateur_climatiseur', label: _t('productManagerMobile.reparateurClimatiseurAc'), icon: '❄️', color: '#0EA5E9', description: _t('productManagerMobile.reparationInstallationMaintenanceClimati'), keywords: ['climatiseur', 'climatisation', 'clim', 'AC', 'air conditionné', 'réparateur', 'dépanneur', 'frigoriste', 'technicien', 'dépannage', 'réparation', 'installation', 'maintenance', 'entretien', 'nettoyage', 'recharge gaz', 'R22', 'R410A', 'R32', 'fuite', 'panne', 'compresseur', 'ventilateur', 'filtre', 'drainage', 'condensats', 'split', 'window', 'cassette', 'inverter', 'Midea', 'Gree', 'Haier', 'Hisense', 'LG', 'Samsung', 'Daikin', 'Mitsubishi', 'urgence', '24h/24', 'diagnostic', 'devis gratuit', 'intervention', 'domicile', 'bureau', 'froid', 'BTU'] },
+    { value: 'reparateur_electronique', label: _t('productManagerMobile.reparateurElectroniqueTvradio'), icon: '📺', color: '#9C27B0', description: _t('productManagerMobile.reparationTvRadioHomeCinema'), keywords: ['réparateur', 'dépanneur', 'technicien', 'électronique', 'TV', 'télévision', 'téléviseur', 'écran', 'réparation TV', 'dépannage TV', 'panne TV', 'TV cassée', 'Samsung TV', 'LG TV', 'Hisense TV', 'TCL TV', 'Sony TV', 'Nasco', 'Bruhm', 'Polystar', 'QLED', 'OLED', 'LED', 'Smart TV', '4K', 'dalle', 'écran noir', 'lignes', 'pixels', 'rétro-éclairage', 'carte mère', 'alimentation', 'HDMI', 'radio', 'poste radio', 'transistor', 'home cinéma', 'barre de son', 'enceinte', 'amplificateur', 'audio', 'son', 'vidéo', 'décodeur', 'satellite', 'CANAL+', 'TNT', 'parabole', 'antenne', 'vidéoprojecteur', 'projecteur', 'DVD', 'lecteur', 'diagnostic', 'intervention', 'domicile', 'urgence', 'service', 'installation', 'configuration', 'Smart TV'] },
+    { value: 'animaux_veterinaire', label: _t('productManagerMobile.animauxVeterinaire'), icon: '🐾', color: '#FF69B4', description: _t('productManagerMobile.veterinairesToilettageDressageAccessoire'), keywords: ['animal', 'animaux', 'vétérinaire', 'véto', 'clinique vétérinaire', 'soin', 'consultation', 'vaccination', 'stérilisation', 'castration', 'vermifuge', 'antiparasitaire', 'urgence', 'chirurgie', 'toilettage', 'toiletteur', 'coupe', 'lavage', 'brushing', 'chien', 'chat', 'chiot', 'chaton', 'oiseau', 'lapin', 'rongeur', 'reptile', 'dressage', 'éducation', 'comportementaliste', 'pension', 'garde', 'promenade', 'dog sitter', 'accessoire', 'collier', 'laisse', 'gamelle', 'cage', 'niche', 'litière', 'jouet', 'nourriture', 'croquette', 'pâtée'] },
 ] as const;
+// ✅ Version dynamique utilisant le hook t() du composant (pour l'UI)
+export const getProductTypes = (t: (key: string) => string) => {
+    return PRODUCT_TYPES.map(pt => ({
+        ...pt,
+        label: typeof pt.label === 'string' && pt.label.includes('.') ? t(pt.label) || pt.label : pt.label,
+        description: typeof pt.description === 'string' && pt.description.includes('.') ? t(pt.description) || pt.description : pt.description,
+    }));
+};
+
 
 // Modèles Excel pour chaque type de produit
 const EXCEL_TEMPLATES = {
@@ -1535,7 +1545,7 @@ Exemple Douala-Paris Vol,450,EUR,Vol direct Air France classe affaires tout incl
 Exemple Hôtel Sawa,45000,XAF,Hôtel moderne centre-ville avec restaurant gastronomique et piscine panoramique,Hôtel,3 étoiles,35,Wi-Fi|Piscine|Restaurant|Bar|Climatisation|Parking,Room service|Concierge|Blanchisserie,Oui,Oui,Oui,Oui,Non,Oui,Oui,Oui,Boulevard de la Liberté,Douala,4.0511°N 9.7679°E,4.2
 Exemple Auberge du Lac,25000,XAF,Auberge chaleureuse au bord du lac avec vue panoramique et terrasse,Auberge,2 étoiles,12,Wi-Fi|Restaurant|Parking,Petit-déjeuner|Navette,Oui,Oui,Non,Non,Non,Oui,Oui,Non,Route du Lac,Yaoundé,3.8480°N 11.5021°E,4.5
 Exemple Resort Paradise,150,EUR,Resort 5 étoiles grand luxe avec spa wellness et plage privée,Resort,5 étoiles,85,Wi-Fi|Piscine|Spa|Gym|Restaurant|Bar|Climatisation|Parking,Room service|Concierge|Blanchisserie|Navette aéroport|Garde d'enfants,Oui,Oui,Oui,Oui,Oui,Oui,Oui,Oui,Front de mer,Kribi,2.9483°N 9.9086°E,4.8
-Exemple Chambre d'hôtes,15000,XAF,Chambre d'hôtes familiale accueil chaleureux petit-déjeuner maison,Chambre d'hôtes,Non classé,5,Wi-Fi|Parking,Petit-déjeuner,Oui,Non,Non,Non,Non,Oui,Oui,Non,Quartier résidentiel,Bafoussam,5.4774°N 10.4177°E,4.7`,
+Exemple Chambre d'hôtes,15000,XAF,Chambre dt('productManagerMobile.hotesFamilialeAccueilChaleureuxPetitdejeunerMaisonchamb')`,
 
     covoiturage: `Nom,Prix,Devise,Description,Départ,Arrivée,Date,Heure,Places disponibles
 Trajet Douala-Yaoundé,2500,XAF,Voiture confortable et sécurisée avec climatisation,Bonanjo,Centre-ville Yaoundé,2024-01-15,06:00,3
@@ -1545,7 +1555,7 @@ Trajet aéroport,15,USD,Transport aéroport vers centre-ville,Aéroport Douala,B
     vetement: `Nom,Prix,Devise,Description,Type,Genre,Taille,Couleur,Matière,Marque,État,Style,Saison,Patron,Coupe,Certifications
 Exemple T-shirt Nike Sport,15000,XAF,T-shirt sport respirant et confortable,T-shirt,Homme,L,Bleu,Polyester,Nike,Neuf avec étiquette,Sport,Été,Uni,Regular,
 Exemple Robe Zara Été,25000,XAF,Robe légère motifs floraux,Robe,Femme,M,Multicolore,Coton,Zara,Neuf avec étiquette,Casual,Été,Imprimé floral,Regular,
-Exemple Jean Levi's 501,45000,XAF,Jean classique coupe droite indémodable,Jean,Homme,32,Bleu,Denim,Levi's,Occasion - Excellent état,Casual,Toutes saisons,Uni,Droit,
+Exemple Jean Levit('productManagerMobile.s50145000xafjeanClassiqueCoupeDroiteIndemodablejea')s,Occasion - Excellent état,Casual,Toutes saisons,Uni,Droit,
 Exemple Veste Cuir Vintage,95000,XAF,Veste cuir marron style vintage,Veste,Unisexe,L,Marron,Cuir,Zara,Vintage,Vintage,Toutes saisons,Uni,Regular,
 Exemple Chemise Blanche,35000,XAF,Chemise formelle coton 100% bio,Chemise,Homme,40,Blanc,100% Coton,Ralph Lauren,Neuf sans étiquette,Formel,Toutes saisons,Uni,Slim,Bio`,
 
@@ -1626,7 +1636,7 @@ Farine de blé T55 1kg,850,XAF,Farine blé qualité supérieure pâtisserie pain
 Sauce tomate concentrée 210g,450,XAF,Concentré tomate double qualité cuisines sauces,Sauces et condiments,Heinz,210g,Europe,Halal,Réfrigéré après ouverture
 Café soluble premium 200g,3500,XAF,Café soluble arôme intense sans sucre,Café et thé,Nescafé,200g,Brésil,Commerce équitable,À l'abri de la lumière
 Lait en poudre instantané 400g,4200,XAF,Lait poudre entier enrichi vitamines minéraux,Produits laitiers transformés,Nido,400g,Europe,Sans lactose,Au frais
-Sardines à l'huile 125g,650,XAF,Sardines entières huile végétale qualité,Conserves,Pêcheur d'Armor,125g,Maroc,Halal,Température ambiante
+Sardines à lt('productManagerMobile.huile125g650xafsardinesEntieresHuileVegetaleQualit')Armor,125g,Maroc,Halal,Température ambiante
 Sucre cristallisé blanc 1kg,1200,XAF,Sucre cristal blanc pur canne raffiné,Sucre et édulcorants,Sosucam,1kg,Cameroun,Locale,Au sec
 Bouillon cube poulet 100g,500,XAF,Cubes bouillon saveur poulet cuisine africaine,Condiments,Maggi,100g,Afrique de l'Ouest,Halal,Température ambiante`,
 
@@ -1665,8 +1675,8 @@ Exemple Hôpital,0,XAF,Exemple d'établissement avec urgences et banque de sang,
 Exemple Clinique,0,XAF,Exemple de clinique privée avec RDV en ligne,Clinique,Non,Gynécologie|Ophtalmologie|Pédiatrie,Lun-Sam 09:00-19:00,Non,Oui`,
 
     laboratoire: `Nom,Prix,Devise,Description,Type,Examens disponibles,Planning,Prélèvement domicile,Résultats rapides,RDV en ligne
-Exemple Labo Analyses,0,XAF,Exemple de laboratoire d'analyses médicales,Laboratoire d'analyses médicales,Hématologie|Biochimie|Sérologie|Parasitologie,Lun-Sam 07:00-18:00,Oui,Oui,Oui
-Exemple Centre Imagerie,0,XAF,Exemple de centre d'imagerie médicale,Centre d'imagerie médicale,Scanner|IRM|Radiographie|Échographie,Lun-Ven 08:00-18:00,Non,Oui,Oui
+Exemple Labo Analyses,0,XAF,Exemple de laboratoire dt('productManagerMobile.analysesMedicaleslaboratoireD')analyses médicales,Hématologie|Biochimie|Sérologie|Parasitologie,Lun-Sam 07:00-18:00,Oui,Oui,Oui
+Exemple Centre Imagerie,0,XAF,Exemple de centre dt('productManagerMobile.imagerieMedicalecentreD')imagerie médicale,Scanner|IRM|Radiographie|Échographie,Lun-Ven 08:00-18:00,Non,Oui,Oui
 Exemple Centre Mixte,0,XAF,Exemple de centre mixte analyses et imagerie,Laboratoire & Imagerie (Mixte),Hématologie|Biochimie|Scanner|IRM,Lun-Dim 24h/24,Oui,Oui,Oui`,
 
     demenagement: `Nom,Prix,Devise,Description,Type,Volume,Type véhicule,Distance,Services,Nb déménageurs,Trajet,Ville départ,Ville arrivée,Compagnie,Durée,Disponibilité,Type assurance,Accessibilité
@@ -1818,7 +1828,7 @@ Exemple Miroir Mural Doré,28000,XAF,Miroir rond cadre métal doré style vintag
 
     sante_beaute: `Nom,Prix,Devise,Description,Type,Marque,Volume,Bio
 Exemple Crème Nivea Visage,8500,XAF,Crème hydratante visage peaux sensibles 50ml formule douce,Soins visage,Nivea,50ml,Non
-Exemple Shampoing L'Oréal,12000,XAF,Shampoing réparateur cheveux abîmés 250ml sans sulfate,Soins cheveux,L'Oréal,250ml,Oui
+Exemple Shampoing Lt('productManagerMobile.oreal12000xafshampoingReparateurCheveuxAbimes250ml')Oréal,250ml,Oui
 Exemple Rouge à Lèvres,5500,XAF,Rouge à lèvres mat longue tenue couleur rouge intense,Maquillage,Garnier,4g,Non`,
 
     juridique: `Nom,Prix,Devise,Description,Type,Spécialité,Expérience,Tarif horaire
@@ -1894,7 +1904,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     serviceId, // ✅ NOUVEAU
     serviceData // ✅ NOUVEAU
 }) => {
-    const navigation = useNavigation(); // ✅ NOUVEAU: Navigation pour modifier produit
+    const navigation = useNavigation();
+    const { t } = useLanguageSafe(); // ✅ NOUVEAU: Navigation pour modifier produit
+    const productTypes = getProductTypes(t);
     const [showAddModal, setShowAddModal] = useState(false);
     const [selectedType, setSelectedType] = useState<ProductType | null>(null);
     const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -2057,20 +2069,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             immobilier_batiment: 'Titre du bien',
             immobilier_terrain: 'Titre du terrain',
             hotellerie: 'Nom de l\'établissement',
-            automobile: 'Désignation du véhicule',
+            automobile: t('productManagerMobile.designationDuVehicule'),
             ticket_voyage: 'Trajet / Titre du billet',
             covoiturage: 'Titre du trajet',
             vetement: 'Nom de l\'article',
             chaussure: 'Nom de la chaussure',
             electromenager: 'Nom de l\'appareil',
             image_son: 'Nom de l\'appareil',
-            telephone: 'Modèle du téléphone',
-            ordinateur: 'Modèle de l\'ordinateur',
+            telephone: t('productManagerMobile.modeleDuTelephone'),
+            ordinateur: t('productManagerMobile.modeleDeLordinateur'),
             mobilier: 'Nom du meuble',
-            decoration: 'Nom de l\'article déco',
+            decoration: 'Nom de l\t('productManagerMobile.articleDeco'),
             ustensiles_cuisine: 'Nom de l\'ustensile',
-            pieces_auto: 'Référence de la pièce',
-            pieces_industrielles: 'Référence de la pièce',
+            pieces_auto: t('productManagerMobile.referenceDeLaPiece'),
+            pieces_industrielles: t('productManagerMobile.referenceDeLaPiece'),
             jouets_enfants: 'Nom du jouet',
             aliments: 'Nom du produit',
             livres_fournitures: 'Titre / Nom',
@@ -2085,14 +2097,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             bijoux: 'Nom du bijou',
             coiffure_beaute: 'Nom du produit',
             restauration: 'Nom du restaurant',
-            sport_fitness: 'Titre de l\'activité',
+            sport_fitness: 'Titre de l\t('productManagerMobile.activite'),
             formation_education: 'Titre de la formation',
             evenementiel: 'Titre de l\'événement',
-            electricite: 'Nom du produit électrique',
+            electricite: t('productManagerMobile.nomDuProduitElectrique'),
             plomberie: 'Titre de la prestation',
             menuiserie: 'Titre de la prestation',
-            reparateur_frigo: 'Titre de la réparation frigo',
-            reparateur_electronique: 'Titre de la réparation électronique',
+            reparateur_frigo: t('productManagerMobile.titreDeLaReparationFrigo'),
+            reparateur_electronique: t('productManagerMobile.titreDeLaReparationElectronique'),
             jardinage_paysagisme: 'Titre de la prestation',
             securite_surveillance: 'Titre du service',
             animaux_veterinaire: 'Nom de l\'animal / Service',
@@ -2107,7 +2119,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             autre: 'Nom du produit'
         };
 
-        return labels[type] || 'Nom du produit';
+        return labels[type] || t('productManagerMobile.nomDuProduit');
     };
 
     // Fonction pour obtenir un exemple de nom de produit selon le type
@@ -2117,58 +2129,58 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
         const placeholders: Record<ProductType, string> = {
             immobilier_batiment: 'Ex: Appartement F4',
             immobilier_terrain: 'Ex: Terrain 500m²',
-            hotellerie: 'Ex: Hôtel Sawa - Chambre Double',
+            hotellerie: t('productManagerMobile.exHotelSawaChambreDouble'),
             automobile: 'Ex: Toyota Corolla 2018',
-            ticket_voyage: 'Ex: Douala-Yaoundé',
-            covoiturage: 'Ex: Trajet Douala-Yaoundé',
+            ticket_voyage: t('productManagerMobile.exDoualayaounde'),
+            covoiturage: t('productManagerMobile.exTrajetDoualayaounde'),
             vetement: 'Ex: T-shirt casual homme',
             chaussure: 'Ex: Baskets sport Adidas',
-            electromenager: 'Ex: Réfrigérateur Samsung',
+            electromenager: t('productManagerMobile.exRefrigerateurSamsung'),
             image_son: 'Ex: TV Samsung 55 pouces',
             telephone: 'Ex: iPhone 13 Pro',
             ordinateur: 'Ex: MacBook Pro M2',
-            mobilier: 'Ex: Canapé 3 places',
+            mobilier: t('productManagerMobile.exCanape3Places'),
             decoration: 'Ex: Tableau moderne',
-            ustensiles_cuisine: 'Ex: Batterie cuisine 12 pièces',
+            ustensiles_cuisine: t('productManagerMobile.exBatterieCuisine12Pieces'),
             pieces_auto: 'Ex: Pneu Michelin 205/55 R16',
             pieces_industrielles: 'Ex: Roulement SKF',
-            jouets_enfants: 'Ex: Puzzle éducatif 100 pièces',
-            aliments: 'Ex: Tomates fraîches',
-            livres_fournitures: 'Ex: Manuel Mathématiques Term C',
+            jouets_enfants: t('productManagerMobile.exPuzzleEducatif100Pieces'),
+            aliments: t('productManagerMobile.exTomatesFraiches'),
+            livres_fournitures: t('productManagerMobile.exManuelMathematiquesTermC'),
             quincaillerie: 'Ex: Marteau menuisier',
-            prestation_service: 'Ex: Installation électrique',
+            prestation_service: t('productManagerMobile.exInstallationElectrique'),
             assurance: 'Ex: Assurance auto tous risques',
             pharmacie: 'Ex: Pharmacie Centrale',
             hopital_clinique: 'Ex: Clinique Saint-Joseph',
             laboratoire: 'Ex: Laboratoire CERBA',
-            demenagement: 'Ex: Déménagement Express',
-            cosmetique_parfum: 'Ex: Crème hydratante Nivea',
+            demenagement: t('productManagerMobile.exDemenagementExpress'),
+            cosmetique_parfum: t('productManagerMobile.exCremeHydratanteNivea'),
             bijoux: 'Ex: Collier en or 18 carats',
-            coiffure_beaute: 'Ex: Mèches brésiliennes 30cm',
+            coiffure_beaute: t('productManagerMobile.exMechesBresiliennes30cm'),
             restauration: 'Ex: Restaurant Le Beau Jardin',
-            sport_fitness: 'Ex: Cours de Yoga débutant',
-            formation_education: 'Ex: Formation Excel avancé',
+            sport_fitness: t('productManagerMobile.exCoursDeYogaDebutant'),
+            formation_education: t('productManagerMobile.exFormationExcelAvance'),
             evenementiel: 'Ex: Organisation mariage complet',
-            electricite: 'Ex: Câble électrique 2.5mm',
+            electricite: t('productManagerMobile.exCableElectrique25mm'),
             plomberie: 'Ex: Installation chauffe-eau',
-            menuiserie: 'Ex: Porte sur mesure en chêne',
-            reparateur_frigo: 'Ex: Réparation frigo Samsung',
-            reparateur_electronique: 'Ex: Réparation TV Samsung 55"',
+            menuiserie: t('productManagerMobile.exPorteSurMesureEnChene'),
+            reparateur_frigo: t('productManagerMobile.exReparationFrigoSamsung'),
+            reparateur_electronique: t('productManagerMobile.exReparationTvSamsung55'),
             jardinage_paysagisme: 'Ex: Tonte pelouse et entretien',
             securite_surveillance: 'Ex: Gardiennage 24h/24',
             animaux_veterinaire: 'Ex: Rex - Labrador 5 ans',
             nettoyage_entretien: 'Ex: Nettoyage bureau hebdomadaire',
             bien_etre_spa: 'Ex: Massage relaxant 1h',
-            agroalimentaire: 'Ex: Riz parfumé 25kg',
-            agriculture: 'Ex: Semences maïs hybride',
+            agroalimentaire: t('productManagerMobile.exRizParfume25kg'),
+            agriculture: t('productManagerMobile.exSemencesMaisHybride'),
             electronique: 'Ex: Console PlayStation 5',
             musique_instruments: 'Ex: Guitare Yamaha acoustique',
             soutien_scolaire_repetiteur: 'Ex: Cours de Maths Terminale',
-            formation_education: 'Ex: Formation Développement Web',
+            formation_education: t('productManagerMobile.exFormationDeveloppementWeb'),
             autre: 'Ex: Nom du produit'
         };
 
-        return placeholders[type] || 'Ex: Nom du produit';
+        return placeholders[type] || t('productManagerMobile.exNomDuProduit');
     };
 
     // Fonction pour télécharger le modèle Excel
@@ -2176,8 +2188,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
         const template = EXCEL_TEMPLATES[type];
 
         Alert.alert(
-            'Modèle Excel',
-            `Copiez ce modèle dans Excel :\n\n${template.substring(0, 200)}...`,
+            t('productManagerMobile.modeleExcel'),
+            t('productManagerMobile.copiezCeModeleDansExcelNn', { template_substring(0, 200): template.substring(0, 200) }),
             [
                 { text: 'OK' }
             ]
@@ -2246,8 +2258,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 // Afficher message de succès avec info compression
                 const totalImages = (newProduct.images || []).length + validImages.length;
                 Alert.alert(
-                    '✅ Images ajoutées',
-                    `${validImages.length} image(s) ajoutée(s) et compressées.\n\n📸 Total : ${totalImages} image(s) pour ce produit.\n\n💡 Les images sont stockées de manière optimisée.`,
+                    t('productManagerMobile.imagesAjoutees'),
+                    t('productManagerMobile.imagesAjouteesEtCompresseesnnTotalImages', { validImages_length: validImages.length, totalImages: totalImages }),
                     [{ text: 'OK' }]
                 );
             }
@@ -2339,7 +2351,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                     const totalVideos = (newProduct.videos?.length || 0) + 1;
                     Alert.alert(
-                        '✅ Vidéo ajoutée',
+                        t('productManagerMobile.videoAjoutee'),
                         `Vidéo ajoutée avec succès${videoSizeMB > 0 ? ` (${videoSizeMB.toFixed(2)} MB)` : ''}\n\n🎥 Total : ${totalVideos} vidéo(s) pour ce produit.`,
                         [{ text: 'OK' }]
                     );
@@ -2347,7 +2359,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     console.error('Erreur conversion vidéo:', err);
                     Alert.alert(
                         'Erreur de conversion',
-                        'Impossible de convertir la vidéo. Veuillez réessayer.',
+                        t('productManagerMobile.impossibleDeConvertirLaVideoVeuillez'),
                         [{ text: 'OK' }]
                     );
                 }
@@ -2460,7 +2472,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             specificProduct = {
                                 ...baseProduct,
                                 typeImmobilier: columns[4],
-                                statutImmobilier: 'Location courte durée', // Statut fixé automatiquement
+                                statutImmobilier: t('productManagerMobile.locationCourteDuree'), // Statut fixé automatiquement
                                 standing: columns[5],
                                 etatGeneral: columns[6],
                                 superficie: columns[7],
@@ -3618,8 +3630,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             if (newProducts.length > 0) {
                 onProductsChange([...products, ...newProducts]);
                 Alert.alert(
-                    'Import réussi',
-                    `${newProducts.length} produit(s) ont été importés avec succès`
+                    t('productManagerMobile.importReussi'),
+                    t('productManagerMobile.produitsOntEteImportesAvecSucces', { newProducts_length: newProducts.length })
                 );
             } else {
                 Alert.alert('Erreur', 'Aucun produit valide trouvé dans le fichier');
@@ -3663,7 +3675,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             setNewProduct({
                 ...newProduct,
                 type,
-                nom: titreService || 'Réalisation',
+                nom: titreService || t('productManagerMobile.realisation'),
                 description: descriptionService || '',
                 titreService: titreService || '',
                 descriptionService: descriptionService || ''
@@ -3688,7 +3700,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
         if (selectedType === 'automobile') {
             // Générer nom automatique : "[MARQUE] [MODÈLE] [ANNÉE]"
-            const marque = newProduct.marqueAutomobile || 'Véhicule';
+            const marque = newProduct.marqueAutomobile || t('productManagerMobile.vehicule');
             const modele = newProduct.modeleAutomobile ? ` ${newProduct.modeleAutomobile}` : '';
             const annee = newProduct.annee ? ` ${newProduct.annee}` : '';
             const generatedName = `${marque}${modele}${annee}`;
@@ -3709,7 +3721,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
         if (selectedType === 'agroalimentaire') {
             // ✅ Générer nom automatique : "[CATÉGORIE] [TYPE] [MARQUE]" ou "[CATÉGORIE]"
-            const categorie = newProduct.categorieAliment || 'Produit alimentaire';
+            const categorie = newProduct.categorieAliment || t('productManagerMobile.produitAlimentaire');
             const type = newProduct.typeAliment ? ` ${newProduct.typeAliment}` : '';
             const marque = newProduct.marqueAliment ? ` ${newProduct.marqueAliment}` : '';
             const origine = !newProduct.marqueAliment && newProduct.origine ? ` ${newProduct.origine}` : '';
@@ -3719,7 +3731,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
         if (selectedType === 'cosmetique_parfum') {
             // ✅ Générer nom automatique : "[TYPE] [MARQUE] [VOLUME]" ou "[MARQUE] [TYPE]"
-            const type = newProduct.typeCosmetique || 'Produit cosmétique';
+            const type = newProduct.typeCosmetique || t('productManagerMobile.produitCosmetique');
             const marque = newProduct.marqueCosmetique || '';
             const volume = newProduct.volumeCosmetique && newProduct.uniteCosmetique
                 ? ` ${newProduct.volumeCosmetique}${newProduct.uniteCosmetique}`
@@ -3734,15 +3746,15 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
         if (selectedType === 'covoiturage') {
             // ✅ Générer nom automatique : "[VILLE_DEPART] - [VILLE_ARRIVEE]"
-            const villeDepart = newProduct.villeDepart || 'Départ';
-            const villeArrivee = newProduct.villeArrivee || 'Arrivée';
+            const villeDepart = newProduct.villeDepart || t('productManagerMobile.depart');
+            const villeArrivee = newProduct.villeArrivee || t('productManagerMobile.arrivee');
             const generatedName = `${villeDepart} - ${villeArrivee}`;
             newProduct.nom = generatedName;
         }
 
         if (selectedType === 'ticket_voyage') {
             // ✅ Générer nom automatique : "[DEPART] - [DESTINATION] ([COMPAGNIE])"
-            const depart = newProduct.depart || 'Départ';
+            const depart = newProduct.depart || t('productManagerMobile.depart');
             const destination = newProduct.destination || 'Destination';
             const compagnie = newProduct.compagnieTransport ? ` (${newProduct.compagnieTransport})` : '';
             const generatedName = `${depart} - ${destination}${compagnie}`;
@@ -3763,16 +3775,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 newProduct.nom = `Déménagement ${type} - ${villeDepart} → ${villeArrivee}${compagnieStr}`;
             } else if (compagnie) {
                 // Avec compagnie seulement
-                newProduct.nom = `Déménagement ${type} - ${compagnie}`;
+                newProduct.nom = t('productManagerMobile.demenagement', { type: type, compagnie: compagnie });
             } else {
                 // Fallback sur le type
-                newProduct.nom = `Déménagement ${type}`;
+                newProduct.nom = t('productManagerMobile.demenagement', { type: type });
             }
         }
 
         if (selectedType === 'decoration') {
             // ✅ Générer nom automatique : "[CATÉGORIE] [STYLE] en [MATIÈRE]"
-            const categorie = newProduct.categorieDecoration || 'Article déco';
+            const categorie = newProduct.categorieDecoration || t('productManagerMobile.articleDeco');
             const style = newProduct.styleDecoration ? ` ${newProduct.styleDecoration}` : '';
             const matiere = newProduct.matiereDecoration ? ` en ${newProduct.matiereDecoration}` : '';
             const generatedName = `${categorie}${style}${matiere}`;
@@ -3781,13 +3793,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
         if (selectedType === 'electricite') {
             // ✅ Générer nom automatique : "[NOM_PRODUIT_ELECTRIQUE]"
-            const nomProduit = newProduct.nomProduitElectrique || newProduct.name || 'Produit électrique';
+            const nomProduit = newProduct.nomProduitElectrique || newProduct.name || t('productManagerMobile.produitElectrique');
             newProduct.nom = nomProduit.trim();
         }
 
         if (selectedType === 'electronique') {
             // ✅ Générer nom automatique : "[TYPE] [MARQUE] [MODÈLE]" ou "[TYPE]"
-            const type = newProduct.typeElectronique || 'Appareil électronique';
+            const type = newProduct.typeElectronique || t('productManagerMobile.appareilElectronique');
             const marque = newProduct.marqueElectronique ? ` ${newProduct.marqueElectronique}` : '';
             const modele = newProduct.modeleElectronique ? ` ${newProduct.modeleElectronique}` : '';
             const generatedName = `${type}${marque}${modele}`;
@@ -3796,7 +3808,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
         if (selectedType === 'evenementiel') {
             // ✅ Générer nom automatique : "[TYPE] - [LOCALISATION]" ou "Événement [TYPE]"
-            const type = newProduct.typeEvenement || 'Événement';
+            const type = newProduct.typeEvenement || t('productManagerMobile.evenement');
             const localisation = newProduct.localisationEvenement;
             if (localisation) {
                 newProduct.nom = `${type} - ${localisation}`.trim();
@@ -3846,7 +3858,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             if (nomEtablissement) {
                 newProduct.nom = nomEtablissement.trim();
             } else {
-                const type = newProduct.typeEtablissement || 'Établissement de santé';
+                const type = newProduct.typeEtablissement || t('productManagerMobile.etablissementDeSante');
                 newProduct.nom = type.trim();
             }
         }
@@ -3882,7 +3894,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             if (nomEtablissement) {
                 newProduct.nom = nomEtablissement.trim();
             } else {
-                const type = newProduct.typeHebergement || 'Hôtel';
+                const type = newProduct.typeHebergement || t('productManagerMobile.hotel');
                 const categorie = newProduct.categorieHotel ? ` ${newProduct.categorieHotel}` : '';
                 newProduct.nom = `${type}${categorie}`.trim();
             }
@@ -3890,7 +3902,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
         if (selectedType === 'immobilier_batiment') {
             // ✅ Générer nom automatique : "[TYPE] [STATUT] - [QUARTIER/VILLE]"
-            const type = newProduct.typeImmobilier || 'Bien immobilier';
+            const type = newProduct.typeImmobilier || t('productManagerMobile.bienImmobilier');
             const quartier = newProduct.quartier ? ` - ${newProduct.quartier}` : '';
             const ville = !newProduct.quartier && newProduct.ville ? ` - ${newProduct.ville}` : '';
             const superficie = newProduct.superficie ? ` (${newProduct.superficie}m²)` : '';
@@ -4000,17 +4012,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
         // ✅ AUTO-GÉNÉRATION NOM - PRESTATIONS DE SERVICES (13 catégories)
         if (selectedType === 'plombier') {
-            const type = newProduct.typePlomberie || 'Services plomberie';
+            const type = newProduct.typePlomberie || t('productManagerMobile.servicesPlomberie');
             const zones = newProduct.zonesInterventionPlombier?.slice(0, 2).join(', ') || '';
             newProduct.nom = `Plombier - ${type}${zones ? ` - ${zones}` : ''}`.trim();
         }
         if (selectedType === 'electricien') {
-            const type = newProduct.typeElectricien || 'Services électricité';
+            const type = newProduct.typeElectricien || t('productManagerMobile.servicesElectricite');
             const zones = newProduct.zonesInterventionElectricien?.slice(0, 2).join(', ') || '';
             newProduct.nom = `Électricien - ${type}${zones ? ` - ${zones}` : ''}`.trim();
         }
         if (selectedType === 'menuisier') {
-            const type = newProduct.typeMenuisier || 'Services menuiserie';
+            const type = newProduct.typeMenuisier || t('productManagerMobile.servicesMenuiserie');
             const zones = newProduct.zonesInterventionMenuisier?.slice(0, 2).join(', ') || '';
             newProduct.nom = `Menuisier - ${type}${zones ? ` - ${zones}` : ''}`.trim();
         }
@@ -4020,42 +4032,42 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             newProduct.nom = `Menuisier Aluminium - ${type}${zones ? ` - ${zones}` : ''}`.trim();
         }
         if (selectedType === 'carreleur') {
-            const type = newProduct.typeCarreleur || 'Services carrelage';
+            const type = newProduct.typeCarreleur || t('productManagerMobile.servicesCarrelage');
             const zones = newProduct.zonesInterventionCarreleur?.slice(0, 2).join(', ') || '';
             newProduct.nom = `Carreleur - ${type}${zones ? ` - ${zones}` : ''}`.trim();
         }
         if (selectedType === 'macon') {
-            const type = newProduct.typeMacon || 'Services maçonnerie';
+            const type = newProduct.typeMacon || t('productManagerMobile.servicesMaconnerie');
             const zones = newProduct.zonesInterventionMacon?.slice(0, 2).join(', ') || '';
             newProduct.nom = `Maçon - ${type}${zones ? ` - ${zones}` : ''}`.trim();
         }
         if (selectedType === 'forgerons') {
-            const type = newProduct.typeForge || 'Services forge et ferronnerie';
+            const type = newProduct.typeForge || t('productManagerMobile.servicesForgeEtFerronnerie');
             const zones = newProduct.zonesInterventionForgerons?.slice(0, 2).join(', ') || '';
             newProduct.nom = `Forgeron - ${type}${zones ? ` - ${zones}` : ''}`.trim();
         }
         if (selectedType === 'reparateur_electronique') {
-            const typeAppareil = newProduct.typeAppareilElectronique || 'TV/Radio/Électronique';
+            const typeAppareil = newProduct.typeAppareilElectronique || t('productManagerMobile.tvradioelectronique');
             const zones = newProduct.zonesInterventionElectronique?.slice(0, 2).join(', ') || '';
-            newProduct.nom = `Réparateur Électronique - ${typeAppareil}${zones ? ` - ${zones}` : ''}`.trim();
+            newProduct.nom = t('productManagerMobile.reparateurElectroniqueZones', { typeAppareil: typeAppareil }) - ${zones}` : ''}`.trim();
         }
         if (selectedType === 'reparateur_electromenager') {
-            const typeAppareil = newProduct.typeAppareilElectromenger || 'Électroménager';
+            const typeAppareil = newProduct.typeAppareilElectromenger || t('productManagerMobile.electromenager');
             const zones = newProduct.zonesInterventionElectromenager?.slice(0, 2).join(', ') || '';
-            newProduct.nom = `Réparateur Électroménager - ${typeAppareil}${zones ? ` - ${zones}` : ''}`.trim();
+            newProduct.nom = t('productManagerMobile.reparateurElectromenagerZones', { typeAppareil: typeAppareil }) - ${zones}` : ''}`.trim();
         }
         if (selectedType === 'reparateur_frigoriste') {
-            const typeAppareil = newProduct.typeAppareilFrigorifique || 'Climatisation/Réfrigération';
+            const typeAppareil = newProduct.typeAppareilFrigorifique || t('productManagerMobile.climatisationrefrigeration');
             const zones = newProduct.zonesInterventionFrigoriste?.slice(0, 2).join(', ') || '';
             newProduct.nom = `Frigoriste - ${typeAppareil}${zones ? ` - ${zones}` : ''}`.trim();
         }
         if (selectedType === 'peintre') {
-            const type = newProduct.typePeinture || 'Services peinture';
+            const type = newProduct.typePeinture || t('productManagerMobile.servicesPeinture');
             const zones = newProduct.zonesInterventionPeintre?.slice(0, 2).join(', ') || '';
             newProduct.nom = `Peintre - ${type}${zones ? ` - ${zones}` : ''}`.trim();
         }
         if (selectedType === 'staffeur') {
-            const type = newProduct.typeStaffeur || 'Services plâtrerie/staff';
+            const type = newProduct.typeStaffeur || t('productManagerMobile.servicesPlatreriestaff');
             const zones = newProduct.zonesInterventionStaffeur?.slice(0, 2).join(', ') || '';
             newProduct.nom = `Staffeur - ${type}${zones ? ` - ${zones}` : ''}`.trim();
         }
@@ -4065,7 +4077,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             newProduct.nom = `Réparateur Climatiseur - ${service}${zones ? ` - ${zones}` : ''}`.trim();
         }
         if (selectedType === 'electricien_auto') {
-            const type = newProduct.typeElectricienAuto || 'Électricité automobile';
+            const type = newProduct.typeElectricienAuto || t('productManagerMobile.electriciteAutomobile');
             const zones = newProduct.zonesInterventionElectricienAuto?.slice(0, 2).join(', ') || '';
             newProduct.nom = `Électricien Auto - ${type}${zones ? ` - ${zones}` : ''}`.trim();
         }
@@ -4088,7 +4100,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
         if (selectedType === 'jardinage_paysagisme') {
             // ✅ Générer nom automatique : "Jardinage [TYPE_SERVICE] - [ZONES]"
-            const typeService = newProduct.typeService || 'Service jardinage';
+            const typeService = newProduct.typeService || t('productManagerMobile.serviceJardinage');
             const zones = newProduct.zonesIntervention && newProduct.zonesIntervention.length > 0
                 ? ` - ${newProduct.zonesIntervention.slice(0, 2).join(', ')}`
                 : '';
@@ -4119,7 +4131,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
         if (selectedType === 'pieces_auto') {
             // ✅ Générer nom automatique : "[NOM_PIECE] [MARQUE_PIECE] pour [MARQUE_VEHICULE] [MODELE_VEHICULE]"
-            const nomPiece = newProduct.nomPieceAuto || newProduct.name || 'Pièce auto';
+            const nomPiece = newProduct.nomPieceAuto || newProduct.name || t('productManagerMobile.pieceAuto');
             const marquePiece = newProduct.marquePieceAuto ? ` ${newProduct.marquePieceAuto}` : '';
             const marqueVehicule = newProduct.marqueVehiculeCompatible || '';
             const modeleVehicule = newProduct.modeleVehiculeCompatible || '';
@@ -4163,10 +4175,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             if (newProduct.variantesVetements && newProduct.variantesVetements.length > 0) {
                 // Si variantes : utiliser la description de la première variante
                 const premiereVariante = newProduct.variantesVetements[0];
-                newProduct.nom = premiereVariante.nom || 'Vêtement';
+                newProduct.nom = premiereVariante.nom || t('productManagerMobile.vetement');
             } else {
                 // Sinon : construire depuis les champs généraux
-                const type = newProduct.typeVetement || 'Vêtement';
+                const type = newProduct.typeVetement || t('productManagerMobile.vetement');
                 const genre = newProduct.genreVetement ? ` ${newProduct.genreVetement}` : '';
                 const matiere = newProduct.matiereVetement ? ` en ${newProduct.matiereVetement}` : '';
                 const marque = newProduct.marqueVetement ? ` ${newProduct.marqueVetement}` : '';
@@ -4182,20 +4194,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
             if (clinique) {
                 // Avec clinique : "Service Vétérinaire [ANIMAL] - [CLINIQUE]"
-                newProduct.nom = `Service Vétérinaire ${typeAnimal} - ${clinique}`.trim();
+                newProduct.nom = t('productManagerMobile.serviceVeterinaire', { typeAnimal: typeAnimal, clinique: clinique }).trim();
             } else if (services && services.length > 0) {
                 // Avec services : "[PREMIER_SERVICE] pour [ANIMAL]"
                 const premierService = services[0];
                 newProduct.nom = `${premierService} pour ${typeAnimal}`.trim();
             } else {
                 // Fallback : "Consultation Vétérinaire [ANIMAL]"
-                newProduct.nom = `Consultation Vétérinaire ${typeAnimal}`.trim();
+                newProduct.nom = t('productManagerMobile.consultationVeterinaire', { typeAnimal: typeAnimal }).trim();
             }
         }
 
         if (selectedType === 'quincaillerie') {
             // ✅ Générer nom automatique : "[NOM_PRODUIT_QUINCAILLERIE]"
-            const nomProduit = newProduct.nomProduitQuincaillerie || newProduct.name || 'Produit quincaillerie';
+            const nomProduit = newProduct.nomProduitQuincaillerie || newProduct.name || t('productManagerMobile.produitQuincaillerie');
             newProduct.nom = nomProduit.trim();
         }
 
@@ -4204,7 +4216,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             const typeFormation = newProduct.typeFormation || 'Formation';
             const domaine = newProduct.domaineFormation ? ` ${newProduct.domaineFormation}` : '';
             const niveau = newProduct.niveauFormation ? ` - ${newProduct.niveauFormation}` : '';
-            const certification = newProduct.certificationFormation?.includes('Certifiant') || newProduct.certificationFormation?.includes('Diplômant')
+            const certification = newProduct.certificationFormation?.includes('Certifiant') || newProduct.certificationFormation?.includes(t('productManagerMobile.diplomant'))
                 ? ' 🎓' : '';
             newProduct.nom = `${typeFormation}${domaine}${niveau}${certification}`.trim();
         }
@@ -4235,7 +4247,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
         if (selectedType === 'sport_fitness') {
             // ✅ Générer nom automatique : "[TYPE] [NIVEAU] - [SERVICE]" ou "[TYPE] - [OBJECTIF]"
-            const typeSport = newProduct.typeSport || 'Activité sportive';
+            const typeSport = newProduct.typeSport || t('productManagerMobile.activiteSportive');
             const niveau = newProduct.niveauSport ? ` ${newProduct.niveauSport}` : '';
             const service = newProduct.serviceSport ? ` - ${newProduct.serviceSport}` : '';
             const objectif = !newProduct.serviceSport && newProduct.objectifSport ? ` - ${newProduct.objectifSport}` : '';
@@ -4244,7 +4256,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
         if (selectedType === 'bien_etre_spa') {
             // ✅ Générer nom automatique : "[TYPE] - [SERVICES]" ou "[TYPE]"
-            const typeBienEtre = newProduct.typeBienEtre || 'Service bien-être';
+            const typeBienEtre = newProduct.typeBienEtre || t('productManagerMobile.serviceBienetre');
             const services = newProduct.servicesBienEtre && newProduct.servicesBienEtre.length > 0
                 ? ` - ${newProduct.servicesBienEtre.slice(0, 2).join(', ')}`
                 : '';
@@ -4263,13 +4275,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             } else if (ville) {
                 newProduct.nom = `${typeVehicule} - ${ville}`.trim();
             } else {
-                newProduct.nom = `${typeVehicule} - ${categorie || 'Service intra urbain'}`.trim();
+                newProduct.nom = `${typeVehicule} - ${categorie || t('productManagerMobile.serviceIntraUrbain')}`.trim();
             }
         }
 
         if (selectedType === 'couturier') {
             // ✅ Générer nom automatique : "[TYPE_SERVICE] [TISSU] - [SPECIALITE]"
-            const typeService = newProduct.typeCouture || 'Service de couture';
+            const typeService = newProduct.typeCouture || t('productManagerMobile.serviceDeCouture');
             const tissu = newProduct.tissuCouture ? ` ${newProduct.tissuCouture}` : '';
             const specialite = newProduct.specialiteCouturier ? ` - ${newProduct.specialiteCouturier}` : '';
             const zones = newProduct.zonesInterventionCouturier && newProduct.zonesInterventionCouturier.length > 0
@@ -4533,7 +4545,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     const handleDeleteProduct = (id: string) => {
         Alert.alert(
             'Supprimer le produit',
-            'Êtes-vous sûr de vouloir supprimer ce produit ?',
+            t('productManagerMobile.etesvousSurDeVouloirSupprimerCe'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -4562,7 +4574,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     };
 
     const getProductTypeInfo = (type: ProductType) => {
-        return PRODUCT_TYPES.find(t => t.value === type) || PRODUCT_TYPES[PRODUCT_TYPES.length - 1];
+        return productTypes.find(pt => pt.value === type) || productTypes[productTypes.length - 1];
     };
 
     // Rendu des champs spécifiques selon le type
@@ -4576,14 +4588,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Informations générales */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="home" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations générales</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsGenerales')}</Text>
                         </View>
 
                         {/* Type et Statut sur la même ligne */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type d'immobilier"
+                                    label={t('productManagerMobile.typeD')}immobilier"
                                     value={newProduct.typeImmobilier || ''}
                                     productType="immobilier"
                                     fieldName="types"
@@ -4616,7 +4628,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="État général"
+                                    label={t('productManagerMobile.etatGeneral')}
                                     value={newProduct.etatGeneral || ''}
                                     productType="immobilier"
                                     fieldName="etat"
@@ -4628,13 +4640,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Caractéristiques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="layout" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Plus les informations sont précises, plus votre annonce sera attractive
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.plusLesInformationsSontPrecisesPlus')}
                             </Text>
                         </View>
 
@@ -4688,7 +4700,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Étages (conditionnel selon le type) */}
                         {(newProduct.typeImmobilier === 'Appartement' || newProduct.typeImmobilier === 'Studio' || newProduct.typeImmobilier === 'Duplex') && (
                             <View style={styles.fieldContainer}>
-                                <Text style={styles.fieldLabel}>Étage</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.etage')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 3 (ou RDC)"
                                     value={newProduct.etage || ''}
@@ -4700,7 +4712,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {(newProduct.typeImmobilier === 'Villa' || newProduct.typeImmobilier === 'Immeuble' || newProduct.typeImmobilier === 'Maison') && (
                             <View style={styles.fieldContainer}>
-                                <Text style={styles.fieldLabel}>Nombre d'étages</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.nombreDetages')}</Text>
                                 <NativeInput
                                     placeholder="Ex: R+2"
                                     value={newProduct.nbEtages || ''}
@@ -4712,7 +4724,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Année de construction */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Année de construction</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.anneeDeConstruction')}</Text>
                             <NativeInput
                                 placeholder="Ex: 2020"
                                 value={newProduct.anneeConstruction || ''}
@@ -4725,13 +4737,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Équipements */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Équipements & Commodités</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.equipementsCommodites')}</Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Astuce :</Text> Les équipements augmentent considérablement l'attrait de votre bien
+                                💡 <Text style={styles.hintBold}>Astuce :</Text>{t('productManagerMobile.lesEquipementsAugmententConsiderablementLattraitDe')}
                             </Text>
                         </View>
 
@@ -4753,7 +4765,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                             {newProduct.parking && (
                                 <View style={[styles.fieldContainer, { marginTop: 8 }]}>
-                                    <Text style={styles.fieldLabel}>Nombre de places</Text>
+                                    <Text style={styles.fieldLabel}>{t('productManagerMobile.nombreDePlaces')}</Text>
                                     <NativeInput
                                         placeholder="Ex: 2"
                                         value={newProduct.nbParkings || ''}
@@ -4847,33 +4859,33 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* ✅ NOUVEAU: Équipements additionnels - MultiSelect avec liste enrichie 35+ */}
                         <MultiSelectModalitySelector
-                            label="Équipements additionnels"
+                            label={t('productManagerMobile.equipementsAdditionnels')}
                             values={newProduct.equipementsImmo || []}
                             productType="immobilier"
                             fieldName="equipements"
                             onSelect={(values) => setNewProduct({ ...newProduct, equipementsImmo: values })}
-                            placeholder="Ex: Eau courante 24h/24, Groupe électrogène, Climatisation..."
+                            placeholder={t('productManagerMobile.exEauCourante24h24Groupe')}
                         />
 
                         {/* ✅ NOUVEAU: Proximités */}
                         <MultiSelectModalitySelector
-                            label="À proximité"
+                            label={t('productManagerMobile.aProximite')}
                             values={newProduct.proximites || []}
                             productType="immobilier"
                             fieldName="proximites"
                             onSelect={(values) => setNewProduct({ ...newProduct, proximites: values })}
-                            placeholder="Ex: École, Hôpital, Supermarché/Mahima, Marché..."
+                            placeholder={t('productManagerMobile.exEcoleHopitalSupermarchemahimaMarche')}
                         />
 
                         {/* Titre de section : Localisation */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Localisation</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
                         </View>
 
                         {/* ✅ NOUVEAU: Ville avec LocationSelector (Google Maps API + fallback local) */}
                         <LocationSelector
-                            label="Ville"
+                            label={t('productManagerMobile.ville')}
                             value={newProduct.ville ? (typeof newProduct.ville === 'string' ? { raw: newProduct.ville, place_name: newProduct.ville } : newProduct.ville) : ''}
                             onSelect={(location: LocationObject) => {
                                 const villeValue = location.raw || location.place_name || '';
@@ -4888,13 +4900,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             }}
                             scope="city"
                             required
-                            placeholder="Ex: Douala, Yaoundé, Kinshasa, Abidjan..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeKinshasaAbidjan')}
                         />
 
                         {/* ✅ NOUVEAU: Quartier/Zone avec LocationSelector (contextuel selon ville) */}
                         {newProduct.ville && (
                             <LocationSelector
-                                label="Quartier / Zone"
+                                label={t('productManagerMobile.quartierZone')}
                                 value={newProduct.quartier ? (typeof newProduct.quartier === 'string' ? { raw: newProduct.quartier, place_name: newProduct.quartier } : newProduct.quartier) : ''}
                                 onSelect={(location: LocationObject) => {
                                     const quartierValue = location.raw || location.place_name || '';
@@ -4944,8 +4956,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                     images: [...(prev.images || []), ...imgs],
                                                 }));
                                                 Alert.alert(
-                                                    '📸 Photos Google ajoutées',
-                                                    `${imgs.length} photo(s) récupérée(s) depuis Google Places. Vous pouvez les supprimer ou en ajouter d'autres.`
+                                                    t('productManagerMobile.photosGoogleAjoutees'),
+                                                    t('productManagerMobile.photosRecupereesDepuisGooglePlacesVous', { imgs_length: imgs.length })
                                                 );
                                             }
                                         };
@@ -4954,7 +4966,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         if (existingCount > 0) {
                                             Alert.alert(
                                                 'Importer les photos Google ?',
-                                                `Vous avez déjà ${existingCount} image(s). Voulez-vous ajouter aussi les photos trouvées sur Google Places ?`,
+                                                t('productManagerMobile.vousAvezDejaImagesVoulezvousAjouter', { existingCount: existingCount }),
                                                 [
                                                     { text: t('common.no'), style: 'cancel' },
                                                     { text: t('common.yes'), onPress: () => runImport() },
@@ -4969,23 +4981,23 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 cityContext={(newProduct.ville && typeof newProduct.ville === 'object')
                                     ? (newProduct.ville.raw || newProduct.ville.place_name || '')
                                     : (newProduct.ville || '')}
-                                placeholder="Ex: Rue des Jardins, Avenue de la Liberté..."
+                                placeholder={t('productManagerMobile.exRueDesJardinsAvenue')}
                             />
                         </View>
 
                         {/* ✅ NOUVEAU: Accès routier */}
                         <ProductFieldSelector
-                            label="Accès routier"
+                            label={t('productManagerMobile.accesRoutier')}
                             fieldName="acces_route"
                             productType="immobilier"
                             value={newProduct.acces_route || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, acces_route: value })}
-                            placeholder="Ex: Route goudronnée, Zone inondable saison pluies..."
+                            placeholder={t('productManagerMobile.exRouteGoudronneeZoneInondable')}
                         />
 
                         {/* GPS */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>📍 Localisation GPS</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.localisationGps')}/Text>
                             <TouchableOpacity
                                 style={styles.gpsButton}
                                 onPress={() => setShowGPSModal(true)}
@@ -5014,7 +5026,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="file-text" size={20} color={modernColors.primary} />
                             <Text style={styles.sectionTitle}>
-                                {newProduct.statutImmobilier === 'À louer' ? 'Informations de location' : 'Informations complémentaires'}
+                                {newProduct.statutImmobilier === 'À louer' ? 'Informations de location' : t('productManagerMobile.informationsComplementaires')}
                             </Text>
                         </View>
 
@@ -5046,7 +5058,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                 {/* ✅ NOUVEAU: Type de bail */}
                                 <ProductFieldSelector
-                                    label="Type de bail"
+                                    label={t('productManagerMobile.typeDeBail')}
                                     fieldName="types_bail"
                                     productType="immobilier"
                                     value={newProduct.type_bail || ''}
@@ -5056,7 +5068,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                 {/* Date de disponibilité */}
                                 <View style={styles.fieldContainer}>
-                                    <Text style={styles.fieldLabel}>Date de disponibilité</Text>
+                                    <Text style={styles.fieldLabel}>{t('productManagerMobile.dateDeDisponibilite')}</Text>
                                     <NativeInput
                                         placeholder="Ex: 01/12/2025"
                                         value={newProduct.dateDisponibilite || ''}
@@ -5072,7 +5084,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="immobilier"
                                     fieldName="conditions_location"
                                     onSelect={(values) => setNewProduct({ ...newProduct, conditions_location: values })}
-                                    placeholder="Ex: Caution 2 mois, Garant exigé, Fiche de paie..."
+                                    placeholder={t('productManagerMobile.exCaution2MoisGarant')}
                                 />
 
                                 <View style={styles.fieldContainer}>
@@ -5136,14 +5148,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Informations générales */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="home" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations générales</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsGenerales')}</Text>
                         </View>
 
                         {/* Type de logement et Standing */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de logement"
+                                    label={t('productManagerMobile.typeDeLogement')}
                                     value={newProduct.typeImmobilier || ''}
                                     productType="immobilier_location_courte"
                                     fieldName="types"
@@ -5164,7 +5176,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* État général */}
                         <SelectModalitySelector
-                            label="État général"
+                            label={t('productManagerMobile.etatGeneral')}
                             value={newProduct.etatGeneral || ''}
                             productType="immobilier_location_courte"
                             fieldName="etat"
@@ -5174,7 +5186,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Caractéristiques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="layout" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
                         </View>
 
                         {/* Superficie et Capacité personnes */}
@@ -5191,7 +5203,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Capacité"
+                                    label={t('productManagerMobile.capacite')}
                                     value={newProduct.capacitePersonnes || ''}
                                     productType="immobilier_location_courte"
                                     fieldName="capacites"
@@ -5228,12 +5240,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Prix et Séjour */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="calendar" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Prix et Durée de Séjour</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.prixEtDureeDeSejour')}</Text>
                         </View>
 
                         {/* Prix par nuit */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Prix par nuit (XAF) <Text style={styles.required}>*</Text></Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.prixParNuitXaf')}Text style={styles.required}>*</Text></Text>
                             <NativeInput
                                 placeholder="Ex: 25000"
                                 value={newProduct.prixParNuit || ''}
@@ -5247,7 +5259,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Séjour minimum"
+                                    label={t('productManagerMobile.sejourMinimum')}
                                     value={newProduct.dureeMinimum || ''}
                                     productType="immobilier_location_courte"
                                     fieldName="durees_minimum"
@@ -5256,7 +5268,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Séjour maximum"
+                                    label={t('productManagerMobile.sejourMaximum')}
                                     value={newProduct.dureeMaximum || ''}
                                     productType="immobilier_location_courte"
                                     fieldName="durees_maximum"
@@ -5268,7 +5280,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Équipements */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Équipements & Commodités</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.equipementsCommodites')}</Text>
                         </View>
 
                         {/* Toggles essentiels */}
@@ -5342,18 +5354,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Équipements additionnels - MultiSelect */}
                         <MultiSelectModalitySelector
-                            label="Équipements additionnels"
+                            label={t('productManagerMobile.equipementsAdditionnels')}
                             values={newProduct.equipementsImmo || []}
                             productType="immobilier_location_courte"
                             fieldName="equipements"
                             onSelect={(values) => setNewProduct({ ...newProduct, equipementsImmo: values })}
-                            placeholder="Ex: Cuisine équipée, Lave-linge, Draps fournis..."
+                            placeholder={t('productManagerMobile.exCuisineEquipeeLavelingeDraps')}
                         />
 
                         {/* Titre de section : Services Inclus */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="star" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services Inclus</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesInclus')}/Text>
                         </View>
 
                         {/* Toggles services */}
@@ -5395,18 +5407,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Services supplémentaires */}
                         <MultiSelectModalitySelector
-                            label="Services supplémentaires"
+                            label={t('productManagerMobile.servicesSupplementaires')}
                             values={newProduct.servicesLocationCourte || []}
                             productType="immobilier_location_courte"
                             fieldName="services"
                             onSelect={(values) => setNewProduct({ ...newProduct, servicesLocationCourte: values })}
-                            placeholder="Ex: Transfert aéroport, Petit-déjeuner, Conciergerie..."
+                            placeholder={t('productManagerMobile.exTransfertAeroportPetitdejeunerConcierg')}
                         />
 
                         {/* Titre de section : Politiques & Règles */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="file-text" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Politiques & Règles</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.politiquesRegles')}</Text>
                         </View>
 
                         {/* Politique d'annulation */}
@@ -5420,23 +5432,23 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Règles de la maison */}
                         <MultiSelectModalitySelector
-                            label="Règles de la maison"
+                            label={t('productManagerMobile.reglesDeLaMaison')}
                             values={newProduct.reglesLocationCourte || []}
                             productType="immobilier_location_courte"
                             fieldName="regles"
                             onSelect={(values) => setNewProduct({ ...newProduct, reglesLocationCourte: values })}
-                            placeholder="Ex: Non-fumeur, Animaux interdits, Calme après 22h..."
+                            placeholder={t('productManagerMobile.exNonfumeurAnimauxInterditsCalme')}
                         />
 
                         {/* Titre de section : Localisation */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Localisation</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
                         </View>
 
                         {/* ✅ NOUVEAU: Ville avec LocationSelector (Google Maps API + fallback local) */}
                         <LocationSelector
-                            label="Ville"
+                            label={t('productManagerMobile.ville')}
                             value={newProduct.ville || ''}
                             onSelect={(value) => setNewProduct({
                                 ...newProduct,
@@ -5445,13 +5457,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             })}
                             scope="city"
                             required
-                            placeholder="Ex: Douala, Kribi, Limbe, Yaoundé..."
+                            placeholder={t('productManagerMobile.exDoualaKribiLimbeYaounde')}
                         />
 
                         {/* ✅ NOUVEAU: Quartier/Zone avec LocationSelector (contextuel selon ville) */}
                         {newProduct.ville && (
                             <LocationSelector
-                                label="Quartier / Zone"
+                                label={t('productManagerMobile.quartierZone')}
                                 value={newProduct.quartier || ''}
                                 onSelect={(value) => setNewProduct({ ...newProduct, quartier: value })}
                                 scope="point"
@@ -5462,7 +5474,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Adresse */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Adresse précise</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.adressePrecise')}</Text>
                             <LocationSelector
                                 label=""
                                 value={newProduct.adresse ? (typeof newProduct.adresse === 'string'
@@ -5492,8 +5504,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                     images: [...(prev.images || []), ...imgs],
                                                 }));
                                                 Alert.alert(
-                                                    '📸 Photos Google ajoutées',
-                                                    `${imgs.length} photo(s) récupérée(s) depuis Google Places. Vous pouvez les supprimer ou en ajouter d'autres.`
+                                                    t('productManagerMobile.photosGoogleAjoutees'),
+                                                    t('productManagerMobile.photosRecupereesDepuisGooglePlacesVous', { imgs_length: imgs.length })
                                                 );
                                             }
                                         };
@@ -5502,7 +5514,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         if (existingCount > 0) {
                                             Alert.alert(
                                                 'Importer les photos Google ?',
-                                                `Vous avez déjà ${existingCount} image(s). Voulez-vous ajouter aussi les photos trouvées sur Google Places ?`,
+                                                t('productManagerMobile.vousAvezDejaImagesVoulezvousAjouter', { existingCount: existingCount }),
                                                 [
                                                     { text: t('common.no'), style: 'cancel' },
                                                     { text: t('common.yes'), onPress: () => runImport() },
@@ -5523,17 +5535,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Proximités touristiques */}
                         <MultiSelectModalitySelector
-                            label="À proximité"
+                            label={t('productManagerMobile.aProximite')}
                             values={newProduct.proximites || []}
                             productType="immobilier_location_courte"
                             fieldName="proximites"
                             onSelect={(values) => setNewProduct({ ...newProduct, proximites: values })}
-                            placeholder="Ex: Plage (à pied), Restaurants, Supermarché..."
+                            placeholder={t('productManagerMobile.exPlageAPiedRestaurants')}
                         />
 
                         {/* GPS */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Coordonnées GPS</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.coordonneesGps')}</Text>
                             <NativeInput
                                 placeholder="Ex: 4.0511,-9.7679"
                                 value={newProduct.gpsImmobilier || ''}
@@ -5545,14 +5557,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Hôte */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="user" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations Hôte</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsHote')}</Text>
                         </View>
 
                         {/* Type d'hôte et Langues */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type d'hôte"
+                                    label={t('productManagerMobile.typeD')}hôte"
                                     value={newProduct.typeHote || ''}
                                     productType="immobilier_location_courte"
                                     fieldName="type_hote"
@@ -5563,27 +5575,27 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Langues parlées */}
                         <MultiSelectModalitySelector
-                            label="Langues parlées"
+                            label={t('productManagerMobile.languesParlees')}
                             values={newProduct.languesHote || []}
                             productType="immobilier_location_courte"
                             fieldName="langues_hote"
                             onSelect={(values) => setNewProduct({ ...newProduct, languesHote: values })}
-                            placeholder="Ex: Français, Anglais, Langues locales..."
+                            placeholder={t('productManagerMobile.exFrancaisAnglaisLanguesLocales')}
                         />
 
                         {/* Modes de paiement */}
                         <MultiSelectModalitySelector
-                            label="Modes de paiement acceptés"
+                            label={t('productManagerMobile.modesDePaiementAcceptes')}
                             values={newProduct.paiementsAcceptes || []}
                             productType="immobilier_location_courte"
                             fieldName="paiements"
                             onSelect={(values) => setNewProduct({ ...newProduct, paiementsAcceptes: values })}
-                            placeholder="Ex: Espèces, Mobile Money, Virement..."
+                            placeholder={t('productManagerMobile.exEspecesMobileMoneyVirement')}
                         />
 
                         {/* Disponibilité */}
                         <SelectModalitySelector
-                            label="Disponibilité"
+                            label={t('productManagerMobile.disponibilite')}
                             value={newProduct.disponibiliteLocationCourte || ''}
                             productType="immobilier_location_courte"
                             fieldName="disponibilites"
@@ -5598,20 +5610,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Informations générales */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations générales</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsGenerales')}</Text>
                         </View>
 
                         {/* Type et Statut sur la même ligne */}
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de terrain"
+                                    label={t('productManagerMobile.typeDeTerrain')}
                                     value={newProduct.typeTerrain || ''}
                                     productType="immobilier_terrain"
                                     fieldName="types_terrain"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeTerrain: value })}
                                     required
-                                    placeholder="Ex: Résidentiel, Commercial..."
+                                    placeholder={t('productManagerMobile.exResidentielCommercial')}
                                 />
                             </View>
                             <View style={[{ flex: 1 }]}>
@@ -5622,7 +5634,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     fieldName="statuts"
                                     onSelect={(value) => setNewProduct({ ...newProduct, statutImmobilier: value })}
                                     required
-                                    placeholder="Ex: À vendre, À louer..."
+                                    placeholder={t('productManagerMobile.exAVendreALouer')}
                                 />
                             </View>
                         </View>
@@ -5636,7 +5648,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="immobilier_terrain"
                                     fieldName="viabilisation"
                                     onSelect={(value) => setNewProduct({ ...newProduct, viabilisation: value })}
-                                    placeholder="Ex: Viabilisé, Non viabilisé..."
+                                    placeholder={t('productManagerMobile.exViabiliseNonViabilise')}
                                 />
                             </View>
                             <View style={[{ flex: 1 }]}>
@@ -5646,7 +5658,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="immobilier_terrain"
                                     fieldName="zonage"
                                     onSelect={(value) => setNewProduct({ ...newProduct, zonage: value })}
-                                    placeholder="Ex: Zone résidentielle..."
+                                    placeholder={t('productManagerMobile.exZoneResidentielle')}
                                 />
                             </View>
                         </View>
@@ -5684,7 +5696,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Largeur façade et Profondeur */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Largeur façade (m)</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.largeurFacadeM')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 20"
                                     value={newProduct.largeurFacade || ''}
@@ -5713,14 +5725,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 productType="immobilier_terrain"
                                 fieldName="forme_terrain"
                                 onSelect={(value) => setNewProduct({ ...newProduct, formeTerrain: value })}
-                                placeholder="Ex: Rectangulaire, Carré..."
+                                placeholder={t('productManagerMobile.exRectangulaireCarre')}
                             />
                         </View>
 
                         {/* Titre de section : Caractéristiques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="layers" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
                         </View>
 
                         {/* Topographie et Accès */}
@@ -5732,17 +5744,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="immobilier_terrain"
                                     fieldName="topographie"
                                     onSelect={(value) => setNewProduct({ ...newProduct, topographie: value })}
-                                    placeholder="Ex: Plat, Légère pente..."
+                                    placeholder={t('productManagerMobile.exPlatLegerePente')}
                                 />
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Accès"
+                                    label={t('productManagerMobile.acces')}
                                     value={newProduct.accesTerrain || ''}
                                     productType="immobilier_terrain"
                                     fieldName="acces_terrain"
                                     onSelect={(value) => setNewProduct({ ...newProduct, accesTerrain: value })}
-                                    placeholder="Ex: Route goudronnée..."
+                                    placeholder={t('productManagerMobile.exRouteGoudronnee')}
                                 />
                             </View>
                         </View>
@@ -5751,12 +5763,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Végétation"
+                                    label={t('productManagerMobile.vegetation')}
                                     value={newProduct.vegetation || ''}
                                     productType="immobilier_terrain"
                                     fieldName="vegetation"
                                     onSelect={(value) => setNewProduct({ ...newProduct, vegetation: value })}
-                                    placeholder="Ex: Dégagé, Arbres..."
+                                    placeholder={t('productManagerMobile.exDegageArbres')}
                                 />
                             </View>
                             <View style={[{ flex: 1 }]}>
@@ -5766,7 +5778,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="immobilier_terrain"
                                     fieldName="usage_actuel"
                                     onSelect={(value) => setNewProduct({ ...newProduct, usageActuel: value })}
-                                    placeholder="Ex: Vacant, Cultivé..."
+                                    placeholder={t('productManagerMobile.exVacantCultive')}
                                 />
                             </View>
                         </View>
@@ -5774,26 +5786,26 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Réseaux & Services */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="zap" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Réseaux & Services</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.reseauxServices')}</Text>
                         </View>
 
                         {/* Réseaux disponibles - Multi-sélection */}
                         <View style={styles.fieldContainer}>
                             <MultiSelectModalitySelector
-                                label="Réseaux disponibles"
+                                label={t('productManagerMobile.reseauxDisponibles')}
                                 values={newProduct.reseauxTerrain || []}
                                 productType="immobilier_terrain"
                                 fieldName="reseaux_disponibles"
                                 onSelect={(values) => setNewProduct({ ...newProduct, reseauxTerrain: values })}
                                 maxSelections={12}
-                                placeholder="Ex: Eau, Électricité..."
+                                placeholder={t('productManagerMobile.exEauElectricite')}
                             />
                         </View>
 
                         {/* Titre de section : Informations juridiques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="file-text" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations juridiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsJuridiques')}/Text>
                         </View>
 
                         {/* Toggles juridiques */}
@@ -5814,7 +5826,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                             {newProduct.titreFoncier && (
                                 <View style={[styles.fieldContainer, { marginTop: 8 }]}>
-                                    <Text style={styles.fieldLabel}>Numéro du titre foncier</Text>
+                                    <Text style={styles.fieldLabel}>{t('productManagerMobile.numeroDuTitreFoncier')}</Text>
                                     <NativeInput
                                         placeholder="Ex: TF 12345/2023"
                                         value={newProduct.numeroTitreFoncier || ''}
@@ -5883,7 +5895,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Documents fonciers - Multi-sélection */}
                         <View style={styles.fieldContainer}>
                             <MultiSelectModalitySelector
-                                label="Documents fonciers disponibles"
+                                label={t('productManagerMobile.documentsFonciersDisponibles')}
                                 values={newProduct.documentsFonciers || []}
                                 productType="immobilier_terrain"
                                 fieldName="documents_fonciers"
@@ -5896,19 +5908,19 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* État du bornage */}
                         <View style={styles.fieldContainer}>
                             <SelectModalitySelector
-                                label="État du bornage"
+                                label={t('productManagerMobile.etatDuBornage')}
                                 value={newProduct.etatBornage || ''}
                                 productType="immobilier_terrain"
                                 fieldName="bornage"
                                 onSelect={(value) => setNewProduct({ ...newProduct, etatBornage: value })}
-                                placeholder="Ex: Borné, Non borné..."
+                                placeholder={t('productManagerMobile.exBorneNonBorne')}
                             />
                         </View>
 
                         {/* Constructibilité détaillée */}
                         <View style={styles.fieldContainer}>
                             <SelectModalitySelector
-                                label="Constructibilité"
+                                label={t('productManagerMobile.constructibilite')}
                                 value={newProduct.niveauConstructibilite || ''}
                                 productType="immobilier_terrain"
                                 fieldName="constructibilite"
@@ -5920,12 +5932,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Type de clôture */}
                         <View style={styles.fieldContainer}>
                             <SelectModalitySelector
-                                label="Clôture et sécurisation"
+                                label={t('productManagerMobile.clotureEtSecurisation')}
                                 value={newProduct.typeCloture || ''}
                                 productType="immobilier_terrain"
                                 fieldName="cloture"
                                 onSelect={(value) => setNewProduct({ ...newProduct, typeCloture: value })}
-                                placeholder="Ex: Mur en béton, Grillage..."
+                                placeholder={t('productManagerMobile.exMurEnBetonGrillage')}
                             />
                         </View>
 
@@ -5945,7 +5957,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Informations complémentaires */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="info" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations complémentaires</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsComplementaires')}</Text>
                         </View>
 
                         {/* Nature du sol */}
@@ -5969,20 +5981,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 fieldName="potentiel_usage"
                                 onSelect={(values) => setNewProduct({ ...newProduct, potentielUsage: values })}
                                 maxSelections={3}
-                                placeholder="Ex: Résidentiel, Commercial..."
+                                placeholder={t('productManagerMobile.exResidentielCommercial')}
                             />
                         </View>
 
                         {/* Proximités - Multi-sélection */}
                         <View style={styles.fieldContainer}>
                             <MultiSelectModalitySelector
-                                label="Proximités et commodités"
+                                label={t('productManagerMobile.proximitesEtCommodites')}
                                 values={newProduct.proximitesTerrain || []}
                                 productType="immobilier_terrain"
                                 fieldName="proximites"
                                 onSelect={(values) => setNewProduct({ ...newProduct, proximitesTerrain: values })}
                                 maxSelections={8}
-                                placeholder="Ex: École, Marché..."
+                                placeholder={t('productManagerMobile.exEcoleMarche')}
                             />
                         </View>
 
@@ -6001,12 +6013,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Localisation */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Localisation</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
                         </View>
 
                         {/* ✅ NOUVEAU: Ville avec LocationSelector (Google Maps API + fallback local) */}
                         <LocationSelector
-                            label="Ville"
+                            label={t('productManagerMobile.ville')}
                             value={newProduct.ville || ''}
                             onSelect={(value) => setNewProduct({
                                 ...newProduct,
@@ -6015,24 +6027,24 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             })}
                             scope="city"
                             required
-                            placeholder="Ex: Douala, Yaoundé, Bafoussam..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeBafoussam')}
                         />
 
                         {/* ✅ NOUVEAU: Quartier/Zone avec LocationSelector (contextuel selon ville) */}
                         {newProduct.ville && (
                             <LocationSelector
-                                label="Quartier / Zone"
+                                label={t('productManagerMobile.quartierZone')}
                                 value={newProduct.quartier || ''}
                                 onSelect={(value) => setNewProduct({ ...newProduct, quartier: value })}
                                 scope="point"
                                 cityContext={newProduct.ville}
-                                placeholder="Ex: Zone industrielle, Logpom, Pk17..."
+                                placeholder={t('productManagerMobile.exZoneIndustrielleLogpomPk17')}
                             />
                         )}
 
                         {/* Adresse */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Adresse précise <Text style={styles.required}>*</Text></Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.adressePrecise')}<Text style={styles.required}>*</Text></Text>
                             <NativeInput
                                 placeholder="Ex: Route nationale, carrefour..."
                                 value={newProduct.adresse || ''}
@@ -6043,7 +6055,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* GPS */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>📍 Localisation GPS</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.localisationGps')}/Text>
                             <TouchableOpacity
                                 style={styles.gpsButton}
                                 onPress={() => setShowGPSModal(true)}
@@ -6076,14 +6088,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Identité du Véhicule */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="car" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Identité du Véhicule</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDuVehicule')}</Text>
                         </View>
 
                         {/* Description obligatoire */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Description <Text style={styles.required}>*</Text></Text>
                             <NativeInput
-                                placeholder="Décrivez l'état général du véhicule, ses points forts, son historique..."
+                                placeholder={t('productManagerMobile.decrivezL')}état général du véhicule, ses points forts, son historique..."
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
@@ -6095,7 +6107,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de véhicule"
+                                    label={t('productManagerMobile.typeDeVehicule')}
                                     value={newProduct.typeVehicule || ''}
                                     productType="automobile"
                                     fieldName="types"
@@ -6136,7 +6148,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <View style={[{ flex: 1 }]}>
                                 {/* ✅ NOUVEAU: VehicleModelSelector intelligent */}
                                 <VehicleModelSelector
-                                    label="Modèle"
+                                    label={t('productManagerMobile.modele')}
                                     value={newProduct.modeleAutomobile || ''}
                                     marque={newProduct.marqueAutomobile || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, modeleAutomobile: value })}
@@ -6149,7 +6161,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Année et Kilométrage */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
-                                <Text style={styles.fieldLabel}>Année <Text style={styles.required}>*</Text></Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.annee')}<Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="Ex: 2020"
                                     value={newProduct.annee || ''}
@@ -6159,7 +6171,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
-                                <Text style={styles.fieldLabel}>Kilométrage (km) <Text style={styles.required}>*</Text></Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.kilometrageKm')}<Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="Ex: 65000"
                                     value={newProduct.kilometrage || ''}
@@ -6185,13 +6197,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État du véhicule"
+                                    label={t('productManagerMobile.etatDuVehicule')}
                                     value={newProduct.etatVehicule || ''}
                                     productType="automobile"
                                     fieldName="etat"
                                     onSelect={(value) => setNewProduct({ ...newProduct, etatVehicule: value })}
                                     required
-                                    placeholder="Ex: Excellent état..."
+                                    placeholder={t('productManagerMobile.exExcellentEtat')}
                                 />
                             </View>
                         </View>
@@ -6199,7 +6211,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Caractéristiques Techniques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques Techniques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiquesTechniques')}</Text>
                         </View>
 
                         {/* Carburant et Transmission */}
@@ -6241,7 +6253,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
-                                <Text style={styles.fieldLabel}>Cylindrée (cm³)</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.cylindreeCm')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 1600"
                                     value={newProduct.cylindree || ''}
@@ -6256,7 +6268,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Nombre de portes"
+                                    label={t('productManagerMobile.nombreDePortes')}
                                     value={newProduct.nbPortes || ''}
                                     productType="automobile"
                                     fieldName="portes"
@@ -6266,7 +6278,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Nombre de places"
+                                    label={t('productManagerMobile.nombreDePlaces')}
                                     value={newProduct.nbPlaces || ''}
                                     productType="automobile"
                                     fieldName="places"
@@ -6279,7 +6291,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: État et Historique */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="clipboard" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>État et Historique</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.etatEtHistorique')}</Text>
                         </View>
 
                         {/* Toggles État */}
@@ -6293,7 +6305,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     Première main
                                 </Text>
                             </TouchableOpacity>
-                            <Text style={styles.toggleHint}>✓ Cocher si 1er propriétaire</Text>
+                            <Text style={styles.toggleHint}>{t('productManagerMobile.cocherSi1erProprietaire')}</Text>
                         </View>
 
                         <View style={styles.togglesContainer}>
@@ -6319,7 +6331,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     Contrôle technique valide
                                 </Text>
                             </TouchableOpacity>
-                            <Text style={styles.toggleHint}>✓ Contrôle technique à jour</Text>
+                            <Text style={styles.toggleHint}>{t('productManagerMobile.controleTechniqueAJour')}</Text>
                         </View>
 
                         {/* Garantie + Papiers */}
@@ -6335,12 +6347,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État des papiers"
+                                    label={t('productManagerMobile.etatDesPapiers')}
                                     value={newProduct.papiers || ''}
                                     productType="automobile"
                                     fieldName="papiers"
                                     onSelect={(value) => setNewProduct({ ...newProduct, papiers: value })}
-                                    placeholder="Ex: En règle..."
+                                    placeholder={t('productManagerMobile.exEnRegle')}
                                 />
                             </View>
                         </View>
@@ -6348,13 +6360,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 4: Localisation du Véhicule */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Localisation du Véhicule</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisationDuVehicule')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <LocationSelector
-                                    label="Ville"
+                                    label={t('productManagerMobile.ville')}
                                     value={newProduct.villeVehicule || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, villeVehicule: value })}
                                     scope="city"
@@ -6364,7 +6376,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <LocationSelector
-                                    label="Quartier / Zone"
+                                    label={t('productManagerMobile.quartierZone')}
                                     value={newProduct.quartierVehicule || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, quartierVehicule: value })}
                                     scope="point"
@@ -6375,9 +6387,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Point de repère / Adresse</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.pointDeRepereAdresse')}</Text>
                             <NativeInput
-                                placeholder="Ex: Près de la station Total, derrière le marché..."
+                                placeholder={t('productManagerMobile.exPresDeLaStation')}
                                 value={newProduct.localisationVehicule || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, localisationVehicule: text })}
                                 style={styles.fieldInput}
@@ -6387,14 +6399,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Localisation :</Text> Indiquez où se trouve le véhicule pour faciliter les visites des acheteurs potentiels
+                                💡 <Text style={styles.hintBold}>{t('productManagerMobile.localisation')}/Text> Indiquez où se trouve le véhicule pour faciliter les visites des acheteurs potentiels
                             </Text>
                         </View>
 
                         {/* Section 5: Prix de Vente */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Prix de Vente</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.prixDeVente')}/Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -6435,24 +6447,24 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 6: Équipements et Options */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="tool" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Équipements et Options</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.equipementsEtOptions')}</Text>
                         </View>
 
                         {/* ✅ Équipements multi-select */}
                         <MultiSelectModalitySelector
-                            label="Équipements et options"
+                            label={t('productManagerMobile.equipementsEtOptions')}
                             values={newProduct.equipementsAuto || []}
                             productType="automobile"
                             fieldName="equipements"
                             onSelect={(values) => setNewProduct({ ...newProduct, equipementsAuto: values })}
-                            placeholder="Sélectionner les équipements"
+                            placeholder={t('productManagerMobile.selectionnerLesEquipements')}
                             maxSelections={15}
                         />
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Plus vous détaillez les équipements et l'état du véhicule, plus votre annonce sera attractive et crédible
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.plusVousDetaillezLesEquipementsEt')}
                             </Text>
                         </View>
                     </>
@@ -6464,14 +6476,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Informations du Garage */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="tool" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations du Garage</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDuGarage')}/Text>
                         </View>
 
                         {/* Nom du garage */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Nom du garage/atelier <Text style={styles.required}>*</Text></Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.nomDuGarageatelier')}Text style={styles.required}>*</Text></Text>
                             <NativeInput
-                                placeholder="Ex: Garage Auto Plus, Méca Express..."
+                                placeholder={t('productManagerMobile.exGarageAutoPlusMeca')}
                                 value={newProduct.nomGarage || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, nomGarage: text })}
                                 style={styles.fieldInput}
@@ -6480,7 +6492,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Services proposés */}
                         <ProductFieldSelector
-                            label="Services proposés"
+                            label={t('productManagerMobile.servicesProposes')}
                             productType="mecanicien"
                             fieldName="types_service_mecanique"
                             selectedValues={newProduct.typeServiceMecanique || []}
@@ -6491,7 +6503,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Spécialités du garage */}
                         <ProductFieldSelector
-                            label="Spécialités du garage"
+                            label={t('productManagerMobile.specialitesDuGarage')}
                             productType="mecanicien"
                             fieldName="specialites_garage"
                             selectedValues={newProduct.specialitesGarage || []}
@@ -6503,12 +6515,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Compétences & Certifications */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="award" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Compétences & Certifications</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.competencesCertifications')}</Text>
                         </View>
 
                         {/* Marques de véhicules traitées */}
                         <ProductFieldSelector
-                            label="Marques de véhicules traitées"
+                            label={t('productManagerMobile.marquesDeVehiculesTraitees')}
                             productType="mecanicien"
                             fieldName="marques_vehicules"
                             selectedValues={newProduct.marquesVehicules || []}
@@ -6518,7 +6530,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Types de véhicules */}
                         <ProductFieldSelector
-                            label="Types de véhicules traités"
+                            label={t('productManagerMobile.typesDeVehiculesTraites')}
                             productType="mecanicien"
                             fieldName="types_vehicules"
                             selectedValues={newProduct.typesVehiculesMeca || []}
@@ -6539,12 +6551,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Équipements & Services */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Équipements & Services</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.equipementsServices')}</Text>
                         </View>
 
                         {/* Équipements du garage */}
                         <ProductFieldSelector
-                            label="Équipements disponibles"
+                            label={t('productManagerMobile.equipementsDisponibles')}
                             productType="mecanicien"
                             fieldName="equipements"
                             selectedValues={newProduct.equipementsGarage || []}
@@ -6554,7 +6566,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Services complémentaires */}
                         <ProductFieldSelector
-                            label="Services complémentaires"
+                            label={t('productManagerMobile.servicesComplementaires')}
                             productType="mecanicien"
                             fieldName="services_complementaires"
                             selectedValues={newProduct.servicesComplementaires || []}
@@ -6565,12 +6577,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 4: Horaires & Disponibilité */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="clock" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Horaires & Disponibilité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.horairesDisponibilite')}</Text>
                         </View>
 
                         {/* Horaires */}
                         <SelectModalitySelector
-                            label="Horaires d'ouverture"
+                            label={t('productManagerMobile.horairesD')}ouverture"
                             value={newProduct.horairesGarage || ''}
                             productType="mecanicien"
                             fieldName="horaires"
@@ -6581,18 +6593,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Délais */}
                         <SelectModalitySelector
-                            label="Délais d'intervention"
+                            label={t('productManagerMobile.delaisD')}intervention"
                             value={newProduct.delaisIntervention || ''}
                             productType="mecanicien"
                             fieldName="delais"
                             onSelect={(value) => setNewProduct({ ...newProduct, delaisIntervention: value })}
                             required
-                            placeholder="Ex: Intervention immédiate..."
+                            placeholder={t('productManagerMobile.exInterventionImmediate')}
                         />
 
                         {/* Urgence */}
                         <SelectModalitySelector
-                            label="Dépannage d'urgence"
+                            label={t('productManagerMobile.depannageD')}urgence"
                             value={newProduct.urgenceMeca || ''}
                             productType="mecanicien"
                             fieldName="urgence"
@@ -6603,13 +6615,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 5: Localisation intelligente - Zone d'intervention */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.info} />
                             <Text style={styles.hintText}>
-                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
                             </Text>
                         </View>
 
@@ -6620,13 +6632,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="mecanicien"
                             fieldName="zones_intervention"
                             onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionMeca: values })}
-                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeToutLe')}
                             maxSelections={15}
                         />
 
                         {/* Langues */}
                         <ProductFieldSelector
-                            label="Langues parlées"
+                            label={t('productManagerMobile.languesParlees')}
                             productType="mecanicien"
                             fieldName="langues"
                             selectedValues={newProduct.languesMeca || []}
@@ -6637,12 +6649,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 6: Modes de paiement & Options */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="credit-card" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Paiement & Options</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.paiementOptions')}/Text>
                         </View>
 
                         {/* Modes de paiement */}
                         <ProductFieldSelector
-                            label="Modes de paiement acceptés"
+                            label={t('productManagerMobile.modesDePaiementAcceptes')}
                             productType="mecanicien"
                             fieldName="modes_paiement"
                             selectedValues={newProduct.modesPaiement || []}
@@ -6653,7 +6665,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Tarif horaire (optionnel) */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Tarif horaire (optionnel)</Text>
-                            <Text style={styles.fieldHint}>💡 Tarif indicatif pour donner un ordre d'idée aux clients</Text>
+                            <Text style={styles.fieldHint}>{t('productManagerMobile.tarifIndicatifPourDonnerUn')}</Text>
                             <NativeInput
                                 placeholder="Ex: 5000"
                                 value={typeof newProduct.tarifHoraireMeca === 'number' ? String(newProduct.tarifHoraireMeca) : (newProduct.tarifHoraireMeca || '')}
@@ -6682,7 +6694,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.garantieReparations && styles.checkboxChecked]}>
                                     {newProduct.garantieReparations && <SafeIcon name="check" size={14} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>Garantie sur réparations</Text>
+                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.garantieSurReparations')}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -6692,7 +6704,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.vehiculeCourtoisie && styles.checkboxChecked]}>
                                     {newProduct.vehiculeCourtoisie && <SafeIcon name="check" size={14} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>Véhicule de courtoisie disponible</Text>
+                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.vehiculeDeCourtoisieDisponible')}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -6702,14 +6714,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.enlevementVehicule && styles.checkboxChecked]}>
                                     {newProduct.enlevementVehicule && <SafeIcon name="check" size={14} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>Enlèvement véhicule en panne</Text>
+                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.enlevementVehiculeEnPanne')}</Text>
                             </TouchableOpacity>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez des photos de votre atelier, équipements et exemples de réparations pour inspirer confiance
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.ajoutezDesPhotosDeVotreAtelier')}
                             </Text>
                         </View>
                     </>
@@ -6720,10 +6732,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <>
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="navigation" size={20} color="#F59E0B" />
-                            <Text style={styles.sectionTitle}>Véhicule et Zone de Service</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.vehiculeEtZoneDeService')}</Text>
                         </View>
                         <SelectModalitySelector
-                            label="Type de véhicule *"
+                            label={t('productManagerMobile.typeDeVehicule')}
                             value={newProduct.typeVehiculeTransport || ''}
                             productType="transport_intra_urbain"
                             fieldName="types_vehicules"
@@ -6732,7 +6744,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             placeholder="Ex: Moto-taxi, Berline..."
                         />
                         <LocationSelector
-                            label="Ville de service"
+                            label={t('productManagerMobile.villeDeService')}
                             value={newProduct.villeService || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, villeService: value, quartierService: '' })}
                             scope="city"
@@ -6741,7 +6753,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
                         {newProduct.villeService && (
                             <LocationSelector
-                                label="Quartier principal"
+                                label={t('productManagerMobile.quartierPrincipal')}
                                 value={newProduct.quartierService || ''}
                                 onSelect={(value) => setNewProduct({ ...newProduct, quartierService: value })}
                                 scope="point"
@@ -6750,18 +6762,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             />
                         )}
                         <SelectModalitySelector
-                            label="État du véhicule"
+                            label={t('productManagerMobile.etatDuVehicule')}
                             value={newProduct.etatVehicule || ''}
                             productType="transport_intra_urbain"
                             fieldName="etat_vehicule"
                             onSelect={(value) => setNewProduct({ ...newProduct, etatVehicule: value })}
-                            placeholder="Ex: Récent, Bon état..."
+                            placeholder={t('productManagerMobile.exRecentBonEtat')}
                         />
 
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Description du service <Text style={styles.required}>*</Text></Text>
                             <NativeInput
-                                placeholder="Décrivez votre service de transport (confort, ponctualité, zones couvertes...)"
+                                placeholder={t('productManagerMobile.decrivezVotreServiceDeTransport')}
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
@@ -6772,31 +6784,31 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Mettez en avant vos points forts : ponctualité, confort du véhicule, connaissance de la ville, langues parlées...
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.mettezEnAvantVosPointsForts')}
                             </Text>
                         </View>
 
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="briefcase" size={20} color="#F59E0B" />
-                            <Text style={styles.sectionTitle}>Services et Disponibilité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesEtDisponibilite')}</Text>
                         </View>
                         <SelectModalitySelector
-                            label="Catégorie de service *"
+                            label={t('productManagerMobile.categorieDeService')}
                             value={newProduct.categorieService || ''}
                             productType="transport_intra_urbain"
                             fieldName="categories_service"
                             onSelect={(value) => setNewProduct({ ...newProduct, categorieService: value })}
                             required
-                            placeholder="Ex: Course simple, À la journée..."
+                            placeholder={t('productManagerMobile.exCourseSimpleALa')}
                         />
                         <SelectModalitySelector
-                            label="Disponibilité *"
+                            label={t('productManagerMobile.disponibilite')}
                             value={newProduct.disponibilite || ''}
                             productType="transport_intra_urbain"
                             fieldName="disponibilite"
                             onSelect={(value) => setNewProduct({ ...newProduct, disponibilite: value })}
                             required
-                            placeholder="Ex: 24h/24, Jour uniquement..."
+                            placeholder={t('productManagerMobile.ex24h24JourUniquement')}
                         />
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Tarif de base indicatif (FCFA)</Text>
@@ -6813,15 +6825,15 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="star" size={20} color="#F59E0B" />
-                            <Text style={styles.sectionTitle}>Options de Confort</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.optionsDeConfort')}/Text>
                         </View>
                         <MultiSelectModalitySelector
-                            label="Options de confort"
+                            label={t('productManagerMobile.optionsDeConfort')}
                             values={newProduct.optionsConfort || []}
                             productType="transport_intra_urbain"
                             fieldName="options_confort"
                             onSelect={(values) => setNewProduct({ ...newProduct, optionsConfort: values })}
-                            placeholder="Sélectionnez les options disponibles"
+                            placeholder={t('productManagerMobile.selectionnezLesOptionsDisponibles')}
                         />
                         <MultiSelectModalitySelector
                             label="Modes de paiement *"
@@ -6830,14 +6842,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             fieldName="modes_paiement"
                             onSelect={(values) => setNewProduct({ ...newProduct, modePaiement: values })}
                             required
-                            placeholder="Sélectionnez les modes de paiement acceptés"
+                            placeholder={t('productManagerMobile.selectionnezLesModesDePaiement')}
                         />
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="globe" size={20} color="#F59E0B" />
-                            <Text style={styles.sectionTitle}>Langues et Zone d'intervention</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.languesEtZoneDintervention')}/Text>
                         </View>
                         <MultiSelectModalitySelector
-                            label="Langues parlées"
+                            label={t('productManagerMobile.languesParlees')}
                             values={newProduct.languesChauffeur || []}
                             productType="transport_intra_urbain"
                             fieldName="langues_chauffeur"
@@ -6845,35 +6857,35 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             placeholder="Langues que vous parlez"
                         />
                         <SelectModalitySelector
-                            label="Zone d'intervention étendue"
+                            label={t('productManagerMobile.zoneD')}intervention étendue"
                             value={newProduct.zoneIntervention || ''}
                             productType="transport_intra_urbain"
                             fieldName="zones_intervention"
                             onSelect={(value) => setNewProduct({ ...newProduct, zoneIntervention: value })}
-                            placeholder="Zone géographique couverte"
+                            placeholder={t('productManagerMobile.zoneGeographiqueCouverte')}
                         />
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="check-circle" size={20} color="#10B981" />
-                            <Text style={styles.sectionTitle}>Services Additionnels Innovants</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesAdditionnelsInnovants')}/Text>
                         </View>
                         <View style={styles.checkboxGroup}>
                             <TouchableOpacity style={styles.checkboxRow} onPress={() => setNewProduct({ ...newProduct, gpsTempsReel: !newProduct.gpsTempsReel })}>
                                 <View style={[styles.checkbox, newProduct.gpsTempsReel && styles.checkboxChecked]}>
                                     {newProduct.gpsTempsReel && <SafeIcon name="check" size={14} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>📍 GPS partagé en temps réel</Text>
+                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.gpsPartageEnTempsReel')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.checkboxRow} onPress={() => setNewProduct({ ...newProduct, chatInstantane: !newProduct.chatInstantane })}>
                                 <View style={[styles.checkbox, newProduct.chatInstantane && styles.checkboxChecked]}>
                                     {newProduct.chatInstantane && <SafeIcon name="check" size={14} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>💬 Chat instantané (WebSocket)</Text>
+                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.chatInstantaneWebsocket')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.checkboxRow} onPress={() => setNewProduct({ ...newProduct, appelVideoDisponible: !newProduct.appelVideoDisponible })}>
                                 <View style={[styles.checkbox, newProduct.appelVideoDisponible && styles.checkboxChecked]}>
                                     {newProduct.appelVideoDisponible && <SafeIcon name="check" size={14} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>📞 Appel vidéo (WebRTC)</Text>
+                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.appelVideoWebrtc')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.checkboxRow} onPress={() => setNewProduct({ ...newProduct, calculDistanceGoogleMaps: !newProduct.calculDistanceGoogleMaps })}>
                                 <View style={[styles.checkbox, newProduct.calculDistanceGoogleMaps && styles.checkboxChecked]}>
@@ -6885,25 +6897,25 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.estimationRoutesNonGoudronnees && styles.checkboxChecked]}>
                                     {newProduct.estimationRoutesNonGoudronnees && <SafeIcon name="check" size={14} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>🛣️ Estimation routes non goudronnées</Text>
+                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.estimationRoutesNonGoudronnees')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.checkboxRow} onPress={() => setNewProduct({ ...newProduct, negociationPrixDirect: !newProduct.negociationPrixDirect })}>
                                 <View style={[styles.checkbox, newProduct.negociationPrixDirect && styles.checkboxChecked]}>
                                     {newProduct.negociationPrixDirect && <SafeIcon name="check" size={14} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>💰 Négociation prix en direct</Text>
+                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.negociationPrixEnDirect')}</Text>
                             </TouchableOpacity>
                         </View>
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color="#F59E0B" />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez des photos de votre véhicule. Le système calculera automatiquement la distance via Google Maps.
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.ajoutezDesPhotosDeVotreVehicule')}
                             </Text>
                         </View>
                         <View style={[styles.hintBox, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
                             <SafeIcon name="alert-circle" size={16} color="#F59E0B" />
                             <Text style={styles.hintText}>
-                                <Text style={styles.hintBold}>Différence avec Covoiturage :</Text> Transport intra-urbain = courses courtes au sein d'une même ville avec négociation de prix.
+                                <Text style={styles.hintBold}>{t('productManagerMobile.differenceAvecCovoiturage')}</Text> Transport intra-urbain = courses courtes au sein d'une même ville avec négociation de prix.
                             </Text>
                         </View>
                     </>
@@ -6936,7 +6948,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <>
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                🚌 <Text style={styles.hintBold}>Système Pro de Réservation:</Text> Configurez votre bus, générez le plan des sièges et gérez les réservations en temps réel.
+                                🚌 <Text style={styles.hintBold}>{t('productManagerMobile.systemeProDeReservation')}</Text> Configurez votre bus, générez le plan des sièges et gérez les réservations en temps réel.
                             </Text>
                         </View>
 
@@ -6944,10 +6956,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SmartModalityInput
-                                    label="Nom de l'agence"
+                                    label={t('productManagerMobile.nomDeL')}agence"
                                     value={newProduct.compagnieTransport || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, compagnieTransport: text })}
-                                    placeholder="Ex: Alliance Voyage"
+                                    placeholder={t('productManagerMobile.exAllianceVoyage')}
                                     modalityType="agency"
                                     fieldKey="agency_name"
                                     required
@@ -6955,7 +6967,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type véhicule"
+                                    label={t('productManagerMobile.typeVehicule')}
                                     fieldName="vehicules"
                                     productType="ticket_voyage"
                                     value={newProduct.typeVehiculeTransport || ''}
@@ -6974,7 +6986,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                             <View style={styles.fieldRow}>
                                 <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                    <Text style={styles.fieldLabel}>Rangées <Text style={styles.required}>*</Text></Text>
+                                    <Text style={styles.fieldLabel}>{t('productManagerMobile.rangees')}<Text style={styles.required}>*</Text></Text>
                                     <NativeInput
                                         placeholder="12"
                                         value={busConfig.rows?.toString() || ''}
@@ -6991,7 +7003,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     />
                                 </View>
                                 <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                    <Text style={styles.fieldLabel}>Sièges/rangée <Text style={styles.required}>*</Text></Text>
+                                    <Text style={styles.fieldLabel}>{t('productManagerMobile.siegesrangee')}<Text style={styles.required}>*</Text></Text>
                                     <NativeInput
                                         placeholder="4"
                                         value={busConfig.seatsPerRow?.toString() || ''}
@@ -7011,7 +7023,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                             {/* Configuration première rangée */}
                             <View style={styles.fieldContainer}>
-                                <Text style={styles.fieldLabel}>1ère rangée (Chauffeur + passagers) <Text style={styles.required}>*</Text></Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.1ereRangeeChauffeurPassagers')}<Text style={styles.required}>*</Text></Text>
                                 <View style={styles.busFirstRowOptions}>
                                     <TouchableOpacity
                                         style={[
@@ -7068,7 +7080,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                             {/* Option disponibilité */}
                             <View style={styles.fieldContainer}>
-                                <Text style={styles.fieldLabel}>Disponibilité des places</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.disponibiliteDesPlaces')}</Text>
                                 <TouchableOpacity
                                     style={styles.availabilityToggle}
                                     onPress={() => {
@@ -7094,7 +7106,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     <Text style={styles.availabilityToggleText}>
                                         {busConfig.allSeatsAvailable
                                             ? '✅ Toutes les places disponibles'
-                                            : '⚠️ Sélection manuelle requise'}
+                                            : t('productManagerMobile.selectionManuelleRequise')}
                                     </Text>
                                 </TouchableOpacity>
                             </View>
@@ -7127,7 +7139,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             {/* Aperçu du plan de bus - ✅ TOUJOURS AFFICHER */}
                             {newProduct.seatMap && newProduct.seatMap.length > 0 ? (
                                 <View style={styles.busPreviewContainer}>
-                                    <Text style={styles.busPreviewTitle}>📋 Aperçu du Plan</Text>
+                                    <Text style={styles.busPreviewTitle}>{t('productManagerMobile.apercuDuPlan')}</Text>
                                     <View style={styles.busLayout}>
                                         <View style={styles.busFront}>
                                             <SafeIcon name="navigation" size={16} color="#FFFFFF" />
@@ -7191,7 +7203,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Devise pour tous les prix */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>💱 Devise <Text style={styles.required}>*</Text></Text>
-                            <Text style={styles.fieldHint}>Devise appliquée à tous les tarifs ci-dessous</Text>
+                            <Text style={styles.fieldHint}>{t('productManagerMobile.deviseAppliqueeATousLes')}</Text>
                             <View style={styles.deviseGridContainer}>
                                 {['XAF', 'EUR', 'USD'].map((devise) => (
                                     <TouchableOpacity
@@ -7316,7 +7328,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <LocationSelector
-                                    label="Ville de départ"
+                                    label={t('productManagerMobile.villeDeDepart')}
                                     value={newProduct.depart || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, depart: value })}
                                     scope="city"
@@ -7326,12 +7338,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <LocationSelector
-                                    label="Ville de destination"
+                                    label={t('productManagerMobile.villeDeDestination')}
                                     value={newProduct.destination || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, destination: value })}
                                     scope="city"
                                     required
-                                    placeholder="Ex: Yaoundé, Brazzaville, Lomé..."
+                                    placeholder={t('productManagerMobile.exYaoundeBrazzavilleLome')}
                                 />
                             </View>
                         </View>
@@ -7340,20 +7352,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <NativeDatePicker
-                                    label="Date de départ"
+                                    label={t('productManagerMobile.dateDeDepart')}
                                     value={newProduct.dateDepart || ''}
                                     onChange={(date) => setNewProduct({ ...newProduct, dateDepart: date })}
                                     required
-                                    placeholder="Sélectionnez la date"
+                                    placeholder={t('productManagerMobile.selectionnezLaDate')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <NativeTimePicker
-                                    label="Heure de départ"
+                                    label={t('productManagerMobile.heureDeDepart')}
                                     value={newProduct.heureDepart || ''}
                                     onChange={(time) => setNewProduct({ ...newProduct, heureDepart: time })}
                                     required
-                                    placeholder="Sélectionnez l'heure"
+                                    placeholder={t('productManagerMobile.selectionnezL')}heure"
                                 />
                             </View>
                         </View>
@@ -7373,12 +7385,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Services inclus */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="package" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services Inclus</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesInclus')}/Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Durée du trajet</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.dureeDuTrajet')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 4h30, 2h15..."
                                     value={newProduct.dureeTrajet || ''}
@@ -7388,7 +7400,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de bagage"
+                                    label={t('productManagerMobile.typeDeBagage')}
                                     value={newProduct.bagage || ''}
                                     productType="ticket_voyage"
                                     fieldName="bagages"
@@ -7400,7 +7412,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Services booléens (toggles) */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Services additionnels</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.servicesAdditionnels')}/Text>
                             <View style={styles.togglesContainer}>
                                 <TouchableOpacity
                                     style={[styles.toggleOption, newProduct.repas && styles.toggleOptionActive]}
@@ -7427,7 +7439,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Tarifs spéciaux */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="users" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Tarifs Spéciaux (Optionnel)</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.tarifsSpeciauxOptionnel')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -7442,7 +7454,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Prix bébé (0-2 ans)</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.prixBebe02Ans')}</Text>
                                 <NativeInput
                                     placeholder="0"
                                     value={typeof newProduct.prixBebe === 'number' ? String(newProduct.prixBebe) : (newProduct.prixBebe || '')}
@@ -7495,11 +7507,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.ticketInfoSection}>
                             <View style={styles.sectionHeaderWithIcon}>
                                 <SafeIcon name="file-text" size={20} color={modernColors.primary} />
-                                <Text style={styles.sectionTitleMedium}>Informations Ticket de Voyage</Text>
+                                <Text style={styles.sectionTitleMedium}>{t('productManagerMobile.informationsTicketDeVoyage')}/Text>
                             </View>
 
                             <View style={styles.fieldContainer}>
-                                <Text style={styles.fieldLabel}>Numéro/Code du bus <Text style={styles.required}>*</Text></Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.numerocodeDuBus')}<Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="Ex: BUS-237-DLA"
                                     value={newProduct.numeroBus || ''}
@@ -7509,7 +7521,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
 
                             <View style={styles.fieldContainer}>
-                                <Text style={styles.fieldLabel}>Logo de l'agence (optionnel)</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.logoDeLagenceOptionnel')}/Text>
                                 <TouchableOpacity
                                     style={styles.logoUploadButton}
                                     onPress={async () => {
@@ -7532,7 +7544,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     ) : (
                                         <View style={styles.logoUploadContent}>
                                             <SafeIcon name="upload" size={24} color={modernColors.primary} />
-                                            <Text style={styles.logoUploadText}>Ajouter logo agence</Text>
+                                            <Text style={styles.logoUploadText}>{t('productManagerMobile.ajouterLogoAgence')}</Text>
                                         </View>
                                     )}
                                 </TouchableOpacity>
@@ -7541,7 +7553,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <View style={styles.fieldContainer}>
                                 <Text style={styles.fieldLabel}>Conditions de voyage (optionnel)</Text>
                                 <NativeInput
-                                    placeholder="Ex: Bagages inclus 20kg max, Arrivée garantie, Remboursement si annulation 24h avant..."
+                                    placeholder={t('productManagerMobile.exBagagesInclus20kgMax')}
                                     value={newProduct.conditionsVoyage || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, conditionsVoyage: text })}
                                     style={[styles.fieldInput, styles.textareaInput]}
@@ -7553,14 +7565,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <View style={styles.infoCard}>
                                 <SafeIcon name="info" size={16} color={modernColors.info} />
                                 <Text style={styles.infoCardText}>
-                                    💰 <Text style={{ fontWeight: '700' }}>Nouveau système:</Text> Le client paie le montant complet du ticket dès la réservation (plus de caution). L'argent est versé à votre structure automatiquement.
+                                    💰 <Text style={{ fontWeight: '700' }}>{t('productManagerMobile.nouveauSysteme')}</Text> Le client paie le montant complet du ticket dès la réservation (plus de caution). L'argent est versé à votre structure automatiquement.
                                 </Text>
                             </View>
                         </View>
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                🎫 <Text style={styles.hintBold}>Système Pro:</Text> Paiement complet immédiat → Ticket PDF instantané → Places multiples possibles (famille/amis) → QR Code de validation.
+                                🎫 <Text style={styles.hintBold}>{t('productManagerMobile.systemePro')}</Text> Paiement complet immédiat → Ticket PDF instantané → Places multiples possibles (famille/amis) → QR Code de validation.
                             </Text>
                         </View>
                     </>
@@ -7572,11 +7584,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Identité de l'Établissement */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="home" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Identité de l'Établissement</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDeLetablissement')}</Text>
                         </View>
 
                         <HotelStructureSelector
-                            label="Nom de l'établissement"
+                            label={t('productManagerMobile.nomDeL')}établissement"
                             value={newProduct.nomEtablissementHotel || newProduct.name || ''}
                             type="hotel"
                             onSelect={(value) => setNewProduct({
@@ -7587,19 +7599,19 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             required
                             useLocation={true}
                             radius={5000}
-                            placeholder="Ex: Hôtel Sawa, Hilton Yaoundé..."
+                            placeholder={t('productManagerMobile.exHotelSawaHiltonYaounde')}
                         />
 
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type d'hébergement"
+                                    label={t('productManagerMobile.typeD')}hébergement"
                                     value={newProduct.typeHebergement || ''}
                                     productType="hotellerie"
                                     fieldName="types"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeHebergement: value })}
                                     required
-                                    placeholder="Ex: Hôtel, Auberge..."
+                                    placeholder={t('productManagerMobile.exHotelAuberge')}
                                 />
                             </View>
                             <View style={[{ flex: 1 }]}>
@@ -7610,7 +7622,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     fieldName="categories"
                                     onSelect={(value) => setNewProduct({ ...newProduct, categorieHotel: value })}
                                     required
-                                    placeholder="Ex: 3 étoiles, 4 étoiles..."
+                                    placeholder={t('productManagerMobile.ex3Etoiles4Etoiles')}
                                 />
                             </View>
                         </View>
@@ -7618,23 +7630,23 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Localisation */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Localisation</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <LocationSelector
-                                    label="Ville"
+                                    label={t('productManagerMobile.ville')}
                                     value={newProduct.villeHotel || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, villeHotel: value })}
                                     scope="city"
                                     required
-                                    placeholder="Ex: Douala, Yaoundé, Abidjan..."
+                                    placeholder={t('productManagerMobile.exDoualaYaoundeAbidjan')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <LocationSelector
-                                    label="Adresse *"
+                                    label={t('productManagerMobile.adresse')}
                                     value={newProduct.adresseHotel ? (typeof newProduct.adresseHotel === 'string'
                                         ? { raw: newProduct.adresseHotel, place_name: newProduct.adresseHotel }
                                         : newProduct.adresseHotel) : ''}
@@ -7664,8 +7676,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                         images: [...(prev.images || []), ...imgs],
                                                     }));
                                                     Alert.alert(
-                                                        '📸 Photos Google ajoutées',
-                                                        `${imgs.length} photo(s) récupérée(s) depuis Google Places. Vous pouvez les supprimer ou en ajouter d'autres.`
+                                                        t('productManagerMobile.photosGoogleAjoutees'),
+                                                        t('productManagerMobile.photosRecupereesDepuisGooglePlacesVous', { imgs_length: imgs.length })
                                                     );
                                                 }
                                             };
@@ -7674,7 +7686,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             if (existingCount > 0) {
                                                 Alert.alert(
                                                     'Importer les photos Google ?',
-                                                    `Vous avez déjà ${existingCount} image(s). Voulez-vous ajouter aussi les photos trouvées sur Google Places ?`,
+                                                    t('productManagerMobile.vousAvezDejaImagesVoulezvousAjouter', { existingCount: existingCount }),
                                                     [
                                                         { text: t('common.no'), style: 'cancel' },
                                                         { text: t('common.yes'), onPress: () => runImport() },
@@ -7689,13 +7701,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     cityContext={(newProduct.villeHotel && typeof newProduct.villeHotel === 'object')
                                         ? (newProduct.villeHotel.raw || newProduct.villeHotel.place_name || '')
                                         : (newProduct.villeHotel || '')}
-                                    placeholder="Ex: Hôtel Sawa, Avenue Kennedy..."
+                                    placeholder={t('productManagerMobile.exHotelSawaAvenueKennedy')}
                                 />
                             </View>
                         </View>
 
                         <LocationSelector
-                            label="Zone/Quartier"
+                            label={t('productManagerMobile.zonequartier')}
                             value={newProduct.zoneHotel || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, zoneHotel: value })}
                             scope="point"
@@ -7705,7 +7717,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* GPS de l'hôtel */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>📍 Localisation GPS</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.localisationGps')}/Text>
                             <TouchableOpacity
                                 style={styles.gpsButton}
                                 onPress={() => setShowGPSModal(true)}
@@ -7734,7 +7746,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Devise globale pour toutes les chambres */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>💱 Devise globale <Text style={styles.required}>*</Text></Text>
-                            <Text style={styles.fieldHint}>Cette devise s'appliquera à tous les prix des chambres ci-dessous</Text>
+                            <Text style={styles.fieldHint}>{t('productManagerMobile.cetteDeviseSappliqueraATous')}</Text>
                             <View style={styles.deviseGridContainer}>
                                 {devises.map((devise) => (
                                     <TouchableOpacity
@@ -7783,11 +7795,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 4: Équipements & Services */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="briefcase" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Équipements & Services</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.equipementsServices')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Équipements"
+                            label={t('productManagerMobile.equipements')}
                             values={newProduct.equipementsHotel || []}
                             productType="hotellerie"
                             fieldName="equipements"
@@ -7807,12 +7819,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Langues parlées"
+                            label={t('productManagerMobile.languesParlees')}
                             values={newProduct.languesHotel || []}
                             productType="hotellerie"
                             fieldName="langues"
                             onSelect={(values) => setNewProduct({ ...newProduct, languesHotel: values })}
-                            placeholder="Ex: Français, Anglais..."
+                            placeholder={t('productManagerMobile.exFrancaisAnglais')}
                             maxSelections={10}
                         />
 
@@ -7824,7 +7836,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Prix/nuit (à partir de) <Text style={styles.required}>*</Text></Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.prixnuitAPartirDe')}<Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="Ex: 35000"
                                     value={newProduct.prixParNuit || ''}
@@ -7835,12 +7847,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de pension"
+                                    label={t('productManagerMobile.typeDePension')}
                                     value={newProduct.pensionHotel || ''}
                                     productType="hotellerie"
                                     fieldName="pensions"
                                     onSelect={(value) => setNewProduct({ ...newProduct, pensionHotel: value })}
-                                    placeholder="Ex: Petit-déjeuner inclus..."
+                                    placeholder={t('productManagerMobile.exPetitdejeunerInclus')}
                                 />
                             </View>
                         </View>
@@ -7851,20 +7863,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="hotellerie"
                             fieldName="politiques"
                             onSelect={(values) => setNewProduct({ ...newProduct, politiquesHotel: values })}
-                            placeholder="Ex: Annulation gratuite, Animaux acceptés..."
+                            placeholder={t('productManagerMobile.exAnnulationGratuiteAnimauxAcceptes')}
                             maxSelections={10}
                         />
 
                         {/* Section 6: Description */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="file-text" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Description de l'établissement</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.descriptionDeLetablissement')}</Text>
                         </View>
 
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Description <Text style={styles.required}>*</Text></Text>
                             <NativeInput
-                                placeholder="Décrivez votre établissement, ses atouts, son ambiance, son environnement..."
+                                placeholder={t('productManagerMobile.decrivezVotreEtablissementSesAtouts')}
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
@@ -7888,14 +7900,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Itinéraire */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Itinéraire du Trajet</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.itineraireDuTrajet')}</Text>
                         </View>
 
                         {/* Villes - ✅ LocationSelector intelligent (Google Maps API + fallback Afrique francophone) */}
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <LocationSelector
-                                    label="Ville de départ"
+                                    label={t('productManagerMobile.villeDeDepart')}
                                     value={newProduct.villeDepart || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, villeDepart: value })}
                                     scope="city"
@@ -7905,12 +7917,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <LocationSelector
-                                    label="Ville d'arrivée"
+                                    label={t('productManagerMobile.villeD')}arrivée"
                                     value={newProduct.villeArrivee || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, villeArrivee: value })}
                                     scope="city"
                                     required
-                                    placeholder="Ex: Yaoundé, Abidjan..."
+                                    placeholder={t('productManagerMobile.exYaoundeAbidjan')}
                                 />
                             </View>
                         </View>
@@ -7919,17 +7931,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <LocationSelector
-                                    label="Point de départ"
+                                    label={t('productManagerMobile.pointDeDepart')}
                                     value={newProduct.pointDepart || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, pointDepart: value })}
                                     scope="point"
                                     cityContext={newProduct.villeDepart}
-                                    placeholder="Ex: Gare routière, Akwa..."
+                                    placeholder={t('productManagerMobile.exGareRoutiereAkwa')}
                                 />
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <LocationSelector
-                                    label="Point d'arrivée"
+                                    label={t('productManagerMobile.pointD')}arrivée"
                                     value={newProduct.pointArrivee || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, pointArrivee: value })}
                                     scope="point"
@@ -7948,26 +7960,26 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <NativeDatePicker
-                                    label="Date du trajet"
+                                    label={t('productManagerMobile.dateDuTrajet')}
                                     value={newProduct.dateTrajet || ''}
                                     onChange={(date) => setNewProduct({ ...newProduct, dateTrajet: date })}
                                     required
-                                    placeholder="Sélectionner la date"
+                                    placeholder={t('productManagerMobile.selectionnerLaDate')}
                                 />
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <NativeTimePicker
-                                    label="Heure de départ"
+                                    label={t('productManagerMobile.heureDeDepart')}
                                     value={newProduct.heureTrajet || ''}
                                     onChange={(time) => setNewProduct({ ...newProduct, heureTrajet: time })}
                                     required
-                                    placeholder="Sélectionner l'heure"
+                                    placeholder={t('productManagerMobile.selectionnerL')}heure"
                                 />
                             </View>
                         </View>
 
                         <SelectModalitySelector
-                            label="Fréquence du trajet"
+                            label={t('productManagerMobile.frequenceDuTrajet')}
                             value={newProduct.frequenceTrajet || ''}
                             productType="covoiturage"
                             fieldName="frequences"
@@ -7978,11 +7990,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Véhicule et Places */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="car" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Véhicule et Disponibilité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.vehiculeEtDisponibilite')}</Text>
                         </View>
 
                         <SelectModalitySelector
-                            label="Type de véhicule"
+                            label={t('productManagerMobile.typeDeVehicule')}
                             value={newProduct.typeVehiculeCovoiturage || ''}
                             productType="covoiturage"
                             fieldName="types_vehicule"
@@ -8002,7 +8014,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Prix par place</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.prixParPlace')}/Text>
                                 <NativeInput
                                     placeholder="Ex: 5000"
                                     value={newProduct.prixParPlace || ''}
@@ -8016,11 +8028,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 4: Préférences */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Préférences de Trajet</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.preferencesDeTrajet')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Préférences"
+                            label={t('productManagerMobile.preferences')}
                             values={newProduct.preferencesTrajet || []}
                             productType="covoiturage"
                             fieldName="preferences"
@@ -8043,13 +8055,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Informations de base */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shirt" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations de base</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeBase')}/Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de vêtement"
+                                    label={t('productManagerMobile.typeDeVetement')}
                                     value={newProduct.typeVetement || ''}
                                     productType="vetement"
                                     fieldName="types"
@@ -8072,13 +8084,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Caractéristiques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="info" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Matière"
+                                    label={t('productManagerMobile.matiere')}
                                     value={newProduct.matiereVetement || ''}
                                     productType="vetement"
                                     fieldName="matieres"
@@ -8116,7 +8128,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="vetement"
                                     fieldName="saisons"
                                     onSelect={(value) => setNewProduct({ ...newProduct, saisonVetement: value })}
-                                    placeholder="Ex: Été, Toutes saisons..."
+                                    placeholder={t('productManagerMobile.exEteToutesSaisons')}
                                 />
                             </View>
                         </View>
@@ -8129,7 +8141,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="vetement"
                                     fieldName="motifs"
                                     onSelect={(value) => setNewProduct({ ...newProduct, motifVetement: value })}
-                                    placeholder="Ex: Uni, Wax, Rayé..."
+                                    placeholder={t('productManagerMobile.exUniWaxRaye')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -8147,12 +8159,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     value={newProduct.etatVetement || ''}
                                     productType="vetement"
                                     fieldName="etats"
                                     onSelect={(value) => setNewProduct({ ...newProduct, etatVetement: value })}
-                                    placeholder="Ex: Neuf avec étiquette..."
+                                    placeholder={t('productManagerMobile.exNeufAvecEtiquette')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -8185,14 +8197,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Variantes :</Text> Ajoutez différentes tailles et couleurs avec leurs prix et photos spécifiques (ex: T-shirt M Blanc, L Noir, XL Rouge).
+                                💡 <Text style={styles.hintBold}>Variantes :</Text>{t('productManagerMobile.ajoutezDifferentesTaillesEtCouleursAvec')}
                             </Text>
                         </View>
 
                         {/* Devise globale pour toutes les variantes */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>💱 Devise globale <Text style={styles.required}>*</Text></Text>
-                            <Text style={styles.fieldHint}>Cette devise s'appliquera à tous les prix des variantes ci-dessous</Text>
+                            <Text style={styles.fieldHint}>{t('productManagerMobile.cetteDeviseSappliqueraATous')}</Text>
                             <View style={styles.deviseGridContainer}>
                                 {['XAF', 'EUR', 'USD', 'GBP'].map((devise) => (
                                     <TouchableOpacity
@@ -8235,7 +8247,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                📸 <Text style={styles.hintBold}>Photos :</Text> Ajoutez 3-5 photos par variante montrant la couleur, les détails et le rendu porté.
+                                📸 <Text style={styles.hintBold}>{t('productManagerMobile.photos')}/Text> Ajoutez 3-5 photos par variante montrant la couleur, les détails et le rendu porté.
                             </Text>
                         </View>
                     </>
@@ -8247,11 +8259,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Type d'Article */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="star" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Type d'Article</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeDarticle')}/Text>
                         </View>
 
                         <SelectModalitySelector
-                            label="Nom de l'article"
+                            label={t('productManagerMobile.nomDeL')}article"
                             value={newProduct.nomArticleDecoration || newProduct.name || ''}
                             productType="decoration"
                             fieldName="noms_articles"
@@ -8261,16 +8273,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 name: value // Synchroniser avec le nom principal
                             })}
                             required
-                            placeholder="Ex: Vase décoratif, Coussin..."
+                            placeholder={t('productManagerMobile.exVaseDecoratifCoussin')}
                         />
 
                         <SelectModalitySelector
-                            label="Catégorie"
+                            label={t('productManagerMobile.categorie')}
                             value={newProduct.categorieDecoration || ''}
                             productType="decoration"
                             fieldName="categories"
                             onSelect={(value) => setNewProduct({ ...newProduct, categorieDecoration: value })}
-                            placeholder="Ex: Décoration murale, Luminaires..."
+                            placeholder={t('productManagerMobile.exDecorationMuraleLuminaires')}
                         />
 
                         <View style={styles.fieldRow}>
@@ -8286,7 +8298,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Pièce"
+                                    label={t('productManagerMobile.piece')}
                                     value={newProduct.pieceDecoration || ''}
                                     productType="decoration"
                                     fieldName="pieces"
@@ -8299,18 +8311,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Caractéristiques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="info" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Matière"
+                                    label={t('productManagerMobile.matiere')}
                                     value={newProduct.matiereDecoration || ''}
                                     productType="decoration"
                                     fieldName="matieres"
                                     onSelect={(value) => setNewProduct({ ...newProduct, matiereDecoration: value })}
-                                    placeholder="Ex: Bois, Métal..."
+                                    placeholder={t('productManagerMobile.exBoisMetal')}
                                 />
                             </View>
                             <View style={[{ flex: 1 }]}>
@@ -8320,7 +8332,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="decoration"
                                     fieldName="couleurs"
                                     onSelect={(value) => setNewProduct({ ...newProduct, couleurDecoration: value })}
-                                    placeholder="Ex: Blanc, Doré..."
+                                    placeholder={t('productManagerMobile.exBlancDore')}
                                 />
                             </View>
                         </View>
@@ -8338,7 +8350,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     value={newProduct.etatDecoration || ''}
                                     productType="decoration"
                                     fieldName="etat"
@@ -8349,7 +8361,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <SelectModalitySelector
-                            label="Marque / Origine"
+                            label={t('productManagerMobile.marqueOrigine')}
                             value={newProduct.marqueDecoration || ''}
                             productType="decoration"
                             fieldName="marques"
@@ -8372,11 +8384,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Identité de l'Établissement */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="activity" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Identité de l'Établissement</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDeLetablissement')}</Text>
                         </View>
 
                         <HealthStructureSelector
-                            label="Nom de l'établissement"
+                            label={t('productManagerMobile.nomDeL')}établissement"
                             value={newProduct.nomEtablissement || newProduct.nom || ''}
                             type="hospital"
                             onSelect={(value) => setNewProduct({
@@ -8387,27 +8399,27 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             required
                             useLocation={true}
                             radius={5000}
-                            placeholder="Ex: Hôpital Central, Clinique..."
+                            placeholder={t('productManagerMobile.exHopitalCentralClinique')}
                         />
 
                         <SelectModalitySelector
-                            label="Type d'établissement"
+                            label={t('productManagerMobile.typeD')}établissement"
                             value={newProduct.typeEtablissement || ''}
                             productType="hopital_clinique"
                             fieldName="types_etablissement"
                             onSelect={(value) => setNewProduct({ ...newProduct, typeEtablissement: value })}
                             required
-                            placeholder="Ex: Hôpital public, Clinique..."
+                            placeholder={t('productManagerMobile.exHopitalPublicClinique')}
                         />
 
                         {/* Section 2: Prestations Médicales */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="heart" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Prestations Médicales</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.prestationsMedicales')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Prestations générales"
+                            label={t('productManagerMobile.prestationsGenerales')}
                             values={newProduct.prestationsGenerales || []}
                             productType="hopital_clinique"
                             fieldName="prestations_generales"
@@ -8416,12 +8428,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Consultations spécialisées"
+                            label={t('productManagerMobile.consultationsSpecialisees')}
                             values={newProduct.consultationsSpecialisees || []}
                             productType="hopital_clinique"
                             fieldName="consultations_specialisees"
                             onSelect={(values) => setNewProduct({ ...newProduct, consultationsSpecialisees: values })}
-                            placeholder="Ex: Gynécologie, Cardiologie..."
+                            placeholder={t('productManagerMobile.exGynecologieCardiologie')}
                         />
 
                         {/* Section 3: Planning Hebdomadaire */}
@@ -8431,7 +8443,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Jours d'ouverture</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.joursDouverture')}/Text>
 
                             {/* ✅ NOUVEAU: Bouton "Tout sélectionner" */}
                             <TouchableOpacity
@@ -8451,7 +8463,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     color={newProduct.joursOuverture?.length === 7 ? modernColors.primary : modernColors.textSecondary}
                                 />
                                 <Text style={[styles.selectAllText, newProduct.joursOuverture?.length === 7 && styles.selectAllTextActive]}>
-                                    {newProduct.joursOuverture?.length === 7 ? 'Tout désélectionner' : 'Sélectionner tous les jours'}
+                                    {newProduct.joursOuverture?.length === 7 ? t('productManagerMobile.toutDeselectionner') : 'Sélectionner tous les jours'}
                                 </Text>
                             </TouchableOpacity>
 
@@ -8486,7 +8498,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <NativeTimePicker
-                                    label="Heure d'ouverture"
+                                    label={t('productManagerMobile.heureD')}ouverture"
                                     value={newProduct.heuresOuverture || ''}
                                     onChange={(time) => setNewProduct({ ...newProduct, heuresOuverture: time })}
                                     placeholder="Ex: 08:00"
@@ -8494,7 +8506,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <NativeTimePicker
-                                    label="Heure de fermeture"
+                                    label={t('productManagerMobile.heureDeFermeture')}
                                     value={newProduct.heuresFermeture || ''}
                                     onChange={(time) => setNewProduct({ ...newProduct, heuresFermeture: time })}
                                     placeholder="Ex: 18:00"
@@ -8505,11 +8517,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 4: Services et Équipements */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services et Équipements</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesEtEquipements')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Services annexes"
+                            label={t('productManagerMobile.servicesAnnexes')}
                             values={newProduct.servicesAnnexes || []}
                             productType="hopital_clinique"
                             fieldName="services_annexes"
@@ -8518,7 +8530,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Équipements disponibles"
+                            label={t('productManagerMobile.equipementsDisponibles')}
                             values={newProduct.equipementsHopital || []}
                             productType="hopital_clinique"
                             fieldName="equipements"
@@ -8529,7 +8541,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 5: Services Spéciaux */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="alert-circle" size={20} color={modernColors.error} />
-                            <Text style={styles.sectionTitle}>Services Spéciaux</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesSpeciaux')}</Text>
                         </View>
 
                         <TouchableOpacity
@@ -8548,7 +8560,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 Urgences 24h/24
                             </Text>
                         </TouchableOpacity>
-                        <Text style={styles.toggleHint}>✓ Cocher si l'établissement dispose d'un service d'urgences permanent</Text>
+                        <Text style={styles.toggleHint}>{t('productManagerMobile.cocherSiLetablissementDisposeDun')}</Text>
 
                         <TouchableOpacity
                             style={[styles.toggleOption, newProduct.banqueSang && styles.toggleOptionActive]}
@@ -8566,7 +8578,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 Banque de sang
                             </Text>
                         </TouchableOpacity>
-                        <Text style={styles.toggleHint}>✓ Cocher si l'établissement dispose d'une banque de sang</Text>
+                        <Text style={styles.toggleHint}>{t('productManagerMobile.cocherSiLetablissementDisposeDune')}</Text>
 
                         <TouchableOpacity
                             style={[styles.toggleOption, newProduct.rdvEnLigne && styles.toggleOptionActive]}
@@ -8589,7 +8601,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 Les numéros d'urgence peuvent être ajoutés dans la description ou le profil de l'établissement
+                                💡 Les numéros dt('productManagerMobile.urgencePeuventEtreAjoutesDansLa')établissement
                             </Text>
                         </View>
                     </>
@@ -8601,11 +8613,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Identité de la Pharmacie */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="heart" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Identité de la Pharmacie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDeLaPharmacie')}</Text>
                         </View>
 
                         <HealthStructureSelector
-                            label="Nom de la pharmacie"
+                            label={t('productManagerMobile.nomDeLaPharmacie')}
                             value={newProduct.nomPharmacie || newProduct.nom || ''}
                             type="pharmacy"
                             onSelect={(value) => setNewProduct({
@@ -8620,7 +8632,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <SelectModalitySelector
-                            label="Type de pharmacie"
+                            label={t('productManagerMobile.typeDePharmacie')}
                             value={newProduct.typePharmacie || ''}
                             productType="pharmacie"
                             fieldName="types_pharmacie"
@@ -8632,17 +8644,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <LocationSelector
-                                    label="Ville"
+                                    label={t('productManagerMobile.ville')}
                                     value={newProduct.villePharmacie || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, villePharmacie: value })}
                                     scope="city"
                                     required
-                                    placeholder="Ex: Douala, Yaoundé..."
+                                    placeholder={t('productManagerMobile.exDoualaYaounde')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <LocationSelector
-                                    label="Quartier"
+                                    label={t('productManagerMobile.quartier')}
                                     value={newProduct.quartierPharmacie || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, quartierPharmacie: value })}
                                     scope="point"
@@ -8655,12 +8667,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Contact */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="phone" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations de Contact</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeContact')}/Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Téléphone <Text style={styles.required}>*</Text></Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.telephone')}<Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="Ex: +237 6XX XX XX XX"
                                     value={newProduct.telephonePharmacie || ''}
@@ -8684,11 +8696,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Services */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="package" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services Proposés</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesProposes')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Services disponibles"
+                            label={t('productManagerMobile.servicesDisponibles')}
                             values={newProduct.servicesPharmacie || []}
                             productType="pharmacie"
                             fieldName="services_pharmacie"
@@ -8703,7 +8715,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Jours d'ouverture</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.joursDouverture')}/Text>
 
                             {/* Bouton "Tout sélectionner" */}
                             <TouchableOpacity
@@ -8723,7 +8735,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     color={newProduct.joursOuverturePharmacie?.length === 7 ? modernColors.primary : modernColors.textSecondary}
                                 />
                                 <Text style={[styles.selectAllText, newProduct.joursOuverturePharmacie?.length === 7 && styles.selectAllTextActive]}>
-                                    {newProduct.joursOuverturePharmacie?.length === 7 ? 'Tout désélectionner' : 'Sélectionner tous les jours'}
+                                    {newProduct.joursOuverturePharmacie?.length === 7 ? t('productManagerMobile.toutDeselectionner') : 'Sélectionner tous les jours'}
                                 </Text>
                             </TouchableOpacity>
 
@@ -8757,7 +8769,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <NativeTimePicker
-                                    label="Heure d'ouverture"
+                                    label={t('productManagerMobile.heureD')}ouverture"
                                     value={newProduct.heuresOuverture || ''}
                                     onChange={(time) => setNewProduct({ ...newProduct, heuresOuverture: time })}
                                     placeholder="Ex: 08:00"
@@ -8765,7 +8777,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <NativeTimePicker
-                                    label="Heure de fermeture"
+                                    label={t('productManagerMobile.heureDeFermeture')}
                                     value={newProduct.heuresFermeture || ''}
                                     onChange={(time) => setNewProduct({ ...newProduct, heuresFermeture: time })}
                                     placeholder="Ex: 20:00"
@@ -8788,11 +8800,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Identité du Laboratoire */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="activity" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Identité du Laboratoire</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDuLaboratoire')}</Text>
                         </View>
 
                         <HealthStructureSelector
-                            label="Nom du laboratoire"
+                            label={t('productManagerMobile.nomDuLaboratoire')}
                             value={newProduct.nomLaboratoire || newProduct.nom || ''}
                             type="health"
                             onSelect={(value) => setNewProduct({
@@ -8807,7 +8819,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <SelectModalitySelector
-                            label="Type de laboratoire"
+                            label={t('productManagerMobile.typeDeLaboratoire')}
                             value={newProduct.typeLaboratoire || ''}
                             productType="laboratoire"
                             fieldName="types_laboratoire"
@@ -8819,7 +8831,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Analyses Proposées */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="clipboard" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Analyses Proposées</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.analysesProposees')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
@@ -8828,7 +8840,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="laboratoire"
                             fieldName="analyses_proposees"
                             onSelect={(values) => setNewProduct({ ...newProduct, analysesProposees: values })}
-                            placeholder="Ex: NFS, Glycémie, Sérologie..."
+                            placeholder={t('productManagerMobile.exNfsGlycemieSerologie')}
                         />
 
                         {/* Section 3: Planning Hebdomadaire */}
@@ -8838,7 +8850,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Jours d'ouverture</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.joursDouverture')}/Text>
 
                             <TouchableOpacity
                                 style={styles.selectAllButton}
@@ -8857,7 +8869,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     color={newProduct.joursOuvertureLabo?.length === 7 ? modernColors.primary : modernColors.textSecondary}
                                 />
                                 <Text style={[styles.selectAllText, newProduct.joursOuvertureLabo?.length === 7 && styles.selectAllTextActive]}>
-                                    {newProduct.joursOuvertureLabo?.length === 7 ? 'Tout désélectionner' : 'Sélectionner tous les jours'}
+                                    {newProduct.joursOuvertureLabo?.length === 7 ? t('productManagerMobile.toutDeselectionner') : 'Sélectionner tous les jours'}
                                 </Text>
                             </TouchableOpacity>
 
@@ -8891,7 +8903,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <NativeTimePicker
-                                    label="Heure d'ouverture"
+                                    label={t('productManagerMobile.heureD')}ouverture"
                                     value={newProduct.heuresOuverture || ''}
                                     onChange={(time) => setNewProduct({ ...newProduct, heuresOuverture: time })}
                                     placeholder="Ex: 07:00"
@@ -8899,7 +8911,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <NativeTimePicker
-                                    label="Heure de fermeture"
+                                    label={t('productManagerMobile.heureDeFermeture')}
                                     value={newProduct.heuresFermeture || ''}
                                     onChange={(time) => setNewProduct({ ...newProduct, heuresFermeture: time })}
                                     placeholder="Ex: 18:00"
@@ -8922,11 +8934,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Identité de la chaussure */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shopping-bag" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Identité de la Chaussure</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDeLaChaussure')}</Text>
                         </View>
 
                         <SelectModalitySelector
-                            label="Nom de la chaussure"
+                            label={t('productManagerMobile.nomDeLaChaussure')}
                             value={newProduct.nomChaussure || newProduct.name || ''}
                             productType="chaussure"
                             fieldName="noms_chaussures"
@@ -8989,13 +9001,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Caractéristiques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Matière"
+                                    label={t('productManagerMobile.matiere')}
                                     value={newProduct.materiauChaussure || ''}
                                     productType="chaussure"
                                     fieldName="matieres"
@@ -9005,7 +9017,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     value={newProduct.etatChaussure || ''}
                                     productType="chaussure"
                                     fieldName="etat"
@@ -9091,11 +9103,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Identité du Produit */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="package" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Identité du Produit</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDuProduit')}</Text>
                         </View>
 
                         <SelectModalitySelector
-                            label="Nom du produit"
+                            label={t('productManagerMobile.nomDuProduit')}
                             value={newProduct.nomProduitElectro || newProduct.name || ''}
                             productType="electromenager"
                             fieldName="noms_produits"
@@ -9105,30 +9117,30 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 name: value // Synchronisation
                             })}
                             required
-                            placeholder="Ex: Réfrigérateur 2 portes, Lave-linge hublot..."
+                            placeholder={t('productManagerMobile.exRefrigerateur2PortesLavelinge')}
                         />
 
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Catégorie"
+                                    label={t('productManagerMobile.categorie')}
                                     value={newProduct.categorieElectro || ''}
                                     productType="electromenager"
                                     fieldName="categories"
                                     onSelect={(value) => setNewProduct({ ...newProduct, categorieElectro: value })}
                                     required
-                                    placeholder="Ex: Gros électroménager - Froid"
+                                    placeholder={t('productManagerMobile.exGrosElectromenagerFroid')}
                                 />
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type d'appareil"
+                                    label={t('productManagerMobile.typeD')}appareil"
                                     value={newProduct.typeElectro || ''}
                                     productType="electromenager"
                                     fieldName="types"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeElectro: value })}
                                     required
-                                    placeholder="Ex: Réfrigérateur"
+                                    placeholder={t('productManagerMobile.exRefrigerateur')}
                                 />
                             </View>
                         </View>
@@ -9150,7 +9162,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     value={newProduct.modeleElectro || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, modeleElectro: text })}
                                     placeholder="Ex: RT50K6000S8"
-                                    label="Modèle"
+                                    label={t('productManagerMobile.modele')}
                                     autoLoadLastUsed={true}
                                 />
                             </View>
@@ -9159,23 +9171,23 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: État et Garantie */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shield" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>État et Garantie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.etatEtGarantie')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     value={newProduct.etatElectro || ''}
                                     productType="electromenager"
                                     fieldName="etats"
                                     onSelect={(value) => setNewProduct({ ...newProduct, etatElectro: value })}
                                     required
-                                    placeholder="Ex: Neuf en boîte"
+                                    placeholder={t('productManagerMobile.exNeufEnBoite')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Année d'achat</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.anneeDachat')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 2022"
                                     value={newProduct.anneeAchat || ''}
@@ -9215,13 +9227,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Caractéristiques Techniques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="cpu" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques Techniques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiquesTechniques')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Classe énergétique"
+                                    label={t('productManagerMobile.classeEnergetique')}
                                     value={newProduct.consommationEnergetique || ''}
                                     productType="electromenager"
                                     fieldName="classes_energetiques"
@@ -9231,7 +9243,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Capacité"
+                                    label={t('productManagerMobile.capacite')}
                                     value={newProduct.capaciteElectro || ''}
                                     productType="electromenager"
                                     fieldName="capacites"
@@ -9266,11 +9278,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 4: Fonctionnalités */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Fonctionnalités</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.fonctionnalites')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Fonctionnalités spéciales"
+                            label={t('productManagerMobile.fonctionnalitesSpeciales')}
                             values={newProduct.fonctionnalitesElectro || []}
                             productType="electromenager"
                             fieldName="fonctionnalites"
@@ -9317,7 +9329,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Accessoires fournis</Text>
                             <NativeInput
-                                placeholder="Ex: Tuyaux, filtres, télécommande..."
+                                placeholder={t('productManagerMobile.exTuyauxFiltresTelecommande')}
                                 value={newProduct.accessoires || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, accessoires: text })}
                                 style={[styles.fieldInput, { height: 60 }]}
@@ -9344,19 +9356,19 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* ✅ NOUVEAU: Nom du meuble avec liste intelligente */}
                         <SelectModalitySelector
-                            label="Nom du meuble"
+                            label={t('productManagerMobile.nomDuMeuble')}
                             value={newProduct.name || ''}
                             productType="mobilier"
                             fieldName="noms_produits"
                             onSelect={(value) => setNewProduct({ ...newProduct, name: value })}
                             required
-                            placeholder="Ex: Canapé 3 places, Table à manger 6 places..."
+                            placeholder={t('productManagerMobile.exCanape3PlacesTable')}
                         />
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de meuble"
+                                    label={t('productManagerMobile.typeDeMeuble')}
                                     value={newProduct.typeMobilier || ''}
                                     productType="mobilier"
                                     fieldName="types"
@@ -9366,7 +9378,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Catégorie"
+                                    label={t('productManagerMobile.categorie')}
                                     value={newProduct.categorieMobilier || ''}
                                     productType="mobilier"
                                     fieldName="categories"
@@ -9388,7 +9400,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     value={newProduct.etatMobilier || ''}
                                     productType="mobilier"
                                     fieldName="etats"
@@ -9400,7 +9412,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* ✅ NOUVEAU: Marque/Fabricant */}
                         <SelectModalitySelector
-                            label="Marque / Fabricant"
+                            label={t('productManagerMobile.marqueFabricant')}
                             value={newProduct.marqueMobilier || ''}
                             productType="mobilier"
                             fieldName="marques"
@@ -9411,11 +9423,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Caractéristiques physiques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="ruler" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📏 Caractéristiques physiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiquesPhysiques')}</Text>
                         </View>
 
                         <SelectModalitySelector
-                            label="Matériau principal"
+                            label={t('productManagerMobile.materiauPrincipal')}
                             value={newProduct.materiauMobilier || ''}
                             productType="mobilier"
                             fieldName="materiaux"
@@ -9431,7 +9443,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="mobilier"
                                     fieldName="dimensions_standards"
                                     onSelect={(value) => setNewProduct({ ...newProduct, dimensionsMobilier: value })}
-                                    placeholder="140x190 cm ou H x L x P personnalisé"
+                                    placeholder={t('productManagerMobile.140x190CmOuHX')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -9446,9 +9458,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
-                        {(newProduct.typeMobilier === 'Canapé' || newProduct.typeMobilier === 'Table' || newProduct.typeMobilier === 'Chaise' || newProduct.typeMobilier === 'Fauteuil') && (
+                        {(newProduct.typeMobilier === t('productManagerMobile.canape') || newProduct.typeMobilier === 'Table' || newProduct.typeMobilier === 'Chaise' || newProduct.typeMobilier === 'Fauteuil') && (
                             <View style={styles.fieldContainer}>
-                                <Text style={styles.fieldLabel}>Nombre de places</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.nombreDePlaces')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 3, 6, 8..."
                                     value={newProduct.nombrePlaces || ''}
@@ -9472,24 +9484,24 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* ✅ NOUVEAU: Caractéristiques spéciales multiselect */}
                         <MultiSelectModalitySelector
-                            label="Caractéristiques spéciales"
+                            label={t('productManagerMobile.caracteristiquesSpeciales')}
                             values={newProduct.caracteristiquesMobilier || []}
                             productType="mobilier"
                             fieldName="caracteristiques"
                             onSelectMultiple={(values) => setNewProduct({ ...newProduct, caracteristiquesMobilier: values })}
-                            placeholder="Démontable, Extensible, Pliable..."
+                            placeholder={t('productManagerMobile.demontableExtensiblePliable')}
                         />
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Plus vous renseignez de détails, plus votre meuble sera visible dans les recherches !
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.plusVousRenseignezDeDetailsPlus')}
                             </Text>
                         </View>
 
                         {/* Section 3: Services et livraison */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="truck" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>🚚 Services et livraison</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesEtLivraison')}/Text>
                         </View>
 
                         <View style={styles.togglesContainer}>
@@ -9549,7 +9561,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 4: Localisation */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📍 Localisation du meuble</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisationDuMeuble')}/Text>
                         </View>
 
                         <Text style={styles.fieldHint}>
@@ -9558,7 +9570,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* ✅ NOUVEAU: Ville avec LocationSelector (Google Maps API + fallback local) */}
                         <LocationSelector
-                            label="Ville"
+                            label={t('productManagerMobile.ville')}
                             value={newProduct.villeMobilier || ''}
                             onSelect={(value) => setNewProduct({
                                 ...newProduct,
@@ -9568,13 +9580,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             })}
                             scope="city"
                             required
-                            placeholder="Ex: Douala, Yaoundé, Kinshasa, Abidjan..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeKinshasaAbidjan')}
                         />
 
                         {/* ✅ NOUVEAU: Quartier/Zone avec LocationSelector (contextuel selon ville) */}
                         {newProduct.villeMobilier && (
                             <LocationSelector
-                                label="Quartier / Zone"
+                                label={t('productManagerMobile.quartierZone')}
                                 value={newProduct.quartierMobilier || ''}
                                 onSelect={(value) => setNewProduct({ ...newProduct, quartierMobilier: value })}
                                 scope="point"
@@ -9585,13 +9597,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                📸 <Text style={styles.hintBold}>Photos :</Text> Ajoutez 4 à 8 images (vue d'ensemble, détails matériaux, dimensions, défauts éventuels)
+                                📸 <Text style={styles.hintBold}>{t('productManagerMobile.photos')}/Text> Ajoutez 4 à 8 images (vue d'ensemble, détails matériaux, dimensions, défauts éventuels)
                             </Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                ⭐ <Text style={styles.hintBold}>Astuce :</Text> Précisez la livraison et le montage pour rassurer vos clients !
+                                ⭐ <Text style={styles.hintBold}>Astuce :</Text>{t('productManagerMobile.precisezLaLivraisonEtLeMontage')}
                             </Text>
                         </View>
                     </>
@@ -9604,7 +9616,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type de décoration"
+                                    label={t('productManagerMobile.typeDeDecoration')}
                                     fieldName="types"
                                     productType="mobilier"
                                     value={newProduct.typeDecoration || ''}
@@ -9614,7 +9626,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Style décoratif"
+                                    label={t('productManagerMobile.styleDecoratif')}
                                     fieldName="styles"
                                     productType="mobilier"
                                     value={newProduct.styleDecoration || ''}
@@ -9645,7 +9657,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <ProductFieldSelector
-                            label="Matériau / Matière"
+                            label={t('productManagerMobile.materiauMatiere')}
                             fieldName="materiaux"
                             productType="decoration"
                             value={newProduct.materiauDecoration || ''}
@@ -9654,7 +9666,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez de belles photos pour montrer comment votre article s'intègre dans un intérieur
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.ajoutezDeBellesPhotosPourMontrer')}
                             </Text>
                         </View>
                     </>
@@ -9666,14 +9678,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Informations Produit */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="package" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations Produit</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsProduit')}/Text>
                         </View>
 
                         {/* Catégorie et Type */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
                                 <SelectModalitySelector
-                                    label="Catégorie"
+                                    label={t('productManagerMobile.categorie')}
                                     value={newProduct.categorieAliment || ''}
                                     productType="agroalimentaire"
                                     fieldName="categories"
@@ -9724,19 +9736,19 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <NativeDatePicker
-                                    label="Date de production"
+                                    label={t('productManagerMobile.dateDeProduction')}
                                     value={newProduct.dateProduction || ''}
                                     onChange={(date) => setNewProduct({ ...newProduct, dateProduction: date })}
-                                    placeholder="Sélectionner la date"
+                                    placeholder={t('productManagerMobile.selectionnerLaDate')}
                                     maximumDate={new Date()}
                                 />
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <NativeDatePicker
-                                    label="Date d'expiration"
+                                    label={t('productManagerMobile.dateD')}expiration"
                                     value={newProduct.dateExpiration || ''}
                                     onChange={(date) => setNewProduct({ ...newProduct, dateExpiration: date })}
-                                    placeholder="Sélectionner la date"
+                                    placeholder={t('productManagerMobile.selectionnerLaDate')}
                                     minimumDate={new Date()}
                                 />
                             </View>
@@ -9744,7 +9756,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* ✅ Mode de conservation */}
                         <SelectModalitySelector
-                            label="Mode de conservation"
+                            label={t('productManagerMobile.modeDeConservation')}
                             value={newProduct.conservation || ''}
                             productType="agroalimentaire"
                             fieldName="conservation"
@@ -9754,7 +9766,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Qualité et Certifications */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="award" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Qualité et Certifications</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.qualiteEtCertifications')}</Text>
                         </View>
 
                         {/* ✅ Toggle Bio conservé pour UX rapide */}
@@ -9773,7 +9785,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* ✅ NOUVEAU: Labels qualité avec MultiSelectModalitySelector */}
                         <MultiSelectModalitySelector
-                            label="Labels qualité"
+                            label={t('productManagerMobile.labelsQualite')}
                             values={newProduct.labelQualite || []}
                             productType="agroalimentaire"
                             fieldName="labels_qualite"
@@ -9800,7 +9812,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ Devise globale pour toutes les variantes */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>💱 Devise globale <Text style={styles.required}>*</Text></Text>
-                            <Text style={styles.fieldHint}>Cette devise s'appliquera à tous les prix des variantes ci-dessous</Text>
+                            <Text style={styles.fieldHint}>{t('productManagerMobile.cetteDeviseSappliqueraATous')}</Text>
                             <View style={styles.deviseGridContainer}>
                                 {devises.map((devise) => (
                                     <TouchableOpacity
@@ -9852,12 +9864,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 5: Allergènes */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="alert-triangle" size={20} color={modernColors.error} />
-                            <Text style={styles.sectionTitle}>Allergènes et Restrictions</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.allergenesEtRestrictions')}</Text>
                         </View>
 
                         {/* ✅ Allergènes avec MultiSelectModalitySelector */}
                         <MultiSelectModalitySelector
-                            label="Allergènes présents"
+                            label={t('productManagerMobile.allergenesPresents')}
                             values={newProduct.allergenesArray || []}
                             productType="agroalimentaire"
                             fieldName="allergenes"
@@ -9868,13 +9880,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     allergenes: values.join(', ') // Pour compatibilité avec l'ancien format
                                 });
                             }}
-                            placeholder="Aucun allergène sélectionné"
+                            placeholder={t('productManagerMobile.aucunAllergeneSelectionne')}
                             maxSelections={10}
                         />
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Important :</Text> Les informations sur l'origine, les certifications et les allergènes rassurent les acheteurs et sont obligatoires pour certains produits
+                                💡 <Text style={styles.hintBold}>Important :</Text>{t('productManagerMobile.lesInformationsSurLorigineLesCertifications')}
                             </Text>
                         </View>
                     </>
@@ -9886,25 +9898,25 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Informations de la Pièce */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations de la Pièce</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeLaPiece')}</Text>
                         </View>
 
                         {/* Nom de la pièce */}
                         <SelectModalitySelector
-                            label="Nom de la pièce"
+                            label={t('productManagerMobile.nomDeLaPiece')}
                             value={newProduct.nomPieceAuto || newProduct.name || ''}
                             productType="pieces_auto"
                             fieldName="noms_pieces"
                             onSelect={(value) => setNewProduct({ ...newProduct, nomPieceAuto: value, name: value })}
                             required
-                            placeholder="Ex: Plaquettes de frein, Filtre à huile, Batterie..."
+                            placeholder={t('productManagerMobile.exPlaquettesDeFreinFiltre')}
                         />
 
                         {/* Type et Catégorie */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Catégorie"
+                                    label={t('productManagerMobile.categorie')}
                                     value={newProduct.categoriePieceAuto || ''}
                                     productType="pieces_auto"
                                     fieldName="categories"
@@ -9915,12 +9927,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de pièce"
+                                    label={t('productManagerMobile.typeDePiece')}
                                     value={newProduct.typePieceAuto || ''}
                                     productType="pieces_auto"
                                     fieldName="types"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typePieceAuto: value })}
-                                    placeholder="Ex: Pièce d'origine, Adaptable..."
+                                    placeholder={t('productManagerMobile.exPieceD')}origine, Adaptable..."
                                 />
                             </View>
                         </View>
@@ -9928,13 +9940,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Compatibilité */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="check-circle" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Compatibilité Véhicule</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.compatibiliteVehicule')}</Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Important :</Text> Plus les informations de compatibilité sont précises, plus votre pièce sera facile à trouver
+                                💡 <Text style={styles.hintBold}>Important :</Text>{t('productManagerMobile.plusLesInformationsDeCompatibiliteSont')}
                             </Text>
                         </View>
 
@@ -9942,7 +9954,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Marque véhicule"
+                                    label={t('productManagerMobile.marqueVehicule')}
                                     value={newProduct.marqueVehiculeCompatible || ''}
                                     productType="pieces_auto"
                                     fieldName="marques_vehicules"
@@ -9952,7 +9964,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Modèle véhicule"
+                                    label={t('productManagerMobile.modeleVehicule')}
                                     value={newProduct.modeleVehiculeCompatible || ''}
                                     productType="pieces_auto"
                                     fieldName="modeles_vehicules"
@@ -9965,7 +9977,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Années compatibles */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Année début compatibilité</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.anneeDebutCompatibilite')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 2010"
                                     value={newProduct.anneeDebutCompatibilite || ''}
@@ -9975,7 +9987,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Année fin compatibilité</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.anneeFinCompatibilite')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 2020"
                                     value={newProduct.anneeFinCompatibilite || ''}
@@ -9988,9 +10000,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Compatibilité générale */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Description compatibilité</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.descriptionCompatibilite')}</Text>
                             <NativeInput
-                                placeholder="Ex: Compatible avec tous les modèles diesel de 2010 à 2020"
+                                placeholder={t('productManagerMobile.exCompatibleAvecTousLes')}
                                 value={newProduct.compatibilite || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, compatibilite: text })}
                                 multiline
@@ -10001,14 +10013,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Caractéristiques Techniques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="tool" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques Techniques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiquesTechniques')}</Text>
                         </View>
 
                         {/* Marque et Référence */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Marque de la pièce"
+                                    label={t('productManagerMobile.marqueDeLaPiece')}
                                     value={newProduct.marquePieceAuto || ''}
                                     productType="pieces_auto"
                                     fieldName="marques_pieces"
@@ -10018,7 +10030,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Référence fabricant</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.referenceFabricant')}</Text>
                                 <NativeInput
                                     placeholder="Ex: REF-12345-ABC"
                                     value={newProduct.referenceAuto || ''}
@@ -10031,7 +10043,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Référence OEM et Équivalences */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Référence OEM (constructeur)</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.referenceOemConstructeur')}</Text>
                                 <NativeInput
                                     placeholder="Ex: OE-7891011"
                                     value={newProduct.referenceOEM || ''}
@@ -10040,7 +10052,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Références équivalentes</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.referencesEquivalentes')}</Text>
                                 <NativeInput
                                     placeholder="Ex: REF-123, REF-456"
                                     value={newProduct.referencesEquivalentes || ''}
@@ -10054,7 +10066,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Matériau"
+                                    label={t('productManagerMobile.materiau')}
                                     value={newProduct.materiauPieceAuto || ''}
                                     productType="pieces_auto"
                                     fieldName="materiaux"
@@ -10087,12 +10099,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Quantité dans kit"
+                                    label={t('productManagerMobile.quantiteDansKit')}
                                     value={newProduct.quantiteKitPieceAuto || ''}
                                     productType="pieces_auto"
                                     fieldName="quantites_kits"
                                     onSelect={(value) => setNewProduct({ ...newProduct, quantiteKitPieceAuto: value })}
-                                    placeholder="Ex: 1 pièce, Kit de 4..."
+                                    placeholder={t('productManagerMobile.ex1PieceKitDe')}
                                 />
                             </View>
                         </View>
@@ -10100,20 +10112,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 4: État et Garantie */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shield" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>État et Garantie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.etatEtGarantie')}</Text>
                         </View>
 
                         {/* État et Garantie */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     value={newProduct.etatPieceAuto || ''}
                                     productType="pieces_auto"
                                     fieldName="etats"
                                     onSelect={(value) => setNewProduct({ ...newProduct, etatPieceAuto: value })}
                                     required
-                                    placeholder="Ex: Neuf, Occasion, Reconditionné..."
+                                    placeholder={t('productManagerMobile.exNeufOccasionReconditionne')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -10188,12 +10200,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 5: Stock et Localisation */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Stock et Localisation</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.stockEtLocalisation')}/Text>
                         </View>
 
                         {/* Stock disponible */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Stock disponible</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.stockDisponible')}/Text>
                             <NativeInput
                                 placeholder="Ex: 10"
                                 value={newProduct.stockDisponiblePieceAuto?.toString() || ''}
@@ -10207,16 +10219,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <LocationSelector
-                                    label="Ville"
+                                    label={t('productManagerMobile.ville')}
                                     value={newProduct.villePieceAuto || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, villePieceAuto: value })}
                                     scope="city"
-                                    placeholder="Ex: Douala, Yaoundé..."
+                                    placeholder={t('productManagerMobile.exDoualaYaounde')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <LocationSelector
-                                    label="Quartier/Lieu"
+                                    label={t('productManagerMobile.quartierlieu')}
                                     value={newProduct.quartierPieceAuto || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, quartierPieceAuto: value })}
                                     scope="point"
@@ -10229,7 +10241,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Des photos de qualité avec le numéro de référence visible augmentent considérablement la confiance des acheteurs
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.desPhotosDeQualiteAvecLe')}
                             </Text>
                         </View>
                     </>
@@ -10241,13 +10253,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 1 : IDENTITÉ DU PRODUIT */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="package" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Identité du produit</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDuProduit')}</Text>
                         </View>
 
                         {/* Nom du produit - ✅ CRITIQUE: SelectModalitySelector */}
                         <View style={styles.fieldContainer}>
                             <SelectModalitySelector
-                                label="Nom du produit"
+                                label={t('productManagerMobile.nomDuProduit')}
                                 value={newProduct.nomProduitQuincaillerie || newProduct.name || ''}
                                 productType="quincaillerie"
                                 fieldName="noms_produits"
@@ -10265,7 +10277,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Catégorie"
+                                    label={t('productManagerMobile.categorie')}
                                     value={newProduct.categorieQuincaillerie || ''}
                                     productType="quincaillerie"
                                     fieldName="categories"
@@ -10276,7 +10288,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de produit"
+                                    label={t('productManagerMobile.typeDeProduit')}
                                     value={newProduct.typeQuincaillerie || ''}
                                     productType="quincaillerie"
                                     fieldName="types"
@@ -10290,7 +10302,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 2 : CARACTÉRISTIQUES */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="sliders" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
                         </View>
 
                         {/* Marque et Matériau */}
@@ -10307,7 +10319,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Matériau"
+                                    label={t('productManagerMobile.materiau')}
                                     value={newProduct.materiauQuincaillerie || ''}
                                     productType="quincaillerie"
                                     fieldName="materiaux"
@@ -10321,7 +10333,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Dimension/Diamètre"
+                                    label={t('productManagerMobile.dimensiondiametre')}
                                     value={newProduct.dimensionQuincaillerie || ''}
                                     productType="quincaillerie"
                                     fieldName="dimensions"
@@ -10336,14 +10348,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="quincaillerie"
                                     fieldName="finitions"
                                     onSelect={(value) => setNewProduct({ ...newProduct, finitionQuincaillerie: value })}
-                                    placeholder="Ex: Chromé, Zingué"
+                                    placeholder={t('productManagerMobile.exChromeZingue')}
                                 />
                             </View>
                         </View>
 
                         {/* Référence */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Référence fabricant</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.referenceFabricant')}</Text>
                             <NativeInput
                                 placeholder="Ex: STHT0-51309, REF-ABC123"
                                 value={newProduct.referenceQuincaillerie || ''}
@@ -10362,12 +10374,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Usage recommandé"
+                                    label={t('productManagerMobile.usageRecommande')}
                                     value={newProduct.usageQuincaillerie || ''}
                                     productType="quincaillerie"
                                     fieldName="utilisations"
                                     onSelect={(value) => setNewProduct({ ...newProduct, usageQuincaillerie: value })}
-                                    placeholder="Ex: Usage résidentiel"
+                                    placeholder={t('productManagerMobile.exUsageResidentiel')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -10385,20 +10397,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 4 : ÉTAT & GARANTIE */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shield" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>État & Garantie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.etatGarantie')}</Text>
                         </View>
 
                         {/* État et Garantie */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     value={newProduct.etatQuincaillerie || ''}
                                     productType="quincaillerie"
                                     fieldName="etats"
                                     onSelect={(value) => setNewProduct({ ...newProduct, etatQuincaillerie: value })}
                                     required
-                                    placeholder="Ex: Neuf emballé"
+                                    placeholder={t('productManagerMobile.exNeufEmballe')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -10416,24 +10428,24 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 5 : STOCK & FOURNISSEUR */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="box" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Stock & Fournisseur</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.stockFournisseur')}/Text>
                         </View>
 
                         {/* Unité et Stock */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Unité de vente"
+                                    label={t('productManagerMobile.uniteDeVente')}
                                     value={newProduct.uniteVente || ''}
                                     productType="quincaillerie"
                                     fieldName="unites"
                                     onSelect={(value) => setNewProduct({ ...newProduct, uniteVente: value })}
                                     required
-                                    placeholder="Ex: Pièce, Lot de 10"
+                                    placeholder={t('productManagerMobile.exPieceLotDe10')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Stock disponible</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.stockDisponible')}/Text>
                                 <NativeInput
                                     placeholder="Ex: 50"
                                     value={newProduct.stockDisponible?.toString() || ''}
@@ -10447,12 +10459,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Type de fournisseur */}
                         <View style={styles.fieldContainer}>
                             <SelectModalitySelector
-                                label="Type de fournisseur"
+                                label={t('productManagerMobile.typeDeFournisseur')}
                                 value={newProduct.typeFournisseurQuincaillerie || ''}
                                 productType="quincaillerie"
                                 fieldName="fournisseurs_types"
                                 onSelect={(value) => setNewProduct({ ...newProduct, typeFournisseurQuincaillerie: value })}
-                                placeholder="Ex: Quincaillerie spécialisée"
+                                placeholder={t('productManagerMobile.exQuincaillerieSpecialisee')}
                             />
                         </View>
 
@@ -10481,12 +10493,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ============ SECTION 1: CATÉGORISATION ============ */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="layers" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>🎯 Catégorisation du Service</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.categorisationDuService')}</Text>
                         </View>
 
                         {/* Catégorie de prestation (40+ métiers locaux) */}
                         <ProductFieldSelector
-                            label="Catégorie de prestation *"
+                            label={t('productManagerMobile.categorieDePrestation')}
                             fieldName="categories"
                             productType="prestation_service"
                             value={newProduct.categoriePrestation || ''}
@@ -10497,7 +10509,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Type de prestation (30+) */}
                         {prestationFieldsConfig.showType && (
                             <ProductFieldSelector
-                                label="Type de prestation"
+                                label={t('productManagerMobile.typeDePrestation')}
                                 fieldName="types"
                                 productType="prestation_service"
                                 value={newProduct.typePrestation || ''}
@@ -10510,20 +10522,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <>
                                 <View style={styles.sectionHeader}>
                                     <SafeIcon name="award" size={20} color={modernColors.warning} />
-                                    <Text style={styles.sectionTitle}>🎓 Préparation Concours Grandes Écoles</Text>
+                                    <Text style={styles.sectionTitle}>{t('productManagerMobile.preparationConcoursGrandesEcoles')}</Text>
                                 </View>
 
                                 <View style={styles.hintBox}>
                                     <SafeIcon name="trophy" size={16} color={modernColors.warning} />
                                     <Text style={styles.hintText}>
-                                        🏆 <Text style={styles.hintBold}>Système ultra-spécialisé :</Text> Vos concours nationaux s'affichent en priorité selon votre pays !
+                                        🏆 <Text style={styles.hintBold}>{t('productManagerMobile.systemeUltraspecialise')}</Text> Vos concours nationaux s'affichent en priorité selon votre pays !
                                     </Text>
                                 </View>
 
                                 {/* Type de concours */}
                                 {prestationFieldsConfig.showTypeConcours && (
                                     <ProductFieldSelector
-                                        label="Type de concours *"
+                                        label={t('productManagerMobile.typeDeConcours')}
                                         fieldName="types_concours"
                                         productType="prestation_service"
                                         value={newProduct.typeConcours || ''}
@@ -10535,12 +10547,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Concours ciblés (multi-select) */}
                                 {prestationFieldsConfig.showConcoursCibles && (
                                     <MultiSelectModalitySelector
-                                        label="Concours spécifiques préparés *"
+                                        label={t('productManagerMobile.concoursSpecifiquesPrepares')}
                                         values={newProduct.concoursCibles || []}
                                         productType="prestation_service"
                                         fieldName="concours_cibles"
                                         onSelect={(values) => setNewProduct({ ...newProduct, concoursCibles: values })}
-                                        placeholder="Ex: Polytechnique Yaoundé, ENS, ENAM..."
+                                        placeholder={t('productManagerMobile.exPolytechniqueYaoundeEnsEnam')}
                                         maxSelections={10}
                                     />
                                 )}
@@ -10548,12 +10560,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Matières de préparation (multi-select) */}
                                 {prestationFieldsConfig.showMatieresPreparationConcours && (
                                     <MultiSelectModalitySelector
-                                        label="Matières de préparation *"
+                                        label={t('productManagerMobile.matieresDePreparation')}
                                         values={newProduct.matieresPreparationConcours || []}
                                         productType="prestation_service"
                                         fieldName="matieres_preparation_concours"
                                         onSelect={(values) => setNewProduct({ ...newProduct, matieresPreparationConcours: values })}
-                                        placeholder="Ex: Maths supérieures, Physique, Culture générale..."
+                                        placeholder={t('productManagerMobile.exMathsSuperieuresPhysiqueCulture')}
                                         maxSelections={10}
                                     />
                                 )}
@@ -10561,7 +10573,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Niveau de préparation */}
                                 {prestationFieldsConfig.showNiveauPreparationConcours && (
                                     <ProductFieldSelector
-                                        label="Niveau de préparation"
+                                        label={t('productManagerMobile.niveauDePreparation')}
                                         fieldName="niveaux_preparation_concours"
                                         productType="prestation_service"
                                         value={newProduct.niveauPreparationConcours || ''}
@@ -10572,7 +10584,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Type d'accompagnement */}
                                 {prestationFieldsConfig.showTypeAccompagnementConcours && (
                                     <ProductFieldSelector
-                                        label="Type d'accompagnement"
+                                        label={t('productManagerMobile.typeD')}accompagnement"
                                         fieldName="types_accompagnement_concours"
                                         productType="prestation_service"
                                         value={newProduct.typeAccompagnementConcours || ''}
@@ -10583,12 +10595,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Supports pédagogiques (multi-select) */}
                                 {prestationFieldsConfig.showSupportsPedagogiques && (
                                     <MultiSelectModalitySelector
-                                        label="Supports pédagogiques fournis"
+                                        label={t('productManagerMobile.supportsPedagogiquesFournis')}
                                         values={newProduct.supportsPedagogiques || []}
                                         productType="prestation_service"
                                         fieldName="supports_pedagogiques_concours"
                                         onSelect={(values) => setNewProduct({ ...newProduct, supportsPedagogiques: values })}
-                                        placeholder="Ex: Annales, fiches, vidéos..."
+                                        placeholder={t('productManagerMobile.exAnnalesFichesVideos')}
                                         maxSelections={8}
                                     />
                                 )}
@@ -10596,7 +10608,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Taux de réussite */}
                                 {prestationFieldsConfig.showTauxReussiteConcours && (
                                     <ProductFieldSelector
-                                        label="Taux de réussite de vos élèves"
+                                        label={t('productManagerMobile.tauxDeReussiteDeVos')}
                                         fieldName="taux_reussite_concours"
                                         productType="prestation_service"
                                         value={newProduct.tauxReussiteConcours || ''}
@@ -10620,7 +10632,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                         <SafeIcon name="check" size={14} color="#FFFFFF" />
                                                     )}
                                                 </View>
-                                                <Text style={styles.checkboxLabel}>📝 Concours blancs proposés</Text>
+                                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.concoursBlancsProposes')}</Text>
                                             </TouchableOpacity>
                                         </View>
                                         <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -10636,7 +10648,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                         <SafeIcon name="check" size={14} color="#FFFFFF" />
                                                     )}
                                                 </View>
-                                                <Text style={styles.checkboxLabel}>🏆 Préparateur agréé</Text>
+                                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.preparateurAgree')}</Text>
                                             </TouchableOpacity>
                                         </View>
                                     </View>
@@ -10645,7 +10657,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={styles.hintBox}>
                                     <SafeIcon name="star" size={16} color={modernColors.warning} />
                                     <Text style={styles.hintText}>
-                                        🌟 <Text style={styles.hintBold}>Valorisez vos résultats :</Text> Mentionnez vos élèves admis et votre taux de réussite pour rassurer les futurs candidats !
+                                        🌟 <Text style={styles.hintBold}>{t('productManagerMobile.valorisezVosResultats')}</Text> Mentionnez vos élèves admis et votre taux de réussite pour rassurer les futurs candidats !
                                     </Text>
                                 </View>
                             </>
@@ -10656,18 +10668,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <>
                                 <View style={styles.sectionHeader}>
                                     <SafeIcon name="book-open" size={20} color={modernColors.secondary} />
-                                    <Text style={styles.sectionTitle}>📚 Détails Éducation</Text>
+                                    <Text style={styles.sectionTitle}>{t('productManagerMobile.detailsEducation')}</Text>
                                 </View>
 
                                 {/* Matières enseignées (multi-select) */}
                                 {prestationFieldsConfig.showMatieresEnseignees && (
                                     <MultiSelectModalitySelector
-                                        label="Matières enseignées *"
+                                        label={t('productManagerMobile.matieresEnseignees')}
                                         values={newProduct.matieresEnseignees || []}
                                         productType="formation_education"
                                         fieldName="matieres_enseignees"
                                         onSelect={(values) => setNewProduct({ ...newProduct, matieresEnseignees: values })}
-                                        placeholder="Sélectionnez les matières que vous enseignez"
+                                        placeholder={t('productManagerMobile.selectionnezLesMatieresQueVous')}
                                         maxSelections={10}
                                     />
                                 )}
@@ -10675,12 +10687,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Niveaux scolaires (multi-select) */}
                                 {prestationFieldsConfig.showNiveauxScolaires && (
                                     <MultiSelectModalitySelector
-                                        label="Niveaux enseignés *"
+                                        label={t('productManagerMobile.niveauxEnseignes')}
                                         values={newProduct.niveauxScolaires || []}
                                         productType="formation_education"
                                         fieldName="niveaux_scolaires"
                                         onSelect={(values) => setNewProduct({ ...newProduct, niveauxScolaires: values })}
-                                        placeholder="Sélectionnez les niveaux (ex: 6ème, 3ème, Terminale)"
+                                        placeholder={t('productManagerMobile.selectionnezLesNiveauxEx6eme')}
                                         maxSelections={15}
                                     />
                                 )}
@@ -10705,7 +10717,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={styles.hintBox}>
                                     <SafeIcon name="info" size={16} color={modernColors.primary} />
                                     <Text style={styles.hintText}>
-                                        💡 <Text style={styles.hintBold}>Choix rapide :</Text> Sélectionnez "Toute l'Afrique francophone" ou "Tout le Cameroun" pour une couverture large. Ou choisissez plusieurs villes/quartiers spécifiques.
+                                        💡 <Text style={styles.hintBold}>Choix rapide :</Text>{t('productManagerMobile.selectionnezTouteLafriqueFrancophoneOuTout')}
                                     </Text>
                                 </View>
 
@@ -10744,14 +10756,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             });
                                         }
                                     }}
-                                    placeholder="Sélectionnez vos zones (ou choisissez une zone large)"
+                                    placeholder={t('productManagerMobile.selectionnezVosZonesOuChoisissez')}
                                     maxSelections={15}
                                 />
 
                                 {/* Modalité de déplacement */}
                                 {prestationFieldsConfig.showModaliteDeplacement && (
                                     <ProductFieldSelector
-                                        label="Modalité de déplacement"
+                                        label={t('productManagerMobile.modaliteDeDeplacement')}
                                         fieldName="modalites_deplacement"
                                         productType="prestation_service"
                                         value={newProduct.modaliteDeplacement || ''}
@@ -10762,7 +10774,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Rayon de déplacement */}
                                 {prestationFieldsConfig.showRayonDeplacement && (
                                     <View style={styles.fieldContainer}>
-                                        <Text style={styles.fieldLabel}>Rayon de déplacement (km)</Text>
+                                        <Text style={styles.fieldLabel}>{t('productManagerMobile.rayonDeDeplacementKm')}</Text>
                                         <NativeInput
                                             placeholder="Ex: 15 km"
                                             value={newProduct.rayonDeplacementKm || ''}
@@ -10788,7 +10800,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                     <SafeIcon name="check" size={16} color="#FFFFFF" />
                                                 )}
                                             </View>
-                                            <Text style={styles.checkboxLabel}>💰 Frais de déplacement inclus</Text>
+                                            <Text style={styles.checkboxLabel}>{t('productManagerMobile.fraisDeDeplacementInclus')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 )}
@@ -10800,7 +10812,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <>
                                 <View style={styles.sectionHeader}>
                                     <SafeIcon name="award" size={20} color={modernColors.warning} />
-                                    <Text style={styles.sectionTitle}>🏆 Expérience & Qualifications</Text>
+                                    <Text style={styles.sectionTitle}>{t('productManagerMobile.experienceQualifications')}</Text>
                                 </View>
 
                                 {/* Niveau d'expérience (12 niveaux) */}
@@ -10815,7 +10827,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Certification principale */}
                                 {prestationFieldsConfig.showCertification && (
                                     <ProductFieldSelector
-                                        label="Certification / Diplôme principal"
+                                        label={t('productManagerMobile.certificationDiplomePrincipal')}
                                         fieldName="certifications"
                                         productType="prestation_service"
                                         value={newProduct.certification || ''}
@@ -10826,12 +10838,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Certifications multiples */}
                                 {prestationFieldsConfig.showCertificationMultiple && (
                                     <MultiSelectModalitySelector
-                                        label="Certifications supplémentaires"
+                                        label={t('productManagerMobile.certificationsSupplementaires')}
                                         values={newProduct.certifications || []}
                                         productType="prestation_service"
                                         fieldName="certifications"
                                         onSelect={(values) => setNewProduct({ ...newProduct, certifications: values })}
-                                        placeholder="Aucune certification sélectionnée"
+                                        placeholder={t('productManagerMobile.aucuneCertificationSelectionnee')}
                                         maxSelections={5}
                                     />
                                 )}
@@ -10843,12 +10855,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <>
                                 <View style={styles.sectionHeader}>
                                     <SafeIcon name="clock" size={20} color={modernColors.info} />
-                                    <Text style={styles.sectionTitle}>⏰ Disponibilités & Horaires</Text>
+                                    <Text style={styles.sectionTitle}>{t('productManagerMobile.disponibilitesHoraires')}</Text>
                                 </View>
 
                                 {/* Disponibilité */}
                                 <ProductFieldSelector
-                                    label="Disponibilité"
+                                    label={t('productManagerMobile.disponibilite')}
                                     fieldName="disponibilites"
                                     productType="prestation_service"
                                     value={newProduct.disponibilitePrestation || ''}
@@ -10858,7 +10870,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Horaires de service */}
                                 {prestationFieldsConfig.showHoraires && (
                                     <View style={styles.fieldContainer}>
-                                        <Text style={styles.fieldLabel}>Horaires de service</Text>
+                                        <Text style={styles.fieldLabel}>{t('productManagerMobile.horairesDeService')}/Text>
                                         <NativeInput
                                             placeholder="Ex: Lundi-Vendredi 8h-18h"
                                             value={newProduct.horairesService || ''}
@@ -10944,7 +10956,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                             <SafeIcon name="check" size={14} color="#FFFFFF" />
                                                         )}
                                                     </View>
-                                                    <Text style={styles.checkboxLabel}>🎉 Jours fériés</Text>
+                                                    <Text style={styles.checkboxLabel}>{t('productManagerMobile.joursFeries')}</Text>
                                                 </TouchableOpacity>
                                             </View>
                                         )}
@@ -10963,7 +10975,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                 {/* Mode de tarification */}
                                 <ProductFieldSelector
-                                    label="Mode de tarification"
+                                    label={t('productManagerMobile.modeDeTarification')}
                                     fieldName="modes_tarification"
                                     productType="prestation_service"
                                     value={newProduct.modeTarification || ''}
@@ -11035,7 +11047,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                             <SafeIcon name="check" size={14} color="#FFFFFF" />
                                                         )}
                                                     </View>
-                                                    <Text style={styles.checkboxLabel}>💬 Prix négociable</Text>
+                                                    <Text style={styles.checkboxLabel}>{t('productManagerMobile.prixNegociable')}</Text>
                                                 </TouchableOpacity>
                                             </View>
                                         )}
@@ -11052,17 +11064,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <>
                                 <View style={styles.sectionHeader}>
                                     <SafeIcon name="tool" size={20} color={modernColors.secondary} />
-                                    <Text style={styles.sectionTitle}>🔧 Équipements & Outils</Text>
+                                    <Text style={styles.sectionTitle}>{t('productManagerMobile.equipementsOutils')}</Text>
                                 </View>
 
                                 {/* Équipements */}
                                 <MultiSelectModalitySelector
-                                    label="Équipements disponibles"
+                                    label={t('productManagerMobile.equipementsDisponibles')}
                                     values={newProduct.equipementsPrestation || []}
                                     productType="prestation_service"
                                     fieldName="equipements"
                                     onSelect={(values) => setNewProduct({ ...newProduct, equipementsPrestation: values })}
-                                    placeholder="Sélectionnez vos équipements"
+                                    placeholder={t('productManagerMobile.selectionnezVosEquipements')}
                                     maxSelections={10}
                                 />
 
@@ -11081,7 +11093,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                         <SafeIcon name="check" size={14} color="#FFFFFF" />
                                                     )}
                                                 </View>
-                                                <Text style={styles.checkboxLabel}>✅ Je fournis l'équipement</Text>
+                                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.jeFournisLequipement')}</Text>
                                             </TouchableOpacity>
                                         </View>
                                         <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -11097,7 +11109,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                         <SafeIcon name="check" size={14} color="#FFFFFF" />
                                                     )}
                                                 </View>
-                                                <Text style={styles.checkboxLabel}>⚠️ Client fournit matériel</Text>
+                                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.clientFournitMateriel')}</Text>
                                             </TouchableOpacity>
                                         </View>
                                     </View>
@@ -11116,7 +11128,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Garantie */}
                                 {prestationFieldsConfig.showGarantie && (
                                     <ProductFieldSelector
-                                        label="Garantie proposée"
+                                        label={t('productManagerMobile.garantieProposee')}
                                         fieldName="garanties"
                                         productType="prestation_service"
                                         value={newProduct.garantiePrestation || ''}
@@ -11142,12 +11154,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <>
                                 <View style={styles.sectionHeader}>
                                     <SafeIcon name="phone" size={20} color={modernColors.primary} />
-                                    <Text style={styles.sectionTitle}>📞 Contact & Communication</Text>
+                                    <Text style={styles.sectionTitle}>{t('productManagerMobile.contactCommunication')}/Text>
                                 </View>
 
                                 <View style={styles.fieldRow}>
                                     <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>Téléphone</Text>
+                                        <Text style={styles.fieldLabel}>{t('productManagerMobile.telephone')}</Text>
                                         <NativeInput
                                             placeholder="Ex: 690123456"
                                             value={newProduct.telephonePrestation || ''}
@@ -11171,12 +11183,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Langues parlées */}
                                 {prestationFieldsConfig.showLangues && (
                                     <MultiSelectModalitySelector
-                                        label="Langues parlées"
+                                        label={t('productManagerMobile.languesParlees')}
                                         values={newProduct.languesParlees || []}
                                         productType="prestation_service"
                                         fieldName="langues"
                                         onSelect={(values) => setNewProduct({ ...newProduct, languesParlees: values })}
-                                        placeholder="Sélectionnez les langues"
+                                        placeholder={t('productManagerMobile.selectionnezLesLangues')}
                                         maxSelections={5}
                                     />
                                 )}
@@ -11186,19 +11198,19 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ============ SECTION 9: OFFRES DE SERVICE ============ */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="briefcase" size={20} color={modernColors.warning} />
-                            <Text style={styles.sectionTitle}>💼 Offres de Service</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.offresDeService')}/Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Portfolio de Réalisations :</Text> Ajoutez des images et vidéos de vos meilleures réalisations pour montrer votre savoir-faire. Le titre et la description sont automatiquement repris du service principal.
+                                💡 <Text style={styles.hintBold}>{t('productManagerMobile.portfolioDeRealisations')}</Text> Ajoutez des images et vidéos de vos meilleures réalisations pour montrer votre savoir-faire. Le titre et la description sont automatiquement repris du service principal.
                             </Text>
                         </View>
 
                         {/* Gestion des offres de service */}
                         <View style={styles.fieldContainer}>
                             <View style={styles.prestationHeader}>
-                                <Text style={styles.fieldLabel}>Offres de service proposées</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.offresDeServiceProposees')}</Text>
                                 <View style={{ flexDirection: 'row', gap: 8 }}>
                                     <TouchableOpacity
                                         style={styles.addPrestationButtonSecondary}
@@ -11223,7 +11235,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         }}
                                     >
                                         <SafeIcon name="plus-circle" size={20} color="#FFFFFF" />
-                                        <Text style={styles.addPrestationText}>Ajouter</Text>
+                                        <Text style={styles.addPrestationText}>{t('productManagerMobile.ajouter')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -11264,9 +11276,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     </View>
 
                                     <View style={styles.prestationFieldContainerCompact}>
-                                        <Text style={styles.prestationFieldLabelCompact}>Nom de l'offre *</Text>
+                                        <Text style={styles.prestationFieldLabelCompact}>{t('productManagerMobile.nomDeLoffre')}</Text>
                                         <NativeInput
-                                            placeholder="Ex: Installation électrique complète"
+                                            placeholder={t('productManagerMobile.exInstallationElectriqueComplete')}
                                             value={prestation.nom}
                                             onChangeText={(text) => {
                                                 const prestations = [...(newProduct.prestations || [])];
@@ -11279,7 +11291,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                     <View style={styles.prestationFieldRow}>
                                         <View style={[styles.prestationFieldContainerCompact, { flex: 1 }]}>
-                                            <Text style={styles.prestationFieldLabelCompact}>Prix min. (XAF) *</Text>
+                                            <Text style={styles.prestationFieldLabelCompact}>{t('productManagerMobile.prixMinXaf')}/Text>
                                             <NativeInput
                                                 placeholder="50000"
                                                 value={prestation.prixAPartirDe}
@@ -11295,7 +11307,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         <View style={[styles.prestationFieldContainerCompact, { flex: 2 }]}>
                                             <Text style={styles.prestationFieldLabelCompact}>Description (opt.)</Text>
                                             <NativeInput
-                                                placeholder="Ex: Comprend installation + câblage..."
+                                                placeholder={t('productManagerMobile.exComprendInstallationCablage')}
                                                 value={prestation.description}
                                                 onChangeText={(text) => {
                                                     const prestations = [...(newProduct.prestations || [])];
@@ -11327,14 +11339,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💰 <Text style={styles.hintBold}>Conseil :</Text> Listez toutes vos offres de service avec leur montant minimum. Utilisez le bouton de duplication 📋 pour créer rapidement des variantes.
+                                💰 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.listezToutesVosOffresDeService')}
                             </Text>
                         </View>
 
                         {/* Hint final */}
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                ✅ <Text style={styles.hintBold}>Profil complet = Plus de clients !</Text> Remplissez un maximum de champs pour rassurer vos futurs clients et apparaître en tête des résultats de recherche.
+                                ✅ <Text style={styles.hintBold}>Profil complet = Plus de clients !</Text>{t('productManagerMobile.remplissezUnMaximumDeChampsPour')}
                             </Text>
                         </View>
                     </>
@@ -11349,10 +11361,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return (
                     <>
                         {/* SECTION 1: TYPE ET CATÉGORIE */}
-                        <Text style={styles.sectionTitle}>🍷 Type et Catégorie</Text>
+                        <Text style={styles.sectionTitle}>{t('productManagerMobile.typeEtCategorie')}</Text>
 
                         <ProductFieldSelector
-                            label="Type de produit *"
+                            label={t('productManagerMobile.typeDeProduit')}
                             fieldName="types_produits"
                             productType="vin_liqueur"
                             value={newProduct.typeProduitVin || ''}
@@ -11361,7 +11373,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <ProductFieldSelector
-                            label="Catégorie"
+                            label={t('productManagerMobile.categorie')}
                             fieldName="categories"
                             productType="vin_liqueur"
                             value={newProduct.categorieVin || ''}
@@ -11369,10 +11381,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         {/* SECTION 2: CARACTÉRISTIQUES PRODUIT */}
-                        <Text style={styles.sectionTitle}>📋 Caractéristiques Produit</Text>
+                        <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiquesProduit')}</Text>
 
                         <ProductFieldSelector
-                            label="Marque / Producteur"
+                            label={t('productManagerMobile.marqueProducteur')}
                             fieldName="marques"
                             productType="vin_liqueur"
                             value={newProduct.marqueVin || ''}
@@ -11380,7 +11392,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <ProductFieldSelector
-                            label="Région / Appellation"
+                            label={t('productManagerMobile.regionAppellation')}
                             fieldName="regions"
                             productType="vin_liqueur"
                             value={newProduct.regionVin || ''}
@@ -11388,7 +11400,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <ProductFieldSelector
-                            label="Cépage"
+                            label={t('productManagerMobile.cepage')}
                             fieldName="cepages"
                             productType="vin_liqueur"
                             value={newProduct.cepageVin || ''}
@@ -11396,7 +11408,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <ProductFieldSelector
-                            label="Millésime"
+                            label={t('productManagerMobile.millesime')}
                             fieldName="millesimes"
                             productType="vin_liqueur"
                             value={newProduct.millesimeVin || ''}
@@ -11413,7 +11425,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <ProductFieldSelector
-                            label="Degré d'alcool"
+                            label={t('productManagerMobile.degreD')}alcool"
                             fieldName="degres_alcool"
                             productType="vin_liqueur"
                             value={newProduct.degreAlcool || ''}
@@ -11437,7 +11449,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <ProductFieldSelector
-                            label="État"
+                            label={t('productManagerMobile.etat')}
                             fieldName="etats"
                             productType="vin_liqueur"
                             value={newProduct.etatVin || ''}
@@ -11448,7 +11460,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <Text style={styles.sectionTitle}>💼 Commercialisation</Text>
 
                         <ProductFieldSelector
-                            label="Type de commercialisation *"
+                            label={t('productManagerMobile.typeDeCommercialisation')}
                             fieldName="types_commercialisation"
                             productType="vin_liqueur"
                             value={newProduct.typeCommercialisation || ''}
@@ -11457,7 +11469,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <ProductFieldSelector
-                            label="Quantité minimale"
+                            label={t('productManagerMobile.quantiteMinimale')}
                             fieldName="quantites_min"
                             productType="vin_liqueur"
                             value={newProduct.quantiteMinimale || ''}
@@ -11465,7 +11477,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <ProductFieldSelector
-                            label="Type d'emballage"
+                            label={t('productManagerMobile.typeD')}emballage"
                             fieldName="emballages"
                             productType="vin_liqueur"
                             value={newProduct.emballageVin || ''}
@@ -11481,10 +11493,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         {/* SECTION 4: INFORMATIONS COMPLÉMENTAIRES (Optionnel) */}
-                        <Text style={styles.sectionTitle}>ℹ️ Informations Complémentaires (Optionnel)</Text>
+                        <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsComplementairesOptionnel')}</Text>
 
                         <ProductFieldSelector
-                            label="Température de service"
+                            label={t('productManagerMobile.temperatureDeService')}
                             fieldName="temperatures_service"
                             productType="vin_liqueur"
                             value={newProduct.temperatureService || ''}
@@ -11515,13 +11527,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Informations de base */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="book-open" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations de base</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeBase')}/Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type d'article"
+                                    label={t('productManagerMobile.typeD')}article"
                                     value={newProduct.categorieLivre || ''}
                                     productType="livres_fournitures"
                                     fieldName="types"
@@ -11531,7 +11543,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     value={newProduct.etatLivre || ''}
                                     productType="livres_fournitures"
                                     fieldName="etats"
@@ -11553,7 +11565,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Matière"
+                                    label={t('productManagerMobile.matiere')}
                                     value={newProduct.matiereScolaire || ''}
                                     productType="livres_fournitures"
                                     fieldName="matieres"
@@ -11565,20 +11577,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Localisation (où trouver les fournitures) */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Localisation</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
                         </View>
 
                         <LocationSelector
-                            label="Ville"
+                            label={t('productManagerMobile.ville')}
                             value={newProduct.ville || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, ville: value })}
                             scope="city"
-                            placeholder="Ex: Douala, Yaoundé, Abidjan..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeAbidjan')}
                         />
 
                         {newProduct.ville && (
                             <LocationSelector
-                                label="Quartier / Point de vente"
+                                label={t('productManagerMobile.quartierPointDeVente')}
                                 value={newProduct.quartier || ''}
                                 onSelect={(value) => setNewProduct({ ...newProduct, quartier: value })}
                                 scope="point"
@@ -11590,7 +11602,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Détails Livres (conditionnelle) */}
                         {(newProduct.categorieLivre === 'Livre scolaire' ||
                             newProduct.categorieLivre === 'Manuel scolaire' ||
-                            newProduct.categorieLivre === 'Livre de référence' ||
+                            newProduct.categorieLivre === t('productManagerMobile.livreDeReference') ||
                             newProduct.categorieLivre === 'Roman' ||
                             newProduct.categorieLivre === 'BD/Comics' ||
                             newProduct.categorieLivre === 'Livre technique' ||
@@ -11598,7 +11610,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <>
                                     <View style={styles.sectionHeader}>
                                         <SafeIcon name="book" size={20} color={modernColors.primary} />
-                                        <Text style={styles.sectionTitle}>Informations Livre</Text>
+                                        <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsLivre')}/Text>
                                     </View>
 
                                     {/* Auteur */}
@@ -11614,7 +11626,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                     {/* Éditeur */}
                                     <SelectModalitySelector
-                                        label="Éditeur"
+                                        label={t('productManagerMobile.editeur')}
                                         value={newProduct.editeur || ''}
                                         productType="livres_fournitures"
                                         fieldName="editeurs"
@@ -11623,7 +11635,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                     <View style={styles.fieldRow}>
                                         <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                            <Text style={styles.fieldLabel}>Année d'édition</Text>
+                                            <Text style={styles.fieldLabel}>{t('productManagerMobile.anneeDedition')}</Text>
                                             <NativeInput
                                                 placeholder="Ex: 2024"
                                                 value={newProduct.anneeEdition || ''}
@@ -11652,11 +11664,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <>
                                     <View style={styles.sectionHeader}>
                                         <SafeIcon name="calculator" size={20} color={modernColors.primary} />
-                                        <Text style={styles.sectionTitle}>Informations Calculatrice</Text>
+                                        <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsCalculatrice')}/Text>
                                     </View>
 
                                     <SelectModalitySelector
-                                        label="Type de calculatrice"
+                                        label={t('productManagerMobile.typeDeCalculatrice')}
                                         value={newProduct.typeCalculatrice || ''}
                                         productType="livres_fournitures"
                                         fieldName="typesCalculatrice"
@@ -11669,7 +11681,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="lightbulb" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                <Text style={styles.hintBold}>Conseil :</Text> Précisez le niveau et la matière pour aider les étudiants à trouver le bon article. Indiquez la ville et le quartier pour faciliter l'achat.
+                                <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.precisezLeNiveauEtLaMatiere')}
                             </Text>
                         </View>
                     </>
@@ -11678,13 +11690,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'hopital_clinique': {
                 // Listes de prestations médicales disponibles
                 const prestationsMedicalesOptions = [
-                    'Consultation générale', 'Consultation spécialisée', 'Chirurgie',
-                    'Maternité / Accouchement', 'Pédiatrie', 'Cardiologie',
+                    t('productManagerMobile.consultationGenerale'), 'Consultation spécialisée', 'Chirurgie',
+                    t('productManagerMobile.materniteAccouchement'), 'Pédiatrie', 'Cardiologie',
                     'Radiologie', 'Échographie', 'Scanner', 'IRM',
-                    'Laboratoire', 'Analyses médicales', 'Pharmacie',
+                    'Laboratoire', t('productManagerMobile.analysesMedicales'), 'Pharmacie',
                     'Urgences 24h/24', 'Hospitalisation', 'Soins intensifs',
                     'Dialyse', 'Dentaire', 'Ophtalmologie', 'ORL',
-                    'Kinésithérapie', 'Radiothérapie', 'Chimiothérapie'
+                    t('productManagerMobile.kinesitherapie'), 'Radiothérapie', 'Chimiothérapie'
                 ];
 
                 const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -11693,7 +11705,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <>
                         {/* Type d'établissement */}
                         <ProductFieldSelector
-                            label="Type d'établissement médical"
+                            label={t('productManagerMobile.typeD')}établissement médical"
                             fieldName="types"
                             productType="hopital_clinique"
                             value={newProduct.typeEtablissement || ''}
@@ -11721,7 +11733,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Prestations médicales disponibles */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Prestations médicales disponibles</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.prestationsMedicalesDisponibles')}</Text>
                             <Text style={styles.fieldHint}>Cochez les prestations et configurez leur planning</Text>
                             <ScrollView style={styles.checkboxList} nestedScrollEnabled>
                                 {prestationsMedicalesOptions.map((prestation) => {
@@ -11766,7 +11778,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                     <Text style={styles.prestationPlanningTitle}>📅 Planning pour {prestation}</Text>
 
                                                     {/* Jours disponibles */}
-                                                    <Text style={styles.fieldHint}>Jours disponibles :</Text>
+                                                    <Text style={styles.fieldHint}>{t('productManagerMobile.joursDisponibles')}/Text>
                                                     <View style={styles.weekDaysContainer}>
                                                         {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour) => {
                                                             const joursArray = (newProduct.planningHebdomadaire?.[prestation]?.jours || '').split(',').map(j => j.trim());
@@ -11807,9 +11819,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                     </View>
 
                                                     {/* Moment de disponibilité */}
-                                                    <Text style={styles.fieldHint}>Moment de disponibilité :</Text>
+                                                    <Text style={styles.fieldHint}>{t('productManagerMobile.momentDeDisponibilite')}</Text>
                                                     <View style={styles.pickerButtons}>
-                                                        {['Journée', 'Nuit', '24h/24'].map((moment) => (
+                                                        {[t('productManagerMobile.journee'), 'Nuit', '24h/24'].map((moment) => (
                                                             <TouchableOpacity
                                                                 key={moment}
                                                                 style={[
@@ -11876,9 +11888,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 const examensLaboratoireOptions = [
                     // Analyses biologiques
                     'Hématologie', 'Biochimie', 'Sérologie', 'Parasitologie',
-                    'Bactériologie', 'Hormonologie', 'Immunologie', 'Coagulation',
-                    'Lipidique', 'Hépatique', 'Rénal', 'Diabète',
-                    'Urinaire', 'Cytologie', 'Histologie', 'Génétique',
+                    t('productManagerMobile.bacteriologie'), 'Hormonologie', 'Immunologie', 'Coagulation',
+                    'Lipidique', 'Hépatique', 'Rénal', t('productManagerMobile.diabete'),
+                    'Urinaire', 'Cytologie', 'Histologie', t('productManagerMobile.genetique'),
                     'Toxicologie', 'PCR',
                     // Imagerie médicale
                     'Radiographie', 'Échographie', 'Échographie Doppler',
@@ -11892,7 +11904,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <>
                         {/* Type d'établissement */}
                         <ProductFieldSelector
-                            label="Type d'établissement"
+                            label={t('productManagerMobile.typeD')}établissement"
                             fieldName="types"
                             productType="laboratoire"
                             value={newProduct.typeLaboratoire || ''}
@@ -11914,7 +11926,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         <SafeIcon name="check" size={16} color="#FFFFFF" />
                                     )}
                                 </View>
-                                <Text style={styles.checkboxLabel}>🏠 Prélèvement à domicile disponible</Text>
+                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.prelevementADomicileDisponible')}</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -11932,14 +11944,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         <SafeIcon name="check" size={16} color="#FFFFFF" />
                                     )}
                                 </View>
-                                <Text style={styles.checkboxLabel}>⚡ Résultats rapides / Urgents disponibles</Text>
+                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.resultatsRapidesUrgentsDisponibles')}</Text>
                             </TouchableOpacity>
                         </View>
 
                         {/* Examens de laboratoire et imagerie disponibles */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Examens et prestations disponibles</Text>
-                            <Text style={styles.fieldHint}>Cochez les analyses biologiques et/ou examens d'imagerie proposés, puis configurez leur planning</Text>
+                            <Text style={styles.fieldHint}>{t('productManagerMobile.cochezLesAnalysesBiologiquesEtou')}</Text>
                             <ScrollView style={styles.checkboxList} nestedScrollEnabled>
                                 {examensLaboratoireOptions.map((examen) => {
                                     const isSelected = (newProduct.examensLaboratoire || []).includes(examen);
@@ -11983,7 +11995,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                     <Text style={styles.prestationPlanningTitle}>📅 Planning pour {examen}</Text>
 
                                                     {/* Jours disponibles */}
-                                                    <Text style={styles.fieldHint}>Jours disponibles :</Text>
+                                                    <Text style={styles.fieldHint}>{t('productManagerMobile.joursDisponibles')}/Text>
                                                     <View style={styles.weekDaysContainer}>
                                                         {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour) => {
                                                             const joursArray = (newProduct.planningExamens?.[examen]?.jours || '').split(',').map(j => j.trim());
@@ -12024,9 +12036,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                     </View>
 
                                                     {/* Moment de disponibilité */}
-                                                    <Text style={styles.fieldHint}>Moment de disponibilité :</Text>
+                                                    <Text style={styles.fieldHint}>{t('productManagerMobile.momentDeDisponibilite')}</Text>
                                                     <View style={styles.pickerButtons}>
-                                                        {['Journée', 'Nuit', '24h/24'].map((moment) => (
+                                                        {[t('productManagerMobile.journee'), 'Nuit', '24h/24'].map((moment) => (
                                                             <TouchableOpacity
                                                                 key={moment}
                                                                 style={[
@@ -12081,7 +12093,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Délai moyen pour résultats */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Délai moyen pour les résultats</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.delaiMoyenPourLesResultats')}</Text>
                             <NativeInput
                                 placeholder="Ex: 24h, 48h, 1 semaine..."
                                 value={newProduct.delaiResultat || ''}
@@ -12105,25 +12117,25 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 1: IDENTITÉ DU PRODUIT */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="package" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Identité du Produit</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDuProduit')}</Text>
                         </View>
 
                         {/* ✅ Catégorie et Type sur la même ligne */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Catégorie"
+                                    label={t('productManagerMobile.categorie')}
                                     value={newProduct.categorieAliment || ''}
                                     productType="agroalimentaire"
                                     fieldName="categories"
                                     onSelect={(value) => setNewProduct({ ...newProduct, categorieAliment: value })}
                                     required
-                                    placeholder="Ex: Céréales, Condiments..."
+                                    placeholder={t('productManagerMobile.exCerealesCondiments')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de produit"
+                                    label={t('productManagerMobile.typeDeProduit')}
                                     value={newProduct.typeAgro || newProduct.typeAliment || ''}
                                     productType="agroalimentaire"
                                     fieldName="types"
@@ -12143,7 +12155,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="agroalimentaire"
                                     fieldName="marques"
                                     onSelect={(value) => setNewProduct({ ...newProduct, marqueAgro: value, marqueAliment: value })}
-                                    placeholder="Ex: Nestlé, Maggi, Uncle Ben's..."
+                                    placeholder={t('productManagerMobile.exNestleMaggiUncleBen')}s..."
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -12153,7 +12165,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="agroalimentaire"
                                     fieldName="origines"
                                     onSelect={(value) => setNewProduct({ ...newProduct, origine: value })}
-                                    placeholder="Ex: Cameroun, France, Thaïlande..."
+                                    placeholder={t('productManagerMobile.exCamerounFranceThailande')}
                                 />
                             </View>
                         </View>
@@ -12166,31 +12178,31 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* ✅ Mode de conservation */}
                         <SelectModalitySelector
-                            label="Mode de conservation"
+                            label={t('productManagerMobile.modeDeConservation')}
                             value={newProduct.modeConservation || newProduct.conservation || ''}
                             productType="agroalimentaire"
                             fieldName="conservation"
                             onSelect={(value) => setNewProduct({ ...newProduct, modeConservation: value, conservation: value })}
-                            placeholder="Ex: Température ambiante, Réfrigéré..."
+                            placeholder={t('productManagerMobile.exTemperatureAmbianteRefrigere')}
                         />
 
                         {/* ✅ Dates avec DatePicker natif */}
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <NativeDatePicker
-                                    label="Date de production"
+                                    label={t('productManagerMobile.dateDeProduction')}
                                     value={newProduct.dateProduction || ''}
                                     onChange={(date) => setNewProduct({ ...newProduct, dateProduction: date })}
-                                    placeholder="Sélectionner la date"
+                                    placeholder={t('productManagerMobile.selectionnerLaDate')}
                                     maximumDate={new Date()}
                                 />
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <NativeDatePicker
-                                    label="Date d'expiration"
+                                    label={t('productManagerMobile.dateD')}expiration"
                                     value={newProduct.dateExpiration || newProduct.datePeremption || ''}
                                     onChange={(date) => setNewProduct({ ...newProduct, dateExpiration: date, datePeremption: date })}
-                                    placeholder="Sélectionner la date"
+                                    placeholder={t('productManagerMobile.selectionnerLaDate')}
                                     minimumDate={new Date()}
                                 />
                             </View>
@@ -12199,7 +12211,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 3: QUALITÉ & CERTIFICATIONS */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="award" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Qualité & Certifications</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.qualiteCertifications')}</Text>
                         </View>
 
                         {/* ✅ Toggle Bio conservé pour UX rapide */}
@@ -12218,7 +12230,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* ✅ Labels qualité avec MultiSelectModalitySelector */}
                         <MultiSelectModalitySelector
-                            label="Labels qualité"
+                            label={t('productManagerMobile.labelsQualite')}
                             values={newProduct.labelQualite || []}
                             productType="agroalimentaire"
                             fieldName="labels_qualite"
@@ -12247,7 +12259,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ Devise globale pour les variantes */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>💱 Devise globale <Text style={styles.required}>*</Text></Text>
-                            <Text style={styles.fieldHint}>Cette devise s'appliquera à tous les prix des variantes ci-dessous</Text>
+                            <Text style={styles.fieldHint}>{t('productManagerMobile.cetteDeviseSappliqueraATous')}</Text>
                             <View style={styles.deviseGridContainer}>
                                 {['XAF', 'EUR', 'USD', 'GNF', 'XOF'].map((devise) => (
                                     <TouchableOpacity
@@ -12298,12 +12310,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 5: ALLERGÈNES */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="alert-triangle" size={20} color={modernColors.error} />
-                            <Text style={styles.sectionTitle}>Allergènes et Restrictions</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.allergenesEtRestrictions')}</Text>
                         </View>
 
                         {/* ✅ Allergènes avec MultiSelectModalitySelector */}
                         <MultiSelectModalitySelector
-                            label="Allergènes présents"
+                            label={t('productManagerMobile.allergenesPresents')}
                             values={newProduct.allergenesArray || []}
                             productType="agroalimentaire"
                             fieldName="allergenes"
@@ -12314,13 +12326,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     allergenes: values.join(', ') // Pour compatibilité avec l'ancien format
                                 });
                             }}
-                            placeholder="Aucun allergène sélectionné"
+                            placeholder={t('productManagerMobile.aucunAllergeneSelectionne')}
                             maxSelections={10}
                         />
 
                         {/* ✅ Traçabilité: Numéro de lot */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Numéro de lot (traçabilité)</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.numeroDeLotTracabilite')}</Text>
                             <NativeInput
                                 placeholder="Ex: LOT2025-001"
                                 value={newProduct.numeroLot || ''}
@@ -12333,7 +12345,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Important :</Text> Les informations sur l'origine, les certifications et les allergènes rassurent les acheteurs et sont obligatoires pour certains produits
+                                💡 <Text style={styles.hintBold}>Important :</Text>{t('productManagerMobile.lesInformationsSurLorigineLesCertifications')}
                             </Text>
                         </View>
                     </>
@@ -12346,13 +12358,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Type de Service */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="package" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Type de Service</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeDeService')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de déménagement"
+                                    label={t('productManagerMobile.typeDeDemenagement')}
                                     value={newProduct.typeDemenagement || ''}
                                     productType="demenagement"
                                     fieldName="types"
@@ -12363,7 +12375,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Volume estimé"
+                                    label={t('productManagerMobile.volumeEstime')}
                                     value={newProduct.volumeDemenagement || ''}
                                     productType="demenagement"
                                     fieldName="volumes"
@@ -12376,30 +12388,30 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Itinéraire */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Itinéraire du Déménagement</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.itineraireDuDemenagement')}</Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Itinéraire :</Text> Indiquez les villes et quartiers de départ et d'arrivée pour un devis précis
+                                💡 <Text style={styles.hintBold}>{t('productManagerMobile.itineraire')}</Text> Indiquez les villes et quartiers de départ et d'arrivée pour un devis précis
                             </Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <LocationSelector
-                                    label="Ville de départ"
+                                    label={t('productManagerMobile.villeDeDepart')}
                                     value={newProduct.villeDepartDemenagement || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, villeDepartDemenagement: value })}
                                     scope="city"
                                     required
-                                    placeholder="Ex: Douala, Yaoundé..."
+                                    placeholder={t('productManagerMobile.exDoualaYaounde')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <LocationSelector
-                                    label="Ville d'arrivée"
+                                    label={t('productManagerMobile.villeD')}arrivée"
                                     value={newProduct.villeArriveeDemenagement || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, villeArriveeDemenagement: value })}
                                     scope="city"
@@ -12412,7 +12424,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <LocationSelector
-                                    label="Quartier de départ"
+                                    label={t('productManagerMobile.quartierDeDepart')}
                                     value={newProduct.quartierDepartDemenagement || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, quartierDepartDemenagement: value })}
                                     scope="point"
@@ -12422,7 +12434,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <LocationSelector
-                                    label="Quartier d'arrivée"
+                                    label={t('productManagerMobile.quartierD')}arrivée"
                                     value={newProduct.quartierArriveeDemenagement || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, quartierArriveeDemenagement: value })}
                                     scope="point"
@@ -12433,7 +12445,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <SelectModalitySelector
-                            label="Distance estimée"
+                            label={t('productManagerMobile.distanceEstimee')}
                             value={newProduct.distanceDemenagement || ''}
                             productType="demenagement"
                             fieldName="distances"
@@ -12444,13 +12456,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Véhicule et Équipe */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="truck" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Véhicule et Équipe</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.vehiculeEtEquipe')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de véhicule"
+                                    label={t('productManagerMobile.typeDeVehicule')}
                                     value={newProduct.typeVehiculeDemenagement || ''}
                                     productType="demenagement"
                                     fieldName="vehicules"
@@ -12460,7 +12472,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Nombre de déménageurs"
+                                    label={t('productManagerMobile.nombreDeDemenageurs')}
                                     value={newProduct.nbDemenageurs || ''}
                                     productType="demenagement"
                                     fieldName="nb_demenageurs"
@@ -12473,30 +12485,30 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 4: Services Inclus */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="check-square" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services Inclus</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesInclus')}/Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Services proposés"
+                            label={t('productManagerMobile.servicesProposes')}
                             values={newProduct.servicesDemenagement || []}
                             productType="demenagement"
                             fieldName="services"
                             onSelect={(values) => setNewProduct({ ...newProduct, servicesDemenagement: values })}
-                            placeholder="Ex: Emballage, Transport, Déballage..."
+                            placeholder={t('productManagerMobile.exEmballageTransportDeballage')}
                             maxSelections={10}
                         />
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Services :</Text> Sélectionnez tous les services que vous proposez pour attirer plus de clients
+                                💡 <Text style={styles.hintBold}>{t('productManagerMobile.services')}/Text> Sélectionnez tous les services que vous proposez pour attirer plus de clients
                             </Text>
                         </View>
 
                         {/* Section 5: Informations Complémentaires */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="info" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations Complémentaires</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsComplementaires')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -12507,17 +12519,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="demenagement"
                                     fieldName="compagnies"
                                     onSelect={(value) => setNewProduct({ ...newProduct, compagnieDemenagement: value })}
-                                    placeholder="Ex: Pro Déménagement..."
+                                    placeholder={t('productManagerMobile.exProDemenagement')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Durée estimée"
+                                    label={t('productManagerMobile.dureeEstimee')}
                                     value={newProduct.dureeDemenagement || ''}
                                     productType="demenagement"
                                     fieldName="durees"
                                     onSelect={(value) => setNewProduct({ ...newProduct, dureeDemenagement: value })}
-                                    placeholder="Ex: Moins de 2h, 1 journée..."
+                                    placeholder={t('productManagerMobile.exMoinsDe2h1')}
                                 />
                             </View>
                         </View>
@@ -12525,39 +12537,39 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type d'assurance"
+                                    label={t('productManagerMobile.typeD')}assurance"
                                     value={newProduct.typeAssuranceDemenagement || ''}
                                     productType="demenagement"
                                     fieldName="assurances"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeAssuranceDemenagement: value })}
-                                    placeholder="Ex: Responsabilité civile..."
+                                    placeholder={t('productManagerMobile.exResponsabiliteCivile')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Accessibilité / Étages"
+                                    label={t('productManagerMobile.accessibiliteEtages')}
                                     value={newProduct.accessibiliteDemenagement || ''}
                                     productType="demenagement"
                                     fieldName="accessibilites"
                                     onSelect={(value) => setNewProduct({ ...newProduct, accessibiliteDemenagement: value })}
-                                    placeholder="Ex: Rez-de-chaussée..."
+                                    placeholder={t('productManagerMobile.exRezdechaussee')}
                                 />
                             </View>
                         </View>
 
                         <SelectModalitySelector
-                            label="Disponibilité"
+                            label={t('productManagerMobile.disponibilite')}
                             value={newProduct.disponibiliteDemenagement || ''}
                             productType="demenagement"
                             fieldName="disponibilites"
                             onSelect={(value) => setNewProduct({ ...newProduct, disponibiliteDemenagement: value })}
-                            placeholder="Ex: Immédiat (24-48h), Cette semaine..."
+                            placeholder={t('productManagerMobile.exImmediat2448hCetteSemaine')}
                         />
 
                         {/* Section 6: Prix Forfaitaire (Optionnel) */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Prix Forfaitaire (Optionnel)</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.prixForfaitaireOptionnel')}</Text>
                         </View>
 
                         <View style={styles.hintBox}>
@@ -12605,13 +12617,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 7: Description */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="file-text" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Description du Service</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.descriptionDuService')}/Text>
                         </View>
 
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Description <Text style={styles.required}>*</Text></Text>
                             <NativeInput
-                                placeholder="Décrivez votre service de déménagement, vos atouts, votre expérience..."
+                                placeholder={t('productManagerMobile.decrivezVotreServiceDeDemenagement')}
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
@@ -12622,7 +12634,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="sparkles" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                ✨ <Text style={styles.hintBold}>Astuce :</Text> Mentionnez votre expérience, vos garanties, et vos équipements pour rassurer vos clients
+                                ✨ <Text style={styles.hintBold}>Astuce :</Text>{t('productManagerMobile.mentionnezVotreExperienceVosGarantiesEt')}
                             </Text>
                         </View>
                     </>
@@ -12634,20 +12646,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ====== SECTION 1: INFORMATIONS PRODUIT ====== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="sparkles" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations Produit</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsProduit')}/Text>
                         </View>
 
                         {/* Type + Genre */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de produit"
+                                    label={t('productManagerMobile.typeDeProduit')}
                                     value={newProduct.typeCosmetique || ''}
                                     productType="cosmetique_parfum"
                                     fieldName="types"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeCosmetique: value })}
                                     required
-                                    placeholder="Ex: Parfum, Crème, Rouge à lèvres..."
+                                    placeholder={t('productManagerMobile.exParfumCremeRougeA')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -12677,7 +12689,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Volume/Poids + Unité */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Volume / Poids <Text style={styles.required}>*</Text></Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.volumePoids')}Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="Ex: 50"
                                     value={newProduct.volumeCosmetique || ''}
@@ -12688,7 +12700,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Unité"
+                                    label={t('productManagerMobile.unite')}
                                     value={newProduct.uniteCosmetique || ''}
                                     productType="cosmetique_parfum"
                                     fieldName="unites"
@@ -12718,29 +12730,29 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ====== SECTION 2: CARACTÉRISTIQUES ====== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="check-circle" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
                         </View>
 
                         {/* Type de peau + Type de cheveux */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de peau"
+                                    label={t('productManagerMobile.typeDePeau')}
                                     value={newProduct.typePeau || ''}
                                     productType="cosmetique_parfum"
                                     fieldName="types_peau"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typePeau: value })}
-                                    placeholder="Ex: Normale, Sèche, Grasse..."
+                                    placeholder={t('productManagerMobile.exNormaleSecheGrasse')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de cheveux"
+                                    label={t('productManagerMobile.typeDeCheveux')}
                                     value={newProduct.typeCheveuxCosmetique || ''}
                                     productType="cosmetique_parfum"
                                     fieldName="types_cheveux"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeCheveuxCosmetique: value })}
-                                    placeholder="Ex: Crépus, Bouclés, Lisses..."
+                                    placeholder={t('productManagerMobile.exCrepusBouclesLisses')}
                                 />
                             </View>
                         </View>
@@ -12769,7 +12781,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             productType="cosmetique_parfum"
                                             fieldName="finitions"
                                             onSelect={(value) => setNewProduct({ ...newProduct, finitionCosmetique: value })}
-                                            placeholder="Ex: Mat, Brillant, Satiné..."
+                                            placeholder={t('productManagerMobile.exMatBrillantSatine')}
                                         />
                                     </View>
                                 </View>
@@ -12777,9 +12789,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Âge recommandé */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Âge recommandé (années)</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.ageRecommandeAnnees')}</Text>
                             <NativeInput
-                                placeholder="Ex: 18+ (laissez vide si tout âge)"
+                                placeholder={t('productManagerMobile.ex18LaissezVideSi')}
                                 value={newProduct.ageRecommandé || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, ageRecommandé: text })}
                                 style={styles.fieldInput}
@@ -12795,15 +12807,15 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Ingrédients principaux */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Ingrédients principaux</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.ingredientsPrincipaux')}</Text>
                             <NativeInput
-                                placeholder="Ex: Vitamine E, Argan, Aloe Vera, Collagène"
+                                placeholder={t('productManagerMobile.exVitamineEArganAloe')}
                                 value={newProduct.ingredientsCosmetique || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, ingredientsCosmetique: text })}
                                 style={styles.fieldInput}
                                 multiline
                             />
-                            <Text style={styles.fieldHint}>Séparez par des virgules</Text>
+                            <Text style={styles.fieldHint}>{t('productManagerMobile.separezParDesVirgules')}</Text>
                         </View>
 
                         {/* Certifications */}
@@ -12827,7 +12839,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 productType="cosmetique_parfum"
                                 fieldName="origines"
                                 onSelect={(value) => setNewProduct({ ...newProduct, origineCosmetique: value })}
-                                placeholder="Ex: France, Corée du Sud, Maroc, USA..."
+                                placeholder={t('productManagerMobile.exFranceCoreeDuSud')}
                             />
                         </View>
 
@@ -12835,7 +12847,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Plus vous détaillez les caractéristiques (type de peau, ingrédients, certifications), plus les clients auront confiance. Ajoutez des photos de qualité du produit et de son emballage.
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.plusVousDetaillezLesCaracteristiquesType')}
                             </Text>
                         </View>
                     </>
@@ -12850,7 +12862,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1.2 }]}>
                                 <ProductFieldSelector
-                                    label="Type de bijou"
+                                    label={t('productManagerMobile.typeDeBijou')}
                                     fieldName="types"
                                     productType="bijoux"
                                     value={newProduct.typeBijou || ''}
@@ -12873,7 +12885,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Matière principale"
+                                    label={t('productManagerMobile.matierePrincipale')}
                                     fieldName="materiaux"
                                     productType="bijoux"
                                     value={newProduct.matiereBijou || ''}
@@ -12897,7 +12909,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             {newProduct.matiereBijou?.toLowerCase().includes('argent') && (
                                 <View style={[styles.fieldContainer, { flex: 0.8 }]}>
                                     <ProductFieldSelector
-                                        label="Pureté"
+                                        label={t('productManagerMobile.purete')}
                                         fieldName="puretes_argent"
                                         productType="bijoux"
                                         value={newProduct.pureteArgent || ''}
@@ -12910,7 +12922,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Marque (montres ou bijoux luxe) */}
                         {(newProduct.typeBijou?.toLowerCase().includes('montre')) ? (
                             <ProductFieldSelector
-                                label="Marque de montre"
+                                label={t('productManagerMobile.marqueDeMontre')}
                                 fieldName="marques_montres"
                                 productType="bijoux"
                                 value={newProduct.marqueBijou || ''}
@@ -12918,7 +12930,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             />
                         ) : (
                             <ProductFieldSelector
-                                label="Marque (optionnel)"
+                                label={t('productManagerMobile.marqueOptionnel')}
                                 fieldName="marques_bijoux_luxe"
                                 productType="bijoux"
                                 value={newProduct.marqueBijou || ''}
@@ -12953,7 +12965,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Taille/Longueur selon le type */}
                         {newProduct.typeBijou?.toLowerCase().includes('bague') ||
                             newProduct.typeBijou?.toLowerCase().includes('alliance') ||
-                            newProduct.typeBijou?.toLowerCase().includes('chevalière') ? (
+                            newProduct.typeBijou?.toLowerCase().includes(t('productManagerMobile.chevaliere')) ? (
                             <ProductFieldSelector
                                 label="Taille de bague"
                                 fieldName="tailles_bagues"
@@ -12962,10 +12974,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 onSelect={(value) => setNewProduct({ ...newProduct, tailleBijou: value })}
                             />
                         ) : newProduct.typeBijou?.toLowerCase().includes('collier') ||
-                            newProduct.typeBijou?.toLowerCase().includes('chaîne') ||
+                            newProduct.typeBijou?.toLowerCase().includes(t('productManagerMobile.chaine')) ||
                             newProduct.typeBijou?.toLowerCase().includes('pendentif') ? (
                             <ProductFieldSelector
-                                label="Longueur collier/chaîne"
+                                label={t('productManagerMobile.longueurCollierchaine')}
                                 fieldName="longueurs_colliers"
                                 productType="bijoux"
                                 value={newProduct.longueurBijou || ''}
@@ -12983,7 +12995,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             />
                         ) : newProduct.typeBijou?.toLowerCase().includes('montre') ? (
                             <View style={styles.fieldContainer}>
-                                <Text style={styles.fieldLabel}>Diamètre boîtier</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.diametreBoitier')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 40mm, 42mm"
                                     value={newProduct.diametreMontre || ''}
@@ -13035,7 +13047,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     fieldName="etats"
                                     productType="bijoux"
                                     value={newProduct.etatBijou || ''}
@@ -13100,7 +13112,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💎 <Text style={styles.hintBold}>Conseil :</Text> Des photos claires du bijou porté, des détails des pierres et du poinçon augmentent la confiance. Pour les montres, montrez le cadran, le bracelet et le fond du boîtier.
+                                💎 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.desPhotosClairesDuBijouPorte')}
                             </Text>
                         </View>
                     </>
@@ -13113,7 +13125,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type de produit"
+                                    label={t('productManagerMobile.typeDeProduit')}
                                     fieldName="types"
                                     productType="coiffure_beaute"
                                     value={newProduct.typeCoiffure || ''}
@@ -13159,7 +13171,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type de pose"
+                                    label={t('productManagerMobile.typeDePose')}
                                     fieldName="typesPose"
                                     productType="coiffure_beaute"
                                     value={newProduct.typePose || ''}
@@ -13190,7 +13202,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type de cheveux"
+                                    label={t('productManagerMobile.typeDeCheveux')}
                                     fieldName="typesCheveux"
                                     productType="coiffure_beaute"
                                     value={newProduct.typeCheveux || ''}
@@ -13211,7 +13223,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Durée de vie (jours)</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.dureeDeVieJours')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 30"
                                     value={newProduct.dureeVie || ''}
@@ -13241,7 +13253,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="scissors" size={20} color="#8B5CF6" />
-                            <Text style={styles.sectionTitle}>🪡 Informations du Service</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDuService')}/Text>
                         </View>
 
                         {/* Description obligatoire */}
@@ -13251,7 +13263,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 Décrivez votre service de couture (spécialités, style, expérience...)
                             </Text>
                             <NativeInput
-                                placeholder="Ex: Spécialiste robes de mariée et tenues africaines sur mesure, 10 ans d'expérience..."
+                                placeholder={t('productManagerMobile.exSpecialisteRobesDeMariee')}expérience..."
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
@@ -13261,7 +13273,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Type de service */}
                         <SelectModalitySelector
-                            label="Type de service"
+                            label={t('productManagerMobile.typeDeService')}
                             value={newProduct.typeCouture || ''}
                             productType="couturier"
                             fieldName="types"
@@ -13275,14 +13287,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shirt" size={20} color="#8B5CF6" />
-                            <Text style={styles.sectionTitle}>👗 Caractéristiques du Vêtement</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiquesDuVetement')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             {/* Catégorie vêtement */}
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Catégorie vêtement"
+                                    label={t('productManagerMobile.categorieVetement')}
                                     value={newProduct.categorieCouture || ''}
                                     productType="couturier"
                                     fieldName="categories"
@@ -13307,7 +13319,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Tissu utilisé */}
                         <SelectModalitySelector
-                            label="Tissu utilisé"
+                            label={t('productManagerMobile.tissuUtilise')}
                             value={newProduct.tissuCouture || ''}
                             productType="couturier"
                             fieldName="tissus"
@@ -13338,7 +13350,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="couturier"
                                     fieldName="occasions"
                                     onSelect={(value) => setNewProduct({ ...newProduct, occasionCouture: value })}
-                                    placeholder="Mariage, Soirée, Quotidien..."
+                                    placeholder={t('productManagerMobile.mariageSoireeQuotidien')}
                                 />
                             </View>
                         </View>
@@ -13373,31 +13385,31 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="star" size={20} color="#8B5CF6" />
-                            <Text style={styles.sectionTitle}>⭐ Expertise & Spécialités</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.expertiseSpecialites')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             {/* Spécialité couturier */}
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Spécialité"
+                                    label={t('productManagerMobile.specialite')}
                                     value={newProduct.specialiteCouturier || ''}
                                     productType="couturier"
                                     fieldName="specialites"
                                     onSelect={(value) => setNewProduct({ ...newProduct, specialiteCouturier: value })}
-                                    placeholder="Robes mariée, Bazin..."
+                                    placeholder={t('productManagerMobile.robesMarieeBazin')}
                                 />
                             </View>
 
                             {/* Expérience */}
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Expérience"
+                                    label={t('productManagerMobile.experience')}
                                     value={newProduct.experienceCouturier || ''}
                                     productType="couturier"
                                     fieldName="experiences"
                                     onSelect={(value) => setNewProduct({ ...newProduct, experienceCouturier: value })}
-                                    placeholder="Débutant, Confirmé..."
+                                    placeholder={t('productManagerMobile.debutantConfirme')}
                                 />
                             </View>
                         </View>
@@ -13411,14 +13423,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="couturier"
                                     fieldName="finitions"
                                     onSelect={(value) => setNewProduct({ ...newProduct, finitionCouture: value })}
-                                    placeholder="Haute couture, Soignée..."
+                                    placeholder={t('productManagerMobile.hauteCoutureSoignee')}
                                 />
                             </View>
 
                             {/* Lieu de travail */}
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Lieu de travail"
+                                    label={t('productManagerMobile.lieuDeTravail')}
                                     value={newProduct.lieuTravailCouturier || ''}
                                     productType="couturier"
                                     fieldName="lieuxTravail"
@@ -13431,7 +13443,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Services inclus (multi-select) */}
                         <MultiSelectModalitySelector
-                            label="Services inclus"
+                            label={t('productManagerMobile.servicesInclus')}
                             values={newProduct.serviceCoutureInclus || []}
                             productType="couturier"
                             fieldName="servicesInclus"
@@ -13442,12 +13454,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Équipements disponibles (multi-select) */}
                         <MultiSelectModalitySelector
-                            label="Équipements disponibles"
+                            label={t('productManagerMobile.equipementsDisponibles')}
                             values={newProduct.equipementsCouturier || []}
                             productType="couturier"
                             fieldName="equipements"
                             onSelect={(values) => setNewProduct({ ...newProduct, equipementsCouturier: values })}
-                            placeholder="Ex: Machine à broder, Surjeteuse..."
+                            placeholder={t('productManagerMobile.exMachineABroderSurjeteuse')}
                             maxSelections={8}
                         />
 
@@ -13456,13 +13468,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color="#8B5CF6" />
-                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.info} />
                             <Text style={styles.hintText}>
-                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Indiquez où vous proposez vos services de couture.
+                                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Indiquez où vous proposez vos services de couture.
                             </Text>
                         </View>
 
@@ -13473,7 +13485,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="couturier"
                             fieldName="zones_intervention"
                             onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionCouturier: values })}
-                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeToutLe')}
                             maxSelections={15}
                             required
                         />
@@ -13483,18 +13495,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="dollar-sign" size={20} color="#8B5CF6" />
-                            <Text style={styles.sectionTitle}>💰 Tarification & Délais</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.tarificationDelais')}</Text>
                         </View>
 
                         {/* Mode de tarification */}
                         <SelectModalitySelector
-                            label="Mode de tarification"
+                            label={t('productManagerMobile.modeDeTarification')}
                             value={newProduct.tarificationCouture || ''}
                             productType="couturier"
                             fieldName="tarifications"
                             onSelect={(value) => setNewProduct({ ...newProduct, tarificationCouture: value })}
                             required
-                            placeholder="À la pièce, Forfait, Au mètre..."
+                            placeholder={t('productManagerMobile.aLaPieceForfaitAu')}
                         />
 
                         <View style={styles.fieldRow}>
@@ -13539,7 +13551,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Délai de confection */}
                         <SelectModalitySelector
-                            label="Délai de confection"
+                            label={t('productManagerMobile.delaiDeConfection')}
                             value={newProduct.delaiCouture || ''}
                             productType="couturier"
                             fieldName="delais"
@@ -13550,12 +13562,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Modes de paiement (multi-select) */}
                         <MultiSelectModalitySelector
-                            label="Modes de paiement acceptés"
+                            label={t('productManagerMobile.modesDePaiementAcceptes')}
                             values={newProduct.modesPaiementCouturier || []}
                             productType="couturier"
                             fieldName="paiements"
                             onSelect={(values) => setNewProduct({ ...newProduct, modesPaiementCouturier: values })}
-                            placeholder="Espèces, Mobile Money, Carte..."
+                            placeholder={t('productManagerMobile.especesMobileMoneyCarte')}
                             maxSelections={6}
                         />
 
@@ -13565,14 +13577,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="camera" size={16} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                📸 <Text style={styles.hintBold}>Astuce Photos :</Text> Ajoutez 5-10 photos de vos réalisations (robes, boubous, costumes). Les photos de qualité augmentent considérablement les commandes !
+                                📸 <Text style={styles.hintBold}>{t('productManagerMobile.astucePhotos')}/Text> Ajoutez 5-10 photos de vos réalisations (robes, boubous, costumes). Les photos de qualité augmentent considérablement les commandes !
                             </Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="star" size={16} color="#8B5CF6" />
                             <Text style={styles.hintText}>
-                                ✨ <Text style={styles.hintBold}>Services très demandés en Afrique :</Text>{'\n'}
+                                ✨ <Text style={styles.hintBold}>{t('productManagerMobile.servicesTresDemandesEnAfrique')}</Text>{'\n'}
                                 • Robes de mariée complètes (voile, traîne){'\n'}
                                 • Boubous grand bazin brodé (hommes){'\n'}
                                 • Ensembles pagne wax (femmes){'\n'}
@@ -13590,12 +13602,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Type et Produit */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shield" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Type et Produit d'Assurance</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeEtProduitDassurance')}/Text>
                         </View>
 
                         {/* ✅ PREMIER CHAMP OBLIGATOIRE: Type VIE ou NON VIE */}
                         <SelectModalitySelector
-                            label="Type d'assurance"
+                            label={t('productManagerMobile.typeD')}assurance"
                             value={newProduct.typeAssuranceVie || ''}
                             productType="assurance"
                             fieldName="types_assurance"
@@ -13605,12 +13617,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 produitAssurance: '' // Reset produit quand type change
                             })}
                             required
-                            placeholder="Sélectionner VIE ou NON VIE"
+                            placeholder={t('productManagerMobile.selectionnerVieOuNonVie')}
                         />
 
                         {/* ✅ SECOND CHAMP: Produit d'assurance (filtré selon type) */}
                         <AssuranceProduitSelector
-                            label="Produit d'assurance"
+                            label={t('productManagerMobile.produitD')}assurance"
                             value={newProduct.produitAssurance || ''}
                             typeAssurance={newProduct.typeAssuranceVie || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, produitAssurance: value })}
@@ -13621,7 +13633,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Compagnie et Informations */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="building" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Compagnie et Contrat</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.compagnieEtContrat')}/Text>
                         </View>
 
                         {/* ✅ Compagnie d'assurance */}
@@ -13639,7 +13651,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Durée du contrat"
+                                    label={t('productManagerMobile.dureeDuContrat')}
                                     value={newProduct.dureeContrat || ''}
                                     productType="assurance"
                                     fieldName="durees"
@@ -13649,7 +13661,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Mode de paiement"
+                                    label={t('productManagerMobile.modeDePaiement')}
                                     value={newProduct.modePaiementAssurance || ''}
                                     productType="assurance"
                                     fieldName="modes_paiement"
@@ -13676,13 +13688,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 couverturesArray: values,
                                 couverture: values.join(', ') // Pour compatibilité
                             })}
-                            placeholder="Sélectionner les garanties"
+                            placeholder={t('productManagerMobile.selectionnerLesGaranties')}
                             maxSelections={10}
                         />
 
                         {/* ✅ Bénéfices (multi-select) */}
                         <MultiSelectModalitySelector
-                            label="Principaux bénéfices"
+                            label={t('productManagerMobile.principauxBenefices')}
                             values={newProduct.beneficesArray || []}
                             productType="assurance"
                             fieldName="benefices"
@@ -13691,20 +13703,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 beneficesArray: values,
                                 benefices: values.join(', ') // Pour compatibilité
                             })}
-                            placeholder="Sélectionner les bénéfices"
+                            placeholder={t('productManagerMobile.selectionnerLesBenefices')}
                             maxSelections={8}
                         />
 
                         {/* Section 4: Options et Primes */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Options et Primes</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.optionsEtPrimes')}/Text>
                         </View>
 
                         {/* ✅ Prime de base (à partir de) */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
-                                <Text style={styles.fieldLabel}>Prime (à partir de) <Text style={styles.required}>*</Text></Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.primeAPartirDe')}<Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="Ex: 50000"
                                     value={newProduct.primeAnnuelle || ''}
@@ -13749,7 +13761,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 5: Informations Complémentaires */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="file-text" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations Complémentaires</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsComplementaires')}</Text>
                         </View>
 
                         <SelectModalitySelector
@@ -13758,13 +13770,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="assurance"
                             fieldName="conditions_age"
                             onSelect={(value) => setNewProduct({ ...newProduct, conditionAge: value })}
-                            placeholder="Ex: 18-30 ans, Tous âges..."
+                            placeholder={t('productManagerMobile.ex1830AnsTousAges')}
                         />
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez plusieurs formules (Basique, Standard, Premium) pour offrir plus de choix à vos clients
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.ajoutezPlusieursFormulesBasiqueStandardPremium')}
                             </Text>
                         </View>
                     </>
@@ -13778,11 +13790,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="store" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Établissement & Spécialisation</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.etablissementSpecialisation')}</Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Type d'établissement"
+                            label={t('productManagerMobile.typeD')}établissement"
                             fieldName="types"
                             productType="restauration"
                             value={newProduct.typeRestaurant || ''}
@@ -13792,13 +13804,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <ProductFieldSelector
-                            label="Type de cuisine"
+                            label={t('productManagerMobile.typeDeCuisine')}
                             fieldName="types_cuisine"
                             productType="restauration"
                             value={newProduct.typeCuisine || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, typeCuisine: value })}
                             required
-                            placeholder="Camerounaise, Ivoirienne, Sénégalaise..."
+                            placeholder={t('productManagerMobile.camerounaiseIvoirienneSenegalaise')}
                         />
 
                         {/* ========================================== */}
@@ -13806,72 +13818,72 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="utensils" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>🍽️ Carte & Spécialités</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.carteSpecialites')}</Text>
                         </View>
 
                         {/* Plats Camerounais */}
                         <ProductFieldSelector
-                            label="🇨🇲 Plats camerounais"
+                            label={t('productManagerMobile.platsCamerounais')}
                             fieldName="plats_camerounais"
                             productType="restauration"
                             value={newProduct.platsCamerounais || []}
                             onSelect={(values) => setNewProduct({ ...newProduct, platsCamerounais: values })}
                             multiSelect
                             maxSelections={20}
-                            placeholder="Ndolé, Eru, Poulet DG, Koki..."
+                            placeholder={t('productManagerMobile.ndoleEruPouletDgKoki')}
                         />
 
                         {/* Plats Ivoiriens */}
                         <ProductFieldSelector
-                            label="🇨🇮 Plats ivoiriens"
+                            label={t('productManagerMobile.platsIvoiriens')}
                             fieldName="plats_ivoiriens"
                             productType="restauration"
                             value={newProduct.platsIvoiriens || []}
                             onSelect={(values) => setNewProduct({ ...newProduct, platsIvoiriens: values })}
                             multiSelect
                             maxSelections={20}
-                            placeholder="Attiéké, Aloco, Garba, Kedjenou..."
+                            placeholder={t('productManagerMobile.attiekeAlocoGarbaKedjenou')}
                         />
 
                         {/* Plats Sénégalais */}
                         <ProductFieldSelector
-                            label="🇸🇳 Plats sénégalais"
+                            label={t('productManagerMobile.platsSenegalais')}
                             fieldName="plats_senegalais"
                             productType="restauration"
                             value={newProduct.platsSenegalais || []}
                             onSelect={(values) => setNewProduct({ ...newProduct, platsSenegalais: values })}
                             multiSelect
                             maxSelections={20}
-                            placeholder="Thiéboudienne, Yassa, Mafé..."
+                            placeholder={t('productManagerMobile.thieboudienneYassaMafe')}
                         />
 
                         {/* Plats Maliens */}
                         <ProductFieldSelector
-                            label="🇲🇱 Plats maliens"
+                            label={t('productManagerMobile.platsMaliens')}
                             fieldName="plats_maliens"
                             productType="restauration"
                             value={newProduct.platsMaliens || []}
                             onSelect={(values) => setNewProduct({ ...newProduct, platsMaliens: values })}
                             multiSelect
                             maxSelections={15}
-                            placeholder="Tô, Maafé, Fonio..."
+                            placeholder={t('productManagerMobile.toMaafeFonio')}
                         />
 
                         {/* Plats Gabonais */}
                         <ProductFieldSelector
-                            label="🇬🇦 Plats gabonais"
+                            label={t('productManagerMobile.platsGabonais')}
                             fieldName="plats_gabonais"
                             productType="restauration"
                             value={newProduct.platsGabonais || []}
                             onSelect={(values) => setNewProduct({ ...newProduct, platsGabonais: values })}
                             multiSelect
                             maxSelections={15}
-                            placeholder="Nyembwé, Moambe..."
+                            placeholder={t('productManagerMobile.nyembweMoambe')}
                         />
 
                         {/* Plats Congolais */}
                         <ProductFieldSelector
-                            label="🇨🇬 Plats congolais (RDC/RC)"
+                            label={t('productManagerMobile.platsCongolaisRdcrc')}
                             fieldName="plats_congolais"
                             productType="restauration"
                             value={newProduct.platsCongolais || []}
@@ -13883,31 +13895,31 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Plats Burkinabè */}
                         <ProductFieldSelector
-                            label="🇧🇫 Plats burkinabè"
+                            label={t('productManagerMobile.platsBurkinabe')}
                             fieldName="plats_burkinabe"
                             productType="restauration"
                             value={newProduct.platsBurkinabe || []}
                             onSelect={(values) => setNewProduct({ ...newProduct, platsBurkinabe: values })}
                             multiSelect
                             maxSelections={15}
-                            placeholder="Riz gras, Tô..."
+                            placeholder={t('productManagerMobile.rizGrasTo')}
                         />
 
                         {/* Autres pays d'Afrique */}
                         <ProductFieldSelector
-                            label="🌍 Autres pays africains"
+                            label={t('productManagerMobile.autresPaysAfricains')}
                             fieldName="plats_autres_pays"
                             productType="restauration"
                             value={newProduct.platsAutresPays || []}
                             onSelect={(values) => setNewProduct({ ...newProduct, platsAutresPays: values })}
                             multiSelect
                             maxSelections={15}
-                            placeholder="Togo, Bénin, Niger, Tchad, Madagascar..."
+                            placeholder={t('productManagerMobile.togoBeninNigerTchadMadagascar')}
                         />
 
                         {/* Cuisine Internationale */}
                         <ProductFieldSelector
-                            label="🌍 Plats internationaux"
+                            label={t('productManagerMobile.platsInternationaux')}
                             fieldName="plats_internationaux"
                             productType="restauration"
                             value={newProduct.platsInternationaux || []}
@@ -13937,7 +13949,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <ProductFieldSelector
-                            label="Desserts & Pâtisseries"
+                            label={t('productManagerMobile.dessertsPatisseries')}
                             fieldName="desserts_locaux"
                             productType="restauration"
                             value={newProduct.dessertsLocaux || []}
@@ -13952,11 +13964,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>💼 Services & Organisation</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesOrganisation')}/Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Services proposés"
+                            label={t('productManagerMobile.servicesProposes')}
                             fieldName="services"
                             productType="restauration"
                             value={newProduct.servicesRestau || []}
@@ -13966,13 +13978,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <ProductFieldSelector
-                            label="Horaires de service"
+                            label={t('productManagerMobile.horairesDeService')}
                             fieldName="horaires"
                             productType="restauration"
                             value={newProduct.horairesRestaurant || []}
                             onSelect={(values) => setNewProduct({ ...newProduct, horairesRestaurant: values })}
                             multiSelect
-                            placeholder="Petit-déjeuner, Déjeuner, Dîner..."
+                            placeholder={t('productManagerMobile.petitdejeunerDejeunerDiner')}
                         />
 
                         {/* ========================================== */}
@@ -13980,7 +13992,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="heart" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>🏪 Ambiance & Équipements</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.ambianceEquipements')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -13997,7 +14009,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Capacité d'accueil"
+                                    label={t('productManagerMobile.capaciteD')}accueil"
                                     fieldName="capacite_accueil"
                                     productType="restauration"
                                     value={newProduct.capaciteRestaurant || ''}
@@ -14012,7 +14024,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>💰 Tarifs & Options Alimentaires</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.tarifsOptionsAlimentaires')}/Text>
                         </View>
 
                         <ProductFieldSelector
@@ -14022,17 +14034,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             value={newProduct.gammePrix || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, gammePrix: value })}
                             required
-                            placeholder="Économique, Moyen, Premium..."
+                            placeholder={t('productManagerMobile.economiqueMoyenPremium')}
                         />
 
                         <ProductFieldSelector
-                            label="Régimes alimentaires spéciaux"
+                            label={t('productManagerMobile.regimesAlimentairesSpeciaux')}
                             fieldName="regimes"
                             productType="restauration"
                             value={newProduct.regimesSpeciaux || []}
                             onSelect={(values) => setNewProduct({ ...newProduct, regimesSpeciaux: values })}
                             multiSelect
-                            placeholder="Halal, Végétarien, Vegan, Sans gluten..."
+                            placeholder={t('productManagerMobile.halalVegetarienVeganSansGluten')}
                         />
 
                         {/* ========================================== */}
@@ -14040,29 +14052,29 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="users" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>👨‍🍳 Équipe & Clientèle</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.equipeClientele')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Spécialisation du chef"
+                                    label={t('productManagerMobile.specialisationDuChef')}
                                     fieldName="specialisation_chef"
                                     productType="restauration"
                                     value={newProduct.specialisationChef || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, specialisationChef: value })}
-                                    placeholder="Chef camerounais, Chef français..."
+                                    placeholder={t('productManagerMobile.chefCamerounaisChefFrancais')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type de clientèle"
+                                    label={t('productManagerMobile.typeDeClientele')}
                                     fieldName="type_clientele"
                                     productType="restauration"
                                     value={newProduct.typeClientele || []}
                                     onSelect={(values) => setNewProduct({ ...newProduct, typeClientele: values })}
                                     multiSelect
-                                    placeholder="Familles, Étudiants..."
+                                    placeholder={t('productManagerMobile.famillesEtudiants')}
                                 />
                             </View>
                         </View>
@@ -14072,7 +14084,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="award" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>🎖️ Certifications & Promotions</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.certificationsPromotions')}/Text>
                         </View>
 
                         <ProductFieldSelector
@@ -14082,17 +14094,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             value={newProduct.certificationsRestau || []}
                             onSelect={(values) => setNewProduct({ ...newProduct, certificationsRestau: values })}
                             multiSelect
-                            placeholder="Halal, Hygiène, ISO..."
+                            placeholder={t('productManagerMobile.halalHygieneIso')}
                         />
 
                         <ProductFieldSelector
-                            label="Promotions & Avantages"
+                            label={t('productManagerMobile.promotionsAvantages')}
                             fieldName="promotions"
                             productType="restauration"
                             value={newProduct.promotionsRestau || []}
                             onSelect={(values) => setNewProduct({ ...newProduct, promotionsRestau: values })}
                             multiSelect
-                            placeholder="Menu du midi, Livraison gratuite..."
+                            placeholder={t('productManagerMobile.menuDuMidiLivraisonGratuite')}
                         />
 
                         {/* ========================================== */}
@@ -14100,23 +14112,23 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📍 Localisation & Zones de Livraison</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisationZonesDeLivraison')}/Text>
                         </View>
 
                         {/* ✅ Ville du restaurant */}
                         <LocationSelector
-                            label="Ville du restaurant"
+                            label={t('productManagerMobile.villeDuRestaurant')}
                             value={newProduct.villeRestaurant || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, villeRestaurant: value })}
                             scope="city"
                             required
-                            placeholder="Ex: Douala, Yaoundé, Abidjan..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeAbidjan')}
                         />
 
                         {/* ✅ Quartier du restaurant */}
                         {newProduct.villeRestaurant && (
                             <LocationSelector
-                                label="Quartier / Zone"
+                                label={t('productManagerMobile.quartierZone')}
                                 value={newProduct.quartierRestaurant || ''}
                                 onSelect={(value) => setNewProduct({ ...newProduct, quartierRestaurant: value })}
                                 scope="point"
@@ -14129,7 +14141,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Adresse du restaurant</Text>
                             <NativeInput
-                                placeholder="Ex: Avenue de la Liberté, face Carrefour..."
+                                placeholder={t('productManagerMobile.exAvenueDeLaLiberte')}
                                 value={newProduct.adresseRestaurant || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, adresseRestaurant: text })}
                                 multiline
@@ -14175,11 +14187,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Identité de l'Appareil */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="smartphone" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Identité de l'Appareil</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDeLappareil')}</Text>
                         </View>
 
                         <SelectModalitySelector
-                            label="Type d'appareil"
+                            label={t('productManagerMobile.typeD')}appareil"
                             value={newProduct.typeElectronique || ''}
                             productType="electronique"
                             fieldName="types"
@@ -14191,7 +14203,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 }
                             }}
                             required
-                            placeholder="Ex: Console, Drone, Caméra..."
+                            placeholder={t('productManagerMobile.exConsoleDroneCamera')}
                         />
 
                         <View style={styles.fieldRow}>
@@ -14206,7 +14218,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Modèle</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.modele')}</Text>
                                 <NativeInput
                                     placeholder="Ex: Galaxy S23, PS5 Standard"
                                     value={newProduct.modeleElectronique || ''}
@@ -14219,13 +14231,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: État & Garantie */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shield-check" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>État & Garantie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.etatGarantie')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     value={newProduct.etatElectronique || ''}
                                     productType="electronique"
                                     fieldName="etats"
@@ -14249,11 +14261,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Connectivités & Spécifications */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="wifi" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Connectivités & Spécifications</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.connectivitesSpecifications')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Connectivités"
+                            label={t('productManagerMobile.connectivites')}
                             values={newProduct.connectivites || []}
                             productType="electronique"
                             fieldName="connectivites"
@@ -14317,10 +14329,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'musique_instruments':
                 return (
                     <>
-                        <Text style={styles.sectionTitle}>📍 Catégorie & Type</Text>
+                        <Text style={styles.sectionTitle}>{t('productManagerMobile.categorieType')}</Text>
 
                         <ProductFieldSelector
-                            label="Catégorie principale"
+                            label={t('productManagerMobile.categoriePrincipale')}
                             fieldName="categories"
                             productType="musique_instruments"
                             value={newProduct.categorieInstrument || ''}
@@ -14334,7 +14346,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 newProduct.categorieInstrument === 'Instrument traditionnel africain' ? 'Instrument africain' :
                                     newProduct.categorieInstrument === 'Accessoire musical' ? 'Type d\'accessoire' :
                                         newProduct.categorieInstrument === 'Sonorisation & Sono' ? 'Équipement sono' :
-                                            newProduct.categorieInstrument === 'Matériel DJ' ? 'Équipement DJ' :
+                                            newProduct.categorieInstrument === t('productManagerMobile.materielDj') ? 'Équipement DJ' :
                                                 newProduct.categorieInstrument === 'Studio & Enregistrement' ? 'Équipement studio' :
                                                     'Type d\'instrument'
                             }
@@ -14342,7 +14354,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 newProduct.categorieInstrument === 'Instrument traditionnel africain' ? 'instruments_africains' :
                                     newProduct.categorieInstrument === 'Accessoire musical' ? 'accessoires' :
                                         newProduct.categorieInstrument === 'Sonorisation & Sono' ? 'equipement_sono_dj' :
-                                            newProduct.categorieInstrument === 'Matériel DJ' ? 'equipement_sono_dj' :
+                                            newProduct.categorieInstrument === t('productManagerMobile.materielDj') ? 'equipement_sono_dj' :
                                                 newProduct.categorieInstrument === 'Studio & Enregistrement' ? 'equipement_studio' :
                                                     'types_cordes_guitares'
                             }
@@ -14352,7 +14364,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             required
                         />
 
-                        <Text style={styles.sectionTitle}>🏷️ Marque & Modèle</Text>
+                        <Text style={styles.sectionTitle}>{t('productManagerMobile.marqueModele')}</Text>
 
                         {/* ✅ Marque dynamique selon type */}
                         <View style={styles.fieldRow}>
@@ -14362,18 +14374,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     fieldName={
                                         newProduct.typeInstrument?.toLowerCase().includes('guitare') ||
                                             newProduct.typeInstrument?.toLowerCase().includes('basse') ||
-                                            newProduct.typeInstrument?.toLowerCase().includes('ukulélé') ? 'marques_guitares' :
+                                            newProduct.typeInstrument?.toLowerCase().includes(t('productManagerMobile.ukulele')) ? 'marques_guitares' :
                                             newProduct.typeInstrument?.toLowerCase().includes('piano') ||
                                                 newProduct.typeInstrument?.toLowerCase().includes('clavier') ||
-                                                newProduct.typeInstrument?.toLowerCase().includes('synthé') ? 'marques_pianos' :
+                                                newProduct.typeInstrument?.toLowerCase().includes(t('productManagerMobile.synthe')) ? 'marques_pianos' :
                                                 newProduct.typeInstrument?.toLowerCase().includes('batterie') ||
-                                                    newProduct.typeInstrument?.toLowerCase().includes('djembé') ||
+                                                    newProduct.typeInstrument?.toLowerCase().includes(t('productManagerMobile.djembe')) ||
                                                     newProduct.typeInstrument?.toLowerCase().includes('percussion') ? 'marques_batteries' :
                                                     newProduct.typeInstrument?.toLowerCase().includes('saxophone') ||
                                                         newProduct.typeInstrument?.toLowerCase().includes('trompette') ||
                                                         newProduct.typeInstrument?.toLowerCase().includes('flûte') ? 'marques_vents' :
                                                         newProduct.categorieInstrument === 'Sonorisation & Sono' ||
-                                                            newProduct.categorieInstrument === 'Matériel DJ' ? 'marques_sono_dj' :
+                                                            newProduct.categorieInstrument === t('productManagerMobile.materielDj') ? 'marques_sono_dj' :
                                                             newProduct.categorieInstrument === 'Studio & Enregistrement' ? 'marques_studio' :
                                                                 'marques_guitares'
                                     }
@@ -14383,7 +14395,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Modèle</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.modele')}</Text>
                                 <NativeInput
                                     placeholder="Ex: Stratocaster"
                                     value={newProduct.modeleInstrument || ''}
@@ -14393,12 +14405,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
-                        <Text style={styles.sectionTitle}>⚙️ Caractéristiques</Text>
+                        <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     fieldName="etats"
                                     productType="musique_instruments"
                                     value={newProduct.etatInstrument || ''}
@@ -14419,9 +14431,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* ✅ Matériau (si instrument acoustique) */}
                         {newProduct.categorieInstrument !== 'Studio & Enregistrement' &&
-                            newProduct.categorieInstrument !== 'Matériel DJ' && (
+                            newProduct.categorieInstrument !== t('productManagerMobile.materielDj') && (
                                 <ProductFieldSelector
-                                    label="Matériau principal"
+                                    label={t('productManagerMobile.materiauPrincipal')}
                                     fieldName="materiaux"
                                     productType="musique_instruments"
                                     value={newProduct.materiauInstrument || ''}
@@ -14434,8 +14446,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             newProduct.typeInstrument?.toLowerCase().includes('alto') ||
                             newProduct.typeInstrument?.toLowerCase().includes('violoncelle') ||
                             newProduct.typeInstrument?.toLowerCase().includes('guitare') ||
-                            newProduct.typeInstrument?.toLowerCase().includes('ukulélé') ||
-                            newProduct.typeInstrument?.toLowerCase().includes('djembé')) && (
+                            newProduct.typeInstrument?.toLowerCase().includes(t('productManagerMobile.ukulele')) ||
+                            newProduct.typeInstrument?.toLowerCase().includes(t('productManagerMobile.djembe'))) && (
                                 <ProductFieldSelector
                                     label="Taille"
                                     fieldName="tailles"
@@ -14452,7 +14464,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             newProduct.typeInstrument?.toLowerCase().includes('kora') ||
                             newProduct.typeInstrument?.toLowerCase().includes('ngoni')) && (
                                 <View style={styles.fieldContainer}>
-                                    <Text style={styles.fieldLabel}>Nombre de cordes</Text>
+                                    <Text style={styles.fieldLabel}>{t('productManagerMobile.nombreDeCordes')}</Text>
                                     <NativeInput
                                         placeholder={newProduct.typeInstrument?.toLowerCase().includes('kora') ? 'Ex: 21' : 'Ex: 6'}
                                         value={newProduct.nombreCordes || ''}
@@ -14465,7 +14477,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Année de fabrication</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.anneeDeFabrication')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 2020"
                                     value={newProduct.anneeInstrument || ''}
@@ -14506,7 +14518,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Utilisation prévue"
+                                    label={t('productManagerMobile.utilisationPrevue')}
                                     fieldName="utilisations"
                                     productType="musique_instruments"
                                     value={newProduct.utilisationInstrument || ''}
@@ -14526,13 +14538,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* ✅ Alimentation & Connectiques (si électronique) */}
                         {(newProduct.categorieInstrument === 'Studio & Enregistrement' ||
-                            newProduct.categorieInstrument === 'Matériel DJ' ||
+                            newProduct.categorieInstrument === t('productManagerMobile.materielDj') ||
                             newProduct.categorieInstrument === 'Sonorisation & Sono' ||
                             newProduct.typeInstrument?.toLowerCase().includes('électrique') ||
                             newProduct.typeInstrument?.toLowerCase().includes('électronique') ||
                             newProduct.typeInstrument?.toLowerCase().includes('ampli') ||
                             newProduct.typeInstrument?.toLowerCase().includes('clavier') ||
-                            newProduct.typeInstrument?.toLowerCase().includes('piano numérique')) && (
+                            newProduct.typeInstrument?.toLowerCase().includes(t('productManagerMobile.pianoNumerique'))) && (
                                 <>
                                     <ProductFieldSelector
                                         label="Alimentation"
@@ -14588,7 +14600,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ====== SECTION 6: ÉTAT & DOCUMENTS ====== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="file-text" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>État & Documents</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.etatDocuments')}</Text>
                         </View>
 
                         <View style={styles.togglesContainer}>
@@ -14624,7 +14636,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Photos recommandées (4-6) :</Text>{'\n'}
+                                💡 <Text style={styles.hintBold}>{t('productManagerMobile.photosRecommandees46')}</Text>{'\n'}
                                 • Vue complète de l'instrument{'\n'}
                                 • Détails (cordes, clés, mécaniques){'\n'}
                                 • Marque/modèle visible{'\n'}
@@ -14641,7 +14653,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return (
                     <>
                         <SelectModalitySelector
-                            label="Type de soutien"
+                            label={t('productManagerMobile.typeDeSoutien')}
                             value={newProduct.typeSoutien || ''}
                             productType="soutien_scolaire_repetiteur"
                             fieldName="types_soutien"
@@ -14651,23 +14663,23 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Niveaux scolaires (multi-select) */}
                         <MultiSelectModalitySelector
-                            label="Niveaux enseignés *"
+                            label={t('productManagerMobile.niveauxEnseignes')}
                             values={newProduct.niveauxScolaires || []}
                             productType="soutien_scolaire_repetiteur"
                             fieldName="niveaux_scolaires"
                             onSelect={(values) => setNewProduct({ ...newProduct, niveauxScolaires: values })}
-                            placeholder="Sélectionnez les niveaux (ex: CP, 6ème, Terminale)"
+                            placeholder={t('productManagerMobile.selectionnezLesNiveauxExCp')}
                             maxSelections={15}
                         />
 
                         {/* Matières enseignées (multi-select) */}
                         <MultiSelectModalitySelector
-                            label="Matières enseignées *"
+                            label={t('productManagerMobile.matieresEnseignees')}
                             values={newProduct.matieresEnseignees || []}
                             productType="soutien_scolaire_repetiteur"
                             fieldName="matieres_enseignees"
                             onSelect={(values) => setNewProduct({ ...newProduct, matieresEnseignees: values })}
-                            placeholder="Sélectionnez les matières que vous enseignez"
+                            placeholder={t('productManagerMobile.selectionnezLesMatieresQueVous')}
                             maxSelections={10}
                         />
 
@@ -14683,7 +14695,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Durée séance"
+                                    label={t('productManagerMobile.dureeSeance')}
                                     value={newProduct.dureeSeance || ''}
                                     productType="soutien_scolaire_repetiteur"
                                     fieldName="durees_seance"
@@ -14695,7 +14707,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Modalité déplacement"
+                                    label={t('productManagerMobile.modaliteDeplacement')}
                                     value={newProduct.modaliteDeplacement || ''}
                                     productType="soutien_scolaire_repetiteur"
                                     fieldName="modalites_deplacement"
@@ -14704,7 +14716,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Disponibilité"
+                                    label={t('productManagerMobile.disponibilite')}
                                     value={newProduct.disponibilite || ''}
                                     productType="soutien_scolaire_repetiteur"
                                     fieldName="disponibilites"
@@ -14716,7 +14728,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Mode tarification"
+                                    label={t('productManagerMobile.modeTarification')}
                                     value={newProduct.modeTarification || ''}
                                     productType="soutien_scolaire_repetiteur"
                                     fieldName="modes_tarification"
@@ -14725,7 +14737,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Expérience"
+                                    label={t('productManagerMobile.experience')}
                                     value={newProduct.niveauExperience || ''}
                                     productType="soutien_scolaire_repetiteur"
                                     fieldName="niveaux_experience"
@@ -14783,7 +14795,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Astuce :</Text> Indiquez clairement vos matières et niveaux pour être facilement trouvé par les parents !
+                                💡 <Text style={styles.hintBold}>Astuce :</Text>{t('productManagerMobile.indiquezClairementVosMatieresEtNiveaux')}
                             </Text>
                         </View>
                     </>
@@ -14797,7 +14809,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="file-text" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📝 Description de la Formation</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.descriptionDeLaFormation')}/Text>
                         </View>
 
                         <View style={styles.fieldContainer}>
@@ -14808,7 +14820,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 Décrivez le contenu, les objectifs et les avantages de cette formation
                             </Text>
                             <NativeInput
-                                placeholder="Ex: Formation complète au développement web avec projets pratiques..."
+                                placeholder={t('productManagerMobile.exFormationCompleteAuDeveloppement')}
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
@@ -14821,19 +14833,19 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="book-open" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>🎓 Type & Domaine</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeDomaine')}/Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de formation"
+                                    label={t('productManagerMobile.typeDeFormation')}
                                     value={newProduct.typeFormation || ''}
                                     productType="formation_education"
                                     fieldName="types"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeFormation: value })}
                                     required
-                                    placeholder="Formation pro, Cours de langue..."
+                                    placeholder={t('productManagerMobile.formationProCoursDeLangue')}
                                 />
                             </View>
                             <View style={[{ flex: 1 }]}>
@@ -14854,7 +14866,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="layers" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📊 Niveau & Mode d'Enseignement</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.niveauModeDenseignement')}/Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -14865,7 +14877,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="formation_education"
                                     fieldName="niveaux"
                                     onSelect={(value) => setNewProduct({ ...newProduct, niveauFormation: value })}
-                                    placeholder="Débutant, Intermédiaire, Avancé..."
+                                    placeholder={t('productManagerMobile.debutantIntermediaireAvance')}
                                 />
                             </View>
                             <View style={[{ flex: 1 }]}>
@@ -14876,7 +14888,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     fieldName="modes"
                                     onSelect={(value) => setNewProduct({ ...newProduct, modeFormation: value })}
                                     required
-                                    placeholder="Présentiel, En ligne, Hybride..."
+                                    placeholder={t('productManagerMobile.presentielEnLigneHybride')}
                                 />
                             </View>
                         </View>
@@ -14886,11 +14898,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="list" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📚 Matières & Contenu</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.matieresContenu')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Matières enseignées"
+                            label={t('productManagerMobile.matieresEnseignees')}
                             values={newProduct.matieresFormation || []}
                             productType="formation_education"
                             fieldName="matieres"
@@ -14904,12 +14916,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="clock" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>⏱️ Durée & Certification</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.dureeCertification')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Durée de la formation</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.dureeDeLaFormation')}</Text>
                                 <Text style={styles.fieldHint}>Ex: 3 mois, 40 heures, 6 semaines...</Text>
                                 <NativeInput
                                     placeholder="Ex: 3 mois"
@@ -14925,7 +14937,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="formation_education"
                                     fieldName="certifications"
                                     onSelect={(value) => setNewProduct({ ...newProduct, certificationFormation: value })}
-                                    placeholder="Attestation, Diplôme..."
+                                    placeholder={t('productManagerMobile.attestationDiplome')}
                                 />
                             </View>
                         </View>
@@ -14935,12 +14947,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="user" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>👨‍🏫 Formateur & Horaires</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.formateurHoraires')}/Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Nom du formateur</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.nomDuFormateur')}/Text>
                                 <NativeInput
                                     placeholder="Ex: Jean-Paul Ngono"
                                     value={newProduct.formateurNom || ''}
@@ -14949,7 +14961,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Horaires</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.horaires')}/Text>
                                 <NativeInput
                                     placeholder="Ex: Lun-Ven 18h-21h"
                                     value={newProduct.horairesFormation || ''}
@@ -14964,7 +14976,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="globe" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>🌍 Langue & Prérequis</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.languePrerequis')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -14975,11 +14987,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="formation_education"
                                     fieldName="langues"
                                     onSelect={(value) => setNewProduct({ ...newProduct, langueEnseignement: value })}
-                                    placeholder="Français, Anglais, Bilingue..."
+                                    placeholder={t('productManagerMobile.francaisAnglaisBilingue')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Prérequis</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.prerequis')}</Text>
                                 <NativeInput
                                     placeholder="Ex: Bases informatique"
                                     value={newProduct.prerequis || ''}
@@ -14994,7 +15006,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="target" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>🎯 Objectifs de la Formation</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.objectifsDeLaFormation')}/Text>
                         </View>
 
                         <View style={styles.fieldContainer}>
@@ -15003,7 +15015,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 Que vont apprendre les participants ? Quelles compétences acquises ?
                             </Text>
                             <NativeInput
-                                placeholder="Ex: Devenir développeur full stack, Maîtriser React et Node.js..."
+                                placeholder={t('productManagerMobile.exDevenirDeveloppeurFullStack')}
                                 value={newProduct.objectifs || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, objectifs: text })}
                                 multiline
@@ -15016,11 +15028,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="users" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>👥 Capacité & Places</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.capacitePlaces')}</Text>
                         </View>
 
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Nombre de places disponibles</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.nombreDePlacesDisponibles')}</Text>
                             <Text style={styles.fieldHint}>
                                 Combien de personnes peuvent s'inscrire à cette session ?
                             </Text>
@@ -15038,20 +15050,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📍 Localisation</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
                         </View>
 
                         <LocationSelector
-                            label="Ville de la formation"
+                            label={t('productManagerMobile.villeDeLaFormation')}
                             value={newProduct.villeFormation || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, villeFormation: value })}
                             scope="city"
-                            placeholder="Ex: Douala, Yaoundé, Abidjan..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeAbidjan')}
                         />
 
                         {newProduct.villeFormation && newProduct.modeFormation !== 'En ligne' && (
                             <LocationSelector
-                                label="Quartier / Zone"
+                                label={t('productManagerMobile.quartierZone')}
                                 value={newProduct.quartierFormation || ''}
                                 onSelect={(value) => setNewProduct({ ...newProduct, quartierFormation: value })}
                                 scope="point"
@@ -15061,9 +15073,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         )}
 
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Adresse précise du centre</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.adressePreciseDuCentre')}</Text>
                             <NativeInput
-                                placeholder="Ex: Avenue de la Liberté, Immeuble Les Palmiers..."
+                                placeholder={t('productManagerMobile.exAvenueDeLaLiberte')}
                                 value={newProduct.adresseFormation || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, adresseFormation: text })}
                                 multiline
@@ -15142,14 +15154,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Informations Événement */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="calendar" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations Événement</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsEvenement')}</Text>
                         </View>
 
                         {/* Description obligatoire */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Description <Text style={styles.required}>*</Text></Text>
                             <NativeInput
-                                placeholder="Décrivez votre événement ou service..."
+                                placeholder={t('productManagerMobile.decrivezVotreEvenementOuService')}
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
@@ -15159,7 +15171,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Type d'événement - SelectModalitySelector */}
                         <SelectModalitySelector
-                            label="Type d'événement"
+                            label={t('productManagerMobile.typeD')}événement"
                             value={newProduct.typeEvenement || ''}
                             productType="evenementiel"
                             fieldName="types"
@@ -15169,22 +15181,22 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Localisation intelligente avec LocationSelector */}
                         <LocationSelector
-                            label="Lieu de l'événement"
+                            label={t('productManagerMobile.lieuDeL')}événement"
                             value={newProduct.localisationEvenement || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, localisationEvenement: value })}
                             scope="all" // ✅ EXPLICITE: Recherche universelle pour lieu (établissements + géographie)
-                            placeholder="Ex: Hôtel Hilton, Salle des fêtes..."
+                            placeholder={t('productManagerMobile.exHotelHiltonSalleDes')}
                         />
 
                         {/* Section 2: Capacité et Services */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="users" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Capacité et Services</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.capaciteEtServices')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Capacité (personnes)</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.capacitePersonnes')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 200"
                                     value={newProduct.capaciteEvenement || ''}
@@ -15206,7 +15218,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Services inclus - MultiSelect */}
                         <MultiSelectModalitySelector
-                            label="Services inclus"
+                            label={t('productManagerMobile.servicesInclus')}
                             values={newProduct.servicesEvenement || []}
                             productType="evenementiel"
                             fieldName="services"
@@ -15217,11 +15229,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Disponibilité */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="clock" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Disponibilité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.disponibilite')}</Text>
                         </View>
 
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Disponibilité</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.disponibilite')}</Text>
                             <NativeInput
                                 placeholder="Ex: Du lundi au samedi, 8h-18h"
                                 value={newProduct.disponibiliteEvenement || ''}
@@ -15234,7 +15246,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez des photos de vos événements précédents pour inspirer confiance.
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.ajoutezDesPhotosDeVosEvenements')}
                             </Text>
                         </View>
                     </>
@@ -15246,11 +15258,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 1: TYPE DE PRODUIT AGRICOLE ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="sprout" size={20} color="#10B981" />
-                            <Text style={styles.sectionTitle}>Type de produit agricole</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeDeProduitAgricole')}</Text>
                         </View>
 
                         <SelectModalitySelector
-                            label="Type de produit"
+                            label={t('productManagerMobile.typeDeProduit')}
                             value={newProduct.typeAgricole || ''}
                             productType="agriculture"
                             fieldName="types"
@@ -15261,7 +15273,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 2: CARACTÉRISTIQUES ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="leaf" size={20} color="#10B981" />
-                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -15288,13 +15300,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 3: VENTE & STOCK ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shopping-cart" size={20} color="#10B981" />
-                            <Text style={styles.sectionTitle}>Vente & Stock</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.venteStock')}/Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Unité de vente"
+                                    label={t('productManagerMobile.uniteDeVente')}
                                     value={newProduct.uniteVente || ''}
                                     productType="agriculture"
                                     fieldName="unites"
@@ -15302,7 +15314,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Quantité disponible</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.quantiteDisponible')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 500"
                                     value={newProduct.quantiteDisponible || ''}
@@ -15316,7 +15328,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 4: CERTIFICATIONS & QUALITÉ ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="award" size={20} color="#10B981" />
-                            <Text style={styles.sectionTitle}>Certifications & Qualité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.certificationsQualite')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
@@ -15331,11 +15343,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 5: LOCALISATION ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color="#10B981" />
-                            <Text style={styles.sectionTitle}>Localisation</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
                         </View>
 
                         <LocationSelector
-                            label="Ville/Zone de production"
+                            label={t('productManagerMobile.villezoneDeProduction')}
                             value={newProduct.localisationAgricole || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, localisationAgricole: value })}
                             scope="city"
@@ -15346,7 +15358,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color="#10B981" />
                             <Text style={styles.hintText}>
-                                🌾 <Text style={styles.hintBold}>Conseil :</Text> Indiquez si vos produits sont bio, sans pesticides, ou issus de l'agriculture locale. Ajoutez des photos de qualité pour attirer les acheteurs.
+                                🌾 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.indiquezSiVosProduitsSontBio')}
                             </Text>
                         </View>
                     </>
@@ -15358,11 +15370,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Informations de base */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="dumbbell" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations de base</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeBase')}/Text>
                         </View>
 
                         <SelectModalitySelector
-                            label="Type d'activité sportive"
+                            label={t('productManagerMobile.typeD')}activité sportive"
                             value={newProduct.typeSport || ''}
                             productType="sport_fitness"
                             fieldName="types"
@@ -15382,7 +15394,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Durée séance"
+                                    label={t('productManagerMobile.dureeSeance')}
                                     value={newProduct.dureeSport || ''}
                                     productType="sport_fitness"
                                     fieldName="durees"
@@ -15394,11 +15406,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Services et équipements */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="briefcase" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services et équipements</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesEtEquipements')}</Text>
                         </View>
 
                         <SelectModalitySelector
-                            label="Type de service"
+                            label={t('productManagerMobile.typeDeService')}
                             value={newProduct.serviceSport || ''}
                             productType="sport_fitness"
                             fieldName="services"
@@ -15406,7 +15418,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Équipements disponibles/fournis"
+                            label={t('productManagerMobile.equipementsDisponiblesfournis')}
                             values={newProduct.equipementsSport || []}
                             productType="sport_fitness"
                             fieldName="equipements"
@@ -15425,11 +15437,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Disponibilité */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="calendar" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Disponibilité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.disponibilite')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Jours disponibles"
+                            label={t('productManagerMobile.joursDisponibles')}
                             values={newProduct.joursSport || []}
                             productType="sport_fitness"
                             fieldName="jours_disponibles"
@@ -15438,7 +15450,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <SelectModalitySelector
-                            label="Horaires"
+                            label={t('productManagerMobile.horaires')}
                             value={newProduct.horairesSport || ''}
                             productType="sport_fitness"
                             fieldName="horaires"
@@ -15449,7 +15461,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Décrivez votre activité sportive de manière complète : type, niveau requis, équipements fournis et horaires disponibles. Une description détaillée attirera plus de clients !
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.decrivezVotreActiviteSportiveDeManiere')}
                             </Text>
                         </View>
                     </>
@@ -15461,11 +15473,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Informations Service */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="sparkles" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations Service</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsService')}/Text>
                         </View>
 
                         <SelectModalitySelector
-                            label="Type de service"
+                            label={t('productManagerMobile.typeDeService')}
                             value={newProduct.typeBienEtre || ''}
                             productType="bien_etre_spa"
                             fieldName="types"
@@ -15474,7 +15486,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Services proposés"
+                            label={t('productManagerMobile.servicesProposes')}
                             values={newProduct.servicesBienEtre || []}
                             productType="bien_etre_spa"
                             fieldName="services"
@@ -15493,7 +15505,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 Description <Text style={styles.required}>*</Text>
                             </Text>
                             <NativeInput
-                                placeholder="Décrivez vos services bien-être en détail..."
+                                placeholder={t('productManagerMobile.decrivezVosServicesBienetreEn')}
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
@@ -15504,12 +15516,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Tarification et Durée */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="clock" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Tarification et Durée</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.tarificationEtDuree')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Durée (minutes)</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.dureeMinutes')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 90"
                                     value={newProduct.dureeBienEtre || ''}
@@ -15533,7 +15545,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Détaillez vos prestations (massage suédois, hammam, spa, etc.) et ajoutez des photos de qualité pour attirer plus de clients.
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.detaillezVosPrestationsMassageSuedoisHammam')}
                             </Text>
                         </View>
                     </>
@@ -15545,11 +15557,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 1: INFORMATIONS ANIMAL */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="heart" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations sur l'Animal</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsSurLanimal')}/Text>
                         </View>
 
                         <SelectModalitySelector
-                            label="Type d'animal *"
+                            label={t('productManagerMobile.typeD')}animal *"
                             value={newProduct.typeAnimal || ''}
                             productType="animaux_veterinaire"
                             fieldName="types"
@@ -15570,7 +15582,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Âge (années)</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.ageAnnees')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 5"
                                     value={newProduct.ageAnimal || ''}
@@ -15589,12 +15601,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="animaux_veterinaire"
                                     fieldName="sexes"
                                     onSelect={(value) => setNewProduct({ ...newProduct, sexeAnimal: value })}
-                                    placeholder="Mâle / Femelle"
+                                    placeholder={t('productManagerMobile.maleFemelle')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État de santé"
+                                    label={t('productManagerMobile.etatDeSante')}
                                     value={newProduct.etatSanteAnimal || ''}
                                     productType="animaux_veterinaire"
                                     fieldName="etats_sante"
@@ -15607,46 +15619,46 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 2: SERVICES VÉTÉRINAIRES */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="briefcase-medical" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services Vétérinaires</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesVeterinaires')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Services vétérinaires *"
+                            label={t('productManagerMobile.servicesVeterinaires')}
                             values={newProduct.servicesVeterinaire || []}
                             productType="animaux_veterinaire"
                             fieldName="services"
                             onSelect={(values) => setNewProduct({ ...newProduct, servicesVeterinaire: values })}
                             required
-                            placeholder="Ex: Vaccination, Consultation, Stérilisation..."
+                            placeholder={t('productManagerMobile.exVaccinationConsultationSterilisation')}
                             maxSelections={8}
                         />
 
                         <SelectModalitySelector
-                            label="Clinique vétérinaire"
+                            label={t('productManagerMobile.cliniqueVeterinaire')}
                             value={newProduct.cliniqueVeterinaire || ''}
                             productType="animaux_veterinaire"
                             fieldName="cliniques"
                             onSelect={(value) => setNewProduct({ ...newProduct, cliniqueVeterinaire: value })}
-                            placeholder="Ex: Clinique Véto Plus, Cabinet Dr. Ngono..."
+                            placeholder={t('productManagerMobile.exCliniqueVetoPlusCabinet')}
                         />
 
                         {/* ✅ SECTION 3: LOCALISATION */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Localisation</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisation')}/Text>
                         </View>
 
                         <LocationSelector
-                            label="Ville *"
+                            label={t('productManagerMobile.ville')}
                             value={newProduct.villeAnimalVeterinaire || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, villeAnimalVeterinaire: value })}
                             scope="city"
                             required
-                            placeholder="Ex: Douala, Yaoundé, Abidjan..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeAbidjan')}
                         />
 
                         <LocationSelector
-                            label="Quartier"
+                            label={t('productManagerMobile.quartier')}
                             value={newProduct.quartierAnimalVeterinaire || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, quartierAnimalVeterinaire: value })}
                             scope="point"
@@ -15657,12 +15669,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 4: TARIFS ET DISPONIBILITÉ */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Tarifs et Disponibilité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.tarifsEtDisponibilite')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Prix de la consultation <Text style={styles.required}>*</Text></Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.prixDeLaConsultation')}Text style={styles.required}>*</Text></Text>
                                 <Text style={styles.fieldHint}>
                                     Prix de base pour une consultation vétérinaire
                                 </Text>
@@ -15699,7 +15711,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Jours de disponibilité"
+                            label={t('productManagerMobile.joursDeDisponibilite')}
                             values={newProduct.joursDisponibiliteVeto || []}
                             productType="animaux_veterinaire"
                             fieldName="jours_disponibilite"
@@ -15711,16 +15723,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 5: INFORMATIONS COMPLÉMENTAIRES */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="info" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations Complémentaires</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsComplementaires')}</Text>
                         </View>
 
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Description du service ou de l'animal <Text style={styles.required}>*</Text></Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.descriptionDuServiceOuDe')}Text style={styles.required}>*</Text></Text>
                             <Text style={styles.fieldHint}>
                                 Décrivez les services proposés ou les caractéristiques de l'animal
                             </Text>
                             <NativeInput
-                                placeholder="Ex: Consultation complète, vaccination toutes espèces, chirurgie..."
+                                placeholder={t('productManagerMobile.exConsultationCompleteVaccinationToutes')}
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
@@ -15764,7 +15776,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez des photos de qualité pour montrer votre clinique, votre équipe ou l'animal (si vente/adoption). Plus votre annonce est complète, plus vous attirez de clients !
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.ajoutezDesPhotosDeQualitePour')}
                             </Text>
                         </View>
                     </>
@@ -15776,29 +15788,29 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 1: TYPE DE SERVICE */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="droplet" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Type de Service</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeDeService')}</Text>
                         </View>
 
                         <SelectModalitySelector
-                            label="Type de service *"
+                            label={t('productManagerMobile.typeDeService')}
                             value={newProduct.typeNettoyage || ''}
                             productType="nettoyage_entretien"
                             fieldName="types"
                             onSelect={(value) => setNewProduct({ ...newProduct, typeNettoyage: value })}
                             required
-                            placeholder="Ex: Ménage résidentiel, Nettoyage commercial..."
+                            placeholder={t('productManagerMobile.exMenageResidentielNettoyageCommercial')}
                         />
 
                         {/* ✅ SECTION 2: CARACTÉRISTIQUES */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques du Service</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiquesDuService')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Fréquence *"
+                                    label={t('productManagerMobile.frequence')}
                                     value={newProduct.frequenceNettoyage || ''}
                                     productType="nettoyage_entretien"
                                     fieldName="frequences"
@@ -15822,18 +15834,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Mode de tarification *"
+                                    label={t('productManagerMobile.modeDeTarification')}
                                     value={newProduct.modeTarificationNettoyage || ''}
                                     productType="nettoyage_entretien"
                                     fieldName="mode_tarification"
                                     onSelect={(value) => setNewProduct({ ...newProduct, modeTarificationNettoyage: value })}
                                     required
-                                    placeholder="À l'heure, Au forfait..."
+                                    placeholder={t('productManagerMobile.aL')}heure, Au forfait..."
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de clientèle"
+                                    label={t('productManagerMobile.typeDeClientele')}
                                     value={newProduct.typeClienteleNettoyage || ''}
                                     productType="nettoyage_entretien"
                                     fieldName="type_clientele"
@@ -15844,28 +15856,28 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Équipements fournis"
+                            label={t('productManagerMobile.equipementsFournis')}
                             values={newProduct.equipementsNettoyage || []}
                             productType="nettoyage_entretien"
                             fieldName="equipements"
                             onSelect={(values) => setNewProduct({ ...newProduct, equipementsNettoyage: values })}
-                            placeholder="Ex: Produits écologiques, Matériel professionnel..."
+                            placeholder={t('productManagerMobile.exProduitsEcologiquesMaterielProfessionn')}
                             maxSelections={8}
                         />
 
                         {/* ✅ SECTION 3: ZONE D'INTERVENTION */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Zone d'Intervention</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
                         </View>
 
                         <LocationSelector
-                            label="Ville principale *"
+                            label={t('productManagerMobile.villePrincipale')}
                             value={newProduct.villeNettoyage || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, villeNettoyage: value })}
                             scope="city"
                             required
-                            placeholder="Ex: Douala, Yaoundé, Abidjan..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeAbidjan')}
                         />
 
                         <MultiSelectModalitySelector
@@ -15881,7 +15893,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 4: TARIFS ET DISPONIBILITÉ */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Tarifs et Disponibilité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.tarifsEtDisponibilite')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -15926,7 +15938,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Disponibilité"
+                                    label={t('productManagerMobile.disponibilite')}
                                     value={newProduct.disponibiliteNettoyage || ''}
                                     productType="nettoyage_entretien"
                                     fieldName="disponibilite"
@@ -15935,7 +15947,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Durée estimée (heures)</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.dureeEstimeeHeures')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 3"
                                     value={newProduct.dureeNettoyage || ''}
@@ -15983,7 +15995,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez des photos de vos réalisations (avant/après) pour rassurer les clients.
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.ajoutezDesPhotosDeVosRealisations')}
                             </Text>
                         </View>
                     </>
@@ -16000,7 +16012,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="leaf" size={20} color="#059669" />
-                            <Text style={styles.sectionTitle}>🌳 Informations du Service</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDuService')}/Text>
                         </View>
 
                         {/* Description obligatoire */}
@@ -16010,7 +16022,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 Décrivez votre service de jardinage et paysagisme (spécialités, approche, etc.)
                             </Text>
                             <NativeInput
-                                placeholder="Ex: Service professionnel d'entretien de jardins tropicaux..."
+                                placeholder={t('productManagerMobile.exServiceProfessionnelD')}entretien de jardins tropicaux..."
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
@@ -16020,13 +16032,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Type de service */}
                         <SelectModalitySelector
-                            label="Type de service"
+                            label={t('productManagerMobile.typeDeService')}
                             value={newProduct.typeService || ''}
                             productType="jardinage_paysagisme"
                             fieldName="typeService"
                             onSelect={(value) => setNewProduct({ ...newProduct, typeService: value })}
                             required
-                            placeholder="Ex: Entretien jardin, Élagage, Création espaces verts..."
+                            placeholder={t('productManagerMobile.exEntretienJardinElagageCreation')}
                         />
 
                         {/* ========================================== */}
@@ -16039,7 +16051,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Plantes africaines (multiselect) */}
                         <MultiSelectModalitySelector
-                            label="Plantes concernées"
+                            label={t('productManagerMobile.plantesConcernees')}
                             values={newProduct.plantesAfricaines || []}
                             productType="jardinage_paysagisme"
                             fieldName="plantesAfricaines"
@@ -16052,7 +16064,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             {/* Fréquence d'entretien */}
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Fréquence"
+                                    label={t('productManagerMobile.frequence')}
                                     value={newProduct.frequenceEntretien || ''}
                                     productType="jardinage_paysagisme"
                                     fieldName="frequenceEntretien"
@@ -16064,12 +16076,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             {/* Type de terrain */}
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de terrain"
+                                    label={t('productManagerMobile.typeDeTerrain')}
                                     value={newProduct.typeTerrain || ''}
                                     productType="jardinage_paysagisme"
                                     fieldName="typeTerrain"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeTerrain: value })}
-                                    placeholder="Ex: Résidentiel, Commercial..."
+                                    placeholder={t('productManagerMobile.exResidentielCommercial')}
                                 />
                             </View>
                         </View>
@@ -16089,17 +16101,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========================================== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="tool" size={20} color="#059669" />
-                            <Text style={styles.sectionTitle}>🛠️ Matériel & Expertise</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.materielExpertise')}</Text>
                         </View>
 
                         {/* Matériel disponible (multiselect) */}
                         <MultiSelectModalitySelector
-                            label="Matériel disponible"
+                            label={t('productManagerMobile.materielDisponible')}
                             values={newProduct.materielJardinage || []}
                             productType="jardinage_paysagisme"
                             fieldName="materielJardinage"
                             onSelect={(values) => setNewProduct({ ...newProduct, materielJardinage: values })}
-                            placeholder="Ex: Tondeuse, Taille-haie, Tronçonneuse..."
+                            placeholder={t('productManagerMobile.exTondeuseTaillehaieTronconneuse')}
                             maxSelections={10}
                         />
 
@@ -16107,7 +16119,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             {/* Mode de tarification */}
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Mode tarification"
+                                    label={t('productManagerMobile.modeTarification')}
                                     value={newProduct.modeTarification || ''}
                                     productType="jardinage_paysagisme"
                                     fieldName="modeTarification"
@@ -16119,12 +16131,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             {/* Niveau d'expérience */}
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Niveau expérience"
+                                    label={t('productManagerMobile.niveauExperience')}
                                     value={newProduct.niveauExperience || ''}
                                     productType="jardinage_paysagisme"
                                     fieldName="niveauExperience"
                                     onSelect={(value) => setNewProduct({ ...newProduct, niveauExperience: value })}
-                                    placeholder="Ex: Débutant, Expert..."
+                                    placeholder={t('productManagerMobile.exDebutantExpert')}
                                 />
                             </View>
                         </View>
@@ -16151,7 +16163,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.info} />
                             <Text style={styles.hintText}>
-                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
                             </Text>
                         </View>
 
@@ -16162,7 +16174,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="jardinage_paysagisme"
                             fieldName="zones_intervention"
                             onSelect={(values) => setNewProduct({ ...newProduct, zonesIntervention: values })}
-                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeToutLe')}
                             maxSelections={15}
                             required
                         />
@@ -16221,14 +16233,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="camera" size={16} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                📸 <Text style={styles.hintBold}>Astuce Photos :</Text> Ajoutez 4-8 photos de vos réalisations (avant/après, jardins tropicaux, palmiers élagués, potagers africains). Les photos augmentent la confiance des clients !
+                                📸 <Text style={styles.hintBold}>{t('productManagerMobile.astucePhotos')}/Text> Ajoutez 4-8 photos de vos réalisations (avant/après, jardins tropicaux, palmiers élagués, potagers africains). Les photos augmentent la confiance des clients !
                             </Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="star" size={16} color="#059669" />
                             <Text style={styles.hintText}>
-                                🌴 <Text style={styles.hintBold}>Services populaires en Afrique :</Text>{'\n'}
+                                🌴 <Text style={styles.hintBold}>{t('productManagerMobile.servicesPopulairesEnAfrique')}/Text>{'\n'}
                                 • Élagage palmiers (royaux, cocotiers, dattiers){'\n'}
                                 • Entretien arbres fruitiers (manguiers, avocatiers, papayers){'\n'}
                                 • Création potagers africains (gombo, ndolé, manioc){'\n'}
@@ -16243,7 +16255,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return (
                     <>
                         <ProductFieldSelector
-                            label="Type de service"
+                            label={t('productManagerMobile.typeDeService')}
                             fieldName="types"
                             productType="securite_surveillance"
                             value={newProduct.typeSecurite || ''}
@@ -16254,7 +16266,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Zone à couvrir"
+                                    label={t('productManagerMobile.zoneACouvrir')}
                                     fieldName="zones"
                                     productType="securite_surveillance"
                                     value={newProduct.zoneSecurite || ''}
@@ -16262,7 +16274,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Durée du contrat (mois)</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.dureeDuContratMois')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 12"
                                     value={newProduct.dureeSecurite || ''}
@@ -16274,7 +16286,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <ProductFieldSelector
-                            label="Équipements"
+                            label={t('productManagerMobile.equipements')}
                             fieldName="equipements"
                             productType="securite_surveillance"
                             value={newProduct.equipementsSecurite || []}
@@ -16296,11 +16308,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Type de service */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="wrench" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Service de Plomberie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.serviceDePlomberie')}/Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Type de prestation *"
+                            label={t('productManagerMobile.typeDePrestation')}
                             fieldName="types"
                             productType="plombier"
                             value={newProduct.typePlomberie || ''}
@@ -16309,23 +16321,23 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Spécialités *"
+                            label={t('productManagerMobile.specialites')}
                             values={newProduct.specialitesPlomberie || []}
                             productType="plombier"
                             fieldName="services"
                             onSelect={(values) => setNewProduct({ ...newProduct, specialitesPlomberie: values })}
-                            placeholder="Ex: Réparation fuite, Débouchage, Installation..."
+                            placeholder={t('productManagerMobile.exReparationFuiteDebouchageInstallation')}
                             maxSelections={10}
                         />
 
                         {/* Section 2: Équipements et Disponibilité */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="tool" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Équipements & Disponibilité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.equipementsDisponibilite')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Équipements concernés"
+                            label={t('productManagerMobile.equipementsConcernes')}
                             values={newProduct.equipementsPlomberie || []}
                             productType="plombier"
                             fieldName="equipements"
@@ -16337,7 +16349,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Disponibilité"
+                                    label={t('productManagerMobile.disponibilite')}
                                     fieldName="disponibilites"
                                     productType="plombier"
                                     value={newProduct.disponibilitePlomberie || ''}
@@ -16364,7 +16376,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     <View style={[styles.checkbox, newProduct.urgence24h && styles.checkboxChecked]}>
                                         {newProduct.urgence24h && <SafeIcon name="check" size={14} color="#FFFFFF" />}
                                     </View>
-                                    <Text style={styles.checkboxLabel}>🚨 Dépannage d'urgence 24h/24</Text>
+                                    <Text style={styles.checkboxLabel}>{t('productManagerMobile.depannageDurgence24h24')}</Text>
                                 </TouchableOpacity>
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -16383,13 +16395,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Localisation intelligente - Zone d'intervention */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.info} />
                             <Text style={styles.hintText}>
-                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
                             </Text>
                         </View>
 
@@ -16399,7 +16411,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="plombier"
                             fieldName="zones_intervention"
                             onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionPlombier: values })}
-                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeToutLe')}
                             maxSelections={15}
                         />
 
@@ -16417,11 +16429,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Identité du Produit */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="droplet" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Matériel Plomberie & Sanitaire</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.materielPlomberieSanitaire')}</Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Catégorie de produit *"
+                            label={t('productManagerMobile.categorieDeProduit')}
                             fieldName="categories"
                             productType="plomberie_sanitaire"
                             value={newProduct.categorieProduitPlomberie || ''}
@@ -16441,7 +16453,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="État *"
+                                    label={t('productManagerMobile.etat')}
                                     fieldName="etats"
                                     productType="plomberie_sanitaire"
                                     value={newProduct.etatPlomberieSanitaire || ''}
@@ -16454,13 +16466,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Caractéristiques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Matériau"
+                                    label={t('productManagerMobile.materiau')}
                                     fieldName="materiaux"
                                     productType="plomberie_sanitaire"
                                     value={newProduct.materiauPlomberieSanitaire || ''}
@@ -16481,13 +16493,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Services */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="truck" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services & Garanties</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesGaranties')}/Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Livraison"
+                                    label={t('productManagerMobile.livraison')}
                                     fieldName="livraisons"
                                     productType="plomberie_sanitaire"
                                     value={newProduct.livraisonPlomberieSanitaire || ''}
@@ -16516,18 +16528,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 4: Localisation intelligente - Ville du magasin */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📍 Localisation du Magasin</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.localisationDuMagasin')}/Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.info} />
                             <Text style={styles.hintText}>
-                                🏪 <Text style={styles.hintBold}>Système intelligent :</Text> Indiquez où se trouve votre magasin. Les villes de votre pays s'affichent en priorité !
+                                🏪 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Indiquez où se trouve votre magasin. Les villes de votre pays s'affichent en priorité !
                             </Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Ville du magasin *"
+                            label={t('productManagerMobile.villeDuMagasin')}
                             fieldName="villes"
                             productType="plomberie_sanitaire"
                             value={newProduct.villeMagasinPlomberie || ''}
@@ -16536,7 +16548,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <ProductFieldSelector
-                            label="Quartier"
+                            label={t('productManagerMobile.quartier')}
                             fieldName="quartiers"
                             productType="plomberie_sanitaire"
                             value={newProduct.quartierMagasinPlomberie || ''}
@@ -16557,11 +16569,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Type de service */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="zap" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Service d'Électricité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.serviceDelectricite')}</Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Type de prestation *"
+                            label={t('productManagerMobile.typeDePrestation')}
                             fieldName="types"
                             productType="electricien"
                             value={newProduct.typeElectricien || ''}
@@ -16570,35 +16582,35 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Spécialités *"
+                            label={t('productManagerMobile.specialites')}
                             values={newProduct.specialitesElectricien || []}
                             productType="electricien"
                             fieldName="services"
                             onSelect={(values) => setNewProduct({ ...newProduct, specialitesElectricien: values })}
-                            placeholder="Ex: Installation tableau, Câblage, Éclairage..."
+                            placeholder={t('productManagerMobile.exInstallationTableauCablageEclairage')}
                             maxSelections={10}
                         />
 
                         {/* Section 2: Équipements et Disponibilité */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="tool" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Équipements & Disponibilité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.equipementsDisponibilite')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Équipements concernés"
+                            label={t('productManagerMobile.equipementsConcernes')}
                             values={newProduct.equipementsElectricien || []}
                             productType="electricien"
                             fieldName="equipements"
                             onSelect={(values) => setNewProduct({ ...newProduct, equipementsElectricien: values })}
-                            placeholder="Ex: Tableau électrique, Prises, Éclairage..."
+                            placeholder={t('productManagerMobile.exTableauElectriquePrisesEclairage')}
                             maxSelections={8}
                         />
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Disponibilité"
+                                    label={t('productManagerMobile.disponibilite')}
                                     fieldName="disponibilites"
                                     productType="electricien"
                                     value={newProduct.disponibiliteElectricien || ''}
@@ -16625,7 +16637,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     <View style={[styles.checkbox, newProduct.urgence24hElec && styles.checkboxChecked]}>
                                         {newProduct.urgence24hElec && <SafeIcon name="check" size={14} color="#FFFFFF" />}
                                     </View>
-                                    <Text style={styles.checkboxLabel}>🚨 Dépannage d'urgence 24h/24</Text>
+                                    <Text style={styles.checkboxLabel}>{t('productManagerMobile.depannageDurgence24h24')}</Text>
                                 </TouchableOpacity>
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -16653,20 +16665,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="electricien"
                             fieldName="certifications"
                             onSelect={(values) => setNewProduct({ ...newProduct, certificationsElectricien: values })}
-                            placeholder="Ex: Électricien qualifié, Habilitation..."
+                            placeholder={t('productManagerMobile.exElectricienQualifieHabilitation')}
                             maxSelections={5}
                         />
 
                         {/* Section 4: Localisation intelligente - Zone d'intervention */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.info} />
                             <Text style={styles.hintText}>
-                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
                             </Text>
                         </View>
 
@@ -16676,7 +16688,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="electricien"
                             fieldName="zones_intervention"
                             onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionElectricien: values })}
-                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeToutLe')}
                             maxSelections={15}
                         />
 
@@ -16694,11 +16706,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Type de service */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="zap" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Électricité Automobile</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.electriciteAutomobile')}</Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Type de prestation *"
+                            label={t('productManagerMobile.typeDePrestation')}
                             fieldName="types"
                             productType="electricien_auto"
                             value={newProduct.typeElectricienAuto || ''}
@@ -16707,33 +16719,33 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Spécialités *"
+                            label={t('productManagerMobile.specialites')}
                             values={newProduct.specialitesElectricienAuto || []}
                             productType="electricien_auto"
                             fieldName="services"
                             onSelect={(values) => setNewProduct({ ...newProduct, specialitesElectricienAuto: values })}
-                            placeholder="Ex: Diagnostic OBD, Réparation alternateur, Installation GPS..."
+                            placeholder={t('productManagerMobile.exDiagnosticObdReparationAlternateur')}
                             maxSelections={10}
                         />
 
                         {/* Section 2: Véhicules et Équipements */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="car" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Véhicules & Équipements</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.vehiculesEquipements')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Véhicules pris en charge *"
+                            label={t('productManagerMobile.vehiculesPrisEnCharge')}
                             values={newProduct.vehiculesElectricienAuto || []}
                             productType="electricien_auto"
                             fieldName="vehicules"
                             onSelect={(values) => setNewProduct({ ...newProduct, vehiculesElectricienAuto: values })}
-                            placeholder="Ex: Voitures légères, Motos, 4x4..."
+                            placeholder={t('productManagerMobile.exVoituresLegeresMotos4x4')}
                             maxSelections={5}
                         />
 
                         <MultiSelectModalitySelector
-                            label="Équipements concernés"
+                            label={t('productManagerMobile.equipementsConcernes')}
                             values={newProduct.equipementsElectricienAuto || []}
                             productType="electricien_auto"
                             fieldName="equipements"
@@ -16743,7 +16755,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Marques spécialisées"
+                            label={t('productManagerMobile.marquesSpecialisees')}
                             values={newProduct.marquesSpecialeesElectricienAuto || []}
                             productType="electricien_auto"
                             fieldName="marques_specialisees"
@@ -16755,7 +16767,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Équipements de diagnostic */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="activity" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Équipements de Diagnostic</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.equipementsDeDiagnostic')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
@@ -16764,20 +16776,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="electricien_auto"
                             fieldName="equipements_diagnostic"
                             onSelect={(values) => setNewProduct({ ...newProduct, equipementsDiagnosticAuto: values })}
-                            placeholder="Ex: Valise OBD, Multimètre, Scanner..."
+                            placeholder={t('productManagerMobile.exValiseObdMultimetreScanner')}
                             maxSelections={6}
                         />
 
                         {/* Section 4: Disponibilité et Garantie */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="clock" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Disponibilité & Garanties</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.disponibiliteGaranties')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Disponibilité"
+                                    label={t('productManagerMobile.disponibilite')}
                                     fieldName="disponibilites"
                                     productType="electricien_auto"
                                     value={newProduct.disponibiliteElectricienAuto || ''}
@@ -16804,7 +16816,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     <View style={[styles.checkbox, newProduct.urgence24hElecAuto && styles.checkboxChecked]}>
                                         {newProduct.urgence24hElecAuto && <SafeIcon name="check" size={14} color="#FFFFFF" />}
                                     </View>
-                                    <Text style={styles.checkboxLabel}>🚨 Dépannage d'urgence 24h/24</Text>
+                                    <Text style={styles.checkboxLabel}>{t('productManagerMobile.depannageDurgence24h24')}</Text>
                                 </TouchableOpacity>
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -16815,7 +16827,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     <View style={[styles.checkbox, newProduct.deplacementDomicile && styles.checkboxChecked]}>
                                         {newProduct.deplacementDomicile && <SafeIcon name="check" size={14} color="#FFFFFF" />}
                                     </View>
-                                    <Text style={styles.checkboxLabel}>🚗 Déplacement à domicile</Text>
+                                    <Text style={styles.checkboxLabel}>{t('productManagerMobile.deplacementADomicile')}</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -16823,13 +16835,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 5: Localisation intelligente - Zone d'intervention */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.info} />
                             <Text style={styles.hintText}>
-                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
                             </Text>
                         </View>
 
@@ -16839,14 +16851,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="electricien_auto"
                             fieldName="zones_intervention"
                             onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionElectricienAuto: values })}
-                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeToutLe')}
                             maxSelections={15}
                         />
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="tool" size={16} color="#F59E0B" />
                             <Text style={styles.hintText}>
-                                🔧 <Text style={styles.hintBold}>Conseil :</Text> Précisez vos équipements de diagnostic (valise OBD, scanner) pour rassurer vos clients !
+                                🔧 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.precisezVosEquipementsDeDiagnosticValise')}
                             </Text>
                         </View>
                     </>
@@ -16858,14 +16870,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Informations du Garage Moto */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="zap" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Garage Spécialisé Moto/Tricycle</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.garageSpecialiseMototricycle')}</Text>
                         </View>
 
                         {/* Nom du garage moto */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Nom du garage moto <Text style={styles.required}>*</Text></Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.nomDuGarageMoto')}Text style={styles.required}>*</Text></Text>
                             <NativeInput
-                                placeholder="Ex: Garage Moto Express, Méca Bike Pro..."
+                                placeholder={t('productManagerMobile.exGarageMotoExpressMeca')}
                                 value={newProduct.nomGarageMoto || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, nomGarageMoto: text })}
                                 style={styles.fieldInput}
@@ -16874,7 +16886,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Services spécialisés motos */}
                         <ProductFieldSelector
-                            label="Services spécialisés motos"
+                            label={t('productManagerMobile.servicesSpecialisesMotos')}
                             productType="mecanicien_moto"
                             fieldName="types_service_moto"
                             selectedValues={newProduct.typeServiceMoto || []}
@@ -16885,7 +16897,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Spécialités du garage moto */}
                         <ProductFieldSelector
-                            label="Spécialités du garage moto"
+                            label={t('productManagerMobile.specialitesDuGarageMoto')}
                             productType="mecanicien_moto"
                             fieldName="specialites_moto"
                             selectedValues={newProduct.specialitesMoto || []}
@@ -16902,7 +16914,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Marques de motos traitées */}
                         <ProductFieldSelector
-                            label="Marques de motos traitées"
+                            label={t('productManagerMobile.marquesDeMotosTraitees')}
                             productType="mecanicien_moto"
                             fieldName="marques_motos"
                             selectedValues={newProduct.marquesMotos || []}
@@ -16913,7 +16925,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Types de motos/tricycles */}
                         <ProductFieldSelector
-                            label="Types de motos/tricycles traités"
+                            label={t('productManagerMobile.typesDeMotostricyclesTraites')}
                             productType="mecanicien_moto"
                             fieldName="types_motos"
                             selectedValues={newProduct.typesMotos || []}
@@ -16924,7 +16936,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Cylindrées spécialisées */}
                         <ProductFieldSelector
-                            label="Cylindrées spécialisées"
+                            label={t('productManagerMobile.cylindreesSpecialisees')}
                             productType="mecanicien_moto"
                             fieldName="cylindrees_motos"
                             selectedValues={newProduct.cylindreesMotos || []}
@@ -16935,12 +16947,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Certifications & Équipements */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shield" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Certifications & Équipements</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.certificationsEquipements')}</Text>
                         </View>
 
                         {/* Certifications spécialisées motos */}
                         <ProductFieldSelector
-                            label="Certifications spécialisées motos"
+                            label={t('productManagerMobile.certificationsSpecialiseesMotos')}
                             productType="mecanicien_moto"
                             fieldName="certifications_moto"
                             selectedValues={newProduct.certificationsMoto || []}
@@ -16950,7 +16962,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Équipements spécialisés garage moto */}
                         <ProductFieldSelector
-                            label="Équipements spécialisés garage moto"
+                            label={t('productManagerMobile.equipementsSpecialisesGarageMoto')}
                             productType="mecanicien_moto"
                             fieldName="equipements_moto"
                             selectedValues={newProduct.equipementsMoto || []}
@@ -16960,7 +16972,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Pièces détachées spécialisées */}
                         <ProductFieldSelector
-                            label="Pièces détachées spécialisées"
+                            label={t('productManagerMobile.piecesDetacheesSpecialisees')}
                             productType="mecanicien_moto"
                             fieldName="pieces_detachees_moto"
                             selectedValues={newProduct.piecesDetacheesMoto || []}
@@ -16971,12 +16983,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 4: Services & Disponibilité */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="clock" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services & Disponibilité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesDisponibilite')}</Text>
                         </View>
 
                         {/* Services complémentaires spécialisés */}
                         <ProductFieldSelector
-                            label="Services complémentaires spécialisés"
+                            label={t('productManagerMobile.servicesComplementairesSpecialises')}
                             productType="mecanicien_moto"
                             fieldName="services_complementaires_moto"
                             selectedValues={newProduct.servicesComplementairesMoto || []}
@@ -16986,7 +16998,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Horaires spécialisés */}
                         <SelectModalitySelector
-                            label="Horaires spécialisés"
+                            label={t('productManagerMobile.horairesSpecialises')}
                             productType="mecanicien_moto"
                             fieldName="horaires_moto"
                             selectedValue={newProduct.horairesMoto || ''}
@@ -16996,7 +17008,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Délais d'intervention spécialisés */}
                         <SelectModalitySelector
-                            label="Délais d'intervention spécialisés"
+                            label={t('productManagerMobile.delaisD')}intervention spécialisés"
                             productType="mecanicien_moto"
                             fieldName="delais_moto"
                             selectedValue={newProduct.delaisMoto || ''}
@@ -17017,13 +17029,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 5: Localisation intelligente - Zone d'intervention */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.info} />
                             <Text style={styles.hintText}>
-                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
                             </Text>
                         </View>
 
@@ -17034,13 +17046,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="mecanicien_moto"
                             fieldName="zone_intervention_moto"
                             onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionMoto: values })}
-                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeToutLe')}
                             maxSelections={15}
                         />
 
                         {/* Langues parlées spécialisées */}
                         <ProductFieldSelector
-                            label="Langues parlées spécialisées"
+                            label={t('productManagerMobile.languesParleesSpecialisees')}
                             productType="mecanicien_moto"
                             fieldName="langues_moto"
                             selectedValues={newProduct.languesMoto || []}
@@ -17050,7 +17062,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Modes de paiement spécialisés */}
                         <ProductFieldSelector
-                            label="Modes de paiement spécialisés"
+                            label={t('productManagerMobile.modesDePaiementSpecialises')}
                             productType="mecanicien_moto"
                             fieldName="modes_paiement_moto"
                             selectedValues={newProduct.modesPaiementMoto || []}
@@ -17061,12 +17073,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 6: Tarifs & Options */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Tarifs & Options</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.tarifsOptions')}/Text>
                         </View>
 
                         {/* Tarif horaire spécialisé */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Tarif horaire spécialisé (optionnel)</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.tarifHoraireSpecialiseOptionnel')}</Text>
                             <NativeInput
                                 placeholder="Ex: 15 000 FCFA/heure"
                                 value={newProduct.tarifHoraireMoto || ''}
@@ -17077,14 +17089,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Options spécialisées */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Options spécialisées</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.optionsSpecialisees')}</Text>
                             <View style={styles.checkboxContainer}>
                                 <Checkbox
                                     value={newProduct.devisGratuitMoto || false}
                                     onValueChange={(value) => setNewProduct({ ...newProduct, devisGratuitMoto: value })}
                                     color={modernColors.primary}
                                 />
-                                <Text style={styles.checkboxLabel}>Devis gratuit spécialisé</Text>
+                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.devisGratuitSpecialise')}</Text>
                             </View>
                             <View style={styles.checkboxContainer}>
                                 <Checkbox
@@ -17092,7 +17104,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     onValueChange={(value) => setNewProduct({ ...newProduct, garantieReparationsMoto: value })}
                                     color={modernColors.primary}
                                 />
-                                <Text style={styles.checkboxLabel}>Garantie sur réparations spécialisées</Text>
+                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.garantieSurReparationsSpecialisees')}</Text>
                             </View>
                             <View style={styles.checkboxContainer}>
                                 <Checkbox
@@ -17108,7 +17120,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     onValueChange={(value) => setNewProduct({ ...newProduct, enlevementMoto: value })}
                                     color={modernColors.primary}
                                 />
-                                <Text style={styles.checkboxLabel}>Enlèvement moto en panne</Text>
+                                <Text style={styles.checkboxLabel}>{t('productManagerMobile.enlevementMotoEnPanne')}</Text>
                             </View>
                         </View>
 
@@ -17116,7 +17128,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="zap" size={16} color="#F59E0B" />
                             <Text style={styles.hintText}>
-                                🏍️ <Text style={styles.hintBold}>Conseil spécialisé :</Text> Précisez vos équipements spécialisés motos (pont élévateur moto, valise diagnostic moto) pour rassurer vos clients !
+                                🏍️ <Text style={styles.hintBold}>{t('productManagerMobile.conseilSpecialise')}</Text> Précisez vos équipements spécialisés motos (pont élévateur moto, valise diagnostic moto) pour rassurer vos clients !
                             </Text>
                         </View>
                     </>
@@ -17128,11 +17140,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Type de travaux */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="home" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Travaux de Maçonnerie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.travauxDeMaconnerie')}</Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Type de prestation *"
+                            label={t('productManagerMobile.typeDePrestation')}
                             fieldName="types"
                             productType="macon"
                             value={newProduct.typeMacon || ''}
@@ -17141,67 +17153,67 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Spécialités *"
+                            label={t('productManagerMobile.specialites')}
                             values={newProduct.specialitesMacon || []}
                             productType="macon"
                             fieldName="services"
                             onSelect={(values) => setNewProduct({ ...newProduct, specialitesMacon: values })}
-                            placeholder="Ex: Fondations, Dalle béton, Mur porteur..."
+                            placeholder={t('productManagerMobile.exFondationsDalleBetonMur')}
                             maxSelections={10}
                         />
 
                         {/* Section 2: Matériaux et Bâtiments */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="layers" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Matériaux & Types de Bâtiments</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.materiauxTypesDeBatiments')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Matériaux utilisés"
+                            label={t('productManagerMobile.materiauxUtilises')}
                             values={newProduct.materiauxMacon || []}
                             productType="macon"
                             fieldName="materiaux"
                             onSelect={(values) => setNewProduct({ ...newProduct, materiauxMacon: values })}
-                            placeholder="Ex: Béton armé, Parpaing, Brique..."
+                            placeholder={t('productManagerMobile.exBetonArmeParpaingBrique')}
                             maxSelections={6}
                         />
 
                         <MultiSelectModalitySelector
-                            label="Types de bâtiments"
+                            label={t('productManagerMobile.typesDeBatiments')}
                             values={newProduct.typesBatimentMacon || []}
                             productType="macon"
                             fieldName="types_batiment"
                             onSelect={(values) => setNewProduct({ ...newProduct, typesBatimentMacon: values })}
-                            placeholder="Ex: Maison individuelle, Immeuble, Villa..."
+                            placeholder={t('productManagerMobile.exMaisonIndividuelleImmeubleVilla')}
                             maxSelections={5}
                         />
 
                         {/* Section 3: Équipements */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="tool" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Équipements Professionnels</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.equipementsProfessionnels')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Équipements disponibles"
+                            label={t('productManagerMobile.equipementsDisponibles')}
                             values={newProduct.equipementsMacon || []}
                             productType="macon"
                             fieldName="equipements"
                             onSelect={(values) => setNewProduct({ ...newProduct, equipementsMacon: values })}
-                            placeholder="Ex: Bétonnière, Échafaudage, Niveau laser..."
+                            placeholder={t('productManagerMobile.exBetonniereEchafaudageNiveauLaser')}
                             maxSelections={6}
                         />
 
                         {/* Section 4: Disponibilité et Garanties */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="clock" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Disponibilité & Garanties</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.disponibiliteGaranties')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Disponibilité"
+                                    label={t('productManagerMobile.disponibilite')}
                                     fieldName="disponibilites"
                                     productType="macon"
                                     value={newProduct.disponibiliteMacon || ''}
@@ -17226,7 +17238,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="macon"
                             fieldName="certifications"
                             onSelect={(values) => setNewProduct({ ...newProduct, certificationsMacon: values })}
-                            placeholder="Ex: Assurance décennale, Qualibat..."
+                            placeholder={t('productManagerMobile.exAssuranceDecennaleQualibat')}
                             maxSelections={4}
                         />
 
@@ -17239,7 +17251,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     <View style={[styles.checkbox, newProduct.assuranceDecennale && styles.checkboxChecked]}>
                                         {newProduct.assuranceDecennale && <SafeIcon name="check" size={14} color="#FFFFFF" />}
                                     </View>
-                                    <Text style={styles.checkboxLabel}>🛡️ Assurance décennale</Text>
+                                    <Text style={styles.checkboxLabel}>{t('productManagerMobile.assuranceDecennale')}</Text>
                                 </TouchableOpacity>
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -17258,13 +17270,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 5: Localisation intelligente - Zone d'intervention */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.info} />
                             <Text style={styles.hintText}>
-                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
                             </Text>
                         </View>
 
@@ -17274,14 +17286,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="macon"
                             fieldName="zones_intervention"
                             onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionMacon: values })}
-                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeToutLe')}
                             maxSelections={15}
                         />
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="shield" size={16} color="#059669" />
                             <Text style={styles.hintText}>
-                                🛡️ <Text style={styles.hintBold}>Important :</Text> L'assurance décennale est un gage de confiance pour vos clients !
+                                🛡️ <Text style={styles.hintBold}>Important :</Text>{t('productManagerMobile.lassuranceDecennaleEstUnGageDe')}
                             </Text>
                         </View>
                     </>
@@ -17293,11 +17305,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Type de prestation */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="grid" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services de Carrelage</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesDeCarrelage')}/Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Type de prestation *"
+                            label={t('productManagerMobile.typeDePrestation')}
                             fieldName="types"
                             productType="carreleur"
                             value={newProduct.typeCarreleur || ''}
@@ -17306,19 +17318,19 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Services proposés *"
+                            label={t('productManagerMobile.servicesProposes')}
                             values={newProduct.servicesCarreleur || []}
                             productType="carreleur"
                             fieldName="services"
                             onSelect={(values) => setNewProduct({ ...newProduct, servicesCarreleur: values })}
-                            placeholder="Ex: Carrelage sol intérieur, Faïence cuisine..."
+                            placeholder={t('productManagerMobile.exCarrelageSolInterieurFaience')}
                             maxSelections={8}
                         />
 
                         {/* Section 2: Spécialités */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="layers" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Spécialités & Techniques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.specialitesTechniques')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
@@ -17327,22 +17339,22 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="carreleur"
                             fieldName="surfaces"
                             onSelect={(values) => setNewProduct({ ...newProduct, surfacesCarreleur: values })}
-                            placeholder="Ex: Sol intérieur, Mur salle de bain, Terrasse..."
+                            placeholder={t('productManagerMobile.exSolInterieurMurSalle')}
                             maxSelections={6}
                         />
 
                         <MultiSelectModalitySelector
-                            label="Types de carrelage posés *"
+                            label={t('productManagerMobile.typesDeCarrelagePoses')}
                             values={newProduct.typesCarrelageCarreleur || []}
                             productType="carreleur"
                             fieldName="types_carrelage"
                             onSelect={(values) => setNewProduct({ ...newProduct, typesCarrelageCarreleur: values })}
-                            placeholder="Ex: Céramique, Grès cérame, Marbre..."
+                            placeholder={t('productManagerMobile.exCeramiqueGresCerameMarbre')}
                             maxSelections={6}
                         />
 
                         <MultiSelectModalitySelector
-                            label="Formats posés"
+                            label={t('productManagerMobile.formatsPoses')}
                             values={newProduct.formatsCarreleur || []}
                             productType="carreleur"
                             fieldName="formats"
@@ -17367,30 +17379,30 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="carreleur"
                             fieldName="finitions"
                             onSelect={(values) => setNewProduct({ ...newProduct, finitionsCarreleur: values })}
-                            placeholder="Ex: Joint blanc, Joint époxy..."
+                            placeholder={t('productManagerMobile.exJointBlancJointEpoxy')}
                             maxSelections={5}
                         />
 
                         {/* Section 3: Équipement & Expérience */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="tool" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Équipement & Expérience</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.equipementExperience')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Équipements et outils"
+                            label={t('productManagerMobile.equipementsEtOutils')}
                             values={newProduct.equipementsCarreleur || []}
                             productType="carreleur"
                             fieldName="equipements"
                             onSelect={(values) => setNewProduct({ ...newProduct, equipementsCarreleur: values })}
-                            placeholder="Ex: Carrelette électrique, Niveau laser..."
+                            placeholder={t('productManagerMobile.exCarreletteElectriqueNiveauLaser')}
                             maxSelections={6}
                         />
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Expérience *"
+                                    label={t('productManagerMobile.experience')}
                                     fieldName="experience"
                                     productType="carreleur"
                                     value={newProduct.experienceCarreleur || ''}
@@ -17400,7 +17412,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Disponibilité *"
+                                    label={t('productManagerMobile.disponibilite')}
                                     fieldName="disponibilites"
                                     productType="carreleur"
                                     value={newProduct.disponibilitesCarreleur || ''}
@@ -17445,12 +17457,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="carreleur"
                             fieldName="certifications"
                             onSelect={(values) => setNewProduct({ ...newProduct, certificationsCarreleur: values })}
-                            placeholder="Ex: Carreleur qualifié, CAP Carreleur..."
+                            placeholder={t('productManagerMobile.exCarreleurQualifieCapCarreleur')}
                             maxSelections={4}
                         />
 
                         <MultiSelectModalitySelector
-                            label="Services additionnels"
+                            label={t('productManagerMobile.servicesAdditionnels')}
                             values={newProduct.servicesAdditionnelsCarreleur || []}
                             productType="carreleur"
                             fieldName="services_additionnels"
@@ -17462,13 +17474,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 5: Localisation intelligente - Zone d'intervention */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.info} />
                             <Text style={styles.hintText}>
-                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
                             </Text>
                         </View>
 
@@ -17478,14 +17490,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="carreleur"
                             fieldName="zones_intervention"
                             onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionCarreleur: values })}
-                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeToutLe')}
                             maxSelections={15}
                         />
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="award" size={16} color="#0891B2" />
                             <Text style={styles.hintText}>
-                                🎯 <Text style={styles.hintBold}>Conseil :</Text> Précisez vos techniques de pose et certifications pour attirer plus de clients !
+                                🎯 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.precisezVosTechniquesDePoseEt')}
                             </Text>
                         </View>
                     </>
@@ -17496,11 +17508,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <>
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="hammer" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services de Menuiserie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesDeMenuiserie')}/Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Type de prestation *"
+                            label={t('productManagerMobile.typeDePrestation')}
                             fieldName="types"
                             productType="menuisier"
                             value={newProduct.typeMenuisier || ''}
@@ -17509,7 +17521,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Services proposés *"
+                            label={t('productManagerMobile.servicesProposes')}
                             values={newProduct.servicesMenuisier || []}
                             productType="menuisier"
                             fieldName="services"
@@ -17520,33 +17532,33 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="layers" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Spécialités & Matériaux</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.specialitesMateriaux')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Spécialités *"
+                            label={t('productManagerMobile.specialites')}
                             values={newProduct.specialitesMenuisier || []}
                             productType="menuisier"
                             fieldName="specialites"
                             onSelect={(values) => setNewProduct({ ...newProduct, specialitesMenuisier: values })}
-                            placeholder="Ex: Menuiserie intérieure, Ébénisterie, Charpente..."
+                            placeholder={t('productManagerMobile.exMenuiserieInterieureEbenisterieCharpen')}
                             maxSelections={8}
                         />
 
                         <MultiSelectModalitySelector
-                            label="Matériaux travaillés"
+                            label={t('productManagerMobile.materiauxTravailles')}
                             values={newProduct.materiauxMenuisier || []}
                             productType="menuisier"
                             fieldName="materiaux"
                             onSelect={(values) => setNewProduct({ ...newProduct, materiauxMenuisier: values })}
-                            placeholder="Ex: Bois massif, Contreplaqué, MDF..."
+                            placeholder={t('productManagerMobile.exBoisMassifContreplaqueMdf')}
                             maxSelections={6}
                         />
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Expérience *"
+                                    label={t('productManagerMobile.experience')}
                                     fieldName="experience"
                                     productType="menuisier"
                                     value={newProduct.experienceMenuisier || ''}
@@ -17556,7 +17568,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Disponibilité *"
+                                    label={t('productManagerMobile.disponibilite')}
                                     fieldName="disponibilites"
                                     productType="menuisier"
                                     value={newProduct.disponibiliteMenuisier || ''}
@@ -17572,7 +17584,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="menuisier"
                             fieldName="zones_intervention"
                             onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionMenuisier: values })}
-                            placeholder="Ex: Douala, Yaoundé..."
+                            placeholder={t('productManagerMobile.exDoualaYaounde')}
                             maxSelections={15}
                         />
                     </>
@@ -17583,11 +17595,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <>
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="droplet" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services de Peinture</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesDePeinture')}/Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Type de prestation *"
+                            label={t('productManagerMobile.typeDePrestation')}
                             fieldName="types"
                             productType="peintre"
                             value={newProduct.typePeinture || ''}
@@ -17596,19 +17608,19 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Services proposés *"
+                            label={t('productManagerMobile.servicesProposes')}
                             values={newProduct.servicesPeintre || []}
                             productType="peintre"
                             fieldName="services"
                             onSelect={(values) => setNewProduct({ ...newProduct, servicesPeintre: values })}
-                            placeholder="Ex: Peinture intérieur, Ravalement façade..."
+                            placeholder={t('productManagerMobile.exPeintureInterieurRavalementFacade')}
                             maxSelections={10}
                         />
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Expérience *"
+                                    label={t('productManagerMobile.experience')}
                                     fieldName="experience"
                                     productType="peintre"
                                     value={newProduct.experiencePeintre || ''}
@@ -17634,7 +17646,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="peintre"
                             fieldName="zones_intervention"
                             onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionPeintre: values })}
-                            placeholder="Ex: Douala, Yaoundé..."
+                            placeholder={t('productManagerMobile.exDoualaYaounde')}
                             maxSelections={15}
                         />
                     </>
@@ -17645,11 +17657,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <>
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="home" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services de Plâtrerie & Staff</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesDePlatrerieStaff')}</Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Type de prestation *"
+                            label={t('productManagerMobile.typeDePrestation')}
                             fieldName="types"
                             productType="staffeur"
                             value={newProduct.typeStaffeur || ''}
@@ -17658,19 +17670,19 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Services proposés *"
+                            label={t('productManagerMobile.servicesProposes')}
                             values={newProduct.servicesStaffeur || []}
                             productType="staffeur"
                             fieldName="services"
                             onSelect={(values) => setNewProduct({ ...newProduct, servicesStaffeur: values })}
-                            placeholder="Ex: Faux plafond, Cloisons, Staff décoratif..."
+                            placeholder={t('productManagerMobile.exFauxPlafondCloisonsStaff')}
                             maxSelections={10}
                         />
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Expérience *"
+                                    label={t('productManagerMobile.experience')}
                                     fieldName="experience"
                                     productType="staffeur"
                                     value={newProduct.experienceStaffeur || ''}
@@ -17696,7 +17708,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="staffeur"
                             fieldName="zones_intervention"
                             onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionStaffeur: values })}
-                            placeholder="Ex: Douala, Yaoundé..."
+                            placeholder={t('productManagerMobile.exDoualaYaounde')}
                             maxSelections={15}
                         />
                     </>
@@ -17708,11 +17720,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Type de prestation */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="compass" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services d'Ingénierie & Architecture</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesDingenierieArchitecture')}</Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Type de prestation *"
+                            label={t('productManagerMobile.typeDePrestation')}
                             fieldName="types"
                             productType="ingenieur_archi"
                             value={newProduct.typeIngenieurArchi || ''}
@@ -17721,7 +17733,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         <MultiSelectModalitySelector
-                            label="Services proposés *"
+                            label={t('productManagerMobile.servicesProposes')}
                             values={newProduct.servicesIngenieurArchi || []}
                             productType="ingenieur_archi"
                             fieldName="services"
@@ -17733,7 +17745,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Projets et Domaines */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="briefcase" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Projets & Domaines de Compétence</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.projetsDomainesDeCompetence')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
@@ -17742,17 +17754,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="ingenieur_archi"
                             fieldName="types_projet"
                             onSelect={(values) => setNewProduct({ ...newProduct, typesProjetArchi: values })}
-                            placeholder="Ex: Maison individuelle, Immeuble, Villa..."
+                            placeholder={t('productManagerMobile.exMaisonIndividuelleImmeubleVilla')}
                             maxSelections={8}
                         />
 
                         <MultiSelectModalitySelector
-                            label="Domaines de compétence"
+                            label={t('productManagerMobile.domainesDeCompetence')}
                             values={newProduct.domainesCompetenceArchi || []}
                             productType="ingenieur_archi"
                             fieldName="domaines"
                             onSelect={(values) => setNewProduct({ ...newProduct, domainesCompetenceArchi: values })}
-                            placeholder="Ex: Génie civil, Architecture, Géotechnique..."
+                            placeholder={t('productManagerMobile.exGenieCivilArchitectureGeotechnique')}
                             maxSelections={6}
                         />
 
@@ -17763,7 +17775,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <MultiSelectModalitySelector
-                            label="Logiciels utilisés"
+                            label={t('productManagerMobile.logicielsUtilises')}
                             values={newProduct.logicielsArchi || []}
                             productType="ingenieur_archi"
                             fieldName="logiciels"
@@ -17778,7 +17790,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="ingenieur_archi"
                             fieldName="livrables"
                             onSelect={(values) => setNewProduct({ ...newProduct, livrablesArchi: values })}
-                            placeholder="Ex: Plans 2D/3D, Maquette, Note de calcul..."
+                            placeholder={t('productManagerMobile.exPlans2d3dMaquetteNote')}
                             maxSelections={8}
                         />
 
@@ -17789,7 +17801,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <ProductFieldSelector
-                            label="Mode de tarification"
+                            label={t('productManagerMobile.modeDeTarification')}
                             fieldName="tarification"
                             productType="ingenieur_archi"
                             value={newProduct.tarificationArchi || ''}
@@ -17808,7 +17820,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="ingenieur_archi"
                             fieldName="certifications"
                             onSelect={(values) => setNewProduct({ ...newProduct, certificationsArchi: values })}
-                            placeholder="Ex: Ordre des architectes, RC Pro, Décennale..."
+                            placeholder={t('productManagerMobile.exOrdreDesArchitectesRc')}
                             maxSelections={5}
                         />
 
@@ -17832,7 +17844,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     <View style={[styles.checkbox, newProduct.assuranceDecennaleArchi && styles.checkboxChecked]}>
                                         {newProduct.assuranceDecennaleArchi && <SafeIcon name="check" size={14} color="#FFFFFF" />}
                                     </View>
-                                    <Text style={styles.checkboxLabel}>🛡️ Assurance décennale</Text>
+                                    <Text style={styles.checkboxLabel}>{t('productManagerMobile.assuranceDecennale')}</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -17840,13 +17852,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 6: Localisation intelligente - Zone d'intervention */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}/Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color={modernColors.info} />
                             <Text style={styles.hintText}>
-                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
                             </Text>
                         </View>
 
@@ -17856,7 +17868,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="ingenieur_archi"
                             fieldName="zones_intervention"
                             onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionArchi: values })}
-                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            placeholder={t('productManagerMobile.exDoualaYaoundeToutLe')}
                             maxSelections={15}
                         />
 
@@ -17875,11 +17887,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Identité du Produit */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="package" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Identité du Produit</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDuProduit')}</Text>
                         </View>
 
                         <SelectModalitySelector
-                            label="Nom du produit"
+                            label={t('productManagerMobile.nomDuProduit')}
                             value={newProduct.nomProduitElectrique || newProduct.name || ''}
                             productType="electricite"
                             fieldName="noms_produits"
@@ -17889,24 +17901,24 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 name: value // Synchronisation
                             })}
                             required
-                            placeholder="Ex: Ampoule LED E27, Câble 2.5mm², Prise USB..."
+                            placeholder={t('productManagerMobile.exAmpouleLedE27Cable')}
                         />
 
                         <View style={styles.fieldRow}>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Catégorie"
+                                    label={t('productManagerMobile.categorie')}
                                     value={newProduct.categorieElectrique || ''}
                                     productType="electricite"
                                     fieldName="categories"
                                     onSelect={(value) => setNewProduct({ ...newProduct, categorieElectrique: value })}
                                     required
-                                    placeholder="Ex: Éclairage, Câblage..."
+                                    placeholder={t('productManagerMobile.exEclairageCablage')}
                                 />
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type d'éclairage"
+                                    label={t('productManagerMobile.typeD')}éclairage"
                                     value={newProduct.typeElectricite || ''}
                                     productType="electricite"
                                     fieldName="types_eclairage"
@@ -17919,7 +17931,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Caractéristiques Techniques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="zap" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques Techniques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiquesTechniques')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -17969,7 +17981,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <SelectModalitySelector
-                            label="Couleur de lumière (éclairage)"
+                            label={t('productManagerMobile.couleurDeLumiereEclairage')}
                             value={newProduct.couleurLumiere || ''}
                             productType="electricite"
                             fieldName="couleurs_lumiere"
@@ -17980,7 +17992,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Qualité & Garantie */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shield" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Qualité & Garantie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.qualiteGarantie')}</Text>
                         </View>
 
                         <MultiSelectModalitySelector
@@ -18006,12 +18018,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[{ flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     value={newProduct.etatElectrique || ''}
                                     productType="electricite"
                                     fieldName="etats"
                                     onSelect={(value) => setNewProduct({ ...newProduct, etatElectrique: value })}
-                                    placeholder="Ex: Neuf en boîte"
+                                    placeholder={t('productManagerMobile.exNeufEnBoite')}
                                 />
                             </View>
                         </View>
@@ -18023,12 +18035,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <SelectModalitySelector
-                            label="Type d'utilisation"
+                            label={t('productManagerMobile.typeD')}utilisation"
                             value={newProduct.utilisationElectrique || ''}
                             productType="electricite"
                             fieldName="utilisations"
                             onSelect={(value) => setNewProduct({ ...newProduct, utilisationElectrique: value })}
-                            placeholder="Ex: Résidentiel, Commercial..."
+                            placeholder={t('productManagerMobile.exResidentielCommercial')}
                         />
 
                         <View style={styles.hintBox}>
@@ -18047,11 +18059,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 1: TYPE DE SERVICE ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="briefcase" size={18} color="#F97316" />
-                            <Text style={styles.sectionTitle}>Type de service menuiserie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeDeServiceMenuiserie')}</Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Service menuiserie"
+                            label={t('productManagerMobile.serviceMenuiserie')}
                             fieldName="services"
                             productType="menuiserie"
                             value={newProduct.serviceMenuiserie || ''}
@@ -18062,13 +18074,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 2: MATÉRIAUX & FINITIONS ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="box" size={18} color="#F97316" />
-                            <Text style={styles.sectionTitle}>Matériaux & Finitions</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.materiauxFinitions')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type de bois"
+                                    label={t('productManagerMobile.typeDeBois')}
                                     fieldName="bois"
                                     productType="menuiserie"
                                     value={newProduct.typeBois || ''}
@@ -18110,7 +18122,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 3: EXPÉRIENCE & QUALIFICATIONS ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="award" size={18} color="#F97316" />
-                            <Text style={styles.sectionTitle}>Expérience & Qualifications</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.experienceQualifications')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -18125,7 +18137,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Certification/Diplôme"
+                                    label={t('productManagerMobile.certificationdiplome')}
                                     fieldName="certifications"
                                     productType="menuiserie"
                                     value={newProduct.certificationMenuisier || ''}
@@ -18137,13 +18149,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 4: ATELIER & ÉQUIPEMENT ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="tool" size={18} color="#F97316" />
-                            <Text style={styles.sectionTitle}>Atelier & Équipement</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.atelierEquipement')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type d'atelier/Fabricant"
+                                    label={t('productManagerMobile.typeD')}atelier/Fabricant"
                                     fieldName="marques_ateliers"
                                     productType="menuiserie"
                                     value={newProduct.atelierMenuiserie || ''}
@@ -18152,7 +18164,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Équipement atelier"
+                                    label={t('productManagerMobile.equipementAtelier')}
                                     fieldName="outils_disponibles"
                                     productType="menuiserie"
                                     value={newProduct.equipementAtelier || ''}
@@ -18164,13 +18176,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 5: DÉLAIS & GARANTIE ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="clock" size={18} color="#F97316" />
-                            <Text style={styles.sectionTitle}>Délais & Garantie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.delaisGarantie')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Délai de fabrication"
+                                    label={t('productManagerMobile.delaiDeFabrication')}
                                     fieldName="delais"
                                     productType="menuiserie"
                                     value={newProduct.delaiMenuiserie || ''}
@@ -18191,13 +18203,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 6: PAIEMENT & ZONE ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="credit-card" size={18} color="#F97316" />
-                            <Text style={styles.sectionTitle}>Paiement & Zone d'intervention</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.paiementZoneDintervention')}/Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Mode de paiement"
+                                    label={t('productManagerMobile.modeDePaiement')}
                                     fieldName="modes_paiement"
                                     productType="menuiserie"
                                     value={newProduct.paiementMenuiserie || ''}
@@ -18206,7 +18218,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Zone d'intervention"
+                                    label={t('productManagerMobile.zoneD')}intervention"
                                     fieldName="zones_intervention"
                                     productType="menuiserie"
                                     value={newProduct.zoneInterventionMenuiserie || ''}
@@ -18236,11 +18248,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 1: TYPE DE SERVICE ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="tool" size={18} color="#0EA5E9" />
-                            <Text style={styles.sectionTitle}>Type de service climatisation</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeDeServiceClimatisation')}</Text>
                         </View>
 
                         <ProductFieldSelector
-                            label="Service climatisation"
+                            label={t('productManagerMobile.serviceClimatisation')}
                             fieldName="services"
                             productType="reparateur_climatiseur"
                             value={newProduct.serviceClimatisation || ''}
@@ -18251,13 +18263,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 2: MARQUE & TYPE CLIMATISEUR ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="cpu" size={18} color="#0EA5E9" />
-                            <Text style={styles.sectionTitle}>Marque & Type de climatiseur</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.marqueTypeDeClimatiseur')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Marque spécialisée"
+                                    label={t('productManagerMobile.marqueSpecialisee')}
                                     fieldName="marques_climatiseurs"
                                     productType="reparateur_climatiseur"
                                     value={newProduct.marqueClimatiseur || ''}
@@ -18266,7 +18278,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type de climatiseur"
+                                    label={t('productManagerMobile.typeDeClimatiseur')}
                                     fieldName="types_climatiseurs"
                                     productType="reparateur_climatiseur"
                                     value={newProduct.typeClimatiseur || ''}
@@ -18278,7 +18290,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Puissance traitée (BTU)"
+                                    label={t('productManagerMobile.puissanceTraiteeBtu')}
                                     fieldName="puissances_btu"
                                     productType="reparateur_climatiseur"
                                     value={newProduct.puissanceBTU || ''}
@@ -18287,7 +18299,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type de panne traitée"
+                                    label={t('productManagerMobile.typeDePanneTraitee')}
                                     fieldName="types_pannes"
                                     productType="reparateur_climatiseur"
                                     value={newProduct.typePanneClim || ''}
@@ -18299,7 +18311,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 3: CERTIFICATION & EXPÉRIENCE ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="award" size={18} color="#0EA5E9" />
-                            <Text style={styles.sectionTitle}>Certifications & Équipement</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.certificationsEquipement')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -18314,7 +18326,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Équipement professionnel"
+                                    label={t('productManagerMobile.equipementProfessionnel')}
                                     fieldName="equipements_technicien"
                                     productType="reparateur_climatiseur"
                                     value={newProduct.equipementTechnicien || ''}
@@ -18326,13 +18338,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 4: DISPONIBILITÉ & URGENCE ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="clock" size={18} color="#0EA5E9" />
-                            <Text style={styles.sectionTitle}>Disponibilité & Urgence</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.disponibiliteUrgence')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Disponibilité/Urgence"
+                                    label={t('productManagerMobile.disponibiliteurgence')}
                                     fieldName="disponibilites"
                                     productType="reparateur_climatiseur"
                                     value={newProduct.disponibiliteClim || ''}
@@ -18341,7 +18353,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type de clientèle"
+                                    label={t('productManagerMobile.typeDeClientele')}
                                     fieldName="types_clients"
                                     productType="reparateur_climatiseur"
                                     value={newProduct.clienteleClim || ''}
@@ -18359,7 +18371,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Mode de tarification"
+                                    label={t('productManagerMobile.modeDeTarification')}
                                     fieldName="modes_tarification"
                                     productType="reparateur_climatiseur"
                                     value={newProduct.tarificationClim || ''}
@@ -18380,13 +18392,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 6: PAIEMENT & ZONE ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="credit-card" size={18} color="#0EA5E9" />
-                            <Text style={styles.sectionTitle}>Paiement & Zone d'intervention</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.paiementZoneDintervention')}/Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Mode de paiement"
+                                    label={t('productManagerMobile.modeDePaiement')}
                                     fieldName="modes_paiement"
                                     productType="reparateur_climatiseur"
                                     value={newProduct.paiementClim || ''}
@@ -18395,7 +18407,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Zone d'intervention"
+                                    label={t('productManagerMobile.zoneD')}intervention"
                                     fieldName="zones_intervention"
                                     productType="reparateur_climatiseur"
                                     value={newProduct.zoneInterventionClim || ''}
@@ -18430,7 +18442,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 1: IDENTITÉ DU SMARTPHONE ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="smartphone" size={18} color="#6366F1" />
-                            <Text style={styles.sectionTitle}>Identité du smartphone</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDuSmartphone')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -18450,7 +18462,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     marque={newProduct.marqueTelephone || ''}
                                     value={newProduct.modeleTelephone || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, modeleTelephone: text })}
-                                    label="Modèle"
+                                    label={t('productManagerMobile.modele')}
                                     placeholder="Ex: iPhone 14 Pro, Galaxy S23"
                                     required
                                     autoLoadLastUsed={true}
@@ -18461,7 +18473,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     fieldName="etats"
                                     productType="telephone"
                                     value={newProduct.etatTelephone || ''}
@@ -18471,7 +18483,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Année d'achat</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.anneeDachat')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 2023"
                                     value={newProduct.anneeAchatTelephone || ''}
@@ -18485,7 +18497,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 2: CARACTÉRISTIQUES TECHNIQUES ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="cpu" size={18} color="#6366F1" />
-                            <Text style={styles.sectionTitle}>Caractéristiques techniques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiquesTechniques')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -18514,7 +18526,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Taille écran"
+                                    label={t('productManagerMobile.tailleEcran')}
                                     fieldName="taillesEcran"
                                     productType="telephone"
                                     value={newProduct.tailleEcran || ''}
@@ -18524,7 +18536,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type écran"
+                                    label={t('productManagerMobile.typeEcran')}
                                     fieldName="typesEcran"
                                     productType="telephone"
                                     value={newProduct.typeEcran || ''}
@@ -18537,7 +18549,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Caméra principale"
+                                    label={t('productManagerMobile.cameraPrincipale')}
                                     fieldName="cameraPrincipale"
                                     productType="telephone"
                                     value={newProduct.numeroCameraPrincipale || ''}
@@ -18546,7 +18558,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Caméra frontale</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.cameraFrontale')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 12MP"
                                     value={newProduct.numeroCameraFrontale || ''}
@@ -18568,7 +18580,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Santé batterie (%)</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.santeBatterie')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 95"
                                     value={newProduct.batterieSante || ''}
@@ -18582,18 +18594,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 3: CONNECTIVITÉ & COULEUR ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="wifi" size={18} color="#6366F1" />
-                            <Text style={styles.sectionTitle}>Connectivité & Apparence</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.connectiviteApparence')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Opérateur"
+                                    label={t('productManagerMobile.operateur')}
                                     fieldName="operateurs"
                                     productType="telephone"
                                     value={newProduct.operateur || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, operateur: value })}
-                                    placeholder="Ex: Débloqué, MTN, Orange..."
+                                    placeholder={t('productManagerMobile.exDebloqueMtnOrange')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -18610,7 +18622,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Étanchéité</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.etancheite')}</Text>
                                 <NativeInput
                                     placeholder="Ex: IP68"
                                     value={newProduct.etancheite || ''}
@@ -18679,7 +18691,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 4: ÉTAT & AUTHENTICITÉ ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shield-check" size={18} color="#6366F1" />
-                            <Text style={styles.sectionTitle}>État & Authenticité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.etatAuthenticite')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -18706,9 +18718,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Réparations effectuées</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.reparationsEffectuees')}</Text>
                             <NativeInput
-                                placeholder="Ex: Changement écran en janvier 2023"
+                                placeholder={t('productManagerMobile.exChangementEcranEnJanvier')}
                                 value={newProduct.reparations || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, reparations: text })}
                                 style={styles.fieldInput}
@@ -18725,7 +18737,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.boiteOriginale && styles.checkboxActive]}>
                                     {newProduct.boiteOriginale && <SafeIcon name="check" size={14} color="#FFF" />}
                                 </View>
-                                <Text style={styles.toggleLabel}>Boîte d'origine</Text>
+                                <Text style={styles.toggleLabel}>{t('productManagerMobile.boiteDorigine')}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -18745,7 +18757,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.ecranOriginal && styles.checkboxActive]}>
                                     {newProduct.ecranOriginal && <SafeIcon name="check" size={14} color="#FFF" />}
                                 </View>
-                                <Text style={styles.toggleLabel}>Écran original</Text>
+                                <Text style={styles.toggleLabel}>{t('productManagerMobile.ecranOriginal')}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -18773,7 +18785,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 fieldName="accessoires"
                                 onSelect={(values) => setNewProduct({ ...newProduct, accessoiresTelephone: values })}
                                 maxSelections={10}
-                                placeholder="Ex: Chargeur, Écouteurs, Coque..."
+                                placeholder={t('productManagerMobile.exChargeurEcouteursCoque')}
                             />
                         </View>
 
@@ -18792,7 +18804,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 1: IDENTITÉ DE L'ORDINATEUR ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="monitor" size={18} color="#00BCD4" />
-                            <Text style={styles.sectionTitle}>Identité de l'ordinateur</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDeLordinateur')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -18822,7 +18834,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Modèle</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.modele')}</Text>
                                 <NativeInput
                                     placeholder="Ex: XPS 15, MacBook Pro 14"
                                     value={newProduct.modeleOrdinateur || ''}
@@ -18832,7 +18844,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     fieldName="etats"
                                     productType="ordinateur"
                                     value={newProduct.etatOrdinateur || ''}
@@ -18845,7 +18857,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Année d'achat</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.anneeDachat')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 2023"
                                     value={newProduct.anneeAchatOrdinateur || ''}
@@ -18884,7 +18896,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Fréquence</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.frequence')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 3.2 GHz"
                                     value={newProduct.frequenceProcesseur || ''}
@@ -18920,7 +18932,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Carte Graphique"
+                                    label={t('productManagerMobile.carteGraphique')}
                                     fieldName="cartesGraphiques"
                                     productType="ordinateur"
                                     value={newProduct.carteGraphique || ''}
@@ -18930,7 +18942,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Système d'exploitation"
+                                    label={t('productManagerMobile.systemeD')}exploitation"
                                     fieldName="systemesExploitation"
                                     productType="ordinateur"
                                     value={newProduct.systemeExploitation || ''}
@@ -18966,13 +18978,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 3: ÉCRAN & MULTIMÉDIA ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="monitor" size={18} color="#00BCD4" />
-                            <Text style={styles.sectionTitle}>Écran & Multimédia</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.ecranMultimedia')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Taille écran"
+                                    label={t('productManagerMobile.tailleEcran')}
                                     fieldName="taillesEcran"
                                     productType="ordinateur"
                                     value={newProduct.tailleEcranOrdinateur || ''}
@@ -18982,7 +18994,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type écran"
+                                    label={t('productManagerMobile.typeEcran')}
                                     fieldName="typesEcran"
                                     productType="ordinateur"
                                     value={newProduct.typeEcranOrdinateur || ''}
@@ -18994,7 +19006,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Résolution écran</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.resolutionEcran')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 1920x1080, 4K"
                                     value={newProduct.resolutionOrdinateur || ''}
@@ -19023,7 +19035,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.touchscreen && styles.checkboxActive]}>
                                     {newProduct.touchscreen && <SafeIcon name="check" size={14} color="#FFF" />}
                                 </View>
-                                <Text style={styles.toggleLabel}>Écran tactile</Text>
+                                <Text style={styles.toggleLabel}>{t('productManagerMobile.ecranTactile')}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -19040,7 +19052,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 4: CONNECTIVITÉ & PORTS ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="usb" size={18} color="#00BCD4" />
-                            <Text style={styles.sectionTitle}>Connectivité & Ports</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.connectivitePorts')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -19100,7 +19112,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 5: ÉTAT & GARANTIE ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shield-check" size={18} color="#00BCD4" />
-                            <Text style={styles.sectionTitle}>État & Garantie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.etatGarantie')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -19147,7 +19159,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.boiteOriginaleOrdinateur && styles.checkboxActive]}>
                                     {newProduct.boiteOriginaleOrdinateur && <SafeIcon name="check" size={14} color="#FFF" />}
                                 </View>
-                                <Text style={styles.toggleLabel}>Boîte d'origine</Text>
+                                <Text style={styles.toggleLabel}>{t('productManagerMobile.boiteDorigine')}</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -19182,7 +19194,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={16} color="#00BCD4" />
                             <Text style={styles.hintText}>
-                                💻 <Text style={styles.hintBold}>Conseil :</Text> Précisez les specs (processeur, RAM, GPU) et logiciels pour maximiser vos chances de vente !
+                                💻 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.precisezLesSpecsProcesseurRamGpu')}
                             </Text>
                         </View>
                     </>
@@ -19194,7 +19206,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 1: IDENTITÉ DU VÊTEMENT ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shopping-bag" size={18} color="#EC4899" />
-                            <Text style={styles.sectionTitle}>Identité du vêtement</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDuVetement')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -19233,7 +19245,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     fieldName="etats"
                                     productType="vetement"
                                     value={newProduct.etatVetement || ''}
@@ -19246,7 +19258,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 2: CARACTÉRISTIQUES ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="info" size={18} color="#EC4899" />
-                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
@@ -19261,7 +19273,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Matière"
+                                    label={t('productManagerMobile.matiere')}
                                     fieldName="matieres"
                                     productType="vetement"
                                     value={newProduct.matiereVetement || ''}
@@ -19369,7 +19381,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Certifications</Text>
                             <NativeInput
-                                placeholder="Ex: Bio, Équitable, GOTS"
+                                placeholder={t('productManagerMobile.exBioEquitableGots')}
                                 value={newProduct.certifieVetement?.join(', ') || ''}
                                 onChangeText={(text) => {
                                     const certs = text.split(',').map(c => c.trim()).filter(c => c);
@@ -19395,12 +19407,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 1: Identité du Produit */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="package" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Identité du Produit</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDuProduit')}</Text>
                         </View>
 
                         {/* Nom du produit - CRITIQUE */}
                         <SelectModalitySelector
-                            label="Nom du produit"
+                            label={t('productManagerMobile.nomDuProduit')}
                             value={newProduct.nomProduitImageSon || newProduct.nom || ''}
                             productType="image_son"
                             fieldName="noms_produits"
@@ -19417,18 +19429,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Catégorie"
+                                    label={t('productManagerMobile.categorie')}
                                     value={newProduct.categorieImageSon || ''}
                                     productType="image_son"
                                     fieldName="categories"
                                     onSelect={(value) => setNewProduct({ ...newProduct, categorieImageSon: value })}
                                     required
-                                    placeholder="Ex: Télévision"
+                                    placeholder={t('productManagerMobile.exTelevision')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type spécifique"
+                                    label={t('productManagerMobile.typeSpecifique')}
                                     value={newProduct.typeImageSon || ''}
                                     productType="image_son"
                                     fieldName="types"
@@ -19467,14 +19479,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 2: Caractéristiques Techniques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="sliders" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques Techniques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiquesTechniques')}</Text>
                         </View>
 
                         {/* Technologie d'écran et Résolution */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Technologie écran"
+                                    label={t('productManagerMobile.technologieEcran')}
                                     value={newProduct.technologieEcran || ''}
                                     productType="image_son"
                                     fieldName="technologies_ecran"
@@ -19484,7 +19496,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Résolution"
+                                    label={t('productManagerMobile.resolution')}
                                     value={newProduct.resolution || ''}
                                     productType="image_son"
                                     fieldName="resolutions"
@@ -19498,7 +19510,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Taille écran"
+                                    label={t('productManagerMobile.tailleEcran')}
                                     value={newProduct.diagonaleEcran || ''}
                                     productType="image_son"
                                     fieldName="tailles_ecran"
@@ -19507,7 +19519,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Année de sortie</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.anneeDeSortie')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 2024"
                                     value={newProduct.anneeSortie || ''}
@@ -19543,12 +19555,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 3: Connectivité & Fonctionnalités */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="wifi" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Connectivité & Fonctionnalités</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.connectiviteFonctionnalites')}</Text>
                         </View>
 
                         {/* Connectivités (MultiSelect) */}
                         <MultiSelectModalitySelector
-                            label="Connectivités"
+                            label={t('productManagerMobile.connectivites')}
                             values={newProduct.connectivitesImageSon || []}
                             productType="image_son"
                             fieldName="connectivites"
@@ -19558,7 +19570,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Fonctionnalités (MultiSelect) */}
                         <MultiSelectModalitySelector
-                            label="Fonctionnalités"
+                            label={t('productManagerMobile.fonctionnalites')}
                             values={newProduct.fonctionnalitesImageSon || []}
                             productType="image_son"
                             fieldName="fonctionnalites"
@@ -19569,20 +19581,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Section 4: État & Garantie */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shield" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>État & Garantie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.etatGarantie')}</Text>
                         </View>
 
                         {/* État et Garantie */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     value={newProduct.etatImageSon || ''}
                                     productType="image_son"
                                     fieldName="etats"
                                     onSelect={(value) => setNewProduct({ ...newProduct, etatImageSon: value })}
                                     required
-                                    placeholder="Ex: Neuf scellé"
+                                    placeholder={t('productManagerMobile.exNeufScelle')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -19604,7 +19616,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="image_son"
                             fieldName="accessoires_inclus"
                             onSelect={(values) => setNewProduct({ ...newProduct, accessoiresImageSon: values })}
-                            placeholder="Ex: Télécommande, Câble HDMI, Support mural..."
+                            placeholder={t('productManagerMobile.exTelecommandeCableHdmiSupport')}
                         />
 
                         {/* Message d'aide contextuel */}
@@ -19623,13 +19635,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 1 : IDENTITÉ DE LA PIÈCE */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="package" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Identité de la pièce</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDeLaPiece')}</Text>
                         </View>
 
                         {/* Nom de la pièce - ✅ CRITIQUE: SelectModalitySelector */}
                         <View style={styles.fieldContainer}>
                             <SelectModalitySelector
-                                label="Nom de la pièce"
+                                label={t('productManagerMobile.nomDeLaPiece')}
                                 value={newProduct.nomProduitPieceAuto || newProduct.name || ''}
                                 productType="pieces_auto"
                                 fieldName="noms_produits"
@@ -19639,7 +19651,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     name: value // ✅ SYNCHRONISATION CRITIQUE
                                 })}
                                 required
-                                placeholder="Ex: Filtre à huile, Plaquettes de frein avant..."
+                                placeholder={t('productManagerMobile.exFiltreAHuilePlaquettes')}
                             />
                         </View>
 
@@ -19647,24 +19659,24 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Catégorie"
+                                    label={t('productManagerMobile.categorie')}
                                     value={newProduct.categoriePieceAuto || ''}
                                     productType="pieces_auto"
                                     fieldName="categories"
                                     onSelect={(value) => setNewProduct({ ...newProduct, categoriePieceAuto: value })}
                                     required
-                                    placeholder="Ex: Moteur & Mécanique"
+                                    placeholder={t('productManagerMobile.exMoteurMecanique')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de pièce"
+                                    label={t('productManagerMobile.typeDePiece')}
                                     value={newProduct.typePieceAuto || ''}
                                     productType="pieces_auto"
                                     fieldName="types"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typePieceAuto: value })}
                                     required
-                                    placeholder="Ex: Filtre (huile, air)"
+                                    placeholder={t('productManagerMobile.exFiltreHuileAir')}
                                 />
                             </View>
                         </View>
@@ -19672,14 +19684,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 2 : MARQUES & COMPATIBILITÉ */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="check-circle" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Marques & Compatibilité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.marquesCompatibilite')}</Text>
                         </View>
 
                         {/* Marque pièce et Marque véhicule */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Marque de la pièce"
+                                    label={t('productManagerMobile.marqueDeLaPiece')}
                                     value={newProduct.marquePieceAuto || ''}
                                     productType="pieces_auto"
                                     fieldName="marques_pieces"
@@ -19690,7 +19702,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Marque véhicule"
+                                    label={t('productManagerMobile.marqueVehicule')}
                                     value={newProduct.marqueVehiculeCompatible || ''}
                                     productType="pieces_auto"
                                     fieldName="marques_vehicules"
@@ -19704,7 +19716,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Modèle véhicule (si spécifique)"
+                                    label={t('productManagerMobile.modeleVehiculeSiSpecifique')}
                                     value={newProduct.modeleVehicule || ''}
                                     productType="pieces_auto"
                                     fieldName="modeles_populaires"
@@ -19714,7 +19726,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Niveau de compatibilité"
+                                    label={t('productManagerMobile.niveauDeCompatibilite')}
                                     value={newProduct.niveauCompatibilite || ''}
                                     productType="pieces_auto"
                                     fieldName="compatibilites"
@@ -19727,7 +19739,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Référence et Compatibilité détaillée */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Référence constructeur</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.referenceConstructeur')}</Text>
                                 <NativeInput
                                     placeholder="Ex: OEM-12345, REF-ABC"
                                     value={newProduct.referenceAuto || ''}
@@ -19736,7 +19748,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Année(s) compatible(s)</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.anneesCompatibles')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 2015-2020"
                                     value={newProduct.anneesCompatibles || ''}
@@ -19748,7 +19760,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Compatibilité détaillée (multi-lignes) */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Compatibilité détaillée (optionnel)</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.compatibiliteDetailleeOptionnel')}</Text>
                             <NativeInput
                                 placeholder="Ex: Compatible Toyota Camry 2015-2020, Corolla 2017-2021"
                                 value={newProduct.compatibiliteDetaillee || ''}
@@ -19762,14 +19774,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 3 : CARACTÉRISTIQUES TECHNIQUES */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques techniques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiquesTechniques')}</Text>
                         </View>
 
                         {/* Matériau et Origine */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Matériau"
+                                    label={t('productManagerMobile.materiau')}
                                     value={newProduct.materiauPiece || ''}
                                     productType="pieces_auto"
                                     fieldName="materiaux"
@@ -19792,20 +19804,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 4 : QUALITÉ & GARANTIE */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shield" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Qualité & Garantie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.qualiteGarantie')}</Text>
                         </View>
 
                         {/* État et Garantie */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     value={newProduct.etatPieceAuto || ''}
                                     productType="pieces_auto"
                                     fieldName="etats"
                                     onSelect={(value) => setNewProduct({ ...newProduct, etatPieceAuto: value })}
                                     required
-                                    placeholder="Ex: Neuf scellé"
+                                    placeholder={t('productManagerMobile.exNeufScelle')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -19823,18 +19835,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ✅ SECTION 5 : INFORMATIONS VENDEUR */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="user" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations vendeur</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsVendeur')}/Text>
                         </View>
 
                         {/* Type de fournisseur */}
                         <View style={styles.fieldContainer}>
                             <SelectModalitySelector
-                                label="Type de fournisseur"
+                                label={t('productManagerMobile.typeDeFournisseur')}
                                 value={newProduct.typeFournisseur || ''}
                                 productType="pieces_auto"
                                 fieldName="fournisseurs_types"
                                 onSelect={(value) => setNewProduct({ ...newProduct, typeFournisseur: value })}
-                                placeholder="Ex: Magasin pièces détachées auto"
+                                placeholder={t('productManagerMobile.exMagasinPiecesDetacheesAuto')}
                             />
                         </View>
 
@@ -19854,7 +19866,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type de pièce"
+                                    label={t('productManagerMobile.typeDePiece')}
                                     fieldName="types"
                                     productType="pieces_industrielles"
                                     value={newProduct.typePieceIndustrielle || ''}
@@ -19876,7 +19888,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Matériau"
+                                    label={t('productManagerMobile.materiau')}
                                     fieldName="materiaux"
                                     productType="pieces_industrielles"
                                     value={newProduct.materielPiece || ''}
@@ -19897,7 +19909,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Référence</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.reference')}</Text>
                             <NativeInput
                                 placeholder="Ex: SKF-6205-2Z"
                                 value={newProduct.referencePiece || ''}
@@ -19909,7 +19921,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     fieldName="etats"
                                     productType="pieces_industrielles"
                                     value={newProduct.etatPieceIndustrielle || ''}
@@ -19945,25 +19957,25 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Informations principales */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="gift" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations principales</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsPrincipales')}/Text>
                         </View>
 
                         {/* Type de jouet et Âge */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de jouet"
+                                    label={t('productManagerMobile.typeDeJouet')}
                                     value={newProduct.typeJouet || ''}
                                     productType="jouets_enfants"
                                     fieldName="types_jouets"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeJouet: value })}
                                     required
-                                    placeholder="Ex: Peluche, Jeu éducatif..."
+                                    placeholder={t('productManagerMobile.exPelucheJeuEducatif')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Âge recommandé"
+                                    label={t('productManagerMobile.ageRecommande')}
                                     value={newProduct.ageRecommande || ''}
                                     productType="jouets_enfants"
                                     fieldName="ages_recommandes"
@@ -19993,7 +20005,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="jouets_enfants"
                                     fieldName="genre"
                                     onSelect={(value) => setNewProduct({ ...newProduct, genreJouet: value })}
-                                    placeholder="Ex: Mixte, Garçon..."
+                                    placeholder={t('productManagerMobile.exMixteGarcon')}
                                 />
                             </View>
                         </View>
@@ -20002,13 +20014,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État du produit"
+                                    label={t('productManagerMobile.etatDuProduit')}
                                     value={newProduct.etatJouet || ''}
                                     productType="jouets_enfants"
                                     fieldName="etat"
                                     onSelect={(value) => setNewProduct({ ...newProduct, etatJouet: value })}
                                     required
-                                    placeholder="Ex: Neuf, Excellent état..."
+                                    placeholder={t('productManagerMobile.exNeufExcellentEtat')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -20018,7 +20030,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="jouets_enfants"
                                     fieldName="emballage"
                                     onSelect={(value) => setNewProduct({ ...newProduct, emballageJouet: value })}
-                                    placeholder="Ex: Emballé, Sous blister..."
+                                    placeholder={t('productManagerMobile.exEmballeSousBlister')}
                                 />
                             </View>
                         </View>
@@ -20026,14 +20038,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Caractéristiques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="star" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
                         </View>
 
                         {/* Matériau et Couleurs principales */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Matériau principal"
+                                    label={t('productManagerMobile.materiauPrincipal')}
                                     value={newProduct.materiauJouet || ''}
                                     productType="jouets_enfants"
                                     fieldName="materiaux"
@@ -20057,22 +20069,22 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Alimentation/Énergie"
+                                    label={t('productManagerMobile.alimentationenergie')}
                                     value={newProduct.alimentationJouet || ''}
                                     productType="jouets_enfants"
                                     fieldName="alimentation"
                                     onSelect={(value) => setNewProduct({ ...newProduct, alimentationJouet: value })}
-                                    placeholder="Ex: Piles, Sans énergie..."
+                                    placeholder={t('productManagerMobile.exPilesSansEnergie')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Lieu d'utilisation"
+                                    label={t('productManagerMobile.lieuD')}utilisation"
                                     value={newProduct.lieuUtilisation || ''}
                                     productType="jouets_enfants"
                                     fieldName="lieu_utilisation"
                                     onSelect={(value) => setNewProduct({ ...newProduct, lieuUtilisation: value })}
-                                    placeholder="Ex: Intérieur, Extérieur..."
+                                    placeholder={t('productManagerMobile.exInterieurExterieur')}
                                 />
                             </View>
                         </View>
@@ -20080,7 +20092,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Fonctionnalités - Multi-select */}
                         <View style={styles.fieldContainer}>
                             <MultiSelectModalitySelector
-                                label="Fonctionnalités"
+                                label={t('productManagerMobile.fonctionnalites')}
                                 values={newProduct.fonctionnalitesJouet || []}
                                 productType="jouets_enfants"
                                 fieldName="fonctionnalites"
@@ -20092,13 +20104,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Éducatif & Sécurité */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shield" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Éducatif & Sécurité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.educatifSecurite')}</Text>
                         </View>
 
                         {/* Catégories éducatives - Multi-select */}
                         <View style={styles.fieldContainer}>
                             <MultiSelectModalitySelector
-                                label="Catégories éducatives"
+                                label={t('productManagerMobile.categoriesEducatives')}
                                 values={newProduct.categoriesEducatives || []}
                                 productType="jouets_enfants"
                                 fieldName="categories_educatives"
@@ -20110,7 +20122,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Normes de sécurité - Multi-select */}
                         <View style={styles.fieldContainer}>
                             <MultiSelectModalitySelector
-                                label="Normes de sécurité"
+                                label={t('productManagerMobile.normesDeSecurite')}
                                 values={newProduct.normesSecurite || []}
                                 productType="jouets_enfants"
                                 fieldName="normes_securite"
@@ -20120,18 +20132,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         {/* Titre de section : Jeux de société (si applicable) */}
-                        {(newProduct.typeJouet === 'Jeu de société' || newProduct.typeJouet === 'Jeu de cartes' || newProduct.typeJouet === 'Puzzle') && (
+                        {(newProduct.typeJouet === t('productManagerMobile.jeuDeSociete') || newProduct.typeJouet === 'Jeu de cartes' || newProduct.typeJouet === 'Puzzle') && (
                             <>
                                 <View style={styles.sectionHeader}>
                                     <SafeIcon name="users" size={20} color={modernColors.primary} />
-                                    <Text style={styles.sectionTitle}>Informations jeu</Text>
+                                    <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsJeu')}/Text>
                                 </View>
 
                                 {/* Nombre de joueurs et Durée */}
                                 <View style={styles.fieldRow}>
                                     <View style={[styles.fieldContainer, { flex: 1 }]}>
                                         <SelectModalitySelector
-                                            label="Nombre de joueurs"
+                                            label={t('productManagerMobile.nombreDeJoueurs')}
                                             value={newProduct.nombreJoueurs || ''}
                                             productType="jouets_enfants"
                                             fieldName="nombre_joueurs"
@@ -20141,7 +20153,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     </View>
                                     <View style={[styles.fieldContainer, { flex: 1 }]}>
                                         <SelectModalitySelector
-                                            label="Durée de jeu"
+                                            label={t('productManagerMobile.dureeDeJeu')}
                                             value={newProduct.dureeJeu || ''}
                                             productType="jouets_enfants"
                                             fieldName="duree_jeu"
@@ -20156,23 +20168,23 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Titre de section : Lieu de disponibilité */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Lieu de disponibilité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.lieuDeDisponibilite')}</Text>
                         </View>
 
                         {/* Ville et Quartier pour localiser le jouet */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <LocationSelector
-                                    label="Ville"
+                                    label={t('productManagerMobile.ville')}
                                     value={newProduct.villeJouet || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, villeJouet: value })}
                                     scope="city"
-                                    placeholder="Ex: Douala, Yaoundé..."
+                                    placeholder={t('productManagerMobile.exDoualaYaounde')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <LocationSelector
-                                    label="Quartier/Zone"
+                                    label={t('productManagerMobile.quartierzone')}
                                     value={newProduct.quartierJouet || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, quartierJouet: value })}
                                     scope="point"
@@ -20185,14 +20197,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Indiquez où les acheteurs peuvent trouver ou récupérer le jouet
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.indiquezOuLesAcheteursPeuventTrouver')}
                             </Text>
                         </View>
 
                         {/* Titre de section : Informations complémentaires */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="info" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations complémentaires</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsComplementaires')}</Text>
                         </View>
 
                         {/* Accessoires inclus - Multi-select */}
@@ -20233,7 +20245,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Nom du produit */}
                         <View style={styles.fieldContainer}>
                             <ProductFieldSelector
-                                label="Nom du produit"
+                                label={t('productManagerMobile.nomDuProduit')}
                                 fieldName="noms_produits"
                                 productType="ustensiles_cuisine"
                                 value={newProduct.nomProduitUstensile || ''}
@@ -20249,7 +20261,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Catégorie"
+                                    label={t('productManagerMobile.categorie')}
                                     fieldName="categories"
                                     productType="ustensiles_cuisine"
                                     value={newProduct.categorieUstensile || ''}
@@ -20258,7 +20270,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type d'ustensile"
+                                    label={t('productManagerMobile.typeD')}ustensile"
                                     fieldName="types"
                                     productType="ustensiles_cuisine"
                                     value={newProduct.typeUstensile || ''}
@@ -20271,14 +20283,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 2: CARACTÉRISTIQUES TECHNIQUES ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="settings" size={20} color="#FF5722" />
-                            <Text style={styles.sectionTitle}>Caractéristiques techniques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiquesTechniques')}</Text>
                         </View>
 
                         {/* Matériau + Capacité */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Matériau"
+                                    label={t('productManagerMobile.materiau')}
                                     fieldName="materiaux"
                                     productType="ustensiles_cuisine"
                                     value={newProduct.materiauUstensile || ''}
@@ -20288,7 +20300,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Capacité / Taille"
+                                    label={t('productManagerMobile.capaciteTaille')}
                                     fieldName="capacites"
                                     productType="ustensiles_cuisine"
                                     value={newProduct.capaciteUstensile || ''}
@@ -20310,7 +20322,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     fieldName="etats"
                                     productType="ustensiles_cuisine"
                                     value={newProduct.etatUstensile || ''}
@@ -20324,7 +20336,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Nombre de pièces"
+                                    label={t('productManagerMobile.nombreDePieces')}
                                     fieldName="pieces_dans_set"
                                     productType="ustensiles_cuisine"
                                     value={newProduct.piecesDansSet || ''}
@@ -20345,7 +20357,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Compatibilités (multi-select) */}
                         <View style={styles.fieldContainer}>
                             <MultiSelectModalitySelector
-                                label="Compatibilités (feux de cuisson)"
+                                label={t('productManagerMobile.compatibilitesFeuxDeCuisson')}
                                 fieldName="compatibilites"
                                 productType="ustensiles_cuisine"
                                 selectedValues={newProduct.compatibiliteUstensile || []}
@@ -20361,12 +20373,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.encouragementIcon}>🍴</Text>
                             <Text style={styles.encouragementText}>
                                 {newProduct.categorieUstensile?.includes('traditionnel')
-                                    ? '🌍 Excellent ! Les ustensiles traditionnels africains (mortier, canari, calebasse) sont très recherchés pour la cuisine authentique !'
+                                    ? t('productManagerMobile.excellentLesUstensilesTraditionnelsAfricainsMortie')
                                     : newProduct.categorieUstensile?.includes('Batteries')
-                                        ? '🍳 Super ! Les batteries de cuisine complètes sont très prisées par les ménages et nouveaux mariés !'
+                                        ? t('productManagerMobile.superLesBatteriesDeCuisineCompletes')
                                         : newProduct.usageUstensile?.includes('Professionnel')
                                             ? '👨‍🍳 Parfait ! Les ustensiles professionnels sont essentiels pour les restaurants et maquis !'
-                                            : '✨ Ajoutez des photos claires pour montrer la qualité de vos ustensiles !'}
+                                            : t('productManagerMobile.ajoutezDesPhotosClairesPourMontrer')}
                             </Text>
                         </View>
                     </>
@@ -20378,13 +20390,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 1: TYPE DE DÉMÉNAGEMENT ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="truck" size={20} color="#F97316" />
-                            <Text style={styles.sectionTitle}>Type de déménagement</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeDeDemenagement')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type de déménagement"
+                                    label={t('productManagerMobile.typeDeDemenagement')}
                                     fieldName="types"
                                     productType="demenagement"
                                     value={newProduct.typeDemenagement || ''}
@@ -20394,7 +20406,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Volume à déménager"
+                                    label={t('productManagerMobile.volumeADemenager')}
                                     fieldName="volumes"
                                     productType="demenagement"
                                     value={newProduct.volumeDemenagement || ''}
@@ -20423,7 +20435,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Ville de départ"
+                                    label={t('productManagerMobile.villeDeDepart')}
                                     fieldName="villes_cameroun"
                                     productType="demenagement"
                                     value={newProduct.villeDepartDemenagement || ''}
@@ -20433,7 +20445,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Ville d'arrivée"
+                                    label={t('productManagerMobile.villeD')}arrivée"
                                     fieldName="villes_cameroun"
                                     productType="demenagement"
                                     value={newProduct.villeArriveeDemenagement || ''}
@@ -20457,13 +20469,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 3: VÉHICULE & ÉQUIPE ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="users" size={20} color="#F97316" />
-                            <Text style={styles.sectionTitle}>Véhicule et équipe</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.vehiculeEtEquipe')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type de véhicule"
+                                    label={t('productManagerMobile.typeDeVehicule')}
                                     fieldName="vehicules"
                                     productType="demenagement"
                                     value={newProduct.typeVehiculeDemenagement || ''}
@@ -20473,7 +20485,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Nombre de déménageurs"
+                                    label={t('productManagerMobile.nombreDeDemenageurs')}
                                     fieldName="nb_demenageurs"
                                     productType="demenagement"
                                     value={newProduct.nbDemenageurs || ''}
@@ -20486,7 +20498,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Durée estimée"
+                                    label={t('productManagerMobile.dureeEstimee')}
                                     fieldName="durees"
                                     productType="demenagement"
                                     value={newProduct.dureeDemenagement || ''}
@@ -20495,7 +20507,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Compagnie de déménagement"
+                                    label={t('productManagerMobile.compagnieDeDemenagement')}
                                     fieldName="compagnies_demenagement"
                                     productType="demenagement"
                                     value={newProduct.compagnieDemenagement || ''}
@@ -20507,12 +20519,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 4: SERVICES INCLUS ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="package" size={20} color="#F97316" />
-                            <Text style={styles.sectionTitle}>Services inclus</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesInclus')}/Text>
                         </View>
 
                         <View style={styles.fieldContainer}>
                             <ProductFieldSelector
-                                label="Services proposés"
+                                label={t('productManagerMobile.servicesProposes')}
                                 fieldName="services"
                                 productType="demenagement"
                                 value={newProduct.servicesDemenagement || []}
@@ -20525,7 +20537,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type d'assurance"
+                                    label={t('productManagerMobile.typeD')}assurance"
                                     fieldName="types_assurance"
                                     productType="demenagement"
                                     value={newProduct.typeAssuranceDemenagement || ''}
@@ -20534,7 +20546,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Accessibilité"
+                                    label={t('productManagerMobile.accessibilite')}
                                     fieldName="etages"
                                     productType="demenagement"
                                     value={newProduct.accessibiliteDemenagement || ''}
@@ -20546,13 +20558,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 5: DISPONIBILITÉ ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="calendar" size={20} color="#F97316" />
-                            <Text style={styles.sectionTitle}>Disponibilité</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.disponibilite')}</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Disponibilité"
+                                    label={t('productManagerMobile.disponibilite')}
                                     fieldName="disponibilites"
                                     productType="demenagement"
                                     value={newProduct.disponibiliteDemenagement || ''}
@@ -20560,7 +20572,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Date souhaitée</Text>
+                                <Text style={styles.fieldLabel}>{t('productManagerMobile.dateSouhaitee')}</Text>
                                 <NativeInput
                                     placeholder="JJ/MM/AAAA"
                                     value={newProduct.dateDebut || ''}
@@ -20585,7 +20597,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 1: IDENTIFICATION DU PRODUIT ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="tv" size={20} color="#9C27B0" />
-                            <Text style={styles.sectionTitle}>📺 Identification du Produit</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.identificationDuProduit')}/Text>
                         </View>
 
                         {/* Description obligatoire */}
@@ -20595,7 +20607,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 Décrivez votre produit (caractéristiques, état, accessoires inclus...)
                             </Text>
                             <NativeInput
-                                placeholder="Ex: TV Samsung QLED 55 pouces, état neuf, avec support mural et télécommande..."
+                                placeholder={t('productManagerMobile.exTvSamsungQled55')}
                                 value={newProduct.description || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 multiline
@@ -20607,18 +20619,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Catégorie"
+                                    label={t('productManagerMobile.categorie')}
                                     value={newProduct.categorieImageSon || ''}
                                     productType="image_son"
                                     fieldName="categories"
                                     onSelect={(value) => setNewProduct({ ...newProduct, categorieImageSon: value })}
                                     required
-                                    placeholder="Ex: Télévision, Home Cinéma..."
+                                    placeholder={t('productManagerMobile.exTelevisionHomeCinema')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type spécifique"
+                                    label={t('productManagerMobile.typeSpecifique')}
                                     value={newProduct.typeImageSon || ''}
                                     productType="image_son"
                                     fieldName="types"
@@ -20648,26 +20660,26 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="image_son"
                                     fieldName="gammes"
                                     onSelect={(value) => setNewProduct({ ...newProduct, modeleImageSon: value })}
-                                    placeholder="Ex: Entrée de gamme, Haut de gamme..."
+                                    placeholder={t('productManagerMobile.exEntreeDeGammeHaut')}
                                 />
                             </View>
                         </View>
 
                         {/* ========== SECTION 2: CARACTÉRISTIQUES ÉCRAN (pour TV/Projecteur) ========== */}
-                        {(newProduct.categorieImageSon?.toLowerCase().includes('télé') ||
+                        {(newProduct.categorieImageSon?.toLowerCase().includes(t('productManagerMobile.tele')) ||
                             newProduct.categorieImageSon?.toLowerCase().includes('tv') ||
                             newProduct.categorieImageSon?.toLowerCase().includes('projecteur')) && (
                                 <>
                                     <View style={styles.sectionHeader}>
                                         <SafeIcon name="monitor" size={20} color="#9C27B0" />
-                                        <Text style={styles.sectionTitle}>🖥️ Caractéristiques Écran</Text>
+                                        <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiquesEcran')}</Text>
                                     </View>
 
                                     {/* Technologie et Diagonale */}
                                     <View style={styles.fieldRow}>
                                         <View style={[styles.fieldContainer, { flex: 1 }]}>
                                             <SelectModalitySelector
-                                                label="Technologie écran"
+                                                label={t('productManagerMobile.technologieEcran')}
                                                 value={newProduct.technologieEcran || ''}
                                                 productType="image_son"
                                                 fieldName="technologies_ecran"
@@ -20677,7 +20689,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         </View>
                                         <View style={[styles.fieldContainer, { flex: 1 }]}>
                                             <SelectModalitySelector
-                                                label="Taille écran"
+                                                label={t('productManagerMobile.tailleEcran')}
                                                 value={newProduct.diagonaleEcran || ''}
                                                 productType="image_son"
                                                 fieldName="tailles_ecran"
@@ -20690,7 +20702,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                     {/* Résolution */}
                                     <SelectModalitySelector
-                                        label="Résolution"
+                                        label={t('productManagerMobile.resolution')}
                                         value={newProduct.resolution || ''}
                                         productType="image_son"
                                         fieldName="resolutions"
@@ -20709,7 +20721,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <>
                                     <View style={styles.sectionHeader}>
                                         <SafeIcon name="volume-2" size={20} color="#9C27B0" />
-                                        <Text style={styles.sectionTitle}>🔊 Caractéristiques Audio</Text>
+                                        <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiquesAudio')}</Text>
                                     </View>
 
                                     {/* Puissance et Configuration */}
@@ -20741,12 +20753,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 4: CONNECTIVITÉ & FONCTIONNALITÉS ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="wifi" size={20} color="#9C27B0" />
-                            <Text style={styles.sectionTitle}>🔌 Connectivité & Fonctionnalités</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.connectiviteFonctionnalites')}</Text>
                         </View>
 
                         {/* Connectivités (multi-select) */}
                         <MultiSelectModalitySelector
-                            label="Connectivités"
+                            label={t('productManagerMobile.connectivites')}
                             values={newProduct.connectivitesImageSon || []}
                             productType="image_son"
                             fieldName="connectivites"
@@ -20757,7 +20769,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Fonctionnalités (multi-select) */}
                         <MultiSelectModalitySelector
-                            label="Fonctionnalités"
+                            label={t('productManagerMobile.fonctionnalites')}
                             values={newProduct.fonctionnalitesImageSon || []}
                             productType="image_son"
                             fieldName="fonctionnalites"
@@ -20769,20 +20781,20 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 5: ÉTAT & GARANTIE ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shield" size={20} color="#9C27B0" />
-                            <Text style={styles.sectionTitle}>✅ État & Garantie</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.etatGarantie')}</Text>
                         </View>
 
                         {/* État et Garantie */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     value={newProduct.etatImageSon || ''}
                                     productType="image_son"
                                     fieldName="etats"
                                     onSelect={(value) => setNewProduct({ ...newProduct, etatImageSon: value })}
                                     required
-                                    placeholder="Ex: Neuf scellé, Excellent état..."
+                                    placeholder={t('productManagerMobile.exNeufScelleExcellentEtat')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -20799,7 +20811,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Année de sortie */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Année de sortie du modèle</Text>
+                            <Text style={styles.fieldLabel}>{t('productManagerMobile.anneeDeSortieDuModele')}</Text>
                             <NativeInput
                                 placeholder="Ex: 2024, 2023, 2022..."
                                 value={newProduct.anneeSortie || ''}
@@ -20822,7 +20834,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             productType="image_son"
                             fieldName="accessoires"
                             onSelect={(values) => setNewProduct({ ...newProduct, accessoiresImageSon: values })}
-                            placeholder="Ex: Télécommande, Câbles HDMI, Support mural, Notice..."
+                            placeholder={t('productManagerMobile.exTelecommandeCablesHdmiSupport')}
                             maxSelections={10}
                         />
 
@@ -20830,7 +20842,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color="#9C27B0" />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez des photos claires de l'appareil allumé, des ports de connexion, de la télécommande et de la boîte si disponible. Les produits avec photos de qualité se vendent 3x plus vite !
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.ajoutezDesPhotosClairesDeLappareil')}
                             </Text>
                         </View>
                     </>
@@ -20842,14 +20854,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 1: INFORMATIONS PRINCIPALES ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="home" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations principales</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsPrincipales')}/Text>
                         </View>
 
                         {/* Catégorie et Style */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Catégorie"
+                                    label={t('productManagerMobile.categorie')}
                                     value={newProduct.categorieDecoration || ''}
                                     productType="decoration"
                                     fieldName="categories"
@@ -20875,17 +20887,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Pièce"
+                                    label={t('productManagerMobile.piece')}
                                     value={newProduct.pieceDecoration || ''}
                                     productType="decoration"
                                     fieldName="pieces"
                                     onSelect={(value) => setNewProduct({ ...newProduct, pieceDecoration: value })}
-                                    placeholder="Ex: Salon, Chambre, Véranda..."
+                                    placeholder={t('productManagerMobile.exSalonChambreVeranda')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Matière"
+                                    label={t('productManagerMobile.matiere')}
                                     value={newProduct.matiereDecoration || ''}
                                     productType="decoration"
                                     fieldName="matieres"
@@ -20899,7 +20911,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 2: CARACTÉRISTIQUES ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="ruler" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
                         </View>
 
                         {/* Couleur et Taille */}
@@ -20941,14 +20953,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 3: ÉTAT ET ORIGINE ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="info" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>État et Origine</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.etatEtOrigine')}</Text>
                         </View>
 
                         {/* État et Marque/Origine */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="État"
+                                    label={t('productManagerMobile.etat')}
                                     value={newProduct.etatDecoration || ''}
                                     productType="decoration"
                                     fieldName="etats"
@@ -20973,7 +20985,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez plusieurs photos sous différents angles pour mettre en valeur votre article de décoration. Les produits avec 3+ photos se vendent 2x plus vite !
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.ajoutezPlusieursPhotosSousDifferentsAngles')}
                             </Text>
                         </View>
                     </>
@@ -20985,31 +20997,31 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 1: TYPE ET MATÉRIAU ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="grid" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Type et Matériau</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.typeEtMateriau')}</Text>
                         </View>
 
                         {/* Type et Matériau */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Type de carrelage"
+                                    label={t('productManagerMobile.typeDeCarrelage')}
                                     value={newProduct.typeCarrelage || ''}
                                     productType="carrelage"
                                     fieldName="types"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeCarrelage: value })}
                                     required
-                                    placeholder="Ex: Carrelage sol, Faïence murale..."
+                                    placeholder={t('productManagerMobile.exCarrelageSolFaienceMurale')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Matériau"
+                                    label={t('productManagerMobile.materiau')}
                                     value={newProduct.materiauCarrelage || ''}
                                     productType="carrelage"
                                     fieldName="materiaux"
                                     onSelect={(value) => setNewProduct({ ...newProduct, materiauCarrelage: value })}
                                     required
-                                    placeholder="Ex: Grès cérame, Céramique, Marbre..."
+                                    placeholder={t('productManagerMobile.exGresCerameCeramiqueMarbre')}
                                 />
                             </View>
                         </View>
@@ -21024,7 +21036,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     fieldName="usages"
                                     onSelect={(value) => setNewProduct({ ...newProduct, usageCarrelage: value })}
                                     required
-                                    placeholder="Ex: Intérieur, Extérieur, Piscine..."
+                                    placeholder={t('productManagerMobile.exInterieurExterieurPiscine')}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -21043,7 +21055,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 2: DIMENSIONS ET CARACTÉRISTIQUES ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="ruler" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Dimensions et Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.dimensionsEtCaracteristiques')}</Text>
                         </View>
 
                         {/* Dimensions et Épaisseur */}
@@ -21061,7 +21073,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <SelectModalitySelector
-                                    label="Épaisseur"
+                                    label={t('productManagerMobile.epaisseur')}
                                     value={newProduct.epaisseurCarrelage || ''}
                                     productType="carrelage"
                                     fieldName="epaisseurs"
@@ -21110,7 +21122,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* ========== SECTION 3: QUANTITÉ DISPONIBLE ========== */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="package" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Quantité disponible</Text>
+                            <Text style={styles.sectionTitle}>{t('productManagerMobile.quantiteDisponible')}</Text>
                         </View>
 
                         <View style={styles.fieldContainer}>
@@ -21128,7 +21140,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez des photos de qualité montrant la texture, le motif et la couleur réelle du carrelage. Les clients apprécient aussi voir le carrelage posé en situation.
+                                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.ajoutezDesPhotosDeQualiteMontrant')}
                             </Text>
                         </View>
                     </>
@@ -21212,7 +21224,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             ) : (
                 <View style={styles.emptyState}>
                     <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyText}>Aucun produit ajouté</Text>
+                    <Text style={styles.emptyText}>{t('productManagerMobile.aucunProduitAjoute')}</Text>
                     <Text style={styles.emptyHint}>
                         Ajoutez des produits pour enrichir votre offre
                     </Text>
@@ -21252,7 +21264,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             style={styles.addButtonGradient}
                         >
                             <SafeIcon name="plus" size={20} color="#FFFFFF" />
-                            <Text style={styles.addButtonText}>Ajouter un produit</Text>
+                            <Text style={styles.addButtonText}>{t('productManagerMobile.ajouterUnProduit')}</Text>
                         </LinearGradient>
                     </TouchableOpacity>
                 </View>
@@ -21309,7 +21321,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     <View style={styles.searchContainer}>
                                         <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
                                         <NativeInput
-                                            placeholder="Rechercher une catégorie..."
+                                            placeholder={t('productManagerMobile.rechercherUneCategorie')}
                                             value={searchQuery}
                                             onChangeText={setSearchQuery}
                                             style={styles.searchInput}
@@ -21324,7 +21336,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     <View style={styles.dropdownContainer}>
                                         {(() => {
                                             // Filtrer les catégories selon la recherche
-                                            let filteredTypes = PRODUCT_TYPES.filter(type => {
+                                            let filteredTypes = productTypes.filter(type => {
                                                 if (searchQuery.length === 0) return true;
                                                 // ✅ Recherche sans sensibilité aux accents
                                                 const normalizedQuery = normalizeText(searchQuery);
@@ -21348,7 +21360,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                         <View style={styles.suggestionsBlock}>
                                                             <View style={styles.suggestionsHeader}>
                                                                 <SafeIcon name="sparkles" size={18} color={modernColors.primary} />
-                                                                <Text style={styles.suggestionsTitle}>✨ Suggestions pour vous</Text>
+                                                                <Text style={styles.suggestionsTitle}>{t('productManagerMobile.suggestionsPourVous')}/Text>
                                                             </View>
                                                             <Text style={styles.suggestionsSubtitle}>
                                                                 Basées sur votre activité ({serviceData?.titre?.valeur || serviceData?.categorie?.valeur})
@@ -21392,7 +21404,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                             })}
                                                             <View style={styles.suggestionsDivider}>
                                                                 <View style={styles.suggestionsDividerLine} />
-                                                                <Text style={styles.suggestionsDividerText}>Toutes les catégories</Text>
+                                                                <Text style={styles.suggestionsDividerText}>{t('productManagerMobile.toutesLesCategories')}</Text>
                                                                 <View style={styles.suggestionsDividerLine} />
                                                             </View>
                                                         </View>
@@ -21501,12 +21513,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             <Text style={styles.fieldLabel}>
                                                 {getProductNameLabel(selectedType)} <Text style={styles.required}>*</Text>
                                                 {selectedType === 'prestation_service' && (
-                                                    <Text style={styles.autoFilledHint}> (pré-rempli automatiquement)</Text>
+                                                    <Text style={styles.autoFilledHint}>{t('productManagerMobile.prerempliAutomatiquement')}</Text>
                                                 )}
                                             </Text>
                                             {selectedType && (
                                                 <Text style={styles.categoryReminder}>
-                                                    📦 Catégorie : {PRODUCT_TYPES.find(t => t.value === selectedType)?.label}
+                                                    📦 Catégorie : {productTypes.find(pt => pt.value === selectedType)?.label}
                                                 </Text>
                                             )}
 
@@ -21529,7 +21541,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez les avantages et spécificités de cette assurance
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Protection complète avec assistance 24/7..."
+                                                placeholder={t('productManagerMobile.exProtectionCompleteAvecAssistance')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21545,7 +21557,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez l'état général du véhicule, son historique, et tout point important
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Véhicule en excellent état, entretien régulier, jamais accidenté..."
+                                                placeholder={t('productManagerMobile.exVehiculeEnExcellentEtat')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21561,7 +21573,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez les caractéristiques et points forts de ces chaussures
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Chaussures confortables, design moderne, idéales pour..."
+                                                placeholder={t('productManagerMobile.exChaussuresConfortablesDesignModerne')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21577,7 +21589,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez les caractéristiques, le style et les points forts de ce vêtement
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Vêtement confortable en coton, coupe moderne, idéal pour toutes saisons..."
+                                                placeholder={t('productManagerMobile.exVetementConfortableEnCoton')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21593,7 +21605,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez les détails du trajet, conditions, et informations utiles pour les passagers
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Trajet confortable, départ ponctuel, arrêts possibles en route..."
+                                                placeholder={t('productManagerMobile.exTrajetConfortableDepartPonctuel')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21609,7 +21621,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez le trajet, les services inclus, et toute information importante
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Trajet direct en bus VIP climatisé, sièges confortables, collation incluse..."
+                                                placeholder={t('productManagerMobile.exTrajetDirectEnBus')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21641,7 +21653,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez l'état général du téléphone, ses points forts et tout défaut éventuel
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Smartphone en excellent état, batterie saine, écran sans rayures, jamais ouvert..."
+                                                placeholder={t('productManagerMobile.exSmartphoneEnExcellentEtat')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21654,10 +21666,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 Description <Text style={styles.required}>*</Text>
                                             </Text>
                                             <Text style={styles.fieldHint}>
-                                                💡 Décrivez l'état général de l'ordinateur, ses performances et tout défaut éventuel
+                                                💡 Décrivez lt('productManagerMobile.etatGeneralDeL')ordinateur, ses performances et tout défaut éventuel
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Ordinateur portable en très bon état, performant, batterie 5h, quelques micro-rayures..."
+                                                placeholder={t('productManagerMobile.exOrdinateurPortableEnTres')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21673,7 +21685,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez ce produit électrique (caractéristiques, usage, points forts)
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Ampoule LED haute luminosité, économique, longue durée de vie..."
+                                                placeholder={t('productManagerMobile.exAmpouleLedHauteLuminosite')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21689,7 +21701,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez cet appareil électroménager (état, fonctionnement, avantages, défauts éventuels)
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Réfrigérateur en excellent état, très silencieux, économique en énergie..."
+                                                placeholder={t('productManagerMobile.exRefrigerateurEnExcellentEtat')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21705,7 +21717,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez ce produit de quincaillerie (caractéristiques, usage, points forts)
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Marteau robuste en acier forgé, manche ergonomique en bois, idéal pour travaux de menuiserie..."
+                                                placeholder={t('productManagerMobile.exMarteauRobusteEnAcier')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21721,7 +21733,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez ce carrelage (qualité, résistance, rendu visuel, usage recommandé)
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Carrelage haut de gamme, résistant aux taches, finition brillante durable, idéal pour cuisine et salle de bain..."
+                                                placeholder={t('productManagerMobile.exCarrelageHautDeGamme')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21737,7 +21749,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez cet ustensile de cuisine (qualité, matériaux, usage, points forts)
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Batterie de cuisine complète en inox, résistante et durable, idéale pour tous types de feux..."
+                                                placeholder={t('productManagerMobile.exBatterieDeCuisineComplete')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21753,7 +21765,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez cet appareil électronique (état, fonctionnalités, accessoires inclus, défauts éventuels)
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Console en excellent état, avec 2 manettes, câbles HDMI, jamais ouverte, garantie restante..."
+                                                placeholder={t('productManagerMobile.exConsoleEnExcellentEtat')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21769,7 +21781,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez les services, spécialités, équipements et tout autre détail important
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Établissement moderne avec équipement de pointe, personnel qualifié..."
+                                                placeholder={t('productManagerMobile.exEtablissementModerneAvecEquipement')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21785,7 +21797,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez le bien immobilier, son état, ses points forts et tout détail important
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Bel appartement lumineux avec balcon, bien situé, proche des commodités..."
+                                                placeholder={t('productManagerMobile.exBelAppartementLumineuxAvec')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21801,7 +21813,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez cet article (état, contenu, spécificités, défauts éventuels)
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Manuel complet avec exercices corrigés, bon état, sans annotations..."
+                                                placeholder={t('productManagerMobile.exManuelCompletAvecExercices')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21817,7 +21829,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez ce meuble (état, qualité, points forts, défauts éventuels)
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Canapé confortable en excellent état, assise ferme, tissu doux..."
+                                                placeholder={t('productManagerMobile.exCanapeConfortableEnExcellent')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21833,7 +21845,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez vos services, votre expérience, vos points forts et ce qui vous distingue
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Professionnel expérimenté, intervention rapide, devis gratuit, garantie travaux..."
+                                                placeholder={t('productManagerMobile.exProfessionnelExperimenteInterventionRa')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21849,7 +21861,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Présentez votre expérience, votre pédagogie, et vos atouts en tant qu'enseignant
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Professeur certifié avec 5 ans d'expérience, méthodes pédagogiques adaptées à chaque élève, suivi personnalisé..."
+                                                placeholder={t('productManagerMobile.exProfesseurCertifieAvec5')}expérience, méthodes pédagogiques adaptées à chaque élève, suivi personnalisé..."
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21865,7 +21877,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez le contenu de la formation, les objectifs pédagogiques et les compétences acquises
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Formation complète avec projets pratiques, support de cours inclus, certification à la fin..."
+                                                placeholder={t('productManagerMobile.exFormationCompleteAvecProjets')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21881,7 +21893,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 💡 Décrivez votre activité sportive, les équipements fournis, le programme et ce qui vous distingue
                                             </Text>
                                             <NativeInput
-                                                placeholder="Ex: Cours collectifs en petit groupe, coach certifié, équipements modernes fournis, suivi personnalisé..."
+                                                placeholder={t('productManagerMobile.exCoursCollectifsEnPetit')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21893,11 +21905,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             <Text style={styles.fieldLabel}>
                                                 Description
                                                 {selectedType === 'prestation_service' && (
-                                                    <Text style={styles.autoFilledHint}> (pré-remplie automatiquement)</Text>
+                                                    <Text style={styles.autoFilledHint}>{t('productManagerMobile.preremplieAutomatiquement')}</Text>
                                                 )}
                                             </Text>
                                             <NativeInput
-                                                placeholder="Décrivez ce produit..."
+                                                placeholder={t('productManagerMobile.decrivezCeProduit')}
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21948,8 +21960,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             <View style={styles.fieldRow}>
                                                 <View style={[styles.fieldContainer, { flex: 1 }]}>
                                                     <Text style={styles.fieldLabel}>
-                                                        {isPrestationService ? 'Prix indicatif (à partir de)' :
-                                                            selectedType === 'assurance' ? 'Prime (à partir de)' :
+                                                        {isPrestationService ? t('productManagerMobile.prixIndicatifAPartirDe') :
+                                                            selectedType === 'assurance' ? t('productManagerMobile.primeAPartirDe') :
                                                                 selectedType === 'prestation_service' ? 'À partir de' : 'Prix'}
                                                         {!isPrestationService && selectedType !== 'prestation_service' && selectedType !== 'assurance' && <Text style={styles.required}>*</Text>}
                                                     </Text>
@@ -21997,13 +22009,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                     {/* Section Médias */}
                                     <View style={styles.mediaSectionContainer}>
-                                        <Text style={styles.sectionTitle}>📸 Images principales du produit</Text>
+                                        <Text style={styles.sectionTitle}>{t('productManagerMobile.imagesPrincipalesDuProduit')}/Text>
 
                                         {/* Message descriptif incitatif */}
                                         <View style={styles.mediaHintContainer}>
                                             <SafeIcon name="info" size={16} color={modernColors.info} />
                                             <Text style={styles.mediaHintText}>
-                                                💡 <Text style={styles.boldText}>Images principales</Text> : Photos générales du produit (différentes des images spécifiques aux variantes). Montrez votre produit sous tous les angles.
+                                                💡 <Text style={styles.boldText}>{t('productManagerMobile.imagesPrincipales')}/Text> : Photos générales du produit (différentes des images spécifiques aux variantes). Montrez votre produit sous tous les angles.
                                             </Text>
                                         </View>
 
@@ -22033,7 +22045,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             </ScrollView>
                                         )}
 
-                                        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🎥 Vidéos du produit</Text>
+                                        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>{t('productManagerMobile.videosDuProduit')}</Text>
 
                                         {/* Message descriptif incitatif pour vidéos */}
                                         <View style={styles.mediaHintContainer}>
@@ -22058,7 +22070,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 {newProduct.videos.map((video, index) => (
                                                     <View key={index} style={styles.videoItem}>
                                                         <SafeIcon name="video" size={20} color={modernColors.success} />
-                                                        <Text style={styles.videoText}>Vidéo {index + 1}</Text>
+                                                        <Text style={styles.videoText}>{t('productManagerMobile.video')} {index + 1}</Text>
                                                         <TouchableOpacity
                                                             style={styles.removeVideoButton}
                                                             onPress={() => removeVideo(index)}
@@ -22073,7 +22085,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                     {/* Section Promotion - APRÈS les médias */}
                                     <View style={styles.promotionSectionContainer}>
-                                        <Text style={styles.sectionTitle}>🎁 Promotion (optionnel)</Text>
+                                        <Text style={styles.sectionTitle}>{t('productManagerMobile.promotionOptionnel')}/Text>
 
                                         <TouchableOpacity
                                             style={styles.checkboxContainer}
@@ -22093,7 +22105,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         {newProduct.promotionActive && (
                                             <View style={styles.promotionFields}>
                                                 <View style={styles.fieldContainer}>
-                                                    <Text style={styles.fieldLabel}>🏷️ Type de promotion</Text>
+                                                    <Text style={styles.fieldLabel}>{t('productManagerMobile.typeDePromotion')}</Text>
                                                     <View style={styles.pickerButtons}>
                                                         {(['reduction', 'offre', 'bon_plan', 'flash'] as const).map((type) => (
                                                             <TouchableOpacity
@@ -22130,7 +22142,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 <View style={styles.fieldContainer}>
                                                     <Text style={styles.fieldLabel}>📝 Description</Text>
                                                     <NativeInput
-                                                        placeholder="Décrivez l'offre..."
+                                                        placeholder={t('productManagerMobile.decrivezL')}offre..."
                                                         value={newProduct.promotionDescription || ''}
                                                         onChangeText={(text) => setNewProduct({ ...newProduct, promotionDescription: text })}
                                                         multiline
@@ -22139,7 +22151,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 </View>
 
                                                 <View style={styles.fieldContainer}>
-                                                    <Text style={styles.fieldLabel}>📅 Date de fin</Text>
+                                                    <Text style={styles.fieldLabel}>{t('productManagerMobile.dateDeFin')}</Text>
                                                     <NativeInput
                                                         placeholder="JJ/MM/AAAA"
                                                         value={newProduct.promotionDateFin || ''}
@@ -22155,7 +22167,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     <View style={styles.storageLocationSectionContainer}>
                                         <View style={styles.sectionHeader}>
                                             <SafeIcon name="warehouse" size={20} color={modernColors.primary} />
-                                            <Text style={styles.sectionTitle}>📍 Lieu de stockage GPS</Text>
+                                            <Text style={styles.sectionTitle}>{t('productManagerMobile.lieuDeStockageGps')}</Text>
                                         </View>
 
                                         <View style={styles.hintBox}>
@@ -22168,7 +22180,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         <StorageLocationSelector
                                             value={newProduct.storageLocationId}
                                             onSelect={(locationId) => setNewProduct({ ...newProduct, storageLocationId: locationId })}
-                                            label="Lieu de stockage"
+                                            label={t('productManagerMobile.lieuDeStockage')}
                                             showCreateButton={true}
                                         />
                                     </View>
@@ -22180,13 +22192,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {currentStep === 'form' && (
                             <View style={styles.modalFooter}>
                                 <NativeButton
-                                    title="Annuler"
+                                    title={t('productManagerMobile.annuler')}
                                     onPress={handleCancel}
                                     variant="secondary"
                                     style={{ flex: 1 }}
                                 />
                                 <NativeButton
-                                    title={editingProductId ? 'Modifier' : 'Ajouter'}
+                                    title={editingProductId ? t('productManagerMobile.modifier') : t('productManagerMobile.ajouter')}
                                     onPress={handleAddProduct}
                                     variant="primary"
                                     style={{ flex: 1 }}
@@ -22226,7 +22238,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     }
                     product={{
                         ...newProduct,
-                        depart: newProduct.depart || 'Départ',
+                        depart: newProduct.depart || t('productManagerMobile.depart'),
                         destination: newProduct.destination || 'Destination',
                         dateDepart: newProduct.dateDepart || new Date().toLocaleDateString('fr-FR'),
                         heureDepart: newProduct.heureDepart || '00:00',

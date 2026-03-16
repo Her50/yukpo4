@@ -19,6 +19,7 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface AgenceVoyageSearchFilters {
     ville?: string;
@@ -41,6 +42,7 @@ interface AgenceVoyageSearchFilters {
 const AgenceVoyageSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     const [ville, setVille] = useState<LocationObject | string>('');
     const [quartier, setQuartier] = useState<LocationObject | string>('');
@@ -130,7 +132,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
             id: 'proche',
             title: 'Plus proche',
             icon: 'map-pin',
-            description: 'À proximité',
+            description: t('agenceVoyageSearch.aProximite'),
             action: () => {
                 hapticPress();
                 setSearchMode('agences');
@@ -140,7 +142,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
         },
         {
             id: 'tickets',
-            title: 'Rechercher tickets',
+            title: t('agenceVoyageSearchScreen.rechercherTickets'),
             icon: 'ticket',
             description: 'Billets de bus',
             action: () => {
@@ -150,9 +152,9 @@ const AgenceVoyageSearchScreen: React.FC = () => {
         },
         {
             id: 'mes_tickets',
-            title: 'Mes tickets',
+            title: t('agenceVoyageSearch.mesTickets'),
             icon: 'file-text',
-            description: 'Voir mes billets',
+            description: t('agenceVoyageSearchScreen.voirMesBillets'),
             action: () => {
                 hapticPress();
                 navigation.navigate('MyBusTickets' as never);
@@ -181,7 +183,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="plane" size={32} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>Rechercher une agence de voyage</Text>
+                        <Text style={styles.headerTitle}>{t('agenceVoyageSearch.rechercherUneAgenceDeVoyage')}</Text>
                         <Text style={styles.headerSubtitle}>
                             Trouvez l'agence idéale pour organiser votre voyage
                         </Text>
@@ -274,7 +276,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                 <View style={styles.searchFormCard}>
                     {searchMode === 'tickets' ? (
                         <>
-                            <Text style={styles.sectionTitle}>🎫 Recherche de tickets bus</Text>
+                            <Text style={styles.sectionTitle}>{t('agenceVoyageSearch.rechercheDeTicketsBus')}/Text>
                             <Text style={styles.sectionDescription}>
                                 Recherchez des tickets de bus pour votre trajet. Les villes de départ et d'arrivée sont obligatoires.
                             </Text>
@@ -282,12 +284,12 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                             {/* Ville de départ - OBLIGATOIRE */}
                             <View style={styles.inputGroup}>
                                 <LocationSelector
-                                    label="Ville de départ *"
+                                    label={t('agenceVoyageSearch.villeDeDepart')}
                                     value={typeof villeDepart === 'string' ? (villeDepart ? { raw: villeDepart, place_name: villeDepart } : '') : villeDepart}
                                     onSelect={(location: LocationObject) => {
                                         setVilleDepart(location);
                                     }}
-                                    placeholder="Lieu de départ (ville, quartier, gare...)"
+                                    placeholder={t('agenceVoyageSearch.lieuDeDepartVilleQuartier')}
                                     scope="all"
                                     enrichWithBackend={true}
                                     required={true}
@@ -300,12 +302,12 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                             {/* Ville d'arrivée - OBLIGATOIRE */}
                             <View style={styles.inputGroup}>
                                 <LocationSelector
-                                    label="Ville d'arrivée *"
+                                    label={t('agenceVoyageSearch.villeD')}arrivée *"
                                     value={typeof villeArrivee === 'string' ? (villeArrivee ? { raw: villeArrivee, place_name: villeArrivee } : '') : villeArrivee}
                                     onSelect={(location: LocationObject) => {
                                         setVilleArrivee(location);
                                     }}
-                                    placeholder="Lieu d'arrivée (ville, quartier, gare...)"
+                                    placeholder={t('agenceVoyageSearchScreen.lieuD')}arrivée (ville, quartier, gare...)"
                                     scope="all"
                                     enrichWithBackend={true}
                                     required={true}
@@ -318,7 +320,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                             {/* Date départ */}
                             <View style={styles.inputGroup}>
                                 <Text style={styles.label}>
-                                    <SafeIcon name="calendar" size={14} color={modernColors.primary} type="lucide" /> Date de départ (optionnel)
+                                    <SafeIcon name="calendar" size={14} color={modernColors.primary} type="lucide" />{t('agenceVoyageSearchScreen.dateDeDepartOptionnel')}
                                 </Text>
                                 <NativeInput
                                     value={dateDepart}
@@ -330,7 +332,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                             {/* Heure départ */}
                             <View style={styles.inputGroup}>
                                 <Text style={styles.label}>
-                                    <SafeIcon name="clock" size={14} color={modernColors.primary} type="lucide" /> Heure de départ (optionnel)
+                                    <SafeIcon name="clock" size={14} color={modernColors.primary} type="lucide" />{t('agenceVoyageSearchScreen.heureDeDepartOptionnel')}
                                 </Text>
                                 <NativeInput
                                     value={heureDepart}
@@ -352,7 +354,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                             </View>
 
                             {/* Localisation GPS (optionnelle pour tickets) */}
-                            <Text style={styles.sectionTitle}>📍 Localisation (optionnelle)</Text>
+                            <Text style={styles.sectionTitle}>{t('agenceVoyageSearch.localisationOptionnelle')}/Text>
                             <Text style={styles.sectionDescription}>
                                 Ajoutez votre position pour trouver des tickets à proximité
                             </Text>
@@ -410,7 +412,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                         </>
                     ) : (
                         <>
-                            <Text style={styles.sectionTitle}>📍 Localisation (optionnelle)</Text>
+                            <Text style={styles.sectionTitle}>{t('agenceVoyageSearch.localisationOptionnelle')}/Text>
                             <Text style={styles.sectionDescription}>
                                 Recherchez des agences de voyage à proximité
                             </Text>
@@ -469,7 +471,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                             {/* Destination */}
                             <View style={styles.inputGroup}>
                                 <Text style={styles.label}>
-                                    <SafeIcon name="map" size={14} color={modernColors.primary} type="lucide" /> Destination recherchée (optionnel)
+                                    <SafeIcon name="map" size={14} color={modernColors.primary} type="lucide" />{t('agenceVoyageSearchScreen.destinationRechercheeOptionnel')}
                                 </Text>
                                 <NativeInput
                                     value={destination}
@@ -494,7 +496,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
 
                     {/* Options */}
                     <View style={styles.optionsSection}>
-                        <Text style={styles.sectionTitle}>⚙️ Options de recherche</Text>
+                        <Text style={styles.sectionTitle}>{t('agenceVoyageSearch.optionsDeRecherche')}/Text>
 
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>
@@ -547,7 +549,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                 <View style={styles.infoCard}>
                     <View style={styles.infoHeader}>
                         <SafeIcon name="info" size={20} color="#8B5CF6" type="lucide" />
-                        <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
+                        <Text style={styles.infoTitle}>{t('agenceVoyageSearch.bonASavoir')}</Text>
                     </View>
                     <Text style={styles.infoText}>
                         • Les agences de voyage proposent des packages complets (transport + hébergement){'\n'}

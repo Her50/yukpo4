@@ -15,6 +15,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Pharmacie {
     id: number;
@@ -32,6 +33,7 @@ interface Pharmacie {
 
 const PharmacieListScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const params = route.params as any;
 
@@ -151,7 +153,7 @@ const PharmacieListScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement des pharmacies...</Text>
+                <Text style={styles.loadingText}>{t('pharmacieList.chargementDesPharmacies')}</Text>
             </View>
         );
     }
@@ -160,13 +162,13 @@ const PharmacieListScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <SafeIcon name="pill" size={64} color={modernColors.textSecondary} />
-                <Text style={styles.emptyTitle}>Aucune pharmacie trouvée</Text>
-                <Text style={styles.emptyText}>Essayez de modifier vos critères de recherche</Text>
+                <Text style={styles.emptyTitle}>{t('pharmacieList.aucunePharmacieTrouvee')}</Text>
+                <Text style={styles.emptyText}>{t('pharmacieList.essayezDeModifierVosCriteres')}</Text>
                 <TouchableOpacity
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Text style={styles.backButtonText}>Nouvelle recherche</Text>
+                    <Text style={styles.backButtonText}>{t('pharmacieList.nouvelleRecherche')}</Text>
                 </TouchableOpacity>
             </View>
         );

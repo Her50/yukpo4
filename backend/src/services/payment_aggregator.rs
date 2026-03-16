@@ -40,7 +40,7 @@ pub enum PayChannel {
 }
 
 impl PayChannel {
-    /// Convertir en code CinetPay
+    /// Convertir en code CinetPay (country-agnostic, CinetPay détecte via le préfixe téléphone)
     pub fn to_cinetpay_channel(&self) -> Option<&str> {
         match self {
             PayChannel::MtnMoney => Some("MTN"),
@@ -50,14 +50,174 @@ impl PayChannel {
         }
     }
 
-    /// Convertir en code NotchPay
-    pub fn to_notchpay_channel(&self) -> &str {
+    /// Convertir en code NotchPay pour un pays donné (format: {country}.{operator})
+    /// country_code: code ISO 2 lettres minuscules (ex: "cm", "sn", "ci")
+    pub fn to_notchpay_channel_for_country(&self, country_code: &str) -> String {
+        let cc = country_code.to_lowercase();
         match self {
-            PayChannel::MtnMoney => "cm.mtn",
-            PayChannel::OrangeMoney => "cm.orange",
-            PayChannel::Visa | PayChannel::Mastercard => "card",
-            PayChannel::AllMobileMoney => "cm.mobile",
+            PayChannel::MtnMoney => {
+                // MTN est présent dans: CM, CI, BJ, GH, UG, RW, CG, GN, ZA, NG
+                match cc.as_str() {
+                    "cm" | "ci" | "bj" | "cg" | "gn" | "gh" | "ug" | "rw" | "za" => {
+                        format!("{}.mtn", cc)
+                    }
+                    "ng" => "ng.mtn".to_string(),
+                    _ => format!("{}.mtn", cc), // Tenter quand même
+                }
+            }
+            PayChannel::OrangeMoney => {
+                // Orange Money est présent dans: CM, SN, CI, ML, BF, GN, MG, CD, CG
+                match cc.as_str() {
+                    "cm" | "sn" | "ci" | "ml" | "bf" | "gn" | "mg" | "cd" | "cg" => {
+                        format!("{}.orange", cc)
+                    }
+                    _ => format!("{}.orange", cc),
+                }
+            }
+            PayChannel::Visa | PayChannel::Mastercard => "card".to_string(),
+            PayChannel::AllMobileMoney => {
+                // Canal mobile générique pour le pays
+                format!("{}.mobile", cc)
+            }
         }
+    }
+
+    /// Backward-compatible: défaut Cameroun
+    pub fn to_notchpay_channel(&self) -> String {
+        self.to_notchpay_channel_for_country("cm")
+    }
+}
+
+/// Détecte le code pays ISO 2 lettres à partir d'un numéro de téléphone (préfixe international)
+pub fn detect_country_from_phone(phone: &str) -> &'static str {
+    let cleaned = phone.replace(['+', ' ', '-'], "");
+    // Préfixes internationaux → code pays
+    if cleaned.starts_with("237") {
+        return "cm";
+    } // Cameroun
+    if cleaned.starts_with("221") {
+        return "sn";
+    } // Sénégal
+    if cleaned.starts_with("225") {
+        return "ci";
+    } // Côte d'Ivoire
+    if cleaned.starts_with("223") {
+        return "ml";
+    } // Mali
+    if cleaned.starts_with("226") {
+        return "bf";
+    } // Burkina Faso
+    if cleaned.starts_with("228") {
+        return "tg";
+    } // Togo
+    if cleaned.starts_with("229") {
+        return "bj";
+    } // Bénin
+    if cleaned.starts_with("224") {
+        return "gn";
+    } // Guinée
+    if cleaned.starts_with("222") {
+        return "mr";
+    } // Mauritanie
+    if cleaned.starts_with("227") {
+        return "ne";
+    } // Niger
+    if cleaned.starts_with("233") {
+        return "gh";
+    } // Ghana
+    if cleaned.starts_with("234") {
+        return "ng";
+    } // Nigeria
+    if cleaned.starts_with("242") {
+        return "cg";
+    } // Congo-Brazzaville
+    if cleaned.starts_with("243") {
+        return "cd";
+    } // RD Congo
+    if cleaned.starts_with("250") {
+        return "rw";
+    } // Rwanda
+    if cleaned.starts_with("257") {
+        return "bi";
+    } // Burundi
+    if cleaned.starts_with("254") {
+        return "ke";
+    } // Kenya
+    if cleaned.starts_with("255") {
+        return "tz";
+    } // Tanzanie
+    if cleaned.starts_with("256") {
+        return "ug";
+    } // Ouganda
+    if cleaned.starts_with("251") {
+        return "et";
+    } // Éthiopie
+    if cleaned.starts_with("261") {
+        return "mg";
+    } // Madagascar
+    if cleaned.starts_with("27") {
+        return "za";
+    } // Afrique du Sud
+    if cleaned.starts_with("241") {
+        return "ga";
+    } // Gabon
+    if cleaned.starts_with("235") {
+        return "td";
+    } // Tchad
+    if cleaned.starts_with("236") {
+        return "cf";
+    } // Centrafrique
+    if cleaned.starts_with("240") {
+        return "gq";
+    } // Guinée Équatoriale
+    if cleaned.starts_with("245") {
+        return "gw";
+    } // Guinée-Bissau
+    if cleaned.starts_with("212") {
+        return "ma";
+    } // Maroc
+    if cleaned.starts_with("213") {
+        return "dz";
+    } // Algérie
+    if cleaned.starts_with("216") {
+        return "tn";
+    } // Tunisie
+    if cleaned.starts_with("20") {
+        return "eg";
+    } // Égypte
+    "cm" // Défaut: Cameroun
+}
+
+/// Retourne la devise ISO pour un code pays donné
+pub fn currency_for_country(country_code: &str) -> &'static str {
+    match country_code {
+        // Zone CEMAC (Franc CFA BEAC)
+        "cm" | "ga" | "cg" | "cf" | "td" | "gq" => "XAF",
+        // Zone UEMOA (Franc CFA BCEAO)
+        "sn" | "ci" | "ml" | "bf" | "ne" | "tg" | "bj" | "gw" => "XOF",
+        // Afrique de l'Ouest (monnaies locales)
+        "gh" => "GHS",
+        "ng" => "NGN",
+        "gn" => "GNF",
+        "mr" => "MRU",
+        // Afrique de l'Est
+        "ke" => "KES",
+        "tz" => "TZS",
+        "ug" => "UGX",
+        "rw" => "RWF",
+        "bi" => "BIF",
+        "et" => "ETB",
+        "cd" => "CDF",
+        // Afrique australe
+        "za" => "ZAR",
+        "mg" => "MGA",
+        // Maghreb
+        "ma" => "MAD",
+        "dz" => "DZD",
+        "tn" => "TND",
+        "eg" => "EGP",
+        // Défaut
+        _ => "XAF",
     }
 }
 
@@ -160,7 +320,9 @@ impl AggregatorConfig {
 
             webhook_base_url: std::env::var("WEBHOOK_BASE_URL")
                 .or_else(|_| std::env::var("BACKEND_URL"))
-                .unwrap_or_else(|_| "https://api.yukpo.com".to_string()),
+                .unwrap_or_else(|_| {
+                    "https://yukpo-backend-376093909298.europe-west1.run.app".to_string()
+                }),
 
             primary_provider: if primary == "notchpay" {
                 AggregatorProvider::NotchPay
@@ -563,8 +725,10 @@ impl PaymentAggregator {
             "email": request.customer_email.as_deref().unwrap_or("client@yukpo.com"),
         });
 
-        // Ajouter le canal de paiement
-        let channel_code = request.channel.to_notchpay_channel();
+        // Ajouter le canal de paiement (détection du pays via le numéro de téléphone)
+        let country_code =
+            request.phone_number.as_deref().map(detect_country_from_phone).unwrap_or("cm");
+        let channel_code = request.channel.to_notchpay_channel_for_country(country_code);
         payload["channel"] = serde_json::json!(channel_code);
 
         // Ajouter le numéro de téléphone pour mobile money
@@ -836,15 +1000,20 @@ impl PaymentAggregator {
             method
         );
 
+        // Détecter le pays à partir du numéro de téléphone
+        let country_code = detect_country_from_phone(phone);
         let channel = match method {
-            "mtn_money" | "mtn" => "cm.mtn",
-            "orange_money" | "orange" => "cm.orange",
-            _ => "cm.mtn",
+            "mtn_money" | "mtn" => format!("{}.mtn", country_code),
+            "orange_money" | "orange" => format!("{}.orange", country_code),
+            _ => format!("{}.mtn", country_code),
         };
+
+        // Devise dynamique selon le pays
+        let currency = currency_for_country(country_code);
 
         let payload = serde_json::json!({
             "amount": amount,
-            "currency": "XAF",
+            "currency": currency,
             "phone": phone,
             "channel": channel,
             "reference": reference,

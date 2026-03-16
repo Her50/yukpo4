@@ -19,7 +19,8 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     onSave,
     onCancel,
 }) => {
-    const [editedTimeline, setEditedTimeline] = useState<VideoTimeline>(timeline);
+        const { t } = useLanguageSafe();
+const [editedTimeline, setEditedTimeline] = useState<VideoTimeline>(timeline);
     const [editingSceneIndex, setEditingSceneIndex] = useState<number | null>(null);
 
     const updateScene = (index: number, updates: Partial<TimelineScene>) => {
@@ -47,8 +48,8 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         }
 
         Alert.alert(
-            'Supprimer la scène',
-            'Êtes-vous sûr de vouloir supprimer cette scène ?',
+            t('timelineEditor.supprimerLaScene'),
+            t('timelineEditor.etesvousSurDeVouloirSupprimerCette'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -101,16 +102,16 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Éditer la timeline</Text>
+                <Text style={styles.title}>{t('timelineEditor.editerLaTimeline')}</Text>
                 <View style={styles.headerActions}>
                     <TouchableOpacity onPress={onCancel} style={styles.cancelButton}>
-                        <Text style={styles.cancelButtonText}>Annuler</Text>
+                        <Text style={styles.cancelButtonText}>{t('timelineEditor.annuler')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => onSave(editedTimeline)}
                         style={styles.saveButton}
                     >
-                        <Text style={styles.saveButtonText}>Enregistrer</Text>
+                        <Text style={styles.saveButtonText}>{t('timelineEditor.enregistrer')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -142,18 +143,18 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
 
                         <View style={styles.sceneFields}>
                             <View style={styles.fieldRow}>
-                                <Text style={styles.fieldLabel}>Texte de la scène</Text>
+                                <Text style={styles.fieldLabel}>{t('timelineEditor.texteDeLaScene')}</Text>
                                 <NativeInput
                                     value={scene.text || ''}
                                     onChangeText={(text) => updateScene(index, { text })}
-                                    placeholder="Texte à afficher..."
+                                    placeholder={t('timelineEditor.texteAAfficher')}
                                     multiline
                                     minLines={2}
                                 />
                             </View>
 
                             <View style={styles.fieldRow}>
-                                <Text style={styles.fieldLabel}>Durée (secondes)</Text>
+                                <Text style={styles.fieldLabel}>{t('timelineEditor.dureeSecondes')}</Text>
                                 <NativeInput
                                     value={scene.duration.toString()}
                                     onChangeText={(value) => {
@@ -166,7 +167,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                             </View>
 
                             <View style={styles.fieldRow}>
-                                <Text style={styles.fieldLabel}>Position du texte</Text>
+                                <Text style={styles.fieldLabel}>{t('timelineEditor.positionDuTexte')}/Text>
                                 <View style={styles.optionsRow}>
                                     {['top', 'center', 'bottom'].map((pos) => (
                                         <TouchableOpacity
@@ -220,7 +221,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
 
                 <TouchableOpacity onPress={addScene} style={styles.addSceneButton}>
                     <SafeIcon name="plus" size={20} color={modernColors.primary} />
-                    <Text style={styles.addSceneButtonText}>Ajouter une scène</Text>
+                    <Text style={styles.addSceneButtonText}>{t('timelineEditor.ajouterUneScene')}</Text>
                 </TouchableOpacity>
             </ScrollView>
 

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface CitySuggestion {
     place_id: string;
@@ -35,11 +36,12 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
     value,
     onChangeText,
     onSelect,
-    placeholder = 'Rechercher une ville...',
+    placeholder={t('cityAutocomplete.rechercherUneVille')},
     label,
     error,
 }) => {
-    const [suggestions, setSuggestions] = useState<CitySuggestion[]>([]);
+        const { t } = useLanguageSafe();
+const [suggestions, setSuggestions] = useState<CitySuggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [loading, setLoading] = useState(false);
     const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -155,7 +157,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
     // Suggestions locales pour villes camerounaises populaires
     const getLocalSuggestions = (query: string): CitySuggestion[] => {
         const cities = [
-            'Yaoundé',
+            t('cityAutocomplete.yaounde'),
             'Douala',
             'Bafoussam',
             'Bamenda',
@@ -206,7 +208,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
                 place_id: city.toLowerCase().replace(/\s+/g, '-'),
                 description: city,
                 main_text: city,
-                secondary_text: 'Recherche récente',
+                secondary_text: t('cityAutocomplete.rechercheRecente'),
             }));
             setSuggestions(recentSuggestions);
             setShowSuggestions(true);

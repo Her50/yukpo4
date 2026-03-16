@@ -9,6 +9,7 @@ import { ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, View } fr
 import { LiveJoinInformationRecord, liveStreamingService } from '../../services/liveStreamingService';
 import SafeIcon from '../SafeIcon';
 import { LiveChatModal } from './LiveChatModal';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface LiveStreamPlayerProps {
     sessionId: string;
@@ -28,7 +29,8 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
     autoPlay = true,
 }) => {
     const videoRef = useRef<Video>(null);
-    const [hlsUrl, setHlsUrl] = useState<string | null>(null);
+        const { t } = useLanguageSafe();
+const [hlsUrl, setHlsUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [joinInfo, setJoinInfo] = useState<LiveJoinInformationRecord | null>(null);
@@ -83,7 +85,7 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color="#6366F1" />
-                <Text style={styles.loadingText}>Chargement du live...</Text>
+                <Text style={styles.loadingText}>{t('liveStreamPlayer.chargementDuLive')}</Text>
             </View>
         );
     }
@@ -111,7 +113,7 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
                 isMuted={false}
                 onError={(error) => {
                     console.error('[LiveStreamPlayer] Erreur vidéo:', error);
-                    setError('Erreur de lecture vidéo');
+                    setError(t('liveStreamPlayer.erreurDeLectureVideo'));
                     onError?.(new Error('Erreur de lecture vidéo'));
                 }}
                 onLoad={() => {

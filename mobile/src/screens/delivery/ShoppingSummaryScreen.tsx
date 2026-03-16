@@ -9,9 +9,11 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useDeliveryContext } from '../../contexts/DeliveryContext';
 import { useShoppingBasket } from '../../hooks/useShoppingBasket';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const ShoppingSummaryScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const { setActiveDeliveryId } = useDeliveryContext();
     const {
         items,
@@ -66,19 +68,19 @@ const ShoppingSummaryScreen: React.FC = () => {
         <SafeNativeView style={styles.container} backgroundColor={modernColors.background}>
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                 <DeliveryAvatarBubble
-                    message='Vérifie le récapitulatif avant de confirmer la commande.'
+                    message=t('shoppingSummaryScreen.verifieLeRecapitulatifAvantDeConfirmer')
                     subtitle='Tu peux encore ajuster ton panier ou tes instructions.'
                 />
 
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Détails du trajet</Text>
+                    <Text style={styles.sectionTitle}>{t('shoppingSummary.detailsDuTrajet')}</Text>
                     <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Supermarché</Text>
-                        <Text style={styles.detailValue}>{pickup?.label ?? 'Non défini'}</Text>
+                        <Text style={styles.detailLabel}>{t('shoppingSummary.supermarche')}</Text>
+                        <Text style={styles.detailValue}>{pickup?.label ?? t('shoppingSummary.nonDefini')}</Text>
                     </View>
                     <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Livraison</Text>
-                        <Text style={styles.detailValue}>{dropoff?.label ?? 'Non défini'}</Text>
+                        <Text style={styles.detailLabel}>{t('shoppingSummary.livraison')}/Text>
+                        <Text style={styles.detailValue}>{dropoff?.label ?? t('shoppingSummary.nonDefini')}</Text>
                     </View>
                     {comment ? (
                         <View style={styles.commentBox}>
@@ -97,19 +99,19 @@ const ShoppingSummaryScreen: React.FC = () => {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Estimation Yukpo</Text>
                         <View style={styles.summaryLine}>
-                            <Text style={styles.detailLabel}>Panier</Text>
+                            <Text style={styles.detailLabel}>{t('shoppingSummary.panier')}/Text>
                             <Text style={styles.detailValue}>
                                 {estimate.subtotal.toFixed(0)} {estimate.currency}
                             </Text>
                         </View>
                         <View style={styles.summaryLine}>
-                            <Text style={styles.detailLabel}>Livraison</Text>
+                            <Text style={styles.detailLabel}>{t('shoppingSummary.livraison')}/Text>
                             <Text style={styles.detailValue}>
                                 {estimate.deliveryFee.toFixed(0)} {estimate.currency}
                             </Text>
                         </View>
                         <View style={styles.summaryLine}>
-                            <Text style={styles.totalLabel}>Total estimé</Text>
+                            <Text style={styles.totalLabel}>{t('shoppingSummary.totalEstime')}</Text>
                             <Text style={styles.totalValue}>
                                 {estimate.total.toFixed(0)} {estimate.currency}
                             </Text>
@@ -120,7 +122,7 @@ const ShoppingSummaryScreen: React.FC = () => {
 
             <View style={styles.footer}>
                 <NativeButton
-                    title={submittingOrder ? 'Validation en cours...' : 'Confirmer la commande'}
+                    title={submittingOrder ? 'Validation en cours...' : t('shoppingSummaryScreen.confirmerLaCommande')}
                     onPress={handleConfirm}
                     disabled={submittingOrder}
                 />

@@ -30,8 +30,8 @@ fn get_allowed_origins() -> Vec<String> {
     if origins.is_empty() {
         warn!("[CORS] Aucune origine configurée - Utilisation de la liste par défaut minimale");
         origins = vec![
-            "https://yukpomnang.com".to_string(),
-            "https://yukpomnang.onrender.com".to_string(),
+            "https://yukpo.com".to_string(),
+            "https://yukpo-backend-376093909298.europe-west1.run.app".to_string(),
         ];
     }
 

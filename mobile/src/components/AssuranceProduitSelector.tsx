@@ -4,6 +4,7 @@ import { getProduitsAssuranceByType } from '../data/assuranceModalities';
 import { modalityService } from '../services/modalityService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AssuranceProduitSelectorProps {
     label: string;
@@ -26,7 +27,8 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
     required = false,
     disabled = false
 }) => {
-    const [modalVisible, setModalVisible] = useState(false);
+        const { t } = useLanguageSafe();
+const [modalVisible, setModalVisible] = useState(false);
     const [addModalVisible, setAddModalVisible] = useState(false);
     const [newProduitName, setNewProduitName] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -109,8 +111,8 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
             setModalVisible(false);
             setNewProduitName('');
             Alert.alert(
-                '✅ Produit ajouté',
-                `"${newProduit}" a été ajouté à la liste des produits ${typeAssurance}`,
+                t('assuranceProduitSelector.produitAjoute'),
+                t('assuranceProduitSelector.aEteAjouteALaListe', { newProduit: newProduit, typeAssurance: typeAssurance }),
                 [{ text: 'OK' }]
             );
         } else {
@@ -153,7 +155,7 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
                 disabled={disabled}
             >
                 <Text style={[styles.selectorText, !value && styles.placeholder]}>
-                    {value || 'Sélectionner un produit...'}
+                    {value || t('assuranceProduitSelector.selectionnerUnProduit')}
                 </Text>
                 <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
             </TouchableOpacity>
@@ -175,7 +177,7 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
                             <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Rechercher un produit..."
+                                placeholder={t('assuranceProduitSelector.rechercherUnProduit')}
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 placeholderTextColor={modernColors.textSecondary}
@@ -185,7 +187,7 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
                         <ScrollView style={styles.optionsList} showsVerticalScrollIndicator={false}>
                             {loading ? (
                                 <View style={styles.loadingContainer}>
-                                    <Text style={styles.loadingText}>Chargement...</Text>
+                                    <Text style={styles.loadingText}>{t('assuranceProduitSelector.chargement')}</Text>
                                 </View>
                             ) : filteredOptions.length > 0 ? (
                                 filteredOptions.map((option, index) => (
@@ -212,7 +214,7 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
                                 ))
                             ) : (
                                 <View style={styles.emptyContainer}>
-                                    <Text style={styles.emptyText}>Aucun produit trouvé</Text>
+                                    <Text style={styles.emptyText}>{t('assuranceProduitSelector.aucunProduitTrouve')}</Text>
                                 </View>
                             )}
                         </ScrollView>
@@ -230,10 +232,10 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
                             </Text>
                         </View>
 
-                        <Text style={styles.addModalLabel}>Nom du produit:</Text>
+                        <Text style={styles.addModalLabel}>{t('assuranceProduitSelector.nomDuProduit')}/Text>
                         <TextInput
                             style={styles.addModalInput}
-                            placeholder={`Ex: ${typeAssurance === 'VIE' ? 'Épargne retraite' : 'Assurance habitation'}`}
+                            placeholder={t('assuranceProduitSelector.ex', { typeAssurance === 'VIE' ? 'Épargne retraite' : 'Assurance habitation': typeAssurance === 'VIE' ? 'Épargne retraite' : 'Assurance habitation' })}
                             value={newProduitName}
                             onChangeText={setNewProduitName}
                             placeholderTextColor={modernColors.textSecondary}
@@ -248,13 +250,13 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
                                     setNewProduitName('');
                                 }}
                             >
-                                <Text style={styles.addModalButtonTextCancel}>Annuler</Text>
+                                <Text style={styles.addModalButtonTextCancel}>{t('assuranceProduitSelector.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.addModalButton, styles.addModalButtonConfirm]}
                                 onPress={handleAddNewProduit}
                             >
-                                <Text style={styles.addModalButtonTextConfirm}>Ajouter</Text>
+                                <Text style={styles.addModalButtonTextConfirm}>{t('assuranceProduitSelector.ajouter')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

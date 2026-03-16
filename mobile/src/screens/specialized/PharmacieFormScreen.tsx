@@ -57,9 +57,9 @@ interface PharmacyAnalytics {
     avg_order_value: string | null;
 }
 
-const SERVICES_OPTIONS = ['Garde', 'Délivrance', 'Conseil', 'Vaccination', 'Pansements', 'Livraison à domicile', 'Préparation de médicaments'];
-const UNITE_OPTIONS = ['unité', 'boîte', 'flacon', 'plaquette', 'tube', 'sachet', 'ampoule', 'comprimé'];
-const CATEGORIE_OPTIONS = ['Médicament', 'Parapharmacie', 'Accessoire médical', 'Hygiène', 'Nutrition', 'Autre'];
+const SERVICES_OPTIONS = ['Garde', 'Délivrance', 'Conseil', 'Vaccination', 'Pansements', t('pharmacieFormScreen.livraisonADomicile'), t('pharmacieFormScreen.preparationDeMedicaments')];
+const UNITE_OPTIONS = [t('pharmacieFormScreen.unite'), 'boîte', 'flacon', 'plaquette', 'tube', 'sachet', 'ampoule', t('pharmacieFormScreen.comprime')];
+const CATEGORIE_OPTIONS = ['Médicament', 'Parapharmacie', t('pharmacieFormScreen.accessoireMedical'), t('pharmacieFormScreen.hygiene'), 'Nutrition', 'Autre'];
 
 const PharmacieFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -110,7 +110,7 @@ const PharmacieFormScreen: React.FC = () => {
     const [showProductModal, setShowProductModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState<PharmacyProduct | null>(null);
     const [productFormData, setProductFormData] = useState({
-        nom_produit: '', description: '', prix: '', stock: '', unite: 'unité', code_barre: '', categorie: '',
+        nom_produit: '', description: '', prix: '', stock: '', unite: t('pharmacieFormScreen.unite'), code_barre: '', categorie: '',
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [showBulkImportModal, setShowBulkImportModal] = useState(false);
@@ -280,7 +280,7 @@ const PharmacieFormScreen: React.FC = () => {
             setProductFormData({ nom_produit: product.nom_produit, description: product.description || '', prix: String(product.prix), stock: String(product.stock), unite: product.unite, code_barre: product.code_barre || '', categorie: product.categorie || '' });
         } else {
             setEditingProduct(null);
-            setProductFormData({ nom_produit: '', description: '', prix: '', stock: '', unite: 'unité', code_barre: '', categorie: '' });
+            setProductFormData({ nom_produit: '', description: '', prix: '', stock: '', unite: t('pharmacieFormScreen.unite'), code_barre: '', categorie: '' });
         }
         setShowProductModal(true);
     };
@@ -348,7 +348,7 @@ const PharmacieFormScreen: React.FC = () => {
                         nom_produit: parts[0],
                         prix: parseFloat(parts[1]?.replace(',', '.')) || 0,
                         stock: parseInt(parts[2]) || 0,
-                        unite: parts[3] || 'unité',
+                        unite: parts[3] || t('pharmacieForm.unite'),
                         code_barre: parts[4] || undefined,
                         categorie: parts[5] || undefined,
                         description: parts[6] || undefined,
@@ -411,7 +411,7 @@ const PharmacieFormScreen: React.FC = () => {
         return (
             <View style={s.loadingScreen}>
                 <ActivityIndicator size="large" color="#10B981" />
-                <Text style={s.loadingText}>Chargement de votre espace...</Text>
+                <Text style={s.loadingText}>{t('pharmacieForm.chargementDeVotreEspace')}</Text>
             </View>
         );
     }
@@ -424,9 +424,9 @@ const PharmacieFormScreen: React.FC = () => {
             <View style={s.statsGrid}>
                 {[
                     { label: 'Produits', value: stats.total, icon: 'package', color: '#10B981' },
-                    { label: 'Stock total', value: stats.totalStock.toLocaleString(), icon: 'box', color: '#3B82F6' },
+                    { label: t('pharmacieForm.stockTotal'), value: stats.totalStock.toLocaleString(), icon: 'box', color: '#3B82F6' },
                     { label: 'Valeur stock', value: formatPrice(stats.totalValue), icon: 'banknote', color: '#8B5CF6' },
-                    { label: 'Commandes 7j', value: analyticsData?.orders_7d || 0, icon: 'shopping-bag', color: '#F59E0B' },
+                    { label: t('pharmacieForm.commandes7j'), value: analyticsData?.orders_7d || 0, icon: 'shopping-bag', color: '#F59E0B' },
                 ].map((st, i) => (
                     <View key={i} style={[s.statCard, { borderLeftColor: st.color }]}>
                         <SafeIcon name={st.icon as any} size={18} color={st.color} />
@@ -441,7 +441,7 @@ const PharmacieFormScreen: React.FC = () => {
             <View style={s.quickRow}>
                 {[
                     { label: isOnDuty ? 'En garde ✓' : 'Hors garde', icon: isOnDuty ? 'shield-check' : 'shield-off', color: isOnDuty ? '#10B981' : '#EF4444', onPress: handleToggleGuard },
-                    { label: 'Ajouter produit', icon: 'plus-circle', color: '#3B82F6', onPress: () => { setActiveTab('products'); setTimeout(() => openProductModal(), 200); } },
+                    { label: t('pharmacieForm.ajouterProduit'), icon: 'plus-circle', color: '#3B82F6', onPress: () => { setActiveTab('products'); setTimeout(() => openProductModal(), 200); } },
                     { label: 'IA Interactions', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('PharmacyAIInteractions', { serviceId }) },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('PharmacyAnalytics', { serviceId }) },
                 ].map((a, i) => (
@@ -468,7 +468,7 @@ const PharmacieFormScreen: React.FC = () => {
             {products.length > 0 && (
                 <>
                     <View style={s.sectionRow}>
-                        <Text style={s.sectionTitle}>Produits récents</Text>
+                        <Text style={s.sectionTitle}>{t('pharmacieForm.produitsRecents')}</Text>
                         <TouchableOpacity onPress={() => setActiveTab('products')}>
                             <Text style={s.seeAll}>Tout voir ({products.length})</Text>
                         </TouchableOpacity>
@@ -506,9 +506,9 @@ const PharmacieFormScreen: React.FC = () => {
             {!pharmacyData && products.length === 0 && (
                 <View style={s.emptyDash}>
                     <SafeIcon name="activity" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Bienvenue sur votre Dashboard</Text>
-                    <Text style={s.emptyText}>Configurez votre pharmacie dans "Mon service" puis ajoutez vos produits.</Text>
-                    <NativeButton title="Configurer" onPress={() => setActiveTab('service')} style={{ marginTop: 16 }} />
+                    <Text style={s.emptyTitle}>{t('pharmacieForm.bienvenueSurVotreDashboard')}/Text>
+                        <Text style={s.emptyText}>{t('pharmacieForm.configurezVotrePharmacieDansMon')}</Text>
+                        <NativeButton title="Configurer" onPress={() => setActiveTab('service')} style={{ marginTop: 16 }} />
                 </View>
             )}
         </ScrollView>
@@ -518,31 +518,31 @@ const PharmacieFormScreen: React.FC = () => {
     const renderServiceForm = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
             {user?.role !== 'partenaire' && (
-                <View style={s.field}><NativeInput label="Nom de la pharmacie *" value={formData.nom} onChangeText={t => setFormData({ ...formData, nom: t })} placeholder="Ex: Pharmacie Centrale" /></View>
+                <View style={s.field}><NativeInput label={t('pharmacieForm.nomDeLaPharmacie')} value={formData.nom} onChangeText={t => setFormData({ ...formData, nom: t })} placeholder="Ex: Pharmacie Centrale" /></View>
             )}
             <View style={s.field}>
-                <Text style={s.label}>Localisation GPS</Text>
-                <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
-                    <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                    <Text style={s.gpsBtnText}>{selectedGPS ? '✓ Localisation sélectionnée' : 'Sélectionner sur la carte'}</Text>
-                    <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
-                </TouchableOpacity>
+                <Text style={s.label}>{t('pharmacieForm.localisationGps')}/Text>
+                    <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
+                        <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                        <Text style={s.gpsBtnText}>{selectedGPS ? t('pharmacieFormScreen.localisationSelectionnee') : 'Sélectionner sur la carte'}</Text>
+                        <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
+                    </TouchableOpacity>
             </View>
             {user?.role !== 'partenaire' && (
-                <View style={s.field}><NativeInput label="Adresse" value={formData.adresse} onChangeText={t => setFormData({ ...formData, adresse: t })} placeholder="Adresse complète" multiline /></View>
+                <View style={s.field}><NativeInput label="Adresse" value={formData.adresse} onChangeText={t => setFormData({ ...formData, adresse: t })} placeholder={t('pharmacieForm.adresseComplete')} multiline /></View>
             )}
             <View style={s.field}>
-                <LocationSelector label="Quartier" value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, quartier: loc })} placeholder="Rechercher un lieu..." scope="all" enrichWithBackend />
+                <LocationSelector label={t('pharmacieForm.quartier')} value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, quartier: loc })} placeholder={t('pharmacieForm.rechercherUnLieu')} scope="all" enrichWithBackend />
             </View>
             <View style={s.field}>
-                <Text style={s.label}>Jours de garde</Text>
-                <TouchableOpacity style={s.greenBtn} onPress={() => setShowGuardDaysModal(true)}>
-                    <SafeIcon name="calendar" size={18} color="#fff" />
-                    <Text style={s.greenBtnText}>{Object.keys(formData.jours_garde).length > 0 ? 'Modifier planification' : 'Planifier jours de garde'}</Text>
-                </TouchableOpacity>
-                {Object.keys(formData.jours_garde).length > 0 && (
-                    <View style={s.guardSummary}><Text style={s.guardSummaryText}>{Object.values(formData.jours_garde).reduce((s, d) => s + d.length, 0)} jour(s) sur {Object.keys(formData.jours_garde).length} mois</Text></View>
-                )}
+                <Text style={s.label}>{t('pharmacieForm.joursDeGarde')}/Text>
+                    <TouchableOpacity style={s.greenBtn} onPress={() => setShowGuardDaysModal(true)}>
+                        <SafeIcon name="calendar" size={18} color="#fff" />
+                        <Text style={s.greenBtnText}>{Object.keys(formData.jours_garde).length > 0 ? 'Modifier planification' : 'Planifier jours de garde'}</Text>
+                    </TouchableOpacity>
+                    {Object.keys(formData.jours_garde).length > 0 && (
+                        <View style={s.guardSummary}><Text style={s.guardSummaryText}>{Object.values(formData.jours_garde).reduce((s, d) => s + d.length, 0)} jour(s) sur {Object.keys(formData.jours_garde).length} mois</Text></View>
+                    )}
             </View>
             <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={[s.field, { flex: 1 }]}><NativeInput label="Ouverture" value={formData.heures_ouverture} onChangeText={t => setFormData({ ...formData, heures_ouverture: t })} placeholder="08:00" /></View>
@@ -551,14 +551,14 @@ const PharmacieFormScreen: React.FC = () => {
             <View style={s.switchRow}><Text style={s.label}>Ouvert 24h/24</Text><Switch value={formData.permanent_24h} onValueChange={v => setFormData({ ...formData, permanent_24h: v })} trackColor={{ false: '#D1D5DB', true: modernColors.primary }} /></View>
             {user?.role !== 'partenaire' && (
                 <>
-                    <View style={s.field}><NativeInput label="Téléphone" value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label={t('pharmacieForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="Urgence" value={formData.telephone_urgence} onChangeText={t => setFormData({ ...formData, telephone_urgence: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="Email" value={formData.email} onChangeText={t => setFormData({ ...formData, email: t })} placeholder="pharmacie@example.com" keyboardType="email-address" autoCapitalize="none" /></View>
                 </>
             )}
-            <View style={s.field}><SimplePrestationSelector label="Services proposés" options={SERVICES_OPTIONS} selected={selectedServices} onSelectionChange={setSelectedServices} allowCustom placeholder="Ajouter un service" /></View>
-            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? 'Mettre à jour' : 'Enregistrer la Pharmacie')} onPress={handleSubmit} disabled={loading || !formData.nom.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
+            <View style={s.field}><SimplePrestationSelector label={t('pharmacieForm.servicesProposes')} options={SERVICES_OPTIONS} selected={selectedServices} onSelectionChange={setSelectedServices} allowCustom placeholder={t('pharmacieForm.ajouterUnService')} /></View>
+            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? t('pharmacieFormScreen.mettreAJour') : 'Enregistrer la Pharmacie')} onPress={handleSubmit} disabled={loading || !formData.nom.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
         </ScrollView>
     );
 
@@ -579,7 +579,7 @@ const PharmacieFormScreen: React.FC = () => {
             {/* Actions Bar */}
             <View style={s.prodActions}>
                 <TouchableOpacity style={s.addProdBtn} onPress={() => openProductModal()}>
-                    <SafeIcon name="plus" size={18} color="#fff" /><Text style={s.addProdText}>Ajouter</Text>
+                    <SafeIcon name="plus" size={18} color="#fff" /><Text style={s.addProdText}>{t('pharmacieFormScreen.ajouter')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.bulkBtn} onPress={() => setShowBulkImportModal(true)}>
                     <SafeIcon name="upload" size={16} color="#fff" />
@@ -594,7 +594,7 @@ const PharmacieFormScreen: React.FC = () => {
             {products.length > 0 && (
                 <View style={s.searchBar}>
                     <SafeIcon name="search" size={18} color="#9CA3AF" />
-                    <NativeInput value={searchQuery} onChangeText={setSearchQuery} placeholder="Rechercher..." style={{ flex: 1, backgroundColor: 'transparent' }} />
+                    <NativeInput value={searchQuery} onChangeText={setSearchQuery} placeholder={t('pharmacieForm.rechercher')} style={{ flex: 1, backgroundColor: 'transparent' }} />
                     {searchQuery.trim() !== '' && <TouchableOpacity onPress={() => setSearchQuery('')}><SafeIcon name="x" size={18} color="#9CA3AF" /></TouchableOpacity>}
                 </View>
             )}
@@ -603,9 +603,9 @@ const PharmacieFormScreen: React.FC = () => {
                 products.length === 0 ? (
                     <View style={s.emptyDash}>
                         <SafeIcon name="package" size={48} color="#9CA3AF" />
-                        <Text style={s.emptyTitle}>Aucun médicament</Text>
-                        <Text style={s.emptyText}>Ajoutez vos produits pour les rendre visibles aux clients</Text>
-                        <NativeButton title="Ajouter un produit" onPress={() => openProductModal()} style={{ marginTop: 16 }} />
+                        <Text style={s.emptyTitle}>{t('pharmacieForm.aucunMedicament')}</Text>
+                        <Text style={s.emptyText}>{t('pharmacieForm.ajoutezVosProduitsPourLes')}</Text>
+                        <NativeButton title={t('pharmacieForm.ajouterUnProduit')} onPress={() => openProductModal()} style={{ marginTop: 16 }} />
                     </View>
                 ) : (
                     filteredProducts.map(p => (
@@ -630,7 +630,7 @@ const PharmacieFormScreen: React.FC = () => {
     const renderAnalytics = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
             <View style={s.analyticsCard}>
-                <View style={s.analyticsHdr}><SafeIcon name="bar-chart-2" size={22} color="#8B5CF6" /><Text style={s.analyticsTitle}>Commandes</Text></View>
+                <View style={s.analyticsHdr}><SafeIcon name="bar-chart-2" size={22} color="#8B5CF6" /><Text style={s.analyticsTitle}>{t('pharmacieForm.commandes')}/Text></View>
                 {analyticsData ? (
                     <View style={{ gap: 12 }}>
                         {[
@@ -643,7 +643,7 @@ const PharmacieFormScreen: React.FC = () => {
                             <View key={i} style={s.analyticsRow}><Text style={s.analyticsLbl}>{r.l}</Text><Text style={[s.analyticsVal, r.c ? { color: r.c } : {}]}>{r.v}</Text></View>
                         ))}
                     </View>
-                ) : <Text style={s.analyticsEmpty}>Disponible après les premières commandes.</Text>}
+                ) : <Text style={s.analyticsEmpty}>{t('pharmacieForm.disponibleApresLesPremieresCommandes')}</Text>}
             </View>
             <View style={s.analyticsCard}>
                 <View style={s.analyticsHdr}><SafeIcon name="package" size={22} color="#3B82F6" /><Text style={s.analyticsTitle}>Inventaire</Text></View>
@@ -652,7 +652,7 @@ const PharmacieFormScreen: React.FC = () => {
                         { l: 'Produits', v: stats.total },
                         { l: 'Stock total', v: stats.totalStock.toLocaleString() },
                         { l: 'Valeur stock', v: formatPrice(stats.totalValue), c: '#8B5CF6' },
-                        { l: 'Catégories', v: stats.categories },
+                        { l: t('pharmacieFormScreen.categories'), v: stats.categories },
                     ].map((r, i) => (
                         <View key={i} style={s.analyticsRow}><Text style={s.analyticsLbl}>{r.l}</Text><Text style={[s.analyticsVal, r.c ? { color: r.c } : {}]}>{r.v}</Text></View>
                     ))}
@@ -660,7 +660,7 @@ const PharmacieFormScreen: React.FC = () => {
             </View>
             <View style={s.analyticsCard}>
                 <View style={s.analyticsHdr}><SafeIcon name="sparkles" size={22} color="#F59E0B" /><Text style={s.analyticsTitle}>Intelligence Artificielle</Text></View>
-                <Text style={s.analyticsEmpty}>Interactions médicamenteuses et suggestions de dosage IA disponibles.</Text>
+                <Text style={s.analyticsEmpty}>{t('pharmacieForm.interactionsMedicamenteusesEtSuggestions')}</Text>
                 <NativeButton title="Tester les interactions IA" onPress={() => (navigation as any).navigate('PharmacyAIInteractions')} style={{ marginTop: 12, backgroundColor: '#F59E0B' }} />
             </View>
         </ScrollView>
@@ -671,25 +671,25 @@ const PharmacieFormScreen: React.FC = () => {
         <Modal visible={showProductModal} animationType="slide" transparent onRequestClose={closeProductModal}>
             <View style={s.modalOverlay}><View style={s.modalContent}>
                 <View style={s.modalHeader}>
-                    <Text style={s.modalTitle}>{editingProduct ? 'Modifier' : 'Ajouter un médicament'}</Text>
+                    <Text style={s.modalTitle}>{editingProduct ? 'Modifier' : t('pharmacieFormScreen.ajouterUnMedicament')}</Text>
                     <TouchableOpacity onPress={closeProductModal}><SafeIcon name="x" size={24} color="#6B7280" /></TouchableOpacity>
                 </View>
                 <ScrollView style={{ padding: 16, maxHeight: 500 }}>
-                    <View style={s.field}><NativeInput label="Nom *" value={productFormData.nom_produit} onChangeText={t => setProductFormData({ ...productFormData, nom_produit: t })} placeholder="Ex: Paracétamol 500mg" /></View>
-                    <View style={s.field}><NativeInput label="Description" value={productFormData.description} onChangeText={t => setProductFormData({ ...productFormData, description: t })} placeholder="Description" multiline /></View>
+                    <View style={s.field}><NativeInput label="Nom *" value={productFormData.nom_produit} onChangeText={t => setProductFormData({ ...productFormData, nom_produit: t })} placeholder={t('pharmacieForm.exParacetamol500mg')} /></View>
+                    <View style={s.field}><NativeInput label="Description" value={productFormData.description} onChangeText={t => setProductFormData({ ...productFormData, description: t })} placeholder={t('pharmacieFormScreen.description')} multiline /></View>
                     <View style={{ flexDirection: 'row', gap: 12 }}>
-                        <View style={[s.field, { flex: 1 }]}><NativeInput label={`Prix (${devise}) *`} value={productFormData.prix} onChangeText={t => setProductFormData({ ...productFormData, prix: t })} placeholder="0" keyboardType="numeric" /></View>
-                        <View style={[s.field, { flex: 1 }]}><NativeInput label="Stock *" value={productFormData.stock} onChangeText={t => setProductFormData({ ...productFormData, stock: t })} placeholder="0" keyboardType="numeric" /></View>
+                        <View style={[s.field, { flex: 1 }]}><NativeInput label={`${t('pharmacieFormScreen.price')} (${devise}) *`} value={productFormData.prix} onChangeText={t => setProductFormData({ ...productFormData, prix: t })} placeholder="0" keyboardType="numeric" /></View>
+                        <View style={[s.field, { flex: 1 }]}><NativeInput label={t('pharmacieForm.stock')} value={productFormData.stock} onChangeText={t => setProductFormData({ ...productFormData, stock: t })} placeholder="0" keyboardType="numeric" /></View>
                     </View>
-                    <Text style={s.label}>Unité</Text>
+                    <Text style={s.label}>{t('pharmacieForm.unite')}</Text>
                     <View style={s.chips}>{UNITE_OPTIONS.map(u => <TouchableOpacity key={u} style={[s.chip, productFormData.unite === u && s.chipOn]} onPress={() => setProductFormData({ ...productFormData, unite: u })}><Text style={[s.chipText, productFormData.unite === u && s.chipTextOn]}>{u}</Text></TouchableOpacity>)}</View>
-                    <Text style={[s.label, { marginTop: 16 }]}>Catégorie</Text>
+                    <Text style={[s.label, { marginTop: 16 }]}>{t('pharmacieForm.categorie')}</Text>
                     <View style={s.chips}>{CATEGORIE_OPTIONS.map(c => <TouchableOpacity key={c} style={[s.chip, productFormData.categorie === c && s.chipOn]} onPress={() => setProductFormData({ ...productFormData, categorie: c })}><Text style={[s.chipText, productFormData.categorie === c && s.chipTextOn]}>{c}</Text></TouchableOpacity>)}</View>
                     <View style={[s.field, { marginTop: 16 }]}><NativeInput label="Code-barres" value={productFormData.code_barre} onChangeText={t => setProductFormData({ ...productFormData, code_barre: t })} placeholder="1234567890123" keyboardType="numeric" /></View>
                 </ScrollView>
                 <View style={s.modalFooter}>
-                    <NativeButton title="Annuler" onPress={closeProductModal} variant="secondary" style={{ flex: 1 }} />
-                    <NativeButton title={editingProduct ? 'Modifier' : 'Ajouter'} onPress={handleSaveProduct} variant="primary" style={{ flex: 1 }} disabled={loading || !productFormData.nom_produit.trim()} />
+                    <NativeButton title={t('pharmacieFormScreen.annuler')} onPress={closeProductModal} variant="secondary" style={{ flex: 1 }} />
+                    <NativeButton title={editingProduct ? t('pharmacieFormScreen.modifier') : t('pharmacieFormScreen.ajouter')} onPress={handleSaveProduct} variant="primary" style={{ flex: 1 }} disabled={loading || !productFormData.nom_produit.trim()} />
                 </View>
             </View></View>
         </Modal>
@@ -766,7 +766,7 @@ const PharmacieFormScreen: React.FC = () => {
                     )}
                 </ScrollView>
                 <View style={s.modalFooter}>
-                    <NativeButton title="Annuler" onPress={() => { setShowBulkImportModal(false); setBulkImportText(''); }} variant="secondary" style={{ flex: 1 }} />
+                    <NativeButton title={t('pharmacieFormScreen.cancel')} onPress={() => { setShowBulkImportModal(false); setBulkImportText(''); }} variant="secondary" style={{ flex: 1 }} />
                     <NativeButton title={loadingBulkImport ? 'Import...' : 'Importer'} onPress={handleBulkImport} variant="primary" style={{ flex: 1 }} disabled={loadingBulkImport || !bulkImportText.trim()} />
                 </View>
             </View></View>
@@ -776,11 +776,11 @@ const PharmacieFormScreen: React.FC = () => {
     // ─── RENDER: Dashboard (main) ────────────────────────────────────────
     if (isDashboardMode || (user?.role === 'partenaire' && serviceId)) {
         const tabs: { key: TabType; label: string; icon: string }[] = [
-            { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
+            { key: 'overview', label: t('pharmacieForm.accueil'), icon: 'layout-dashboard' },
             { key: 'service', label: 'Service', icon: 'settings' },
             { key: 'products', label: 'Produits', icon: 'package' },
             { key: 'analytics', label: 'Stats', icon: 'bar-chart-2' },
-            { key: 'team', label: 'Équipe', icon: 'users' },
+            { key: 'team', label: t('pharmacieForm.equipe'), icon: 'users' },
         ];
 
         return (
@@ -789,7 +789,7 @@ const PharmacieFormScreen: React.FC = () => {
                     <View style={s.dashHeaderRow}>
                         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
                         <View style={{ flex: 1 }}>
-                            <Text style={s.dashTitle}>{pharmacyData?.nom || formData.nom || 'Ma Pharmacie'}</Text>
+                            <Text style={s.dashTitle}>{pharmacyData?.nom || formData.nom || t('pharmacieForm.maPharmacie')}</Text>
                             <Text style={s.dashSub}>{stats.total} produit{stats.total !== 1 ? 's' : ''} · {isOnDuty ? '🟢 En garde' : '🔴 Hors garde'}</Text>
                         </View>
                     </View>
@@ -822,7 +822,7 @@ const PharmacieFormScreen: React.FC = () => {
         <View style={s.container}>
             <LinearGradient colors={['#047857', '#10B981']} style={s.createHeader}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
-                <Text style={s.createTitle}>Enregistrer une Pharmacie</Text>
+                <Text style={s.createTitle}>{t('pharmacieFormScreen.enregistrerUnePharmacie')}</Text>
             </LinearGradient>
             {renderServiceForm()}
             <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={handleGPSSelect} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation pharmacie" />

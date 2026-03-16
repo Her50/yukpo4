@@ -11,6 +11,7 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { CategoryDetectionResult, detectCategoryFromQuery } from '../utils/categoryDetector';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // Import dynamique des formulaires spécialisés
 const FORM_COMPONENTS = {
@@ -28,7 +29,8 @@ interface CreateNewKeyFlowProps {
 }
 
 export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKeyFlowProps) {
-  const [detection, setDetection] = useState<CategoryDetectionResult | null>(null);
+      const { t } = useLanguageSafe();
+const [detection, setDetection] = useState<CategoryDetectionResult | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [FormComponent, setFormComponent] = useState<React.ComponentType<any> | null>(null);
 
@@ -64,7 +66,7 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>✨ Nouvelle clé détectée</Text>
+            <Text style={styles.headerTitle}>{t('createNewKeyFlow.nouvelleCleDetectee')}</Text>
             <Text style={styles.headerSubtitle}>
               Catégorie : {detection.category_name}
             </Text>
@@ -100,8 +102,8 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>🤔 Plusieurs catégories possibles</Text>
-            <Text style={styles.headerSubtitle}>Choisissez la catégorie appropriée</Text>
+            <Text style={styles.headerTitle}>{t('createNewKeyFlow.plusieursCategoriesPossibles')}</Text>
+            <Text style={styles.headerSubtitle}>{t('createNewKeyFlow.choisissezLaCategorieAppropriee')}</Text>
           </View>
 
           <View style={styles.queryContainer}>
@@ -116,7 +118,7 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
               style={[styles.categoryCard, styles.categoryCardPrimary]}
               onPress={() => handleCategorySelect(detection.category_code, detection.form_component)}
             >
-              <Text style={styles.categoryBadge}>RECOMMANDÉ</Text>
+              <Text style={styles.categoryBadge}>{t('createNewKeyFlow.recommande')}</Text>
               <Text style={styles.categoryTitle}>{formatCategoryName(detection.category_name)}</Text>
               <Text style={styles.categoryConfidence}>{detection.confidence}% de confiance</Text>
               <Text style={styles.categoryExample}>
@@ -144,14 +146,14 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
               style={[styles.categoryCard, styles.categoryCardOther]}
               onPress={() => setSelectedCategory('MANUAL')}
             >
-              <Text style={styles.categoryTitle}>📋 Autre catégorie</Text>
-              <Text style={styles.categoryDescription}>Choisir manuellement</Text>
+              <Text style={styles.categoryTitle}>{t('createNewKeyFlow.autreCategorie')}</Text>
+              <Text style={styles.categoryDescription}>{t('createNewKeyFlow.choisirManuellement')}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Bouton annuler */}
           <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-            <Text style={styles.cancelButtonText}>Annuler</Text>
+            <Text style={styles.cancelButtonText}>{t('createNewKeyFlow.annuler')}</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -166,7 +168,7 @@ export function CreateNewKeyFlow({ query, onKeyCreated, onCancel }: CreateNewKey
   // Loading
   return (
     <View style={styles.loading}>
-      <Text>Détection en cours...</Text>
+      <Text>{t('createNewKeyFlow.detectionEnCours')}</Text>
     </View>
   );
 }
@@ -189,13 +191,13 @@ function CategorySelectorManual({
   const CATEGORIES_LIST = [
     { code: 'AUTO', name: 'Automobile', icon: '🚗', form: 'FormAutoAutomobile' },
     { code: 'MOTO', name: 'Moto', icon: '🏍️', form: 'FormAutoMoto' },
-    { code: 'TEL', name: 'Téléphone', icon: '📱', form: 'FormAutoTelephone' },
+    { code: 'TEL', name: t('createNewKeyFlow.telephone'), icon: '📱', form: 'FormAutoTelephone' },
     { code: 'PC', name: 'Ordinateur', icon: '💻', form: 'FormAutoOrdinateur' },
-    { code: 'ELEC', name: 'Électroménager', icon: '⚡', form: 'FormAutoElectromenager' },
+    { code: 'ELEC', name: t('createNewKeyFlow.electromenager'), icon: '⚡', form: 'FormAutoElectromenager' },
     { code: 'AGRI', name: 'Agriculture', icon: '🌾', form: 'FormAutoAgriculture' },
     { code: 'IMMO', name: 'Immobilier', icon: '🏠', form: 'FormAutoImmobilier' },
     { code: 'TERR', name: 'Terrain', icon: '🏞️', form: 'FormAutoTerrain' },
-    { code: 'VET', name: 'Vêtement', icon: '👕', form: 'FormAutoVetement' },
+    { code: 'VET', name: t('createNewKeyFlow.vetement'), icon: '👕', form: 'FormAutoVetement' },
     { code: 'CHAUS', name: 'Chaussure', icon: '👟', form: 'FormAutoChaussure' },
     { code: 'EMPL', name: 'Emploi', icon: '💼', form: 'FormAutoEmploi' },
     { code: 'FORM', name: 'Formation', icon: '📚', form: 'FormAutoFormation' },
@@ -210,14 +212,14 @@ function CategorySelectorManual({
     <Modal visible animationType="slide">
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>📋 Choisir une catégorie</Text>
+          <Text style={styles.headerTitle}>{t('createNewKeyFlow.choisirUneCategorie')}</Text>
           <Text style={styles.headerSubtitle}>Pour : "{query}"</Text>
         </View>
 
         {/* Recherche catégorie */}
         <TextInput
           style={styles.searchInput}
-          placeholder="Rechercher une catégorie..."
+          placeholder={t('createNewKeyFlow.rechercherUneCategorie')}
           value={searchCategory}
           onChangeText={setSearchCategory}
         />
@@ -238,7 +240,7 @@ function CategorySelectorManual({
         </ScrollView>
 
         <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-          <Text style={styles.cancelButtonText}>Annuler</Text>
+          <Text style={styles.cancelButtonText}>{t('createNewKeyFlow.annuler')}</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -256,12 +258,12 @@ function getCategoryExample(code: string): string {
   const examples: Record<string, string> = {
     'AUTO': 'Toyota Corolla, Peugeot 308...',
     'TEL': 'iPhone 14, Samsung Galaxy...',
-    'AGRI': 'Riz Vietnam, Maïs...',
+    'AGRI': t('createNewKeyFlow.rizVietnamMais'),
     'IMMO': 'Villa 4 chambres, Appartement...',
     'EMPL': 'Développeur, Comptable...',
     'FORM': 'Cours Anglais, Formation Excel...',
   };
-  return examples[code] || 'Exemples variés';
+  return examples[code] || t('createNewKeyFlow.exemplesVaries');
 }
 
 const styles = StyleSheet.create({

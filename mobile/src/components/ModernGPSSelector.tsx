@@ -15,6 +15,7 @@ import InteractiveMapView, { InteractiveMapViewRef } from './InteractiveMapView'
 import LocationSelector, { LocationObject } from './LocationSelector';
 import SafeIcon from './SafeIcon';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,9 +38,10 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
     onClose,
     onSelect,
     currentLocation,
-    title = 'Sélection de localisation GPS'
+    title={t('modernGPSSelector.selectionDeLocalisationGps')}
 }) => {
-    const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
+        const { t } = useLanguageSafe();
+const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
     const [loading, setLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
     const [searchLocation, setSearchLocation] = useState<LocationObject | string>(''); // ✅ NOUVEAU: Utiliser LocationObject
@@ -61,7 +63,7 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
-                    'L\'accès à la localisation est nécessaire pour utiliser cette fonctionnalité.',
+                    'L\t('modernGPSSelector.accesALaLocalisationEstNecessaire'),
                     [{ text: 'OK' }]
                 );
                 return;
@@ -311,7 +313,7 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
                         {/* Ligne 1: Bouton GPS + Recherche */}
                         <View style={styles.topRow}>
                             <NativeButton
-                                title="Ma Position"
+                                title={t('modernGPSSelector.maPosition')}
                                 onPress={getCurrentLocation}
                                 disabled={loading || !permissionGranted}
                                 variant="primary"
@@ -325,7 +327,7 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
                                     label=""
                                     value={searchLocation}
                                     onSelect={handleLocationSelect}
-                                    placeholder="Ville, quartier, lieu, site..."
+                                    placeholder={t('modernGPSSelector.villeQuartierLieuSite')}
                                     enrichWithBackend={true}
                                 />
                             </View>
@@ -398,7 +400,7 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
                                     icon="trash-2"
                                 />
                                 <NativeButton
-                                    title="Confirmer"
+                                    title={t('modernGPSSelector.confirmer')}
                                     onPress={handleConfirmSelection}
                                     disabled={!selectedLocation}
                                     variant="primary"

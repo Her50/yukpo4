@@ -17,6 +17,7 @@ import { modernColors } from '../theme/modernTheme';
 import LinearAutocompleteEditor from './LinearAutocompleteEditor';
 import LocationProximityFilter from './LocationProximityFilter';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface DynamicAutocompleteFiltersProps {
     visible: boolean;
@@ -38,10 +39,11 @@ export const DynamicAutocompleteFilters: React.FC<DynamicAutocompleteFiltersProp
     initialFilters = {},
     initialLocationCoords = null,
     initialLocationRadius = 10,
-    categoryName = 'Filtrer les résultats',
+    categoryName = t('dynamicAutocompleteFilters.filtrerLesResultats'),
     categoryIcon = '🔍',
 }) => {
-    const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>(initialFilters);
+        const { t } = useLanguageSafe();
+const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>(initialFilters);
     const [editingCharacteristic, setEditingCharacteristic] = useState<string | null>(null);
     const [locationCoords, setLocationCoords] = useState<{ lat: number, lon: number } | null>(initialLocationCoords);
     const [locationRadius, setLocationRadius] = useState<number | null>(initialLocationRadius);
@@ -162,7 +164,7 @@ export const DynamicAutocompleteFilters: React.FC<DynamicAutocompleteFiltersProp
                 {/* Filtres actifs */}
                 {activeFiltersCount > 0 && (
                     <View style={styles.activeFiltersSection}>
-                        <Text style={styles.sectionTitle}>✓ Filtres actifs</Text>
+                        <Text style={styles.sectionTitle}>{t('dynamicAutocompleteFilters.filtresActifs')}/Text>
                         <ScrollView
                             horizontal
                             showsHorizontalScrollIndicator={false}
@@ -198,7 +200,7 @@ export const DynamicAutocompleteFilters: React.FC<DynamicAutocompleteFiltersProp
 
                 {/* Caractéristiques disponibles */}
                 <ScrollView style={styles.characteristicsScroll}>
-                    <Text style={styles.sectionTitle}>🎯 Caractéristiques disponibles</Text>
+                    <Text style={styles.sectionTitle}>{t('dynamicAutocompleteFilters.caracteristiquesDisponibles')}</Text>
                     <Text style={styles.sectionDescription}>
                         Tapez sur une caractéristique pour filtrer par ses valeurs
                     </Text>
@@ -278,7 +280,7 @@ export const DynamicAutocompleteFilters: React.FC<DynamicAutocompleteFiltersProp
                         onPress={handleReset}
                     >
                         <SafeIcon name="refresh-cw" size={18} color={modernColors.text} />
-                        <Text style={styles.resetButtonText}>Réinitialiser</Text>
+                        <Text style={styles.resetButtonText}>{t('dynamicAutocompleteFilters.reinitialiser')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.applyButton}
@@ -318,7 +320,7 @@ export const DynamicAutocompleteFilters: React.FC<DynamicAutocompleteFiltersProp
                                 separateur=","
                                 value={selectedFilters[editingCharacteristic] || []}
                                 onChange={handleSaveCharacteristic}
-                                placeholder={`Sélectionnez ${editingCharacteristic}...`}
+                                placeholder={t('dynamicAutocompleteFilters.selectionnez', { editingCharacteristic: editingCharacteristic })}
                                 allowCustomModality={false}
                                 filtrable={false}
                             />
@@ -329,7 +331,7 @@ export const DynamicAutocompleteFilters: React.FC<DynamicAutocompleteFiltersProp
                                 style={styles.editorCancelButton}
                                 onPress={() => setEditingCharacteristic(null)}
                             >
-                                <Text style={styles.editorCancelText}>Fermer</Text>
+                                <Text style={styles.editorCancelText}>{t('dynamicAutocompleteFilters.fermer')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

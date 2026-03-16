@@ -15,6 +15,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Laboratoire {
     id: number;
@@ -50,6 +51,7 @@ interface LaboratoireListScreenParams {
 
 const LaboratoireListScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const params = route.params as LaboratoireListScreenParams;
 
@@ -200,7 +202,7 @@ const LaboratoireListScreen: React.FC = () => {
                 {item.resultats_en_ligne && (
                     <View style={styles.resultatsBadge}>
                         <SafeIcon name="check-circle" size={12} color="#059669" />
-                        <Text style={styles.resultatsText}>Résultats en ligne</Text>
+                        <Text style={styles.resultatsText}>{t('laboratoireList.resultatsEnLigne')}</Text>
                     </View>
                 )}
             </NativeCard>
@@ -211,7 +213,7 @@ const LaboratoireListScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement des laboratoires...</Text>
+                <Text style={styles.loadingText}>{t('laboratoireList.chargementDesLaboratoires')}</Text>
             </View>
         );
     }
@@ -226,11 +228,11 @@ const LaboratoireListScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Résultats de recherche</Text>
+                    <Text style={styles.title}>{t('laboratoireList.resultatsDeRecherche')}</Text>
                 </View>
                 <View style={styles.centerContainer}>
                     <SafeIcon name="microscope" size={64} color="#D1D5DB" />
-                    <Text style={styles.emptyText}>Aucun laboratoire trouvé</Text>
+                    <Text style={styles.emptyText}>{t('laboratoireList.aucunLaboratoireTrouve')}</Text>
                     <Text style={styles.emptySubtext}>
                         Essayez de modifier vos critères de recherche
                     </Text>

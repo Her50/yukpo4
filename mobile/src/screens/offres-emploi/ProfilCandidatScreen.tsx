@@ -59,8 +59,8 @@ const ProfilCandidatScreen: React.FC = () => {
     const niveauxLangue = ['debutant', 'intermediaire', 'avance', 'bilingue'];
     const typesContrat = ['CDI', 'CDD', 'Stage', 'Freelance', 'Temps partiel', 'Alternance'];
     const secteurs = [
-        'Informatique', 'Commerce', 'Santé', 'Éducation', 'Finance',
-        'Marketing', 'Ressources Humaines', 'Ingénierie', 'Design', 'Autre'
+        'Informatique', 'Commerce', t('profilCandidatScreen.sante'), 'Éducation', 'Finance',
+        'Marketing', 'Ressources Humaines', t('profilCandidatScreen.ingenierie'), 'Design', 'Autre'
     ];
 
     useFocusEffect(
@@ -112,12 +112,12 @@ const ProfilCandidatScreen: React.FC = () => {
     if (!user) {
         return (
             <View style={styles.centerContainer}>
-                <Text style={styles.errorText}>Connexion requise</Text>
+                <Text style={styles.errorText}>{t('profilCandidat.connexionRequise')}</Text>
                 <TouchableOpacity
                     style={styles.button}
                     onPress={() => (navigation as any).navigate('Login')}
                 >
-                    <Text style={styles.buttonText}>Se connecter</Text>
+                    <Text style={styles.buttonText}>{t('profilCandidat.seConnecter')}/Text>
                 </TouchableOpacity>
             </View>
         );
@@ -238,7 +238,7 @@ const ProfilCandidatScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mon Profil Candidat</Text>
+                <Text style={styles.title}>{t('profilCandidat.monProfilCandidat')}</Text>
             </View>
 
             <NativeCard style={styles.card}>
@@ -252,7 +252,7 @@ const ProfilCandidatScreen: React.FC = () => {
                         />
                     </View>
                     <View style={[styles.field, { flex: 1, marginLeft: 8 }]}>
-                        <Text style={styles.label}>Prénom *</Text>
+                        <Text style={styles.label}>{t('profilCandidat.prenom')}</Text>
                         <NativeInput
                             value={formData.prenom}
                             onChangeText={(text) => setFormData({ ...formData, prenom: text })}
@@ -270,7 +270,7 @@ const ProfilCandidatScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.label}>Téléphone</Text>
+                    <Text style={styles.label}>{t('profilCandidat.telephone')}</Text>
                     <NativeInput
                         value={formData.telephone}
                         onChangeText={(text) => setFormData({ ...formData, telephone: text })}
@@ -280,7 +280,7 @@ const ProfilCandidatScreen: React.FC = () => {
 
                 {/* Localisation */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Ville</Text>
+                    <Text style={styles.label}>{t('profilCandidat.ville')}/Text>
                     <NativeInput
                         value={formData.ville}
                         onChangeText={(text) => setFormData({ ...formData, ville: text })}
@@ -307,7 +307,7 @@ const ProfilCandidatScreen: React.FC = () => {
 
                 {/* Formation */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Niveau d'étude</Text>
+                    <Text style={styles.label}>{t('profilCandidat.niveauDetude')}</Text>
                     <View style={styles.pickerContainer}>
                         {niveauxEtude.map((n) => (
                             <TouchableOpacity
@@ -332,7 +332,7 @@ const ProfilCandidatScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.label}>Années d'expérience</Text>
+                    <Text style={styles.label}>{t('profilCandidat.anneesDexperience')}</Text>
                     <NativeInput
                         value={formData.experience_annees}
                         onChangeText={(text) => setFormData({ ...formData, experience_annees: text })}
@@ -342,12 +342,12 @@ const ProfilCandidatScreen: React.FC = () => {
 
                 {/* Compétences */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Compétences</Text>
+                    <Text style={styles.label}>{t('profilCandidat.competences')}</Text>
                     <View style={styles.addRow}>
                         <NativeInput
                             value={competenceInput}
                             onChangeText={setCompetenceInput}
-                            placeholder="Ajouter une compétence"
+                            placeholder={t('profilCandidat.ajouterUneCompetence')}
                             style={styles.addInput}
                         />
                         <TouchableOpacity style={styles.addButton} onPress={handleAddCompetence}>
@@ -368,7 +368,7 @@ const ProfilCandidatScreen: React.FC = () => {
 
                 {/* Préférences */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Secteur recherché</Text>
+                    <Text style={styles.label}>{t('profilCandidat.secteurRecherche')}</Text>
                     <View style={styles.pickerContainer}>
                         {secteurs.map((s) => (
                             <TouchableOpacity
@@ -393,7 +393,7 @@ const ProfilCandidatScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.label}>Type de contrat souhaité</Text>
+                    <Text style={styles.label}>{t('profilCandidat.typeDeContratSouhaite')}</Text>
                     <View style={styles.chipContainer}>
                         {typesContrat.map((type) => (
                             <TouchableOpacity
@@ -418,7 +418,7 @@ const ProfilCandidatScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.switchRow}>
-                    <Text style={styles.label}>Ouvert au télétravail</Text>
+                    <Text style={styles.label}>{t('profilCandidat.ouvertAuTeletravail')}</Text>
                     <Switch
                         value={formData.remote_souhaite}
                         onValueChange={(value) => setFormData({ ...formData, remote_souhaite: value })}
@@ -483,11 +483,11 @@ const ProfilCandidatScreen: React.FC = () => {
                     >
                         <SafeIcon name="upload" size={20} color={modernColors.primary} type="lucide" />
                         <Text style={styles.uploadButtonText}>
-                            {formData.cv_url ? 'Remplacer le CV' : 'Télécharger un CV'}
+                            {formData.cv_url ? 'Remplacer le CV' : t('profilCandidatScreen.telechargerUnCv')}
                         </Text>
                     </TouchableOpacity>
                     {formData.cv_url && (
-                        <Text style={styles.fileLink}>CV téléchargé ✓</Text>
+                        <Text style={styles.fileLink}>{t('profilCandidat.cvTelecharge')}</Text>
                     )}
                 </View>
 
@@ -541,17 +541,17 @@ const ProfilCandidatScreen: React.FC = () => {
                     >
                         <SafeIcon name="upload" size={20} color={modernColors.primary} type="lucide" />
                         <Text style={styles.uploadButtonText}>
-                            {formData.lettre_motivation_url ? 'Remplacer la lettre' : 'Télécharger une lettre'}
+                            {formData.lettre_motivation_url ? 'Remplacer la lettre' : t('profilCandidatScreen.telechargerUneLettre')}
                         </Text>
                     </TouchableOpacity>
                     {formData.lettre_motivation_url && (
-                        <Text style={styles.fileLink}>Lettre téléchargée ✓</Text>
+                        <Text style={styles.fileLink}>{t('profilCandidat.lettreTelechargee')}</Text>
                     )}
                 </View>
 
                 {/* Bouton submit */}
                 <NativeButton
-                    title={loading ? 'Enregistrement...' : 'Enregistrer le profil'}
+                    title={loading ? 'Enregistrement...' : t('profilCandidatScreen.enregistrerLeProfil')}
                     onPress={handleSubmit}
                     disabled={loading}
                     style={styles.submitButton}

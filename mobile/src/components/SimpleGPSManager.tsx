@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useGPSTracking } from '../hooks/useGPSTracking';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 /**
  * Composant GPS simple pour les écrans qui en ont besoin
@@ -16,7 +17,8 @@ import { SafeIcon } from './SafeIcon';
 const SimpleGPSManager: React.FC = () => {
     const { user } = useAuth();
     const { isTracking, currentLocation, lastUpdate, error, startTracking, stopTracking, updateLocation } = useGPSTracking();
-    const [isLoading, setIsLoading] = useState(false);
+        const { t } = useLanguageSafe();
+const [isLoading, setIsLoading] = useState(false);
 
     const handleToggleGPS = async () => {
         if (isTracking) {
@@ -66,7 +68,7 @@ const SimpleGPSManager: React.FC = () => {
                         color="#fff" 
                     />
                     <Text style={styles.buttonText}>
-                        {isLoading ? '...' : isTracking ? 'Arrêter' : 'Démarrer'}
+                        {isLoading ? '...' : isTracking ? t('simpleGPSManager.arreter') : 'Démarrer'}
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -79,7 +81,7 @@ const SimpleGPSManager: React.FC = () => {
 
             {currentLocation && (
                 <View style={styles.locationContainer}>
-                    <Text style={styles.locationLabel}>Position actuelle:</Text>
+                    <Text style={styles.locationLabel}>{t('simpleGPSManager.positionActuelle')}/Text>
                     <Text style={styles.locationText}>
                         {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
                     </Text>
@@ -94,7 +96,7 @@ const SimpleGPSManager: React.FC = () => {
                         disabled={isLoading}
                     >
                         <SafeIcon name="refresh" size={14} color="#007AFF" />
-                        <Text style={styles.updateButtonText}>Actualiser</Text>
+                        <Text style={styles.updateButtonText}>{t('simpleGPSManager.actualiser')}</Text>
                     </TouchableOpacity>
                 </View>
             )}

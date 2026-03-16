@@ -19,6 +19,7 @@ import { useCreatorStudio } from '../hooks/useCreatorStudio';
 import { CreateDeliveryRequestPayload } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { safeStringDisplay } from '../utils/displayHelpers';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const VEHICLE_OPTIONS = [
     {
@@ -29,17 +30,17 @@ const VEHICLE_OPTIONS = [
     {
         id: 2,
         label: 'Tricycle',
-        description: 'Jusqu’à 1 m³ · idéal colis “pas très importants”',
+        description: t('creatorStudioCard.jusqua1MIdealColis'),
     },
     {
         id: 3,
         label: 'Fourgonnette',
-        description: 'Déménagement léger · 3 m³ / 400 kg max',
+        description: t('creatorStudioCard.demenagementLeger3M400'),
     },
     {
         id: 4,
         label: 'Camion 4T+',
-        description: 'Gros volume / tournée multi-points',
+        description: t('creatorStudioCard.grosVolumeTourneeMultipoints'),
     },
 ];
 
@@ -75,7 +76,8 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
     productName,
 }) => {
     const [state, actions] = useCreatorStudio();
-    const [courierError, setCourierError] = useState<string | null>(null);
+        const { t } = useLanguageSafe();
+const [courierError, setCourierError] = useState<string | null>(null);
     const [courierSuccess, setCourierSuccess] = useState<string | null>(null);
     const [pickupAddressInput, setPickupAddressInput] = useState<string>('');
     const [pickupLatitudeInput, setPickupLatitudeInput] = useState<string>('');
@@ -223,7 +225,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
             if (Number.isFinite(normalized)) {
                 return normalized;
             }
-            throw new Error(`Coordonnée ${label} invalide`);
+            throw new Error(t('creatorStudioCard.coordonneeInvalide', { label: label }));
         };
 
         const ensureAddress = (value: string, fallback: string, label: string): string => {
@@ -292,7 +294,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                 weight_kg: usePassengerMode ? 80 : vehicleTypeId >= 3 ? 150 : 10,
                 notes: usePassengerMode
                     ? `Transport passager depuis Studio · ${state.brief || 'Brief court'}`
-                    : state.brief || 'Livraison express depuis le Studio',
+                    : state.brief || t('creatorStudioCard.livraisonExpressDepuisLeStudio'),
                 photos: [],
                 constraints: {
                     studio_template: state.template,
@@ -353,17 +355,17 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
             setCourierError(null);
             const payload = buildCourierPayload();
             const deliveryId = await actions.requestCourier(payload);
-            setCourierSuccess(`Livraison #${deliveryId?.slice(0, 8) ?? ''} créée`);
+            setCourierSuccess(t('creatorStudioCard.livraisonCreee', { deliveryId?_slice(0, 8) ?? '': deliveryId?.slice(0, 8) ?? '' }));
             Alert.alert('Coursier demandé', `Livraison ${deliveryId?.slice(0, 8)} en file de matching.`);
         } catch (err) {
-            const message = (err as Error)?.message ?? 'Impossible de créer la livraison.';
+            const message = (err as Error)?.message ?? t('creatorStudioCard.impossibleDeCreerLaLivraison');
             setCourierError(message);
         }
     }, [actions, buildCourierPayload]);
 
     const handleRefreshTracking = useCallback(() => {
         actions.refreshDeliveryTelemetry().catch((err: any) => {
-            const message = err?.message || "Rafraîchissement tracking impossible pour le moment.";
+            const message = err?.message || t('creatorStudioCard.rafraichissementTrackingImpossiblePourLe');
             setCourierError(message);
             console.error('[CreatorStudioCard] Erreur refresh tracking:', err);
         });
@@ -374,7 +376,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
             setCourierError(null);
             await actions.generateSuggestions();
         } catch (err: any) {
-            const message = err?.message || 'Impossible de générer les suggestions IA.';
+            const message = err?.message || t('creatorStudioCard.impossibleDeGenererLesSuggestions');
             setCourierError(message);
             console.error('[CreatorStudioCard] Erreur suggestions:', err);
             Alert.alert('Erreur', message);
@@ -386,7 +388,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
             setCourierError(null);
             await actions.requestPreview();
         } catch (err: any) {
-            const message = err?.message || 'Impossible de générer la prévisualisation.';
+            const message = err?.message || t('creatorStudioCard.impossibleDeGenererLaPrevisualisation');
             setCourierError(message);
             console.error('[CreatorStudioCard] Erreur preview:', err);
             Alert.alert('Erreur', message);
@@ -397,7 +399,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
         <NativeCard style={styles.card}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.kicker}>Studio créateur Yukpo</Text>
+                    <Text style={styles.kicker}>{t('creatorStudioCard.studioCreateurYukpo')}</Text>
                     <Text style={styles.title}>Preview intelligente</Text>
                     <Text style={styles.subtitle}>
                         {safeStringDisplay(serviceName, 'Service')} · {safeStringDisplay(productName, 'Produit')}
@@ -412,7 +414,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
             {state.sessionLoading && (
                 <View style={styles.sessionStatus}>
                     <ActivityIndicator size="small" color="#e0e9ff" />
-                    <Text style={styles.sessionStatusText}>Connexion au studio…</Text>
+                    <Text style={styles.sessionStatusText}>{t('creatorStudioCard.connexionAuStudio')}</Text>
                 </View>
             )}
             {state.error && !state.sessionLoading && (
@@ -425,7 +427,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
             <Text style={styles.sectionLabel}>Brief & recommandations IA</Text>
             <TextInput
                 style={styles.briefInput}
-                placeholder="Décris ton service, les bénéfices, CTA, délais..."
+                placeholder={t('creatorStudioCard.decrisTonServiceLesBenefices')}
                 placeholderTextColor="rgba(255,255,255,0.4)"
                 multiline
                 value={state.brief}
@@ -494,7 +496,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                 </TouchableOpacity>
                 <View style={styles.templateLockControl}>
                     <Text style={styles.templateLockLabel}>
-                        {state.templateLockEnabled ? 'Verrouillé' : 'Auto'}
+                        {state.templateLockEnabled ? t('creatorStudioCard.verrouille') : 'Auto'}
                     </Text>
                     <Switch
                         value={state.templateLockEnabled}
@@ -508,7 +510,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
             </View>
             <View style={styles.templatesRow}>
                 {state.templatesLoading ? (
-                    <Text style={styles.loadingTemplates}>Chargement des templates…</Text>
+                    <Text style={styles.loadingTemplates}>{t('creatorStudioCard.chargementDesTemplates')}</Text>
                 ) : (
                     templateSpecs.map((spec) => {
                         const active = spec.id === state.template;
@@ -556,7 +558,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                 {state.template ?? '—'}
             </Text>
 
-            <Text style={styles.sectionLabel}>Historique preview</Text>
+            <Text style={styles.sectionLabel}>{t('creatorStudioCard.historiquePreview')}/Text>
             <View style={styles.previewHistoryHeader}>
                 {state.hasPreviewWarnings && (
                     <View style={styles.warningBadge}>
@@ -596,7 +598,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                 {state.previewEventsLoading ? (
                     <ActivityIndicator color="#94a3b8" size="small" />
                 ) : previewHistorySource.length === 0 ? (
-                    <Text style={styles.previewHistoryEmpty}>Aucun aperçu enregistré.</Text>
+                    <Text style={styles.previewHistoryEmpty}>{t('creatorStudioCard.aucunApercuEnregistre')}</Text>
                 ) : (
                     previewHistorySource.slice(0, 4).map((event) => {
                         const warnings = extractPreviewWarnings(event.warnings);
@@ -638,7 +640,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
             {state.previewReady && (
                 <View style={styles.previewReady}>
                     <SafeIcon name="check-circle" size={20} color={modernColors.success} />
-                    <Text style={styles.previewText}>Preview prête · Timeline estimée 6 scènes / 28s</Text>
+                    <Text style={styles.previewText}>{t('creatorStudioCard.previewPreteTimelineEstimee6')}</Text>
                 </View>
             )}
             {!state.previewReady && state.sessionId && (
@@ -646,16 +648,16 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                     Session #{state.sessionId.slice(0, 6)} · appuie sur “Preview 5s” pour générer un aperçu.
                 </Text>
             )}
-            <Text style={styles.sectionLabel}>Pickup & dropoff (formulaire avancé)</Text>
+            <Text style={styles.sectionLabel}>{t('creatorStudioCard.pickupDropoffFormulaireAvance')}</Text>
             <View style={styles.vehicleSelector}>
-                <Text style={styles.formKicker}>Type de véhicule</Text>
+                <Text style={styles.formKicker}>{t('creatorStudioCard.typeDeVehicule')}</Text>
                 {Platform.OS === 'ios' ? (
                     <TouchableOpacity
                         style={styles.pickerButton}
                         onPress={() => {
                             Alert.alert(
-                                'Type de véhicule',
-                                'Choisissez un type de véhicule',
+                                t('creatorStudioCard.typeDeVehicule'),
+                                t('creatorStudioCard.choisissezUnTypeDeVehicule'),
                                 VEHICLE_OPTIONS.map((option) => ({
                                     text: `${option.label} - ${option.description}`,
                                     onPress: () => {
@@ -668,7 +670,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                         }}
                     >
                         <Text style={styles.pickerButtonText}>
-                            {VEHICLE_OPTIONS.find((o) => o.id === vehicleTypeId)?.label || 'Sélectionner...'}
+                            {VEHICLE_OPTIONS.find((o) => o.id === vehicleTypeId)?.label || t('creatorStudioCard.selectionner')}
                         </Text>
                         <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
                     </TouchableOpacity>
@@ -703,7 +705,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
             <View style={styles.locationForm}>
                 <View style={styles.locationBlock}>
                     <View style={styles.locationHeaderRow}>
-                        <Text style={styles.formKicker}>Point de collecte</Text>
+                        <Text style={styles.formKicker}>{t('creatorStudioCard.pointDeCollecte')}</Text>
                         <TouchableOpacity
                             style={styles.gpsButton}
                             onPress={() => setShowPickupGPSModal(true)}
@@ -714,7 +716,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                     </View>
                     <TextInput
                         style={styles.locationInput}
-                        placeholder="Adresse pickup"
+                        placeholder={t('creatorStudioCard.adressePickup')}
                         placeholderTextColor="rgba(255,255,255,0.35)"
                         value={pickupAddressInput}
                         onChangeText={(value) => {
@@ -754,7 +756,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                     </View>
                     <TextInput
                         style={[styles.locationInput, styles.instructionsInput]}
-                        placeholder="Instructions pickup (code portail, étage...)"
+                        placeholder={t('creatorStudioCard.instructionsPickupCodePortailEtage')}
                         placeholderTextColor="rgba(255,255,255,0.35)"
                         value={pickupInstructions}
                         onChangeText={(value) => {
@@ -767,7 +769,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
 
                 <View style={styles.locationBlock}>
                     <View style={styles.locationHeaderRow}>
-                        <Text style={styles.formKicker}>Point de livraison</Text>
+                        <Text style={styles.formKicker}>{t('creatorStudioCard.pointDeLivraison')}</Text>
                         <TouchableOpacity
                             style={styles.gpsButton}
                             onPress={() => setShowDropoffGPSModal(true)}
@@ -778,7 +780,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                     </View>
                     <TextInput
                         style={styles.locationInput}
-                        placeholder="Adresse dropoff"
+                        placeholder={t('creatorStudioCard.adresseDropoff')}
                         placeholderTextColor="rgba(255,255,255,0.35)"
                         value={dropoffAddressInput}
                         onChangeText={(value) => {
@@ -831,7 +833,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
 
                 <View style={styles.passengerToggle}>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.passengerTitle}>Mode transport passager</Text>
+                        <Text style={styles.passengerTitle}>{t('creatorStudioCard.modeTransportPassager')}/Text>
                         <Text style={styles.passengerSubtitle}>
                             Utilise la même file delivery mais taggue la requête pour transporter un passager.
                         </Text>
@@ -850,7 +852,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                 <View style={styles.scheduleBlock}>
                     <View style={styles.scheduleHeader}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.passengerTitle}>Pickup programmé</Text>
+                            <Text style={styles.passengerTitle}>{t('creatorStudioCard.pickupProgramme')}</Text>
                             <Text style={styles.passengerSubtitle}>
                                 Planifie la prise en charge (ex. “demain 14h”) pour laisser le matching doux.
                             </Text>
@@ -884,7 +886,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                 <View style={styles.billingBlock}>
                     <View style={styles.scheduleHeader}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.passengerTitle}>Livraison incluse dans le tarif</Text>
+                            <Text style={styles.passengerTitle}>{t('creatorStudioCard.livraisonIncluseDansLeTarif')}/Text>
                             <Text style={styles.passengerSubtitle}>
                                 Aucun débit client (transport facturé au marchand / fournisseur).
                             </Text>
@@ -902,7 +904,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                     {billingInclusive && (
                         <TextInput
                             style={styles.locationInput}
-                            placeholder="Nom du marchand / service"
+                            placeholder={t('creatorStudioCard.nomDuMarchandService')}
                             placeholderTextColor="rgba(255,255,255,0.35)"
                             value={billingPartnerLabelValue}
                             onChangeText={(value) => {
@@ -941,7 +943,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                         disabled={!state.deliveryId}
                     >
                         <SafeIcon name="refresh-cw" size={14} color="#93c5fd" />
-                        <Text style={styles.secondaryActionText}>Rafraîchir tracking</Text>
+                        <Text style={styles.secondaryActionText}>{t('creatorStudioCard.rafraichirTracking')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[
@@ -951,7 +953,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                         onPress={() => {
                             actions
                                 .shareDropoffLink()
-                                .then(() => setCourierSuccess('Lien destinataire généré.'))
+                                .then(() => setCourierSuccess(t('creatorStudioCard.lienDestinataireGenere')))
                                 .catch(() => {
                                     /* erreur déjà gérée dans le hook */
                                 });
@@ -966,7 +968,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                 </View>
                 {state.dropoffShareLink && (
                     <View style={styles.shareLink}>
-                        <Text style={styles.shareLinkLabel}>Lien client à partager</Text>
+                        <Text style={styles.shareLinkLabel}>{t('creatorStudioCard.lienClientAPartager')}</Text>
                         <Text style={styles.shareLinkValue} selectable numberOfLines={2}>
                             {state.dropoffShareLink}
                         </Text>
@@ -980,7 +982,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                     <View style={styles.deliveryHeaderRow}>
                         <View style={styles.deliveryHeaderLeft}>
                             <SafeIcon name="map-pin" size={16} color={modernColors.primary} />
-                            <Text style={styles.deliveryTitle}>Livraison temps réel</Text>
+                            <Text style={styles.deliveryTitle}>{t('creatorStudioCard.livraisonTempsReel')}</Text>
                         </View>
                         <View
                             style={[
@@ -1008,7 +1010,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                             </Text>
                         </View>
                         <View style={styles.deliveryStat}>
-                            <Text style={styles.deliveryStatLabel}>Tarif estimé</Text>
+                            <Text style={styles.deliveryStatLabel}>{t('creatorStudioCard.tarifEstime')}</Text>
                             <Text style={styles.deliveryStatValue}>
                                 {formatCurrency(state.deliveryPricing?.estimated)}
                             </Text>
@@ -1062,7 +1064,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                         }
                         : undefined
                 }
-                title="Sélection du point de collecte"
+                title={t('creatorStudioCard.selectionDuPointDeCollecte')}
                 allowZoneSelection={false}
             />
 
@@ -1089,7 +1091,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                         }
                         : undefined
                 }
-                title="Sélection du point de livraison"
+                title={t('creatorStudioCard.selectionDuPointDeLivraison')}
                 allowZoneSelection={false}
             />
         </NativeCard>

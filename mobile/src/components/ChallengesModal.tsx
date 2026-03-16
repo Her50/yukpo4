@@ -7,6 +7,7 @@ import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacit
 import gamificationService from '../services/gamificationService';
 import { modernColors } from '../theme/modernTheme';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Challenge {
     id: string;
@@ -32,7 +33,8 @@ export const ChallengesModal: React.FC<ChallengesModalProps> = ({
     onClose,
     userId,
 }) => {
-    const [challenges, setChallenges] = useState<Challenge[]>([]);
+        const { t } = useLanguageSafe();
+const [challenges, setChallenges] = useState<Challenge[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -130,12 +132,12 @@ export const ChallengesModal: React.FC<ChallengesModalProps> = ({
                                         </View>
 
                                         <View style={styles.rewardContainer}>
-                                            <Text style={styles.rewardLabel}>Récompense:</Text>
+                                            <Text style={styles.rewardLabel}>{t('challenges.recompense')}</Text>
                                             <Text style={styles.rewardValue}>+{challenge.reward != null ? String(challenge.reward) : '0'} pts</Text>
                                         </View>
 
                                         {isExpired && !challenge.completed && (
-                                            <Text style={styles.expiredText}>Expiré</Text>
+                                            <Text style={styles.expiredText}>{t('challenges.expire')}</Text>
                                         )}
                                     </View>
                                 );

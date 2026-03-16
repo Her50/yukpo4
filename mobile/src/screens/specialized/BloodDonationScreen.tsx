@@ -242,7 +242,7 @@ const BloodDonationScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color="#DC2626" />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('bloodDonation.chargement')}</Text>
             </View>
         );
     }
@@ -265,8 +265,8 @@ const BloodDonationScreen: React.FC = () => {
             <View style={styles.tabContainer}>
                 {[
                     { key: 'requests' as TabType, label: 'Demandes', icon: 'alert-circle' },
-                    { key: 'profile' as TabType, label: 'Mon Profil', icon: 'user' },
-                    { key: 'compatibility' as TabType, label: 'Compatibilité', icon: 'check-circle' },
+                    { key: 'profile' as TabType, label: t('bloodDonation.monProfil'), icon: 'user' },
+                    { key: 'compatibility' as TabType, label: t('bloodDonation.compatibilite'), icon: 'check-circle' },
                 ].map(tab => (
                     <TouchableOpacity
                         key={tab.key}
@@ -303,7 +303,7 @@ const BloodDonationScreen: React.FC = () => {
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="heart" size={64} color="#D1D5DB" />
-                            <Text style={styles.emptyTitle}>Aucune demande active</Text>
+                            <Text style={styles.emptyTitle}>{t('bloodDonation.aucuneDemandeActive')}</Text>
                             <Text style={styles.emptyText}>
                                 Il n'y a pas de demande de don de sang en cours. Revenez régulièrement.
                             </Text>
@@ -333,7 +333,7 @@ const BloodDonationScreen: React.FC = () => {
                     <NativeCard style={styles.profileCard}>
                         <View style={styles.profileCardHeader}>
                             <SafeIcon name="droplet" size={20} color="#DC2626" />
-                            <Text style={styles.profileCardTitle}>Mon groupe sanguin</Text>
+                            <Text style={styles.profileCardTitle}>{t('bloodDonation.monGroupeSanguin')}</Text>
                         </View>
 
                         {selectedBloodGroup ? (
@@ -343,7 +343,7 @@ const BloodDonationScreen: React.FC = () => {
                                     style={styles.changeGroupButton}
                                     onPress={() => setShowGroupSelector(true)}
                                 >
-                                    <Text style={styles.changeGroupText}>Modifier</Text>
+                                    <Text style={styles.changeGroupText}>{t('bloodDonationScreen.modifier')}</Text>
                                 </TouchableOpacity>
                             </View>
                         ) : (
@@ -352,7 +352,7 @@ const BloodDonationScreen: React.FC = () => {
                                 onPress={() => setShowGroupSelector(true)}
                             >
                                 <SafeIcon name="plus" size={20} color="#DC2626" />
-                                <Text style={styles.addGroupText}>Enregistrer mon groupe sanguin</Text>
+                                <Text style={styles.addGroupText}>{t('bloodDonationScreen.enregistrerMonGroupeSanguin')}</Text>
                             </TouchableOpacity>
                         )}
                     </NativeCard>
@@ -362,7 +362,7 @@ const BloodDonationScreen: React.FC = () => {
                         <NativeCard style={styles.profileCard}>
                             <View style={styles.profileCardHeader}>
                                 <SafeIcon name="calendar" size={20} color="#6366F1" />
-                                <Text style={styles.profileCardTitle}>Historique</Text>
+                                <Text style={styles.profileCardTitle}>{t('bloodDonation.historique')}/Text>
                             </View>
                             {myBloodGroups[0].last_donation_date ? (
                                 <View>
@@ -384,7 +384,7 @@ const BloodDonationScreen: React.FC = () => {
                                             fontSize: 14,
                                         }}>
                                             {myBloodGroups[0].can_donate
-                                                ? 'Vous êtes éligible pour donner'
+                                                ? t('bloodDonationScreen.vousEtesEligiblePourDonner')
                                                 : `Prochain don possible: ${myBloodGroups[0].next_eligible_date
                                                     ? new Date(myBloodGroups[0].next_eligible_date).toLocaleDateString('fr-FR')
                                                     : 'Date non disponible'
@@ -394,11 +394,11 @@ const BloodDonationScreen: React.FC = () => {
                                     </View>
                                 </View>
                             ) : (
-                                <Text style={styles.profileInfoText}>Aucun don enregistré</Text>
+                                <Text style={styles.profileInfoText}>{t('bloodDonation.aucunDonEnregistre')}</Text>
                             )}
 
                             <NativeButton
-                                title="Enregistrer un don"
+                                title={t('bloodDonationScreen.enregistrerUnDon')}
                                 onPress={() => {
                                     Alert.alert(
                                         t('bloodDonation.registerDonation'),
@@ -450,7 +450,7 @@ const BloodDonationScreen: React.FC = () => {
                     <NativeCard style={styles.profileCard}>
                         <View style={styles.profileCardHeader}>
                             <SafeIcon name="check-circle" size={20} color="#10B981" />
-                            <Text style={styles.profileCardTitle}>Tableau de compatibilité</Text>
+                            <Text style={styles.profileCardTitle}>{t('bloodDonation.tableauDeCompatibilite')}</Text>
                         </View>
 
                         {!selectedBloodGroup ? (
@@ -470,7 +470,7 @@ const BloodDonationScreen: React.FC = () => {
 
                                 {/* Donneur universel info */}
                                 <View style={styles.compatibilitySection}>
-                                    <Text style={styles.compatibilitySectionTitle}>Donner à :</Text>
+                                    <Text style={styles.compatibilitySectionTitle}>{t('bloodDonation.donnerA')}</Text>
                                     <View style={styles.compatibilityChips}>
                                         {getCanDonateTo(selectedBloodGroup).map(group => (
                                             <View key={group} style={styles.compatibleChip}>
@@ -496,12 +496,12 @@ const BloodDonationScreen: React.FC = () => {
 
                     {/* Tableau complet */}
                     <NativeCard style={styles.profileCard}>
-                        <Text style={styles.profileCardTitle}>Tableau complet</Text>
+                        <Text style={styles.profileCardTitle}>{t('bloodDonation.tableauComplet')}/Text>
                         <View style={styles.compatibilityTable}>
                             <View style={styles.tableHeader}>
                                 <Text style={[styles.tableCell, styles.tableHeaderCell]}>Groupe</Text>
-                                <Text style={[styles.tableCell, styles.tableHeaderCell]}>Donne à</Text>
-                                <Text style={[styles.tableCell, styles.tableHeaderCell]}>Reçoit de</Text>
+                                <Text style={[styles.tableCell, styles.tableHeaderCell]}>{t('bloodDonation.donneA')}</Text>
+                                <Text style={[styles.tableCell, styles.tableHeaderCell]}>{t('bloodDonation.recoitDe')}</Text>
                             </View>
                             {BLOOD_GROUPS.map(group => (
                                 <View key={group} style={[
@@ -526,7 +526,7 @@ const BloodDonationScreen: React.FC = () => {
             <Modal visible={showGroupSelector} transparent animationType="slide">
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Sélectionnez votre groupe sanguin</Text>
+                        <Text style={styles.modalTitle}>{t('bloodDonation.selectionnezVotreGroupeSanguin')}</Text>
                         <View style={styles.groupGrid}>
                             {BLOOD_GROUPS.map(group => (
                                 <TouchableOpacity
@@ -552,7 +552,7 @@ const BloodDonationScreen: React.FC = () => {
                             style={styles.modalCloseButton}
                             onPress={() => setShowGroupSelector(false)}
                         >
-                            <Text style={styles.modalCloseText}>Fermer</Text>
+                            <Text style={styles.modalCloseText}>{t('bloodDonationScreen.fermer')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -563,7 +563,7 @@ const BloodDonationScreen: React.FC = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <SafeIcon name="heart" size={32} color="#DC2626" />
-                        <Text style={styles.modalTitle}>Répondre à la demande</Text>
+                        <Text style={styles.modalTitle}>{t('bloodDonation.repondreALaDemande')}</Text>
                         {selectedRequest && (
                             <View style={styles.respondModalContent}>
                                 <Text style={styles.respondModalText}>
@@ -580,7 +580,7 @@ const BloodDonationScreen: React.FC = () => {
                             </View>
                         )}
                         <NativeButton
-                            title={responding ? 'Envoi en cours...' : 'Confirmer ma disponibilité'}
+                            title={responding ? 'Envoi en cours...' : t('bloodDonationScreen.confirmerMaDisponibilite')}
                             onPress={handleConfirmResponse}
                             disabled={responding}
                             variant="primary"
@@ -591,7 +591,7 @@ const BloodDonationScreen: React.FC = () => {
                             style={styles.modalCloseButton}
                             onPress={() => setShowRespondModal(false)}
                         >
-                            <Text style={styles.modalCloseText}>Annuler</Text>
+                            <Text style={styles.modalCloseText}>{t('bloodDonationScreen.annuler')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

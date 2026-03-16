@@ -23,6 +23,7 @@ import VoiceSearchButton from '../components/VoiceSearchButton';
 import { useLocation } from '../contexts/LocationContext';
 import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SpecializedSearchScreenParams {
     specializedType: string;
@@ -33,12 +34,12 @@ interface SpecializedSearchScreenParams {
 // ✅ NOUVEAU: Fonction pour générer des exemples de recherche adaptés au service spécialisé
 const getPlaceholderExample = (specializedType: string): string => {
     const examples: Record<string, string> = {
-        'pharmacie': 'Ex: paracétamol 500mg, pharmacie de garde, médicament contre la fièvre...',
-        'hopital_clinique': 'Ex: urologue disponible, consultation pédiatrie, urgence 24h...',
-        'laboratoire_imagerie': 'Ex: prise de sang, radiographie, analyse urinaire, échographie...',
-        'agence_voyage': 'Ex: billet avion Douala-Paris, réservation hôtel, visa touristique...',
-        'covoiturage': 'Ex: trajet Douala-Yaoundé, covoiturage quotidien, partage frais route...',
-        'taxi_ville': 'Ex: taxi aéroport, course centre-ville, transport urgence...',
+        'pharmacie': t('specializedSearchScreen.exParacetamol500mgPharmacieDeGarde'),
+        'hopital_clinique': t('specializedSearchScreen.exUrologueDisponibleConsultationPediatrieUrgence'),
+        'laboratoire_imagerie': t('specializedSearchScreen.exPriseDeSangRadiographieAnalyse'),
+        'agence_voyage': t('specializedSearchScreen.exBilletAvionDoualaparisReservationHotel'),
+        'covoiturage': t('specializedSearchScreen.exTrajetDoualayaoundeCovoiturageQuotidienPartage'),
+        'taxi_ville': t('specializedSearchScreen.exTaxiAeroportCourseCentrevilleTransport'),
         'banque_sang': 'Ex: don de sang, groupe sanguin O+, collecte mobile...',
     };
 
@@ -47,6 +48,7 @@ const getPlaceholderExample = (specializedType: string): string => {
 
 const SpecializedSearchScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { location: userLocation } = useLocation();
 
@@ -181,9 +183,9 @@ const SpecializedSearchScreen: React.FC = () => {
     if (!specializedType || !serviceName) {
         return (
             <View style={styles.container}>
-                <Text style={styles.errorText}>Paramètres manquants</Text>
+                <Text style={styles.errorText}>{t('specializedSearch.parametresManquants')}</Text>
                 <NativeButton
-                    title="Retour"
+                    title={t('specializedSearchScreen.retour')}
                     onPress={() => navigation.goBack()}
                     variant="primary"
                 />
@@ -206,7 +208,7 @@ const SpecializedSearchScreen: React.FC = () => {
                         <Text style={styles.serviceIcon}>{serviceIcon}</Text>
                     )}
                     <Text style={styles.serviceTitle}>{serviceName}</Text>
-                    <Text style={styles.serviceSubtitle}>Recherche spécialisée</Text>
+                    <Text style={styles.serviceSubtitle}>{t('specializedSearch.rechercheSpecialisee')}</Text>
                 </View>
             </View>
 
@@ -235,7 +237,7 @@ const SpecializedSearchScreen: React.FC = () => {
             <View style={styles.formContainer}>
                 {/* ✅ NOUVEAU Phase 4.2: Bouton filtres */}
                 <View style={styles.filtersHeader}>
-                    <Text style={styles.filtersTitle}>Filtres de recherche</Text>
+                    <Text style={styles.filtersTitle}>{t('specializedSearch.filtresDeRecherche')}/Text>
                     <TouchableOpacity
                         style={styles.filtersButton}
                         onPress={() => setShowFilters(true)}
@@ -275,7 +277,7 @@ const SpecializedSearchScreen: React.FC = () => {
 
                 {/* GPS */}
                 <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Localisation (optionnel)</Text>
+                    <Text style={styles.label}>{t('specializedSearch.localisationOptionnel')}/Text>
                     <TouchableOpacity
                         style={styles.gpsButton}
                         onPress={() => setShowGPSModal(true)}
@@ -380,7 +382,7 @@ const SpecializedSearchScreen: React.FC = () => {
                 onClose={() => setShowGPSModal(false)}
                 onSelect={handleGPSSelect}
                 currentLocation={gpsData || undefined}
-                title="Sélectionner la position GPS"
+                title={t('specializedSearch.selectionnerLaPositionGps')}
             />
 
             {/* ✅ NOUVEAU Phase 4.2: Modal filtres */}

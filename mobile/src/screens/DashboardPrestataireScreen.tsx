@@ -9,6 +9,7 @@ import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { userApi } from '../services/api';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ServiceStats {
   id: string;
@@ -45,6 +46,7 @@ interface DashboardData {
 
 const DashboardPrestataireScreen: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -168,7 +170,7 @@ const DashboardPrestataireScreen: React.FC = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Chargement du dashboard...</Text>
+        <Text style={styles.loadingText}>{t('dashboardPrestataire.chargementDuDashboard')}</Text>
       </View>
     );
   }
@@ -177,7 +179,7 @@ const DashboardPrestataireScreen: React.FC = () => {
     return (
       <View style={styles.errorContainer}>
         <SafeIcon name="inbox" size={48} color="#D1D5DB" />
-        <Text style={styles.errorText}>Aucune donn�e disponible</Text>
+        <Text style={styles.errorText}>{t('dashboardPrestataire.aucuneDonneDisponible')}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={loadDashboardData}>
           <Text style={styles.retryButtonText}>R�essayer</Text>
         </TouchableOpacity>
@@ -189,8 +191,8 @@ const DashboardPrestataireScreen: React.FC = () => {
     <ScrollView style={styles.container}>
       {/* En-t�te avec s�lecteur de p�riode */}
       <View style={styles.header}>
-        <Text style={styles.title}>Dashboard Prestataire</Text>
-        <Text style={styles.subtitle}>Statistiques et performances de vos services</Text>
+        <Text style={styles.title}>{t('dashboardPrestataire.dashboardPrestataire')}/Text>
+        <Text style={styles.subtitle}>{t('dashboardPrestataire.statistiquesEtPerformancesDeVos')}/Text>
 
         <View style={styles.periodSelector}>
           {(['7d', '30d', '90d'] as const).map((period) => (
@@ -221,7 +223,7 @@ const DashboardPrestataireScreen: React.FC = () => {
           </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{dashboardData.totalServices}</Text>
-            <Text style={styles.statLabel}>Services totaux</Text>
+            <Text style={styles.statLabel}>{t('dashboardPrestataire.servicesTotaux')}/Text>
           </View>
         </View>
 
@@ -231,7 +233,7 @@ const DashboardPrestataireScreen: React.FC = () => {
           </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{dashboardData.activeServices}</Text>
-            <Text style={styles.statLabel}>Services actifs</Text>
+            <Text style={styles.statLabel}>{t('dashboardPrestataire.servicesActifs')}/Text>
           </View>
         </View>
 
@@ -261,7 +263,7 @@ const DashboardPrestataireScreen: React.FC = () => {
           </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{dashboardData.averageRating.toFixed(1)}</Text>
-            <Text style={styles.statLabel}>Note moyenne</Text>
+            <Text style={styles.statLabel}>{t('dashboardPrestataire.noteMoyenne')}/Text>
           </View>
         </View>
 
@@ -271,7 +273,7 @@ const DashboardPrestataireScreen: React.FC = () => {
           </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{formatCurrency(dashboardData.budgetConsumed)}</Text>
-            <Text style={styles.statLabel}>Budget utilisé</Text>
+            <Text style={styles.statLabel}>{t('dashboardPrestataire.budgetUtilise')}</Text>
           </View>
         </View>
       </View>
@@ -289,7 +291,7 @@ const DashboardPrestataireScreen: React.FC = () => {
               <SafeIcon name="plus-circle" size={28} color="#10B981" />
             </View>
             <Text style={styles.actionButtonTitle}>Nouvelle</Text>
-            <Text style={styles.actionButtonSubtitle}>Publicité</Text>
+            <Text style={styles.actionButtonSubtitle}>{t('dashboardPrestataire.publicite')}</Text>
             <View style={styles.actionButtonArrow}>
               <SafeIcon name="chevron-right" size={16} color="#10B981" />
             </View>
@@ -304,7 +306,7 @@ const DashboardPrestataireScreen: React.FC = () => {
               <SafeIcon name="bar-chart-2" size={28} color="#6366F1" />
             </View>
             <Text style={styles.actionButtonTitle}>Analytics</Text>
-            <Text style={styles.actionButtonSubtitle}>Vidéos</Text>
+            <Text style={styles.actionButtonSubtitle}>{t('dashboardPrestataire.videos')}</Text>
             <View style={styles.actionButtonArrow}>
               <SafeIcon name="chevron-right" size={16} color="#6366F1" />
             </View>
@@ -314,7 +316,7 @@ const DashboardPrestataireScreen: React.FC = () => {
 
       {/* Services les mieux performants */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Services les mieux performants</Text>
+        <Text style={styles.sectionTitle}>{t('dashboardPrestataire.servicesLesMieuxPerformants')}/Text>
 
         {dashboardData.topPerformingServices.map((service, index) => (
           <View key={service.id} style={styles.serviceItem}>
@@ -347,7 +349,7 @@ const DashboardPrestataireScreen: React.FC = () => {
 
       {/* Activité récente */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Activité récente</Text>
+        <Text style={styles.sectionTitle}>{t('dashboardPrestataire.activiteRecente')}</Text>
 
         {dashboardData.recentActivity.map((activity, index) => (
           <View key={index} style={styles.activityItem}>
@@ -366,7 +368,7 @@ const DashboardPrestataireScreen: React.FC = () => {
               <Text style={styles.activityText}>
                 {activity.type === 'view' ? 'Vue' :
                   activity.type === 'message' ? 'Message' :
-                    activity.type === 'call' ? 'Appel' : 'Activité'} sur {activity.service}
+                    activity.type === 'call' ? 'Appel' : t('dashboardPrestataireScreen.activite')} sur {activity.service}
               </Text>
               <Text style={styles.activityTime}>Il y a {activity.time}</Text>
             </View>
@@ -379,26 +381,26 @@ const DashboardPrestataireScreen: React.FC = () => {
         <Text style={styles.sectionTitle}>Actions rapides</Text>
 
         <TouchableOpacity style={styles.actionButton} onPress={loadDashboardData}>
-          <Text style={styles.actionButtonText}>Actualiser les données</Text>
+          <Text style={styles.actionButtonText}>{t('dashboardPrestataire.actualiserLesDonnees')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Créer un nouveau service</Text>
+          <Text style={styles.actionButtonText}>{t('dashboardPrestataire.creerUnNouveauService')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={() => (navigation as any).navigate('AnalyticsDashboard')}>
-          <Text style={styles.actionButtonText}>Voir les statistiques détaillées</Text>
+          <Text style={styles.actionButtonText}>{t('dashboardPrestataire.voirLesStatistiquesDetaillees')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={() => (navigation as any).navigate('WalletFinancial')}>
-          <Text style={styles.actionButtonText}>💰 Mon portefeuille financier</Text>
+          <Text style={styles.actionButtonText}>{t('dashboardPrestataire.monPortefeuilleFinancier')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.actionButton, styles.liveButton]}
           onPress={() => navigation.navigate('StartLive' as any)}
         >
-          <Text style={styles.actionButtonText}>🎥 Démarrer un Live</Text>
+          <Text style={styles.actionButtonText}>{t('dashboardPrestataire.demarrerUnLive')}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

@@ -5,6 +5,7 @@ import { useShoppingBasket } from '../../hooks/useShoppingBasket';
 import { modernColors } from '../../theme/modernTheme';
 import { NativeButton, NativeCard } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const ShoppingBasketCard: React.FC = () => {
     const { items, removeProduct, updateProduct, estimate, currency, resetBasket } = useShoppingBasket();
@@ -12,7 +13,7 @@ const ShoppingBasketCard: React.FC = () => {
     return (
         <NativeCard style={styles.card}>
             <View style={styles.headerRow}>
-                <Text style={styles.title}>Panier supermarché</Text>
+                <Text style={styles.title}>{t('shoppingBasketCard.panierSupermarche')}</Text>
                 <Text style={styles.count}>{items.length} produit(s)</Text>
             </View>
 
@@ -30,7 +31,7 @@ const ShoppingBasketCard: React.FC = () => {
                         <View style={styles.itemContent}>
                             <Text style={styles.itemLabel}>{item.label}</Text>
                             <Text style={styles.itemMeta}>
-                                {item.quantity} {item.unit || 'unités'}
+                                {item.quantity} {item.unit || t('shoppingBasketCard.unites')}
                                 {item.estimatedPrice
                                     ? ` • ~${item.estimatedPrice.toFixed(0)} ${currency ?? 'XAF'}`
                                     : ''}

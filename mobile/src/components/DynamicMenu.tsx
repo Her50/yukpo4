@@ -3,6 +3,7 @@ import { ROUTES_CONFIG, Role } from "@/routes/routes";
 import React from 'react';
 import { Text, View } from 'react-native';
 import { isAdminRole } from "../utils/roleHelpers"; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Props {
   role: Role;
@@ -36,7 +37,7 @@ const DynamicMenu: React.FC<Props> = ({ role }) => {
 
       {role !== 'public' && (
         <section>
-          <Text style="font-bold text-sm text-gray-500 mb-1">👤 Utilisateur</Text>
+          <Text style="font-bold text-sm text-gray-500 mb-1">{t('dynamicMenu.utilisateur')}/Text>
           {routesByRole.user.map((r) => (
             <a
               href={String(r.path)}

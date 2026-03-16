@@ -4,6 +4,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 import { NativeButton } from '../SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface IntelligentMatchingFiltersProps {
     onApply: (filters: MatchingFilters) => void;
@@ -24,7 +25,8 @@ export const IntelligentMatchingFilters: React.FC<IntelligentMatchingFiltersProp
     onApply,
     initialFilters,
 }) => {
-    const [filters, setFilters] = useState<MatchingFilters>(
+        const { t } = useLanguageSafe();
+const [filters, setFilters] = useState<MatchingFilters>(
         initialFilters || {
             fumeur_autorise: false,
             animaux_autorises: false,
@@ -40,10 +42,10 @@ export const IntelligentMatchingFilters: React.FC<IntelligentMatchingFiltersProp
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Préférences de recherche</Text>
+            <Text style={styles.title}>{t('intelligentMatchingFilters.preferencesDeRecherche')}</Text>
 
             <View style={styles.filterRow}>
-                <Text style={styles.label}>Fumeur autorisé</Text>
+                <Text style={styles.label}>{t('intelligentMatchingFilters.fumeurAutorise')}</Text>
                 <Switch
                     value={filters.fumeur_autorise}
                     onValueChange={(value) => updateFilter('fumeur_autorise', value)}
@@ -51,7 +53,7 @@ export const IntelligentMatchingFilters: React.FC<IntelligentMatchingFiltersProp
             </View>
 
             <View style={styles.filterRow}>
-                <Text style={styles.label}>Animaux autorisés</Text>
+                <Text style={styles.label}>{t('intelligentMatchingFilters.animauxAutorises')}</Text>
                 <Switch
                     value={filters.animaux_autorises}
                     onValueChange={(value) => updateFilter('animaux_autorises', value)}
@@ -59,7 +61,7 @@ export const IntelligentMatchingFilters: React.FC<IntelligentMatchingFiltersProp
             </View>
 
             <View style={styles.filterRow}>
-                <Text style={styles.label}>Bagages autorisés</Text>
+                <Text style={styles.label}>{t('intelligentMatchingFilters.bagagesAutorises')}</Text>
                 <Switch
                     value={filters.bagages_autorises}
                     onValueChange={(value) => updateFilter('bagages_autorises', value)}
@@ -67,7 +69,7 @@ export const IntelligentMatchingFilters: React.FC<IntelligentMatchingFiltersProp
             </View>
 
             <View style={styles.filterRow}>
-                <Text style={styles.label}>Climatisation préférée</Text>
+                <Text style={styles.label}>{t('intelligentMatchingFilters.climatisationPreferee')}</Text>
                 <Switch
                     value={filters.climatisation_preferee}
                     onValueChange={(value) => updateFilter('climatisation_preferee', value)}
@@ -75,7 +77,7 @@ export const IntelligentMatchingFilters: React.FC<IntelligentMatchingFiltersProp
             </View>
 
             <View style={styles.filterRow}>
-                <Text style={styles.label}>Horaire flexible (±30min)</Text>
+                <Text style={styles.label}>{t('intelligentMatchingFilters.horaireFlexible30min')}/Text>
                 <Switch
                     value={filters.horaire_flexible}
                     onValueChange={(value) => updateFilter('horaire_flexible', value)}

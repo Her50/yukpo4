@@ -11,6 +11,7 @@ import {
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -42,7 +43,8 @@ const CovoiturageMapView: React.FC<CovoiturageMapViewProps> = ({
     radiusKm = 50
 }) => {
     const mapRef = useRef<MapView>(null);
-    const [selectedTrip, setSelectedTrip] = useState<CovoiturageTrip | null>(null);
+        const { t } = useLanguageSafe();
+const [selectedTrip, setSelectedTrip] = useState<CovoiturageTrip | null>(null);
     const [mapRegion, setMapRegion] = useState({
         latitude: currentLocation?.latitude || 4.0511, // Douala par défaut
         longitude: currentLocation?.longitude || 9.7679,
@@ -129,7 +131,7 @@ const CovoiturageMapView: React.FC<CovoiturageMapViewProps> = ({
                     >
                         <View style={styles.markerContainer}>
                             <View style={styles.markerDot} />
-                            <Text style={styles.markerLabel}>Départ</Text>
+                            <Text style={styles.markerLabel}>{t('covoiturageMapView.depart')}</Text>
                         </View>
                     </Marker>
 
@@ -141,7 +143,7 @@ const CovoiturageMapView: React.FC<CovoiturageMapViewProps> = ({
                         >
                             <View style={[styles.markerContainer, styles.markerDestination]}>
                                 <View style={[styles.markerDot, styles.markerDotDestination]} />
-                                <Text style={styles.markerLabel}>Arrivée</Text>
+                                <Text style={styles.markerLabel}>{t('covoiturageMapView.arrivee')}</Text>
                             </View>
                         </Marker>
                     )}
@@ -176,7 +178,7 @@ const CovoiturageMapView: React.FC<CovoiturageMapViewProps> = ({
                 {currentLocation && (
                     <Marker
                         coordinate={currentLocation}
-                        title="Ma position"
+                        title={t('covoiturageMapView.maPosition')}
                     >
                         <View style={styles.currentLocationMarker}>
                             <View style={styles.currentLocationDot} />
@@ -238,7 +240,7 @@ const CovoiturageMapView: React.FC<CovoiturageMapViewProps> = ({
                                 setSelectedTrip(null);
                             }}
                         >
-                            <Text style={styles.viewDetailsText}>Voir détails</Text>
+                            <Text style={styles.viewDetailsText}>{t('covoiturageMapView.voirDetails')}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -248,16 +250,16 @@ const CovoiturageMapView: React.FC<CovoiturageMapViewProps> = ({
             <View style={styles.legend}>
                 <View style={styles.legendItem}>
                     <View style={[styles.legendDot, styles.legendDotDepart]} />
-                    <Text style={styles.legendText}>Départ</Text>
+                    <Text style={styles.legendText}>{t('covoiturageMapView.depart')}</Text>
                 </View>
                 <View style={styles.legendItem}>
                     <View style={[styles.legendDot, styles.legendDotDestination]} />
-                    <Text style={styles.legendText}>Arrivée</Text>
+                    <Text style={styles.legendText}>{t('covoiturageMapView.arrivee')}</Text>
                 </View>
                 {currentLocation && (
                     <View style={styles.legendItem}>
                         <View style={[styles.legendDot, styles.legendDotCurrent]} />
-                        <Text style={styles.legendText}>Ma position</Text>
+                        <Text style={styles.legendText}>{t('covoiturageMapView.maPosition')}</Text>
                     </View>
                 )}
             </View>

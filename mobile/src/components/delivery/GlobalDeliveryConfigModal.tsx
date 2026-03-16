@@ -349,8 +349,8 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
 
             if (successCount === totalCount) {
                 Alert.alert(
-                    '✅ Succès',
-                    `Configuration de livraison appliquée avec succès à ${totalCount} produit(s)`,
+                    t('globalDeliveryConfigModal.succes'),
+                    t('globalDeliveryConfigModal.configurationDeLivraisonAppliqueeAvecSucces', { totalCount: totalCount }),
                     [
                         {
                             text: 'OK',
@@ -363,8 +363,8 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                 );
             } else {
                 Alert.alert(
-                    '⚠️ Succès partiel',
-                    `Configuration appliquée à ${successCount}/${totalCount} produit(s)`,
+                    t('globalDeliveryConfigModal.succesPartiel'),
+                    t('globalDeliveryConfigModal.configurationAppliqueeAProduits', { successCount: successCount, totalCount: totalCount }),
                     [
                         {
                             text: 'OK',
@@ -406,7 +406,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                 <Text style={styles.headerSubtitle}>
                                     {validProductsCount === 1 
                                         ? `1 produit sélectionné`
-                                        : `${validProductsCount} produits sélectionnés - Configuration identique pour tous`
+                                        : t('globalDeliveryConfigModal.produitsSelectionnesConfigurationIdentiquePourTous', { validProductsCount: validProductsCount })
                                     }
                                 </Text>
                             )}
@@ -431,17 +431,17 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                         const productNameDisplay = (() => {
                                             if (!product.productName) return 'Produit sans nom';
                                             if (typeof product.productName === 'string') {
-                                                return product.productName.trim() || 'Produit sans nom';
+                                                return product.productName.trim() || t('globalDeliveryConfig.produitSansNom');
                                             }
-                                            return String(product.productName) || 'Produit sans nom';
+                                            return String(product.productName) || t('globalDeliveryConfig.produitSansNom');
                                         })();
 
                                         const serviceNameDisplay = (() => {
                                             if (!product.serviceName) return 'Service sans nom';
                                             if (typeof product.serviceName === 'string') {
-                                                return product.serviceName.trim() || 'Service sans nom';
+                                                return product.serviceName.trim() || t('globalDeliveryConfig.serviceSansNom');
                                             }
-                                            return String(product.serviceName) || 'Service sans nom';
+                                            return String(product.serviceName) || t('globalDeliveryConfig.serviceSansNom');
                                         })();
 
                                         return (
@@ -464,7 +464,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
 
                         {/* Adresse de départ avec GPS */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Adresse de départ *</Text>
+                            <Text style={styles.label}>{t('globalDeliveryConfig.adresseDeDepart')}</Text>
                             
                             {/* Lieu de stock optionnel */}
                             {Array.isArray(storageLocations) && storageLocations.length > 0 && (
@@ -476,7 +476,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                             'Sélectionnez un lieu de stock (optionnel)',
                                             [
                                                 { 
-                                                    text: 'Aucun (saisie manuelle)', 
+                                                    text: t('globalDeliveryConfig.aucunSaisieManuelle'), 
                                                     onPress: () => setConfig(prev => ({ ...prev, storage_location_id: undefined }))
                                                 },
                                                 ...storageLocations.map(loc => ({
@@ -498,7 +498,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                 >
                                     <Text style={styles.selectText}>
                                         {config.storage_location_id
-                                            ? (storageLocations.find(loc => loc.id === config.storage_location_id)?.name || 'Lieu sélectionné')
+                                            ? (storageLocations.find(loc => loc.id === config.storage_location_id)?.name || t('globalDeliveryConfig.lieuSelectionne'))
                                             : 'Sélectionner un lieu de stock (optionnel)'}
                                     </Text>
                                     <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
@@ -511,7 +511,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                     style={[styles.input, styles.addressInput]}
                                     value={config?.pickup_address || ''}
                                     onChangeText={(text) => setConfig(prev => ({ ...prev, pickup_address: text }))}
-                                    placeholder="Rechercher un quartier, une ville, une adresse..."
+                                    placeholder={t('globalDeliveryConfig.rechercherUnQuartierUneVille')}
                                     placeholderTextColor={modernColors.textSecondary}
                                 />
                                 <TouchableOpacity
@@ -538,14 +538,14 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
 
                         {/* Type de véhicule */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Type de véhicule requis *</Text>
+                            <Text style={styles.label}>{t('globalDeliveryConfig.typeDeVehiculeRequis')}</Text>
                             {Array.isArray(parcelTypes) && parcelTypes.length > 0 ? (
                                 <TouchableOpacity
                                     style={styles.select}
                                     onPress={() => {
                                         Alert.alert(
-                                            'Type de véhicule',
-                                            'Sélectionnez un type de véhicule',
+                                            t('globalDeliveryConfigModal.typeDeVehicule'),
+                                            t('globalDeliveryConfigModal.selectionnezUnTypeDeVehicule'),
                                             [
                                                 ...parcelTypes.map(pt => ({
                                                     text: pt.name,
@@ -558,19 +558,19 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                 >
                                     <Text style={styles.selectText}>
                                         {config.required_vehicle_type_id
-                                            ? (parcelTypes.find(pt => pt.id === config.required_vehicle_type_id)?.name || 'Type sélectionné')
+                                            ? (parcelTypes.find(pt => pt.id === config.required_vehicle_type_id)?.name || t('globalDeliveryConfig.typeSelectionne'))
                                             : 'Sélectionner un type'}
                                     </Text>
                                     <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
                                 </TouchableOpacity>
                             ) : (
-                                <Text style={styles.hint}>Chargement des types de véhicule...</Text>
+                                <Text style={styles.hint}>{t('globalDeliveryConfig.chargementDesTypesDeVehicule')}</Text>
                             )}
                         </View>
 
                         {/* ✅ NOUVEAU: Temps de préparation */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Temps de préparation *</Text>
+                            <Text style={styles.label}>{t('globalDeliveryConfig.tempsDePreparation')}</Text>
                             <Text style={styles.hint}>
                                 Durée en minutes nécessaire pour préparer le produit avant l'arrivée du coursier
                             </Text>
@@ -595,18 +595,18 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                     style={styles.input}
                                     value={config.weight_kg}
                                     onChangeText={(text) => setConfig(prev => ({ ...prev, weight_kg: text }))}
-                                    placeholder="Optionnel"
+                                    placeholder={t('globalDeliveryConfig.optionnel')}
                                     keyboardType="numeric"
                                     placeholderTextColor={modernColors.textSecondary}
                                 />
                             </View>
                             <View style={[styles.section, styles.halfSection]}>
-                                <Text style={styles.label}>Volume (cm³)</Text>
+                                <Text style={styles.label}>{t('globalDeliveryConfig.volumeCm')}/Text>
                                 <TextInput
                                     style={styles.input}
                                     value={config.volume_cm3}
                                     onChangeText={(text) => setConfig(prev => ({ ...prev, volume_cm3: text }))}
-                                    placeholder="Optionnel"
+                                    placeholder={t('globalDeliveryConfig.optionnel')}
                                     keyboardType="numeric"
                                     placeholderTextColor={modernColors.textSecondary}
                                 />
@@ -615,7 +615,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
 
                         {/* Options spéciales */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Options spéciales</Text>
+                            <Text style={styles.label}>{t('globalDeliveryConfig.optionsSpeciales')}</Text>
                             <View style={styles.checkboxRow}>
                                 <View style={styles.checkbox}>
                                     <Switch
@@ -638,7 +638,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
 
                         {/* ✅ NOUVEAU: Plages horaires avec interface utilisateur (remplace JSON) */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Plages horaires de départ *</Text>
+                            <Text style={styles.label}>{t('globalDeliveryConfig.plagesHorairesDeDepart')}</Text>
                             <Text style={styles.hint}>
                                 Définissez les heures auxquelles les coursiers peuvent récupérer les colis
                             </Text>
@@ -704,7 +704,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                                     onPress={() => addTimeSlot(day.key)}
                                                 >
                                                     <SafeIcon name="plus" size={16} color={modernColors.primary} />
-                                                    <Text style={styles.addSlotText}>Ajouter une plage</Text>
+                                                    <Text style={styles.addSlotText}>{t('globalDeliveryConfig.ajouterUnePlage')}</Text>
                                                 </TouchableOpacity>
                                             </View>
                                         )}
@@ -715,12 +715,12 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
 
                         {/* Instructions */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Instructions de départ</Text>
+                            <Text style={styles.label}>{t('globalDeliveryConfig.instructionsDeDepart')}</Text>
                             <TextInput
                                 style={[styles.input, styles.textArea]}
                                 value={config.pickup_instructions}
                                 onChangeText={(text) => setConfig(prev => ({ ...prev, pickup_instructions: text }))}
-                                placeholder="Instructions spéciales pour le coursier (optionnel)"
+                                placeholder={t('globalDeliveryConfig.instructionsSpecialesPourLeCoursier')}
                                 multiline
                                 numberOfLines={3}
                                 placeholderTextColor={modernColors.textSecondary}
@@ -729,7 +729,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
 
                         {/* Mode de facturation */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Mode de facturation</Text>
+                            <Text style={styles.label}>{t('globalDeliveryConfig.modeDeFacturation')}/Text>
                             <TouchableOpacity
                                 style={styles.select}
                                 onPress={() => {
@@ -738,7 +738,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                         '',
                                         [
                                             { text: 'Standard', onPress: () => setConfig(prev => ({ ...prev, billing_mode: 'standard' })) },
-                                            { text: 'Partenaire', onPress: () => setConfig(prev => ({ ...prev, billing_mode: 'partner' })) },
+                                            { text: t('globalDeliveryConfig.partenaire'), onPress: () => setConfig(prev => ({ ...prev, billing_mode: 'partner' })) },
                                             { text: t('common.cancel'), style: 'cancel' as const }
                                         ]
                                     );
@@ -758,7 +758,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                     style={styles.input}
                                     value={config.billing_partner_label}
                                     onChangeText={(text) => setConfig(prev => ({ ...prev, billing_partner_label: text }))}
-                                    placeholder="Nom du partenaire"
+                                    placeholder={t('globalDeliveryConfig.nomDuPartenaire')}
                                     placeholderTextColor={modernColors.textSecondary}
                                 />
                             </View>
@@ -767,13 +767,13 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                         {/* Actions */}
                         <View style={styles.actions}>
                             <NativeButton
-                                title="Annuler"
+                                title={t('globalDeliveryConfigModal.annuler')}
                                 variant="secondary"
                                 onPress={onClose}
                                 style={styles.actionButton}
                             />
                             <NativeButton
-                                title={loading ? `Application...` : `Appliquer à ${validProductsCount} produit${validProductsCount > 1 ? 's' : ''}`}
+                                title={loading ? `Application...` : t('globalDeliveryConfigModal.appliquerAProduit', { validProductsCount: validProductsCount, validProductsCount > 1 ? 's' : '': validProductsCount > 1 ? 's' : '' })}
                                 variant="primary"
                                 onPress={handleSave}
                                 disabled={loading || validProductsCount === 0}
@@ -797,7 +797,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                         ? { lat: config.pickup_latitude, lng: config.pickup_longitude }
                         : null
                 }
-                title="Sélectionner l'adresse de départ"
+                title={t('globalDeliveryConfig.selectionnerL')}adresse de départ"
                 allowZoneSelection={false}
             />
         </>

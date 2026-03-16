@@ -85,7 +85,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
                 }));
                 setLivres(livresData);
             } else {
-                setError('Aucun livre trouvé à proximité');
+                setError(t('livreScolaireHome.aucunLivreTrouveAProximite'));
                 setLivres([]);
             }
         } catch (err: any) {
@@ -140,7 +140,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
             }
         } catch (err: any) {
             console.error('[LivreScolaireHomeScreen] Erreur recherche:', err);
-            setError(err.message || 'Erreur lors de la recherche');
+            setError(err.message || t('livreScolaireHome.erreurLorsDeLaRecherche'));
         } finally {
             setLoading(false);
         }
@@ -220,9 +220,9 @@ const LivreScolaireHomeScreen: React.FC = () => {
                 auteur: bookInfo.auteur || undefined,
                 editeur: bookInfo.editeur || undefined,
                 isbn: bookInfo.isbn || undefined,
-                classe_actuelle: bookInfo.classe_actuelle || 'Non spécifiée',
-                classe_souhaitee: bookInfo.classe_souhaitee || 'Non spécifiée',
-                matiere: bookInfo.matiere || 'Non spécifiée',
+                classe_actuelle: bookInfo.classe_actuelle || t('livreScolaireHome.nonSpecifiee'),
+                classe_souhaitee: bookInfo.classe_souhaitee || t('livreScolaireHome.nonSpecifiee'),
+                matiere: bookInfo.matiere || t('livreScolaireHome.nonSpecifiee'),
                 niveau: bookInfo.niveau || undefined,
                 etat_livre: bookInfo.etat_livre,
                 description_etat: bookInfo.description_etat || undefined,
@@ -284,7 +284,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
                             <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>Bourse du Livre</Text>
+                            <Text style={styles.headerTitle}>{t('livreScolaireHome.bourseDuLivre')}/Text>
                             <Text style={styles.headerSubtitle}>
                                 {livres.length} livre{livres.length > 1 ? 's' : ''} disponible{livres.length > 1 ? 's' : ''}
                             </Text>
@@ -306,7 +306,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
                             <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Rechercher un livre (titre, auteur, matière)..."
+                                placeholder={t('livreScolaireHome.rechercherUnLivreTitreAuteur')}
                                 placeholderTextColor="#9CA3AF"
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
@@ -334,21 +334,21 @@ const LivreScolaireHomeScreen: React.FC = () => {
                             onPress={() => { hapticPress(); (navigation as any).navigate('BookUploadV2'); }}
                         >
                             <SafeIcon name="camera" size={18} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.v2ActionText}>Envoyer livres</Text>
+                            <Text style={styles.v2ActionText}>{t('livreScolaireHome.envoyerLivres')}/Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.v2ActionBtn}
                             onPress={() => { hapticPress(); (navigation as any).navigate('BookPackages'); }}
                         >
                             <SafeIcon name="package" size={18} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.v2ActionText}>Mes paquets</Text>
+                            <Text style={styles.v2ActionText}>{t('livreScolaireHome.mesPaquets')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.v2ActionBtn}
                             onPress={() => { hapticPress(); (navigation as any).navigate('MesLivres'); }}
                         >
                             <SafeIcon name="book" size={18} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.v2ActionText}>Mes livres</Text>
+                            <Text style={styles.v2ActionText}>{t('livreScolaireHome.mesLivres')}</Text>
                         </TouchableOpacity>
                     </View>
                 </LinearGradient>
@@ -358,7 +358,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
             {loading && livres.length === 0 ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Recherche de livres à proximité...</Text>
+                    <Text style={styles.loadingText}>{t('livreScolaireHome.rechercheDeLivresAProximite')}</Text>
                 </View>
             ) : error && livres.length === 0 ? (
                 <View style={styles.centerContainer}>
@@ -368,7 +368,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
                         style={styles.retryButton}
                         onPress={loadNearbyBooks}
                     >
-                        <Text style={styles.retryButtonText}>Réessayer</Text>
+                        <Text style={styles.retryButtonText}>{t('livreScolaireHome.reessayer')}</Text>
                     </TouchableOpacity>
                 </View>
             ) : (
@@ -393,7 +393,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="book" size={64} color="#9CA3AF" />
-                            <Text style={styles.emptyText}>Aucun livre trouvé</Text>
+                            <Text style={styles.emptyText}>{t('livreScolaireHome.aucunLivreTrouve')}</Text>
                             <Text style={styles.emptySubtext}>
                                 Essayez de modifier vos critères de recherche
                             </Text>
@@ -537,7 +537,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
             <View style={styles.modalOverlay}>
                 <View style={styles.modalContent}>
                     <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Ajouter un livre</Text>
+                        <Text style={styles.modalTitle}>{t('livreScolaireHome.ajouterUnLivre')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
                             <SafeIcon name="x" size={24} color="#111827" type="lucide" />
                         </TouchableOpacity>
@@ -564,7 +564,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
                                     />
                                 )}
                                 <View style={styles.bookInfoContainer}>
-                                    <Text style={styles.bookInfoTitle}>Informations détectées</Text>
+                                    <Text style={styles.bookInfoTitle}>{t('livreScolaireHome.informationsDetectees')}</Text>
                                     <View style={styles.bookInfoRow}>
                                         <Text style={styles.bookInfoLabel}>Titre:</Text>
                                         <Text style={styles.bookInfoValue}>{bookInfo.titre}</Text>
@@ -577,7 +577,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
                                     )}
                                     {bookInfo.matiere && (
                                         <View style={styles.bookInfoRow}>
-                                            <Text style={styles.bookInfoLabel}>Matière:</Text>
+                                            <Text style={styles.bookInfoLabel}>{t('livreScolaireHome.matiere')}</Text>
                                             <Text style={styles.bookInfoValue}>{bookInfo.matiere}</Text>
                                         </View>
                                     )}
@@ -590,7 +590,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
                                         </View>
                                     )}
                                     <View style={styles.bookInfoRow}>
-                                        <Text style={styles.bookInfoLabel}>État:</Text>
+                                        <Text style={styles.bookInfoLabel}>{t('livreScolaireHome.etat')}</Text>
                                         <Text style={styles.bookInfoValue}>{bookInfo.etat_livre}</Text>
                                     </View>
                                     {bookInfo.confidence < 0.7 && (
@@ -604,7 +604,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
                                 </View>
 
                                 <View style={styles.priceContainer}>
-                                    <Text style={styles.priceLabel}>Prix de vente (FCFA) *</Text>
+                                    <Text style={styles.priceLabel}>{t('livreScolaireHome.prixDeVenteFcfa')}/Text>
                                     <TextInput
                                         style={styles.priceInput}
                                         placeholder="Ex: 5000"
@@ -633,7 +633,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
                                 style={styles.cancelButton}
                                 onPress={onClose}
                             >
-                                <Text style={styles.cancelButtonText}>Annuler</Text>
+                                <Text style={styles.cancelButtonText}>{t('livreScolaireHomeScreen.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.saveButton, !price.trim() && styles.saveButtonDisabled]}

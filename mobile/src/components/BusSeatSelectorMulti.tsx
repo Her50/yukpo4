@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import SafeStorage from '../utils/safeStorage';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const PASSENGER_NAME_KEY = '@yukpomnang:passenger_name';
 
@@ -68,7 +69,8 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
     onSelectSeats,
     product
 }) => {
-    const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
+        const { t } = useLanguageSafe();
+const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
     const [passengerNames, setPassengerNames] = useState<string[]>([]);
     const [multiSelectMode, setMultiSelectMode] = useState(false);
     const [savedPassengerName, setSavedPassengerName] = useState('');
@@ -192,7 +194,7 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
                     {/* Header */}
                     <View style={styles.header}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.headerTitle}>🚌 Réserver vos places</Text>
+                            <Text style={styles.headerTitle}>{t('busSeatSelectorMulti.reserverVosPlaces')}</Text>
                             <Text style={styles.headerSubtitle}>
                                 {product.depart} → {product.destination}
                             </Text>
@@ -300,7 +302,7 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
                         </View>
 
                         <View style={styles.busBack}>
-                            <Text style={styles.busBackText}>ARRIÈRE</Text>
+                            <Text style={styles.busBackText}>{t('busSeatSelectorMulti.arriere')}</Text>
                         </View>
                     </ScrollView>
 
@@ -308,15 +310,15 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
                     <View style={styles.legend}>
                         <View style={styles.legendItem}>
                             <View style={[styles.legendSeat, styles.seatAvailable]} />
-                            <Text style={styles.legendText}>Disponible</Text>
+                            <Text style={styles.legendText}>{t('busSeatSelectorMulti.disponible')}</Text>
                         </View>
                         <View style={styles.legendItem}>
                             <View style={[styles.legendSeat, styles.seatSelected]} />
-                            <Text style={styles.legendText}>Sélectionnée</Text>
+                            <Text style={styles.legendText}>{t('busSeatSelectorMulti.selectionnee')}</Text>
                         </View>
                         <View style={styles.legendItem}>
                             <View style={[styles.legendSeat, styles.seatOccupied]} />
-                            <Text style={styles.legendText}>Occupée</Text>
+                            <Text style={styles.legendText}>{t('busSeatSelectorMulti.occupee')}</Text>
                         </View>
                     </View>
 
@@ -396,7 +398,7 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
                             style={styles.cancelButton}
                             onPress={onClose}
                         >
-                            <Text style={styles.cancelButtonText}>Annuler</Text>
+                            <Text style={styles.cancelButtonText}>{t('busSeatSelectorMulti.annuler')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[

@@ -574,13 +574,18 @@ pub async fn get_mixed_content(
     }
 
     // ✅ CORRIGÉ 2026-03-11: Filtrer strictement par vidéo (vérifier extension + exclure images)
+    // ✅ FIX 2026-03-15: Si videoUrl est une image, vérifier aussi data.videos en fallback
+    // Avant: videoUrl="image.jpg" → rejeté immédiatement (même si data.videos contenait "video.mp4")
     if is_video_feed {
         let before = organic_products.len();
         organic_products.retain(|item| {
             // Vérifier videoUrl en priorité (construit depuis media table type='video')
             let video_url = item.get("videoUrl").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
             if let Some(url) = video_url {
-                return is_video_url(url);
+                if is_video_url(url) {
+                    return true;
+                }
+                // videoUrl est une image → ne PAS rejeter immédiatement, vérifier data.videos
             }
             // Fallback: vérifier data.videos mais uniquement les vraies vidéos
             if let Some(arr) =
@@ -782,9 +787,16 @@ fn build_organic_product_json(
         }
     };
 
-    // Extraire la première vidéo pour le champ videoUrl (utilisé par le mobile)
+    // ✅ FIX 2026-03-15: Extraire la première VRAIE vidéo pour videoUrl (pas juste le premier élément)
+    // Avant: si videos_json = ["image.jpg", "video.mp4"], videoUrl = "image.jpg" → rejeté par le filtre
     let first_video = if let Some(arr) = videos_json.as_array() {
-        arr.first().and_then(|v| v.as_str()).map(|s| s.to_string())
+        // D'abord chercher une URL qui passe is_video_url
+        arr.iter()
+            .filter_map(|v| v.as_str())
+            .find(|url| is_video_url(url))
+            .map(|s| s.to_string())
+            // Fallback: première URL non-vide (pour les URLs sans extension)
+            .or_else(|| arr.first().and_then(|v| v.as_str()).map(|s| s.to_string()))
     } else {
         None
     };

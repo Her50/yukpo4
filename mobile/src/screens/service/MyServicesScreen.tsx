@@ -4,9 +4,11 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../../theme/theme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const MyServicesScreen: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
   const handleCreateService = () => {
     (navigation as any).navigate('CreateService');
@@ -17,13 +19,13 @@ const MyServicesScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Mes Services</Text>
+          <Text style={styles.title}>{t('myServices.mesServices')}</Text>
           <TouchableOpacity
             style={styles.addButton}
             onPress={handleCreateService}
           >
             <Text style={styles.iconText}>+</Text>
-            <Text style={styles.addButtonText}>Nouveau</Text>
+            <Text style={styles.addButtonText}>{t('myServices.nouveau')}</Text>
           </TouchableOpacity>
         </View>
 

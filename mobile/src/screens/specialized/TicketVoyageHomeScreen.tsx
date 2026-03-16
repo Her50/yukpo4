@@ -23,12 +23,14 @@ import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { BusTicketSearchFilters, BusTicketSearchResult, busTicketService } from '../../services/busTicketService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'time_asc' | 'time_desc' | 'date_asc';
 
 const TicketVoyageHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     // ✅ NOUVEAU: Détection automatique de devise depuis GPS
     const detectedCurrency = useCurrencyDetection();
@@ -67,11 +69,11 @@ const TicketVoyageHomeScreen: React.FC = () => {
 
     const sortOptions: { value: SortOption; label: string; icon: string }[] = [
         { value: 'relevance', label: 'Pertinence', icon: 'star' },
-        { value: 'price_asc', label: 'Prix croissant', icon: 'arrow-up' },
-        { value: 'price_desc', label: 'Prix décroissant', icon: 'arrow-down' },
-        { value: 'time_asc', label: 'Heure départ (tôt)', icon: 'clock' },
-        { value: 'time_desc', label: 'Heure départ (tard)', icon: 'clock' },
-        { value: 'date_asc', label: 'Date (proche)', icon: 'calendar' },
+        { value: 'price_asc', label: t('ticketVoyageHomeScreen.prixCroissant'), icon: 'arrow-up' },
+        { value: 'price_desc', label: t('ticketVoyageHome.prixDecroissant'), icon: 'arrow-down' },
+        { value: 'time_asc', label: t('ticketVoyageHome.heureDepartTot'), icon: 'clock' },
+        { value: 'time_desc', label: t('ticketVoyageHome.heureDepartTard'), icon: 'clock' },
+        { value: 'date_asc', label: t('ticketVoyageHomeScreen.dateProche'), icon: 'calendar' },
     ];
 
     // Quick filters (recherches rapides)
@@ -136,7 +138,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
 
             if (!departureCityName || !arrivalCityName) {
                 if (!initialLoad) {
-                    setError('Veuillez sélectionner une ville de départ et une ville d\'arrivée');
+                    setError(t('ticketVoyageHome.veuillezSelectionnerUneVilleDeDepartEt'));
                 }
                 setLoading(false);
                 setRefreshing(false);
@@ -197,7 +199,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                 setHasSearched(true); // ✅ NOUVEAU: Marquer qu'une recherche a été effectuée
                 setError(null);
             } else {
-                setError('Aucun ticket trouvé pour ce trajet');
+                setError(t('ticketVoyageHome.aucunTicketTrouvePourCe'));
                 setTickets([]);
                 setHasSearched(true);
             }
@@ -296,7 +298,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
             : (arrivalCity as LocationObject)?.components?.ville || (arrivalCity as LocationObject)?.place_name || '';
 
         if (!departureCityName || !arrivalCityName) {
-            setError('Veuillez sélectionner une ville de départ et une ville d\'arrivée');
+            setError(t('ticketVoyageHome.veuillezSelectionnerUneVilleDeDepartEt'));
             return;
         }
 
@@ -348,7 +350,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                             <SafeIcon name="arrow-left" size={22} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>Tickets de Voyage</Text>
+                            <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>{t('ticketVoyageHome.ticketsDeVoyage')}/Text>
                         </View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                             <TouchableOpacity
@@ -391,7 +393,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                         ]}>
                             <View style={styles.labelRow}>
                                 <SafeIcon name="map-pin" size={14} color="#8B5CF6" type="lucide" />
-                                <Text style={styles.cityLabel}>Départ *</Text>
+                                <Text style={styles.cityLabel}>{t('ticketVoyageHome.depart')}</Text>
                             </View>
                             <LocationSelector
                                 label=""
@@ -412,7 +414,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                         }, 150);
                                     }
                                 }}
-                                placeholder="Ville de départ..."
+                                placeholder={t('ticketVoyageHome.villeDeDepart')}
                                 scope="all"
                                 enrichWithBackend={true}
                             />
@@ -426,7 +428,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                         ]}>
                             <View style={styles.labelRow}>
                                 <SafeIcon name="navigation" size={14} color="#8B5CF6" type="lucide" />
-                                <Text style={styles.cityLabel}>Arrivée *</Text>
+                                <Text style={styles.cityLabel}>{t('ticketVoyageHome.arrivee')}</Text>
                             </View>
                             <LocationSelector
                                 label=""
@@ -447,7 +449,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                         }, 150);
                                     }
                                 }}
-                                placeholder="Ville d'arrivée..."
+                                placeholder={t('ticketVoyageHome.villeD')}arrivée..."
                                 scope="all"
                                 enrichWithBackend={true}
                             />
@@ -460,12 +462,12 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                 onPress={() => { setIsRoundTrip(!isRoundTrip); if (isRoundTrip) setReturnDate(''); }}
                             >
                                 <SafeIcon name="repeat" size={14} color={isRoundTrip ? '#1D4ED8' : '#FFFFFF'} type="lucide" />
-                                <Text style={{ fontSize: 13, fontWeight: '600', color: isRoundTrip ? '#1D4ED8' : '#FFFFFF' }}>Aller-Retour</Text>
+                                <Text style={{ fontSize: 13, fontWeight: '600', color: isRoundTrip ? '#1D4ED8' : '#FFFFFF' }}>{t('ticketVoyageHomeScreen.allerretour')}</Text>
                             </TouchableOpacity>
                             {isRoundTrip && (
                                 <TextInput
                                     style={{ flex: 1, backgroundColor: '#ffffff20', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, color: '#FFFFFF', fontSize: 13, borderWidth: 1, borderColor: '#ffffff30' }}
-                                    placeholder="Date retour (AAAA-MM-JJ)"
+                                    placeholder={t('ticketVoyageHomeScreen.dateRetourAaaammjj')}
                                     placeholderTextColor="#ffffff80"
                                     value={returnDate}
                                     onChangeText={setReturnDate}
@@ -531,7 +533,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-up-down" size={18} color="#6B7280" type="lucide" />
                         <Text style={styles.sortButtonText}>
-                            {sortOptions.find(o => o.value === sortBy)?.label || 'Trier'}
+                            {sortOptions.find(o => o.value === sortBy)?.label || t('ticketVoyageHome.trier')}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -542,7 +544,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                 !hasSearched && !loading ? (
                     <View style={styles.centerContainer}>
                         <SafeIcon name="map-pin" size={64} color="#9CA3AF" />
-                        <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
+                        <Text style={styles.emptyText}>{t('ticketVoyageHome.selectionnezVotreTrajet')}</Text>
                         <Text style={styles.emptySubtext} numberOfLines={3}>
                             Choisissez une ville de départ et une ville d'arrivée, puis cliquez sur "Rechercher"
                         </Text>
@@ -550,7 +552,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                 ) : loading && tickets.length === 0 ? (
                     <View style={styles.centerContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Recherche de voyages...</Text>
+                        <Text style={styles.loadingText}>{t('ticketVoyageHome.rechercheDeVoyages')}/Text>
                     </View>
                 ) : error && tickets.length === 0 ? (
                     <View style={styles.centerContainer}>
@@ -564,7 +566,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                 style={styles.clearFiltersButton}
                                 onPress={clearFilters}
                             >
-                                <Text style={styles.clearFiltersText}>Réinitialiser les filtres</Text>
+                                <Text style={styles.clearFiltersText}>{t('ticketVoyageHome.reinitialiserLesFiltres')}</Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -592,7 +594,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                         ListEmptyComponent={
                             <View style={styles.emptyContainer}>
                                 <SafeIcon name="ticket" size={64} color="#9CA3AF" />
-                                <Text style={styles.emptyText}>Aucun ticket trouvé</Text>
+                                <Text style={styles.emptyText}>{t('ticketVoyageHome.aucunTicketTrouve')}</Text>
                                 <Text style={styles.emptySubtext} numberOfLines={2}>
                                     Essayez de modifier vos critères de recherche
                                 </Text>
@@ -601,7 +603,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                         style={styles.clearFiltersButton}
                                         onPress={clearFilters}
                                     >
-                                        <Text style={styles.clearFiltersText}>Réinitialiser les filtres</Text>
+                                        <Text style={styles.clearFiltersText}>{t('ticketVoyageHome.reinitialiserLesFiltres')}</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -682,7 +684,7 @@ const TicketCard: React.FC<TicketCardProps> = ({ ticket, onPress, onBook, format
                 <View style={styles.routePoint}>
                     <View style={styles.routeDot} />
                     <View style={styles.routeContent}>
-                        <Text style={styles.routeCity}>{ticket.departure_city || 'Départ'}</Text>
+                        <Text style={styles.routeCity}>{ticket.departure_city || t('ticketVoyageHome.depart')}</Text>
                         {ticket.departure_time && (
                             <Text style={styles.routeTime}>{ticket.departure_time}</Text>
                         )}
@@ -694,7 +696,7 @@ const TicketCard: React.FC<TicketCardProps> = ({ ticket, onPress, onBook, format
                 <View style={styles.routePoint}>
                     <View style={[styles.routeDot, styles.routeDotArrival]} />
                     <View style={styles.routeContent}>
-                        <Text style={styles.routeCity}>{ticket.arrival_city || 'Arrivée'}</Text>
+                        <Text style={styles.routeCity}>{ticket.arrival_city || t('ticketVoyageHome.arrivee')}</Text>
                     </View>
                 </View>
             </View>
@@ -728,7 +730,7 @@ const TicketCard: React.FC<TicketCardProps> = ({ ticket, onPress, onBook, format
                         />
                     </View>
                     <TouchableOpacity style={styles.bookButton} onPress={onBook} activeOpacity={0.7}>
-                        <Text style={styles.bookButtonText}>Réserver</Text>
+                        <Text style={styles.bookButtonText}>{t('ticketVoyageHome.reserver')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -828,12 +830,12 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
                     <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
                         {/* Ville de départ */}
                         <View style={styles.filterSection}>
-                            <Text style={styles.filterSectionTitle}>Ville de départ</Text>
+                            <Text style={styles.filterSectionTitle}>{t('ticketVoyageHome.villeDeDepart')}</Text>
                             <LocationSelector
-                                label="Lieu de départ"
+                                label={t('ticketVoyageHome.lieuDeDepart')}
                                 value={typeof departureCity === 'string' ? (departureCity ? { raw: departureCity, place_name: departureCity } : '') : departureCity}
                                 onSelect={(location: LocationObject) => setDepartureCity(location)}
-                                placeholder="Rechercher un lieu (ville, quartier, établissement...)"
+                                placeholder={t('ticketVoyageHome.rechercherUnLieuVilleQuartier')}
                                 scope="all"
                                 enrichWithBackend={true}
                             />
@@ -841,12 +843,12 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
 
                         {/* Ville d'arrivée */}
                         <View style={styles.filterSection}>
-                            <Text style={styles.filterSectionTitle}>Lieu d'arrivée</Text>
+                            <Text style={styles.filterSectionTitle}>{t('ticketVoyageHome.lieuDarrivee')}</Text>
                             <LocationSelector
-                                label="Lieu d'arrivée"
+                                label={t('ticketVoyageHomeScreen.lieuD')}arrivée"
                                 value={typeof arrivalCity === 'string' ? (arrivalCity ? { raw: arrivalCity, place_name: arrivalCity } : '') : arrivalCity}
                                 onSelect={(location: LocationObject) => setArrivalCity(location)}
-                                placeholder="Rechercher un lieu (ville, quartier, établissement...)"
+                                placeholder={t('ticketVoyageHome.rechercherUnLieuVilleQuartier')}
                                 scope="all"
                                 enrichWithBackend={true}
                             />
@@ -854,7 +856,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
 
                         {/* Date de départ */}
                         <View style={styles.filterSection}>
-                            <Text style={styles.filterSectionTitle}>Date de départ</Text>
+                            <Text style={styles.filterSectionTitle}>{t('ticketVoyageHome.dateDeDepart')}</Text>
                             <TextInput
                                 style={styles.singleInput}
                                 placeholder="YYYY-MM-DD"
@@ -865,7 +867,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
 
                         {/* Heure de départ */}
                         <View style={styles.filterSection}>
-                            <Text style={styles.filterSectionTitle}>Heure de départ</Text>
+                            <Text style={styles.filterSectionTitle}>{t('ticketVoyageHome.heureDeDepart')}</Text>
                             <TextInput
                                 style={styles.singleInput}
                                 placeholder="HH:MM"
@@ -876,7 +878,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
 
                         {/* Agence */}
                         <View style={styles.filterSection}>
-                            <Text style={styles.filterSectionTitle}>Nom de l'agence</Text>
+                            <Text style={styles.filterSectionTitle}>{t('ticketVoyageHome.nomDeLagence')}</Text>
                             <TextInput
                                 style={styles.singleInput}
                                 placeholder="Ex: Amour Mezam, Guarantee Express"

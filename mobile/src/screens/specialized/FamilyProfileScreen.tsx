@@ -17,28 +17,28 @@ import { FamilyProfile, menuPlanningService } from '../../services/menuPlanningS
 import { modernColors } from '../../theme/modernTheme';
 
 const PREFERENCE_OPTIONS = [
-    'Végétarien',
+    t('familyProfileScreen.vegetarien'),
     'Végan',
     'Halal',
     'Cacher',
     'Sans gluten',
-    'Pescétarien',
+    t('familyProfileScreen.pescetarien'),
     'Flexitarien',
 ];
 
 const CUISINE_STYLES = [
     'Africaine',
-    'Française',
+    t('familyProfileScreen.francaise'),
     'Italienne',
     'Asiatique',
-    'Méditerranéenne',
+    t('familyProfileScreen.mediterraneenne'),
     'Américaine',
     'Mexicaine',
     'Indienne',
     'Locale traditionnelle',
 ];
 
-const COOKING_LEVELS = ['débutant', 'intermédiaire', 'avancé'];
+const COOKING_LEVELS = ['débutant', t('familyProfileScreen.intermediaire'), t('familyProfileScreen.avance')];
 
 const ALLERGY_OPTIONS = [
     'Arachides',
@@ -52,9 +52,9 @@ const ALLERGY_OPTIONS = [
 ];
 
 const DIETARY_RESTRICTIONS = [
-    'Diabète',
+    t('familyProfileScreen.diabete'),
     'Hypertension',
-    'Cholestérol',
+    t('familyProfileScreen.cholesterol'),
     'Perte de poids',
     'Gain de poids',
     'Sportif',
@@ -73,7 +73,7 @@ const FamilyProfileScreen: React.FC = () => {
         allergies: [],
         dietary_restrictions: [],
         cuisine_styles: [],
-        cooking_level: 'débutant',
+        cooking_level: t('familyProfileScreen.debutant'),
     });
 
     useEffect(() => {
@@ -180,7 +180,7 @@ const FamilyProfileScreen: React.FC = () => {
             <View style={styles.form}>
                 {/* Nombre de personnes */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.label}>👥 Composition de la famille</Text>
+                    <Text style={styles.label}>{t('familyProfile.compositionDeLaFamille')}/Text>
                     <View style={styles.row}>
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>Total</Text>
@@ -272,7 +272,7 @@ const FamilyProfileScreen: React.FC = () => {
 
                 {/* Préférences alimentaires */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.label}>🌱 Préférences alimentaires</Text>
+                    <Text style={styles.label}>{t('familyProfile.preferencesAlimentaires')}</Text>
                     <View style={styles.chipsContainer}>
                         {PREFERENCE_OPTIONS.map((pref) => (
                             <TouchableOpacity
@@ -324,7 +324,7 @@ const FamilyProfileScreen: React.FC = () => {
 
                 {/* Restrictions diététiques */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.label}>🏥 Restrictions diététiques</Text>
+                    <Text style={styles.label}>{t('familyProfile.restrictionsDietetiques')}</Text>
                     <View style={styles.chipsContainer}>
                         {DIETARY_RESTRICTIONS.map((restriction) => (
                             <TouchableOpacity
@@ -350,7 +350,7 @@ const FamilyProfileScreen: React.FC = () => {
 
                 {/* Styles de cuisine */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.label}>🍳 Styles de cuisine préférés</Text>
+                    <Text style={styles.label}>{t('familyProfile.stylesDeCuisinePreferes')}</Text>
                     <View style={styles.chipsContainer}>
                         {CUISINE_STYLES.map((style) => (
                             <TouchableOpacity
@@ -405,7 +405,7 @@ const FamilyProfileScreen: React.FC = () => {
                             const num = parseFloat(text) || undefined;
                             setProfile((prev) => ({ ...prev, budget_monthly: num }));
                         }}
-                        placeholder="Ou saisissez un montant personnalisé"
+                        placeholder={t('familyProfile.ouSaisissezUnMontantPersonnalise')}
                         keyboardType="numeric"
                     />
 
@@ -445,7 +445,7 @@ const FamilyProfileScreen: React.FC = () => {
                 </NativeCard>
 
                 <NativeButton
-                    title={saving ? 'Enregistrement...' : 'Enregistrer le profil'}
+                    title={saving ? 'Enregistrement...' : t('familyProfileScreen.enregistrerLeProfil')}
                     onPress={handleSave}
                     loading={saving}
                     variant="primary"

@@ -11,6 +11,7 @@ import {
     VideoCostEstimation
 } from '../../types/VideoGeneration';
 import { safeStringDisplay } from '../../utils/displayHelpers';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ResultParams {
     result: GeneratedVideoResponse;
@@ -23,6 +24,7 @@ type Navigation = ReturnType<typeof useNavigation>;
 
 const VideoGenerationResultScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { result, costEstimation } = (route.params || {}) as ResultParams;
 
@@ -31,9 +33,9 @@ const VideoGenerationResultScreen: React.FC = () => {
             return result.progress_steps;
         }
         return [
-            { key: 'cost_estimation', label: 'Budget validé', status: 'completed' },
-            { key: 'broll_selection', label: 'Images et visuels', status: 'completed' },
-            { key: 'timeline_generation', label: 'Montage vidéo', status: 'completed' },
+            { key: 'cost_estimation', label: t('videoGenerationResult.budgetValide'), status: 'completed' },
+            { key: 'broll_selection', label: t('videoGenerationResult.imagesEtVisuels'), status: 'completed' },
+            { key: 'timeline_generation', label: t('videoGenerationResult.montageVideo'), status: 'completed' },
             { key: 'audio_mix', label: 'Musique et son', status: 'completed' },
             { key: 'video_mux', label: 'Finalisation', status: 'completed' },
         ];
@@ -67,9 +69,9 @@ const VideoGenerationResultScreen: React.FC = () => {
         if (!result?.video_url) return;
         try {
             await Share.share({
-                message: `Regarde ma vidéo créée avec Yukpo ! ${result.video_url}`,
+                message: t('videoGenerationResultScreen.regardeMaVideoCreeeAvecYukpo', { result_video_url: result.video_url }),
                 url: result.video_url,
-                title: 'Ma vidéo Yukpo',
+                title: t('videoGenerationResult.maVideoYukpo'),
             });
         } catch (error) {
             console.warn('[VideoGenerationResult] Partage échoué:', error);
@@ -80,8 +82,8 @@ const VideoGenerationResultScreen: React.FC = () => {
         return (
             <SafeNativeView edges={['top', 'bottom']} style={styles.centered}>
                 <SafeIcon name="alert-circle" size={48} color={modernColors.error} />
-                <Text style={styles.errorTitle}>Aucune vidéo disponible</Text>
-                <NativeButton title="Retour" onPress={() => navigation.goBack()} variant="primary" />
+                <Text style={styles.errorTitle}>{t('videoGenerationResult.aucuneVideoDisponible')}</Text>
+                <NativeButton title={t('videoGenerationResultScreen.retour')} onPress={() => navigation.goBack()} variant="primary" />
             </SafeNativeView>
         );
     }
@@ -90,7 +92,7 @@ const VideoGenerationResultScreen: React.FC = () => {
         <SafeNativeView edges={['top', 'bottom']} style={styles.container}>
             <View style={styles.header}>
                 <SafeIcon name="sparkles" size={28} color={modernColors.primary} />
-                <Text style={styles.title}>Vidéo prête ✨</Text>
+                <Text style={styles.title}>{t('videoGenerationResult.videoPrete')}</Text>
                 <Text style={styles.subtitle}>
                     Ta vidéo est prête ! Tu peux la regarder, la partager ou en créer une nouvelle.
                 </Text>
@@ -98,12 +100,12 @@ const VideoGenerationResultScreen: React.FC = () => {
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <NativeCard style={styles.videoCard}>
-                    <Text style={styles.sectionTitle}>Ta vidéo</Text>
+                    <Text style={styles.sectionTitle}>{t('videoGenerationResult.taVideo')}</Text>
                     <Text style={styles.videoUrl} numberOfLines={2}>
                         {safeStringDisplay(result.video_url, 'URL non disponible')}
                     </Text>
                     <NativeButton
-                        title="Lire la vidéo"
+                        title={t('videoGenerationResult.lireLaVideo')}
                         variant="primary"
                         onPress={handleOpenVideo}
                     />
@@ -130,7 +132,7 @@ const VideoGenerationResultScreen: React.FC = () => {
 
                 {costEstimation && (
                     <NativeCard style={styles.sectionCard}>
-                        <Text style={styles.sectionTitle}>Coût final</Text>
+                        <Text style={styles.sectionTitle}>{t('videoGenerationResult.coutFinal')}</Text>
                         <Text style={styles.costValue}>
                             {Math.round(costEstimation.total_cost_local)} {costEstimation.local_currency}
                         </Text>
@@ -182,8 +184,8 @@ const VideoGenerationResultScreen: React.FC = () => {
                 <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
                     <SafeIcon name="share" size={20} color={modernColors.primary} />
                 </TouchableOpacity>
-                <NativeButton title="Nouvelle vidéo" onPress={handleCreateAnother} variant="secondary" size="small" />
-                <NativeButton title="Lire la vidéo" onPress={handleOpenVideo} variant="primary" size="small" />
+                <NativeButton title={t('videoGenerationResult.nouvelleVideo')} onPress={handleCreateAnother} variant="secondary" size="small" />
+                <NativeButton title={t('videoGenerationResult.lireLaVideo')} onPress={handleOpenVideo} variant="primary" size="small" />
             </View>
         </SafeNativeView>
     );

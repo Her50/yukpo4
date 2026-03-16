@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const DAYS_OF_WEEK = [
     { value: 1, label: 'Lundi', short: 'Lun' },
@@ -54,7 +55,8 @@ const ServicePrestationsPlanner: React.FC<ServicePrestationsPlannerProps> = ({
     initialSchedules = [],
     title = 'Planification des prestations'
 }) => {
-    const [schedules, setSchedules] = useState<PrestationSchedule[]>(
+        const { t } = useLanguageSafe();
+const [schedules, setSchedules] = useState<PrestationSchedule[]>(
         initialSchedules.length > 0
             ? initialSchedules
             : prestations.map(prestation => ({
@@ -140,7 +142,7 @@ const ServicePrestationsPlanner: React.FC<ServicePrestationsPlannerProps> = ({
                                 <Text style={styles.prestationTitle}>{schedule.prestation}</Text>
 
                                 <View style={styles.daysContainer}>
-                                    <Text style={styles.sectionLabel}>Jours disponibles</Text>
+                                    <Text style={styles.sectionLabel}>{t('servicePrestationsPlanner.joursDisponibles')}/Text>
                                     <View style={styles.daysGrid}>
                                         {DAYS_OF_WEEK.map(day => (
                                             <TouchableOpacity
@@ -169,7 +171,7 @@ const ServicePrestationsPlanner: React.FC<ServicePrestationsPlannerProps> = ({
                                             <View key={slotIndex} style={styles.timeSlotRow}>
                                                 <View style={styles.timeInputs}>
                                                     <View style={styles.timeInput}>
-                                                        <Text style={styles.timeLabel}>Début</Text>
+                                                        <Text style={styles.timeLabel}>{t('servicePrestationsPlanner.debut')}</Text>
                                                         <ScrollView
                                                             horizontal
                                                             showsHorizontalScrollIndicator={false}
@@ -236,7 +238,7 @@ const ServicePrestationsPlanner: React.FC<ServicePrestationsPlannerProps> = ({
                                             onPress={() => addTimeSlot(schedule.prestation)}
                                         >
                                             <SafeIcon name="plus" size={18} color={modernColors.primary} />
-                                            <Text style={styles.addSlotText}>Ajouter une plage horaire</Text>
+                                            <Text style={styles.addSlotText}>{t('servicePrestationsPlanner.ajouterUnePlageHoraire')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 )}
@@ -249,13 +251,13 @@ const ServicePrestationsPlanner: React.FC<ServicePrestationsPlannerProps> = ({
                             style={styles.cancelButton}
                             onPress={onClose}
                         >
-                            <Text style={styles.cancelButtonText}>Annuler</Text>
+                            <Text style={styles.cancelButtonText}>{t('servicePrestationsPlanner.annuler')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.saveButton}
                             onPress={handleSave}
                         >
-                            <Text style={styles.saveButtonText}>Enregistrer</Text>
+                            <Text style={styles.saveButtonText}>{t('servicePrestationsPlanner.enregistrer')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

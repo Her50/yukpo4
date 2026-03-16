@@ -15,6 +15,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface AgenceVoyage {
     id: number;
@@ -33,6 +34,7 @@ interface AgenceVoyage {
 
 const AgenceVoyageListScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const params = route.params as any;
 
@@ -164,7 +166,7 @@ const AgenceVoyageListScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement des agences de voyage...</Text>
+                <Text style={styles.loadingText}>{t('agenceVoyageList.chargementDesAgencesDeVoyage')}</Text>
             </View>
         );
     }
@@ -173,13 +175,13 @@ const AgenceVoyageListScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <SafeIcon name="bus" size={64} color={modernColors.textSecondary} />
-                <Text style={styles.emptyTitle}>Aucune agence de voyage trouvée</Text>
-                <Text style={styles.emptyText}>Essayez de modifier vos critères de recherche</Text>
+                <Text style={styles.emptyTitle}>{t('agenceVoyageList.aucuneAgenceDeVoyageTrouvee')}</Text>
+                <Text style={styles.emptyText}>{t('agenceVoyageList.essayezDeModifierVosCriteres')}</Text>
                 <TouchableOpacity
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Text style={styles.backButtonText}>Nouvelle recherche</Text>
+                    <Text style={styles.backButtonText}>{t('agenceVoyageList.nouvelleRecherche')}</Text>
                 </TouchableOpacity>
             </View>
         );

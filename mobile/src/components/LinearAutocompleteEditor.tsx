@@ -20,6 +20,7 @@ import { placesService } from '../services/placesService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import SubCharacteristicsTable, { SubCharacteristicRow } from './SubCharacteristicsTable';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface LinearAutocompleteEditorProps {
     label: string;
@@ -58,7 +59,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     filtrable = true,
     productLabels, // ✅ AJOUT: Pour garantir l'ordre correct des labels
 }) => {
-    const [selectedModalities, setSelectedModalities] = useState<string[]>(value || []);
+        const { t } = useLanguageSafe();
+const [selectedModalities, setSelectedModalities] = useState<string[]>(value || []);
     const [searchQuery, setSearchQuery] = useState('');
     const [iaSuggestions, setIaSuggestions] = useState<string[]>([]);
     const [dbSuggestions, setDbSuggestions] = useState<string[]>([]);
@@ -246,7 +248,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             }
 
             // PRIORITÉ 3: Fallback positionnel si aucun match trouvé
-            let label = index < orderedLabels.length ? orderedLabels[index] : `caractéristique_${index + 1}`;
+            let label = index < orderedLabels.length ? orderedLabels[index] : t('linearAutocompleteEditor.caracteristique', { index + 1: index + 1 });
 
             return {
                 key: label,
@@ -627,7 +629,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         <View style={styles.modalContent}>
                             <View style={styles.modalHeader}>
                                 <SafeIcon name="plus-circle" size={24} color={modernColors.primary} />
-                                <Text style={styles.modalTitle}>Ajouter une caractéristique</Text>
+                                <Text style={styles.modalTitle}>{t('linearAutocompleteEditor.ajouterUneCaracteristique')}</Text>
                                 <TouchableOpacity
                                     style={styles.closeButton}
                                     onPress={() => {
@@ -646,10 +648,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                 </Text>
 
                                 <View style={styles.inputContainer}>
-                                    <Text style={styles.inputLabel}>Nom de la caractéristique</Text>
+                                    <Text style={styles.inputLabel}>{t('linearAutocompleteEditor.nomDeLaCaracteristique')}</Text>
                                     <TextInput
                                         style={styles.input}
-                                        placeholder="Ex: couleur, taille, matière..."
+                                        placeholder={t('linearAutocompleteEditor.exCouleurTailleMatiere')}
                                         placeholderTextColor="#9CA3AF"
                                         value={customKey}
                                         onChangeText={setCustomKey}
@@ -679,7 +681,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                         setCustomValue('');
                                     }}
                                 >
-                                    <Text style={styles.cancelButtonText}>Annuler</Text>
+                                    <Text style={styles.cancelButtonText}>{t('linearAutocompleteEditor.annuler')}</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[
@@ -690,7 +692,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                     disabled={!customKey || !customValue}
                                 >
                                     <SafeIcon name="check" size={18} color="#FFFFFF" />
-                                    <Text style={styles.saveButtonText}>Ajouter</Text>
+                                    <Text style={styles.saveButtonText}>{t('linearAutocompleteEditor.ajouter')}</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>

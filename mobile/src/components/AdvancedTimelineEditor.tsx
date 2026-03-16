@@ -18,6 +18,7 @@ import { CurveEditor } from './CurveEditor';
 import { NativeButton } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TRACK_HEIGHT = 60;
@@ -37,7 +38,8 @@ export const AdvancedTimelineEditor: React.FC<AdvancedTimelineEditorProps> = ({
     onSave,
     onClose,
 }) => {
-    const [timeline, setTimeline] = useState<AdvancedTimeline>(initialTimeline);
+        const { t } = useLanguageSafe();
+const [timeline, setTimeline] = useState<AdvancedTimeline>(initialTimeline);
     const [state, setState] = useState<TimelineState>({
         currentTime: 0,
         isPlaying: false,
@@ -267,7 +269,7 @@ export const AdvancedTimelineEditor: React.FC<AdvancedTimelineEditorProps> = ({
             {/* Footer avec actions */}
             <View style={styles.footer}>
                 <NativeButton
-                    title="Ajouter Piste"
+                    title={t('advancedTimelineEditor.ajouterPiste')}
                     onPress={() => {
                         // TODO: Implémenter ajout de piste
                     }}
@@ -275,7 +277,7 @@ export const AdvancedTimelineEditor: React.FC<AdvancedTimelineEditorProps> = ({
                 />
                 {onSave && (
                     <NativeButton
-                        title="Enregistrer"
+                        title={t('advancedTimelineEditor.enregistrer')}
                         onPress={() => onSave(timeline)}
                         variant="primary"
                     />

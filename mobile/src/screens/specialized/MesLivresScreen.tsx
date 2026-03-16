@@ -182,7 +182,7 @@ const MesLivresScreen: React.FC = () => {
                                 }}
                             >
                                 <SafeIcon name="edit" size={18} color={modernColors.primary} />
-                                <Text style={styles.actionText}>Modifier</Text>
+                                <Text style={styles.actionText}>{t('mesLivresScreen.modifier')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={styles.actionButton}
@@ -202,7 +202,7 @@ const MesLivresScreen: React.FC = () => {
                                 onPress={() => handleDelete(item)}
                             >
                                 <SafeIcon name="trash-2" size={18} color={modernColors.error} />
-                                <Text style={[styles.actionText, styles.deleteText]}>Supprimer</Text>
+                                <Text style={[styles.actionText, styles.deleteText]}>{t('mesLivresScreen.supprimer')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -225,7 +225,7 @@ const MesLivresScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('mesLivres.chargement')}</Text>
             </View>
         );
     }
@@ -239,7 +239,7 @@ const MesLivresScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mes Livres</Text>
+                <Text style={styles.title}>{t('mesLivres.mesLivres')}</Text>
                 <TouchableOpacity
                     onPress={() => {
                         navigation.navigate('LivreScolaireForm' as never, { mode: 'create' } as never);
@@ -253,12 +253,12 @@ const MesLivresScreen: React.FC = () => {
             {livres.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="book-open" size={64} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyText}>Aucun livre publié</Text>
+                    <Text style={styles.emptyText}>{t('mesLivres.aucunLivrePublie')}</Text>
                     <Text style={styles.emptySubtext}>
                         Créez votre premier livre scolaire pour commencer à échanger
                     </Text>
                     <NativeButton
-                        title="➕ Créer un livre"
+                        title={t('mesLivres.creerUnLivre')}
                         variant="primary"
                         onPress={() => {
                             navigation.navigate('LivreScolaireForm' as never, { mode: 'create' } as never);

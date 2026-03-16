@@ -14,6 +14,7 @@ import { captionsService, Subtitle } from '../services/captionsService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeCard } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AutoCaptionsPanelProps {
     videoUrl: string;
@@ -23,9 +24,9 @@ interface AutoCaptionsPanelProps {
 
 const CAPTION_STYLES = [
     { key: 'modern', label: 'Moderne', description: 'Style classique avec fond' },
-    { key: 'minimal', label: 'Minimal', description: 'Sans fond, épuré' },
-    { key: 'bold', label: 'Bold', description: 'Gras, centré, impactant' },
-    { key: 'elegant', label: 'Élégant', description: 'Raffiné, discret' },
+    { key: 'minimal', label: 'Minimal', description: t('autoCaptionsPanel.sansFondEpure') },
+    { key: 'bold', label: 'Bold', description: t('autoCaptionsPanel.grasCentreImpactant') },
+    { key: 'elegant', label: t('autoCaptionsPanel.elegant'), description: t('autoCaptionsPanel.raffineDiscret') },
 ];
 
 const formatTime = (seconds: number): string => {
@@ -39,7 +40,8 @@ export const AutoCaptionsPanel: React.FC<AutoCaptionsPanelProps> = ({
     lang = 'fr',
     onCaptionsGenerated,
 }) => {
-    const [loading, setLoading] = useState(false);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(false);
     const [selectedStyle, setSelectedStyle] = useState('modern');
     const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
     const [confidence, setConfidence] = useState<number | null>(null);
@@ -48,8 +50,8 @@ export const AutoCaptionsPanel: React.FC<AutoCaptionsPanelProps> = ({
         // ✅ CORRIGÉ: Validation avant d'appeler l'API
         if (!videoUrl || videoUrl.trim() === '') {
             Alert.alert(
-                'Vidéo manquante',
-                'Aucune vidéo disponible pour générer les sous-titres.\n\nVeuillez d\'abord uploader ou sélectionner une vidéo.',
+                t('autoCaptionsPanel.videoManquante'),
+                t('autoCaptionsPanel.aucuneVideoDisponiblePourGenererLesSoustitresnnveuillez'),
                 [{ text: 'OK' }]
             );
             return;
@@ -59,7 +61,7 @@ export const AutoCaptionsPanel: React.FC<AutoCaptionsPanelProps> = ({
         if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://') && !videoUrl.startsWith('file://')) {
             Alert.alert(
                 'URL invalide',
-                'L\'URL de la vidéo n\'est pas valide.\n\nVeuillez réessayer après avoir uploadé la vidéo.',
+                'L\t('autoCaptionsPanel.urlDeLaVideoNestPasValidennveuillez'),
                 [{ text: 'OK' }]
             );
             return;
@@ -85,15 +87,15 @@ export const AutoCaptionsPanel: React.FC<AutoCaptionsPanelProps> = ({
             console.error('[AutoCaptionsPanel] Error:', error);
 
             // ✅ CORRIGÉ: Messages d'erreur plus clairs selon le type d'erreur
-            let errorMessage = 'Impossible de générer les sous-titres';
+            let errorMessage = t('autoCaptionsPanel.impossibleDeGenererLesSoustitres');
 
             if (error?.message) {
                 if (error.message.includes('500') || error.message.includes('Erreur 500')) {
-                    errorMessage = 'Erreur serveur : Les sous-titres n\'ont pas pu être générés.\n\nVérifiez que la vidéo contient de l\'audio et est accessible.';
+                    errorMessage = 'Erreur serveur : Les sous-titres n\t('autoCaptionsPanel.ontPasPuEtreGeneresnnverifiezQueLa');
                 } else if (error.message.includes('audio') || error.message.includes('fichier audio')) {
-                    errorMessage = 'Aucun fichier audio trouvé dans la vidéo.\n\nVérifiez que la vidéo contient de l\'audio pour générer les sous-titres.';
+                    errorMessage = t('autoCaptionsPanel.aucunFichierAudioTrouveDansLaVideonnverifiez');
                 } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
-                    errorMessage = 'Le traitement prend trop de temps.\n\nVeuillez réessayer avec une vidéo plus courte.';
+                    errorMessage = t('autoCaptionsPanel.leTraitementPrendTropDeTempsnnveuillez');
                 } else {
                     errorMessage = error.message;
                 }
@@ -140,7 +142,7 @@ export const AutoCaptionsPanel: React.FC<AutoCaptionsPanelProps> = ({
                 ) : (
                     <>
                         <SafeIcon name="closed-captioning" size={18} color="#FFF" />
-                        <Text style={styles.generateButtonText}>Générer les sous-titres</Text>
+                        <Text style={styles.generateButtonText}>{t('autoCaptionsPanel.genererLesSoustitres')}</Text>
                     </>
                 )}
             </TouchableOpacity>

@@ -78,10 +78,10 @@ const ProductDetailScreen: React.FC = () => {
 
                 Alert.alert(
                     '👋 Bienvenue sur Yukpo!',
-                    'Pour voir ce produit, veuillez vous connecter ou créer un compte gratuitement.',
+                    t('productDetailScreen.pourVoirCeProduitVeuillezVous'),
                     [
                         {
-                            text: 'Créer un compte',
+                            text: t('productDetail.creerUnCompte'),
                             onPress: () => navigation.navigate('Register' as never)
                         },
                         {
@@ -180,7 +180,7 @@ const ProductDetailScreen: React.FC = () => {
 
             Alert.alert(
                 'Produit introuvable',
-                'Ce produit n\'existe plus ou a été supprimé.',
+                'Ce produit n\t('productDetailScreen.existePlusOuAEteSupprime'),
                 [
                     {
                         text: t('common.back'),
@@ -217,7 +217,7 @@ const ProductDetailScreen: React.FC = () => {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement du produit...</Text>
+                <Text style={styles.loadingText}>{t('productDetail.chargementDuProduit')}</Text>
             </View>
         );
     }
@@ -226,10 +226,10 @@ const ProductDetailScreen: React.FC = () => {
         return (
             <View style={styles.errorContainer}>
                 <SafeIcon name="alert-circle" size={64} color={modernColors.error} />
-                <Text style={styles.errorTitle}>Produit introuvable</Text>
+                <Text style={styles.errorTitle}>{t('productDetail.produitIntrouvable')}/Text>
                 <Text style={styles.errorText}>{error || 'Ce produit n\'existe plus'}</Text>
                 <NativeButton
-                    title="🏠 Retour à l'accueil"
+                    title={t('productDetail.retourAL')}accueil"
                     onPress={() => navigation.navigate('Home' as never)}
                     variant="primary"
                     size="large"
@@ -241,7 +241,7 @@ const ProductDetailScreen: React.FC = () => {
     return (
         <View style={styles.container}>
             <NavigatorToolbar
-                title="Détail du produit"
+                title={t('productDetail.detailDuProduit')}
                 subtitle={product?.nom ? product.nom.slice(0, 50) : undefined}
                 showHandle={false}
                 density="compact"
@@ -291,7 +291,7 @@ const ProductDetailScreen: React.FC = () => {
                 {/* Boutons d'action */}
                 <View style={styles.actionsContainer}>
                     <NativeButton
-                        title="🎬 Créer une vidéo immersive"
+                        title={t('productDetail.creerUneVideoImmersive')}
                         onPress={() => {
                             console.log('[ProductDetailScreen] 🎬 Navigation vers VideoCreationIntro');
                             try {
@@ -319,7 +319,7 @@ const ProductDetailScreen: React.FC = () => {
                     />
 
                     <NativeButton
-                        title="🔍 Voir tous les produits similaires"
+                        title={t('productDetailScreen.voirTousLesProduitsSimilaires')}
                         onPress={() => {
                             navigation.navigate('ResultatBesoin' as never, {
                                 results: [{ service_id: serviceId }],

@@ -7,6 +7,7 @@ import useGlobalPromos from '../../hooks/useGlobalPromos';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 import { NativeButton, NativeCard } from '../SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const getSnapshotImage = (snapshot: any): string | undefined => {
     if (!snapshot) return undefined;
@@ -26,12 +27,13 @@ const getSnapshotImage = (snapshot: any): string | undefined => {
 };
 
 const formatPrice = (value?: number | null) => {
-    if (!value) return 'Prix spécial à découvrir';
+    if (!value) return t('globalPromoHighlights.prixSpecialADecouvrir');
     return `${value.toLocaleString('fr-FR')} CFA`;
 };
 
 const GlobalPromoHighlightsComponent: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const { entries, events, selectedEvent, loadingEvents, loadingEntries, loading, error, refresh } = useGlobalPromos();
     const { isEnabled } = useFeatureFlags();
     const [isInitialized, setIsInitialized] = React.useState(false);
@@ -85,7 +87,7 @@ const GlobalPromoHighlightsComponent: React.FC = () => {
             <NativeCard style={styles.card}>
                 <Text style={styles.title}>🔥 Black Friday collectif</Text>
                 <Text style={styles.errorText}>{typeof error === 'string' ? error : (error as any)?.message || 'Erreur inconnue'}</Text>
-                <NativeButton title="Réessayer" onPress={refresh} variant="secondary" />
+                <NativeButton title={t('globalPromoHighlights.reessayer')} onPress={refresh} variant="secondary" />
             </NativeCard>
         );
     }
@@ -98,26 +100,26 @@ const GlobalPromoHighlightsComponent: React.FC = () => {
         <NativeCard style={styles.card}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.kicker}>Nouveauté plateforme</Text>
+                    <Text style={styles.kicker}>{t('globalPromoHighlights.nouveautePlateforme')}</Text>
                     <Text style={styles.title}>🔥 Black Friday collectif</Text>
-                    <Text style={styles.subtitle}>Intégrez les promos officielles Yukpo et boostez vos ventes</Text>
+                    <Text style={styles.subtitle}>{t('globalPromoHighlights.integrezLesPromosOfficiellesYukpo')}</Text>
                 </View>
                 <View style={{ gap: 8 }}>
                     <NativeButton
-                        title={isLoading ? 'Chargement...' : 'Actualiser'}
+                        title={isLoading ? t('globalPromoHighlights.chargement') : 'Actualiser'}
                         onPress={refresh}
                         variant="ghost"
                         disabled={isLoading}
                         size="sm"
                     />
                     <NativeButton
-                        title="Voir tout"
+                        title={t('globalPromoHighlights.voirTout')}
                         onPress={() => navigation.navigate('GlobalPromoCatalog')}
                         size="sm"
                         variant="secondary"
                     />
                     <NativeButton
-                        title="Ajouter mon service"
+                        title={t('globalPromoHighlights.ajouterMonService')}
                         onPress={() => navigation.navigate('GlobalPromoSubmission')}
                         size="sm"
                     />
@@ -194,7 +196,7 @@ const GlobalPromoHighlightsComponent: React.FC = () => {
                                 <Text style={styles.promoFooter}>
                                     {item.event?.status === 'live'
                                         ? '⚡ Actif maintenant'
-                                        : 'Programmation centralisée'}
+                                        : t('globalPromoHighlights.programmationCentralisee')}
                                 </Text>
                             </View>
                         </TouchableOpacity>

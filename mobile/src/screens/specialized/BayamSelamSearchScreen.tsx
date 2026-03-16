@@ -21,10 +21,12 @@ import { supermarketService, Supermarket } from '../../services/supermarketServi
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 import { NativeButton } from '../../components/SafeNativeDesign';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const BayamSelamSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     const [supermarkets, setSupermarkets] = useState<Supermarket[]>([]);
     const [loading, setLoading] = useState(true);
@@ -41,7 +43,7 @@ const BayamSelamSearchScreen: React.FC = () => {
         if (!location?.coords) {
             Alert.alert(
                 'Localisation requise',
-                'Veuillez activer la localisation pour voir les supermarchés à proximité.',
+                t('bayamSelamSearchScreen.veuillezActiverLaLocalisationPourVoir'),
                 [
                     { text: 'OK' },
                 ]
@@ -153,7 +155,7 @@ const BayamSelamSearchScreen: React.FC = () => {
                     <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Rechercher un supermarché..."
+                        placeholder={t('bayamSelamSearch.rechercherUnSupermarche')}
                         placeholderTextColor="#9CA3AF"
                         value={searchQuery}
                         onChangeText={setSearchQuery}
@@ -173,7 +175,7 @@ const BayamSelamSearchScreen: React.FC = () => {
 
                 {/* Filtres de tri */}
                 <View style={styles.filtersRow}>
-                    <Text style={styles.filtersLabel}>Trier par:</Text>
+                    <Text style={styles.filtersLabel}>{t('bayamSelamSearch.trierPar')}</Text>
                     <View style={styles.sortButtons}>
                         <TouchableOpacity
                             style={[styles.sortButton, sortBy === 'distance' && styles.sortButtonActive]}
@@ -238,13 +240,13 @@ const BayamSelamSearchScreen: React.FC = () => {
             {loading && supermarkets.length === 0 ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color="#F97316" />
-                    <Text style={styles.loadingText}>Recherche de supermarchés...</Text>
+                    <Text style={styles.loadingText}>{t('bayamSelamSearch.rechercheDeSupermarches')}</Text>
                 </View>
             ) : filteredSupermarkets.length === 0 ? (
                 <View style={styles.centerContainer}>
                     <SafeIcon name="store" size={64} color="#9CA3AF" type="lucide" />
                     <Text style={styles.emptyText}>
-                        {searchQuery ? 'Aucun supermarché trouvé' : 'Aucun supermarché à proximité'}
+                        {searchQuery ? t('bayamSelamSearchScreen.aucunSupermarcheTrouve') : t('bayamSelamSearchScreen.aucunSupermarcheAProximite')}
                     </Text>
                     <Text style={styles.emptySubtext}>
                         {searchQuery
@@ -253,7 +255,7 @@ const BayamSelamSearchScreen: React.FC = () => {
                     </Text>
                     {!searchQuery && (
                         <NativeButton
-                            title="Réessayer"
+                            title={t('bayamSelamSearch.reessayer')}
                             onPress={handleRefresh}
                             variant="outline"
                             style={styles.retryButton}

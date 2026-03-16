@@ -2,6 +2,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AlerteSecuriteProps {
     variant?: 'warning' | 'info';
@@ -48,27 +49,27 @@ const AlerteSecurite: React.FC<AlerteSecuriteProps> = ({
 
             {showDetails && (
                 <View style={styles.checklistContainer}>
-                    <Text style={styles.checklistTitle}>✓ Points de vérification :</Text>
+                    <Text style={styles.checklistTitle}>{t('alerteSecurite.pointsDeVerification')}</Text>
                     <View style={styles.checklist}>
                         <View style={styles.checkItem}>
                             <SafeIcon name="check-circle" size={14} color={isWarning ? "#F59E0B" : "#3B82F6"} />
-                            <Text style={styles.checkText}>Vérifier les avis et notes du prestataire</Text>
+                            <Text style={styles.checkText}>{t('alerteSecurite.verifierLesAvisEtNotes')}</Text>
                         </View>
                         <View style={styles.checkItem}>
                             <SafeIcon name="check-circle" size={14} color={isWarning ? "#F59E0B" : "#3B82F6"} />
-                            <Text style={styles.checkText}>Confirmer l'identité et les coordonnées</Text>
+                            <Text style={styles.checkText}>{t('alerteSecurite.confirmerLidentiteEtLesCoordonnees')}</Text>
                         </View>
                         <View style={styles.checkItem}>
                             <SafeIcon name="check-circle" size={14} color={isWarning ? "#F59E0B" : "#3B82F6"} />
-                            <Text style={styles.checkText}>Discuter des détails avant de payer</Text>
+                            <Text style={styles.checkText}>{t('alerteSecurite.discuterDesDetailsAvantDe')}</Text>
                         </View>
                         <View style={styles.checkItem}>
                             <SafeIcon name="check-circle" size={14} color={isWarning ? "#F59E0B" : "#3B82F6"} />
-                            <Text style={styles.checkText}>Ne jamais payer l'intégralité à l'avance</Text>
+                            <Text style={styles.checkText}>{t('alerteSecurite.neJamaisPayerLintegraliteA')}</Text>
                         </View>
                         <View style={styles.checkItem}>
                             <SafeIcon name="check-circle" size={14} color={isWarning ? "#F59E0B" : "#3B82F6"} />
-                            <Text style={styles.checkText}>Utiliser les modes de paiement sécurisés</Text>
+                            <Text style={styles.checkText}>{t('alerteSecurite.utiliserLesModesDePaiement')}</Text>
                         </View>
                     </View>
                 </View>

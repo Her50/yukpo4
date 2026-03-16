@@ -18,6 +18,7 @@ import SimpleChart from '../../components/SimpleChart';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface DetailedStatistics {
     total: number;
@@ -39,6 +40,7 @@ interface DetailedStatistics {
 
 const ServicesDashboard: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -74,7 +76,7 @@ const ServicesDashboard: React.FC = () => {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement des statistiques...</Text>
+                <Text style={styles.loadingText}>{t('servicesDashboard.chargementDesStatistiques')}</Text>
             </View>
         );
     }
@@ -83,7 +85,7 @@ const ServicesDashboard: React.FC = () => {
         return (
             <View style={styles.emptyContainer}>
                 <Text style={styles.emptyIcon}>📊</Text>
-                <Text style={styles.emptyTitle}>Aucune statistique disponible</Text>
+                <Text style={styles.emptyTitle}>{t('servicesDashboard.aucuneStatistiqueDisponible')}</Text>
                 <Text style={styles.emptyText}>
                     Créez des services spécialisés pour voir vos statistiques
                 </Text>
@@ -95,7 +97,7 @@ const ServicesDashboard: React.FC = () => {
     const typeChartData = Object.entries(stats.by_type).map(([type, data]: [string, any]) => {
         const typeLabels: Record<string, string> = {
             pharmacie: 'Pharmacie',
-            hopital: 'Hôpital',
+            hopital: t('servicesDashboard.hopital'),
             laboratoire: 'Laboratoire',
             banque_sang: 'Banque Sang',
             agence_voyage: 'Agence',
@@ -144,7 +146,7 @@ const ServicesDashboard: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Dashboard Statistiques</Text>
+                <Text style={styles.title}>{t('servicesDashboard.dashboardStatistiques')}/Text>
             </View>
 
             {/* Statistiques principales */}
@@ -172,7 +174,7 @@ const ServicesDashboard: React.FC = () => {
 
             {/* Activité récente */}
             <NativeCard style={styles.activityCard}>
-                <Text style={styles.sectionTitle}>Activité Récente</Text>
+                <Text style={styles.sectionTitle}>{t('servicesDashboard.activiteRecente')}</Text>
                 <View style={styles.activityRow}>
                     <View style={styles.activityItem}>
                         <Text style={styles.activityValue}>{stats.recent_activity.last_7_days}</Text>
@@ -193,7 +195,7 @@ const ServicesDashboard: React.FC = () => {
             {typeChartData.length > 0 && (
                 <SimpleChart
                     data={typeChartData}
-                    title="Répartition par Type"
+                    title={t('servicesDashboard.repartitionParType')}
                     type="bar"
                     height={250}
                 />
@@ -203,7 +205,7 @@ const ServicesDashboard: React.FC = () => {
             {evolutionChartData.length > 0 && (
                 <SimpleChart
                     data={evolutionChartData}
-                    title="Évolution (7 derniers jours)"
+                    title={t('servicesDashboard.evolution7DerniersJours')}
                     type="line"
                     height={200}
                 />
@@ -212,11 +214,11 @@ const ServicesDashboard: React.FC = () => {
             {/* Détails par type */}
             {Object.keys(stats.by_type).length > 0 && (
                 <NativeCard style={styles.detailsCard}>
-                    <Text style={styles.sectionTitle}>Détails par Type</Text>
+                    <Text style={styles.sectionTitle}>{t('servicesDashboard.detailsParType')}</Text>
                     {Object.entries(stats.by_type).map(([type, data]: [string, any]) => {
                         const typeLabels: Record<string, string> = {
                             pharmacie: '💊 Pharmacie',
-                            hopital: '🏥 Hôpital',
+                            hopital: t('servicesDashboard.hopital'),
                             laboratoire: '🔬 Laboratoire',
                             banque_sang: '🩸 Banque Sang',
                             agence_voyage: '🚌 Agence',
@@ -263,7 +265,7 @@ const ServicesDashboard: React.FC = () => {
                     onPress={() => (navigation as any).navigate('GestionServicesSpecialises')}
                 >
                     <SafeIcon name="arrow-left" size={18} color="#fff" />
-                    <Text style={styles.backToManagementText}>Retour à la gestion</Text>
+                    <Text style={styles.backToManagementText}>{t('servicesDashboard.retourALaGestion')}</Text>
                 </TouchableOpacity>
             </View>
         </ScrollView>

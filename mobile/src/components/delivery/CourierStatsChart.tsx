@@ -7,6 +7,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, Text, View } from 'react-native';
 import { modernColors, modernStyles } from '../../theme/modernTheme';
 import { SafeIcon } from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -103,7 +104,7 @@ const CourierStatsChart: React.FC<CourierStatsChartProps> = ({
             <View style={styles.chartCard}>
                 <View style={styles.chartHeader}>
                     <SafeIcon name="package" size={20} color={modernColors.success} />
-                    <Text style={styles.chartTitle}>Livraisons complétées</Text>
+                    <Text style={styles.chartTitle}>{t('courierStatsChart.livraisonsCompletees')}</Text>
                 </View>
                 <Text style={styles.chartValue}>
                     {String(safeCompletedDeliveries)}
@@ -129,7 +130,7 @@ const CourierStatsChart: React.FC<CourierStatsChartProps> = ({
                 <View style={styles.chartCard}>
                     <View style={styles.chartHeader}>
                         <SafeIcon name="check-circle" size={20} color={modernColors.success} />
-                        <Text style={styles.chartTitle}>Taux de réussite</Text>
+                        <Text style={styles.chartTitle}>{t('courierStatsChart.tauxDeReussite')}</Text>
                     </View>
                     <Text style={styles.chartValue}>
                         {String(safeSuccessRate)}%

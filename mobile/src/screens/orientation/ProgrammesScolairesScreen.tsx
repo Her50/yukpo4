@@ -13,6 +13,7 @@ import {
     View,
 } from 'react-native';
 import { apiGet } from '../../services/api';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Programme {
     id: number;
@@ -27,6 +28,7 @@ interface Programme {
 
 const ProgrammesScolairesScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const etablissementId = (route.params as any)?.etablissement_id;
 
@@ -91,14 +93,14 @@ const ProgrammesScolairesScreen: React.FC = () => {
                 style={styles.downloadButton}
                 onPress={() => handleDownload(item.url_programme)}
             >
-                <Text style={styles.downloadButtonText}>📥 Télécharger</Text>
+                <Text style={styles.downloadButtonText}>{t('programmesScolaires.telecharger')}</Text>
             </TouchableOpacity>
             {item.etablissement_id && (
                 <TouchableOpacity
                     style={styles.linkButton}
                     onPress={() => navigation.navigate('EtablissementDetails', { id: item.etablissement_id })}
                 >
-                    <Text style={styles.linkButtonText}>Voir l'établissement</Text>
+                    <Text style={styles.linkButtonText}>{t('programmesScolaires.voirLetablissement')}</Text>
                 </TouchableOpacity>
             )}
         </View>
@@ -110,19 +112,19 @@ const ProgrammesScolairesScreen: React.FC = () => {
             <View style={styles.filtersContainer}>
                 <TextInput
                     style={styles.input}
-                    placeholder="Niveau (ex: 6ème)"
+                    placeholder={t('programmesScolaires.niveauEx6eme')}
                     value={niveau}
                     onChangeText={setNiveau}
                 />
                 <TextInput
                     style={styles.input}
-                    placeholder="Année (ex: 2024-2025)"
+                    placeholder={t('programmesScolaires.anneeEx20242025')}
                     value={annee}
                     onChangeText={setAnnee}
                 />
                 <TextInput
                     style={styles.input}
-                    placeholder="Filière (ex: Scientifique)"
+                    placeholder={t('programmesScolaires.filiereExScientifique')}
                     value={filiere}
                     onChangeText={setFiliere}
                 />
@@ -133,7 +135,7 @@ const ProgrammesScolairesScreen: React.FC = () => {
                         searchProgrammes();
                     }}
                 >
-                    <Text style={styles.searchButtonText}>Rechercher</Text>
+                    <Text style={styles.searchButtonText}>{t('programmesScolaires.rechercher')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -141,7 +143,7 @@ const ProgrammesScolairesScreen: React.FC = () => {
             {loading ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color="#3B82F6" />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('programmesScolaires.chargement')}</Text>
                 </View>
             ) : programmes.length > 0 ? (
                 <>
@@ -163,7 +165,7 @@ const ProgrammesScolairesScreen: React.FC = () => {
                 </>
             ) : (
                 <View style={styles.centerContainer}>
-                    <Text style={styles.emptyText}>Aucun programme trouvé</Text>
+                    <Text style={styles.emptyText}>{t('programmesScolaires.aucunProgrammeTrouve')}</Text>
                 </View>
             )}
         </View>

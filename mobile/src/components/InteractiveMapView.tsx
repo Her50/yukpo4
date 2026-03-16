@@ -10,6 +10,7 @@ import {
 import MapView, { Circle, Marker, Polygon, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface InteractiveMapViewProps {
     selectedLocation?: { lat: number; lng: number } | null;
@@ -43,7 +44,8 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
     initialRegion,
 }, ref) => {
     const mapRef = useRef<MapView>(null);
-    const [localPolygonPoints, setLocalPolygonPoints] = useState<{ lat: number; lng: number }[]>(polygonPoints);
+        const { t } = useLanguageSafe();
+const [localPolygonPoints, setLocalPolygonPoints] = useState<{ lat: number; lng: number }[]>(polygonPoints);
     // ✅ CORRIGÉ 2026-02-25: Utiliser initialRegion UNIQUEMENT (non-contrôlé)
     // region={} contrôlé causait des sauts visuels à chaque setState
     const startRegion = initialRegion || (selectedLocation?.lat && selectedLocation?.lng ? {
@@ -239,7 +241,7 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
             {!mapReady && (
                 <View style={styles.loadingBanner}>
                     <ActivityIndicator size="small" color="#FFFFFF" />
-                    <Text style={styles.loadingBannerText}>Chargement de la carte...</Text>
+                    <Text style={styles.loadingBannerText}>{t('interactiveMapView.chargementDeLaCarte')}</Text>
                 </View>
             )}
 
@@ -279,7 +281,7 @@ const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewP
                             latitude: selectedLocation.lat,
                             longitude: selectedLocation.lng,
                         }}
-                        title="Position sélectionnée"
+                        title={t('interactiveMapView.positionSelectionnee')}
                         description={`${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`}
                         pinColor="#EF4444"
                         tracksViewChanges={false}

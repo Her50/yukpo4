@@ -21,6 +21,7 @@ import SafeIcon from './SafeIcon';
 
 // Import WebRTC
 import { mediaDevices, MediaStream, RTCIceCandidate, RTCPeerConnection, RTCSessionDescription, RTCView } from 'react-native-webrtc';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -45,7 +46,8 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
     serviceId,
     isIncoming = false // ✅ NOUVEAU: Défaut = false (appel sortant)
 }) => {
-    const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' | 'ended'>('connecting');
+        const { t } = useLanguageSafe();
+const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' | 'ended'>('connecting');
     const [isMuted, setIsMuted] = useState(false);
     const [isSpeaker, setIsSpeaker] = useState(false);
     const [isVideoEnabled, setIsVideoEnabled] = useState(callType === 'video');
@@ -268,11 +270,11 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
             let errorMessage = 'Impossible d\'initialiser l\'appel.';
             if (error instanceof Error) {
                 if (error.message.includes('Permission')) {
-                    errorMessage = 'Permissions caméra/micro refusées. Veuillez les activer dans les paramètres.';
+                    errorMessage = t('webRTCCallModal.permissionsCameramicroRefuseesVeuillezLesActiver');
                 } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
-                    errorMessage = 'Délai d\'attente dépassé. Vérifiez votre caméra/micro.';
+                    errorMessage = 'Délai d\t('webRTCCallModal.attenteDepasseVerifiezVotreCameramicro');
                 } else if (error.message.includes('WebRTC non disponible')) {
-                    errorMessage = 'Appels vidéo/audio non disponibles sur cet appareil.';
+                    errorMessage = t('webRTCCallModal.appelsVideoaudioNonDisponiblesSurCet');
                 }
             }
 
@@ -576,7 +578,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
             const response = await apiPost(API_ENDPOINTS.WEBRTC.NOTIFY_CALL, {
                 recipient_id: recipientId,
                 caller_id: currentUserId,
-                caller_name: recipientName || 'Un utilisateur',
+                caller_name: recipientName || t('webRTCCall.unUtilisateur'),
                 call_type: callType,
                 service_id: serviceId
             });
@@ -594,7 +596,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                     type: 'call_notification',
                     to: recipientId,
                     from: currentUserId,
-                    caller_name: recipientName || 'Un utilisateur',
+                    caller_name: recipientName || t('webRTCCall.unUtilisateur'),
                     call_type: callType,
                     service_id: serviceId,
                     timestamp: new Date().toISOString()
@@ -670,7 +672,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                         {callState === 'connecting' ? 'Connexion...' :
                             callState === 'ringing' ? '🔔 Sonnerie en cours...' :
                                 callState === 'active' ? formatDuration(callDuration) :
-                                    callState === 'ended' ? 'Appel terminé' : ''}
+                                    callState === 'ended' ? t('webRTCCallModal.appelTermine') : ''}
                     </Text>
 
                     {/* ✅ Indicateur sonore pendant ringing */}
@@ -686,7 +688,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                     )}
 
                     {callType === 'video' && callState === 'active' && (
-                        <Text style={styles.callType}>Appel vidéo</Text>
+                        <Text style={styles.callType}>{t('webRTCCall.appelVideo')}</Text>
                     )}
                     {callType === 'audio' && callState === 'active' && (
                         <Text style={styles.callType}>Appel audio</Text>
@@ -768,7 +770,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                             onPress={endCall}
                         >
                             <SafeIcon name="phone-off" size={40} color="#FFFFFF" />
-                            <Text style={styles.endCallText}>Annuler l'appel</Text>
+                            <Text style={styles.endCallText}>{t('webRTCCallModal.annulerLappel')}</Text>
                         </TouchableOpacity>
                     </View>
                 )}

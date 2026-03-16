@@ -88,14 +88,14 @@ const AISuggestFormationsScreen: React.FC = () => {
             } else {
                 Alert.alert(
                     'Erreur',
-                    response.message || 'Impossible de générer des suggestions. L\'IA n\'est peut-être pas encore opérationnelle.'
+                    response.message || t('aISuggestFormations.impossibleDeGenererDesSuggestionsLiaNest')'
                 );
             }
         } catch (error: any) {
             console.error('[AISuggestFormationsScreen] Erreur suggestions:', error);
             Alert.alert(
                 'Erreur',
-                'Impossible de générer des suggestions. L\'IA de suggestions de formation n\'est peut-être pas encore opérationnelle. Veuillez réessayer plus tard.'
+                t('aISuggestFormationsScreen.impossibleDeGenererDesSuggestionsLiaDe')'
             );
         } finally {
             setLoading(false);
@@ -105,8 +105,8 @@ const AISuggestFormationsScreen: React.FC = () => {
     const addCompetenceManquante = () => {
         // Permettre à l'utilisateur d'ajouter manuellement des compétences manquantes
         Alert.prompt(
-            'Compétence manquante',
-            'Entrez une compétence que vous souhaitez acquérir:',
+            t('aISuggestFormationsScreen.competenceManquante'),
+            t('aISuggestFormationsScreen.entrezUneCompetenceQueVousSouhaitez'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -131,7 +131,7 @@ const AISuggestFormationsScreen: React.FC = () => {
             <View style={styles.container}>
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement du profil...</Text>
+                    <Text style={styles.loadingText}>{t('aISuggestFormations.chargementDuProfil')}</Text>
                 </View>
             </View>
         );
@@ -148,10 +148,10 @@ const AISuggestFormationsScreen: React.FC = () => {
 
             {suggestions.length === 0 ? (
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>Paramètres de recherche</Text>
+                    <Text style={styles.sectionTitle}>{t('aISuggestFormations.parametresDeRecherche')}</Text>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Compétences manquantes</Text>
+                        <Text style={styles.label}>{t('aISuggestFormations.competencesManquantes')}</Text>
                         <View style={styles.tagsContainer}>
                             {competencesManquantes.map((comp, i) => (
                                 <View key={i} style={styles.tag}>
@@ -167,15 +167,15 @@ const AISuggestFormationsScreen: React.FC = () => {
                             onPress={addCompetenceManquante}
                         >
                             <SafeIcon name="plus" size={16} color={modernColors.primary} type="lucide" />
-                            <Text style={styles.addButtonText}>Ajouter une compétence</Text>
+                            <Text style={styles.addButtonText}>{t('aISuggestFormations.ajouterUneCompetence')}</Text>
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Objectif de carrière (optionnel)</Text>
+                        <Text style={styles.label}>{t('aISuggestFormations.objectifDeCarriereOptionnel')}</Text>
                         <TextInput
                             style={styles.textArea}
-                            placeholder="Ex: Devenir développeur Full Stack senior"
+                            placeholder={t('aISuggestFormations.exDevenirDeveloppeurFullStack')}
                             value={objectifCarriere}
                             onChangeText={setObjectifCarriere}
                             multiline
@@ -194,7 +194,7 @@ const AISuggestFormationsScreen: React.FC = () => {
                     )}
 
                     <NativeButton
-                        title={loading ? 'Génération en cours...' : 'Générer des suggestions'}
+                        title={loading ? t('aISuggestFormationsScreen.generationEnCours') : t('aISuggestFormationsScreen.genererDesSuggestions')}
                         onPress={handleSuggest}
                         variant="primary"
                         disabled={loading || (competencesManquantes.length === 0 && !objectifCarriere.trim())}
@@ -261,7 +261,7 @@ const AISuggestFormationsScreen: React.FC = () => {
             {loading && (
                 <View style={styles.loadingOverlay}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Génération en cours...</Text>
+                    <Text style={styles.loadingText}>{t('aISuggestFormations.generationEnCours')}</Text>
                 </View>
             )}
         </ScrollView>

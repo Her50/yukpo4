@@ -25,7 +25,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
     fieldName,
     onSelect,
     required = false,
-    placeholder = 'Sélectionner...',
+    placeholder={t('enhancedModalitySelector.selectionner')},
     customOptions // ✅ NOUVEAU
 }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -119,8 +119,8 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                 // Vérifier si la modalité existe déjà
                                 if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase())) {
                                     Alert.alert(
-                                        '⚠️ Modalité existante',
-                                        `"${newModality}" existe déjà dans la liste.`,
+                                        t('enhancedModalitySelector.modaliteExistante'),
+                                        t('enhancedModalitySelector.existeDejaDansLaListe', { newModality: newModality }),
                                         [{ text: 'OK' }]
                                     );
                                     return;
@@ -141,14 +141,14 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                     onSelect(newModality);
 
                                     Alert.alert(
-                                        '✅ Modalité ajoutée',
-                                        `"${newModality}" a été ajouté et sera visible pour tous les utilisateurs !`,
+                                        t('enhancedModalitySelector.modaliteAjoutee'),
+                                        t('enhancedModalitySelector.aEteAjouteEtSeraVisible', { newModality: newModality }),
                                         [{ text: 'OK' }]
                                     );
                                 } else {
                                     Alert.alert(
                                         '❌ Erreur',
-                                        'Impossible d\'ajouter la modalité. Veuillez réessayer.',
+                                        'Impossible d\t('enhancedModalitySelector.ajouterLaModaliteVeuillezReessayer'),
                                         [{ text: 'OK' }]
                                     );
                                 }
@@ -180,7 +180,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
         if (allOptions.length === 0) {
             Alert.alert(
                 'Aucune option disponible',
-                `Aucune option n'est définie pour ${label.toLowerCase()}.`,
+                t('enhancedModalitySelector.aucuneOptionNestDefiniePour', { label_toLowerCase(): label.toLowerCase() }),
                 [{ text: 'OK' }]
             );
             return;
@@ -268,7 +268,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
             {/* Indicateur du nombre d'options disponibles */}
             {allOptions.length > 0 && !loading && (
                 <Text style={styles.optionsCount}>
-                    {allOptions.length} option{allOptions.length > 1 ? 's' : ''} disponible{allOptions.length > 1 ? 's' : ''}{allOptions.some(opt => !opt.includes('🆕')) ? ' (inclut les modalités partagées)' : ''}
+                    {allOptions.length} option{allOptions.length > 1 ? 's' : ''} disponible{allOptions.length > 1 ? 's' : ''}{allOptions.some(opt => !opt.includes('🆕')) ? t('enhancedModalitySelector.inclutLesModalitesPartagees') : ''}
                 </Text>
             )}
             {loading && (
@@ -325,15 +325,15 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                         style={styles.addCustomButtonCompact}
                                         onPress={() => {
                                             Alert.alert(
-                                                'Ajouter une nouvelle modalité',
-                                                `Voulez-vous ajouter "${searchQuery.trim()}" comme nouvelle option pour ${label.toLowerCase()} ?\n\nCette modalité sera visible pour tous les utilisateurs.`,
+                                                t('enhancedModalitySelector.ajouterUneNouvelleModalite'),
+                                                t('enhancedModalitySelector.voulezvousAjouterCommeNouvelleOptionPour', { searchQuery_trim(): searchQuery.trim(), label_toLowerCase(): label.toLowerCase() }),
                                                 [
                                                     {
                                                         text: t('common.cancel'),
                                                         style: 'cancel'
                                                     },
                                                     {
-                                                        text: 'Confirmer l\'ajout',
+                                                        text: t('enhancedModalitySelector.confirmerLajout'),
                                                         onPress: async () => {
                                                             const newModality = searchQuery.trim();
                                                             const success = await modalityService.addCustomModality(
@@ -348,14 +348,14 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                                                 setIsOpen(false);
                                                                 setSearchQuery('');
                                                                 Alert.alert(
-                                                                    '✅ Modalité ajoutée',
+                                                                    t('enhancedModalitySelector.modaliteAjoutee'),
                                                                     `"${newModality}" est maintenant disponible !`,
                                                                     [{ text: 'OK' }]
                                                                 );
                                                             } else {
                                                                 Alert.alert(
                                                                     '❌ Erreur',
-                                                                    'Impossible d\'ajouter la modalité.',
+                                                                    'Impossible d\t('enhancedModalitySelector.ajouterLaModalite'),
                                                                     [{ text: 'OK' }]
                                                                 );
                                                             }
@@ -388,7 +388,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                         style={styles.addCustomButton}
                                         onPress={() => {
                                             Alert.alert(
-                                                'Ajouter une nouvelle modalité',
+                                                t('enhancedModalitySelector.ajouterUneNouvelleModalite'),
                                                 `Voulez-vous ajouter "${searchQuery.trim()}" comme nouvelle option pour ${label.toLowerCase()} ?`,
                                                 [
                                                     {
@@ -400,7 +400,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                                         }
                                                     },
                                                     {
-                                                        text: 'Confirmer l\'ajout',
+                                                        text: t('enhancedModalitySelector.confirmerLajout'),
                                                         onPress: async () => {
                                                             const newModality = searchQuery.trim();
                                                             const success = await modalityService.addCustomModality(
@@ -415,7 +415,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                                                 setIsOpen(false);
                                                                 setSearchQuery('');
                                                                 Alert.alert(
-                                                                    '✅ Modalité ajoutée',
+                                                                    t('enhancedModalitySelector.modaliteAjoutee'),
                                                                     `"${newModality}" est maintenant disponible !`,
                                                                     [{ text: 'OK' }]
                                                                 );
@@ -476,7 +476,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                 style={styles.modalButton}
                                 onPress={() => setIsOpen(false)}
                             >
-                                <Text style={styles.modalButtonText}>Fermer</Text>
+                                <Text style={styles.modalButtonText}>{t('enhancedModalitySelector.fermer')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

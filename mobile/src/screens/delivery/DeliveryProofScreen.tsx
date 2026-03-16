@@ -153,7 +153,7 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
             ) : (
                 <View style={styles.videoThumbnail}>
                     <SafeIcon name="play-circle" size={40} color="white" />
-                    <Text style={styles.videoText}>Vidéo</Text>
+                    <Text style={styles.videoText}>{t('deliveryProof.video')}</Text>
                 </View>
             )}
             <View style={styles.mediaOverlay}>
@@ -165,7 +165,7 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
                 </TouchableOpacity>
             </View>
             <Text style={styles.mediaType}>
-                {item.proof_type === 'pickup' ? '📦 Récupération' : '✅ Livraison'}
+                {item.proof_type === 'pickup' ? t('deliveryProofScreen.recuperation') : '✅ Livraison'}
             </Text>
         </TouchableOpacity>
     );
@@ -175,7 +175,7 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
             <SafeAreaView style={styles.container}>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement des preuves...</Text>
+                    <Text style={styles.loadingText}>{t('deliveryProof.chargementDesPreuves')}</Text>
                 </View>
             </SafeAreaView>
         );
@@ -224,7 +224,7 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
                 {/* Preuves de récupération */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>📦 Preuves de récupération</Text>
+                        <Text style={styles.sectionTitle}>{t('deliveryProof.preuvesDeRecuperation')}</Text>
                         {pickupMedias.length > 0 && (
                             <Text style={styles.mediaCount}>{pickupMedias.length} média{pickupMedias.length > 1 ? 's' : ''}</Text>
                         )}
@@ -244,7 +244,7 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
                                 onPress={handleAddVideo}
                             >
                                 <SafeIcon name="video" size={24} color="white" />
-                                <Text style={styles.addButtonText}>Vidéo</Text>
+                                <Text style={styles.addButtonText}>{t('deliveryProof.video')}</Text>
                             </TouchableOpacity>
                         </View>
                     )}
@@ -291,7 +291,7 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
                                 onPress={handleAddVideo}
                             >
                                 <SafeIcon name="video" size={24} color="white" />
-                                <Text style={styles.addButtonText}>Vidéo</Text>
+                                <Text style={styles.addButtonText}>{t('deliveryProof.video')}</Text>
                             </TouchableOpacity>
                         </View>
                     )}
@@ -320,11 +320,11 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
                     <Text style={styles.sectionTitle}>Statut actuel</Text>
                     <View style={styles.statusCard}>
                         <View style={styles.statusItem}>
-                            <Text style={styles.statusLabel}>Statut de la livraison:</Text>
+                            <Text style={styles.statusLabel}>{t('deliveryProof.statutDeLaLivraison')}/Text>
                             <Text style={styles.statusValue}>{delivery?.status}</Text>
                         </View>
                         <View style={styles.statusItem}>
-                            <Text style={styles.statusLabel}>Total des preuves:</Text>
+                            <Text style={styles.statusLabel}>{t('deliveryProof.totalDesPreuves')}/Text>
                             <Text style={styles.statusValue}>{proofMedias.length} média{proofMedias.length > 1 ? 's' : ''}</Text>
                         </View>
                     </View>
@@ -369,7 +369,7 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
                             ) : (
                                 <View style={styles.videoPlaceholder}>
                                     <SafeIcon name="play-circle" size={60} color="white" />
-                                    <Text style={styles.videoPlaceholderText}>Lecture vidéo</Text>
+                                    <Text style={styles.videoPlaceholderText}>{t('deliveryProof.lectureVideo')}</Text>
                                 </View>
                             )}
                             <TouchableOpacity

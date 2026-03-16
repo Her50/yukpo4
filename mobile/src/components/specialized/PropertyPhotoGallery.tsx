@@ -13,6 +13,7 @@ import {
 import { mediaService } from '../../services/mediaService';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface PropertyPhotoGalleryProps {
     photos: string[];
@@ -34,7 +35,8 @@ const PropertyPhotoGallery: React.FC<PropertyPhotoGalleryProps> = ({
     virtualTours = [],
     onPhotoPress,
 }) => {
-    const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+        const { t } = useLanguageSafe();
+const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const [showFullScreen, setShowFullScreen] = useState(false);
 
     // ✅ CORRIGÉ: Transformer les chemins en URLs CDN via mediaService
@@ -78,7 +80,7 @@ const PropertyPhotoGallery: React.FC<PropertyPhotoGalleryProps> = ({
         return (
             <View style={styles.emptyContainer}>
                 <SafeIcon name="image" size={48} color="#9CA3AF" />
-                <Text style={styles.emptyText}>Aucune photo disponible</Text>
+                <Text style={styles.emptyText}>{t('propertyPhotoGallery.aucunePhotoDisponible')}</Text>
             </View>
         );
     }
@@ -197,8 +199,8 @@ const PropertyPhotoGallery: React.FC<PropertyPhotoGalleryProps> = ({
                                             </Text>
                                             <Text style={styles.virtualTourSubLabel}>
                                                 {media.tourType === '360_video'
-                                                    ? 'Vidéo 360°'
-                                                    : 'Modèle 3D'}
+                                                    ? t('propertyPhotoGallery.video360')
+                                                    : t('propertyPhotoGallery.modele3d')}
                                             </Text>
                                         </View>
                                     )}

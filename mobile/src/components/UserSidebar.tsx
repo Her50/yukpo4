@@ -2,16 +2,18 @@
 import { useNavigation, useRoute } from "@react-navigation/native";
 import * as React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const links = [
-  { label: "📊 Mon espace", screen: "Dashboard" },
-  { label: "❤️ Favoris", screen: "Favorites" },
-  { label: "🕒 Historique", screen: "Historique" },
-  { label: "👤 Profil", screen: "MonCompte" },
+  { label: t('userSidebar.monEspace'), screen: "Dashboard" },
+  { label: t('userSidebar.favoris'), screen: "Favorites" },
+  { label: t('userSidebar.historique'), screen: "Historique" },
+  { label: t('userSidebar.profil'), screen: "MonCompte" },
 ];
 
 const UserSidebar: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const route = useRoute();
   const isActive = (screen: string) => route.name === screen;
 
@@ -21,7 +23,7 @@ const UserSidebar: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🙋 Espace Utilisateur</Text>
+      <Text style={styles.title}>{t('userSidebar.espaceUtilisateur')}/Text>
       {links.map((link) => (
         <TouchableOpacity
           key={link.screen}

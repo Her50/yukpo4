@@ -14,6 +14,7 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeCard, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -36,9 +37,10 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
     onClose,
     onSelect,
     currentLocation,
-    title = 'Sélection de localisation GPS'
+    title={t('advancedGPS.selectionDeLocalisationGps')}
 }) => {
-    const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
+        const { t } = useLanguageSafe();
+const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
     const [loading, setLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -72,7 +74,7 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
-                    'L\'accès à la localisation est nécessaire pour utiliser cette fonctionnalité.',
+                    'L\t('advancedGPSModal.accesALaLocalisationEstNecessaire'),
                     [{ text: 'OK' }]
                 );
                 return;
@@ -131,11 +133,11 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
             if (geocodeResult.length > 0) {
                 const addr = geocodeResult[0];
                 const formattedAddress = `${addr.street || ''} ${addr.city || ''} ${addr.region || ''}`.trim();
-                setAddress(formattedAddress || 'Adresse non trouvée');
+                setAddress(formattedAddress || t('advancedGPS.adresseNonTrouvee'));
             }
         } catch (error) {
             console.warn('Erreur géocodage:', error);
-            setAddress('Adresse non trouvée');
+            setAddress(t('advancedGPSModal.adresseNonTrouvee'));
         }
     };
 
@@ -257,15 +259,15 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
                             </View>
                             <View style={styles.instructionsList}>
                                 <Text style={styles.instructionItem}>• Recherchez une adresse dans la barre de recherche</Text>
-                                <Text style={styles.instructionItem}>• Utilisez "Ma Position" pour votre GPS actuel</Text>
-                                <Text style={styles.instructionItem}>• Saisissez des coordonnées manuellement</Text>
-                                <Text style={styles.instructionItem}>• Choisissez le type de zone souhaité</Text>
+                                <Text style={styles.instructionItem}>{t('advancedGPS.utilisezMaPositionPourVotre')}</Text>
+                                <Text style={styles.instructionItem}>{t('advancedGPS.saisissezDesCoordonneesManuellement')}</Text>
+                                <Text style={styles.instructionItem}>{t('advancedGPS.choisissezLeTypeDeZone')}</Text>
                             </View>
                         </NativeCard>
 
                         {/* Bouton Ma Position GPS */}
                         <NativeButton
-                            title="Ma Position GPS"
+                            title={t('advancedGPS.maPositionGps')}
                             onPress={getCurrentLocation}
                             disabled={loading || !permissionGranted}
                             {...({ variant: "primary", size: "large", icon: "navigation" } as any)}
@@ -275,7 +277,7 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
                         {/* Barre de recherche d'adresse */}
                         <View style={styles.searchSection}>
                             <NativeInput
-                                placeholder="Rechercher une adresse..."
+                                placeholder={t('advancedGPS.rechercherUneAdresse')}
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 {...({ icon: "search" } as any)}
@@ -293,7 +295,7 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
 
                         {/* Saisie coordonnées manuelles */}
                         <View style={styles.manualSection}>
-                            <Text style={styles.sectionTitle}>✏️ Coordonnées manuelles</Text>
+                            <Text style={styles.sectionTitle}>{t('advancedGPS.coordonneesManuelles')}</Text>
                             <View style={styles.manualInputContainer}>
                                 <TextInput
                                     style={styles.coordinateInput}
@@ -325,7 +327,7 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
                                     color={selectedLocation ? modernColors.success : modernColors.warning}
                                 />
                                 <Text style={styles.statusTitle}>
-                                    {selectedLocation ? 'Position sélectionnée' : 'Aucune position sélectionnée'}
+                                    {selectedLocation ? t('advancedGPSModal.positionSelectionnee') : t('advancedGPSModal.aucunePositionSelectionnee')}
                                 </Text>
                             </View>
 
@@ -347,7 +349,7 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
 
                         {/* Modes de sélection */}
                         <NativeCard style={styles.modesCard}>
-                            <Text style={styles.modesTitle}>Mode de sélection</Text>
+                            <Text style={styles.modesTitle}>{t('advancedGPS.modeDeSelection')}</Text>
                             <View style={styles.modesContainer}>
                                 {[
                                     { key: 'point', label: 'Point', icon: 'map-pin' },
@@ -382,7 +384,7 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
                         {/* Contrôles de rayon (pour cercle) */}
                         {zoneType === 'circle' && (
                             <NativeCard style={styles.radiusCard}>
-                                <Text style={styles.radiusTitle}>Rayon (mètres)</Text>
+                                <Text style={styles.radiusTitle}>{t('advancedGPS.rayonMetres')}</Text>
                                 <View style={styles.radiusControls}>
                                     <TouchableOpacity
                                         style={styles.radiusButton}
@@ -462,7 +464,7 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
                                 style={styles.clearButton}
                             />
                             <NativeButton
-                                title="Confirmer"
+                                title={t('advancedGPSModal.confirmer')}
                                 onPress={handleConfirm}
                                 disabled={!selectedLocation}
                                 {...({ variant: "primary", size: "medium", icon: "check" } as any)}
@@ -476,11 +478,11 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
                         <NativeCard style={styles.mapCard}>
                             <View style={styles.mapPlaceholder}>
                                 <SafeIcon name="map" size={64} color={modernColors.textSecondary} />
-                                <Text style={styles.mapPlaceholderTitle}>Zone de sélection</Text>
+                                <Text style={styles.mapPlaceholderTitle}>{t('advancedGPS.zoneDeSelection')}</Text>
                                 <Text style={styles.mapPlaceholderText}>
                                     {selectedLocation
                                         ? `Position: ${formatCoordinates(selectedLocation.lat, selectedLocation.lng)}`
-                                        : 'Aucune position sélectionnée'
+                                        : t('advancedGPSModal.aucunePositionSelectionnee')
                                     }
                                 </Text>
                                 {zoneType === 'circle' && selectedLocation && (

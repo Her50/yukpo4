@@ -14,9 +14,11 @@ import SafeIcon from '../../components/SafeIcon';
 import ImmobilierResultCard from '../../components/specialized/ImmobilierResultCard';
 import { immobilierService, RealEstateProperty } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const MyFavoritesScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [favorites, setFavorites] = useState<RealEstateProperty[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -29,7 +31,7 @@ const MyFavoritesScreen: React.FC = () => {
             if (response.success && response.data) {
                 setFavorites((response as any).data);
             } else {
-                setError('Erreur lors du chargement des favoris');
+                setError(t('myFavoritesScreen.erreurLorsDuChargementDesFavoris'));
             }
         } catch (err: any) {
             console.error('[MyFavoritesScreen] Erreur:', err);
@@ -61,7 +63,7 @@ const MyFavoritesScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement de vos favoris...</Text>
+                <Text style={styles.loadingText}>{t('myFavorites.chargementDeVosFavoris')}</Text>
             </View>
         );
     }
@@ -75,7 +77,7 @@ const MyFavoritesScreen: React.FC = () => {
                     style={styles.retryButton}
                     onPress={loadFavorites}
                 >
-                    <Text style={styles.retryButtonText}>Réessayer</Text>
+                    <Text style={styles.retryButtonText}>{t('myFavorites.reessayer')}</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -85,7 +87,7 @@ const MyFavoritesScreen: React.FC = () => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <SafeIcon name="heart" size={24} color={modernColors.primary} />
-                <Text style={styles.headerTitle}>Mes Favoris</Text>
+                <Text style={styles.headerTitle}>{t('myFavorites.mesFavoris')}</Text>
                 <Text style={styles.headerSubtitle}>
                     {favorites.length} bien{favorites.length > 1 ? 's' : ''} sauvegardé{favorites.length > 1 ? 's' : ''}
                 </Text>
@@ -111,7 +113,7 @@ const MyFavoritesScreen: React.FC = () => {
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
                         <SafeIcon name="heart" size={64} color="#9CA3AF" />
-                        <Text style={styles.emptyText}>Aucun favori</Text>
+                        <Text style={styles.emptyText}>{t('myFavorites.aucunFavori')}</Text>
                         <Text style={styles.emptySubtext}>
                             Ajoutez des biens à vos favoris pour les retrouver facilement
                         </Text>

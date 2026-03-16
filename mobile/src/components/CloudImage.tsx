@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useCloudFile } from '../hooks/useCloudFiles';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface CloudImageProps extends Omit<ImageProps, 'source'> {
     cloudUrl: string | null | undefined;
@@ -61,7 +62,7 @@ export const CloudImage: React.FC<CloudImageProps> = ({
         return (
             <View style={[styles.container, styles.errorContainer, style]}>
                 <Text style={styles.errorIcon}>🖼️</Text>
-                <Text style={styles.errorText}>Image indisponible</Text>
+                <Text style={styles.errorText}>{t('cloudImage.imageIndisponible')}/Text>
             </View>
         );
     }

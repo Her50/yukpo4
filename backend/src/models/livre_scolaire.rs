@@ -73,6 +73,11 @@ pub struct LivreScolaire {
     // Métadonnées
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    // V3: Disponibilité pour livraison
+    #[sqlx(default)]
+    pub disponibilite_debut: Option<DateTime<Utc>>,
+    #[sqlx(default)]
+    pub disponibilite_fin: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -407,8 +412,8 @@ pub const RATIO_ETAT_BON: f64 = 0.70;
 pub const RATIO_ETAT_ACCEPTABLE: f64 = 0.40;
 pub const RATIO_ETAT_REJETE: f64 = 0.0;
 
-/// Taux de commission de l'application (20%)
-pub const TAUX_COMMISSION_APP: f64 = 0.20;
+/// Taux de commission de l'application (5%)
+pub const TAUX_COMMISSION_APP: f64 = 0.05;
 
 /// Calculer la valeur d'un livre selon son état et son prix détecté
 pub fn calculer_valeur_livre(prix_detecte: f64, etat_classification: &str) -> (f64, f64) {

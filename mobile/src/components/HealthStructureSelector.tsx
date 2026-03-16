@@ -4,6 +4,7 @@ import { healthPlacesService, HealthStructureType } from '../services/healthPlac
 import { modalityService } from '../services/modalityService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface HealthStructureSelectorProps {
     label: string;
@@ -21,12 +22,13 @@ export const HealthStructureSelector: React.FC<HealthStructureSelectorProps> = (
     value,
     onSelect,
     type,
-    placeholder = 'Rechercher...',
+    placeholder={t('healthStructureSelector.rechercher')},
     required = false,
     useLocation = true,
     radius = 5000,
 }) => {
-    const [open, setOpen] = useState(false);
+        const { t } = useLanguageSafe();
+const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [options, setOptions] = useState<string[]>([]);
@@ -92,7 +94,7 @@ export const HealthStructureSelector: React.FC<HealthStructureSelectorProps> = (
                         {value || placeholder}
                     </Text>
                     {locationEnabled && (
-                        <Text style={styles.locationHint}>📍 Recherche par proximité activée</Text>
+                        <Text style={styles.locationHint}>{t('healthStructureSelector.rechercheParProximiteActivee')}</Text>
                     )}
                 </View>
                 <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
@@ -127,7 +129,7 @@ export const HealthStructureSelector: React.FC<HealthStructureSelectorProps> = (
                                     color={locationEnabled ? modernColors.primary : modernColors.textSecondary}
                                 />
                                 <Text style={[styles.locationToggleText, locationEnabled && styles.locationToggleTextActive]}>
-                                    {locationEnabled ? 'Recherche par proximité' : 'Recherche par nom'}
+                                    {locationEnabled ? t('healthStructureSelector.rechercheParProximite') : 'Recherche par nom'}
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -155,13 +157,13 @@ export const HealthStructureSelector: React.FC<HealthStructureSelectorProps> = (
                             onPress={() => setShowAddModal(true)}
                         >
                             <SafeIcon name="plus-circle" size={18} color={modernColors.primary} />
-                            <Text style={styles.addButtonText}>Ajouter une structure</Text>
+                            <Text style={styles.addButtonText}>{t('healthStructureSelector.ajouterUneStructure')}</Text>
                         </TouchableOpacity>
 
                         <ScrollView style={styles.optionsList}>
                             {loading ? (
                                 <View style={styles.loadingContainer}>
-                                    <Text style={styles.loadingText}>Recherche en cours...</Text>
+                                    <Text style={styles.loadingText}>{t('healthStructureSelector.rechercheEnCours')}/Text>
                                     {locationEnabled && (
                                         <Text style={styles.loadingHint}>📍 Recherche dans un rayon de {radius / 1000}km</Text>
                                     )}
@@ -169,7 +171,7 @@ export const HealthStructureSelector: React.FC<HealthStructureSelectorProps> = (
                             ) : options.length === 0 ? (
                                 <View style={styles.emptyContainer}>
                                     <SafeIcon name="map-pin" size={32} color={modernColors.textSecondary} />
-                                    <Text style={styles.emptyText}>Aucun résultat trouvé</Text>
+                                    <Text style={styles.emptyText}>{t('healthStructureSelector.aucunResultatTrouve')}</Text>
                                     <Text style={styles.emptyHint}>
                                         {locationEnabled
                                             ? "Essayez d'augmenter le rayon ou de désactiver la géolocalisation"
@@ -201,9 +203,9 @@ export const HealthStructureSelector: React.FC<HealthStructureSelectorProps> = (
             <Modal visible={showAddModal} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.addModalContainer}>
-                        <Text style={styles.addModalTitle}>Ajouter une structure</Text>
+                        <Text style={styles.addModalTitle}>{t('healthStructureSelector.ajouterUneStructure')}</Text>
                         <TextInput
-                            placeholder="Nom de la structure"
+                            placeholder={t('healthStructureSelector.nomDeLaStructure')}
                             value={newStructureName}
                             onChangeText={setNewStructureName}
                             style={styles.addModalInput}
@@ -218,13 +220,13 @@ export const HealthStructureSelector: React.FC<HealthStructureSelectorProps> = (
                                     setNewStructureName('');
                                 }}
                             >
-                                <Text style={styles.addModalButtonTextCancel}>Annuler</Text>
+                                <Text style={styles.addModalButtonTextCancel}>{t('healthStructureSelector.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.addModalButton, styles.addModalButtonConfirm]}
                                 onPress={handleAddCustomStructure}
                             >
-                                <Text style={styles.addModalButtonTextConfirm}>Ajouter</Text>
+                                <Text style={styles.addModalButtonTextConfirm}>{t('healthStructureSelector.ajouter')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

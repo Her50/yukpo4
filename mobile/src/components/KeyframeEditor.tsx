@@ -15,6 +15,7 @@ import { modernColors } from '../theme/modernTheme';
 import { EasingType, Keyframe } from '../types/AdvancedTimeline';
 import { NativeButton } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -37,7 +38,8 @@ export const KeyframeEditor: React.FC<KeyframeEditorProps> = ({
     onSave,
     onDelete,
 }) => {
-    const [keyframes, setKeyframes] = useState<Keyframe[]>(initialKeyframes);
+        const { t } = useLanguageSafe();
+const [keyframes, setKeyframes] = useState<Keyframe[]>(initialKeyframes);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
     const handleAddKeyframe = () => {
@@ -187,13 +189,13 @@ export const KeyframeEditor: React.FC<KeyframeEditorProps> = ({
                     {/* Actions */}
                     <View style={styles.actions}>
                         <NativeButton
-                            title="Ajouter Keyframe"
+                            title={t('keyframeEditor.ajouterKeyframe')}
                             onPress={handleAddKeyframe}
                             variant="outline"
                             style={styles.addButton}
                         />
                         <NativeButton
-                            title="Enregistrer"
+                            title={t('keyframeEditor.enregistrer')}
                             onPress={handleSave}
                             variant="primary"
                             style={styles.saveButton}

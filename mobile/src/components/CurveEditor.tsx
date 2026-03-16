@@ -15,6 +15,7 @@ import { modernColors } from '../theme/modernTheme';
 import { BezierCurve, Keyframe } from '../types/AdvancedTimeline';
 import { NativeButton } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CANVAS_SIZE = SCREEN_WIDTH - 80;
@@ -33,7 +34,8 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     onClose,
     onSave,
 }) => {
-    const [curve, setCurve] = useState<BezierCurve>({
+        const { t } = useLanguageSafe();
+const [curve, setCurve] = useState<BezierCurve>({
         x1: 0.25,
         y1: 0.75,
         x2: 0.75,
@@ -78,7 +80,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
                 <View style={styles.container}>
                     {/* Header */}
                     <View style={styles.header}>
-                        <Text style={styles.title}>Éditeur de Courbe de Bézier</Text>
+                        <Text style={styles.title}>{t('curveEditor.editeurDeCourbeDeBezier')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>
@@ -176,7 +178,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
                     {/* Contrôles numériques */}
                     <View style={styles.controls}>
                         <View style={styles.controlRow}>
-                            <Text style={styles.controlLabel}>Point 1 (x1, y1):</Text>
+                            <Text style={styles.controlLabel}>{t('curveEditor.point1X1Y1')}/Text>
                             <View style={styles.inputGroup}>
                                 <TextInput
                                     style={styles.input}
@@ -203,7 +205,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
                             </View>
                         </View>
                         <View style={styles.controlRow}>
-                            <Text style={styles.controlLabel}>Point 2 (x2, y2):</Text>
+                            <Text style={styles.controlLabel}>{t('curveEditor.point2X2Y2')}/Text>
                             <View style={styles.inputGroup}>
                                 <TextInput
                                     style={styles.input}
@@ -234,13 +236,13 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
                     {/* Actions */}
                     <View style={styles.actions}>
                         <NativeButton
-                            title="Annuler"
+                            title={t('curveEditor.annuler')}
                             onPress={onClose}
                             variant="outline"
                             style={styles.cancelButton}
                         />
                         <NativeButton
-                            title="Enregistrer"
+                            title={t('curveEditor.enregistrer')}
                             onPress={handleSave}
                             variant="primary"
                             style={styles.saveButton}

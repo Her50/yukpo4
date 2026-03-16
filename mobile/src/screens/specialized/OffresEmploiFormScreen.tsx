@@ -88,7 +88,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                     const min = parseFloat(value);
                     const max = parseFloat(formData.salaire_max);
                     if (!isNaN(min) && !isNaN(max) && min > max) {
-                        return 'Le salaire min ne peut pas être > au salaire max';
+                        return t('offresEmploiFormScreen.leSalaireMinNePeutPas');
                     }
                 }
                 return null;
@@ -116,14 +116,14 @@ const OffresEmploiFormScreen: React.FC = () => {
     const typesContrat = ['CDI', 'CDD', 'Stage', 'Freelance', 'Temps partiel', 'Alternance'];
     const niveauxEtude = ['Bac', 'Bac+2', 'Bac+3', 'Bac+5', 'Master', 'Doctorat'];
     const secteurs = [
-        'Informatique', 'Commerce', 'Santé', 'Éducation', 'Finance', 'Marketing',
-        'Ressources Humaines', 'Ingénierie', 'Juridique', 'Communication', 'Autre'
+        'Informatique', 'Commerce', t('offresEmploiFormScreen.sante'), 'Éducation', 'Finance', 'Marketing',
+        'Ressources Humaines', t('offresEmploiFormScreen.ingenierie'), 'Juridique', 'Communication', 'Autre'
     ];
     const competencesOptions = [
-        'Gestion de projet', 'Communication', 'Leadership', 'Analyse', 'Créativité',
-        'Travail en équipe', 'Autonome', 'Organisé', 'Polyvalent', 'Rigoureux'
+        'Gestion de projet', 'Communication', 'Leadership', 'Analyse', t('offresEmploiFormScreen.creativite'),
+        t('offresEmploiFormScreen.travailEnEquipe'), 'Autonome', 'Organisé', 'Polyvalent', 'Rigoureux'
     ];
-    const languesOptions = ['Français', 'Anglais', 'Espagnol', 'Allemand', 'Arabe', 'Autre'];
+    const languesOptions = [t('offresEmploiFormScreen.francais'), 'Anglais', 'Espagnol', 'Allemand', 'Arabe', 'Autre'];
     const permisOptions = ['Permis B', 'Permis A', 'Permis C', 'Permis D', 'Aucun'];
 
     // ✅ Récupération automatique de la devise depuis lieu_travail (avec GPS comme fallback)
@@ -216,40 +216,40 @@ const OffresEmploiFormScreen: React.FC = () => {
 
     const confirmationSections: ConfirmationSection[] = [
         {
-            title: 'Informations générales',
+            title: t('offresEmploiForm.informationsGenerales'),
             icon: 'briefcase',
             fields: [
                 { label: 'Titre du poste', value: formData.titre_poste },
-                { label: 'Type de contrat', value: formData.type_contrat },
+                { label: t('offresEmploiForm.typeDeContrat'), value: formData.type_contrat },
                 { label: 'Secteur', value: formData.secteur },
                 { label: 'Domaine', value: formData.domaine },
             ],
         },
         {
-            title: 'Localisation',
+            title: t('offresEmploiForm.localisation'),
             icon: 'map-pin',
             fields: [
-                { label: 'Lieu de travail', value: formData.lieu_travail?.place_name || 'Télétravail' },
-                { label: 'Télétravail', value: formData.remote, type: 'boolean' as const },
-                { label: 'Télétravail partiel', value: formData.remote_partiel, type: 'boolean' as const },
+                { label: t('offresEmploiForm.lieuDeTravail'), value: formData.lieu_travail?.place_name || t('offresEmploiForm.teletravail') },
+                { label: t('offresEmploiForm.teletravail'), value: formData.remote, type: 'boolean' as const },
+                { label: t('offresEmploiForm.teletravailPartiel'), value: formData.remote_partiel, type: 'boolean' as const },
             ],
         },
         {
-            title: 'Rémunération',
+            title: t('offresEmploiForm.remuneration'),
             icon: 'dollar-sign',
             fields: [
-                { label: 'Salaire min', value: formData.salaire_min ? `${formData.salaire_min} ${formData.devise}` : 'Non renseigné' },
-                { label: 'Salaire max', value: formData.salaire_max ? `${formData.salaire_max} ${formData.devise}` : 'Non renseigné' },
-                { label: 'Négociable', value: formData.salaire_negociable, type: 'boolean' as const },
+                { label: 'Salaire min', value: formData.salaire_min ? `${formData.salaire_min} ${formData.devise}` : t('offresEmploiFormScreen.nonRenseigne') },
+                { label: 'Salaire max', value: formData.salaire_max ? `${formData.salaire_max} ${formData.devise}` : t('offresEmploiFormScreen.nonRenseigne') },
+                { label: t('offresEmploiForm.negociable'), value: formData.salaire_negociable, type: 'boolean' as const },
             ],
         },
         {
-            title: 'Profil recherché',
+            title: t('offresEmploiForm.profilRecherche'),
             icon: 'user',
             fields: [
                 { label: 'Niveau d\'études', value: formData.niveau_etude },
-                { label: 'Expérience min', value: formData.experience_min ? `${formData.experience_min} ans` : 'Non renseigné' },
-                { label: 'Compétences', value: selectedCompetences.join(', ') },
+                { label: t('offresEmploiForm.experienceMin'), value: formData.experience_min ? `${formData.experience_min} ans` : 'Non renseigné' },
+                { label: t('offresEmploiForm.competences'), value: selectedCompetences.join(', ') },
                 { label: 'Langues', value: selectedLangues.join(', ') },
             ],
         },
@@ -290,7 +290,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                 description: formData.description.trim(),
                 type_contrat: formData.type_contrat,
                 duree_contrat: formData.duree_contrat ? parseInt(formData.duree_contrat) : null,
-                lieu_travail: formData.lieu_travail?.raw || formData.lieu_travail?.place_name || (formData.remote ? 'Télétravail' : ''),
+                lieu_travail: formData.lieu_travail?.raw || formData.lieu_travail?.place_name || (formData.remote ? t('offresEmploiFormScreen.teletravail') : ''),
                 adresse: formData.adresse.trim() || null,
                 gps: selectedGPS || (location
                     ? `${location.coords.latitude},${location.coords.longitude}`
@@ -353,7 +353,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
                     <Text style={styles.title}>
-                        {mode === 'edit' ? 'Modifier l\'offre' : 'Créer une offre d\'emploi'}
+                        {mode === 'edit' ? 'Modifier l\'offre' : t('offresEmploiFormScreen.creerUneOffreDemploi')}
                     </Text>
                 </View>
 
@@ -371,7 +371,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                         <NativeInput
                             value={formData.titre_poste}
                             onChangeText={(text) => handleFieldChange('titre_poste', text)}
-                            placeholder="Ex: Développeur Full Stack"
+                            placeholder={t('offresEmploiForm.exDeveloppeurFullStack')}
                             error={errors.titre_poste}
                         />
                     </View>
@@ -381,7 +381,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                         <NativeInput
                             value={formData.description}
                             onChangeText={(text) => handleFieldChange('description', text)}
-                            placeholder="Description détaillée du poste..."
+                            placeholder={t('offresEmploiForm.descriptionDetailleeDuPoste')}
                             multiline
                             style={styles.textArea}
                             error={errors.description}
@@ -389,7 +389,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Type de contrat *</Text>
+                        <Text style={styles.label}>{t('offresEmploiForm.typeDeContrat')}</Text>
                         <View style={styles.chipsContainer}>
                             {typesContrat.map((type) => (
                                 <TouchableOpacity
@@ -415,7 +415,7 @@ const OffresEmploiFormScreen: React.FC = () => {
 
                     {formData.type_contrat === 'CDD' && (
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Durée du contrat (mois)</Text>
+                            <Text style={styles.label}>{t('offresEmploiForm.dureeDuContratMois')}</Text>
                             <NativeInput
                                 value={formData.duree_contrat}
                                 onChangeText={(text) => setFormData({ ...formData, duree_contrat: text })}
@@ -426,19 +426,19 @@ const OffresEmploiFormScreen: React.FC = () => {
                     )}
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Lieu de travail *</Text>
+                        <Text style={styles.label}>{t('offresEmploiForm.lieuDeTravail')}</Text>
                         <LocationSelector
                             label=""
                             value={formData.lieu_travail ? (typeof formData.lieu_travail === 'string' ? { raw: formData.lieu_travail, place_name: formData.lieu_travail } : formData.lieu_travail) : ''}
                             onSelect={(location: LocationObject) => {
                                 setFormData({ ...formData, lieu_travail: location });
                             }}
-                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                            placeholder={t('offresEmploiForm.rechercherUnLieuVilleQuartier')}
                             scope="all"
                             enrichWithBackend={true}
                         />
                         <View style={styles.switchGroup}>
-                            <Text style={styles.label}>Télétravail complet</Text>
+                            <Text style={styles.label}>{t('offresEmploiForm.teletravailComplet')}</Text>
                             <Switch
                                 value={formData.remote}
                                 onValueChange={(value) => setFormData({ ...formData, remote: value })}
@@ -447,7 +447,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                         </View>
                         {!formData.remote && (
                             <View style={styles.switchGroup}>
-                                <Text style={styles.label}>Télétravail partiel</Text>
+                                <Text style={styles.label}>{t('offresEmploiForm.teletravailPartiel')}</Text>
                                 <Switch
                                     value={formData.remote_partiel}
                                     onValueChange={(value) => setFormData({ ...formData, remote_partiel: value })}
@@ -458,24 +458,24 @@ const OffresEmploiFormScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Adresse complète</Text>
+                        <Text style={styles.label}>{t('offresEmploiForm.adresseComplete')}</Text>
                         <NativeInput
                             value={formData.adresse}
                             onChangeText={(text) => setFormData({ ...formData, adresse: text })}
-                            placeholder="Adresse complète du lieu de travail"
+                            placeholder={t('offresEmploiForm.adresseCompleteDuLieuDe')}
                             multiline
                         />
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Localisation GPS</Text>
+                        <Text style={styles.label}>{t('offresEmploiForm.localisationGps')}/Text>
                         <TouchableOpacity
                             style={styles.gpsButton}
                             onPress={() => setShowGPSModal(true)}
                         >
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
                             <Text style={styles.gpsButtonText}>
-                                {selectedGPS ? 'Localisation sélectionnée' : 'Sélectionner sur la carte'}
+                                {selectedGPS ? t('offresEmploiFormScreen.localisationSelectionnee') : 'Sélectionner sur la carte'}
                             </Text>
                             <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
                         </TouchableOpacity>
@@ -506,7 +506,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.switchGroup}>
-                        <Text style={styles.label}>Salaire négociable</Text>
+                        <Text style={styles.label}>{t('offresEmploiForm.salaireNegociable')}</Text>
                         <Switch
                             value={formData.salaire_negociable}
                             onValueChange={(value) => setFormData({ ...formData, salaire_negociable: value })}
@@ -515,7 +515,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Niveau d'études requis</Text>
+                        <Text style={styles.label}>{t('offresEmploiForm.niveauDetudesRequis')}</Text>
                         <View style={styles.chipsContainer}>
                             {niveauxEtude.map((niveau) => (
                                 <TouchableOpacity
@@ -540,7 +540,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Expérience minimale (années)</Text>
+                        <Text style={styles.label}>{t('offresEmploiForm.experienceMinimaleAnnees')}</Text>
                         <NativeInput
                             value={formData.experience_min}
                             onChangeText={(text) => setFormData({ ...formData, experience_min: text })}
@@ -586,12 +586,12 @@ const OffresEmploiFormScreen: React.FC = () => {
 
                     <View style={styles.inputGroup}>
                         <SimplePrestationSelector
-                            label="Compétences requises"
+                            label={t('offresEmploiForm.competencesRequises')}
                             options={competencesOptions}
                             selected={selectedCompetences}
                             onSelectionChange={setSelectedCompetences}
                             allowCustom={true}
-                            placeholder="Ajouter une compétence"
+                            placeholder={t('offresEmploiForm.ajouterUneCompetence')}
                         />
                     </View>
 
@@ -602,7 +602,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                             selected={selectedLangues}
                             onSelectionChange={setSelectedLangues}
                             allowCustom={true}
-                            placeholder="Ajouter une langue"
+                            placeholder={t('offresEmploiForm.ajouterUneLangue')}
                         />
                     </View>
 
@@ -613,7 +613,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                             selected={selectedPermis}
                             onSelectionChange={setSelectedPermis}
                             allowCustom={false}
-                            placeholder="Sélectionner un permis"
+                            placeholder={t('offresEmploiForm.selectionnerUnPermis')}
                         />
                     </View>
 
@@ -624,7 +624,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                             selected={selectedTags}
                             onSelectionChange={setSelectedTags}
                             allowCustom={true}
-                            placeholder="Ajouter un tag (ex: urgent, junior, senior...)"
+                            placeholder={t('offresEmploiForm.ajouterUnTagExUrgent')}
                         />
                     </View>
 
@@ -644,7 +644,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Date de début du poste</Text>
+                        <Text style={styles.label}>{t('offresEmploiForm.dateDeDebutDuPoste')}</Text>
                         <TouchableOpacity
                             style={styles.dateButton}
                             onPress={() => setShowDateDebutPicker(true)}
@@ -659,7 +659,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                     </View>
 
                     <NativeButton
-                        title={loading ? 'Enregistrement...' : mode === 'edit' ? 'Modifier l\'offre' : 'Créer l\'offre'}
+                        title={loading ? 'Enregistrement...' : mode === 'edit' ? 'Modifier l\'offre' : t('offresEmploiFormScreen.creerLoffre')}
                         onPress={handleSubmit}
                         disabled={loading || !formData.titre_poste.trim() || !formData.description.trim() || !formData.secteur.trim()}
                         variant="primary"
@@ -677,7 +677,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                     lat: location.coords.latitude,
                     lng: location.coords.longitude
                 } : null}
-                title="Sélectionner la localisation"
+                title={t('offresEmploiForm.selectionnerLaLocalisation')}
             />
 
             {showDateLimitePicker && (
@@ -712,7 +712,7 @@ const OffresEmploiFormScreen: React.FC = () => {
 
             <FormConfirmationModal
                 visible={showConfirmation}
-                title="Confirmer la création de l'offre"
+                title={t('offresEmploiForm.confirmerLaCreationDeL')}offre"
                 sections={confirmationSections}
                 onConfirm={handleFinalSubmit}
                 onCancel={() => setShowConfirmation(false)}

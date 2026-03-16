@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Service {
   id: string;
@@ -21,6 +22,7 @@ interface Service {
 
 const MesServicesScreen: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const { user } = useAuth();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ const MesServicesScreen: React.FC = () => {
         {
           id: '1',
           title: 'R�paration plomberie',
-          description: 'Service de r�paration de plomberie � domicile',
+          description: t('mesServices.serviceDeRparationDePlomberie'),
           status: 'active',
           createdAt: '2024-01-15',
           views: 45,
@@ -44,8 +46,8 @@ const MesServicesScreen: React.FC = () => {
         },
         {
           id: '2',
-          title: 'Cours de math�matiques',
-          description: 'Cours particuliers de math�matiques niveau lyc�e',
+          title: t('mesServices.coursDeMathmatiques'),
+          description: t('mesServices.coursParticuliersDeMathmatiquesNiveau'),
           status: 'active',
           createdAt: '2024-01-10',
           views: 23,
@@ -84,7 +86,7 @@ const MesServicesScreen: React.FC = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Chargement de vos services...</Text>
+          <Text style={styles.loadingText}>{t('mesServices.chargementDeVosServices')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -94,20 +96,20 @@ const MesServicesScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Title style={styles.title}>Mes Services</Title>
+          <Title style={styles.title}>{t('mesServices.mesServices')}</Title>
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => navigation.navigate('CreateService' as never)}
           >
             <Ionicons name="add" size={24} color="white" />
-            <Text style={styles.addButtonText}>Nouveau</Text>
+            <Text style={styles.addButtonText}>{t('mesServices.nouveau')}</Text>
           </TouchableOpacity>
         </View>
 
         {services.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="briefcase-outline" size={64} color="#9E9E9E" />
-            <Text style={styles.emptyTitle}>Aucun service</Text>
+            <Text style={styles.emptyTitle}>{t('mesServices.aucunService')}</Text>
             <Text style={styles.emptyText}>
               Vous n'avez pas encore cr�� de service. Cr�ez votre premier service pour commencer.
             </Text>

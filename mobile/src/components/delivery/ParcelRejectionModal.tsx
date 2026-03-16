@@ -13,6 +13,7 @@ import { modernColors } from '../../theme/modernTheme';
 import { ParcelRejectionReason } from '../../types/delivery';
 import { NativeButton, NativeCard } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ParcelRejectionModalProps {
     visible: boolean;
@@ -22,16 +23,16 @@ interface ParcelRejectionModalProps {
 }
 
 const REJECTION_REASONS: Array<{ value: ParcelRejectionReason; label: string; icon: string }> = [
-    { value: 'damaged', label: 'Produit endommagé', icon: '💔' },
+    { value: 'damaged', label: t('parcelRejection.produitEndommage'), icon: '💔' },
     { value: 'wrong_item', label: 'Mauvais produit', icon: '❌' },
-    { value: 'expired', label: 'Produit périmé', icon: '⏰' },
-    { value: 'wrong_quantity', label: 'Mauvaise quantité', icon: '🔢' },
+    { value: 'expired', label: t('parcelRejection.produitPerime'), icon: '⏰' },
+    { value: 'wrong_quantity', label: t('parcelRejection.mauvaiseQuantite'), icon: '🔢' },
     { value: 'wrong_size', label: 'Mauvaise taille', icon: '📏' },
     { value: 'wrong_color', label: 'Mauvaise couleur', icon: '🎨' },
-    { value: 'quality_issue', label: 'Problème de qualité', icon: '⚠️' },
-    { value: 'not_ordered', label: 'Non commandé', icon: '🚫' },
+    { value: 'quality_issue', label: t('parcelRejection.problemeDeQualite'), icon: '⚠️' },
+    { value: 'not_ordered', label: t('parcelRejection.nonCommande'), icon: '🚫' },
     { value: 'duplicate', label: 'Doublon', icon: '📦' },
-    { value: 'other', label: 'Autre raison', icon: '📝' },
+    { value: 'other', label: t('parcelRejection.autreRaison'), icon: '📝' },
 ];
 
 const ParcelRejectionModal: React.FC<ParcelRejectionModalProps> = ({
@@ -40,7 +41,8 @@ const ParcelRejectionModal: React.FC<ParcelRejectionModalProps> = ({
     productName,
     onConfirm,
 }) => {
-    const [selectedReason, setSelectedReason] = useState<ParcelRejectionReason | null>(null);
+        const { t } = useLanguageSafe();
+const [selectedReason, setSelectedReason] = useState<ParcelRejectionReason | null>(null);
     const [loading, setLoading] = useState(false);
 
     const handleConfirm = async () => {
@@ -114,14 +116,14 @@ const ParcelRejectionModal: React.FC<ParcelRejectionModalProps> = ({
 
                     <View style={styles.actions}>
                         <NativeButton
-                            title="Annuler"
+                            title={t('parcelRejectionModal.annuler')}
                             variant="secondary"
                             onPress={onClose}
                             disabled={loading}
                             style={styles.button}
                         />
                         <NativeButton
-                            title={loading ? 'En cours...' : 'Confirmer le refus'}
+                            title={loading ? 'En cours...' : t('parcelRejectionModal.confirmerLeRefus')}
                             variant="primary"
                             onPress={handleConfirm}
                             disabled={!selectedReason || loading}

@@ -15,9 +15,11 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const OrientationScolaireHubScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -56,7 +58,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
             });
             if (response.success) {
                 Alert.alert(
-                    'Analyse terminée',
+                    t('orientationScolaireHubScreen.analyseTerminee'),
                     'Votre profil a été analysé avec succès. Consultez les recommandations !'
                 );
             }
@@ -102,7 +104,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
         },
         {
             id: 'superieur',
-            name: 'Supérieur',
+            name: t('orientationScolaireHubScreen.superieur'),
             icon: '🎓',
             color: '#8B5CF6',
             route: 'EtablissementSearch',
@@ -119,7 +121,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
         },
         {
             id: 'conferences',
-            name: 'Conférences',
+            name: t('orientationScolaireHubScreen.conferences'),
             icon: '📺',
             route: 'ConferencesList',
         },
@@ -148,7 +150,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
 
             {/* Types d'établissements */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Types d'établissements</Text>
+                <Text style={styles.sectionTitle}>{t('orientationScolaireHub.typesDetablissements')}</Text>
                 <View style={styles.grid}>
                     {etablissementTypes.map((type) => (
                         <TouchableOpacity
@@ -186,12 +188,12 @@ const OrientationScolaireHubScreen: React.FC = () => {
 
                 {!hasProfile && (
                     <NativeCard style={styles.profileCard}>
-                        <Text style={styles.profileCardTitle}>📝 Créer votre profil</Text>
+                        <Text style={styles.profileCardTitle}>{t('orientationScolaireHub.creerVotreProfil')}</Text>
                         <Text style={styles.profileCardText}>
                             Créez votre profil étudiant pour obtenir des recommandations personnalisées
                         </Text>
                         <NativeButton
-                            title="Créer mon profil"
+                            title={t('orientationScolaireHub.creerMonProfil')}
                             onPress={() => navigation.navigate('ProfilEtudiant')}
                             variant="primary"
                             style={styles.profileButton}

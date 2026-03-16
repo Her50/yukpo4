@@ -34,7 +34,8 @@ const HotelVariantManager: React.FC<HotelVariantManagerProps> = ({
     globalDevise = 'XAF',  // ✅ NOUVEAU: Devise globale par défaut
     readonly = false
 }) => {
-    const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
+        const { t } = useLanguageSafe();
+const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
 
     // Ajouter une nouvelle variante de chambre
     const handleAddVariant = () => {
@@ -229,7 +230,7 @@ const HotelVariantManager: React.FC<HotelVariantManagerProps> = ({
 
                             {/* Type de chambre */}
                             <SelectModalitySelector
-                                label="Type de chambre"
+                                label={t('hotelVariantManager.typeDeChambre')}
                                 value={variant.typeChambre}
                                 productType="hotellerie"
                                 fieldName="chambres"
@@ -242,7 +243,7 @@ const HotelVariantManager: React.FC<HotelVariantManagerProps> = ({
                             <View style={styles.row}>
                                 <View style={[styles.field, { flex: 1 }]}>
                                     <SelectModalitySelector
-                                        label="Capacité"
+                                        label={t('hotelVariantManager.capacite')}
                                         value={variant.capacite}
                                         productType="hotellerie"
                                         fieldName="capacites"
@@ -289,12 +290,12 @@ const HotelVariantManager: React.FC<HotelVariantManagerProps> = ({
 
                             {/* Équipements spécifiques */}
                             <MultiSelectModalitySelector
-                                label="Équipements de cette chambre"
+                                label={t('hotelVariantManager.equipementsDeCetteChambre')}
                                 values={variant.equipements || []}
                                 productType="hotellerie"
                                 fieldName="equipements"
                                 onSelect={(values) => handleUpdateVariant(variant.id, 'equipements', values)}
-                                placeholder="Ex: Balcon, Baignoire, Vue mer..."
+                                placeholder={t('hotelVariantManager.exBalconBaignoireVueMer')}
                                 maxSelections={15}
                             />
 
@@ -327,14 +328,14 @@ const HotelVariantManager: React.FC<HotelVariantManagerProps> = ({
             {variants.length === 0 && (
                 <View style={styles.emptyState}>
                     <SafeIcon name="bed" size={48} color="#9CA3AF" />
-                    <Text style={styles.emptyText}>Aucun type de chambre ajouté</Text>
+                    <Text style={styles.emptyText}>{t('hotelVariantManager.aucunTypeDeChambreAjoute')}</Text>
                     <Text style={styles.emptySubtext}>
                         Ajoutez les différents types de chambres disponibles dans votre établissement
                     </Text>
                     {!readonly && (
                         <TouchableOpacity style={styles.emptyButton} onPress={handleAddVariant}>
                             <SafeIcon name="plus" size={20} color="#FFF" />
-                            <Text style={styles.emptyButtonText}>Ajouter une chambre</Text>
+                            <Text style={styles.emptyButtonText}>{t('hotelVariantManager.ajouterUneChambre')}</Text>
                         </TouchableOpacity>
                     )}
                 </View>

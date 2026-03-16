@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface InteractiveMapProps {
     initialLocation?: { latitude: number; longitude: number };
@@ -23,7 +24,8 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
     initialRadius = 50,
     allowZoneSelection = true
 }) => {
-    const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(
+        const { t } = useLanguageSafe();
+const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(
         initialLocation ? { latitude: initialLocation.latitude, longitude: initialLocation.longitude } : null
     );
     const [radius, setRadius] = useState(initialRadius);
@@ -110,7 +112,7 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                     <Text style={styles.closeIcon}>✕</Text>
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>🗺️ Carte 3D Interactive</Text>
+                <Text style={styles.headerTitle}>{t('interactiveMap.carte3dInteractive')}/Text>
                 <View style={styles.headerActions}>
                     <TouchableOpacity
                         style={[styles.mapStyleButton, mapStyle === '3d' && styles.mapStyleButtonActive]}
@@ -187,7 +189,7 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
                     {/* Indicateur d'interactivité */}
                     {!selectedLocation && (
                         <View style={styles.interactiveIndicator}>
-                            <Text style={styles.interactiveText}>👆 Touchez pour sélectionner</Text>
+                            <Text style={styles.interactiveText}>{t('interactiveMap.touchezPourSelectionner')}</Text>
                         </View>
                     )}
                 </TouchableOpacity>
@@ -199,7 +201,7 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
                         onPress={() => setShowBuildings(!showBuildings)}
                     >
                         <Text style={styles.controlIcon}>🏢</Text>
-                        <Text style={styles.controlText}>Bâtiments</Text>
+                        <Text style={styles.controlText}>{t('interactiveMap.batiments')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -215,7 +217,7 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
             {/* Sélecteur de type de zone */}
             {allowZoneSelection && (
                 <View style={styles.zoneTypeSelector}>
-                    <Text style={styles.zoneTypeLabel}>Type de zone :</Text>
+                    <Text style={styles.zoneTypeLabel}>{t('interactiveMap.typeDeZone')}</Text>
                     <View style={styles.zoneTypeButtons}>
                         {[
                             { type: 'point', icon: '📍', label: 'Point' },
@@ -246,7 +248,7 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
                     </View>
                 ) : selectedLocation ? (
                     <View style={styles.locationInfo}>
-                        <Text style={styles.locationLabel}>📍 Position sélectionnée</Text>
+                        <Text style={styles.locationLabel}>{t('interactiveMap.positionSelectionnee')}</Text>
                         <Text style={styles.locationCoords}>
                             Lat: {selectedLocation.latitude.toFixed(6)}
                         </Text>
@@ -306,7 +308,7 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
                         onPress={handleConfirmSelection}
                         disabled={!selectedLocation}
                     >
-                        <Text style={styles.confirmButtonText}>✓ Confirmer zone</Text>
+                        <Text style={styles.confirmButtonText}>{t('interactiveMap.confirmerZone')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>

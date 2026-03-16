@@ -3,9 +3,11 @@ import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import NavigatorToolbar from '../components/NavigatorToolbar';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const NotFound: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
   const handleClose = React.useCallback(() => {
     if ((navigation as any).canGoBack && (navigation as any).canGoBack()) {
@@ -19,7 +21,7 @@ const NotFound: React.FC = () => {
     <View style={styles.container}>
       <NavigatorToolbar
         title="Page introuvable"
-        subtitle="Erreur 404"
+        subtitle={t('notFound.erreur404')}
         showHandle={false}
         density="compact"
         backIcon="back"
@@ -28,12 +30,12 @@ const NotFound: React.FC = () => {
 
       <View style={styles.content}>
         <Text style={styles.title}>404</Text>
-        <Text style={styles.message}>Cette page n'existe plus ou est momentanément indisponible.</Text>
+        <Text style={styles.message}>{t('notFound.cettePageNexistePlusOu')}</Text>
         <TouchableOpacity
           style={styles.button}
           onPress={() => (navigation as any).navigate('Home')}
         >
-          <Text style={styles.buttonText}>Revenir à l'accueil</Text>
+          <Text style={styles.buttonText}>{t('notFound.revenirALaccueil')}</Text>
         </TouchableOpacity>
       </View>
     </View>

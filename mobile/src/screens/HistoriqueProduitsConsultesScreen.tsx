@@ -23,6 +23,7 @@ import { useLocation } from '../contexts/LocationContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeStorage from '../utils/safeStorage';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ViewedProduct {
   serviceId: number;
@@ -40,6 +41,7 @@ const HistoriqueProduitsConsultesScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -220,7 +222,7 @@ const HistoriqueProduitsConsultesScreen: React.FC = () => {
         <SafeNativeView style={styles.container}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={modernColors.primary} />
-            <Text style={styles.loadingText}>Chargement de l'historique...</Text>
+            <Text style={styles.loadingText}>{t('historiqueProduitsConsultes.chargementDeLhistorique')}</Text>
           </View>
         </SafeNativeView>
       </KeyboardAwareScreen>
@@ -235,7 +237,7 @@ const HistoriqueProduitsConsultesScreen: React.FC = () => {
           <View style={styles.headerContent}>
             <SafeIcon name="clock" size={24} color={modernColors.primary} />
             <View style={styles.headerText}>
-              <Text style={styles.headerTitle}>Produits consultés</Text>
+              <Text style={styles.headerTitle}>{t('historiqueProduitsConsultes.produitsConsultes')}</Text>
               <Text style={styles.headerSubtitle}>
                 {productsData.length} {productsData.length === 1 ? 'produit' : 'produits'}
               </Text>
@@ -256,7 +258,7 @@ const HistoriqueProduitsConsultesScreen: React.FC = () => {
         {productsData.length === 0 ? (
           <View style={styles.emptyContainer}>
             <SafeIcon name="package" size={64} color={modernColors.textSecondary} />
-            <Text style={styles.emptyText}>Aucun produit consulté</Text>
+            <Text style={styles.emptyText}>{t('historiqueProduitsConsultes.aucunProduitConsulte')}</Text>
             <Text style={styles.emptySubtext}>
               Les produits que vous consultez apparaîtront ici
             </Text>

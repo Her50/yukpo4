@@ -22,6 +22,7 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface CovoiturageSearchFilters {
     depart?: string;
@@ -47,6 +48,7 @@ interface CovoiturageSearchFilters {
 const CovoiturageSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     const [depart, setDepart] = useState('');
     const [destination, setDestination] = useState('');
@@ -182,7 +184,7 @@ const CovoiturageSearchScreen: React.FC = () => {
     const quickSearches = [
         {
             id: 'proche',
-            title: 'Près de moi',
+            title: t('covoiturageSearch.presDeMoi'),
             icon: 'map-pin',
             description: 'Trajets proches',
             action: () => {
@@ -199,7 +201,7 @@ const CovoiturageSearchScreen: React.FC = () => {
             id: 'aujourdhui',
             title: "Aujourd'hui",
             icon: 'calendar',
-            description: 'Départ aujourd\'hui',
+            description: t('covoiturageSearch.departAujourdhui'),
             action: () => {
                 hapticPress();
                 setDateDepart(new Date());
@@ -218,9 +220,9 @@ const CovoiturageSearchScreen: React.FC = () => {
         },
         {
             id: 'recurrent',
-            title: 'Récurrents',
+            title: t('covoiturageSearch.recurrents'),
             icon: 'repeat',
-            description: 'Trajets réguliers',
+            description: t('covoiturageSearch.trajetsReguliers'),
             action: () => {
                 hapticPress();
                 setTrajetRecurrent(true);
@@ -249,7 +251,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="users" size={32} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>Rechercher un covoiturage</Text>
+                        <Text style={styles.headerTitle}>{t('covoiturageSearch.rechercherUnCovoiturage')}</Text>
                         <Text style={styles.headerSubtitle}>
                             Trouvez des trajets partagés pour économiser et voyager ensemble
                         </Text>
@@ -315,7 +317,7 @@ const CovoiturageSearchScreen: React.FC = () => {
 
                     {/* Formulaire de recherche */}
                     <View style={styles.searchFormCard}>
-                        <Text style={styles.sectionTitle}>📍 Recherche</Text>
+                        <Text style={styles.sectionTitle}>{t('covoiturageSearch.recherche')}/Text>
 
                         {/* Recherche GPS */}
                         <View style={styles.inputGroup}>
@@ -325,7 +327,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                         <SafeIcon name="map-pin" size={20} color="#10B981" type="lucide" />
                                     </View>
                                     <View style={styles.optionTextContainer}>
-                                        <Text style={styles.optionTitle}>Rechercher près de moi</Text>
+                                        <Text style={styles.optionTitle}>{t('covoiturageSearch.rechercherPresDeMoi')}</Text>
                                         <Text style={styles.optionDescription}>
                                             Trouvez des trajets à proximité de votre position
                                         </Text>
@@ -398,7 +400,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                     {/* Départ */}
                                     <View style={styles.routeInputContainer}>
                                         <Text style={styles.routeLabel}>
-                                            <SafeIcon name="map-pin" size={12} color="#10B981" type="lucide" /> Départ
+                                            <SafeIcon name="map-pin" size={12} color="#10B981" type="lucide" /> {t('covoiturageSearchScreen.departure')}
                                         </Text>
                                         <LocationSelector
                                             label=""
@@ -406,7 +408,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                             onSelect={(location: LocationObject) => {
                                                 setVilleDepart(location);
                                             }}
-                                            placeholder="Lieu de départ (ville, quartier, établissement...)"
+                                            placeholder={t('covoiturageSearch.lieuDeDepartVilleQuartier')}
                                             scope="all"
                                             enrichWithBackend={true}
                                             required={true}
@@ -434,7 +436,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                     {/* Destination */}
                                     <View style={styles.routeInputContainer}>
                                         <Text style={styles.routeLabel}>
-                                            <SafeIcon name="navigation" size={12} color="#10B981" type="lucide" /> Arrivée
+                                            <SafeIcon name="navigation" size={12} color="#10B981" type="lucide" />{t('covoiturageSearchScreen.arrivee')}
                                         </Text>
                                         <LocationSelector
                                             label=""
@@ -442,7 +444,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                             onSelect={(location: LocationObject) => {
                                                 setVilleDestination(location);
                                             }}
-                                            placeholder="Lieu d'arrivée (ville, quartier, établissement...)"
+                                            placeholder={t('covoiturageSearchScreen.lieuD')}arrivée (ville, quartier, établissement...)"
                                             scope="all"
                                             enrichWithBackend={true}
                                             required={true}
@@ -459,7 +461,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                             onSelect={(location: LocationObject) => {
                                                 setQuartierDepart(location);
                                             }}
-                                            placeholder="Quartier départ (opt.)"
+                                            placeholder={t('covoiturageSearch.quartierDepartOpt')}
                                             scope="all"
                                             cityContext={typeof villeDepart === 'string' ? villeDepart : (villeDepart as LocationObject)?.components?.ville || (villeDepart as LocationObject)?.place_name || ''}
                                             enrichWithBackend={true}
@@ -472,7 +474,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                             onSelect={(location: LocationObject) => {
                                                 setQuartierDestination(location);
                                             }}
-                                            placeholder="Quartier arrivée (opt.)"
+                                            placeholder={t('covoiturageSearch.quartierArriveeOpt')}
                                             scope="all"
                                             cityContext={typeof villeDestination === 'string' ? villeDestination : (villeDestination as LocationObject)?.components?.ville || (villeDestination as LocationObject)?.place_name || ''}
                                             enrichWithBackend={true}
@@ -505,7 +507,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                         {/* Date départ */}
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>
-                                <SafeIcon name="calendar" size={14} color={modernColors.primary} type="lucide" /> Date de départ
+                                <SafeIcon name="calendar" size={14} color={modernColors.primary} type="lucide" />{t('covoiturageSearchScreen.dateDeDepart')}
                             </Text>
                             <TouchableOpacity
                                 style={styles.dateButton}
@@ -597,7 +599,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                         {showAdvancedFilters && (
                             <View style={styles.advancedFiltersCard}>
                                 <Text style={styles.label}>
-                                    <SafeIcon name="filter" size={14} color={modernColors.primary} type="lucide" /> Type de véhicule
+                                    <SafeIcon name="filter" size={14} color={modernColors.primary} type="lucide" />{t('covoiturageSearchScreen.typeDeVehicule')}
                                 </Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
                                     <TouchableOpacity
@@ -633,7 +635,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                             <SafeIcon name="repeat" size={20} color="#10B981" type="lucide" />
                                         </View>
                                         <View style={styles.optionTextContainer}>
-                                            <Text style={styles.optionTitle}>Trajets récurrents</Text>
+                                            <Text style={styles.optionTitle}>{t('covoiturageSearch.trajetsRecurrents')}</Text>
                                             <Text style={styles.optionDescription}>
                                                 Rechercher uniquement les trajets réguliers
                                             </Text>
@@ -656,7 +658,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                             <SafeIcon name="dog" size={20} color="#10B981" type="lucide" />
                                         </View>
                                         <View style={styles.optionTextContainer}>
-                                            <Text style={styles.optionTitle}>Animaux acceptés</Text>
+                                            <Text style={styles.optionTitle}>{t('covoiturageSearch.animauxAcceptes')}</Text>
                                             <Text style={styles.optionDescription}>
                                                 Conducteurs acceptant les animaux
                                             </Text>
@@ -679,7 +681,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                             <SafeIcon name="smoking" size={20} color="#10B981" type="lucide" />
                                         </View>
                                         <View style={styles.optionTextContainer}>
-                                            <Text style={styles.optionTitle}>Fumeur autorisé</Text>
+                                            <Text style={styles.optionTitle}>{t('covoiturageSearch.fumeurAutorise')}</Text>
                                             <Text style={styles.optionDescription}>
                                                 Conducteurs autorisant le tabac
                                             </Text>
@@ -741,7 +743,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                     <View style={styles.infoCard}>
                         <View style={styles.infoHeader}>
                             <SafeIcon name="info" size={20} color="#10B981" type="lucide" />
-                            <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
+                            <Text style={styles.infoTitle}>{t('covoiturageSearch.bonASavoir')}</Text>
                         </View>
                         <Text style={styles.infoText}>
                             • Le covoiturage permet de partager les frais de transport{'\n'}

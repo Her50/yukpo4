@@ -18,6 +18,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiGet } from '../services/api';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -71,6 +72,7 @@ type Period = '7d' | '30d' | '90d';
 
 const ProductStatsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { productId, productName, serviceId } = (route.params as any) || {};
 
@@ -121,7 +123,7 @@ const ProductStatsScreen: React.FC = () => {
             }
         } catch (err: any) {
             console.error('[ProductStatsScreen] Erreur chargement stats:', err);
-            setError('Impossible de charger les statistiques');
+            setError(t('productStatsScreen.impossibleDeChargerLesStatistiques'));
             // Fallback: stats vides
             setStats({ views: 0, shares: 0, saves: 0, clicks: 0, comments: 0, reactions: 0, avg_rating: null, media_count: 0 });
         } finally {
@@ -247,7 +249,7 @@ const ProductStatsScreen: React.FC = () => {
         return (
             <SafeAreaView style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={styles.loadingText}>Chargement des statistiques...</Text>
+                <Text style={styles.loadingText}>{t('productStats.chargementDesStatistiques')}</Text>
             </SafeAreaView>
         );
     }
@@ -308,19 +310,19 @@ const ProductStatsScreen: React.FC = () => {
                 {/* Cartes secondaires */}
                 <View style={styles.statsGrid}>
                     <StatCard icon="💬" label="Commentaires" value={formatNumber(stats?.comments ?? 0)} color="#8B5CF6" />
-                    <StatCard icon="❤️" label="Réactions" value={formatNumber(stats?.reactions ?? 0)} color="#EC4899" />
+                    <StatCard icon="❤️" label={t('productStats.reactions')} value={formatNumber(stats?.reactions ?? 0)} color="#EC4899" />
                     <StatCard
                         icon="⭐"
-                        label="Note moyenne"
+                        label={t('productStats.noteMoyenne')}
                         value={stats?.avg_rating ? stats.avg_rating.toFixed(1) : 'N/A'}
                         color="#F59E0B"
                     />
-                    <StatCard icon="📷" label="Médias" value={formatNumber(stats?.media_count ?? 0)} color="#06B6D4" />
+                    <StatCard icon="📷" label={t('productStats.medias')} value={formatNumber(stats?.media_count ?? 0)} color="#06B6D4" />
                 </View>
 
                 {/* Graphique temporel */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>📈 Évolution temporelle</Text>
+                    <Text style={styles.sectionTitle}>{t('productStats.evolutionTemporelle')}</Text>
                     {renderMiniChart()}
                 </View>
 
@@ -331,7 +333,7 @@ const ProductStatsScreen: React.FC = () => {
                         {totalVisitors} visiteur{totalVisitors !== 1 ? 's' : ''} unique{totalVisitors !== 1 ? 's' : ''}
                     </Text>
                     {cities.length === 0 ? (
-                        <Text style={styles.emptyText}>Aucune donnée de localisation</Text>
+                        <Text style={styles.emptyText}>{t('productStats.aucuneDonneeDeLocalisation')}</Text>
                     ) : (
                         cities.map((city, i) => (
                             <View key={i} style={styles.progressRow}>
@@ -358,7 +360,7 @@ const ProductStatsScreen: React.FC = () => {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>📱 Types d'interactions</Text>
                     {sources.length === 0 ? (
-                        <Text style={styles.emptyText}>Aucune interaction enregistrée</Text>
+                        <Text style={styles.emptyText}>{t('productStats.aucuneInteractionEnregistree')}</Text>
                     ) : (
                         sources.map((source, i) => (
                             <View key={i} style={styles.sourceRow}>
@@ -382,9 +384,9 @@ const ProductStatsScreen: React.FC = () => {
 
                 {/* Visiteurs récents */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>👥 Visiteurs récents</Text>
+                    <Text style={styles.sectionTitle}>{t('productStats.visiteursRecents')}</Text>
                     {visitors.length === 0 ? (
-                        <Text style={styles.emptyText}>Aucun visiteur récent</Text>
+                        <Text style={styles.emptyText}>{t('productStats.aucunVisiteurRecent')}</Text>
                     ) : (
                         visitors.slice(0, 10).map((visitor, i) => (
                             <View key={i} style={styles.visitorRow}>

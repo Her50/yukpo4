@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SafeIcon from '../components/SafeIcon';
 import { LiveSessionRecord, liveStreamingService } from '../services/liveStreamingService';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -23,6 +24,7 @@ type LiveSessionWithStatus = LiveSessionRecord & {
 
 export default function LivesListScreen() {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
   const [upcomingLives, setUpcomingLives] = useState<LiveSessionWithStatus[]>([]);
   const [liveNow, setLiveNow] = useState<LiveSessionWithStatus[]>([]);
@@ -142,12 +144,12 @@ export default function LivesListScreen() {
     <View style={styles.emptyState}>
       <SafeIcon name="video-off" size={48} color="#9CA3AF" />
       <Text style={styles.emptyStateTitle}>
-        {activeTab === 'live' ? 'Aucun live en cours' : 'Aucun live programmé'}
+        {activeTab === 'live' ? 'Aucun live en cours' : t('livesListScreen.aucunLiveProgramme')}
       </Text>
       <Text style={styles.emptyStateDescription}>
         {activeTab === 'live'
           ? 'Revenez plus tard pour voir les lives en cours'
-          : 'Les lives programmés apparaîtront ici'
+          : t('livesListScreen.lesLivesProgrammesApparaitrontIci')
         }
       </Text>
     </View>
@@ -191,7 +193,7 @@ export default function LivesListScreen() {
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#DC2626" />
-          <Text style={styles.loadingText}>Chargement des lives...</Text>
+          <Text style={styles.loadingText}>{t('livesList.chargementDesLives')}</Text>
         </View>
       </SafeAreaView>
     );

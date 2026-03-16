@@ -22,6 +22,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useLocation } from '../contexts/LocationContext';
 import { apiGet, apiPost } from '../services/api';
 import { productDeliveryService } from '../services/productDeliveryService';
@@ -57,9 +58,9 @@ const REACTIONS = [
   { type: 'love', emoji: '❤️', label: 'J\'adore' },
   { type: 'like', emoji: '👍', label: 'J\'aime' },
   { type: 'wow', emoji: '😮', label: 'Impressionnant' },
-  { type: 'interested', emoji: '🎯', label: 'Intéressant' },
-  { type: 'thinking', emoji: '🤔', label: 'À réfléchir' },
-  { type: 'disappointed', emoji: '😕', label: 'Déçu' },
+  { type: 'interested', emoji: '🎯', label: t('productCard.interessant') },
+  { type: 'thinking', emoji: '🤔', label: t('productCard.aReflechir') },
+  { type: 'disappointed', emoji: '😕', label: t('productCard.decu') },
 ];
 
 const formatCompactNumber = (value: number | undefined | null): string => {
@@ -179,13 +180,13 @@ const getCountryFlag = (country?: string): string => {
   const countryLower = country.toLowerCase().trim();
 
   // Drapeaux des pays africains et internationaux (même mapping que useLocationDisplay)
-  if (countryLower.includes('cameroun') || countryLower.includes('cameroon') || countryLower.includes('douala') || countryLower.includes('yaoundé') || countryLower.includes('yaounde')) return '🇨🇲';
+  if (countryLower.includes('cameroun') || countryLower.includes('cameroon') || countryLower.includes('douala') || countryLower.includes(t('productCard.yaounde')) || countryLower.includes('yaounde')) return '🇨🇲';
   if (countryLower.includes('nigeria') || countryLower.includes('lagos') || countryLower.includes('abuja')) return '🇳🇬';
-  if (countryLower.includes('sénégal') || countryLower.includes('senegal') || countryLower.includes('dakar')) return '🇸🇳';
+  if (countryLower.includes(t('productCard.senegal')) || countryLower.includes('senegal') || countryLower.includes('dakar')) return '🇸🇳';
   if (countryLower.includes('côte') || countryLower.includes('ivoire') || countryLower.includes('ivory') || countryLower.includes('abidjan')) return '🇨🇮';
   if (countryLower.includes('ghana') || countryLower.includes('accra')) return '🇬🇭';
   if (countryLower.includes('france') || countryLower.includes('paris')) return '🇫🇷';
-  if (countryLower.includes('togo') || countryLower.includes('lomé')) return '🇹🇬';
+  if (countryLower.includes('togo') || countryLower.includes(t('productCard.lome'))) return '🇹🇬';
   if (countryLower.includes('bénin') || countryLower.includes('benin') || countryLower.includes('cotonou')) return '🇧🇯';
   if (countryLower.includes('mali')) return '🇲🇱';
   if (countryLower.includes('burkina')) return '🇧🇫';
@@ -194,7 +195,7 @@ const getCountryFlag = (country?: string): string => {
   if (countryLower.includes('gabon')) return '🇬🇦';
   if (countryLower.includes('congo')) return '🇨🇬';
   if (countryLower.includes('rdc')) return '🇨🇩';
-  if (countryLower.includes('guinée') || countryLower.includes('guinea')) return '🇬🇳';
+  if (countryLower.includes(t('productCard.guinee')) || countryLower.includes('guinea')) return '🇬🇳';
   if (countryLower.includes('madagascar')) return '🇲🇬';
   if (countryLower.includes('usa') || countryLower.includes('united states')) return '🇺🇸';
 
@@ -207,13 +208,13 @@ const extractCountryFromLocation = (location: string): string | null => {
 
   const locationLower = location.toLowerCase();
 
-  if (locationLower.includes('cameroun') || locationLower.includes('cameroon') || locationLower.includes('douala') || locationLower.includes('yaoundé') || locationLower.includes('yaounde')) return 'Cameroun';
+  if (locationLower.includes('cameroun') || locationLower.includes('cameroon') || locationLower.includes('douala') || locationLower.includes(t('productCard.yaounde')) || locationLower.includes('yaounde')) return 'Cameroun';
   if (locationLower.includes('nigeria') || locationLower.includes('lagos') || locationLower.includes('abuja')) return 'Nigeria';
-  if (locationLower.includes('sénégal') || locationLower.includes('senegal') || locationLower.includes('dakar')) return 'Sénégal';
+  if (locationLower.includes(t('productCard.senegal')) || locationLower.includes('senegal') || locationLower.includes('dakar')) return 'Sénégal';
   if (locationLower.includes('côte') || locationLower.includes('ivoire') || locationLower.includes('ivory') || locationLower.includes('abidjan')) return 'Côte d\'Ivoire';
   if (locationLower.includes('ghana') || locationLower.includes('accra')) return 'Ghana';
   if (locationLower.includes('france') || locationLower.includes('paris')) return 'France';
-  if (locationLower.includes('togo') || locationLower.includes('lomé')) return 'Togo';
+  if (locationLower.includes('togo') || locationLower.includes(t('productCard.lome'))) return 'Togo';
   if (locationLower.includes('bénin') || locationLower.includes('benin') || locationLower.includes('cotonou')) return 'Bénin';
   if (locationLower.includes('mali')) return 'Mali';
   if (locationLower.includes('burkina')) return 'Burkina Faso';
@@ -276,6 +277,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onVideoRelease,
 }) => {
   const navigation = useNavigation();
+  const { t } = useLanguageSafe();
   // ✅ NOUVEAU: Utiliser useLocation pour calculer la distance si nécessaire
   const { location: contextLocation, calculateDistance: locationCalculateDistance } = useLocation();
   const effectiveUserLocation = userLocation || (contextLocation?.coords ? {
@@ -325,24 +327,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }
   }, [onVideoRelease]);
 
-  // ✅ NOUVEAU 2026-03-12: Effet pour arrêter les vidéos lors du scroll avec coordinateur
-  useEffect(() => {
-    if (isScrolling) {
-      // Arrêter toutes les vidéos de cette carte
-      videoRefs.current.forEach((videoRef, mediaKey) => {
-        if (videoRef) {
-          videoRef.pauseAsync().catch(() => {
-            console.log(`[ProductCard] Vidéo ${mediaKey} déjà arrêtée ou inaccessible`);
-          });
-        }
-      });
-
-      // Notifier le coordinateur du release
-      if (onVideoRelease) {
-        onVideoRelease();
-      }
-    }
-  }, [isScrolling, onVideoRelease]);
+  // ✅ FIX 2026-03-15: Effet isScrolling SUPPRIMÉ ici — ProductMediaCarousel gère déjà
+  // l'arrêt de toutes les vidéos quand isScrolling=true (+ appelle onVideoRelease).
+  // L'ancien code dupliquait pauseAsync() + onVideoRelease() → triple release inutile.
 
   const [reactions, setReactions] = useState<Record<string, { count: number; hasReacted: boolean }>>({});
   const [loadingReactions, setLoadingReactions] = useState(false);
@@ -357,7 +344,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         const serviceId = product?.service_id || service?.id;
         const productIndex = product?.product_index || product?.index;
         // ✅ CORRIGÉ 2026-01-23: Vérifier que productData existe avant d'accéder à ses propriétés
-        const productName = productData?.nom || productData?.nom_produit || productData?.name || 'Produit';
+        const productName = productData?.nom || productData?.nom_produit || productData?.name || t('productCard.produit');
 
         if (!serviceId) return;
 
@@ -704,7 +691,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         productData?.prestataire_name ||
         productData?.owner_name ||
         productData?.vendor_name ||
-        'Prestataire',
+        t('productCard.prestataire'),
       user_id: service?.user_id,
       avatar_url: service?.data?.photo_prestataire?.valeur,
     };
@@ -738,7 +725,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
     service?.data?.prestataire_nom?.valeur ||
     service?.data?.contact_nom?.valeur ||
     service?.data?.nom?.valeur ||
-    'Prestataire';
+    t('productCard.prestataire');
 
   const prestataireAvatar =
     rawPrestataire?.avatar_url ||
@@ -1306,13 +1293,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
     productData?.title ||
     service?.data?.titre_service?.valeur ||
     service?.data?.nom ||
-    'Produit';
+    t('productCard.produit');
 
   const isPrivateChat = chatContext?.type === 'private';
   const activeChatPeer = isPrivateChat && chatContext?.targetUserId
     ? {
-      nom: chatContext.targetUserName || 'Utilisateur',
-      nom_complet: chatContext.targetUserName || 'Utilisateur',
+      nom: chatContext.targetUserName || t('productCard.utilisateur'),
+      nom_complet: chatContext.targetUserName || t('productCard.utilisateur'),
       user_id: chatContext.targetUserId,
       avatar_url: chatContext.targetAvatar || null,
     }
@@ -1411,7 +1398,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
     try {
       // ✅ CORRIGÉ 2026-02-10: Utiliser UNIQUEMENT productData.nom pour éviter d'utiliser le nom du premier produit du service
       // Ne pas utiliser service?.data?.nom_produit?.valeur car cela pourrait être le premier produit du service
-      const productName = productData?.nom || productData?.nom_produit || product?.nom || 'Produit';
+      const productName = productData?.nom || productData?.nom_produit || product?.nom || t('productCard.produit');
       // ✅ CORRIGÉ 2026-01-21: Utiliser UNIQUEMENT productData.description pour éviter confusion avec autres produits
       const productDesc = productData.description || productData.description_produit || '';
       const price = displayPrice > 0 ? displayPrice : undefined;
@@ -1483,7 +1470,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
       if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
         Alert.alert(
-          'Coordonnées invalides',
+          t('productCard.coordonneesInvalides'),
           'Les coordonnées GPS du prestataire sont invalides.'
         );
         return;
@@ -1571,8 +1558,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const handleReaction = async (reactionType: string) => {
     if (!serviceId || !resolvedProductId) {
       Alert.alert(
-        'Information manquante',
-        'Impossible de réagir à ce produit pour le moment.'
+        t('productCard.informationManquante'),
+        t('productCard.impossibleReagir')
       );
       return;
     }
@@ -1589,7 +1576,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
       }
     } catch (error) {
       console.error('[ProductCard] Erreur réaction:', error);
-      Alert.alert('Erreur', 'Impossible d\'enregistrer votre réaction pour le moment.');
+      Alert.alert(t('productCard.erreur'), t('productCard.impossibleEnregistrerReaction'));
     } finally {
       setPendingReaction(null);
     }
@@ -1616,7 +1603,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           const data = createResponse.data as { conversation_id?: string };
           conversationId = data.conversation_id || null;
         } else if (!createResponse.success) {
-          throw new Error(createResponse.error || "Impossible de créer la conversation privée");
+          throw new Error(createResponse.error || t('productCard.impossibleDeCreerLaConversation'));
         }
       }
 
@@ -1630,11 +1617,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
         setPrivateConversationId(conversationId);
         // Le chat modal est géré par le parent via onChatPress
       } else {
-        Alert.alert('Information', "Impossible de créer une conversation privée pour le moment");
+        Alert.alert(t('productCard.information'), t('productCard.impossibleCreerConversation'));
       }
     } catch (error) {
       console.error('[ProductCard] Erreur création conversation privée:', error);
-      Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de contacter cet utilisateur');
+      Alert.alert(t('productCard.erreur'), error instanceof Error ? error.message : t('productCard.impossibleContacter'));
     }
   };
 
@@ -1690,14 +1677,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 {isTrending && (
                   <View style={styles.trendingBadge}>
                     <Text style={styles.trendingEmoji}>🔥🔥</Text>
-                    <Text style={styles.trendingText}>Tendance</Text>
+                    <Text style={styles.trendingText}>{t('productCard.tendance')}</Text>
                     <Text style={styles.trendingCount}>{usageCount}×</Text>
                   </View>
                 )}
                 {!isTrending && isPopular && (
                   <View style={styles.popularBadge}>
                     <Text style={styles.popularEmoji}>🔥</Text>
-                    <Text style={styles.popularText}>Populaire</Text>
+                    <Text style={styles.popularText}>{t('productCard.populaire')}</Text>
                     <Text style={styles.popularCount}>{usageCount}×</Text>
                   </View>
                 )}
@@ -1825,7 +1812,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       contentType: 'product',
                       serviceId: serviceId || product?.service_id || service?.id,
                       productIndex: productIndex !== undefined && productIndex !== null ? productIndex : (product?.product_index ?? null),
-                      title: productData?.nom || productData?.product_name || product?.product_name || 'Produit',
+                      title: productData?.nom || productData?.product_name || product?.product_name || t('productCard.produit'),
                       description: productData?.description || '',
                     }}
                     iconSize={14}
@@ -1841,8 +1828,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   {filterBooleanValue(
                     // ✅ MIGRATION COMPLÈTE 2026-01-23: Utiliser UNIQUEMENT product_name depuis le backend
                     // Le backend garantit que product_name est toujours présent dans service_products
-                    productData?.product_name || product?.product_name || 'Produit',
-                    'Produit'
+                    productData?.product_name || product?.product_name || t('productCard.produit'),
+                    t('productCard.produit')
                   )}
                 </Text>
 
@@ -1853,7 +1840,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     <View style={styles.promoBadge}>
                       <SafeIcon name="zap" size={10} color="#FFFFFF" />
                       <Text style={styles.promoBadgeText}>
-                        {promoDiscountType === 'free' ? 'GRATUIT' :
+                        {promoDiscountType === 'free' ? t('productCard.gratuit') :
                           promoDiscountType === 'percentage' ? `-${promoDiscountValue}%` :
                             promoDiscountType === 'fixed' ? `-${promoDiscountValue.toLocaleString()} ${devise}` :
                               promoTitle}
@@ -1861,14 +1848,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     </View>
                     {promoEndsAt ? (
                       <Text style={styles.promoEndsText}>
-                        Fin: {(() => { try { const d = new Date(promoEndsAt); return `${d.getDate()}/${d.getMonth() + 1}`; } catch { return ''; } })()}
+                        {t('productCard.fin')}: {(() => { try { const d = new Date(promoEndsAt); return `${d.getDate()}/${d.getMonth() + 1}`; } catch { return ''; } })()}
                       </Text>
                     ) : null}
                   </View>
                 )}
                 <View style={styles.priceInlineRow}>
                   {hasVariant && variants.length > 0 && displayPrice > 0 && (
-                    <Text style={styles.priceInlineFrom}>À partir de </Text>
+                    <Text style={styles.priceInlineFrom}>{t('productCard.aPartirDe')}</Text>
                   )}
                   {/* ✅ NOUVEAU 2026-03-05: Si en promo, afficher ancien prix barré + nouveau prix en rouge */}
                   {isEnPromotion && displayPrice > 0 ? (
@@ -1877,7 +1864,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         {displayPrice.toLocaleString()}
                       </Text>
                       <Text style={styles.priceInlinePromo}>
-                        {promoDiscountType === 'free' ? 'GRATUIT' : `${promoPrice.toLocaleString()}`}
+                        {promoDiscountType === 'free' ? t('productCard.gratuit') : `${promoPrice.toLocaleString()}`}
                       </Text>
                       {promoDiscountType !== 'free' && (
                         <Text style={styles.priceInlineDevisePromo}> {devise}</Text>
@@ -1886,7 +1873,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   ) : (
                     <>
                       <Text style={styles.priceInline}>
-                        {displayPrice > 0 ? `${displayPrice.toLocaleString()}` : 'Prix sur demande'}
+                        {displayPrice > 0 ? `${displayPrice.toLocaleString()}` : t('productCard.prixSurDemande')}
                       </Text>
                       {displayPrice > 0 && (
                         <Text style={styles.priceInlineDevise}> {devise}</Text>
@@ -1909,7 +1896,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       )}
                       {reviewsCount > 0 && (
                         <Text style={styles.ratingCountInline}>
-                          {averageRating > 0 ? '· ' : ''}{reviewsCount} avis
+                          {averageRating > 0 ? '· ' : ''}{reviewsCount} {t('productCard.avis')}
                         </Text>
                       )}
                     </View>
@@ -1940,7 +1927,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       ))}
                     </Text>
                     {!descriptionExpanded && (
-                      <Text style={styles.voirPlusText}>Voir plus</Text>
+                      <Text style={styles.voirPlusText}>{t('productCard.voirPlus')}</Text>
                     )}
                   </TouchableOpacity>
                 )}
@@ -1951,7 +1938,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 <View style={styles.specializedSpecsRow}>
                   <View style={styles.specializedSpecsBadge}>
                     <SafeIcon name="car" size={10} color="#3B82F6" type="lucide" />
-                    <Text style={styles.specializedSpecsBadgeText}>Auto</Text>
+                    <Text style={styles.specializedSpecsBadgeText}>{t('productCard.auto')}</Text>
                   </View>
                   {(() => {
                     const specs = [
@@ -1981,7 +1968,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 <View style={styles.specializedSpecsRow}>
                   <View style={[styles.specializedSpecsBadge, { backgroundColor: '#ECFDF5' }]}>
                     <SafeIcon name="pill" size={10} color="#059669" type="lucide" />
-                    <Text style={[styles.specializedSpecsBadgeText, { color: '#059669' }]}>Pharma</Text>
+                    <Text style={[styles.specializedSpecsBadgeText, { color: '#059669' }]}>{t('productCard.pharma')}</Text>
                   </View>
                   {(() => {
                     const specs = [
@@ -1989,8 +1976,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       productData.forme_galenique || productData.forme,
                       productData.dosage || productData.posologie,
                       productData.dci || productData.molecule || productData.molécule,
-                      productData.ordonnance_requise === true ? 'Ordonnance' : null,
-                      productData.stock ? `Stock: ${productData.stock} ${productData.unite || ''}`.trim() : null,
+                      productData.ordonnance_requise === true ? t('productCard.ordonnance') : null,
+                      productData.stock ? `${t('productCard.stock')}: ${productData.stock} ${productData.unite || ''}`.trim() : null,
                     ].filter(Boolean);
                     return specs.length > 0 ? (
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
@@ -2008,7 +1995,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 <View style={styles.specializedSpecsRow}>
                   <View style={[styles.specializedSpecsBadge, { backgroundColor: '#FFF7ED' }]}>
                     <SafeIcon name="shopping-cart" size={10} color="#EA580C" type="lucide" />
-                    <Text style={[styles.specializedSpecsBadgeText, { color: '#EA580C' }]}>Supermarché</Text>
+                    <Text style={[styles.specializedSpecsBadgeText, { color: '#EA580C' }]}>{t('productCard.supermarche')}</Text>
                   </View>
                   {(() => {
                     const specs = [
@@ -2016,7 +2003,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       productData.marque || productData.brand,
                       productData.poids || productData.contenance || productData.volume,
                       productData.code_barre ? `EAN: ${productData.code_barre}` : null,
-                      productData.en_promotion ? 'Promo' : null,
+                      productData.en_promotion ? t('productCard.promo') : null,
                     ].filter(Boolean);
                     return specs.length > 0 ? (
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
@@ -2056,7 +2043,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   >
                     <SafeIcon name="store" size={10} color="#6366F1" />
                     <Text style={styles.prestataireNameText} numberOfLines={1}>
-                      {filterBooleanValue(prestataireInfo.nom, 'Prestataire')}
+                      {filterBooleanValue(prestataireInfo.nom, t('productCard.prestataire'))}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -2095,7 +2082,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 <View style={styles.characteristicsSection}>
                   <View style={styles.sectionHeader}>
                     <SafeIcon name="tag" size={14} color="#6B7280" />
-                    <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                    <Text style={styles.sectionTitle}>{t('productCard.caracteristiques')}</Text>
                   </View>
                   <ScrollView
                     ref={characteristicsScrollRef}
@@ -2135,7 +2122,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   <View style={styles.sectionHeader}>
                     <SafeIcon name="dollar-sign" size={12} color="#6B7280" />
                     <Text style={styles.sectionTitle}>
-                      Prix selon {filterBooleanValue(variantDimension, 'variante')}
+                      {t('productCard.prixSelon', { dimension: filterBooleanValue(variantDimension, t('productCard.variante')) })}
                     </Text>
                   </View>
 
@@ -2191,7 +2178,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             (variant.stock || 0) > 0 ? styles.stockLow : styles.stockOut
                         ]}>
                           <Text style={styles.variantCardStockText}>
-                            Stock: {(variant.stock || 0) > 0 ? variant.stock : '0'}
+                            {t('productCard.stock')}: {(variant.stock || 0) > 0 ? variant.stock : '0'}
                           </Text>
                         </View>
                       </TouchableOpacity>
@@ -2211,13 +2198,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     ]}
                     onPress={() => {
                       if (!serviceId) {
-                        Alert.alert('Erreur', 'Service non disponible');
+                        Alert.alert(t('productCard.erreur'), t('productCard.serviceNonDisponible'));
                         return;
                       }
                       if (!deliveryEnabled) {
                         Alert.alert(
-                          'Livraison non disponible',
-                          'La livraison n\'est pas activée pour ce produit. Contactez le prestataire pour plus d\'informations.'
+                          t('productCard.livraisonNonDisponible'),
+                          t('productCard.livraisonNonActivee')
                         );
                         return;
                       }
@@ -2235,7 +2222,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       styles.actionButtonDeliveryTextCompact,
                       !deliveryEnabled && styles.actionButtonDeliveryTextDisabled
                     ]}>
-                      Commander
+                      {t('productCard.commander')}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -2246,7 +2233,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   activeOpacity={0.7}
                 >
                   <SafeIcon name="message-circle" size={14} color="#FFFFFF" />
-                  <Text style={styles.actionButtonChatTextCompact}>Chat</Text>
+                  <Text style={styles.actionButtonChatTextCompact}>{t('productCard.chat')}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -2256,7 +2243,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   <ProductCommentsSection
                     serviceId={typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId}
                     productIndex={productIndex}
-                    serviceTitle={productData?.nom || service?.data?.titre_service?.valeur || 'Produit'}
+                    serviceTitle={productData?.nom || service?.data?.titre_service?.valeur || t('productCard.produit')}
                     onOpenChat={handleChatPress}
                     mode="inline"
                     compact={true}
@@ -2279,7 +2266,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           onClose={() => setShowOrderModal(false)}
           serviceId={serviceId}
           productIndex={productIndex}
-          productName={productData?.nom || productData?.name || productData?.titre || 'Produit'}
+          productName={productData?.nom || productData?.name || productData?.titre || t('productCard.produit')}
           // ✅ NOUVEAU 2026-01-23: Passer les variations de prix au modal
           productVariants={hasVariant && variants.length > 0 ? variants : undefined}
           selectedVariantIndex={selectedVariantIndex !== null ? selectedVariantIndex : undefined}
@@ -2303,7 +2290,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           visible={showGallery}
           service={service || {
             id: String(product?.service_id || service?.id),
-            titre: productData?.nom || service?.data?.titre_service?.valeur || 'Produit',
+            titre: productData?.nom || service?.data?.titre_service?.valeur || t('productCard.produit'),
             description: productData?.description || service?.data?.description?.valeur || '',
             user_id: String(prestataireInfo.user_id || service?.user_id || ''),
             data: service?.data || {},

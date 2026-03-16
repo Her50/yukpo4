@@ -17,6 +17,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet } from '../../services/api';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface HealthService {
     id: string;
@@ -41,6 +42,7 @@ interface NearbyPharmacy {
 const HealthServicesHubScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [dutyPharmacy, setDutyPharmacy] = useState<NearbyPharmacy | null>(null);
@@ -53,17 +55,17 @@ const HealthServicesHubScreen: React.FC = () => {
             title: 'Pharmacie',
             icon: 'pill',
             gradient: ['#10B981', '#34D399'],
-            description: 'Médicaments, pharmacies de garde',
+            description: t('healthServicesHub.medicamentsPharmaciesDeGarde'),
             route: 'PharmacieSearch',
             badge: '24/7',
             count: servicesCounts.pharmacie || 0,
         },
         {
             id: 'hopital',
-            title: 'Hôpital / Clinique',
+            title: t('healthServicesHub.hopitalClinique'),
             icon: 'hospital',
             gradient: ['#EF4444', '#F87171'],
-            description: 'Urgences, consultations, spécialistes',
+            description: t('healthServicesHub.urgencesConsultationsSpecialistes'),
             route: 'HopitalSearch',
             count: servicesCounts.hopital || 0,
         },
@@ -72,7 +74,7 @@ const HealthServicesHubScreen: React.FC = () => {
             title: 'Laboratoire',
             icon: 'microscope',
             gradient: ['#3B82F6', '#60A5FA'],
-            description: 'Analyses médicales, imagerie',
+            description: t('healthServicesHub.analysesMedicalesImagerie'),
             route: 'LaboratoireSearch',
             count: servicesCounts.laboratoire || 0,
         },
@@ -166,8 +168,8 @@ const HealthServicesHubScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                     <View style={styles.headerContent}>
-                        <Text style={styles.headerTitle}>Services de santé</Text>
-                        <Text style={styles.headerSubtitle}>Trouvez rapidement l'aide médicale</Text>
+                        <Text style={styles.headerTitle}>{t('healthServicesHub.servicesDeSante')}</Text>
+                        <Text style={styles.headerSubtitle}>{t('healthServicesHub.trouvezRapidementLaideMedicale')}</Text>
                     </View>
                     {/* Bouton urgence */}
                     <TouchableOpacity style={styles.emergencyButton} onPress={handleEmergencyCall} activeOpacity={0.7}>
@@ -182,7 +184,7 @@ const HealthServicesHubScreen: React.FC = () => {
                         <SafeIcon name="search" size={18} color="#9CA3AF" type="lucide" />
                         <TextInput
                             style={styles.searchInput}
-                            placeholder="Paracétamol, ophtalmologue, analyse sang..."
+                            placeholder={t('healthServicesHub.paracetamolOphtalmologueAnalyseSang')}
                             placeholderTextColor="#9CA3AF"
                             value={searchQuery}
                             onChangeText={setSearchQuery}
@@ -208,8 +210,8 @@ const HealthServicesHubScreen: React.FC = () => {
                     <LinearGradient colors={['#DC2626', '#EF4444']} style={styles.urgencyGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                         <SafeIcon name="alert-triangle" size={24} color="#FFFFFF" type="lucide" />
                         <View style={styles.urgencyContent}>
-                            <Text style={styles.urgencyTitle}>Urgence médicale ?</Text>
-                            <Text style={styles.urgencySubtitle}>Trouvez l'hôpital le plus proche avec urgences ouvertes</Text>
+                            <Text style={styles.urgencyTitle}>{t('healthServicesHub.urgenceMedicale')}</Text>
+                            <Text style={styles.urgencySubtitle}>{t('healthServicesHub.trouvezLhopitalLePlusProche')}</Text>
                         </View>
                         <SafeIcon name="chevron-right" size={20} color="#FFFFFF" type="lucide" />
                     </LinearGradient>
@@ -219,7 +221,7 @@ const HealthServicesHubScreen: React.FC = () => {
                 {loadingDuty ? (
                     <View style={styles.dutyCard}>
                         <ActivityIndicator size="small" color="#10B981" />
-                        <Text style={styles.dutyLoadingText}>Recherche pharmacie de garde...</Text>
+                        <Text style={styles.dutyLoadingText}>{t('healthServicesHub.recherchePharmacieDeGarde')}/Text>
                     </View>
                 ) : dutyPharmacy ? (
                     <View style={styles.dutyCard}>
@@ -258,7 +260,7 @@ const HealthServicesHubScreen: React.FC = () => {
                 ) : null}
 
                 {/* Grille des services */}
-                <Text style={styles.sectionTitle}>Services disponibles</Text>
+                <Text style={styles.sectionTitle}>{t('healthServicesHub.servicesDisponibles')}/Text>
                 <View style={styles.servicesGrid}>
                     {healthServices.map((service) => (
                         <TouchableOpacity
@@ -292,7 +294,7 @@ const HealthServicesHubScreen: React.FC = () => {
                 </View>
 
                 {/* Raccourcis rapides */}
-                <Text style={styles.sectionTitle}>Accès rapide</Text>
+                <Text style={styles.sectionTitle}>{t('healthServicesHub.accesRapide')}</Text>
                 <View style={styles.quickActionsRow}>
                     <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('PharmacieSearch')}>
                         <View style={[styles.quickActionIcon, { backgroundColor: '#D1FAE5' }]}>
@@ -316,24 +318,24 @@ const HealthServicesHubScreen: React.FC = () => {
                         <View style={[styles.quickActionIcon, { backgroundColor: '#DBEAFE' }]}>
                             <SafeIcon name="microscope" size={20} color="#3B82F6" type="lucide" />
                         </View>
-                        <Text style={styles.quickActionText}>Analyse{'\n'}médicale</Text>
+                        <Text style={styles.quickActionText}>{t('healthServicesHubScreen.medicalAnalysis')}</Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* Conseils santé */}
                 <View style={styles.tipsSection}>
-                    <Text style={styles.tipsTitle}>💡 Conseils santé</Text>
+                    <Text style={styles.tipsTitle}>{t('healthServicesHub.conseilsSante')}</Text>
                     <View style={styles.tipItem}>
                         <SafeIcon name="check-circle" size={14} color="#10B981" type="lucide" />
-                        <Text style={styles.tipText}>Les pharmacies de garde changent chaque semaine</Text>
+                        <Text style={styles.tipText}>{t('healthServicesHub.lesPharmaciesDeGardeChangent')}/Text>
                     </View>
                     <View style={styles.tipItem}>
                         <SafeIcon name="check-circle" size={14} color="#10B981" type="lucide" />
-                        <Text style={styles.tipText}>Appelez le 119 en cas d'urgence médicale</Text>
+                        <Text style={styles.tipText}>{t('healthServicesHub.appelezLe119EnCas')}</Text>
                     </View>
                     <View style={styles.tipItem}>
                         <SafeIcon name="check-circle" size={14} color="#10B981" type="lucide" />
-                        <Text style={styles.tipText}>Vérifiez la disponibilité avant de vous déplacer</Text>
+                        <Text style={styles.tipText}>{t('healthServicesHub.verifiezLaDisponibiliteAvantDe')}</Text>
                     </View>
                     <View style={styles.tipItem}>
                         <SafeIcon name="heart" size={14} color="#DC2626" type="lucide" />

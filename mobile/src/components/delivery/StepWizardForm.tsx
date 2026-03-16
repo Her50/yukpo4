@@ -8,6 +8,7 @@ import { StyleSheet, View } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import { NativeButton } from '../SafeNativeDesign';
 import ProgressWizard from './ProgressWizard';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Step {
     id: string;
@@ -30,7 +31,8 @@ const StepWizardForm: React.FC<StepWizardFormProps> = ({
     onCancel,
     style,
 }) => {
-    const [currentStep, setCurrentStep] = useState(0);
+        const { t } = useLanguageSafe();
+const [currentStep, setCurrentStep] = useState(0);
     const [formData, setFormData] = useState<Record<string, any>>({});
 
     const currentStepData = steps[currentStep];
@@ -87,14 +89,14 @@ const StepWizardForm: React.FC<StepWizardFormProps> = ({
             <View style={styles.navigation}>
                 {!isFirstStep && (
                     <NativeButton
-                        title="Précédent"
+                        title={t('stepWizardForm.precedent')}
                         variant="outline"
                         onPress={handlePrevious}
                         style={styles.navButton}
                     />
                 )}
                 <NativeButton
-                    title={isLastStep ? 'Terminer' : 'Suivant'}
+                    title={isLastStep ? 'Terminer' : t('stepWizardForm.suivant')}
                     variant="primary"
                     onPress={() => {
                         console.log('[StepWizardForm] Bouton pressé - isLastStep:', isLastStep);

@@ -47,7 +47,7 @@ const OptionsPrimesManager: React.FC<OptionsPrimesManagerProps> = ({
     const handleDeleteOption = (optionId: string) => {
         Alert.alert(
             'Supprimer l\'option',
-            'Êtes-vous sûr de vouloir supprimer cette option de contrat ?',
+            t('optionsPrimesManager.etesvousSurDeVouloirSupprimerCette'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -75,11 +75,11 @@ const OptionsPrimesManager: React.FC<OptionsPrimesManagerProps> = ({
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>💰 Options & Primes</Text>
+                <Text style={styles.headerTitle}>{t('optionsPrimesManager.optionsPrimes')}/Text>
                 {!readonly && (
                     <TouchableOpacity style={styles.addButton} onPress={handleAddOption}>
                         <SafeIcon name="plus" size={16} color="#FFFFFF" />
-                        <Text style={styles.addButtonText}>Ajouter</Text>
+                        <Text style={styles.addButtonText}>{t('optionsPrimesManager.ajouter')}</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -92,7 +92,7 @@ const OptionsPrimesManager: React.FC<OptionsPrimesManagerProps> = ({
             {options.length === 0 ? (
                 <View style={styles.emptyState}>
                     <SafeIcon name="file-text" size={48} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyText}>Aucune option ajoutée</Text>
+                    <Text style={styles.emptyText}>{t('optionsPrimesManager.aucuneOptionAjoutee')}</Text>
                     <Text style={styles.emptyHint}>
                         Ajoutez les formules de votre contrat d'assurance
                     </Text>
@@ -170,7 +170,7 @@ const OptionsPrimesManager: React.FC<OptionsPrimesManagerProps> = ({
                                 <View style={styles.fieldContainer}>
                                     <Text style={styles.fieldLabel}>Description (opt.)</Text>
                                     <NativeInput
-                                        placeholder="Ex: Couverture complète avec assistance"
+                                        placeholder={t('optionsPrimesManager.exCouvertureCompleteAvecAssistance')}
                                         value={option.description || ''}
                                         onChangeText={(text) => handleUpdateOption(option.id, 'description', text)}
                                         style={styles.fieldInput}

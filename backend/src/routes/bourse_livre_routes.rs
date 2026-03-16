@@ -206,6 +206,53 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/bourse-livre/v2/user/book-dashboard",
             get(bourse_livre_v2_controller::user_book_dashboard),
         )
+        // Constitution intelligente des paquets (regroupe par expéditeur→destinataire)
+        .route(
+            "/api/bourse-livre/v2/packages/build-intelligent",
+            post(bourse_livre_v2_controller::build_intelligent_packages),
+        )
+        // Admin: constitution batch pour tous les utilisateurs
+        .route(
+            "/api/bourse-livre/v2/packages/build-all",
+            post(bourse_livre_v2_controller::build_all_pending_packages),
+        )
+        // E2: Validation besoin — tous les paquets constitués avant dispatch
+        .route(
+            "/api/bourse-livre/v2/packages/validate-need",
+            get(bourse_livre_v2_controller::validate_need_fulfillment),
+        )
+        // E3: Route optimisée coursier (nearest-neighbor TSP)
+        .route(
+            "/api/bourse-livre/v2/packages/optimized-route",
+            post(bourse_livre_v2_controller::compute_optimized_route),
+        )
+        // E3: Tous les paquets non-dispatchés d'un utilisateur
+        .route(
+            "/api/bourse-livre/v2/packages/user-packages",
+            get(bourse_livre_v2_controller::get_all_packages_for_user),
+        )
+        // V3: Chaîne DAG — création, finalisation, détails
+        .route(
+            "/api/bourse-livre/v2/chains/create",
+            post(bourse_livre_v2_controller::create_chain_from_matching),
+        )
+        .route(
+            "/api/bourse-livre/v2/chains/{id}/finalize",
+            post(bourse_livre_v2_controller::finalize_chain),
+        )
+        .route(
+            "/api/bourse-livre/v2/chains/{id}/schedule",
+            post(bourse_livre_v2_controller::build_delivery_schedule),
+        )
+        .route(
+            "/api/bourse-livre/v2/chains/{id}",
+            get(bourse_livre_v2_controller::get_chain_details),
+        )
+        // V3: Annulation livre par coursier sur le terrain
+        .route(
+            "/api/bourse-livre/v2/packages/cancel-book",
+            post(bourse_livre_v2_controller::cancel_book_on_site),
+        )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
     Router::new()

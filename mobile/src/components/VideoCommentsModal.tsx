@@ -16,6 +16,7 @@ import { commentsApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface MentionUser {
     id: number;
@@ -99,7 +100,8 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
     serviceTitle,
 }) => {
     const { user } = useAuth();
-    const [loading, setLoading] = useState(false);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(false);
     const [comments, setComments] = useState<ProductComment[]>([]);
     const [input, setInput] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -236,7 +238,7 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
                             ListEmptyComponent={
                                 <View style={styles.emptyState}>
                                     <SafeIcon name="message-circle" size={32} color="#CBD5F5" />
-                                    <Text style={styles.emptyTitle}>Aucun commentaire</Text>
+                                    <Text style={styles.emptyTitle}>{t('videoComments.aucunCommentaire')}</Text>
                                     <Text style={styles.emptySubtitle}>
                                         Soyez le premier à lancer la discussion sur cette vidéo.
                                     </Text>
@@ -256,7 +258,7 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
                             style={styles.input}
                             value={input}
                             onChangeText={setInput}
-                            placeholder="Écrire un commentaire..."
+                            placeholder={t('videoComments.ecrireUnCommentaire')}
                             placeholderTextColor="#94A3B8"
                             multiline
                         />

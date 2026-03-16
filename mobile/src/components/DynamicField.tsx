@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import ReactNative from 'react-native';
 import { theme } from '../theme/theme';
 import GPSSelector from './GPSSelector';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { StyleSheet, Text, TextInput: RNTextInput, TouchableOpacity, View, ScrollView, Alert } = ReactNative;
 const TextInput = RNTextInput as any;
@@ -49,7 +50,8 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
     disabled = false,
     compact = false
 }) => {
-    const [localValue, setLocalValue] = useState(value || field.defaultValue || '');
+        const { t } = useLanguageSafe();
+const [localValue, setLocalValue] = useState(value || field.defaultValue || '');
     const [showGPSModal, setShowGPSModal] = useState(false);
 
     useEffect(() => {
@@ -70,11 +72,11 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
             const { min, max, pattern, message } = field.validation;
 
             if (min !== undefined && val < min) {
-                return message || `La valeur doit être au moins ${min}`;
+                return message || t('dynamicField.laValeurDoitEtreAuMoins', { min: min });
             }
 
             if (max !== undefined && val > max) {
-                return message || `La valeur doit être au maximum ${max}`;
+                return message || t('dynamicField.laValeurDoitEtreAuMaximum', { max: max });
             }
 
             if (pattern && typeof val === 'string' && !new RegExp(pattern).test(val)) {
@@ -317,7 +319,7 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
                         >
                             <Calendar size={20} color={theme.colors.primary} />
                             <Text style={styles.dateButtonText}>
-                                {localValue || 'Sélectionner une date'}
+                                {localValue || t('dynamicField.selectionnerUneDate')}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -337,7 +339,7 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
                         >
                             <Clock size={20} color={theme.colors.primary} />
                             <Text style={styles.timeButtonText}>
-                                {localValue || 'Sélectionner une heure'}
+                                {localValue || t('dynamicField.selectionnerUneHeure')}
                             </Text>
                         </TouchableOpacity>
                     </View>

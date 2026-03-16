@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { servicesApi } from '../services/api';
 import { theme } from '../theme/theme';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface InteractedService {
     id: string;
@@ -45,7 +46,8 @@ const ServiceHistoryModal: React.FC<ServiceHistoryModalProps> = ({
     onCall
 }) => {
     const { user } = useAuth();
-    const [services, setServices] = useState<InteractedService[]>([]);
+        const { t } = useLanguageSafe();
+const [services, setServices] = useState<InteractedService[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState<string>('all');
@@ -152,8 +154,8 @@ const ServiceHistoryModal: React.FC<ServiceHistoryModalProps> = ({
     const getStatusText = (status: string) => {
         switch (status) {
             case 'active': return 'En cours';
-            case 'completed': return 'Terminé';
-            case 'cancelled': return 'Annulé';
+            case 'completed': return t('serviceHistoryModal.termine');
+            case 'cancelled': return t('serviceHistoryModal.annule');
             default: return 'Inconnu';
         }
     };
@@ -162,7 +164,7 @@ const ServiceHistoryModal: React.FC<ServiceHistoryModalProps> = ({
         switch (type) {
             case 'message': return 'Messages';
             case 'call': return 'Appels';
-            case 'video': return 'Vidéos';
+            case 'video': return t('serviceHistoryModal.videos');
             case 'review': return 'Avis';
             case 'favorite': return 'Favoris';
             case 'share': return 'Partages';
@@ -231,7 +233,7 @@ const ServiceHistoryModal: React.FC<ServiceHistoryModalProps> = ({
                             <Ionicons name="search" size={20} color={theme.colors.primary} style={styles.searchIcon} />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Rechercher un service..."
+                                placeholder={t('serviceHistory.rechercherUnService')}
                                 value={searchTerm}
                                 onChangeText={setSearchTerm}
                             />
@@ -288,7 +290,7 @@ const ServiceHistoryModal: React.FC<ServiceHistoryModalProps> = ({
                             onPress={loadInteractedServices}
                         >
                             <Ionicons name="refresh" size={16} color={theme.colors.primary} />
-                            <Text style={styles.refreshButtonText}>Actualiser</Text>
+                            <Text style={styles.refreshButtonText}>{t('serviceHistory.actualiser')}</Text>
                         </TouchableOpacity>
                     </Card.Content>
                 </Card>
@@ -297,12 +299,12 @@ const ServiceHistoryModal: React.FC<ServiceHistoryModalProps> = ({
                 <ScrollView style={styles.servicesList}>
                     {loading ? (
                         <View style={styles.loadingContainer}>
-                            <Text style={styles.loadingText}>Chargement de vos services...</Text>
+                            <Text style={styles.loadingText}>{t('serviceHistory.chargementDeVosServices')}</Text>
                         </View>
                     ) : filteredServices.length === 0 ? (
                         <View style={styles.emptyContainer}>
                             <Ionicons name="chatbubbles-outline" size={48} color="#9E9E9E" />
-                            <Text style={styles.emptyTitle}>Aucun service interagi</Text>
+                            <Text style={styles.emptyTitle}>{t('serviceHistory.aucunServiceInteragi')}</Text>
                             <Text style={styles.emptyText}>
                                 Commencez à interagir avec des services pour les voir apparaître ici
                             </Text>

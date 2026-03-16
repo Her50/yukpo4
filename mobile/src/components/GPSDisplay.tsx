@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface GPSDisplayProps {
     location?: { lat: number; lng: number };
@@ -12,7 +13,8 @@ const GPSDisplay: React.FC<GPSDisplayProps> = ({
     onLocationPress,
     showDetails = false
 }) => {
-    const [address, setAddress] = useState<string>('');
+        const { t } = useLanguageSafe();
+const [address, setAddress] = useState<string>('');
 
     // Fonction pour obtenir l'adresse à partir des coordonnées (géocodage inverse)
     const getAddressFromCoords = async (lat: number, lng: number) => {
@@ -23,7 +25,7 @@ const GPSDisplay: React.FC<GPSDisplayProps> = ({
 
             // Données mockées basées sur la position
             const mockAddresses = [
-                'Yaoundé, Cameroun',
+                t('gPSDisplay.yaoundeCameroun'),
                 'Douala, Cameroun',
                 'Garoua, Cameroun',
                 'Bamenda, Cameroun',
@@ -62,8 +64,8 @@ const GPSDisplay: React.FC<GPSDisplayProps> = ({
                 <TouchableOpacity style={styles.noLocationContainer} onPress={handlePress}>
                     <Text style={styles.noLocationIcon}>📍</Text>
                     <View style={styles.noLocationInfo}>
-                        <Text style={styles.noLocationText}>GPS non activé</Text>
-                        <Text style={styles.noLocationSubtext}>Appuyez pour activer</Text>
+                        <Text style={styles.noLocationText}>{t('gPSDisplay.gpsNonActive')}</Text>
+                        <Text style={styles.noLocationSubtext}>{t('gPSDisplay.appuyezPourActiver')}</Text>
                     </View>
                 </TouchableOpacity>
             </View>
@@ -76,7 +78,7 @@ const GPSDisplay: React.FC<GPSDisplayProps> = ({
                 <View style={styles.gpsHeader}>
                     <Text style={styles.gpsIcon}>📍</Text>
                     <View style={styles.gpsInfo}>
-                        <Text style={styles.gpsStatus}>GPS Activé</Text>
+                        <Text style={styles.gpsStatus}>{t('gPSDisplay.gpsActive')}</Text>
                         <Text style={styles.gpsAddress} numberOfLines={1}>
                             {address || 'Chargement...'}
                         </Text>
@@ -101,7 +103,7 @@ const GPSDisplay: React.FC<GPSDisplayProps> = ({
                 )}
 
                 <View style={styles.gpsFooter}>
-                    <Text style={styles.gpsHint}>Appuyez pour modifier</Text>
+                    <Text style={styles.gpsHint}>{t('gPSDisplay.appuyezPourModifier')}</Text>
                 </View>
             </TouchableOpacity>
         </View>

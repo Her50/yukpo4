@@ -22,6 +22,7 @@ import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type TabType = 'overview' | 'catalog' | 'orders' | 'promos' | 'analytics';
 
@@ -39,9 +40,9 @@ interface CatalogProduct {
 const CATEGORIES = [
     { key: 'alimentaire', label: 'Alimentaire', icon: 'apple', color: '#10B981' },
     { key: 'boissons', label: 'Boissons', icon: 'coffee', color: '#3B82F6' },
-    { key: 'hygiene', label: 'Hygiène', icon: 'droplets', color: '#8B5CF6' },
-    { key: 'menager', label: 'Ménager', icon: 'home', color: '#F59E0B' },
-    { key: 'bebe', label: 'Bébé', icon: 'baby', color: '#EC4899' },
+    { key: 'hygiene', label: t('supermarketPartnerDashboard.hygiene'), icon: 'droplets', color: '#8B5CF6' },
+    { key: 'menager', label: t('supermarketPartnerDashboard.menager'), icon: 'home', color: '#F59E0B' },
+    { key: 'bebe', label: t('supermarketPartnerDashboard.bebe'), icon: 'baby', color: '#EC4899' },
     { key: 'autres', label: 'Autres', icon: 'package', color: '#6B7280' },
 ];
 
@@ -58,6 +59,7 @@ interface PendingOrder {
 
 const SupermarketPartnerDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
 
     const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -178,8 +180,8 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
             setShowBulkModal(false);
             setBulkText('');
             Alert.alert(
-                'Import terminé',
-                `${data?.created || 0} produits créés\n${data?.updated || 0} mis à jour${data?.errors?.length > 0 ? `\n\n⚠️ ${data.errors.length} erreur(s):\n${data.errors.slice(0, 3).join('\n')}` : ''}`,
+                t('supermarketPartnerDashboardScreen.importTermine'),
+                t('supermarketPartnerDashboardScreen.produitsCreesnMisAJourdataerrorslength0', { data?_created || 0: data?.created || 0, data?_updated || 0: data?.updated || 0 })\n\n⚠️ ${data.errors.length} erreur(s):\n${data.errors.slice(0, 3).join('\n')}` : ''}`,
             );
             loadProducts();
         } catch (e: any) {
@@ -192,15 +194,15 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
     const pendingOrdersCount = orders.filter(o => o.courier_assigned && ['assigned', 'en_route_pickup', 'arrival_pickup'].includes(o.status)).length;
 
     const TABS: { key: TabType; label: string; icon: string; badge?: number }[] = [
-        { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
+        { key: 'overview', label: t('supermarketPartnerDashboard.accueil'), icon: 'layout-dashboard' },
         { key: 'catalog', label: 'Catalogue', icon: 'package' },
-        { key: 'orders', label: 'Commandes', icon: 'shopping-cart', badge: pendingOrdersCount },
+        { key: 'orders', label: t('supermarketPartnerDashboard.commandes'), icon: 'shopping-cart', badge: pendingOrdersCount },
         { key: 'promos', label: 'Promos', icon: 'tag' },
         { key: 'analytics', label: 'Stats', icon: 'bar-chart-2' },
     ];
 
     if (loading) {
-        return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#10B981" /><Text style={s.loadingText}>Chargement...</Text></View>;
+        return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#10B981" /><Text style={s.loadingText}>{t('supermarketPartnerDashboard.chargement')}</Text></View>;
     }
 
     const renderOverview = () => (
@@ -234,10 +236,10 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
             <Text style={s.sectionTitle}>Actions rapides</Text>
             <View style={s.quickRow}>
                 {[
-                    { label: 'Ajouter produit', icon: 'plus-circle', color: '#10B981', onPress: () => (navigation as any).navigate('FormulaireYukpoIntelligent', { category: 'supermarche' }) },
+                    { label: t('supermarketPartnerDashboard.ajouterProduit'), icon: 'plus-circle', color: '#10B981', onPress: () => (navigation as any).navigate('FormulaireYukpoIntelligent', { category: 'supermarche' }) },
                     { label: 'Import masse', icon: 'upload', color: '#3B82F6', onPress: () => setShowBulkModal(true) },
-                    { label: 'Mes produits', icon: 'package', color: '#F59E0B', onPress: () => (navigation as any).navigate('MesProduits') },
-                    { label: 'Commandes', icon: 'shopping-cart', color: '#EF4444', onPress: () => setActiveTab('orders') },
+                    { label: t('supermarketPartnerDashboard.mesProduits'), icon: 'package', color: '#F59E0B', onPress: () => (navigation as any).navigate('MesProduits') },
+                    { label: t('supermarketPartnerDashboard.commandes'), icon: 'shopping-cart', color: '#EF4444', onPress: () => setActiveTab('orders') },
                     { label: 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
@@ -249,7 +251,7 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
                 ))}
             </View>
 
-            <Text style={s.sectionTitle}>Catégories</Text>
+            <Text style={s.sectionTitle}>{t('supermarketPartnerDashboard.categories')}</Text>
             <View style={s.typesGrid}>
                 {CATEGORIES.map(c => (
                     <View key={c.key} style={s.typeCard}>
@@ -265,7 +267,7 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
             {products.length > 0 && (
                 <>
                     <View style={s.sectionRow}>
-                        <Text style={s.sectionTitle}>Produits récents</Text>
+                        <Text style={s.sectionTitle}>{t('supermarketPartnerDashboard.produitsRecents')}</Text>
                         <TouchableOpacity onPress={() => setActiveTab('catalog')}><Text style={s.seeAll}>Tout voir</Text></TouchableOpacity>
                     </View>
                     {products.slice(0, 4).map((p, i) => (
@@ -286,9 +288,9 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
             {products.length === 0 && (
                 <View style={s.emptyState}>
                     <SafeIcon name="store" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Catalogue vide</Text>
-                    <Text style={s.emptyText}>Ajoutez vos produits pour les rendre visibles aux clients.</Text>
-                    <NativeButton title="Ajouter des produits" onPress={() => setActiveTab('catalog')} style={{ marginTop: 16 }} />
+                    <Text style={s.emptyTitle}>{t('supermarketPartnerDashboard.catalogueVide')}/Text>
+                    <Text style={s.emptyText}>{t('supermarketPartnerDashboard.ajoutezVosProduitsPourLes')}</Text>
+                    <NativeButton title={t('supermarketPartnerDashboard.ajouterDesProduits')} onPress={() => setActiveTab('catalog')} style={{ marginTop: 16 }} />
                 </View>
             )}
         </ScrollView>
@@ -299,7 +301,7 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
                 <View style={{ flex: 1 }}>
-                    <NativeButton title="+ Ajouter un produit" onPress={() => (navigation as any).navigate('FormulaireYukpoIntelligent', { category: 'supermarche' })} variant="primary" />
+                    <NativeButton title={t('supermarketPartnerDashboard.ajouterUnProduit')} onPress={() => (navigation as any).navigate('FormulaireYukpoIntelligent', { category: 'supermarche' })} variant="primary" />
                 </View>
                 <View style={{ flex: 1 }}>
                     <NativeButton title="Gerer mes produits" onPress={() => (navigation as any).navigate('MesProduits')} />
@@ -313,7 +315,7 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
             {products.length === 0 ? (
                 <View style={s.emptyState}>
                     <SafeIcon name="package" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Aucun produit</Text>
+                    <Text style={s.emptyTitle}>{t('supermarketPartnerDashboard.aucunProduit')}</Text>
                 </View>
             ) : (
                 products.map((p, i) => (
@@ -332,12 +334,12 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
     const renderPromos = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-            <NativeButton title="+ Créer une promotion" onPress={() => (navigation as any).navigate('CreateFlashPromo')} variant="primary" style={{ marginBottom: 16 }} />
+            <NativeButton title={t('supermarketPartnerDashboard.creerUnePromotion')} onPress={() => (navigation as any).navigate('CreateFlashPromo')} variant="primary" style={{ marginBottom: 16 }} />
             {products.filter(p => p.en_promotion).length === 0 ? (
                 <View style={s.emptyState}>
                     <SafeIcon name="tag" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Aucune promotion active</Text>
-                    <Text style={s.emptyText}>Créez des promotions pour attirer plus de clients.</Text>
+                    <Text style={s.emptyTitle}>{t('supermarketPartnerDashboard.aucunePromotionActive')}</Text>
+                    <Text style={s.emptyText}>{t('supermarketPartnerDashboard.creezDesPromotionsPourAttirer')}</Text>
                 </View>
             ) : (
                 products.filter(p => p.en_promotion).map((p, i) => (
@@ -359,14 +361,14 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
     const renderOrders = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-            <Text style={s.sectionTitle}>Commandes en attente de pickup</Text>
+            <Text style={s.sectionTitle}>{t('supermarketPartnerDashboard.commandesEnAttenteDePickup')}/Text>
             {loadingOrders ? (
                 <ActivityIndicator size="large" color="#10B981" style={{ marginTop: 40 }} />
             ) : orders.length === 0 ? (
                 <View style={s.emptyState}>
                     <SafeIcon name="inbox" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Aucune commande en attente</Text>
-                    <Text style={s.emptyText}>Les commandes des clients apparaitront ici quand un coursier sera assigne.</Text>
+                    <Text style={s.emptyTitle}>{t('supermarketPartnerDashboard.aucuneCommandeEnAttente')}</Text>
+                    <Text style={s.emptyText}>{t('supermarketPartnerDashboard.lesCommandesDesClientsApparaitront')}/Text>
                 </View>
             ) : (
                 orders.map((order, i) => {
@@ -421,9 +423,9 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
             <View style={s.analyticsCard}>
-                <Text style={s.analyticsTitle}>Résumé</Text>
+                <Text style={s.analyticsTitle}>{t('supermarketPartnerDashboard.resume')}</Text>
                 {[
-                    { label: 'Total produits', value: stats.total, color: '#3B82F6' },
+                    { label: t('supermarketPartnerDashboard.totalProduits'), value: stats.total, color: '#3B82F6' },
                     { label: 'En stock', value: stats.enStock, color: '#10B981' },
                     { label: 'En promotion', value: stats.enPromo, color: '#F59E0B' },
                     { label: `Valeur stock (${devise})`, value: stats.valeurStock.toLocaleString(), color: '#8B5CF6' },
@@ -446,8 +448,8 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={22} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>Dashboard Supermarché</Text>
-                        <Text style={s.headerSub}>{user?.name || 'Partenaire'}</Text>
+                        <Text style={s.headerTitle}>{t('supermarketPartnerDashboard.dashboardSupermarche')}</Text>
+                        <Text style={s.headerSub}>{user?.name || t('supermarketPartnerDashboard.partenaire')}</Text>
                     </View>
                 </View>
                 <View style={s.tabRow}>
@@ -564,7 +566,7 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
 
                         <View style={s.modalFooter}>
                             <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowBulkModal(false); setBulkText(''); }}>
-                                <Text style={s.cancelBtnText}>Annuler</Text>
+                                <Text style={s.cancelBtnText}>{t('supermarketPartnerDashboardScreen.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[s.importBtn, (!bulkText.trim() || bulkLoading) && { opacity: 0.5 }]}

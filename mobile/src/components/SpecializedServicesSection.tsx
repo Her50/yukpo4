@@ -14,17 +14,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // ✅ Configuration des catégories et services
 const SERVICE_CATEGORIES = [
     {
         id: 'sante',
-        name: 'SANTÉ',
+        name: t('specializedServicesSection.sante'),
         icon: 'heart-pulse',
         color: '#10B981',
         services: [
             { id: 'pharmacie', name: 'Pharmacie', icon: 'pill', emoji: '💊', route: 'PharmacieForm', searchRoute: 'PharmacieSearch' },
-            { id: 'hopital', name: 'Hôpital', icon: 'hospital', emoji: '🏥', route: 'HopitalForm', searchRoute: 'HopitalSearch' },
+            { id: 'hopital', name: t('specializedServicesSection.hopital'), icon: 'hospital', emoji: '🏥', route: 'HopitalForm', searchRoute: 'HopitalSearch' },
             { id: 'laboratoire', name: 'Laboratoire', icon: 'microscope', emoji: '🔬', route: 'LaboratoireForm', searchRoute: 'LaboratoireSearch' },
             { id: 'banque_sang', name: 'Banque Sang', icon: 'droplet', emoji: '🩸', route: 'BanqueSangForm', searchRoute: 'BanqueSangSearch' },
         ],
@@ -51,7 +52,7 @@ const SERVICE_CATEGORIES = [
     },
     {
         id: 'education',
-        name: 'ÉDUCATION & EMPLOI',
+        name: t('specializedServicesSection.educationEmploi'),
         icon: 'graduation-cap',
         color: '#8B5CF6',
         services: [
@@ -87,6 +88,7 @@ const SpecializedServicesSection: React.FC<SpecializedServicesSectionProps> = ({
     compact = false,
 }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [userServices, setUserServices] = useState<UserService[]>([]);
@@ -248,14 +250,14 @@ const SpecializedServicesSection: React.FC<SpecializedServicesSectionProps> = ({
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
                     <SafeIcon name="sparkles" size={20} color={modernColors.primary} type="lucide" />
-                    <Text style={styles.title}>Services Spécialisés</Text>
+                    <Text style={styles.title}>{t('specializedServicesSection.servicesSpecialises')}</Text>
                 </View>
                 <TouchableOpacity
                     onPress={() => {
                         (navigation as any).navigate('SpecializedServicesHub');
                     }}
                 >
-                    <Text style={styles.seeAllText}>Voir tous →</Text>
+                    <Text style={styles.seeAllText}>{t('specializedServicesSection.voirTous')}/Text>
                 </TouchableOpacity>
             </View>
 

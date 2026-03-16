@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { handleError } from '../utils/errorHandler';
 import WebRTCCallModal from './WebRTCCallModal';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface IncomingCallData {
     caller_id: string;
@@ -17,7 +18,8 @@ interface IncomingCallData {
 
 const IncomingCallManager: React.FC = () => {
     const { user } = useAuth();
-    const [incomingCall, setIncomingCall] = useState<IncomingCallData | null>(null);
+        const { t } = useLanguageSafe();
+const [incomingCall, setIncomingCall] = useState<IncomingCallData | null>(null);
     const [showCallModal, setShowCallModal] = useState(false);
 
     useEffect(() => {
@@ -59,7 +61,7 @@ const IncomingCallManager: React.FC = () => {
 
                 setIncomingCall({
                     caller_id: notification.data.caller_id || notification.data.from,
-                    caller_name: notification.data.caller_name || 'Un utilisateur',
+                    caller_name: notification.data.caller_name || t('incomingCallManager.unUtilisateur'),
                     call_type: notification.data.call_type || 'audio',
                     service_id: notification.data.service_id,
                     call_id: notification.data.call_id

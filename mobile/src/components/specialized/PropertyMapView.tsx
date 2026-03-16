@@ -11,6 +11,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { RealEstateProperty } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface PropertyMapViewProps {
     properties: RealEstateProperty[];
@@ -31,7 +32,8 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
     showClustering = true,
 }) => {
     const mapRef = useRef<MapView>(null);
-    const [selectedProperty, setSelectedProperty] = useState<RealEstateProperty | null>(null);
+        const { t } = useLanguageSafe();
+const [selectedProperty, setSelectedProperty] = useState<RealEstateProperty | null>(null);
     const [mapRegion, setMapRegion] = useState(initialRegion);
 
     useEffect(() => {
@@ -179,11 +181,11 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
             <View style={styles.legend}>
                 <View style={styles.legendItem}>
                     <View style={[styles.legendColor, { backgroundColor: '#EF4444' }]} />
-                    <Text style={styles.legendText}>À vendre</Text>
+                    <Text style={styles.legendText}>{t('propertyMapView.aVendre')}</Text>
                 </View>
                 <View style={styles.legendItem}>
                     <View style={[styles.legendColor, { backgroundColor: '#3B82F6' }]} />
-                    <Text style={styles.legendText}>À louer</Text>
+                    <Text style={styles.legendText}>{t('propertyMapView.aLouer')}</Text>
                 </View>
             </View>
         </View>

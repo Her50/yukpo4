@@ -14,6 +14,7 @@ import { EffectPreviewResponse, effectPreviewService } from '../services/effectP
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface EffectPreviewCarouselProps {
     effectNames: string[];
@@ -26,7 +27,8 @@ export const EffectPreviewCarousel: React.FC<EffectPreviewCarouselProps> = ({
     sampleMediaUrl,
     onEffectSelected,
 }) => {
-    const [previews, setPreviews] = useState<Map<string, EffectPreviewResponse>>(new Map());
+        const { t } = useLanguageSafe();
+const [previews, setPreviews] = useState<Map<string, EffectPreviewResponse>>(new Map());
     const [loading, setLoading] = useState<Set<string>>(new Set());
     const [selectedEffect, setSelectedEffect] = useState<string | null>(null);
 
@@ -99,7 +101,7 @@ export const EffectPreviewCarousel: React.FC<EffectPreviewCarouselProps> = ({
 
     return (
         <NativeCard style={styles.container}>
-            <Text style={styles.title}>Aperçu des Effets</Text>
+            <Text style={styles.title}>{t('effectPreviewCarousel.apercuDesEffets')}</Text>
             <Text style={styles.subtitle}>
                 Cliquez sur un effet pour voir le preview
             </Text>
@@ -133,7 +135,7 @@ export const EffectPreviewCarousel: React.FC<EffectPreviewCarouselProps> = ({
                             {isLoading ? (
                                 <View style={styles.loadingContainer}>
                                     <ActivityIndicator size="small" color={modernColors.primary} />
-                                    <Text style={styles.loadingText}>Génération...</Text>
+                                    <Text style={styles.loadingText}>{t('effectPreviewCarousel.generation')}</Text>
                                 </View>
                             ) : preview ? (
                                 <>
@@ -161,7 +163,7 @@ export const EffectPreviewCarousel: React.FC<EffectPreviewCarouselProps> = ({
                             ) : (
                                 <View style={styles.errorContainer}>
                                     <SafeIcon name="alert-circle" size={24} color={modernColors.error} />
-                                    <Text style={styles.errorText}>Erreur</Text>
+                                    <Text style={styles.errorText}>{t('effectPreviewCarousel.erreur')}</Text>
                                     <Text style={styles.errorHint}>
                                         Réessayez plus tard
                                     </Text>

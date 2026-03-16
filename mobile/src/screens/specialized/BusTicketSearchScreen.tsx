@@ -25,6 +25,7 @@ import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 import { measureScreenLoad } from '../../utils/metrics';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface BusTicketResult {
     product_id: string;
@@ -45,6 +46,7 @@ interface BusTicketResult {
 const BusTicketSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     // Mesurer le temps de chargement
     React.useEffect(() => {
@@ -173,7 +175,7 @@ const BusTicketSearchScreen: React.FC = () => {
             id: 'aujourdhui',
             title: "Aujourd'hui",
             icon: 'calendar',
-            description: 'Départ aujourd\'hui',
+            description: t('busTicketSearch.departAujourdhui'),
             action: () => {
                 hapticPress();
                 setDepartureDate(new Date());
@@ -183,7 +185,7 @@ const BusTicketSearchScreen: React.FC = () => {
             id: 'demain',
             title: 'Demain',
             icon: 'calendar-days',
-            description: 'Départ demain',
+            description: t('busTicketSearch.departDemain'),
             action: () => {
                 hapticPress();
                 const tomorrow = new Date();
@@ -229,7 +231,7 @@ const BusTicketSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="bus" size={32} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>Rechercher un trajet</Text>
+                        <Text style={styles.headerTitle}>{t('busTicketSearch.rechercherUnTrajet')}</Text>
                         <Text style={styles.headerSubtitle}>
                             Trouvez et réservez vos tickets de bus en quelques clics
                         </Text>
@@ -270,11 +272,11 @@ const BusTicketSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>📍 Recherche de trajet</Text>
+                    <Text style={styles.sectionTitle}>{t('busTicketSearch.rechercheDeTrajet')}/Text>
                     {/* Ville de départ */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="map-pin" size={14} color={modernColors.primary} type="lucide" /> Ville de départ *
+                            <SafeIcon name="map-pin" size={14} color={modernColors.primary} type="lucide" />{t('busTicketSearchScreen.villeDeDepart')}
                         </Text>
                         <CityAutocomplete
                             label=""
@@ -284,14 +286,14 @@ const BusTicketSearchScreen: React.FC = () => {
                                 hapticPress();
                                 setDepartureCity(city.main_text);
                             }}
-                            placeholder="Ex: Yaoundé"
+                            placeholder={t('busTicketSearch.exYaounde')}
                         />
                     </View>
 
                     {/* Ville d'arrivée */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="navigation" size={14} color={modernColors.primary} type="lucide" /> Ville d'arrivée *
+                            <SafeIcon name="navigation" size={14} color={modernColors.primary} type="lucide" />{t('busTicketSearchScreen.villeDarrivee')}
                         </Text>
                         <CityAutocomplete
                             label=""
@@ -308,7 +310,7 @@ const BusTicketSearchScreen: React.FC = () => {
                     {/* Date de départ */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="calendar" size={14} color={modernColors.primary} type="lucide" /> Date de départ
+                            <SafeIcon name="calendar" size={14} color={modernColors.primary} type="lucide" />{t('busTicketSearchScreen.dateDeDepart')}
                         </Text>
                         <TouchableOpacity
                             style={styles.dateButton}
@@ -346,7 +348,7 @@ const BusTicketSearchScreen: React.FC = () => {
                                     <SafeIcon name="rotate-ccw" size={20} color="#F59E0B" type="lucide" />
                                 </View>
                                 <View style={styles.optionTextContainer}>
-                                    <Text style={styles.optionTitle}>Aller-Retour</Text>
+                                    <Text style={styles.optionTitle}>{t('busTicketSearchScreen.allerretour')}</Text>
                                     <Text style={styles.optionDescription}>
                                         Réserver un trajet aller et retour
                                     </Text>
@@ -488,7 +490,7 @@ const BusTicketSearchScreen: React.FC = () => {
                                         <View style={styles.cityDot} />
                                         <View style={styles.cityInfo}>
                                             <Text style={styles.cityName}>
-                                                {result.departure_city || 'Départ'}
+                                                {result.departure_city || t('busTicketSearch.depart')}
                                             </Text>
                                             <Text style={styles.time}>
                                                 {formatTime(result.departure_time)}
@@ -502,7 +504,7 @@ const BusTicketSearchScreen: React.FC = () => {
                                         <View style={[styles.cityDot, styles.cityDotArrival]} />
                                         <View style={styles.cityInfo}>
                                             <Text style={styles.cityName}>
-                                                {result.arrival_city || 'Arrivée'}
+                                                {result.arrival_city || t('busTicketSearch.arrivee')}
                                             </Text>
                                         </View>
                                     </View>
@@ -531,7 +533,7 @@ const BusTicketSearchScreen: React.FC = () => {
                     <View style={styles.infoCard}>
                         <View style={styles.infoHeader}>
                             <SafeIcon name="info" size={20} color="#F59E0B" type="lucide" />
-                            <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
+                            <Text style={styles.infoTitle}>{t('busTicketSearch.bonASavoir')}</Text>
                         </View>
                         <Text style={styles.infoText}>
                             • Réservez vos tickets à l'avance pour garantir votre place{'\n'}

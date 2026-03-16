@@ -20,6 +20,7 @@ import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type TabType = 'overview' | 'menu' | 'orders' | 'analytics';
 
@@ -43,15 +44,16 @@ interface Order {
 }
 
 const CATEGORIES_PLAT = [
-    { key: 'entree', label: 'Entrées', icon: 'salad', color: '#10B981' },
+    { key: 'entree', label: t('restaurantDashboard.entrees'), icon: 'salad', color: '#10B981' },
     { key: 'plat', label: 'Plats', icon: 'utensils', color: '#F59E0B' },
     { key: 'dessert', label: 'Desserts', icon: 'cake', color: '#EC4899' },
     { key: 'boisson', label: 'Boissons', icon: 'coffee', color: '#3B82F6' },
-    { key: 'specialite', label: 'Spécialités', icon: 'star', color: '#8B5CF6' },
+    { key: 'specialite', label: t('restaurantDashboard.specialites'), icon: 'star', color: '#8B5CF6' },
 ];
 
 const RestaurantDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
 
     const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -97,14 +99,14 @@ const RestaurantDashboardScreen: React.FC = () => {
     const handleRefresh = () => { setRefreshing(true); loadData(); };
 
     const TABS: { key: TabType; label: string; icon: string }[] = [
-        { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
+        { key: 'overview', label: t('restaurantDashboard.accueil'), icon: 'layout-dashboard' },
         { key: 'menu', label: 'Menu', icon: 'book-open' },
-        { key: 'orders', label: 'Commandes', icon: 'shopping-bag' },
+        { key: 'orders', label: t('restaurantDashboard.commandes'), icon: 'shopping-bag' },
         { key: 'analytics', label: 'Stats', icon: 'bar-chart-2' },
     ];
 
     if (loading) {
-        return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#DC2626" /><Text style={s.loadingText}>Chargement...</Text></View>;
+        return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#DC2626" /><Text style={s.loadingText}>{t('restaurantDashboard.chargement')}</Text></View>;
     }
 
     const renderOverview = () => (
@@ -112,9 +114,9 @@ const RestaurantDashboardScreen: React.FC = () => {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
             <View style={s.statsGrid}>
                 {[
-                    { label: 'Plats au menu', value: stats.totalPlats, icon: 'utensils', color: '#F59E0B' },
+                    { label: t('restaurantDashboard.platsAuMenu'), value: stats.totalPlats, icon: 'utensils', color: '#F59E0B' },
                     { label: 'Disponibles', value: stats.disponibles, icon: 'check-circle', color: '#10B981' },
-                    { label: 'Commandes (jour)', value: stats.commandesJour, icon: 'shopping-bag', color: '#3B82F6' },
+                    { label: t('restaurantDashboard.commandesJour'), value: stats.commandesJour, icon: 'shopping-bag', color: '#3B82F6' },
                     { label: 'CA du jour', value: `${stats.chiffreJour.toLocaleString()}`, icon: 'banknote', color: '#8B5CF6' },
                 ].map((st, i) => (
                     <View key={i} style={[s.statCard, { borderLeftColor: st.color }]}>
@@ -130,7 +132,7 @@ const RestaurantDashboardScreen: React.FC = () => {
                 <SafeIcon name={isOpen ? 'door-open' : 'door-closed'} size={20} color={isOpen ? '#16A34A' : '#DC2626'} />
                 <View style={{ flex: 1 }}>
                     <Text style={[s.statusTitle, { color: isOpen ? '#16A34A' : '#DC2626' }]}>
-                        {isOpen ? 'Restaurant ouvert' : 'Restaurant fermé'}
+                        {isOpen ? 'Restaurant ouvert' : t('restaurantDashboardScreen.restaurantFerme')}
                     </Text>
                     <Text style={s.statusSub}>{isOpen ? 'Accepte les commandes' : 'Commandes suspendues'}</Text>
                 </View>
@@ -140,8 +142,8 @@ const RestaurantDashboardScreen: React.FC = () => {
             <Text style={s.sectionTitle}>Actions rapides</Text>
             <View style={s.quickRow}>
                 {[
-                    { label: 'Ajouter plat', icon: 'plus-circle', color: '#DC2626', onPress: () => setActiveTab('menu') },
-                    { label: 'Commandes', icon: 'shopping-bag', color: '#3B82F6', onPress: () => setActiveTab('orders') },
+                    { label: t('restaurantDashboard.ajouterPlat'), icon: 'plus-circle', color: '#DC2626', onPress: () => setActiveTab('menu') },
+                    { label: t('restaurantDashboard.commandes'), icon: 'shopping-bag', color: '#3B82F6', onPress: () => setActiveTab('orders') },
                     { label: 'Planifier menu', icon: 'calendar', color: '#8B5CF6', onPress: () => (navigation as any).navigate('MenuPlanningHub') },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => setActiveTab('analytics') },
                     { label: 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
@@ -155,7 +157,7 @@ const RestaurantDashboardScreen: React.FC = () => {
                 ))}
             </View>
 
-            <Text style={s.sectionTitle}>Catégories</Text>
+            <Text style={s.sectionTitle}>{t('restaurantDashboard.categories')}</Text>
             <View style={s.typesGrid}>
                 {CATEGORIES_PLAT.map(c => (
                     <View key={c.key} style={s.typeCard}>
@@ -171,7 +173,7 @@ const RestaurantDashboardScreen: React.FC = () => {
             {menuItems.length > 0 && (
                 <>
                     <View style={s.sectionRow}>
-                        <Text style={s.sectionTitle}>Menu récent</Text>
+                        <Text style={s.sectionTitle}>{t('restaurantDashboard.menuRecent')}</Text>
                         <TouchableOpacity onPress={() => setActiveTab('menu')}><Text style={s.seeAll}>Tout voir</Text></TouchableOpacity>
                     </View>
                     {menuItems.slice(0, 4).map((m, i) => (
@@ -189,9 +191,9 @@ const RestaurantDashboardScreen: React.FC = () => {
             {menuItems.length === 0 && (
                 <View style={s.emptyState}>
                     <SafeIcon name="utensils" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Menu vide</Text>
-                    <Text style={s.emptyText}>Ajoutez vos premiers plats pour commencer.</Text>
-                    <NativeButton title="Créer le menu" onPress={() => setActiveTab('menu')} style={{ marginTop: 16 }} />
+                    <Text style={s.emptyTitle}>{t('restaurantDashboard.menuVide')}/Text>
+                    <Text style={s.emptyText}>{t('restaurantDashboard.ajoutezVosPremiersPlatsPour')}</Text>
+                    <NativeButton title={t('restaurantDashboard.creerLeMenu')} onPress={() => setActiveTab('menu')} style={{ marginTop: 16 }} />
                 </View>
             )}
         </ScrollView>
@@ -200,11 +202,11 @@ const RestaurantDashboardScreen: React.FC = () => {
     const renderMenu = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-            <NativeButton title="+ Ajouter un plat" onPress={() => Alert.alert('Info', 'Utilisez le formulaire intelligent pour ajouter un plat au menu.')} variant="primary" style={{ marginBottom: 16 }} />
+            <NativeButton title={t('restaurantDashboard.ajouterUnPlat')} onPress={() => Alert.alert('Info', 'Utilisez le formulaire intelligent pour ajouter un plat au menu.')} variant="primary" style={{ marginBottom: 16 }} />
             {menuItems.length === 0 ? (
                 <View style={s.emptyState}>
                     <SafeIcon name="book-open" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Aucun plat au menu</Text>
+                    <Text style={s.emptyTitle}>{t('restaurantDashboard.aucunPlatAuMenu')}</Text>
                 </View>
             ) : (
                 menuItems.map((m, i) => (
@@ -227,8 +229,8 @@ const RestaurantDashboardScreen: React.FC = () => {
             {orders.length === 0 ? (
                 <View style={s.emptyState}>
                     <SafeIcon name="shopping-bag" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Aucune commande en cours</Text>
-                    <Text style={s.emptyText}>Les nouvelles commandes apparaîtront ici.</Text>
+                    <Text style={s.emptyTitle}>{t('restaurantDashboard.aucuneCommandeEnCours')}</Text>
+                    <Text style={s.emptyText}>{t('restaurantDashboard.lesNouvellesCommandesApparaitrontIci')}</Text>
                 </View>
             ) : (
                 orders.map((o, i) => (
@@ -240,7 +242,7 @@ const RestaurantDashboardScreen: React.FC = () => {
                         </View>
                         <View style={[s.orderBadge, { backgroundColor: o.status === 'pending' ? '#FEF3C7' : o.status === 'preparing' ? '#DBEAFE' : '#DCFCE7' }]}>
                             <Text style={[s.orderBadgeText, { color: o.status === 'pending' ? '#D97706' : o.status === 'preparing' ? '#2563EB' : '#16A34A' }]}>
-                                {o.status === 'pending' ? 'En attente' : o.status === 'preparing' ? 'En prépa' : 'Prêt'}
+                                {o.status === 'pending' ? 'En attente' : o.status === 'preparing' ? t('restaurantDashboardScreen.enPrepa') : t('restaurantDashboardScreen.pret')}
                             </Text>
                         </View>
                     </View>
@@ -253,11 +255,11 @@ const RestaurantDashboardScreen: React.FC = () => {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
             <View style={s.analyticsCard}>
-                <Text style={s.analyticsTitle}>Résumé</Text>
+                <Text style={s.analyticsTitle}>{t('restaurantDashboard.resume')}</Text>
                 {[
-                    { label: 'Plats au menu', value: stats.totalPlats, color: '#F59E0B' },
+                    { label: t('restaurantDashboard.platsAuMenu'), value: stats.totalPlats, color: '#F59E0B' },
                     { label: 'Disponibles', value: stats.disponibles, color: '#10B981' },
-                    { label: 'Commandes du jour', value: stats.commandesJour, color: '#3B82F6' },
+                    { label: t('restaurantDashboard.commandesDuJour'), value: stats.commandesJour, color: '#3B82F6' },
                     { label: `CA du jour (${devise})`, value: stats.chiffreJour.toLocaleString(), color: '#8B5CF6' },
                 ].map((item, i) => (
                     <View key={i} style={s.analyticsRow}>
@@ -278,8 +280,8 @@ const RestaurantDashboardScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={22} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>Dashboard Restaurant</Text>
-                        <Text style={s.headerSub}>{user?.name || 'Partenaire'}</Text>
+                        <Text style={s.headerTitle}>{t('restaurantDashboard.dashboardRestaurant')}/Text>
+                        <Text style={s.headerSub}>{user?.name || t('restaurantDashboard.partenaire')}</Text>
                     </View>
                 </View>
                 <View style={s.tabRow}>

@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface LivreScolaireValidationVideoRecorderProps {
     livreId: number;
@@ -35,7 +36,8 @@ const LivreScolaireValidationVideoRecorder: React.FC<LivreScolaireValidationVide
     onCancel,
     maxDuration = 60, // 60 secondes max pour validation livre
 }) => {
-    const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+        const { t } = useLanguageSafe();
+const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
     const [cameraType, setCameraType] = useState<CameraType>('back' as CameraType);
@@ -147,7 +149,7 @@ const LivreScolaireValidationVideoRecorder: React.FC<LivreScolaireValidationVide
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.permissionText}>Demande d'autorisation...</Text>
+                <Text style={styles.permissionText}>{t('livreScolaireValidationVideoRecorder.demandeDautorisation')}/Text>
             </View>
         );
     }
@@ -163,7 +165,7 @@ const LivreScolaireValidationVideoRecorder: React.FC<LivreScolaireValidationVide
                     Veuillez autoriser l'accès à la caméra dans les paramètres
                 </Text>
                 <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-                    <Text style={styles.cancelButtonText}>Retour</Text>
+                    <Text style={styles.cancelButtonText}>{t('livreScolaireValidationVideoRecorder.retour')}/Text>
                 </TouchableOpacity>
             </View>
         );

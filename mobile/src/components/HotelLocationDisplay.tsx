@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 /**
  * ✅ COMPOSANT INTELLIGENT : Affichage de la localisation des hôtels
@@ -103,7 +104,7 @@ const generateReadableLocation = (lat: number, lng: number): string => {
         }
         // Yaoundé (Centre)
         if (lat >= 3.8 && lat <= 3.9 && lng >= 11.4 && lng <= 11.6) {
-            return 'Yaoundé, Centre, Cameroun';
+            return t('hotelLocationDisplay.yaoundeCentreCameroun');
         }
         // Bafoussam (Ouest)
         if (lat >= 5.4 && lat <= 5.5 && lng >= 10.4 && lng <= 10.5) {
@@ -115,7 +116,7 @@ const generateReadableLocation = (lat: number, lng: number): string => {
         }
         // Maroua (Extrême-Nord)
         if (lat >= 10.5 && lat <= 10.7 && lng >= 14.2 && lng <= 14.4) {
-            return 'Maroua, Extrême-Nord, Cameroun';
+            return t('hotelLocationDisplay.marouaExtremenordCameroun');
         }
         // Bamenda (Nord-Ouest)
         if (lat >= 5.9 && lat <= 6.0 && lng >= 10.1 && lng <= 10.2) {
@@ -135,7 +136,7 @@ const generateReadableLocation = (lat: number, lng: number): string => {
         }
 
         // Régions génériques
-        if (lat >= 10 && lng >= 13) return 'Extrême-Nord, Cameroun';
+        if (lat >= 10 && lng >{t('hotelLocationDisplay.13ReturnExtremenordCameroun')}
         if (lat >= 8.5 && lng >= 13) return 'Nord, Cameroun';
         if (lat >= 6.5 && lng >= 11) return 'Adamaoua, Cameroun';
         if (lat >= 5.5 && lng >= 10) return 'Centre, Cameroun';
@@ -155,15 +156,15 @@ const generateReadableLocation = (lat: number, lng: number): string => {
 
     // Côte d'Ivoire
     if (lat >= 5.0 && lat <= 10.5 && lng >= -8.5 && lng <= -2.5) {
-        if (lat >= 5.2 && lat <= 5.4 && lng >= -4.1 && lng <= -3.9) return 'Abidjan, Côte d\'Ivoire';
-        if (lat >= 7.6 && lat <= 7.8 && lng >= -5.1 && lng <= -4.9) return 'Yamoussoukro, Côte d\'Ivoire';
+        if (lat >= 5.2 && lat <= 5.4 && lng >= -4.1 && lng <= -3.9) return t('hotelLocationDisplay.abidjanCoteDivoire');
+        if (lat >= 7.6 && lat <= 7.8 && lng >= -5.1 && lng <= -4.9) return t('hotelLocationDisplay.yamoussoukroCoteDivoire');
         return 'Côte d\'Ivoire';
     }
 
     // Sénégal
     if (lat >= 12.0 && lat <= 16.5 && lng >= -17.5 && lng <= -11.5) {
-        if (lat >= 14.6 && lat <= 14.8 && lng >= -17.5 && lng <= -17.3) return 'Dakar, Sénégal';
-        return 'Sénégal';
+        if (lat >= 14.6 && lat <= 14.8 && lng >= -17.5 && lng <= -17.3) return t('hotelLocationDisplay.dakarSenegal');
+        return t('hotelLocationDisplay.senegal');
     }
 
     // Mali
@@ -187,7 +188,7 @@ const generateReadableLocation = (lat: number, lng: number): string => {
     // RDC (Kinshasa)
     if (lat >= -13.5 && lat <= 5.5 && lng >= 12.0 && lng <= 31.5) {
         if (lat >= -4.4 && lat <= -4.3 && lng >= 15.2 && lng <= 15.4) return 'Kinshasa, RDC';
-        return 'République Démocratique du Congo';
+        return t('hotelLocationDisplay.republiqueDemocratiqueDuCongo');
     }
 
     // ════════════════════════════════════════════════════════════
@@ -230,7 +231,7 @@ const HotelLocationDisplay: React.FC<HotelLocationDisplayProps> = ({
     // Priorité 2 : Zone + Ville (fallback)
     const fallbackLocation = hotel.zoneHotel && hotel.villeHotel
         ? `${hotel.zoneHotel}, ${hotel.villeHotel}`
-        : hotel.villeHotel || hotel.adresseHotel || 'Localisation non précisée';
+        : hotel.villeHotel || hotel.adresseHotel || t('hotelLocationDisplay.localisationNonPrecisee');
 
     // Générer le nom de lieu lisible
     const displayLocation = hotelGPS
@@ -312,7 +313,7 @@ const HotelLocationDisplay: React.FC<HotelLocationDisplayProps> = ({
                             activeOpacity={0.7}
                         >
                             <SafeIcon name="map" size={12} color="#EC4899" />
-                            <Text style={styles.navigateText}>Itinéraire</Text>
+                            <Text style={styles.navigateText}>{t('hotelLocationDisplay.itineraire')}</Text>
                         </TouchableOpacity>
                     )}
                 </View>

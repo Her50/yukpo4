@@ -3,6 +3,7 @@ import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, Touc
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface Partner {
     id: number;
@@ -42,7 +43,8 @@ const PartnerSelector: React.FC<PartnerSelectorProps> = ({
     placeholder,
     disabled = false,
 }) => {
-    const [searchQuery, setSearchQuery] = useState('');
+        const { t } = useLanguageSafe();
+const [searchQuery, setSearchQuery] = useState('');
     const [partners, setPartners] = useState<Partner[]>([]);
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -174,7 +176,7 @@ const PartnerSelector: React.FC<PartnerSelectorProps> = ({
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Sélectionner un partenaire</Text>
+                            <Text style={styles.modalTitle}>{t('partnerSelector.selectionnerUnPartenaire')}</Text>
                             <TouchableOpacity
                                 onPress={() => setShowModal(false)}
                                 style={styles.modalCloseButton}
@@ -201,7 +203,7 @@ const PartnerSelector: React.FC<PartnerSelectorProps> = ({
                             {partners.length === 0 && !loading && (
                                 <View style={styles.emptyContainer}>
                                     <Text style={styles.emptyText}>
-                                        {searchQuery ? 'Aucun partenaire trouvé' : 'Aucun partenaire disponible'}
+                                        {searchQuery ? t('partnerSelector.aucunPartenaireTrouve') : 'Aucun partenaire disponible'}
                                     </Text>
                                 </View>
                             )}

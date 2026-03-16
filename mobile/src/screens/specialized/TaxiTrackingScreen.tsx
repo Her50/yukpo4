@@ -17,6 +17,7 @@ import { useLocation } from '../../contexts/LocationContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -35,6 +36,7 @@ interface DriverLocation {
 
 const TaxiTrackingScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { location: userLocation } = useLocation();
     const params = (route.params as any) as RouteParams;
@@ -139,7 +141,7 @@ const TaxiTrackingScreen: React.FC = () => {
     };
 
     const formatTime = (minutes: number): string => {
-        if (minutes < 1) return 'Arrivé';
+        if (minutes < 1) return t('taxiTrackingScreen.arrive');
         if (minutes < 60) return `${minutes} min`;
         const hours = Math.floor(minutes / 60);
         const mins = minutes % 60;
@@ -150,7 +152,7 @@ const TaxiTrackingScreen: React.FC = () => {
         switch (status) {
             case 'waiting': return 'En attente';
             case 'coming': return 'En route vers vous';
-            case 'arrived': return 'Arrivé';
+            case 'arrived': return t('taxiTrackingScreen.arrive');
             case 'on_way': return 'En route vers la destination';
             default: return 'En cours';
         }
@@ -180,7 +182,7 @@ const TaxiTrackingScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <View style={styles.headerContent}>
-                    <Text style={styles.headerTitle}>Suivi du taxi</Text>
+                    <Text style={styles.headerTitle}>{t('taxiTracking.suiviDuTaxi')}/Text>
                     <Text style={styles.headerSubtitle}>{getStatusText()}</Text>
                 </View>
             </View>
@@ -190,7 +192,7 @@ const TaxiTrackingScreen: React.FC = () => {
                 {loading && !driverLocation ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Chargement de la position...</Text>
+                        <Text style={styles.loadingText}>{t('taxiTracking.chargementDeLaPosition')}</Text>
                     </View>
                 ) : (
                     <MapView
@@ -212,7 +214,7 @@ const TaxiTrackingScreen: React.FC = () => {
                                     latitude: userLocation.coords.latitude,
                                     longitude: userLocation.coords.longitude,
                                 }}
-                                title="Votre position"
+                                title={t('taxiTracking.votrePosition')}
                                 pinColor="#06B6D4"
                             />
                         )}
@@ -274,7 +276,7 @@ const TaxiTrackingScreen: React.FC = () => {
                     <View style={styles.infoDivider} />
                     <View style={styles.infoItem}>
                         <SafeIcon name="clock" size={20} color="#6B7280" type="lucide" />
-                        <Text style={styles.infoLabel}>Arrivée estimée</Text>
+                        <Text style={styles.infoLabel}>{t('taxiTracking.arriveeEstimee')}</Text>
                         <Text style={styles.infoValue}>
                             {estimatedArrival !== null ? formatTime(estimatedArrival) : '--'}
                         </Text>

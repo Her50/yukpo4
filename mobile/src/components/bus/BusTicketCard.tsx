@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface BusTicketData {
     product_id: string;
@@ -77,7 +78,7 @@ const BusTicketCard: React.FC<BusTicketCardProps> = ({
                 <View style={styles.routeContainer}>
                     <View style={styles.cityContainer}>
                         <Text style={styles.cityName}>
-                            {ticket.departure_city || 'Départ'}
+                            {ticket.departure_city || t('busTicketCard.depart')}
                         </Text>
                         {ticket.departure_time && (
                             <Text style={styles.time}>{formatTime(ticket.departure_time)}</Text>
@@ -177,7 +178,7 @@ const BusTicketCard: React.FC<BusTicketCardProps> = ({
                         style={styles.reserveButton}
                         onPress={() => onReserve(ticket)}
                     >
-                        <Text style={styles.reserveButtonText}>Réserver</Text>
+                        <Text style={styles.reserveButtonText}>{t('busTicketCard.reserver')}</Text>
                         <SafeIcon name="arrow-right" size={16} color="#fff" />
                     </TouchableOpacity>
                 )}

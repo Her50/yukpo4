@@ -45,7 +45,7 @@ interface ExaminationType {
 }
 
 const TYPES_LABO = ['Laboratoire', 'Centre d\'imagerie', 'Les deux'];
-const ANALYSES_OPTIONS = ['Sang', 'Urine', 'Bactériologie', 'Parasitologie', 'Sérologie', 'Biochimie'];
+const ANALYSES_OPTIONS = ['Sang', 'Urine', t('laboratoireFormScreen.bacteriologie'), 'Parasitologie', 'Sérologie', 'Biochimie'];
 const IMAGERIE_OPTIONS = ['Radiologie', 'Échographie', 'Scanner', 'IRM', 'Mammographie'];
 
 const LaboratoireFormScreen: React.FC = () => {
@@ -246,7 +246,7 @@ const LaboratoireFormScreen: React.FC = () => {
     };
 
     // ─── RENDER: Loading ─────────────────────────────────────────────────
-    if (initialLoading) return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#0891B2" /><Text style={s.loadingText}>Chargement...</Text></View>;
+    if (initialLoading) return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#0891B2" /><Text style={s.loadingText}>{t('laboratoireForm.chargement')}</Text></View>;
 
     // ─── RENDER: Overview ────────────────────────────────────────────────
     const renderOverview = () => (
@@ -269,10 +269,10 @@ const LaboratoireFormScreen: React.FC = () => {
             <Text style={s.sectionTitle}>Actions rapides</Text>
             <View style={s.quickRow}>
                 {[
-                    { label: 'Ajouter examen', icon: 'plus-circle', color: '#0891B2', onPress: () => { setActiveTab('exams'); setTimeout(() => openExamModal(), 200); } },
+                    { label: t('laboratoireForm.ajouterExamen'), icon: 'plus-circle', color: '#0891B2', onPress: () => { setActiveTab('exams'); setTimeout(() => openExamModal(), 200); } },
                     { label: 'IA Analyse', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('LabAIAnalysis', { serviceId }) },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('LabAnalytics', { serviceId }) },
-                    { label: 'Mon service', icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
+                    { label: t('laboratoireForm.monService'), icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon as any} size={22} color={a.color} /></View>
@@ -286,10 +286,10 @@ const LaboratoireFormScreen: React.FC = () => {
                 <Text style={s.infoText}>{formData.permanent_24h ? '24h/24' : `${formData.heures_ouverture} — ${formData.heures_fermeture}`}</Text>
             </View>
             {formData.rdv_requis && <View style={s.infoCard}><SafeIcon name="calendar" size={16} color="#0891B2" /><Text style={s.infoText}>RDV requis</Text></View>}
-            {formData.resultats_en_ligne && <View style={s.infoCard}><SafeIcon name="globe" size={16} color="#10B981" /><Text style={s.infoText}>Résultats en ligne disponibles</Text></View>}
+            {formData.resultats_en_ligne && <View style={s.infoCard}><SafeIcon name="globe" size={16} color="#10B981" /><Text style={s.infoText}>{t('laboratoireForm.resultatsEnLigneDisponibles')}</Text></View>}
             {examinationTypes.length > 0 && (
                 <>
-                    <View style={s.sectionRow}><Text style={s.sectionTitle}>Examens récents</Text><TouchableOpacity onPress={() => setActiveTab('exams')}><Text style={s.seeAll}>Tout voir</Text></TouchableOpacity></View>
+                    <View style={s.sectionRow}><Text style={s.sectionTitle}>{t('laboratoireForm.examensRecents')}</Text><TouchableOpacity onPress={() => setActiveTab('exams')}><Text style={s.seeAll}>Tout voir</Text></TouchableOpacity></View>
                     {examinationTypes.slice(0, 4).map((e, i) => (
                         <View key={i} style={s.examItem}>
                             <View style={[s.examDot, { backgroundColor: e.categorie === 'analyse' ? '#DC2626' : '#8B5CF6' }]} />
@@ -306,36 +306,36 @@ const LaboratoireFormScreen: React.FC = () => {
     const renderServiceForm = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
             {user?.role !== 'partenaire' && (
-                <View style={s.field}><NativeInput label="Nom *" value={formData.nom} onChangeText={t => setFormData({ ...formData, nom: t })} placeholder="Ex: Laboratoire Central" /></View>
+                <View style={s.field}><NativeInput label={t('laboratoireFormScreen.nom')} value={formData.nom} onChangeText={t => setFormData({ ...formData, nom: t })} placeholder="Ex: Laboratoire Central" /></View>
             )}
             <Text style={s.label}>Type</Text>
             <View style={s.chips}>{TYPES_LABO.map(t => <TouchableOpacity key={t} style={[s.chip, formData.type_laboratoire === t && s.chipOn]} onPress={() => setFormData({ ...formData, type_laboratoire: t })}><Text style={[s.chipText, formData.type_laboratoire === t && s.chipTextOn]}>{t}</Text></TouchableOpacity>)}</View>
             <View style={[s.field, { marginTop: 16 }]}>
                 <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
                     <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                    <Text style={s.gpsBtnText}>{selectedGPS ? '✓ GPS sélectionné' : 'Sélectionner sur la carte'}</Text>
+                    <Text style={s.gpsBtnText}>{selectedGPS ? t('laboratoireFormScreen.gpsSelectionne') : 'Sélectionner sur la carte'}</Text>
                     <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                 </TouchableOpacity>
             </View>
-            {user?.role !== 'partenaire' && <View style={s.field}><NativeInput label="Adresse" value={formData.adresse} onChangeText={t => setFormData({ ...formData, adresse: t })} placeholder="Adresse complète" multiline /></View>}
-            <View style={s.field}><LocationSelector label="Quartier" value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, quartier: loc })} placeholder="Rechercher..." scope="all" enrichWithBackend /></View>
-            <View style={s.field}><SimplePrestationSelector label="Analyses disponibles" options={ANALYSES_OPTIONS} selected={selectedAnalyses} onSelectionChange={setSelectedAnalyses} allowCustom placeholder="Ajouter une analyse" /></View>
-            <View style={s.field}><SimplePrestationSelector label="Imagerie disponible" options={IMAGERIE_OPTIONS} selected={selectedImagerie} onSelectionChange={setSelectedImagerie} allowCustom placeholder="Ajouter une imagerie" /></View>
+            {user?.role !== 'partenaire' && <View style={s.field}><NativeInput label="Adresse" value={formData.adresse} onChangeText={t => setFormData({ ...formData, adresse: t })} placeholder={t('laboratoireForm.adresseComplete')} multiline /></View>}
+            <View style={s.field}><LocationSelector label={t('laboratoireForm.quartier')} value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, quartier: loc })} placeholder={t('laboratoireForm.rechercher')} scope="all" enrichWithBackend /></View>
+            <View style={s.field}><SimplePrestationSelector label="Analyses disponibles" options={ANALYSES_OPTIONS} selected={selectedAnalyses} onSelectionChange={setSelectedAnalyses} allowCustom placeholder={t('laboratoireForm.ajouterUneAnalyse')} /></View>
+            <View style={s.field}><SimplePrestationSelector label="Imagerie disponible" options={IMAGERIE_OPTIONS} selected={selectedImagerie} onSelectionChange={setSelectedImagerie} allowCustom placeholder={t('laboratoireForm.ajouterUneImagerie')} /></View>
             <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={[s.field, { flex: 1 }]}><NativeInput label="Ouverture" value={formData.heures_ouverture} onChangeText={t => setFormData({ ...formData, heures_ouverture: t })} placeholder="08:00" /></View>
                 <View style={[s.field, { flex: 1 }]}><NativeInput label="Fermeture" value={formData.heures_fermeture} onChangeText={t => setFormData({ ...formData, heures_fermeture: t })} placeholder="18:00" /></View>
             </View>
             <View style={s.switchRow}><Text style={s.switchLbl}>24h/24</Text><Switch value={formData.permanent_24h} onValueChange={v => setFormData({ ...formData, permanent_24h: v })} trackColor={{ false: '#D1D5DB', true: '#0891B2' }} /></View>
             <View style={s.switchRow}><Text style={s.switchLbl}>RDV requis</Text><Switch value={formData.rdv_requis} onValueChange={v => setFormData({ ...formData, rdv_requis: v })} trackColor={{ false: '#D1D5DB', true: '#0891B2' }} /></View>
-            <View style={s.switchRow}><Text style={s.switchLbl}>Résultats en ligne</Text><Switch value={formData.resultats_en_ligne} onValueChange={v => setFormData({ ...formData, resultats_en_ligne: v })} trackColor={{ false: '#D1D5DB', true: '#0891B2' }} /></View>
+            <View style={s.switchRow}><Text style={s.switchLbl}>{t('laboratoireForm.resultatsEnLigne')}</Text><Switch value={formData.resultats_en_ligne} onValueChange={v => setFormData({ ...formData, resultats_en_ligne: v })} trackColor={{ false: '#D1D5DB', true: '#0891B2' }} /></View>
             {user?.role !== 'partenaire' && (
                 <>
-                    <View style={s.field}><NativeInput label="Téléphone" value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label={t('laboratoireForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="Email" value={formData.email} onChangeText={t => setFormData({ ...formData, email: t })} placeholder="labo@example.com" keyboardType="email-address" autoCapitalize="none" /></View>
                 </>
             )}
-            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? 'Mettre à jour' : 'Enregistrer')} onPress={handleSubmit} disabled={loading || !formData.nom.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
+            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? t('laboratoireFormScreen.mettreAJour') : 'Enregistrer')} onPress={handleSubmit} disabled={loading || !formData.nom.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
         </ScrollView>
     );
 
@@ -351,14 +351,14 @@ const LaboratoireFormScreen: React.FC = () => {
                 <View style={s.examStatItem}><Text style={[s.examStatVal, { color: '#8B5CF6' }]}>{stats.imagerie}</Text><Text style={s.examStatLbl}>Imagerie</Text></View>
             </View>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                <TouchableOpacity style={s.addBtn} onPress={() => openExamModal()}><SafeIcon name="plus" size={18} color="#fff" /><Text style={s.addBtnText}>Ajouter</Text></TouchableOpacity>
+                <TouchableOpacity style={s.addBtn} onPress={() => openExamModal()}><SafeIcon name="plus" size={18} color="#fff" /><Text style={s.addBtnText}>{t('laboratoireFormScreen.ajouter')}</Text></TouchableOpacity>
             </View>
             {examinationTypes.length > 0 && (
-                <View style={s.searchBar}><SafeIcon name="search" size={18} color="#9CA3AF" /><NativeInput value={searchQuery} onChangeText={setSearchQuery} placeholder="Rechercher..." style={{ flex: 1, backgroundColor: 'transparent' }} /></View>
+                <View style={s.searchBar}><SafeIcon name="search" size={18} color="#9CA3AF" /><NativeInput value={searchQuery} onChangeText={setSearchQuery} placeholder={t('laboratoireForm.rechercher')} style={{ flex: 1, backgroundColor: 'transparent' }} /></View>
             )}
             {loadingExams ? <ActivityIndicator size="large" color="#0891B2" style={{ marginTop: 32 }} /> :
                 examinationTypes.length === 0 ? (
-                    <View style={s.emptyDash}><SafeIcon name="flask-conical" size={48} color="#9CA3AF" /><Text style={s.emptyTitle}>Aucun examen</Text><Text style={s.emptyText}>Ajoutez vos types d'examens pour les rendre visibles</Text><NativeButton title="Ajouter" onPress={() => openExamModal()} style={{ marginTop: 16 }} /></View>
+                    <View style={s.emptyDash}><SafeIcon name="flask-conical" size={48} color="#9CA3AF" /><Text style={s.emptyTitle}>{t('laboratoireForm.aucunExamen')}</Text><Text style={s.emptyText}>{t('laboratoireForm.ajoutezVosTypesDexamensPour')}</Text><NativeButton title={t('laboratoireForm.ajouter')} onPress={() => openExamModal()} style={{ marginTop: 16 }} /></View>
                 ) : (
                     filteredExams.map((e, i) => (
                         <TouchableOpacity key={i} style={s.examCard} onPress={() => openExamModal(e)}>
@@ -390,8 +390,8 @@ const LaboratoireFormScreen: React.FC = () => {
                 ))}
             </View>
             <View style={s.analyticsCard}>
-                <View style={s.analyticsHdr}><SafeIcon name="sparkles" size={22} color="#F59E0B" /><Text style={s.analyticsTitle}>IA & Résultats</Text></View>
-                <Text style={s.analyticsEmpty}>Analyse IA des résultats d'examens disponible.</Text>
+                <View style={s.analyticsHdr}><SafeIcon name="sparkles" size={22} color="#F59E0B" /><Text style={s.analyticsTitle}>{t('laboratoireForm.iaResultats')}</Text></View>
+                <Text style={s.analyticsEmpty}>{t('laboratoireForm.analyseIaDesResultatsDexamens')}</Text>
             </View>
         </ScrollView>
     );
@@ -405,8 +405,8 @@ const LaboratoireFormScreen: React.FC = () => {
                     <TouchableOpacity onPress={() => setShowExamModal(false)}><SafeIcon name="x" size={24} color="#6B7280" /></TouchableOpacity>
                 </View>
                 <ScrollView style={{ padding: 16, maxHeight: 400 }}>
-                    <View style={s.field}><NativeInput label="Nom *" value={examForm.nom} onChangeText={t => setExamForm({ ...examForm, nom: t })} placeholder="Ex: NFS complète" /></View>
-                    <Text style={s.label}>Catégorie</Text>
+                    <View style={s.field}><NativeInput label="Nom *" value={examForm.nom} onChangeText={t => setExamForm({ ...examForm, nom: t })} placeholder={t('laboratoireForm.exNfsComplete')} /></View>
+                    <Text style={s.label}>{t('laboratoireForm.categorie')}</Text>
                     <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                         {(['analyse', 'imagerie'] as const).map(c => (
                             <TouchableOpacity key={c} style={[s.chip, examForm.categorie === c && s.chipOn]} onPress={() => setExamForm({ ...examForm, categorie: c })}>
@@ -415,14 +415,14 @@ const LaboratoireFormScreen: React.FC = () => {
                         ))}
                     </View>
                     <View style={{ flexDirection: 'row', gap: 12 }}>
-                        <View style={[s.field, { flex: 1 }]}><NativeInput label="Prix (FCFA)" value={examForm.prix ? String(examForm.prix) : ''} onChangeText={t => setExamForm({ ...examForm, prix: t ? parseInt(t) : undefined })} placeholder="0" keyboardType="numeric" /></View>
-                        <View style={[s.field, { flex: 1 }]}><NativeInput label="Durée" value={examForm.duree_estimee || ''} onChangeText={t => setExamForm({ ...examForm, duree_estimee: t })} placeholder="30 min" /></View>
+                        <View style={[s.field, { flex: 1 }]}><NativeInput label={t('laboratoireFormScreen.prixFcfa')} value={examForm.prix ? String(examForm.prix) : ''} onChangeText={t => setExamForm({ ...examForm, prix: t ? parseInt(t) : undefined })} placeholder="0" keyboardType="numeric" /></View>
+                        <View style={[s.field, { flex: 1 }]}><NativeInput label={t('laboratoireForm.duree')} value={examForm.duree_estimee || ''} onChangeText={t => setExamForm({ ...examForm, duree_estimee: t })} placeholder="30 min" /></View>
                     </View>
-                    <View style={s.field}><NativeInput label="Préparation requise" value={examForm.preparation_requise || ''} onChangeText={t => setExamForm({ ...examForm, preparation_requise: t })} placeholder="Ex: À jeun depuis 12h" multiline /></View>
+                    <View style={s.field}><NativeInput label={t('laboratoireForm.preparationRequise')} value={examForm.preparation_requise || ''} onChangeText={t => setExamForm({ ...examForm, preparation_requise: t })} placeholder={t('laboratoireForm.exAJeunDepuis12h')} multiline /></View>
                 </ScrollView>
                 <View style={s.modalFooter}>
-                    <NativeButton title="Annuler" onPress={() => setShowExamModal(false)} variant="secondary" style={{ flex: 1 }} />
-                    <NativeButton title={editingExam ? 'Modifier' : 'Ajouter'} onPress={() => {
+                    <NativeButton title={t('laboratoireFormScreen.annuler')} onPress={() => setShowExamModal(false)} variant="secondary" style={{ flex: 1 }} />
+                    <NativeButton title={editingExam ? t('laboratoireFormScreen.modifier') : t('laboratoireFormScreen.ajouter')} onPress={() => {
                         if (!examForm.nom.trim()) { Alert.alert(t('message.error'), t('laboForm.examNameRequired')); return; }
                         if (editingExam) {
                             setExaminationTypes(prev => prev.map(e => e === editingExam ? { ...examForm } : e));
@@ -439,11 +439,11 @@ const LaboratoireFormScreen: React.FC = () => {
     // ─── RENDER: Dashboard ───────────────────────────────────────────────
     if (isDashboardMode || (user?.role === 'partenaire' && serviceId)) {
         const tabs: { key: TabType; label: string; icon: string }[] = [
-            { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
+            { key: 'overview', label: t('laboratoireForm.accueil'), icon: 'layout-dashboard' },
             { key: 'service', label: 'Service', icon: 'settings' },
             { key: 'exams', label: 'Examens', icon: 'flask-conical' },
             { key: 'analytics', label: 'Stats', icon: 'bar-chart-2' },
-            { key: 'team', label: 'Équipe', icon: 'users' },
+            { key: 'team', label: t('laboratoireForm.equipe'), icon: 'users' },
         ];
 
         return (
@@ -452,7 +452,7 @@ const LaboratoireFormScreen: React.FC = () => {
                     <View style={s.dashHeaderRow}>
                         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
                         <View style={{ flex: 1 }}>
-                            <Text style={s.dashTitle}>{labData?.nom || formData.nom || 'Mon Laboratoire'}</Text>
+                            <Text style={s.dashTitle}>{labData?.nom || formData.nom || t('laboratoireForm.monLaboratoire')}</Text>
                             <Text style={s.dashSub}>{formData.type_laboratoire} · {stats.total} examen{stats.total > 1 ? 's' : ''}</Text>
                         </View>
                     </View>
@@ -481,7 +481,7 @@ const LaboratoireFormScreen: React.FC = () => {
         <View style={s.container}>
             <LinearGradient colors={['#155E75', '#0891B2']} style={s.createHeader}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
-                <Text style={s.createTitle}>Enregistrer un Laboratoire</Text>
+                <Text style={s.createTitle}>{t('laboratoireFormScreen.enregistrerUnLaboratoire')}</Text>
             </LinearGradient>
             {renderServiceForm()}
             <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={handleGPSSelect} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation" />

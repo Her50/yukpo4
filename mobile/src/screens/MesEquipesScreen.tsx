@@ -166,8 +166,8 @@ const MesEquipesScreen: React.FC = () => {
     const getCategoryLabel = (category: string | null) => {
         const map: Record<string, string> = {
             pharmacie: '💊 Pharmacie',
-            hotel: '🏨 Hôtel',
-            hopital: '🏥 Hôpital',
+            hotel: t('mesEquipesScreen.hotel'),
+            hopital: t('mesEquipesScreen.hopital'),
             laboratoire: '🔬 Laboratoire',
             agence_voyage: '✈️ Agence de voyage',
             restaurant: '🍽️ Restaurant',
@@ -184,7 +184,7 @@ const MesEquipesScreen: React.FC = () => {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#6366F1" />
-                <Text style={styles.loadingText}>Chargement de vos équipes...</Text>
+                <Text style={styles.loadingText}>{t('mesEquipes.chargementDeVosEquipes')}</Text>
             </View>
         );
     }
@@ -199,7 +199,7 @@ const MesEquipesScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={24} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.headerTitle}>Mes Équipes</Text>
+                        <Text style={styles.headerTitle}>{t('mesEquipes.mesEquipes')}</Text>
                         <Text style={styles.headerSubtitle}>
                             {memberships.length} service{memberships.length !== 1 ? 's' : ''} co-géré{memberships.length !== 1 ? 's' : ''}
                         </Text>
@@ -278,7 +278,7 @@ const MesEquipesScreen: React.FC = () => {
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="briefcase" size={20} color="#6366F1" />
-                            <Text style={styles.sectionTitle}>Services que je co-gère ({memberships.length})</Text>
+                            <Text style={styles.sectionTitle}>{t('mesEquipesScreen.servicesICoManage')} ({memberships.length})</Text>
                         </View>
                         {memberships.map((m) => (
                             <TouchableOpacity
@@ -318,7 +318,7 @@ const MesEquipesScreen: React.FC = () => {
                 {isEmpty && (
                     <View style={styles.emptyState}>
                         <SafeIcon name="users" size={60} color="#D1D5DB" />
-                        <Text style={styles.emptyTitle}>Aucune équipe</Text>
+                        <Text style={styles.emptyTitle}>{t('mesEquipes.aucuneEquipe')}</Text>
                         <Text style={styles.emptySubtitle}>
                             Vous n'avez pas encore été invité(e) à co-gérer un service.
                             Les propriétaires de services peuvent vous ajouter à leur équipe.

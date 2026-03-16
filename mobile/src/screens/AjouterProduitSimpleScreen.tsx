@@ -220,7 +220,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     if (configuredProducts.length > 0) {
                         setExistingDeliveryConfig({
                             hasConfig: true,
-                            productName: configuredProducts[0].name || 'Produit existant',
+                            productName: configuredProducts[0].name || t('ajouterProduitSimple.produitExistant'),
                             productIndex: configuredProducts[0].index,
                         });
                     } else {
@@ -771,7 +771,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 console.log('[AjouterProduitSimple] 🔍 Construction valeur depuis sous_caracteristiques:', {
                     orderedLabels,
                     sousCaracsKeys: Object.keys(finalSousCaracs),
-                    productLabels: productLabels || 'non disponible'
+                    productLabels: productLabels || t('ajouterProduitSimple.nonDisponible')
                 });
 
                 // Parcourir les labels dans l'ordre garanti
@@ -988,12 +988,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 prix_produit: prefill.prix_produit || 'VIDE',
                 devise_produit: prefill.devise_produit || 'VIDE',
                 produits: prefill.produits
-                    ? (Array.isArray(prefill.produits) ? `${prefill.produits.length} élément(s)` : 'non-array')
+                    ? (Array.isArray(prefill.produits) ? t('ajouterProduitSimpleScreen.elements', { prefill_produits_length: prefill.produits.length }) : 'non-array')
                     : 'VIDE',
                 lieu_produit: prefill.lieu_produit || 'VIDE',
-                variabilite_prix: prefill.variabilite_prix ? 'présent' : 'VIDE',
+                variabilite_prix: prefill.variabilite_prix ? t('ajouterProduitSimpleScreen.present') : 'VIDE',
                 sous_caracteristiques: prefill.sous_caracteristiques
-                    ? (typeof prefill.sous_caracteristiques === 'object' ? `${Object.keys(prefill.sous_caracteristiques).length} dimension(s)` : 'présent')
+                    ? (typeof prefill.sous_caracteristiques === 'object' ? `${Object.keys(prefill.sous_caracteristiques).length} dimension(s)` : t('ajouterProduitSimpleScreen.present'))
                     : 'VIDE',
                 images_count: Array.isArray(prefill.images) ? prefill.images.length : 0,
                 videos_count: Array.isArray(prefill.videos) ? prefill.videos.length : 0,
@@ -1319,17 +1319,17 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const toolbarSubtitle = isEditing
         ? 'Actualisez les informations de votre produit ou prestation'
         : isDuplicate
-            ? 'Toutes les données sont préremplies, ajustez-les avant duplication'
+            ? t('ajouterProduitSimpleScreen.toutesLesDonneesSontPrerempliesAjustezles')
             : (isPrestation ? 'Formulaire prestation' : 'Formulaire produit');
 
     const heroDescription = isEditing
-        ? 'Mettez à jour chaque champ du produit, y compris les médias.'
+        ? t('ajouterProduitSimpleScreen.mettezAJourChaqueChampDu')
         : isDuplicate
-            ? 'Une copie complète a été générée. Personnalisez-la avant validation.'
-            : 'Ajoutez un nouveau produit à votre service existant.';
+            ? t('ajouterProduitSimpleScreen.uneCopieCompleteAEteGeneree')
+            : t('ajouterProduitSimpleScreen.ajoutezUnNouveauProduitAVotre');
 
     const submitLabel = (loading || isAddingProductLoading)
-        ? (isAddingProductLoading ? '⏳ Création du produit...' : isEditing ? '⏳ Mise à jour...' : isDuplicate ? '⏳ Duplication...' : '⏳ Ajout en cours...')
+        ? (isAddingProductLoading ? t('ajouterProduitSimpleScreen.creationDuProduit') : isEditing ? '⏳ Mise à jour...' : isDuplicate ? '⏳ Duplication...' : '⏳ Ajout en cours...')
         : (isEditing ? 'Enregistrer les modifications' : isDuplicate ? 'Dupliquer le produit' : 'Ajouter le produit');
 
     // Gérer changement de champ
@@ -1475,7 +1475,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             const isFree = effectiveCost === 0;
 
             if (!balanceResponse.success) {
-                const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
+                const errorMsg = balanceResponse.error || t('ajouterProduitSimple.impossibleDeVerifierVotreSolde');
                 console.error('💰 [AjouterProduitSimple] ❌ Erreur vérification solde:', errorMsg);
                 Alert.alert(t('message.error'), errorMsg);
                 return;
@@ -1900,7 +1900,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         });
 
                                         if (!response.success) {
-                                            throw new Error(response.error || response.message || 'Impossible de mettre à jour le produit');
+                                            throw new Error(response.error || response.message || t('ajouterProduitSimple.impossibleDeMettreAJour'));
                                         }
 
                                         // ✅ NOUVEAU 2026-01-04: Ouvrir automatiquement l'écran de configuration de livraison après modification
@@ -1996,7 +1996,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     description_produit: productDataForAPI.description_produit || 'ABSENT',
                                     description: productDataForAPI.description || 'ABSENT',
                                     payloadSize: `${payloadSizeMB} MB (${payloadSizeBytes} bytes)`,
-                                    base64MediaSize: `${totalBase64SizeMB} MB (sera traité séparément par le backend)`,
+                                    base64MediaSize: t('ajouterProduitSimpleScreen.mbSeraTraiteSeparementParLe', { totalBase64SizeMB: totalBase64SizeMB }),
                                     hasImages: !!(productDataForAPI.images && productDataForAPI.images.length > 0),
                                     hasVideos: !!(productDataForAPI.videos && productDataForAPI.videos.length > 0),
                                     hasBase64Images: !!(nouveauProduit.base64_image && (Array.isArray(nouveauProduit.base64_image) ? nouveauProduit.base64_image.length > 0 : true)),
@@ -2046,7 +2046,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 if (jobId) {
                                     // ✅ NOUVEAU: Le backend utilise une queue asynchrone, il faut interroger le statut
                                     console.log('[AjouterProduitSimple] 🔄 Job créé, interrogation du statut (job_id:', jobId, ')');
-                                    toaster.info('⏳ Création du produit en cours...');
+                                    toaster.info(t('ajouterProduitSimpleScreen.creationDuProduitEnCours'));
 
                                     // Fonction pour interroger le statut du job
                                     const pollJobStatus = async (): Promise<{ productIndex: number | null; error: string | null }> => {
@@ -2083,7 +2083,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                                     console.warn('[AjouterProduitSimple] ⚠️ product_index non trouvé dans result_data, tentative extraction depuis produits_data');
                                                     return { productIndex: null, error: null }; // On continuera sans product_index
                                                 } else if (jobStatus === 'failed') {
-                                                    const errorMsg = statusData.error_message || 'Erreur lors de la création du produit';
+                                                    const errorMsg = statusData.error_message || t('ajouterProduitSimple.erreurLorsDeLaCreation');
                                                     console.error('[AjouterProduitSimple] ❌ Job échoué:', errorMsg);
                                                     return { productIndex: null, error: errorMsg };
                                                 } else if (jobStatus === 'pending' || jobStatus === 'processing') {
@@ -2101,7 +2101,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         }
 
                                         // Timeout après maxAttempts
-                                        return { productIndex: null, error: 'Timeout: La création du produit a pris trop de temps' };
+                                        return { productIndex: null, error: t('ajouterProduitSimpleScreen.timeoutLaCreationDuProduitA') };
                                     };
 
                                     // Interroger le statut du job
@@ -2126,7 +2126,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         // C'est un produit, préparer les données pour la modal de confirmation
                                         const finalServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
                                         const finalProductIndex = jobResult.productIndex;
-                                        const productName = formValues.nom_produit || 'Nouveau produit';
+                                        const productName = formValues.nom_produit || t('ajouterProduitSimple.nouveauProduit');
 
                                         // ✅ CORRIGÉ: Attendre la vérification avant d'afficher la modal
                                         await checkExistingDeliveryConfigs(finalServiceId);
@@ -2145,7 +2145,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         setSuccessModalData({
                                             serviceId: typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId,
                                             productIndex: -1,
-                                            productName: formValues.nom_produit || 'Nouvelle prestation',
+                                            productName: formValues.nom_produit || t('ajouterProduitSimple.nouvellePrestation'),
                                             isPrestation: true,
                                             isDuplicate: isDuplicate, // ✅ NOUVEAU: Indiquer si c'est une duplication
                                         });
@@ -2179,7 +2179,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     // C'est un produit, préparer les données pour la modal de confirmation
                                     const finalServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
                                     const finalProductIndex = typeof productIndexResult === 'number' ? productIndexResult : parseInt(String(productIndexResult), 10);
-                                    const productName = formValues.nom_produit || 'Nouveau produit';
+                                    const productName = formValues.nom_produit || t('ajouterProduitSimple.nouveauProduit');
 
                                     // ✅ CORRIGÉ: Attendre la vérification avant d'afficher la modal
                                     await checkExistingDeliveryConfigs(finalServiceId);
@@ -2198,7 +2198,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     setSuccessModalData({
                                         serviceId: typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId,
                                         productIndex: -1,
-                                        productName: formValues.nom_produit || 'Nouvelle prestation',
+                                        productName: formValues.nom_produit || t('ajouterProduitSimple.nouvellePrestation'),
                                         isPrestation: true,
                                         isDuplicate: isDuplicate, // ✅ NOUVEAU: Indiquer si c'est une duplication
                                     });
@@ -2235,7 +2235,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     errorMessage = 'L\'ajout du produit a pris trop de temps (plus de 3 minutes). Cela peut être dû à :\n\n• Un grand nombre de médias\n• Des variants complexes\n• Une connexion internet lente\n• Un serveur temporairement surchargé\n• Des opérations backend lourdes\n\n⚠️ Le produit peut avoir été créé malgré l\'erreur. Vérifiez votre liste de produits avant de réessayer.';
 
                                     // ✅ NOUVEAU: Afficher un toast d'erreur
-                                    toaster.error('⏱️ Timeout lors de la création du produit');
+                                    toaster.error(t('ajouterProduitSimpleScreen.timeoutLorsDeLaCreationDu'));
 
                                     Alert.alert(
                                         errorTitle,
@@ -2252,23 +2252,23 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     );
                                     return;
                                 } else if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network request failed') || error?.message?.includes('Failed to fetch')) {
-                                    errorTitle = '🌐 Erreur réseau';
-                                    errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.';
-                                    toaster.error('🌐 Erreur réseau lors de la création du produit');
+                                    errorTitle = t('ajouterProduitSimpleScreen.erreurReseau');
+                                    errorMessage = t('ajouterProduitSimpleScreen.impossibleDeSeConnecterAuServeur');
+                                    toaster.error(t('ajouterProduitSimpleScreen.erreurReseauLorsDeLaCreation'));
                                 } else if (error?.response?.status === 500) {
                                     errorTitle = '❌ Erreur serveur';
-                                    errorMessage = 'Une erreur est survenue côté serveur. Veuillez réessayer plus tard.';
-                                    toaster.error('❌ Erreur serveur lors de la création du produit');
+                                    errorMessage = t('ajouterProduitSimpleScreen.uneErreurEstSurvenueCoteServeur');
+                                    toaster.error(t('ajouterProduitSimpleScreen.erreurServeurLorsDeLaCreation'));
                                     // ✅ AMÉLIORÉ: Extraire le message d'erreur détaillé du backend
                                     const backendError = error?.response?.data?.error || error?.error || error?.message;
                                     if (backendError && typeof backendError === 'string') {
                                         // Si le message contient des détails utiles, les afficher
                                         if (backendError.includes('Timeout') || backendError.includes('timeout')) {
-                                            errorMessage = 'Le serveur a mis trop de temps à répondre. Veuillez réessayer dans quelques instants.\n\n' +
-                                                (backendError.includes('remboursé') ? 'Votre solde a été remboursé.' : '');
-                                        } else if (backendError.includes('surchargée') || backendError.includes('surchargé')) {
-                                            errorMessage = 'Le serveur est temporairement surchargé. Veuillez réessayer dans quelques instants.\n\n' +
-                                                (backendError.includes('remboursé') ? 'Votre solde a été remboursé.' : '');
+                                            errorMessage = t('ajouterProduitSimpleScreen.leServeurAMisTropDe') +
+                                                (backendError.includes('remboursé') ? t('ajouterProduitSimpleScreen.votreSoldeAEteRembourse') : '');
+                                        } else if (backendError.includes(t('ajouterProduitSimpleScreen.surchargee')) || backendError.includes('surchargé')) {
+                                            errorMessage = t('ajouterProduitSimpleScreen.leServeurEstTemporairementSurchargeVeuillez') +
+                                                (backendError.includes('remboursé') ? t('ajouterProduitSimpleScreen.votreSoldeAEteRembourse') : '');
                                         } else {
                                             errorMessage = backendError;
                                         }
@@ -2277,20 +2277,20 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     }
                                 } else if (error?.response?.status === 400) {
                                     errorTitle = '⚠️ Erreur de validation';
-                                    errorMessage = error?.response?.data?.error || error?.message || 'Les données envoyées sont invalides. Veuillez vérifier les informations du produit.';
+                                    errorMessage = error?.response?.data?.error || error?.message || t('ajouterProduitSimple.lesDonneesEnvoyeesSontInvalides');
                                     toaster.error('⚠️ Erreur de validation');
                                 } else if (error?.response?.status === 401) {
                                     errorTitle = '🔐 Erreur d\'authentification';
-                                    errorMessage = 'Votre session a expiré. Veuillez vous reconnecter.';
-                                    toaster.error('🔐 Session expirée');
+                                    errorMessage = t('ajouterProduitSimpleScreen.votreSessionAExpireVeuillezVous');
+                                    toaster.error(t('ajouterProduitSimpleScreen.sessionExpiree'));
                                 } else if (error?.response?.data?.error) {
                                     errorMessage = error.response.data.error;
-                                    toaster.error('❌ Erreur lors de la création du produit');
+                                    toaster.error(t('ajouterProduitSimpleScreen.erreurLorsDeLaCreationDu'));
                                 } else if (error?.message) {
                                     errorMessage = error.message;
                                     toaster.error(`❌ ${errorMessage}`);
                                 } else {
-                                    toaster.error('❌ Erreur lors de la création du produit');
+                                    toaster.error(t('ajouterProduitSimpleScreen.erreurLorsDeLaCreationDu'));
                                 }
 
                                 Alert.alert(errorTitle, errorMessage);
@@ -2318,10 +2318,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             // Gérer les erreurs selon leur type
             if (error?.code === 'TIMEOUT' || error?.message?.includes('timeout') || error?.message?.includes('Timeout')) {
                 errorTitle = '⏱️ Timeout';
-                errorMessage = 'La requête a pris trop de temps. Cela peut être dû à une connexion lente ou un serveur surchargé.\n\nVeuillez réessayer dans quelques instants.';
+                errorMessage = t('ajouterProduitSimpleScreen.laRequeteAPrisTropDe');
             } else if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network request failed') || error?.message?.includes('Failed to fetch')) {
-                errorTitle = '🌐 Erreur réseau';
-                errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.';
+                errorTitle = t('ajouterProduitSimpleScreen.erreurReseau');
+                errorMessage = t('ajouterProduitSimpleScreen.impossibleDeSeConnecterAuServeur');
             } else if (error?.response?.status === 500) {
                 errorTitle = '❌ Erreur serveur';
                 // ✅ AMÉLIORÉ: Extraire le message d'erreur détaillé du backend
@@ -2329,11 +2329,11 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 if (backendError && typeof backendError === 'string') {
                     // Si le message contient des détails utiles, les afficher
                     if (backendError.includes('Timeout') || backendError.includes('timeout')) {
-                        errorMessage = 'Le serveur a mis trop de temps à répondre. Veuillez réessayer dans quelques instants.\n\n' +
-                            (backendError.includes('remboursé') ? 'Votre solde a été remboursé.' : '');
-                    } else if (backendError.includes('surchargée') || backendError.includes('surchargé')) {
-                        errorMessage = 'Le serveur est temporairement surchargé. Veuillez réessayer dans quelques instants.\n\n' +
-                            (backendError.includes('remboursé') ? 'Votre solde a été remboursé.' : '');
+                        errorMessage = t('ajouterProduitSimpleScreen.leServeurAMisTropDe') +
+                            (backendError.includes('remboursé') ? t('ajouterProduitSimpleScreen.votreSoldeAEteRembourse') : '');
+                    } else if (backendError.includes(t('ajouterProduitSimpleScreen.surchargee')) || backendError.includes('surchargé')) {
+                        errorMessage = t('ajouterProduitSimpleScreen.leServeurEstTemporairementSurchargeVeuillez') +
+                            (backendError.includes('remboursé') ? t('ajouterProduitSimpleScreen.votreSoldeAEteRembourse') : '');
                     } else {
                         errorMessage = backendError;
                     }
@@ -2342,10 +2342,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 }
             } else if (error?.response?.status === 400) {
                 errorTitle = '⚠️ Erreur de validation';
-                errorMessage = error?.response?.data?.error || error?.message || 'Les données envoyées sont invalides. Veuillez vérifier les informations du produit.';
+                errorMessage = error?.response?.data?.error || error?.message || t('ajouterProduitSimple.lesDonneesEnvoyeesSontInvalides');
             } else if (error?.response?.status === 401) {
                 errorTitle = '🔐 Erreur d\'authentification';
-                errorMessage = 'Votre session a expiré. Veuillez vous reconnecter.';
+                errorMessage = t('ajouterProduitSimpleScreen.votreSessionAExpireVeuillezVous');
             } else if (error?.response?.data?.error) {
                 errorMessage = error.response.data.error;
             } else if (error?.message) {
@@ -2394,7 +2394,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             </Text>
                             <NativeInput
                                 placeholder={isPrestation
-                                    ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
+                                    ? t('ajouterProduitSimpleScreen.exCoursDeMathsNiveauTerminal')
                                     : 'Ex: iPhone 14 Pro Max 256GB, Toyota RAV4 2018 4x4...'
                                 }
                                 value={formValues.nom_produit}
@@ -2404,9 +2404,9 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
                         {/* Catégorie */}
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.label}>Catégorie du produit / prestation</Text>
+                            <Text style={styles.label}>{t('ajouterProduitSimple.categorieDuProduitPrestation')}</Text>
                             <NativeInput
-                                placeholder="Ex: Smartphone, Cours particulier, Service de réparation..."
+                                placeholder={t('ajouterProduitSimple.exSmartphoneCoursParticulierService')}
                                 value={formValues.categorie_produit}
                                 onChangeText={(value) => handleFieldChange('categorie_produit', value)}
                             />
@@ -2416,7 +2416,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         <View style={styles.fieldGroup}>
                             <Text style={styles.label}>Description du produit / prestation</Text>
                             <NativeInput
-                                placeholder="Décrivez les caractéristiques spécifiques du produit / prestation..."
+                                placeholder={t('ajouterProduitSimple.decrivezLesCaracteristiquesSpecifiquesDu')}
                                 value={formValues.description_produit}
                                 onChangeText={(value) => handleFieldChange('description_produit', value)}
                                 multiline
@@ -2442,13 +2442,13 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     ⚠️ Quantité obligatoire pour les produits
                                 </Text>
                                 <Text style={{ fontSize: 11, color: modernColors.textSecondary, marginBottom: 8 }}>
-                                    La gestion du stock permet d'éviter les ventes de produits épuisés et d'améliorer l'expérience de vos clients.
+                                    {t('ajouterProduitSimpleScreen.stockManagementTip')}
                                 </Text>
                             </View>
                         )}
                         {!isPrestation && (
                             <View style={styles.fieldGroup}>
-                                <Text style={styles.label}>Quantité disponible</Text>
+                                <Text style={styles.label}>{t('ajouterProduitSimple.quantiteDisponible')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 50"
                                     value={formValues.quantite_disponible?.toString() || ''}
@@ -2459,14 +2459,14 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     keyboardType="numeric"
                                     style={styles.fieldInput}
                                 />
-                                <Text style={styles.helperText}>Nombre d'unités disponibles en stock</Text>
+                                <Text style={styles.helperText}>{t('ajouterProduitSimple.nombreDunitesDisponiblesEnStock')}</Text>
                             </View>
                         )}
 
                         {/* Caractéristiques (Autocomplete) - IDENTIQUE AU GRAND FORMULAIRE */}
                         <View style={styles.fieldGroup}>
                             <LinearAutocompleteEditor
-                                label="Caractéristiques produits / prestations"
+                                label={t('ajouterProduitSimple.caracteristiquesProduitsPrestations')}
                                 identifiantBase="produits"
                                 value={formValues.produits || []}
                                 contextValues={[
@@ -2721,7 +2721,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 })()}
                                 separateur=","
                                 allowCustomModality={true}
-                                placeholder="Tapez pour voir les suggestions..."
+                                placeholder={t('ajouterProduitSimple.tapezPourVoirLesSuggestions')}
                                 filtrable={true}
                             />
                         </View>
@@ -2730,13 +2730,13 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         {!formValues.variabilite_prix && (
                             <>
                                 <View style={styles.fieldGroup}>
-                                    <Text style={styles.label}>Prix du produit/prestation</Text>
-                                    <NativeInput
-                                        placeholder="Ex: 150000"
-                                        value={formValues.prix_produit}
-                                        onChangeText={(value) => handleFieldChange('prix_produit', value)}
-                                        keyboardType="numeric"
-                                    />
+                                    <Text style={styles.label}>{t('ajouterProduitSimple.prixDuProduitprestation')}/Text>
+                                        <NativeInput
+                                            placeholder="Ex: 150000"
+                                            value={formValues.prix_produit}
+                                            onChangeText={(value) => handleFieldChange('prix_produit', value)}
+                                            keyboardType="numeric"
+                                        />
                                 </View>
 
                                 <View style={styles.fieldGroup}>
@@ -2773,7 +2773,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     {(() => {
                                         const currentValue = formValues.lieu_produit;
                                         if (typeof currentValue === 'object' && currentValue !== null) {
-                                            return currentValue.place_name || currentValue.raw || 'Sélectionner un lieu...';
+                                            return currentValue.place_name || currentValue.raw || t('ajouterProduitSimple.selectionnerUnLieu');
                                         }
                                         return typeof currentValue === 'string' ? currentValue : 'Sélectionner un lieu...';
                                     })()}
@@ -2813,7 +2813,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
                         {/* Photos et vidéos */}
                         <View style={[styles.fieldGroup, { overflow: 'visible' }]}>
-                            <Text style={styles.label}>Photos et vidéos</Text>
+                            <Text style={styles.label}>{t('ajouterProduitSimple.photosEtVideos')}</Text>
                             {(() => {
                                 const imagesToPass = formValues.images || [];
                                 const videosToPass = formValues.videos || [];
@@ -2866,7 +2866,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 <SafeIcon name="info" size={16} color={modernColors.textSecondary} />
                                 <Text style={styles.costText}>
                                     {productAddIsFree === true
-                                        ? '🆓 Gratuit (période de lancement)'
+                                        ? t('ajouterProduitSimpleScreen.gratuitPeriodeDeLancement')
                                         : `Coût: ${(productAddCost ?? 2000).toLocaleString('fr-FR')} FCFA (Solde: ${(user?.credits ?? 0).toLocaleString('fr-FR')} FCFA)`}
                                 </Text>
                             </View>
@@ -2920,7 +2920,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     // Fallback si pas de géocodage inverse
                                     const locationObject: LocationObject = {
                                         raw: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-                                        place_name: 'Lieu sélectionné',
+                                        place_name: t('ajouterProduitSimpleScreen.lieuSelectionne'),
                                         components: {},
                                         coordinates: { lat, lng },
                                     };
@@ -2931,7 +2931,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 // Fallback en cas d'erreur
                                 const locationObject: LocationObject = {
                                     raw: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-                                    place_name: 'Lieu sélectionné',
+                                    place_name: t('ajouterProduitSimpleScreen.lieuSelectionne'),
                                     components: {},
                                     coordinates: { lat, lng },
                                 };
@@ -2943,7 +2943,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     setShowGPSModal(false);
                 }}
                 currentLocation={selectedLocation}
-                title="Sélectionner le lieu de commercialisation"
+                title={t('ajouterProduitSimple.selectionnerLeLieuDeCommercialisation')}
                 allowZoneSelection={false}
             />
 
@@ -2964,17 +2964,17 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                         </View>
                         <Text style={styles.successModalTitle}>
                             {successModalData?.isDuplicate
-                                ? (successModalData?.isPrestation ? 'Prestation dupliquée avec succès !' : 'Produit dupliqué avec succès !')
-                                : (successModalData?.isPrestation ? 'Prestation créée avec succès !' : 'Produit créé avec succès !')}
+                                ? (successModalData?.isPrestation ? t('ajouterProduitSimpleScreen.prestationDupliqueeAvecSucces') : t('ajouterProduitSimpleScreen.produitDupliqueAvecSucces'))
+                                : (successModalData?.isPrestation ? t('ajouterProduitSimpleScreen.prestationCreeeAvecSucces') : t('ajouterProduitSimpleScreen.produitCreeAvecSucces'))}
                         </Text>
                         <Text style={styles.successModalMessage}>
                             {successModalData?.isPrestation
                                 ? (successModalData?.isDuplicate
-                                    ? 'Votre prestation a été dupliquée avec succès.'
-                                    : 'Votre prestation a été ajoutée à votre service.')
+                                    ? t('ajouterProduitSimpleScreen.votrePrestationAEteDupliqueeAvec')
+                                    : t('ajouterProduitSimpleScreen.votrePrestationAEteAjouteeA'))
                                 : (successModalData?.isDuplicate
-                                    ? 'Votre produit a été dupliqué et ajouté à votre service avec succès.'
-                                    : 'Votre produit a été ajouté à votre service avec succès.')}
+                                    ? t('ajouterProduitSimpleScreen.votreProduitAEteDupliqueEt')
+                                    : t('ajouterProduitSimpleScreen.votreProduitAEteAjouteA'))}
                         </Text>
                         <NativeButton
                             title="Ok"

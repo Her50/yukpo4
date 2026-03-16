@@ -17,6 +17,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { PharmacyAnalytics, pharmacyService } from '../../services/pharmacyService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +27,7 @@ interface PharmacyAnalyticsScreenParams {
 
 const PharmacyAnalyticsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
     const params = route.params as PharmacyAnalyticsScreenParams;
@@ -67,8 +69,8 @@ const PharmacyAnalyticsScreen: React.FC = () => {
 
                 if (!isOwner) {
                     Alert.alert(
-                        'Accès refusé',
-                        'Vous n\'êtes pas autorisé à voir les analytics de cette pharmacie. Seul le propriétaire peut accéder à ces données.',
+                        t('pharmacyAnalyticsScreen.accesRefuse'),
+                        'Vous n\t('pharmacyAnalyticsScreen.etesPasAutoriseAVoirLes'),
                         [{ text: 'OK', onPress: () => navigation.goBack() }]
                     );
                 }
@@ -156,7 +158,7 @@ const PharmacyAnalyticsScreen: React.FC = () => {
             <View style={styles.centerContainer}>
                 <Text style={styles.errorText}>Analytics non disponibles</Text>
                 <NativeButton
-                    title="Réessayer"
+                    title={t('pharmacyAnalytics.reessayer')}
                     onPress={loadAnalytics}
                     variant="primary"
                     style={styles.retryButton}
@@ -261,9 +263,9 @@ const PharmacyAnalyticsScreen: React.FC = () => {
 
                 {/* Statistiques de revenus */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>💰 Revenus</Text>
+                    <Text style={styles.cardTitle}>{t('pharmacyAnalytics.revenus')}/Text>
                     <View style={styles.detailsRow}>
-                        <Text style={styles.detailsLabel}>Revenu total:</Text>
+                        <Text style={styles.detailsLabel}>{t('pharmacyAnalytics.revenuTotal')}/Text>
                         <Text style={[styles.detailsValue, styles.revenueValue]}>
                             {formatCurrency(analytics.total_revenue)}
                         </Text>
@@ -280,7 +282,7 @@ const PharmacyAnalyticsScreen: React.FC = () => {
                 <NativeCard style={styles.card}>
                     <View style={styles.summaryHeader}>
                         <SafeIcon name="bar-chart" size={24} color={modernColors.primary} />
-                        <Text style={styles.cardTitle}>Résumé de la période</Text>
+                        <Text style={styles.cardTitle}>{t('pharmacyAnalytics.resumeDeLaPeriode')}</Text>
                     </View>
                     <Text style={styles.summaryText}>
                         Vous avez reçu {formatNumber(analytics.orders_7d)} commandes au cours des 7 derniers jours

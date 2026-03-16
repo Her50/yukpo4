@@ -14,6 +14,7 @@ import { VideoTemplate, templateService } from '../services/templateService';
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export type TemplateIndustry = 'ecommerce' | 'services' | 'creators' | 'business' | 'social_media' | 'all';
 
@@ -27,7 +28,7 @@ const INDUSTRIES: { key: TemplateIndustry; label: string; icon: string }[] = [
     { key: 'all', label: 'Tous', icon: 'grid' },
     { key: 'ecommerce', label: 'E-commerce', icon: 'shopping-bag' },
     { key: 'services', label: 'Services', icon: 'briefcase' },
-    { key: 'creators', label: 'Créateurs', icon: 'video' },
+    { key: 'creators', label: t('templateLibrary.createurs'), icon: 'video' },
     { key: 'business', label: 'Business', icon: 'trending-up' },
     { key: 'social_media', label: 'Social Media', icon: 'share-2' },
 ];
@@ -37,7 +38,8 @@ export const TemplateLibrary: React.FC<TemplateLibraryProps> = ({
     selectedTemplate,
     filterIndustry = 'all',
 }) => {
-    const [templates, setTemplates] = useState<VideoTemplate[]>([]);
+        const { t } = useLanguageSafe();
+const [templates, setTemplates] = useState<VideoTemplate[]>([]);
     const [filteredTemplates, setFilteredTemplates] = useState<VideoTemplate[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -177,7 +179,7 @@ export const TemplateLibrary: React.FC<TemplateLibraryProps> = ({
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement des templates...</Text>
+                <Text style={styles.loadingText}>{t('templateLibrary.chargementDesTemplates')}</Text>
             </View>
         );
     }
@@ -189,7 +191,7 @@ export const TemplateLibrary: React.FC<TemplateLibraryProps> = ({
                 <Text style={styles.errorText}>{error}</Text>
                 <NativeButton
                     variant="primary"
-                    label="Réessayer"
+                    label={t('templateLibrary.reessayer')}
                     onPress={loadTemplates}
                     style={styles.retryButton}
                 />
@@ -204,7 +206,7 @@ export const TemplateLibrary: React.FC<TemplateLibraryProps> = ({
                 <NativeInput
                     value={searchQuery}
                     onChangeText={setSearchQuery}
-                    placeholder="Rechercher un template..."
+                    placeholder={t('templateLibrary.rechercherUnTemplate')}
                     style={styles.searchInput}
                 />
                 <TouchableOpacity
@@ -271,7 +273,7 @@ export const TemplateLibrary: React.FC<TemplateLibraryProps> = ({
                         <SafeIcon name="inbox" size={48} color={modernColors.textSecondary} />
                         <Text style={styles.emptyText}>
                             {searchQuery
-                                ? 'Aucun template trouvé pour votre recherche'
+                                ? t('templateLibrary.aucunTemplateTrouvePourVotreRecherche')
                                 : 'Aucun template disponible'}
                         </Text>
                     </View>

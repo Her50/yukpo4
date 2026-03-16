@@ -9,6 +9,7 @@ import { Alert, Text, TouchableOpacity, View } from 'react-native';
 import { apiPost } from '../services/api';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export type InternalShareContentType = 'product' | 'video' | 'menu' | 'health_stats' | 'navigation_stats';
 
@@ -50,10 +51,11 @@ const InternalShareButton: React.FC<InternalShareButtonProps> = ({
   iconColor = '#6B7280',
   style,
   showLabel = false,
-  label = 'Envoyer',
+  label={t('internalShareButton.envoyer')},
   onShareSuccess,
 }) => {
-  const [showPicker, setShowPicker] = useState(false);
+      const { t } = useLanguageSafe();
+const [showPicker, setShowPicker] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSelectUser = useCallback(async (user: any) => {
@@ -78,7 +80,7 @@ const InternalShareButton: React.FC<InternalShareButtonProps> = ({
         Alert.alert('Envoyé !', `${payload.title} partagé avec ${user.nom_complet || 'l\'utilisateur'}`);
         onShareSuccess?.();
       } else {
-        Alert.alert('Erreur', (response as any).error || 'Échec du partage');
+        Alert.alert('Erreur', (response as any).error || t('internalShareButton.echecDuPartage'));
       }
     } catch (error) {
       console.error('[InternalShareButton] Erreur:', error);

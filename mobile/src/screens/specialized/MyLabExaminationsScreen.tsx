@@ -104,16 +104,16 @@ const MyLabExaminationsScreen: React.FC = () => {
             case 'en_attente':
                 return modernColors.warning;
             case 'scheduled':
-            case 'programmé':
+            case t('myLabExaminationsScreen.programme'):
                 return modernColors.info;
             case 'in_progress':
             case 'en_cours':
                 return modernColors.primary;
             case 'completed':
-            case 'terminé':
+            case t('myLabExaminationsScreen.termine'):
                 return modernColors.success;
             case 'cancelled':
-            case 'annulé':
+            case t('myLabExaminationsScreen.annule'):
                 return modernColors.error;
             default:
                 return modernColors.textSecondary;
@@ -127,24 +127,24 @@ const MyLabExaminationsScreen: React.FC = () => {
             case 'en_attente':
                 return 'En attente';
             case 'scheduled':
-            case 'programmé':
-                return 'Programmé';
+            case t('myLabExaminationsScreen.programme'):
+                return t('myLabExaminationsScreen.programme');
             case 'in_progress':
             case 'en_cours':
                 return 'En cours';
             case 'completed':
-            case 'terminé':
-                return 'Terminé';
+            case t('myLabExaminationsScreen.termine'):
+                return t('myLabExaminationsScreen.termine');
             case 'cancelled':
-            case 'annulé':
-                return 'Annulé';
+            case t('myLabExaminationsScreen.annule'):
+                return t('myLabExaminationsScreen.annule');
             default:
                 return status;
         }
     };
 
     const formatDate = (dateString: string | null) => {
-        if (!dateString) return 'Non spécifié';
+        if (!dateString) return t('myLabExaminationsScreen.nonSpecifie');
         try {
             const date = new Date(dateString);
             return date.toLocaleString('fr-FR', {
@@ -218,7 +218,7 @@ const MyLabExaminationsScreen: React.FC = () => {
                         <SafeIcon name="flask" size={24} color={modernColors.primary} />
                         <View style={styles.labDetails}>
                             <Text style={styles.labName}>
-                                {item.laboratory_name || 'Laboratoire non spécifié'}
+                                {item.laboratory_name || t('myLabExaminations.laboratoireNonSpecifie')}
                             </Text>
                             {item.examination_type_name && (
                                 <Text style={styles.examType}>
@@ -260,7 +260,7 @@ const MyLabExaminationsScreen: React.FC = () => {
                         {isCompleted && (
                             <>
                                 <NativeButton
-                                    title="Voir résultats"
+                                    title={t('myLabExaminations.voirResultats')}
                                     onPress={() => handleViewResults(item)}
                                     variant="primary"
                                     size="small"
@@ -277,7 +277,7 @@ const MyLabExaminationsScreen: React.FC = () => {
                         )}
                         {!isCompleted && (
                             <NativeButton
-                                title="Voir détails"
+                                title={t('myLabExaminations.voirDetails')}
                                 onPress={() => handleViewDetails(item)}
                                 variant="outline"
                                 size="small"
@@ -368,7 +368,7 @@ const MyLabExaminationsScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mes examens</Text>
+                <Text style={styles.title}>{t('myLabExaminations.mesExamens')}</Text>
             </View>
 
             {renderFilters()}
@@ -380,12 +380,12 @@ const MyLabExaminationsScreen: React.FC = () => {
             ) : examinations.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="flask" size={64} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyTitle}>Aucun examen</Text>
+                    <Text style={styles.emptyTitle}>{t('myLabExaminations.aucunExamen')}</Text>
                     <Text style={styles.emptyText}>
-                        Vous n'avez pas encore effectué d'examen de laboratoire.
+                        {t('myLabExaminationsScreen.noExamYet')}
                     </Text>
                     <NativeButton
-                        title="Rechercher un laboratoire"
+                        title={t('myLabExaminations.rechercherUnLaboratoire')}
                         onPress={() => navigation.navigate('LaboratoireSearch' as never)}
                         variant="primary"
                         style={styles.emptyButton}

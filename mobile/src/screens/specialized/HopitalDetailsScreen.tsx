@@ -170,8 +170,8 @@ const HopitalDetailsScreen: React.FC = () => {
     const rating = hopital?.note_moyenne || (ratingStats?.average_rating as number) || 0;
     const reviewCount = hopital?.nombre_avis || (ratingStats?.total_ratings as number) || 0;
 
-    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#3B82F6" /><Text style={st.centerText}>Chargement...</Text></View>);
-    if (!hopital) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#EF4444" /><Text style={st.centerText}>Hôpital non trouvé</Text></View>);
+    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#3B82F6" /><Text style={st.centerText}>{t('hopitalDetails.chargement')}</Text></View>);
+    if (!hopital) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#EF4444" /><Text style={st.centerText}>{t('hopitalDetails.hopitalNonTrouve')}</Text></View>);
 
     const isOpen = hopital.is_available_now;
     const starsFull = Math.floor(rating);
@@ -179,7 +179,7 @@ const HopitalDetailsScreen: React.FC = () => {
     const prestations = hopital.prestations_medicales || [];
 
     const emergencyColor = emergencyStatus?.status === 'saturated' ? '#DC2626' : emergencyStatus?.status === 'busy' ? '#F59E0B' : '#059669';
-    const emergencyLabel = emergencyStatus?.status === 'available' ? 'Disponible' : emergencyStatus?.status === 'busy' ? 'Occupé' : 'Saturé';
+    const emergencyLabel = emergencyStatus?.status === 'available' ? 'Disponible' : emergencyStatus?.status === 'busy' ? t('hopitalDetailsScreen.occupe') : t('hopitalDetailsScreen.sature');
 
     return (
         <View style={st.container}>
@@ -197,7 +197,7 @@ const HopitalDetailsScreen: React.FC = () => {
                     <View style={st.heroBadges}>
                         <View style={[st.badge, { backgroundColor: isOpen ? 'rgba(255,255,255,0.25)' : 'rgba(239,68,68,0.3)' }]}>
                             <View style={[st.badgeDot, { backgroundColor: isOpen ? '#fff' : '#FCA5A5' }]} />
-                            <Text style={st.badgeText}>{isOpen ? 'Ouvert' : 'Fermé'}</Text>
+                            <Text style={st.badgeText}>{isOpen ? 'Ouvert' : t('hopitalDetailsScreen.ferme')}</Text>
                         </View>
                         {hopital.urgences_disponible && (
                             <View style={[st.badge, { backgroundColor: 'rgba(239,68,68,0.3)' }]}>
@@ -220,7 +220,7 @@ const HopitalDetailsScreen: React.FC = () => {
                         {hopital.is_verified && (
                             <View style={[st.badge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
                                 <SafeIcon name="check-circle" size={12} color="#fff" />
-                                <Text style={st.badgeText}>Vérifié</Text>
+                                <Text style={st.badgeText}>{t('hopitalDetails.verifie')}</Text>
                             </View>
                         )}
                     </View>
@@ -284,7 +284,7 @@ const HopitalDetailsScreen: React.FC = () => {
                             {[
                                 { label: 'Critiques', value: emergencyStatus.critical_count, color: '#EF4444' },
                                 { label: 'Temps moyen', value: emergencyStatus.avg_wait_time_minutes ? `${Math.round(emergencyStatus.avg_wait_time_minutes)}m` : 'N/A', color: '#F59E0B' },
-                                { label: 'Total patients', value: emergencyStatus.total_patients, color: '#3B82F6' },
+                                { label: t('hopitalDetails.totalPatients'), value: emergencyStatus.total_patients, color: '#3B82F6' },
                             ].map((s, i) => (
                                 <View key={i} style={st.statCard}>
                                     <Text style={[st.statValue, { color: s.color }]}>{s.value}</Text>
@@ -302,7 +302,7 @@ const HopitalDetailsScreen: React.FC = () => {
                         {waitTimes.map((wt, idx) => (
                             <View key={idx} style={st.waitRow}>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={st.waitSpec}>{wt.specialty || 'Général'}</Text>
+                                    <Text style={st.waitSpec}>{wt.specialty || t('hopitalDetails.general')}</Text>
                                     <Text style={st.waitSub}>{wt.consultation_count} consultation(s)</Text>
                                 </View>
                                 <View style={{ alignItems: 'flex-end' }}>
@@ -317,7 +317,7 @@ const HopitalDetailsScreen: React.FC = () => {
                 {/* Prestations */}
                 {prestations.length > 0 && (
                     <View style={st.section}>
-                        <View style={st.sectionHeader}><SafeIcon name="stethoscope" size={18} color="#3B82F6" /><Text style={st.sectionTitle}>Prestations médicales</Text></View>
+                        <View style={st.sectionHeader}><SafeIcon name="stethoscope" size={18} color="#3B82F6" /><Text style={st.sectionTitle}>{t('hopitalDetails.prestationsMedicales')}</Text></View>
                         <View style={st.chipWrap}>
                             {prestations.map((p, i) => (
                                 <View key={i} style={st.chip}><Text style={st.chipText}>{p}</Text></View>
@@ -328,15 +328,15 @@ const HopitalDetailsScreen: React.FC = () => {
 
                 {/* IA Pathologie */}
                 <View style={st.section}>
-                    <View style={st.sectionHeader}><SafeIcon name="brain" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>Recherche IA par symptômes</Text></View>
-                    <TextInput style={st.searchInput} placeholder="Décrivez vos symptômes (fièvre, toux, douleur...)" placeholderTextColor="#9CA3AF" value={pathologyQuery} onChangeText={setPathologyQuery} multiline />
+                    <View style={st.sectionHeader}><SafeIcon name="brain" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>{t('hopitalDetails.rechercheIaParSymptomes')}</Text></View>
+                    <TextInput style={st.searchInput} placeholder={t('hopitalDetails.decrivezVosSymptomesFievreToux')} placeholderTextColor="#9CA3AF" value={pathologyQuery} onChangeText={setPathologyQuery} multiline />
                     <TouchableOpacity style={[st.analyzeBtn, (!pathologyQuery.trim() || searchingPathology) && { opacity: 0.5 }]} disabled={!pathologyQuery.trim() || searchingPathology} onPress={handleSearchPathology}>
                         {searchingPathology ? <ActivityIndicator size="small" color="#fff" /> : <><SafeIcon name="search" size={16} color="#fff" /><Text style={st.analyzeBtnText}>Analyser</Text></>}
                     </TouchableOpacity>
 
                     {pathologyResult && (
                         <View style={[st.resultCard, { borderLeftColor: '#7C3AED' }]}>
-                            <Text style={{ fontWeight: '700', fontSize: 15, color: '#111827', marginBottom: 6 }}>{pathologyResult.pathology_name || 'Résultat'}</Text>
+                            <Text style={{ fontWeight: '700', fontSize: 15, color: '#111827', marginBottom: 6 }}>{pathologyResult.pathology_name || t('hopitalDetails.resultat')}</Text>
                             {pathologyResult.description && <Text style={{ fontSize: 13, color: '#374151', marginBottom: 8, lineHeight: 20 }}>{pathologyResult.description}</Text>}
                             {pathologyResult.urgency_level && (
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
@@ -346,7 +346,7 @@ const HopitalDetailsScreen: React.FC = () => {
                             )}
                             {pathologyResult.recommended_services?.length > 0 && (
                                 <View style={{ marginBottom: 8 }}>
-                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4, fontSize: 13 }}>Services recommandés:</Text>
+                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4, fontSize: 13 }}>{t('hopitalDetails.servicesRecommandes')}</Text>
                                     {pathologyResult.recommended_services.map((svc: string, idx: number) => (
                                         <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 8, marginBottom: 2 }}>
                                             <SafeIcon name="check" size={12} color="#059669" /><Text style={{ fontSize: 13, color: '#374151' }}>{svc}</Text>
@@ -356,7 +356,7 @@ const HopitalDetailsScreen: React.FC = () => {
                             )}
                             {pathologyResult.recommended_examinations?.length > 0 && (
                                 <View style={{ marginBottom: 8 }}>
-                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4, fontSize: 13 }}>Examens recommandés:</Text>
+                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4, fontSize: 13 }}>{t('hopitalDetails.examensRecommandes')}</Text>
                                     {pathologyResult.recommended_examinations.map((e: string, idx: number) => (
                                         <Text key={idx} style={{ marginLeft: 8, fontSize: 13, color: '#374151' }}>• {e}</Text>
                                     ))}
@@ -390,7 +390,7 @@ const HopitalDetailsScreen: React.FC = () => {
                         navigation.navigate('MyConsultations' as never);
                     }}>
                         <SafeIcon name="clipboard-list" size={18} color="#3B82F6" />
-                        <Text style={st.fullBtnText}>Mes consultations</Text>
+                        <Text style={st.fullBtnText}>{t('hopitalDetails.mesConsultations')}</Text>
                         <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                     </TouchableOpacity>
                     {isOwner && (

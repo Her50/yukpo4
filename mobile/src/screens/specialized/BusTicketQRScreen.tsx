@@ -16,9 +16,11 @@ import {
 import QRCode from 'react-native-qrcode-svg';
 import SafeIcon from '../../components/SafeIcon';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const BusTicketQRScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { qrData, ticketInfo } = (route.params as any) || {};
 
@@ -38,7 +40,7 @@ const BusTicketQRScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mon Ticket QR</Text>
+                <Text style={styles.title}>{t('busTicketQR.monTicketQr')}</Text>
                 <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
                     <SafeIcon name="share" size={20} color={modernColors.primary} />
                 </TouchableOpacity>
@@ -86,7 +88,7 @@ const BusTicketQRScreen: React.FC = () => {
 
                 {/* QR Code */}
                 <View style={styles.qrCard}>
-                    <Text style={styles.qrTitle}>Présentez ce QR code à l'embarquement</Text>
+                    <Text style={styles.qrTitle}>{t('busTicketQR.presentezCeQrCodeA')}</Text>
                     <View style={styles.qrContainer}>
                         {qrData ? (
                             <QRCode
@@ -98,7 +100,7 @@ const BusTicketQRScreen: React.FC = () => {
                         ) : (
                             <View style={styles.noQR}>
                                 <SafeIcon name="alert-circle" size={48} color="#9CA3AF" />
-                                <Text style={styles.noQRText}>QR code non disponible</Text>
+                                <Text style={styles.noQRText}>{t('busTicketQR.qrCodeNonDisponible')}/Text>
                             </View>
                         )}
                     </View>
@@ -111,8 +113,8 @@ const BusTicketQRScreen: React.FC = () => {
                 <View style={styles.instructionsCard}>
                     <Text style={styles.instructionsTitle}>Instructions</Text>
                     {[
-                        { icon: 'clock', text: 'Présentez-vous 15 min avant le départ' },
-                        { icon: 'smartphone', text: 'Gardez votre écran allumé pour le scan' },
+                        { icon: 'clock', text: t('busTicketQR.presentezvous15MinAvantLe') },
+                        { icon: 'smartphone', text: t('busTicketQR.gardezVotreEcranAllumePour') },
                         { icon: 'shield', text: 'Ne partagez pas ce QR code' },
                     ].map((item, i) => (
                         <View key={i} style={styles.instructionRow}>

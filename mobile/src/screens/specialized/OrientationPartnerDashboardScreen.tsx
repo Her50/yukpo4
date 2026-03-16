@@ -17,6 +17,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type TabType = 'overview' | 'programs' | 'students' | 'analytics';
 
@@ -31,6 +32,7 @@ interface Program {
 
 const OrientationPartnerDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
 
     const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -63,14 +65,14 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
     const handleRefresh = () => { setRefreshing(true); loadData(); };
 
     const TABS: { key: TabType; label: string; icon: string }[] = [
-        { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
+        { key: 'overview', label: t('orientationPartnerDashboard.accueil'), icon: 'layout-dashboard' },
         { key: 'programs', label: 'Programmes', icon: 'book-open' },
-        { key: 'students', label: 'Étudiants', icon: 'users' },
+        { key: 'students', label: t('orientationPartnerDashboard.etudiants'), icon: 'users' },
         { key: 'analytics', label: 'Stats', icon: 'bar-chart-2' },
     ];
 
     if (loading) {
-        return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#2563EB" /><Text style={s.loadingText}>Chargement...</Text></View>;
+        return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#2563EB" /><Text style={s.loadingText}>{t('orientationPartnerDashboard.chargement')}</Text></View>;
     }
 
     const renderOverview = () => (
@@ -94,7 +96,7 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
             <Text style={s.sectionTitle}>Actions rapides</Text>
             <View style={s.quickRow}>
                 {[
-                    { label: 'Modifier établissement', icon: 'edit', color: '#2563EB', onPress: () => (navigation as any).navigate('CreateEtablissement', { mode: 'edit' }) },
+                    { label: t('orientationPartnerDashboard.modifierEtablissement'), icon: 'edit', color: '#2563EB', onPress: () => (navigation as any).navigate('CreateEtablissement', { mode: 'edit' }) },
                     { label: 'Hub Orientation', icon: 'compass', color: '#10B981', onPress: () => (navigation as any).navigate('OrientationScolaireHub') },
                     { label: 'IA Recommandations', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('OrientationAIRecommendations') },
                     { label: 'Programmes', icon: 'book-open', color: '#F59E0B', onPress: () => (navigation as any).navigate('ProgrammesList') },
@@ -112,7 +114,7 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
             {programs.length > 0 && (
                 <>
                     <View style={s.sectionRow}>
-                        <Text style={s.sectionTitle}>Mes programmes</Text>
+                        <Text style={s.sectionTitle}>{t('orientationPartnerDashboard.mesProgrammes')}</Text>
                         <TouchableOpacity onPress={() => setActiveTab('programs')}><Text style={s.seeAll}>Tout voir</Text></TouchableOpacity>
                     </View>
                     {programs.slice(0, 4).map((p, i) => (
@@ -132,8 +134,8 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
             {programs.length === 0 && (
                 <View style={s.emptyState}>
                     <SafeIcon name="graduation-cap" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Aucun programme</Text>
-                    <Text style={s.emptyText}>Configurez votre établissement et ajoutez des programmes de formation.</Text>
+                    <Text style={s.emptyTitle}>{t('orientationPartnerDashboard.aucunProgramme')}</Text>
+                    <Text style={s.emptyText}>{t('orientationPartnerDashboard.configurezVotreEtablissementEtAjoutez')}</Text>
                     <NativeButton title="Configurer" onPress={() => (navigation as any).navigate('CreateEtablissement')} style={{ marginTop: 16 }} />
                 </View>
             )}
@@ -143,11 +145,11 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
     const renderPrograms = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-            <NativeButton title="+ Ajouter un programme" onPress={() => (navigation as any).navigate('CreateEtablissement', { tab: 'programs' })} variant="primary" style={{ marginBottom: 16 }} />
+            <NativeButton title={t('orientationPartnerDashboard.ajouterUnProgramme')} onPress={() => (navigation as any).navigate('CreateEtablissement', { tab: 'programs' })} variant="primary" style={{ marginBottom: 16 }} />
             {programs.length === 0 ? (
                 <View style={s.emptyState}>
                     <SafeIcon name="book-open" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Aucun programme</Text>
+                    <Text style={s.emptyTitle}>{t('orientationPartnerDashboard.aucunProgramme')}</Text>
                 </View>
             ) : (
                 programs.map((p, i) => (
@@ -171,7 +173,7 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
             <View style={s.emptyState}>
                 <SafeIcon name="users" size={48} color="#9CA3AF" />
                 <Text style={s.emptyTitle}>Inscriptions</Text>
-                <Text style={s.emptyText}>Les demandes d'inscription des étudiants apparaîtront ici.</Text>
+                <Text style={s.emptyText}>{t('orientationPartnerDashboard.lesDemandesDinscriptionDesEtudiants')}</Text>
             </View>
         </ScrollView>
     );
@@ -180,7 +182,7 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
             <View style={s.analyticsCard}>
-                <Text style={s.analyticsTitle}>Résumé</Text>
+                <Text style={s.analyticsTitle}>{t('orientationPartnerDashboard.resume')}</Text>
                 {[
                     { label: 'Programmes actifs', value: stats.activePrograms, color: '#10B981' },
                     { label: 'Places disponibles', value: stats.totalPlaces, color: '#F59E0B' },
@@ -205,8 +207,8 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={22} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>Dashboard Établissement</Text>
-                        <Text style={s.headerSub}>{user?.name || 'Partenaire'}</Text>
+                        <Text style={s.headerTitle}>{t('orientationPartnerDashboard.dashboardEtablissement')}</Text>
+                        <Text style={s.headerSub}>{user?.name || t('orientationPartnerDashboard.partenaire')}</Text>
                     </View>
                 </View>
                 <View style={s.tabRow}>

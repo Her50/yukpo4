@@ -11,9 +11,11 @@ import {
 } from 'react-native';
 import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import { SafeNativeView } from '../components/SafeNativeView';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const ContactScreen: React.FC = () => {
-  const [name, setName] = useState('');
+      const { t } = useLanguageSafe();
+const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -28,7 +30,7 @@ const ContactScreen: React.FC = () => {
       // TODO: Implémenter l'envoi du message de contact
       await new Promise(resolve => setTimeout(resolve, 1000));
       Alert.alert(
-        'Message envoyé',
+        t('contactScreen.messageEnvoye'),
         'Nous avons bien reçu votre message et vous répondrons dans les plus brefs délais.'
       );
       // Réinitialiser le formulaire
@@ -69,12 +71,12 @@ const ContactScreen: React.FC = () => {
           <Text style={styles.formTitle}>✉️ Envoyez-nous un message</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nom complet *</Text>
+            <Text style={styles.label}>{t('contact.nomComplet')}</Text>
             <TextInput
               style={styles.input}
               value={name}
               onChangeText={setName}
-              placeholder="Votre nom complet"
+              placeholder={t('contact.votreNomComplet')}
               placeholderTextColor="#999"
             />
           </View>
@@ -109,7 +111,7 @@ const ContactScreen: React.FC = () => {
               style={[styles.input, styles.textArea]}
               value={message}
               onChangeText={setMessage}
-              placeholder="Décrivez votre demande ou votre problème..."
+              placeholder={t('contact.decrivezVotreDemandeOuVotre')}
               placeholderTextColor="#999"
               multiline
               numberOfLines={5}
@@ -118,13 +120,13 @@ const ContactScreen: React.FC = () => {
           </View>
 
           <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <Text style={styles.submitButtonText}>📤 Envoyer le message</Text>
+            <Text style={styles.submitButtonText}>{t('contact.envoyerLeMessage')}/Text>
           </TouchableOpacity>
         </View>
 
         {/* Infos de contact rapide */}
         <View style={styles.quickContact}>
-          <Text style={styles.quickContactTitle}>🚀 Contact rapide</Text>
+          <Text style={styles.quickContactTitle}>{t('contact.contactRapide')}/Text>
 
           <TouchableOpacity
             style={styles.contactCard}
@@ -143,7 +145,7 @@ const ContactScreen: React.FC = () => {
           >
             <Text style={styles.contactIcon}>📞</Text>
             <View style={styles.contactInfo}>
-              <Text style={styles.contactTitle}>Téléphone</Text>
+              <Text style={styles.contactTitle}>{t('contact.telephone')}</Text>
               <Text style={styles.contactValue}>+237 699 999 999</Text>
             </View>
           </TouchableOpacity>
@@ -162,23 +164,23 @@ const ContactScreen: React.FC = () => {
 
         {/* Informations supplémentaires */}
         <View style={styles.infoSection}>
-          <Text style={styles.infoTitle}>ℹ️ Informations</Text>
+          <Text style={styles.infoTitle}>{t('contact.informations')}/Text>
           <View style={styles.infoCard}>
             <Text style={styles.infoText}>
               • <Text style={styles.bold}>Heures d'ouverture :</Text> 8h00 - 18h00 (Lun-Ven)
             </Text>
             <Text style={styles.infoText}>
-              • <Text style={styles.bold}>Temps de réponse :</Text> Moins de 24h
+              • <Text style={styles.bold}>{t('contact.tempsDeReponse')}</Text> Moins de 24h
             </Text>
             <Text style={styles.infoText}>
-              • <Text style={styles.bold}>Support technique :</Text> Disponible 7j/7
+              • <Text style={styles.bold}>{t('contact.supportTechnique')}/Text> Disponible 7j/7
             </Text>
           </View>
         </View>
 
         {/* Réseaux sociaux */}
         <View style={styles.socialSection}>
-          <Text style={styles.infoTitle}>🌐 Réseaux sociaux</Text>
+          <Text style={styles.infoTitle}>{t('contact.reseauxSociaux')}</Text>
           <View style={styles.socialLinks}>
             <TouchableOpacity
               style={styles.socialButton}

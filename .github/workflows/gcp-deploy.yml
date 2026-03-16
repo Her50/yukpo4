@@ -158,14 +158,23 @@ jobs:
                 "LIVEKIT_INGRESS_NAME": "prod-ingress-1",
                 "LIVEKIT_INGRESS_REGION": "europe-west1",
                 "LIVEKIT_INGRESS_ROOM": "live-events",
+                "LIVEKIT_API_URL": "http://yukpo-livekit-server:7880",
+                "LIVEKIT_WS_URL": "ws://yukpo-livekit-server:7880",
                 "LIVE_FALLBACK_ENABLED": "true",
                 "LIVE_RECORDING_ENABLED": "true",
                 "FEATURE_FLAG_CONNECTORS_LIVEKIT": "true",
 
+                "APP_DOMAIN": "yukpo.com",
+                "API_BASE_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
+                "BACKEND_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
+                "WEBHOOK_BASE_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
+                "FRONTEND_URL": "https://yukpo.com",
+                "PAYMENT_PRIMARY_PROVIDER": "cinetpay",
+
                 "EMAIL_ENABLED": "true",
                 "EMAIL_PROVIDER": "sendgrid",
-                "SENDGRID_FROM_EMAIL": "noreply@yukpomnang.com",
-                "SENDGRID_FROM_NAME": "Yukpomnang",
+                "SENDGRID_FROM_EMAIL": "noreply@yukpo.com",
+                "SENDGRID_FROM_NAME": "Yukpo",
                 "SMS_ENABLED": "false",
                 "SMS_PROVIDER": "twilio",
 
@@ -195,7 +204,8 @@ jobs:
                 "ML_MODELS_DIR": "models",
                 "YUKPO_IMMO_COMMISSION_RATE": "0.05",
 
-                "GOOGLE_CLIENT_ID": "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com"
+                "GOOGLE_CLIENT_ID": "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
+                "CORS_ALLOWED_ORIGINS": "https://yukpo.com,https://yukpo-backend-376093909298.europe-west1.run.app"
               }' > env-vars.json
           else
             # NOTE: DATABASE_URL, REDIS_URL, MONGODB_URL, JWT_SECRET gérés comme secrets GCP
@@ -223,11 +233,25 @@ jobs:
             "LIVEKIT_INGRESS_MODE": "rtmp",
             "LIVEKIT_INGRESS_REGION": "europe-west1",
             "LIVEKIT_INGRESS_ROOM": "live-events",
+            "LIVEKIT_API_URL": "http://yukpo-livekit-server:7880",
+            "LIVEKIT_WS_URL": "ws://yukpo-livekit-server:7880",
             "LIVE_FALLBACK_ENABLED": "true",
             "LIVE_RECORDING_ENABLED": "true",
             "FEATURE_FLAG_CONNECTORS_LIVEKIT": "true",
+            "APP_DOMAIN": "yukpo.com",
+            "API_BASE_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
+            "BACKEND_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
+            "WEBHOOK_BASE_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
+            "FRONTEND_URL": "https://yukpo.com",
+            "PAYMENT_PRIMARY_PROVIDER": "cinetpay",
+            "CORS_ALLOWED_ORIGINS": "https://yukpo.com,https://yukpo-backend-376093909298.europe-west1.run.app",
+            "EMAIL_ENABLED": "true",
+            "EMAIL_PROVIDER": "sendgrid",
+            "SENDGRID_FROM_EMAIL": "noreply@yukpo.com",
+            "SENDGRID_FROM_NAME": "Yukpo",
             "UPLOAD_BASE_URL": "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
             "PUBLIC_BASE_URL": "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
+            "SHARE_BASE_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
             "S3_BUCKET": "yukpo-project-yukpo-backend-media",
             "S3_REGION": "europe-west1",
             "S3_ENDPOINT": "https://storage.googleapis.com",
@@ -236,14 +260,15 @@ jobs:
             "SEARCH_MAX_RESULTS": "50",
             "CACHE_DEFAULT_TTL": "3600",
             "JWT_EXPIRATION_HOURS": "24",
-            "KYC_PROVIDER": "manual"
+            "KYC_PROVIDER": "manual",
+            "GOOGLE_CLIENT_ID": "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com"
           }
           EOF
           fi
           
           # Ajouter toutes les variables avec prefixe GCP_ENV_
           # EXCLURE les variables qui sont gérées comme secrets: DATABASE_URL, REDIS_URL, MONGODB_URL, JWT_SECRET
-          SECRET_VARS="DATABASE_URL|REDIS_URL|MONGODB_URL|JWT_SECRET"
+          SECRET_VARS="DATABASE_URL|REDIS_URL|MONGODB_URL|JWT_SECRET|OPENAI_API_KEY|SORA_API_KEY|S3_ACCESS_KEY|S3_SECRET_KEY|LIVEKIT_API_KEY|LIVEKIT_API_SECRET|GOOGLE_MAPS_API_KEY|OPENWEATHERMAP_API_KEY|CINETPAY_API_KEY|CINETPAY_SITE_ID|CINETPAY_SECRET_KEY|NOTCHPAY_PUBLIC_KEY|NOTCHPAY_SECRET_KEY"
           if command -v gh &> /dev/null; then
             # ✅ FIXED: Add retry and better error handling for GitHub CLI authentication
             gh auth status 2>/dev/null || {
@@ -278,7 +303,7 @@ jobs:
           # ✅ CRITIQUE: Nettoyer env-vars.json pour retirer TOUS les secrets (au cas où ils seraient présents)
           echo "Nettoyage final de env-vars.json (retrait des secrets)..."
           if command -v jq &> /dev/null; then
-            jq 'del(.DATABASE_URL, .REDIS_URL, .MONGODB_URL, .JWT_SECRET)' env-vars.json > env-vars-clean.json && mv env-vars-clean.json env-vars.json
+            jq 'del(.DATABASE_URL, .REDIS_URL, .MONGODB_URL, .JWT_SECRET, .OPENAI_API_KEY, .SORA_API_KEY, .S3_ACCESS_KEY, .S3_SECRET_KEY, .LIVEKIT_API_KEY, .LIVEKIT_API_SECRET, .GOOGLE_MAPS_API_KEY, .OPENWEATHERMAP_API_KEY, .CINETPAY_API_KEY, .CINETPAY_SITE_ID, .CINETPAY_SECRET_KEY, .NOTCHPAY_PUBLIC_KEY, .NOTCHPAY_SECRET_KEY)' env-vars.json > env-vars-clean.json && mv env-vars-clean.json env-vars.json
             echo "✅ Fichier env-vars.json nettoyé"
           else
             echo "⚠️ jq non disponible, nettoyage manuel impossible"
@@ -347,13 +372,13 @@ jobs:
           echo "Construction de la liste des variables d'environnement..."
           if command -v jq &> /dev/null; then
             # Extraire toutes les clés sauf les secrets - CRITIQUE: Exclure explicitement tous les secrets
-            ENV_VARS=$(jq -r 'to_entries | map(select(.key != "DATABASE_URL" and .key != "REDIS_URL" and .key != "MONGODB_URL" and .key != "JWT_SECRET")) | map("\(.key)=\(.value)") | join(";")' ${{ steps.prepare-env.outputs.env_file }})
+            ENV_VARS=$(jq -r 'to_entries | map(select(.key != "DATABASE_URL" and .key != "REDIS_URL" and .key != "MONGODB_URL" and .key != "JWT_SECRET" and .key != "OPENAI_API_KEY" and .key != "SORA_API_KEY" and .key != "S3_ACCESS_KEY" and .key != "S3_SECRET_KEY" and .key != "LIVEKIT_API_KEY" and .key != "LIVEKIT_API_SECRET" and .key != "GOOGLE_MAPS_API_KEY" and .key != "OPENWEATHERMAP_API_KEY" and .key != "CINETPAY_API_KEY" and .key != "CINETPAY_SITE_ID" and .key != "CINETPAY_SECRET_KEY" and .key != "NOTCHPAY_PUBLIC_KEY" and .key != "NOTCHPAY_SECRET_KEY")) | map("\(.key)=\(.value)") | join(";")' ${{ steps.prepare-env.outputs.env_file }})
             echo "Variables d'environnement à définir: $ENV_VARS"
             
             # Vérifier que les secrets ne sont pas dans ENV_VARS
-            if echo "$ENV_VARS" | grep -qE "(DATABASE_URL|REDIS_URL|MONGODB_URL|JWT_SECRET)"; then
+            if echo "$ENV_VARS" | grep -qE "(DATABASE_URL|REDIS_URL|MONGODB_URL|JWT_SECRET|OPENAI_API_KEY|CINETPAY_API_KEY|CINETPAY_SECRET_KEY|NOTCHPAY_SECRET_KEY|GOOGLE_MAPS_API_KEY)"; then
               echo "❌ ERREUR: Des secrets sont présents dans ENV_VARS!"
-              echo "$ENV_VARS" | grep -E "(DATABASE_URL|REDIS_URL|MONGODB_URL|JWT_SECRET)" || true
+              echo "$ENV_VARS" | grep -E "(DATABASE_URL|REDIS_URL|MONGODB_URL|JWT_SECRET|OPENAI_API_KEY|CINETPAY_API_KEY|CINETPAY_SECRET_KEY|NOTCHPAY_SECRET_KEY|GOOGLE_MAPS_API_KEY)" || true
               exit 1
             fi
             
@@ -370,7 +395,7 @@ jobs:
                 --port 8080 \
                 --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
                 --update-env-vars="^;^$ENV_VARS" \
-                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest" \
+                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest" \
                 --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
@@ -392,7 +417,7 @@ jobs:
                 --allow-unauthenticated \
                 --port 8080 \
                 --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
-                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest" \
+                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest" \
                 --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
@@ -420,7 +445,7 @@ jobs:
               --port 8080 \
               --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
               --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
-              --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest" \
+              --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest" \
               --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
               --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
               --memory 2Gi \

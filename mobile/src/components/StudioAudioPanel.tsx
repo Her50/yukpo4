@@ -20,6 +20,7 @@ import SafeIcon from './SafeIcon';
 import { mediaApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import type { CreateVoiceProfilePayload, MusicMode, VoiceProfileSummary } from '../types/audio';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface StudioAudioPanelProps {
     serviceId?: number;
@@ -47,8 +48,8 @@ const langOptions: Array<{ value: 'fr' | 'en'; label: string }> = [
 const musicModePresets: Array<{ value: MusicMode; label: string; subtitle: string }> = [
     { value: 'pulse', label: 'Pulse', subtitle: 'Hook dynamique, format TikTok/Shorts' },
     { value: 'lofi', label: 'Lo-Fi', subtitle: 'Ambiance chill, storytelling intimiste' },
-    { value: 'ambient', label: 'Ambient', subtitle: 'Textures aériennes, focus produit/service' },
-    { value: 'cinematic', label: 'Cinematic', subtitle: 'Transitions héroïques et reveal dramatique' },
+    { value: 'ambient', label: 'Ambient', subtitle: t('studioAudioPanel.texturesAeriennesFocusProduitservice') },
+    { value: 'cinematic', label: 'Cinematic', subtitle: t('studioAudioPanel.transitionsHeroiquesEtRevealDramatique') },
     { value: 'none', label: 'Silence', subtitle: 'Voix + SFX uniquement' },
 ];
 
@@ -109,7 +110,8 @@ const CreateProfileModal = ({
     uploadingSample: boolean;
     pendingSample?: { filename: string } | null;
 }) => {
-    const [name, setName] = useState('');
+        const { t } = useLanguageSafe();
+const [name, setName] = useState('');
     const [provider, setProvider] = useState('custom');
     const [description, setDescription] = useState('');
     const [saving, setSaving] = useState(false);
@@ -138,9 +140,9 @@ const CreateProfileModal = ({
         <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
             <View style={styles.modalBackdrop}>
                 <View style={styles.modalContainer}>
-                    <Text style={styles.modalTitle}>Nouveau profil vocal</Text>
+                    <Text style={styles.modalTitle}>{t('studioAudioPanel.nouveauProfilVocal')}</Text>
                     <NativeInput
-                        placeholder="Nom du profil"
+                        placeholder={t('studioAudioPanel.nomDuProfil')}
                         value={name}
                         onChangeText={setName}
                         style={styles.modalInput}
@@ -156,7 +158,7 @@ const CreateProfileModal = ({
                         value={description}
                         onChangeText={setDescription}
                         style={[styles.modalTextInput, styles.modalTextarea]}
-                        placeholder="Description, tonalité, instructions IA..."
+                        placeholder={t('studioAudioPanel.descriptionTonaliteInstructionsIa')}
                         placeholderTextColor="rgba(255,255,255,0.4)"
                         multiline
                     />
@@ -184,13 +186,13 @@ const CreateProfileModal = ({
                     </View>
                     <View style={styles.modalActions}>
                         <NativeButton
-                            title="Annuler"
+                            title={t('studioAudioPanel.annuler')}
                             variant="secondary"
                             onPress={onClose}
                             style={styles.modalButton}
                         />
                         <NativeButton
-                            title={saving ? 'Création...' : 'Créer'}
+                            title={saving ? t('studioAudioPanel.creation') : t('studioAudioPanel.creer')}
                             variant="primary"
                             onPress={handleSubmit}
                             disabled={saving || !name.trim()}
@@ -325,7 +327,7 @@ export const StudioAudioPanel: React.FC<StudioAudioPanelProps> = ({
                 </View>
                 <View style={styles.badge}>
                     <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
-                    <Text style={styles.badgeText}>Assisté IA</Text>
+                    <Text style={styles.badgeText}>{t('studioAudioPanel.assisteIa')}</Text>
                 </View>
             </View>
 
@@ -365,7 +367,7 @@ export const StudioAudioPanel: React.FC<StudioAudioPanelProps> = ({
 
                     <View style={styles.profileActions}>
                         <NativeButton
-                            title="Nouveau profil"
+                            title={t('studioAudioPanel.nouveauProfil')}
                             variant="primary"
                             onPress={() => setModalVisible(true)}
                             style={styles.profileButton}
@@ -381,7 +383,7 @@ export const StudioAudioPanel: React.FC<StudioAudioPanelProps> = ({
                     {isLoadingProfiles ? (
                         <View style={styles.loaderRow}>
                             <ActivityIndicator color={modernColors.primary} />
-                            <Text style={styles.loaderText}>Chargement des profils...</Text>
+                            <Text style={styles.loaderText}>{t('studioAudioPanel.chargementDesProfils')}</Text>
                         </View>
                     ) : (
                         <View style={styles.profileList}>
@@ -480,7 +482,7 @@ export const StudioAudioPanel: React.FC<StudioAudioPanelProps> = ({
                     detail={
                         voiceoverEnabled
                             ? selectedProfile?.name || 'Profil IA actif'
-                            : 'Désactivée'
+                            : t('studioAudioPanel.desactivee')
                     }
                     active={voiceoverEnabled}
                 />

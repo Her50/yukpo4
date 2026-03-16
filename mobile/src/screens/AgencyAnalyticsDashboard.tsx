@@ -19,6 +19,7 @@ import SkeletonCard from '../components/SkeletonCard';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 const BarChart = BarChartOriginal as any;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -38,7 +39,8 @@ interface AnalyticsData {
 
 const AgencyAnalyticsDashboard: React.FC = () => {
     const { user } = useAuth();
-    const [loading, setLoading] = useState(true);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [data, setData] = useState<AnalyticsData | null>(null);
     const [period, setPeriod] = useState<'day' | 'week' | 'month'>('week');
@@ -86,10 +88,10 @@ const AgencyAnalyticsDashboard: React.FC = () => {
                 tickets: Math.floor(Math.random() * 50) + 20,
             })),
             top_routes: [
-                { route: 'Yaoundé → Douala', tickets: 89, revenue: 2225000 },
-                { route: 'Douala → Yaoundé', tickets: 76, revenue: 1900000 },
-                { route: 'Yaoundé → Bafoussam', tickets: 45, revenue: 1125000 },
-                { route: 'Bafoussam → Yaoundé', tickets: 35, revenue: 875000 },
+                { route: t('agencyAnalyticsDashboard.yaoundeDouala'), tickets: 89, revenue: 2225000 },
+                { route: t('agencyAnalyticsDashboard.doualaYaounde'), tickets: 76, revenue: 1900000 },
+                { route: t('agencyAnalyticsDashboard.yaoundeBafoussam'), tickets: 45, revenue: 1125000 },
+                { route: t('agencyAnalyticsDashboard.bafoussamYaounde'), tickets: 35, revenue: 875000 },
             ],
             occupancy_by_period: Array.from({ length: periods }, (_, i) => ({
                 period: `P${i + 1}`,
@@ -135,7 +137,7 @@ const AgencyAnalyticsDashboard: React.FC = () => {
         >
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.title}>Dashboard Analytics</Text>
+                <Text style={styles.title}>{t('agencyAnalyticsDashboard.dashboardAnalytics')}/Text>
                 <View style={styles.periodSelector}>
                     {(['day', 'week', 'month'] as const).map((p) => (
                         <TouchableOpacity
@@ -158,14 +160,14 @@ const AgencyAnalyticsDashboard: React.FC = () => {
                         <View style={styles.statCard}>
                             <SafeIcon name="ticket" size={24} color={modernColors.primary} />
                             <Text style={styles.statValue}>{data.overview.total_tickets}</Text>
-                            <Text style={styles.statLabel}>Tickets vendus</Text>
+                            <Text style={styles.statLabel}>{t('agencyAnalyticsDashboard.ticketsVendus')}/Text>
                         </View>
                         <View style={styles.statCard}>
                             <SafeIcon name="dollar-sign" size={24} color="#10B981" />
                             <Text style={styles.statValue}>
                                 {(data.overview.total_revenue / 1000).toFixed(0)}k
                             </Text>
-                            <Text style={styles.statLabel}>Revenus (FCFA)</Text>
+                            <Text style={styles.statLabel}>{t('agencyAnalyticsDashboard.revenusFcfa')}/Text>
                         </View>
                         <View style={styles.statCard}>
                             <SafeIcon name="users" size={24} color="#F59E0B" />
@@ -183,7 +185,7 @@ const AgencyAnalyticsDashboard: React.FC = () => {
 
                     {/* Graphique revenus */}
                     <View style={styles.chartContainer}>
-                        <Text style={styles.chartTitle}>Évolution des revenus</Text>
+                        <Text style={styles.chartTitle}>{t('agencyAnalyticsDashboard.evolutionDesRevenus')}</Text>
                         <LineChart
                             data={{
                                 labels: data.revenue_by_period.map((d) => d.period),
@@ -203,7 +205,7 @@ const AgencyAnalyticsDashboard: React.FC = () => {
 
                     {/* Graphique tickets */}
                     <View style={styles.chartContainer}>
-                        <Text style={styles.chartTitle}>Tickets vendus</Text>
+                        <Text style={styles.chartTitle}>{t('agencyAnalyticsDashboard.ticketsVendus')}/Text>
                         <BarChart
                             data={{
                                 labels: data.tickets_by_period.map((d) => d.period),

@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../config/api';
 import { modernColors } from '../styles/theme';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface PubliciteVersion {
     id: number;
@@ -24,7 +25,8 @@ const PubliciteVersionHistory: React.FC<PubliciteVersionHistoryProps> = ({
     campaignId,
     onVersionSelect,
 }) => {
-    const [versions, setVersions] = useState<PubliciteVersion[]>([]);
+        const { t } = useLanguageSafe();
+const [versions, setVersions] = useState<PubliciteVersion[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [restoring, setRestoring] = useState(false);
@@ -65,7 +67,7 @@ const PubliciteVersionHistory: React.FC<PubliciteVersionHistoryProps> = ({
                 onVersionSelect(versionNumber);
             }
         } catch (err: any) {
-            alert(err.response?.data?.error || 'Erreur lors de la restauration');
+            alert(err.response?.data?.error || t('publiciteVersionHistory.erreurLorsDeLaRestauration'));
             console.error('Erreur restauration:', err);
         } finally {
             setRestoring(false);
@@ -110,7 +112,7 @@ const PubliciteVersionHistory: React.FC<PubliciteVersionHistoryProps> = ({
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement de l'historique...</Text>
+                <Text style={styles.loadingText}>{t('publiciteVersionHistory.chargementDeLhistorique')}</Text>
             </View>
         );
     }
@@ -127,7 +129,7 @@ const PubliciteVersionHistory: React.FC<PubliciteVersionHistoryProps> = ({
         return (
             <View style={styles.emptyContainer}>
                 <SafeIcon name="history" size={64} color={modernColors.textSecondary} />
-                <Text style={styles.emptyTitle}>Aucun historique disponible</Text>
+                <Text style={styles.emptyTitle}>{t('publiciteVersionHistory.aucunHistoriqueDisponible')}</Text>
                 <Text style={styles.emptyText}>
                     Les modifications seront enregistrées automatiquement.
                 </Text>
@@ -139,7 +141,7 @@ const PubliciteVersionHistory: React.FC<PubliciteVersionHistoryProps> = ({
         <ScrollView style={styles.container}>
             <View style={styles.header}>
                 <SafeIcon name="history" size={24} color={modernColors.primary} />
-                <Text style={styles.headerTitle}>Historique des Modifications</Text>
+                <Text style={styles.headerTitle}>{t('publiciteVersionHistory.historiqueDesModifications')}/Text>
                 <View style={styles.badge}>
                     <Text style={styles.badgeText}>{versions.length}</Text>
                 </View>

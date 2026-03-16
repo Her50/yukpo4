@@ -19,6 +19,7 @@ import ServicesStatistics from '../components/ServicesStatistics';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2; // 2 colonnes avec padding
@@ -53,6 +54,7 @@ interface UnifiedService {
 
 const SpecializedServicesHubScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -107,7 +109,7 @@ const SpecializedServicesHubScreen: React.FC = () => {
         },
         {
             id: 'hopital',
-            name: 'Hôpital',
+            name: t('specializedServicesHubScreen.hopital'),
             icon: 'Hospital',
             color: '#EF4444',
             count: statistics?.by_type?.hopital || 0,
@@ -161,7 +163,7 @@ const SpecializedServicesHubScreen: React.FC = () => {
         },
         {
             id: 'hotel',
-            name: 'Hôtel',
+            name: t('specializedServicesHubScreen.hotel'),
             icon: 'Building',
             color: '#1E3A5F',
             count: statistics?.by_type?.hotel || 0,
@@ -170,7 +172,7 @@ const SpecializedServicesHubScreen: React.FC = () => {
         },
         {
             id: 'meuble',
-            name: 'Meublé',
+            name: t('specializedServicesHubScreen.meuble'),
             icon: 'Home',
             color: '#8B5CF6',
             count: statistics?.by_type?.meuble || 0,
@@ -244,7 +246,7 @@ const SpecializedServicesHubScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('specializedServicesHub.chargement')}</Text>
             </View>
         );
     }
@@ -260,7 +262,7 @@ const SpecializedServicesHubScreen: React.FC = () => {
         >
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.title}>Services Spécialisés</Text>
+                <Text style={styles.title}>{t('specializedServicesHub.servicesSpecialises')}</Text>
             </View>
 
             {/* ✅ NOUVEAU: Composant statistiques */}
@@ -278,7 +280,7 @@ const SpecializedServicesHubScreen: React.FC = () => {
                 <View style={styles.sectionHeader}>
                     <View style={styles.sectionHeaderLeft}>
                         <SafeIcon name="heart-pulse" size={20} color="#EF4444" type="lucide" />
-                        <Text style={styles.sectionTitle}>Santé</Text>
+                        <Text style={styles.sectionTitle}>{t('specializedServicesHub.sante')}</Text>
                     </View>
                 </View>
                 <View style={styles.quickAccessGrid}>
@@ -331,14 +333,14 @@ const SpecializedServicesHubScreen: React.FC = () => {
                                 (navigation as any).navigate('MyTrips');
                             }}
                         >
-                            <Text style={styles.seeAllText}>Mes trajets</Text>
+                            <Text style={styles.seeAllText}>{t('specializedServicesHub.mesTrajets')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => {
                                 (navigation as any).navigate('MesTaxis');
                             }}
                         >
-                            <Text style={styles.seeAllText}>Mes taxis</Text>
+                            <Text style={styles.seeAllText}>{t('specializedServicesHub.mesTaxis')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -384,7 +386,7 @@ const SpecializedServicesHubScreen: React.FC = () => {
                     <View style={styles.sectionHeader}>
                         <View style={styles.sectionHeaderLeft}>
                             <SafeIcon name="Building" size={20} color="#1E3A5F" type="lucide" />
-                            <Text style={styles.sectionTitle}>Hébergement</Text>
+                            <Text style={styles.sectionTitle}>{t('specializedServicesHub.hebergement')}</Text>
                         </View>
                     </View>
                     <View style={styles.quickAccessGrid}>
@@ -561,13 +563,13 @@ const SpecializedServicesHubScreen: React.FC = () => {
             {services.length > 0 && (
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Mes Services</Text>
+                        <Text style={styles.sectionTitle}>{t('specializedServicesHub.mesServices')}</Text>
                         <TouchableOpacity
                             onPress={() => {
                                 (navigation as any).navigate('GestionServicesSpecialises');
                             }}
                         >
-                            <Text style={styles.seeAllText}>Voir tous</Text>
+                            <Text style={styles.seeAllText}>{t('specializedServicesHub.voirTous')}/Text>
                         </TouchableOpacity>
                     </View>
 

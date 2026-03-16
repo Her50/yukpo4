@@ -92,7 +92,7 @@ const ManageBusSeatsScreen: React.FC = () => {
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
-                        text: 'Débloquer',
+                        text: t('manageBusSeats.debloquer'),
                         onPress: async () => {
                             try {
                                 const response = await apiPost('/api/bus-tickets/seats/unblock', {
@@ -185,7 +185,7 @@ const ManageBusSeatsScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Gestion des places</Text>
+                <Text style={styles.title}>{t('manageBusSeats.gestionDesPlaces')}/Text>
                 <View style={styles.placeholder} />
             </View>
 
@@ -198,14 +198,14 @@ const ManageBusSeatsScreen: React.FC = () => {
             {loading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('manageBusSeats.chargement')}</Text>
                 </View>
             ) : (
                 <ScrollView style={styles.content}>
                     {/* Liste des places bloquées */}
                     {blockedSeats.length > 0 && (
                         <View style={styles.blockedListContainer}>
-                            <Text style={styles.sectionTitle}>Places bloquées ({blockedSeats.length})</Text>
+                            <Text style={styles.sectionTitle}>{t('manageBusSeatsScreen.blockedSeats')} ({blockedSeats.length})</Text>
                             {blockedSeats.map((block) => (
                                 <View key={block.id} style={styles.blockedItem}>
                                     <View style={styles.blockedItemLeft}>
@@ -227,21 +227,21 @@ const ManageBusSeatsScreen: React.FC = () => {
 
                     {/* Plan des sièges */}
                     <View style={styles.seatMapContainer}>
-                        <Text style={styles.sectionTitle}>Plan des sièges</Text>
+                        <Text style={styles.sectionTitle}>{t('manageBusSeats.planDesSieges')}</Text>
                         <View style={styles.legend}>
                             <View style={styles.legendItem}>
                                 <View style={[styles.legendSeat, styles.seatAvailable]} />
-                                <Text style={styles.legendText}>Disponible</Text>
+                                <Text style={styles.legendText}>{t('manageBusSeats.disponible')}</Text>
                             </View>
                             <View style={styles.legendItem}>
                                 <View style={[styles.legendSeat, styles.seatBlocked]} />
-                                <Text style={styles.legendText}>Bloquée</Text>
+                                <Text style={styles.legendText}>{t('manageBusSeats.bloquee')}</Text>
                             </View>
                         </View>
 
                         {rows.map((row) => (
                             <View key={row} style={styles.row}>
-                                <Text style={styles.rowLabel}>Rangée {row}</Text>
+                                <Text style={styles.rowLabel}>{t('manageBusSeatsScreen.rangee')} {row}</Text>
                                 <View style={styles.seatsInRow}>
                                     {seatsByRow[row].map((seat) => {
                                         const status = getSeatStatus(seat.seat_id);
@@ -309,21 +309,21 @@ const ManageBusSeatsScreen: React.FC = () => {
                                             {reason === 'maintenance'
                                                 ? 'Maintenance'
                                                 : reason === 'damaged'
-                                                    ? 'Endommagée'
+                                                    ? t('manageBusSeatsScreen.endommagee')
                                                     : reason === 'reserved'
-                                                        ? 'Réservée'
+                                                        ? t('manageBusSeatsScreen.reservee')
                                                         : 'Autre'}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
 
-                            <Text style={styles.modalLabel}>Détails (optionnel)</Text>
+                            <Text style={styles.modalLabel}>{t('manageBusSeats.detailsOptionnel')}</Text>
                             <TextInput
                                 style={styles.modalInput}
                                 value={blockReasonDetails}
                                 onChangeText={setBlockReasonDetails}
-                                placeholder="Ex: Siège cassé, réparation en cours..."
+                                placeholder={t('manageBusSeats.exSiegeCasseReparationEn')}
                                 multiline
                                 numberOfLines={3}
                             />

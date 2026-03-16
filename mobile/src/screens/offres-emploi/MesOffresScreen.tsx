@@ -19,6 +19,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface OffreEmploi {
     id: number;
@@ -33,6 +34,7 @@ interface OffreEmploi {
 
 const MesOffresScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [offres, setOffres] = useState<OffreEmploi[]>([]);
     const [loading, setLoading] = useState(true);
@@ -64,7 +66,7 @@ const MesOffresScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('mesOffres.chargement')}</Text>
             </View>
         );
     }
@@ -75,7 +77,7 @@ const MesOffresScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mes Offres</Text>
+                <Text style={styles.title}>{t('mesOffres.mesOffres')}</Text>
                 <TouchableOpacity
                     onPress={() => {
                         hapticPress();
@@ -90,7 +92,7 @@ const MesOffresScreen: React.FC = () => {
             {offres.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="briefcase" size={64} color="#9CA3AF" />
-                    <Text style={styles.emptyText}>Aucune offre créée</Text>
+                    <Text style={styles.emptyText}>{t('mesOffres.aucuneOffreCreee')}</Text>
                     <Text style={styles.emptySubtext}>
                         Créez votre première offre d'emploi pour commencer à recevoir des candidatures
                     </Text>
@@ -101,7 +103,7 @@ const MesOffresScreen: React.FC = () => {
                             (navigation as any).navigate('CreateOffre');
                         }}
                     >
-                        <Text style={styles.createButtonText}>Créer une offre</Text>
+                        <Text style={styles.createButtonText}>{t('mesOffres.creerUneOffre')}</Text>
                     </TouchableOpacity>
                 </View>
             ) : (
@@ -166,7 +168,7 @@ const OffreCard: React.FC<OffreCardProps> = ({ offre, onPress }) => {
                                 },
                             ]}
                         >
-                            {offre.statut === 'active' ? 'Active' : 'Fermée'}
+                            {offre.statut === 'active' ? 'Active' : t('mesOffresScreen.fermee')}
                         </Text>
                     </View>
                 </View>

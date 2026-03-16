@@ -15,6 +15,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
 import assuranceService, { InsuranceSearchFilters } from '../../services/assuranceService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface InsuranceResult {
     id: number;
@@ -33,6 +34,7 @@ interface InsuranceResult {
 
 const InsuranceServicesResultsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const params = route.params as { filters?: any } | undefined;
     const filters = params?.filters || {};
@@ -65,7 +67,7 @@ const InsuranceServicesResultsScreen: React.FC = () => {
             // Transformer en format affichable
             const mapped = rawResults.map((item: any) => ({
                 id: item.id,
-                name: item.titre || 'Service assurance',
+                name: item.titre || t('insuranceServicesResults.serviceAssurance'),
                 description: item.description || '',
                 category: item.type_assurance || 'assurance',
                 address: item.adresse || item.ville || '',
@@ -142,7 +144,7 @@ const InsuranceServicesResultsScreen: React.FC = () => {
         filters.type_assurance,
         filters.compagnie,
         filters.ville,
-    ].filter(Boolean).join(' · ') || 'Tous les résultats';
+    ].filter(Boolean).join(' · ') || t('insuranceServicesResults.tousLesResultats');
 
     return (
         <View style={styles.container}>
@@ -151,7 +153,7 @@ const InsuranceServicesResultsScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <View style={styles.headerTextContainer}>
-                    <Text style={styles.title}>Résultats Assurance</Text>
+                    <Text style={styles.title}>{t('insuranceServicesResults.resultatsAssurance')}</Text>
                     <Text style={styles.subtitle} numberOfLines={1}>{filterSummary}</Text>
                 </View>
             </View>
@@ -159,15 +161,15 @@ const InsuranceServicesResultsScreen: React.FC = () => {
             {loading && !refreshing ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Recherche en cours...</Text>
+                    <Text style={styles.loadingText}>{t('insuranceServicesResults.rechercheEnCours')}/Text>
                 </View>
             ) : results.length === 0 ? (
                 <View style={styles.centerContainer}>
                     <SafeIcon name="search-x" size={64} color="#D1D5DB" type="lucide" />
-                    <Text style={styles.emptyTitle}>Aucun résultat</Text>
-                    <Text style={styles.emptyText}>Essayez d'élargir vos critères de recherche</Text>
+                    <Text style={styles.emptyTitle}>{t('insuranceServicesResults.aucunResultat')}</Text>
+                    <Text style={styles.emptyText}>{t('insuranceServicesResults.essayezDelargirVosCriteresDe')}</Text>
                     <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
-                        <Text style={styles.retryText}>Modifier la recherche</Text>
+                        <Text style={styles.retryText}>{t('insuranceServicesResultsScreen.modifierLaRecherche')}</Text>
                     </TouchableOpacity>
                 </View>
             ) : (

@@ -11,14 +11,16 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import PaymentMethodPrompt from '../../components/PaymentMethodPrompt';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { usePaymentMethodCheck } from '../../hooks/usePaymentMethodCheck';
 import { userApi } from '../../services/api';
 import { immobilierService } from '../../services/immobilierService';
 import { modernColors, modernStyles } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type RouteParams = {
     reservationId: number;
@@ -40,6 +42,8 @@ const HotelBookingPaymentScreen: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [devise, setDevise] = useState('FCFA');
     const [userBalance, setUserBalance] = useState<number>(user?.credits || 0);
+    const [showPaymentPrompt, setShowPaymentPrompt] = useState(false);
+    const paymentCheck = usePaymentMethodCheck();
 
     // Charger le solde utilisateur
     React.useEffect(() => {
@@ -69,6 +73,15 @@ const HotelBookingPaymentScreen: React.FC = () => {
             return;
         }
 
+        // ✅ Vérifier les moyens de paiement si mobile_money sélectionné
+        if (paymentMethod === 'mobile_money') {
+            const needsPayment = await paymentCheck.checkAndPrompt();
+            if (needsPayment) {
+                setShowPaymentPrompt(true);
+                return;
+            }
+        }
+
         // Vérifier le solde avant paiement
         if (userBalance < montantAPayer) {
             Alert.alert(
@@ -77,7 +90,7 @@ const HotelBookingPaymentScreen: React.FC = () => {
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
-                        text: 'Recharger',
+                        text: t('common.reload'),
                         onPress: () => (navigation as any).navigate('RechargeTokens'),
                     },
                 ]
@@ -98,11 +111,11 @@ const HotelBookingPaymentScreen: React.FC = () => {
             if (resData?.success && resData?.data) {
                 const payResult = resData.data;
                 Alert.alert(
-                    'Paiement réussi',
-                    `Votre paiement de ${formatPrice(payResult.amount_paid)} a été confirmé.${payResult.new_payment_status === 'fully_paid' ? '\n\nVotre réservation est confirmée !' : '\n\nMontant restant: ' + formatPrice(payResult.remaining_amount)}`,
+                    t('hotelBookingPaymentScreen.paiementReussi'),
+                    `Votre paiement de ${formatPrice(payResult.amount_paid)} a été confirmé.${payResult.new_payment_status === 'fully_paid' ? t('hotelBookingPaymentScreen.nnvotreReservationEstConfirmee') : '\n\nMontant restant: ' + formatPrice(payResult.remaining_amount)}`,
                     [
                         {
-                            text: 'Voir mon QR code',
+                            text: t('hotelBookingPaymentScreen.voirMonQrCode'),
                             onPress: () => {
                                 (navigation as any).navigate('HotelReservationQR', {
                                     reservationId: reservationId,
@@ -149,7 +162,7 @@ const HotelBookingPaymentScreen: React.FC = () => {
                 {/* Solde utilisateur */}
                 <View style={[styles.section, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
                     <View>
-                        <Text style={{ fontSize: 13, color: '#6B7280' }}>Votre solde</Text>
+                        <Text style={{ fontSize: 13, color: '#6B7280' }}>{t('hotelBookingPayment.votreSolde')}</Text>
                         <Text style={{ fontSize: 18, fontWeight: '700', color: userBalance >= montantAPayer ? '#10B981' : '#EF4444' }}>
                             {userBalance.toLocaleString()} {devise}
                         </Text>
@@ -167,14 +180,14 @@ const HotelBookingPaymentScreen: React.FC = () => {
 
                 {/* Résumé réservation */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>📋 Réservation</Text>
+                    <Text style={styles.sectionTitle}>{t('hotelBookingPayment.reservation')}</Text>
                     <Text style={styles.propertyName}>{propertyName}</Text>
                     <Text style={styles.reservationId}>ID: #{reservationId}</Text>
                 </View>
 
                 {/* Type de paiement */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>💳 Type de paiement</Text>
+                    <Text style={styles.sectionTitle}>{t('hotelBookingPayment.typeDePaiement')}</Text>
 
                     <TouchableOpacity
                         style={[
@@ -236,14 +249,14 @@ const HotelBookingPaymentScreen: React.FC = () => {
 
                 {/* Méthode de paiement */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>💳 Méthode de paiement</Text>
+                    <Text style={styles.sectionTitle}>{t('hotelBookingPayment.methodeDePaiement')}</Text>
 
                     <View style={styles.paymentMethodsGrid}>
                         {[
                             { value: 'mobile_money', label: 'Mobile Money', icon: 'smartphone' },
-                            { value: 'card', label: 'Carte bancaire', icon: 'credit-card' },
+                            { value: 'card', label: t('hotelBookingPayment.carteBancaire'), icon: 'credit-card' },
                             { value: 'bank_transfer', label: 'Virement bancaire', icon: 'bank' },
-                            { value: 'cash', label: 'Espèces', icon: 'dollar-sign' },
+                            { value: 'cash', label: t('hotelBookingPayment.especes'), icon: 'dollar-sign' },
                         ].map((method) => (
                             <TouchableOpacity
                                 key={method.value}
@@ -272,7 +285,7 @@ const HotelBookingPaymentScreen: React.FC = () => {
                 {/* Résumé */}
                 <View style={styles.summarySection}>
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Montant total</Text>
+                        <Text style={styles.summaryLabel}>{t('hotelBookingPayment.montantTotal')}/Text>
                         <Text style={styles.summaryValue}>{formatPrice(montantTotal)}</Text>
                     </View>
                     {paymentType === 'advance' && (
@@ -282,13 +295,13 @@ const HotelBookingPaymentScreen: React.FC = () => {
                                 <Text style={styles.summaryValue}>{formatPrice(montantAvance)}</Text>
                             </View>
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Reste à payer</Text>
+                                <Text style={styles.summaryLabel}>{t('hotelBookingPayment.resteAPayer')}</Text>
                                 <Text style={styles.summaryValue}>{formatPrice(montantRestant)}</Text>
                             </View>
                         </>
                     )}
                     <View style={[styles.summaryRow, styles.summaryTotal]}>
-                        <Text style={styles.summaryTotalLabel}>À payer maintenant</Text>
+                        <Text style={styles.summaryTotalLabel}>{t('hotelBookingPayment.aPayerMaintenant')}</Text>
                         <Text style={styles.summaryTotalValue}>
                             {formatPrice(paymentType === 'advance' ? montantAvance : montantTotal)}
                         </Text>
@@ -310,11 +323,21 @@ const HotelBookingPaymentScreen: React.FC = () => {
                     <SafeIcon name="info" size={20} color={modernColors.primary} />
                     <Text style={styles.infoText}>
                         {paymentType === 'advance'
-                            ? 'Vous pourrez payer le reste à votre arrivée. La réservation sera confirmée après le paiement.'
-                            : 'Votre réservation sera confirmée immédiatement après le paiement.'}
+                            ? t('hotelBookingPaymentScreen.vousPourrezPayerLeResteA')
+                            : t('hotelBookingPaymentScreen.votreReservationSeraConfirmeeImmediatementApres')}
                     </Text>
                 </View>
             </ScrollView>
+
+            <PaymentMethodPrompt
+                visible={showPaymentPrompt}
+                onClose={() => setShowPaymentPrompt(false)}
+                onSaved={() => {
+                    paymentCheck.refresh();
+                    setShowPaymentPrompt(false);
+                }}
+                context="payment"
+            />
         </SafeNativeView>
     );
 };

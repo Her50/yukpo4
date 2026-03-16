@@ -82,7 +82,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
     const handleDeleteVariant = (variantId: string) => {
         Alert.alert(
             'Supprimer la variante',
-            'Êtes-vous sûr de vouloir supprimer cette variante ?',
+            t('productVariantManager.etesvousSurDeVouloirSupprimerCette'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -132,7 +132,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
     const handleRemoveImage = (variantId: string) => {
         Alert.alert(
             'Supprimer l\'image',
-            'Êtes-vous sûr de vouloir supprimer cette image ?',
+            t('productVariantManager.etesvousSurDeVouloirSupprimerCette'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -165,21 +165,21 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                             onPress={handleAddVariant}
                         >
                             <SafeIcon name="plus" size={16} color="#FFFFFF" />
-                            <Text style={styles.addButtonTextPrimary}>Ajouter</Text>
+                            <Text style={styles.addButtonTextPrimary}>{t('productVariantManager.ajouter')}</Text>
                         </TouchableOpacity>
                     </View>
                 )}
             </View>
 
             <Text style={styles.hint}>
-                💡 <Text style={styles.hintBold}>Astuce :</Text> Ajoutez toutes les quantités disponibles (Ex: 1kg, 5kg, 25kg) avec leur prix respectif
+                💡 <Text style={styles.hintBold}>Astuce :</Text>{t('productVariantManager.ajoutezToutesLesQuantitesDisponiblesEx')}
             </Text>
 
             {/* Liste des variantes */}
             {variants.length === 0 ? (
                 <View style={styles.emptyState}>
                     <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyText}>Aucune variante ajoutée</Text>
+                    <Text style={styles.emptyText}>{t('productVariantManager.aucuneVarianteAjoutee')}</Text>
                     <Text style={styles.emptyHint}>
                         Ajoutez des variantes pour proposer différentes quantités
                     </Text>
@@ -245,7 +245,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                                     {/* Ligne 1: Quantité + Unité */}
                                     <View style={styles.fieldRow}>
                                         <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                            <Text style={styles.fieldLabel}>Quantité <Text style={styles.required}>*</Text></Text>
+                                            <Text style={styles.fieldLabel}>{t('productVariantManager.quantite')}<Text style={styles.required}>*</Text></Text>
                                             <NativeInput
                                                 placeholder="Ex: 1"
                                                 value={variant.quantite}
@@ -256,7 +256,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                                         </View>
                                         <View style={[{ flex: 1 }]}>
                                             <SelectModalitySelector
-                                                label="Unité"
+                                                label={t('productVariantManager.unite')}
                                                 value={variant.unite}
                                                 productType={productType}
                                                 fieldName="unites"
@@ -276,7 +276,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                                                 productType={productType}
                                                 fieldName="conditionnements"
                                                 onSelect={(value) => handleUpdateVariant(variant.id, 'conditionnement', value)}
-                                                placeholder="Sachet, Boîte..."
+                                                placeholder={t('productVariantManager.sachetBoite')}
                                             />
                                         </View>
                                         <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -294,7 +294,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                                     {/* Ligne 3: Stock disponible */}
                                     <View style={styles.fieldRow}>
                                         <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                            <Text style={styles.fieldLabel}>Stock disponible</Text>
+                                            <Text style={styles.fieldLabel}>{t('productVariantManager.stockDisponible')}/Text>
                                             <NativeInput
                                                 placeholder="0"
                                                 value={variant.stockDisponible?.toString() || ''}
@@ -304,7 +304,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                                             />
                                         </View>
                                         <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                            <Text style={styles.fieldLabel}>Référence (opt.)</Text>
+                                            <Text style={styles.fieldLabel}>{t('productVariantManager.referenceOpt')}</Text>
                                             <NativeInput
                                                 placeholder="SKU-001"
                                                 value={variant.reference || ''}

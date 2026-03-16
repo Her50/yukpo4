@@ -9,6 +9,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Product {
     service_id: number;
@@ -35,6 +36,7 @@ const ResultsMapView: React.FC<ResultsMapViewProps> = ({
     visible,
 }) => {
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     // Filtrer les produits avec coordonnées valides
     const productsWithCoordinates = useMemo(() => {
@@ -88,7 +90,7 @@ const ResultsMapView: React.FC<ResultsMapViewProps> = ({
         return (
             <View style={styles.emptyContainer}>
                 <SafeIcon name="map-pin" size={48} color={modernColors.textSecondary} />
-                <Text style={styles.emptyText}>Aucun résultat avec localisation GPS</Text>
+                <Text style={styles.emptyText}>{t('resultsMapView.aucunResultatAvecLocalisationGps')}</Text>
                 <Text style={styles.emptySubtext}>
                     Activez la géolocalisation pour voir les résultats sur la carte
                 </Text>
@@ -100,7 +102,7 @@ const ResultsMapView: React.FC<ResultsMapViewProps> = ({
         return (
             <View style={styles.emptyContainer}>
                 <SafeIcon name="map" size={48} color={modernColors.textSecondary} />
-                <Text style={styles.emptyText}>Chargement de la carte...</Text>
+                <Text style={styles.emptyText}>{t('resultsMapView.chargementDeLaCarte')}</Text>
             </View>
         );
     }
@@ -123,7 +125,7 @@ const ResultsMapView: React.FC<ResultsMapViewProps> = ({
                             latitude: location.coords.latitude,
                             longitude: location.coords.longitude,
                         }}
-                        title="Votre position"
+                        title={t('resultsMapView.votrePosition')}
                         pinColor={modernColors.primary}
                     />
                 )}
@@ -162,7 +164,7 @@ const ResultsMapView: React.FC<ResultsMapViewProps> = ({
             <View style={styles.legend}>
                 <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: modernColors.primary }]} />
-                    <Text style={styles.legendText}>Votre position</Text>
+                    <Text style={styles.legendText}>{t('resultsMapView.votrePosition')}</Text>
                 </View>
                 <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />

@@ -9,6 +9,7 @@ import * as Sentry from 'sentry-expo';
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Props {
     children: ReactNode;
@@ -139,10 +140,10 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
                             <SafeIcon name="alert-circle" size={64} color={modernColors.error} />
                         </View>
 
-                        <Text style={styles.title}>Oups ! Une erreur s'est produite</Text>
+                        <Text style={styles.title}>{t('errorBoundaryWithRetry.oupsUneErreurSestProduite')}/Text>
 
                         <Text style={styles.message}>
-                            L'application a rencontré une erreur inattendue.{canRetry ? ' Tentative de récupération automatique...' : ''}
+                            L'application a rencontré une erreur inattendue.{canRetry ? t('errorBoundaryWithRetry.tentativeDeRecuperationAutomatique') : ''}
                         </Text>
 
                         {isRetrying && (
@@ -170,7 +171,7 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
                         <View style={styles.actions}>
                             {canRetry && !isRetrying && (
                                 <NativeButton
-                                    title="🔄 Réessayer maintenant"
+                                    title={t('errorBoundaryWithRetry.reessayerMaintenant')}
                                     onPress={this.handleManualRetry}
                                     variant="primary"
                                     size="large"
@@ -179,7 +180,7 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
                             )}
 
                             <NativeButton
-                                title="🏠 Retour à l'accueil"
+                                title={t('errorBoundaryWithRetry.retourAL')}accueil"
                                 onPress={() => {
                                     // Navigation sera gérée par le parent
                                     this.setState({

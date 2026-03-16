@@ -3,6 +3,7 @@
 import React from 'react';
 // @ts-check
 import { ROUTES } from "@/routes/routes";
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface MenuItem {
   label: string;
@@ -10,10 +11,10 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  { label: 'Accueil', path: ROUTES.HOME },
-  { label: 'Tableau de bord', path: ROUTES.DASHBOARD },
-  { label: 'À propos', path: ROUTES.ABOUT },
-  { label: 'Connexion', path: ROUTES.LOGIN },
+  { label: t('menuAuto.accueil'), path: ROUTES.HOME },
+  { label: t('menuAuto.tableauDeBord'), path: ROUTES.DASHBOARD },
+  { label: t('menuAuto.aPropos'), path: ROUTES.ABOUT },
+  { label: t('menuAuto.connexion'), path: ROUTES.LOGIN },
   // Ajoute d'autres routes ici si nécessaire
 ];
 

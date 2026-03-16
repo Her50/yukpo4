@@ -174,6 +174,7 @@ pub struct RegisterInput {
     pub partner_logo: Option<String>, // ✅ NOUVEAU: Logo du partenaire (base64)
     pub partner_lat: Option<f64>, // ✅ NOUVEAU: Latitude GPS
     pub partner_lng: Option<f64>, // ✅ NOUVEAU: Longitude GPS
+    pub payment_methods: Option<serde_json::Value>, // ✅ NOUVEAU: Moyens de paiement (MTN/Orange Money)
 }
 
 /// ? Inscription manuelle
@@ -952,6 +953,24 @@ pub async fn register_user(
         &secret,
         payload.partner_type.clone(), // ✅ NOUVEAU: passer le type de partenaire
     )?;
+
+    // ✅ NOUVEAU: Sauvegarder les moyens de paiement si fournis
+    if let Some(ref pm) = payload.payment_methods {
+        if !pm.is_null() && pm != &serde_json::json!({}) {
+            let _ = sqlx::query(
+                "UPDATE users SET payment_methods = $1, updated_at = NOW() WHERE id = $2",
+            )
+            .bind(pm)
+            .bind(new.id)
+            .execute(db)
+            .await
+            .map_err(|e| log::error!("[register_user] Erreur sauvegarde payment_methods: {e:?}"));
+            info!(
+                "[register_user] ✅ payment_methods sauvegardés pour user_id={}",
+                new.id
+            );
+        }
+    }
 
     // ✅ NOUVEAU 2026-02-25: Sauvegarder le téléphone si fourni
     if let Some(ref phone) = payload.phone {

@@ -10,6 +10,7 @@ import {
     View
 } from 'react-native';
 import { WEATHER_CONFIG, getWeatherApiKey, getWeatherApiUrl } from '../config/weatherConfig';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -40,7 +41,8 @@ const WeatherForecastModal: React.FC<WeatherForecastModalProps> = ({
     location,
     days = 5
 }) => {
-    const [forecast, setForecast] = useState<WeatherForecast[]>([]);
+        const { t } = useLanguageSafe();
+const [forecast, setForecast] = useState<WeatherForecast[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedDays, setSelectedDays] = useState(days);
@@ -146,7 +148,7 @@ const WeatherForecastModal: React.FC<WeatherForecastModalProps> = ({
 
                 if (!response.ok) {
                     console.error('[WeatherForecastModal] Erreur API prévisions:', response.status, response.statusText);
-                    throw new Error(`Erreur API prévisions: ${response.status}`);
+                    throw new Error(t('weatherForecastModal.erreurApiPrevisions', { response_status: response.status }));
                 }
 
                 const data = await response.json();
@@ -240,7 +242,7 @@ const WeatherForecastModal: React.FC<WeatherForecastModalProps> = ({
             const errorMessage = err?.message || '';
             const isExpectedError =
                 errorMessage.includes('Position GPS requise') ||
-                errorMessage.includes('Clé API météo non configurée');
+                errorMessage.includes(t('weatherForecastModal.cleApiMeteoNonConfiguree'));
 
             if (isExpectedError) {
                 // Erreur attendue - logger en info/warning, pas en error
@@ -356,7 +358,7 @@ const WeatherForecastModal: React.FC<WeatherForecastModalProps> = ({
             <View style={styles.container}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.title}>Prévisions météo</Text>
+                    <Text style={styles.title}>{t('weatherForecast.previsionsMeteo')}</Text>
                     <TouchableOpacity style={styles.closeButton} onPress={onClose}>
                         <Text style={styles.closeButtonText}>✕</Text>
                     </TouchableOpacity>
@@ -364,7 +366,7 @@ const WeatherForecastModal: React.FC<WeatherForecastModalProps> = ({
 
                 {/* Sélecteur de période */}
                 <View style={styles.periodSelector}>
-                    <Text style={styles.periodTitle}>Période :</Text>
+                    <Text style={styles.periodTitle}>{t('weatherForecast.periode')}</Text>
                     <View style={styles.periodButtons}>
                         {WEATHER_CONFIG.AVAILABLE_PERIODS.map((period) => (
                             <TouchableOpacity
@@ -394,14 +396,14 @@ const WeatherForecastModal: React.FC<WeatherForecastModalProps> = ({
                     {loading ? (
                         <View style={styles.loadingContainer}>
                             <ActivityIndicator size="large" color="#87CEEB" />
-                            <Text style={styles.loadingText}>Chargement des prévisions...</Text>
+                            <Text style={styles.loadingText}>{t('weatherForecast.chargementDesPrevisions')}</Text>
                         </View>
                     ) : error && forecast.length === 0 ? (
                         <View style={styles.errorContainer}>
                             <Text style={styles.errorIcon}>🌤️</Text>
                             <Text style={styles.errorText}>{error}</Text>
                             <TouchableOpacity style={styles.retryButton} onPress={() => fetchWeatherForecast()}>
-                                <Text style={styles.retryButtonText}>Réessayer</Text>
+                                <Text style={styles.retryButtonText}>{t('weatherForecast.reessayer')}</Text>
                             </TouchableOpacity>
                         </View>
                     ) : forecast.length > 0 ? (
@@ -413,9 +415,9 @@ const WeatherForecastModal: React.FC<WeatherForecastModalProps> = ({
                     ) : (
                         <View style={styles.errorContainer}>
                             <Text style={styles.errorIcon}>🌤️</Text>
-                            <Text style={styles.errorText}>Aucune donnée météo disponible</Text>
+                            <Text style={styles.errorText}>{t('weatherForecast.aucuneDonneeMeteoDisponible')}</Text>
                             <TouchableOpacity style={styles.retryButton} onPress={() => fetchWeatherForecast()}>
-                                <Text style={styles.retryButtonText}>Charger les données</Text>
+                                <Text style={styles.retryButtonText}>{t('weatherForecast.chargerLesDonnees')}</Text>
                             </TouchableOpacity>
                         </View>
                     )}

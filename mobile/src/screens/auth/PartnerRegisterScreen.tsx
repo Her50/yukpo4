@@ -28,6 +28,12 @@ const PartnerRegisterScreen: React.FC = () => {
   const routeParams = (route.params as any) || {};
   const initialPartnerType = routeParams.partner_type || '';
 
+  // ✅ Moyens de paiement pour recevoir les reversements
+  const [paymentMtnEnabled, setPaymentMtnEnabled] = useState(false);
+  const [paymentMtnPhone, setPaymentMtnPhone] = useState('');
+  const [paymentOrangeEnabled, setPaymentOrangeEnabled] = useState(false);
+  const [paymentOrangePhone, setPaymentOrangePhone] = useState('');
+
   const [form, setForm] = useState({
     partner_name: '',
     email: '',
@@ -74,21 +80,21 @@ const PartnerRegisterScreen: React.FC = () => {
   // ✅ TOUS les types partenaires valides selon le backend
   // ✅ TRIÉ PAR ORDRE ALPHABÉTIQUE pour faciliter la recherche
   const partnerTypes = [
-    { value: 'agence de voyage', label: 'Agence de Voyage' },
+    { value: 'agence de voyage', label: t('partnerRegister.agenceDeVoyage') },
     { value: 'assureur', label: 'Assureur' },
     { value: 'banquesang', label: 'Banque de Sang' },
     { value: 'chauffeur', label: 'Chauffeur (Taxi/Covoiturage)' }, // ✅ NOUVEAU: Type partenaire chauffeur
-    { value: 'demenagement', label: 'Déménagement' },
-    { value: 'etablissementscolaire', label: 'Établissement Scolaire' }, // ✅ NOUVEAU: Type partenaire établissement scolaire
-    { value: 'hotel', label: 'Hôtel' },
-    { value: 'hopital', label: 'Hôpital/Clinique' },
+    { value: 'demenagement', label: t('partnerRegister.demenagement') },
+    { value: 'etablissementscolaire', label: t('partnerRegister.etablissementScolaire') }, // ✅ NOUVEAU: Type partenaire établissement scolaire
+    { value: 'hotel', label: t('partnerRegister.hotel') },
+    { value: 'hopital', label: t('partnerRegister.hopitalclinique') },
     { value: 'laboratoire', label: 'Laboratoire' },
-    { value: 'livraison', label: 'Livraison' }, // ✅ NOUVEAU: Type partenaire livraison générale
-    { value: 'livraison_courses_marche', label: 'Livraison - Courses au marché' }, // ✅ NOUVEAU: Type partenaire pour courses au marché (coursier spécialisé)
-    { value: 'meuble', label: 'Meublé / Location meublée' },
+    { value: 'livraison', label: t('partnerRegister.livraison') }, // ✅ NOUVEAU: Type partenaire livraison générale
+    { value: 'livraison_courses_marche', label: t('partnerRegister.livraisonCoursesAuMarche') }, // ✅ NOUVEAU: Type partenaire pour courses au marché (coursier spécialisé)
+    { value: 'meuble', label: t('partnerRegister.meubleLocationMeublee') },
     { value: 'pharmacie', label: 'Pharmacie' },
-    { value: 'supermarche', label: 'Supermarché' },
-    { value: 'telecom', label: 'Télécom' },
+    { value: 'supermarche', label: t('partnerRegister.supermarche') },
+    { value: 'telecom', label: t('partnerRegister.telecom') },
     { value: 'transport', label: 'Transport' },
   ].sort((a, b) => {
     // ✅ TRI ALPHABÉTIQUE: Comparer les labels en ignorant la casse et les accents
@@ -179,36 +185,36 @@ const PartnerRegisterScreen: React.FC = () => {
 
     // Validations
     if (!form.partner_name || !form.email || !form.password || !form.confirmPassword) {
-      setError('Veuillez remplir tous les champs obligatoires');
+      setError(t('partnerRegisterScreen.veuillezRemplirTousLesChampsObligatoires'));
       return;
     }
 
     if (!validatePassword(form.password)) {
-      setError('Le mot de passe ne respecte pas tous les critères requis');
+      setError(t('partnerRegister.leMotDePasseNe'));
       return;
     }
 
     if (form.password !== form.confirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
+      setError(t('partnerRegister.lesMotsDePasseNe'));
       return;
     }
 
     // ✅ RENFORCÉ: Validation stricte du type de partenaire
     if (!form.partner_type || form.partner_type.trim() === '') {
-      setError('⚠️ Le type d\'établissement est obligatoire. Veuillez sélectionner un type de partenaire.');
+      setError(t('partnerRegister.leTypeDetablissementEstObligatoireVeuillezSelectionner'));
       return;
     }
 
     // ✅ Validation spécifique pour établissementscolaire
     if (form.partner_type === 'etablissementscolaire' && !form.etablissement_type) {
-      setError('Veuillez sélectionner le type d\'établissement scolaire');
+      setError(t('partnerRegister.veuillezSelectionnerLeTypeDetablissementScolaire'));
       return;
     }
 
     // ✅ NOUVEAU: Validation spécifique pour chauffeur
     if (form.partner_type === 'chauffeur') {
       if (!form.driver_license_number?.trim()) {
-        setError('Veuillez renseigner le numéro de permis de conduire');
+        setError(t('partnerRegister.veuillezRenseignerLeNumeroDe'));
         return;
       }
       if (!form.driver_license_expiry?.trim()) {
@@ -216,15 +222,15 @@ const PartnerRegisterScreen: React.FC = () => {
         return;
       }
       if (!form.driver_license_photo) {
-        setError('Veuillez télécharger la photo du permis de conduire');
+        setError(t('partnerRegister.veuillezTelechargerLaPhotoDu'));
         return;
       }
       if (!form.driver_id_photo) {
-        setError('Veuillez télécharger la photo de la carte d\'identité');
+        setError(t('partnerRegister.veuillezTelechargerLaPhotoDeLaCarte'));
         return;
       }
       if (!form.driver_vehicle_type) {
-        setError('Veuillez sélectionner le type de service (Taxi/Covoiturage)');
+        setError(t('partnerRegister.veuillezSelectionnerLeTypeDe'));
         return;
       }
     }
@@ -273,6 +279,18 @@ const PartnerRegisterScreen: React.FC = () => {
         registerData.driver_experience_years = form.driver_experience_years;
       }
 
+      // ✅ Ajouter les moyens de paiement si configurés
+      const paymentMethods: any = {};
+      if (paymentMtnEnabled && paymentMtnPhone.trim()) {
+        paymentMethods.mtn_money = { phone: paymentMtnPhone.trim(), verified: false };
+      }
+      if (paymentOrangeEnabled && paymentOrangePhone.trim()) {
+        paymentMethods.orange_money = { phone: paymentOrangePhone.trim(), verified: false };
+      }
+      if (Object.keys(paymentMethods).length > 0) {
+        registerData.payment_methods = paymentMethods;
+      }
+
       const response = await authApi.register(registerData);
 
       if (response.success || response.token) {
@@ -291,11 +309,11 @@ const PartnerRegisterScreen: React.FC = () => {
       let errorMessage = error.message || 'Erreur lors de l\'inscription';
 
       if (error.message?.includes('409') || error.message?.includes('deja utilise') || error.message?.includes('already exists')) {
-        errorMessage = '❌ Cet email est déjà utilisé. Essayez de vous connecter ou utilisez un autre email.';
+        errorMessage = t('partnerRegisterScreen.cetEmailEstDejaUtiliseEssayez');
       } else if (error.message?.includes('400') || error.message?.includes('validation')) {
-        errorMessage = '❌ Données invalides. Vérifiez vos informations.';
+        errorMessage = t('partnerRegisterScreen.donneesInvalidesVerifiezVosInformations');
       } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
-        errorMessage = '❌ Problème de connexion. Vérifiez votre internet.';
+        errorMessage = t('partnerRegisterScreen.problemeDeConnexionVerifiezVotreInternet');
       }
 
       setError(errorMessage);
@@ -332,7 +350,7 @@ const PartnerRegisterScreen: React.FC = () => {
           <Card.Content>
             <View style={styles.sectionHeader}>
               <Building size={20} color={theme.colors.primary} />
-              <Title style={styles.sectionTitle}>Informations de votre établissement</Title>
+              <Title style={styles.sectionTitle}>{t('partnerRegister.informationsDeVotreEtablissement')}</Title>
             </View>
             <Paragraph style={styles.sectionSubtitle}>
               Détails de votre structure professionnelle
@@ -348,7 +366,7 @@ const PartnerRegisterScreen: React.FC = () => {
                 style={styles.picker}
                 required
               >
-                <Picker.Item label="Sélectionnez un type..." value="" />
+                <Picker.Item label={t('partnerRegister.selectionnezUnType')} value="" />
                 {partnerTypes.map((type) => (
                   <Picker.Item key={type.value} label={type.label} value={type.value} />
                 ))}
@@ -361,7 +379,7 @@ const PartnerRegisterScreen: React.FC = () => {
             )}
 
             <TextInput
-              label="Nom de l'établissement *"
+              label={t('partnerRegister.nomDeL')}établissement *"
               value={form.partner_name}
               onChangeText={(text) => setForm({ ...form, partner_name: text })}
               disabled={loading}
@@ -370,7 +388,7 @@ const PartnerRegisterScreen: React.FC = () => {
             />
 
             <TextInput
-              label="Téléphone de l'établissement"
+              label={t('partnerRegister.telephoneDeL')}établissement"
               value={form.partner_phone}
               onChangeText={(text) => setForm({ ...form, partner_phone: text })}
               keyboardType="phone-pad"
@@ -380,7 +398,7 @@ const PartnerRegisterScreen: React.FC = () => {
             />
 
             {/* ✅ NOUVEAU: Champ de téléchargement de logo */}
-            <Text style={styles.label}>Logo de l'établissement</Text>
+            <Text style={styles.label}>{t('partnerRegister.logoDeLetablissement')}</Text>
             <TouchableOpacity
               onPress={handlePickLogo}
               disabled={loading || uploadingLogo}
@@ -400,7 +418,7 @@ const PartnerRegisterScreen: React.FC = () => {
                 <View style={styles.logoPlaceholder}>
                   <ImageIcon size={40} color={theme.colors.textSecondary} />
                   <Text style={styles.logoPlaceholderText}>
-                    {uploadingLogo ? 'Chargement...' : 'Télécharger un logo'}
+                    {uploadingLogo ? 'Chargement...' : t('partnerRegisterScreen.telechargerUnLogo')}
                   </Text>
                 </View>
               )}
@@ -415,7 +433,7 @@ const PartnerRegisterScreen: React.FC = () => {
               <View style={styles.gpsButtonContent}>
                 <MapPin size={20} color={theme.colors.textSecondary} />
                 <Text style={[styles.gpsButtonText, !form.partner_address && styles.gpsButtonTextPlaceholder]}>
-                  {form.partner_address || 'Sélectionner l\'adresse avec GPS *'}
+                  {form.partner_address || t('partnerRegister.selectionnerLadresseAvecGps')}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -424,7 +442,7 @@ const PartnerRegisterScreen: React.FC = () => {
             <View style={styles.divider} />
 
             <TextInput
-              label="Adresse email du partenaire *"
+              label={t('partnerRegisterScreen.adresseEmailDuPartenaire')}
               value={form.email}
               onChangeText={(text) => setForm({ ...form, email: text })}
               keyboardType="email-address"
@@ -437,7 +455,7 @@ const PartnerRegisterScreen: React.FC = () => {
             {/* ✅ Amélioration : Validation du mot de passe avec feedback visuel en temps réel */}
             <View style={styles.passwordContainer}>
               <TextInput
-                label="Mot de passe *"
+                label={t('partnerRegister.motDePasse')}
                 value={form.password}
                 onChangeText={handlePasswordChange}
                 secureTextEntry
@@ -447,7 +465,7 @@ const PartnerRegisterScreen: React.FC = () => {
               />
               {form.password.length > 0 && (
                 <View style={styles.passwordCriteria}>
-                  <Text style={styles.criteriaTitle}>Critères du mot de passe :</Text>
+                  <Text style={styles.criteriaTitle}>{t('partnerRegister.criteresDuMotDePasse')}</Text>
                   <View style={styles.criteriaItem}>
                     {passwordErrors.length ? (
                       <CheckCircle size={16} color="#4CAF50" />
@@ -484,7 +502,7 @@ const PartnerRegisterScreen: React.FC = () => {
 
             <View style={styles.passwordContainer}>
               <TextInput
-                label="Confirmer le mot de passe *"
+                label={t('partnerRegisterScreen.confirmerLeMotDePasse')}
                 value={form.confirmPassword}
                 onChangeText={handleConfirmPasswordChange}
                 secureTextEntry
@@ -517,26 +535,26 @@ const PartnerRegisterScreen: React.FC = () => {
             {/* ✅ NOUVEAU: Champs conditionnels pour établissementscolaire */}
             {form.partner_type === 'etablissementscolaire' && (
               <>
-                <Text style={styles.label}>Type d'établissement scolaire *</Text>
+                <Text style={styles.label}>{t('partnerRegister.typeDetablissementScolaire')}</Text>
                 <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={form.etablissement_type}
                     onValueChange={(value) => setForm({ ...form, etablissement_type: value })}
                     style={styles.picker}
                   >
-                    <Picker.Item label="Sélectionnez..." value="" />
+                    <Picker.Item label={t('partnerRegister.selectionnez')} value="" />
                     <Picker.Item label="Primaire" value="primaire" />
                     <Picker.Item label="Secondaire" value="secondaire" />
-                    <Picker.Item label="Supérieur (Université)" value="superieur" />
-                    <Picker.Item label="École de Formation" value="formation" />
+                    <Picker.Item label={t('partnerRegister.superieurUniversite')} value="superieur" />
+                    <Picker.Item label={t('partnerRegister.ecoleDeFormation')} value="formation" />
                   </Picker>
                 </View>
 
                 <TextInput
-                  label="Filières proposées (séparées par des virgules)"
+                  label={t('partnerRegister.filieresProposeesSepareesParDes')}
                   value={form.filieres.join(', ')}
                   onChangeText={(text) => setForm({ ...form, filieres: text.split(',').map(f => f.trim()).filter(Boolean) })}
-                  placeholder="Ex: Sciences, Littérature, Technique, Commerce..."
+                  placeholder={t('partnerRegister.exSciencesLitteratureTechniqueCommerce')}
                   multiline
                   numberOfLines={2}
                   disabled={loading}
@@ -544,10 +562,10 @@ const PartnerRegisterScreen: React.FC = () => {
                 />
 
                 <TextInput
-                  label="Programmes scolaires (séparés par des virgules)"
+                  label={t('partnerRegister.programmesScolairesSeparesParDes')}
                   value={form.programmes_scolaires.join(', ')}
                   onChangeText={(text) => setForm({ ...form, programmes_scolaires: text.split(',').map(p => p.trim()).filter(Boolean) })}
-                  placeholder="Ex: Baccalauréat, BTS, Licence, Master..."
+                  placeholder={t('partnerRegister.exBaccalaureatBtsLicenceMaster')}
                   multiline
                   numberOfLines={2}
                   disabled={loading}
@@ -555,10 +573,10 @@ const PartnerRegisterScreen: React.FC = () => {
                 />
 
                 <TextInput
-                  label="Concours organisés (séparés par des virgules)"
+                  label={t('partnerRegister.concoursOrganisesSeparesParDes')}
                   value={form.concours_organises.join(', ')}
                   onChangeText={(text) => setForm({ ...form, concours_organises: text.split(',').map(c => c.trim()).filter(Boolean) })}
-                  placeholder="Ex: Concours d'entrée en 6ème, Concours d'entrée en 1ère..."
+                  placeholder="Ex: Concours dt('partnerRegisterScreen.entreeEn6emeConcoursDentreeEn1ere')
                   multiline
                   numberOfLines={2}
                   disabled={loading}
@@ -573,14 +591,14 @@ const PartnerRegisterScreen: React.FC = () => {
                 <View style={styles.divider} />
                 <View style={styles.sectionHeader}>
                   <Building size={20} color={theme.colors.primary} />
-                  <Title style={styles.sectionTitle}>Informations personnelles</Title>
+                  <Title style={styles.sectionTitle}>{t('partnerRegister.informationsPersonnelles')}/Title>
                 </View>
                 <Paragraph style={styles.sectionSubtitle}>
                   Ces informations sont nécessaires pour la validation de votre compte par les administrateurs
                 </Paragraph>
 
                 <TextInput
-                  label="Numéro de permis de conduire *"
+                  label={t('partnerRegister.numeroDePermisDeConduire')}
                   value={form.driver_license_number}
                   onChangeText={(text) => setForm({ ...form, driver_license_number: text })}
                   placeholder="Ex: AB123456789"
@@ -589,7 +607,7 @@ const PartnerRegisterScreen: React.FC = () => {
                 />
 
                 <TextInput
-                  label="Date d'expiration du permis (YYYY-MM-DD) *"
+                  label={t('partnerRegisterScreen.dateD')}expiration du permis (YYYY-MM-DD) *"
                   value={form.driver_license_expiry}
                   onChangeText={(text) => setForm({ ...form, driver_license_expiry: text })}
                   placeholder="Ex: 2025-12-31"
@@ -597,7 +615,7 @@ const PartnerRegisterScreen: React.FC = () => {
                   style={styles.input}
                 />
 
-                <Text style={styles.label}>Photo du permis de conduire *</Text>
+                <Text style={styles.label}>{t('partnerRegister.photoDuPermisDeConduire')}/Text>
                 <TouchableOpacity
                   onPress={async () => {
                     try {
@@ -640,13 +658,13 @@ const PartnerRegisterScreen: React.FC = () => {
                     <View style={styles.logoPlaceholder}>
                       <ImageIcon size={40} color={theme.colors.textSecondary} />
                       <Text style={styles.logoPlaceholderText}>
-                        {uploadingLogo ? 'Chargement...' : 'Télécharger photo du permis'}
+                        {uploadingLogo ? 'Chargement...' : t('partnerRegisterScreen.telechargerPhotoDuPermis')}
                       </Text>
                     </View>
                   )}
                 </TouchableOpacity>
 
-                <Text style={styles.label}>Photo de la carte d'identité *</Text>
+                <Text style={styles.label}>{t('partnerRegister.photoDeLaCarteDidentite')}</Text>
                 <TouchableOpacity
                   onPress={async () => {
                     try {
@@ -689,20 +707,20 @@ const PartnerRegisterScreen: React.FC = () => {
                     <View style={styles.logoPlaceholder}>
                       <ImageIcon size={40} color={theme.colors.textSecondary} />
                       <Text style={styles.logoPlaceholderText}>
-                        {uploadingLogo ? 'Chargement...' : 'Télécharger photo de la carte d\'identité'}
+                        {uploadingLogo ? 'Chargement...' : t('partnerRegisterScreen.telechargerPhotoDeLaCarteDidentite')}
                       </Text>
                     </View>
                   )}
                 </TouchableOpacity>
 
-                <Text style={styles.label}>Type de service *</Text>
+                <Text style={styles.label}>{t('partnerRegister.typeDeService')}</Text>
                 <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={form.driver_vehicle_type}
                     onValueChange={(value) => setForm({ ...form, driver_vehicle_type: value })}
                     style={styles.picker}
                   >
-                    <Picker.Item label="Sélectionnez..." value="" />
+                    <Picker.Item label={t('partnerRegister.selectionnez')} value="" />
                     <Picker.Item label="Taxi uniquement" value="taxi" />
                     <Picker.Item label="Covoiturage uniquement" value="covoiturage" />
                     <Picker.Item label="Taxi et Covoiturage" value="les_deux" />
@@ -710,7 +728,7 @@ const PartnerRegisterScreen: React.FC = () => {
                 </View>
 
                 <TextInput
-                  label="Années d'expérience"
+                  label={t('partnerRegister.anneesD')}expérience"
                   value={form.driver_experience_years}
                   onChangeText={(text) => setForm({ ...form, driver_experience_years: text })}
                   placeholder="Ex: 5"
@@ -719,6 +737,69 @@ const PartnerRegisterScreen: React.FC = () => {
                   style={styles.input}
                 />
               </>
+            )}
+          </Card.Content>
+        </Card>
+
+        {/* ✅ SECTION: Moyens de paiement (pour recevoir les reversements) */}
+        <Card style={styles.formCard}>
+          <Card.Content>
+            <View style={styles.sectionHeader}>
+              <Phone size={20} color={theme.colors.primary} />
+              <Title style={styles.sectionTitle}>{t('partnerRegister.paymentMethods') || 'Moyens de paiement'}</Title>
+            </View>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginBottom: 12 }}>
+              {t('partnerRegister.paymentMethodsHint') || 'Configurez vos coordonnées Mobile Money pour recevoir vos reversements. Vous pourrez les modifier plus tard.'}
+            </Text>
+
+            {/* MTN Mobile Money */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ fontWeight: '600', fontSize: 14 }}>📱 MTN Mobile Money</Text>
+              <TouchableOpacity
+                onPress={() => setPaymentMtnEnabled(!paymentMtnEnabled)}
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: paymentMtnEnabled ? '#FBBF24' : '#E5E7EB' }}
+              >
+                <Text style={{ color: paymentMtnEnabled ? '#92400E' : '#6B7280', fontWeight: '600', fontSize: 12 }}>
+                  {paymentMtnEnabled ? t('partnerRegisterScreen.active') : t('partnerRegisterScreen.desactive')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {paymentMtnEnabled && (
+              <TextInput
+                label={t('partnerRegister.mtnNumber') || t('partnerRegister.numeroMtnMoney')}
+                value={paymentMtnPhone}
+                onChangeText={setPaymentMtnPhone}
+                placeholder="6XX XX XX XX"
+                keyboardType="phone-pad"
+                maxLength={15}
+                disabled={loading}
+                style={styles.input}
+              />
+            )}
+
+            {/* Orange Money */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginTop: 8 }}>
+              <Text style={{ fontWeight: '600', fontSize: 14 }}>📱 Orange Money</Text>
+              <TouchableOpacity
+                onPress={() => setPaymentOrangeEnabled(!paymentOrangeEnabled)}
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: paymentOrangeEnabled ? '#F97316' : '#E5E7EB' }}
+              >
+                <Text style={{ color: paymentOrangeEnabled ? '#7C2D12' : '#6B7280', fontWeight: '600', fontSize: 12 }}>
+                  {paymentOrangeEnabled ? t('partnerRegisterScreen.active') : t('partnerRegisterScreen.desactive')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {paymentOrangeEnabled && (
+              <TextInput
+                label={t('partnerRegister.orangeNumber') || t('partnerRegister.numeroOrangeMoney')}
+                value={paymentOrangePhone}
+                onChangeText={setPaymentOrangePhone}
+                placeholder="6XX XX XX XX"
+                keyboardType="phone-pad"
+                maxLength={15}
+                disabled={loading}
+                style={styles.input}
+              />
             )}
           </Card.Content>
         </Card>
@@ -740,7 +821,7 @@ const PartnerRegisterScreen: React.FC = () => {
         </TouchableOpacity>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Vous avez déjà un compte ? </Text>
+          <Text style={styles.footerText}>{t('partnerRegister.vousAvezDejaUnCompte')}</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Login' as never)}>
             <Text style={styles.footerLink}>Connectez-vous</Text>
           </TouchableOpacity>
@@ -791,7 +872,7 @@ const PartnerRegisterScreen: React.FC = () => {
           }
         }}
         currentLocation={form.partner_gps}
-        title="Sélectionner l'adresse de l'établissement"
+        title={t('partnerRegister.selectionnerL')}adresse de l'établissement"
         allowZoneSelection={false}
       />
     </>

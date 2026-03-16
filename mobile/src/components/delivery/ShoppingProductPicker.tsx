@@ -6,6 +6,7 @@ import { modernColors } from '../../theme/modernTheme';
 import LinearAutocompleteEditor from '../LinearAutocompleteEditor';
 import { NativeButton, NativeCard, NativeInput } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const DEFAULT_SOUS_CARACS: Record<string, string[]> = {
     marque: [],
@@ -15,7 +16,8 @@ const DEFAULT_SOUS_CARACS: Record<string, string[]> = {
 
 const ShoppingProductPicker: React.FC = () => {
     const { addProduct } = useShoppingBasket();
-    const [vector, setVector] = useState<string[]>([]);
+        const { t } = useLanguageSafe();
+const [vector, setVector] = useState<string[]>([]);
     const [sousCaracs, setSousCaracs] = useState<Record<string, string[]>>(DEFAULT_SOUS_CARACS);
     const [quantityInput, setQuantityInput] = useState('1');
     const [note, setNote] = useState('');
@@ -59,13 +61,13 @@ const ShoppingProductPicker: React.FC = () => {
                     <SafeIcon name="shopping-basket" size={20} color={modernColors.primary} />
                 </View>
                 <View style={styles.headerText}>
-                    <Text style={styles.title}>Ajouter des produits</Text>
+                    <Text style={styles.title}>{t('shoppingProductPicker.ajouterDesProduits')}/Text>
                     <Text style={styles.subtitle}>Utilise les suggestions intelligentes pour ton panier</Text>
                 </View>
             </View>
 
             <LinearAutocompleteEditor
-                label="Produit recherché"
+                label={t('shoppingProductPicker.produitRecherche')}
                 identifiantBase="delivery_shopping"
                 sousCaracteristiques={sousCaracs}
                 separateur=","
@@ -76,14 +78,14 @@ const ShoppingProductPicker: React.FC = () => {
                         setSousCaracs(updatedSousCaracs);
                     }
                 }}
-                placeholder="Ex: Tomates fraîches, sachet 1kg"
+                placeholder={t('shoppingProductPicker.exTomatesFraichesSachet1kg')}
                 allowCustomModality
                 filtrable
             />
 
             <View style={styles.inputsRow}>
                 <View style={styles.inputColumn}>
-                    <Text style={styles.inputLabel}>Quantité</Text>
+                    <Text style={styles.inputLabel}>{t('shoppingProductPicker.quantite')}</Text>
                     <NativeInput
                         value={quantityInput}
                         onChangeText={setQuantityInput}
@@ -91,7 +93,7 @@ const ShoppingProductPicker: React.FC = () => {
                     />
                 </View>
                 <View style={styles.inputColumn}>
-                    <Text style={styles.inputLabel}>Prix estimé (optionnel)</Text>
+                    <Text style={styles.inputLabel}>{t('shoppingProductPicker.prixEstimeOptionnel')}</Text>
                     <NativeInput
                         value={estimatedPriceInput}
                         onChangeText={setEstimatedPriceInput}
@@ -101,18 +103,18 @@ const ShoppingProductPicker: React.FC = () => {
             </View>
 
             <View style={styles.noteSection}>
-                <Text style={styles.inputLabel}>Note pour le coursier</Text>
+                <Text style={styles.inputLabel}>{t('shoppingProductPicker.notePourLeCoursier')}/Text>
                 <NativeInput
                     value={note}
                     onChangeText={setNote}
                     multiline
                     minLines={2}
-                    placeholder="Précise la marque, la maturité, les alternatives..."
+                    placeholder={t('shoppingProductPicker.preciseLaMarqueLaMaturite')}
                 />
             </View>
 
             <NativeButton
-                title="Ajouter au panier"
+                title={t('shoppingProductPicker.ajouterAuPanier')}
                 onPress={handleAddProduct}
                 disabled={!vector[0]}
                 variant="primary"

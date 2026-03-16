@@ -5,6 +5,7 @@ import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeCard, NativeInput } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 const ASSET_CARD_WIDTH = (width - 48) / 3;
@@ -37,7 +38,8 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
     multiSelect = false,
     selectedAssets = [],
 }) => {
-    const [assets, setAssets] = useState<Asset[]>([]);
+        const { t } = useLanguageSafe();
+const [assets, setAssets] = useState<Asset[]>([]);
     const [loading, setLoading] = useState(false);
     const [expanded, setExpanded] = useState(false);
     const [showUpload, setShowUpload] = useState(false);
@@ -132,7 +134,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
         <NativeCard style={styles.container}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.title}>📚 Bibliothèque de Médias</Text>
+                    <Text style={styles.title}>{t('assetLibrary.bibliothequeDeMedias')}</Text>
                     <Text style={styles.subtitle}>
                         Réutilisez vos images et vidéos dans vos publicités
                     </Text>
@@ -145,7 +147,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
             {/* Barre de recherche et filtres */}
             <View style={styles.controls}>
                 <NativeInput
-                    placeholder="Rechercher..."
+                    placeholder={t('assetLibrary.rechercher')}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     style={styles.searchInput}
@@ -164,7 +166,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                                 styles.filterText,
                                 filterType === t && styles.filterTextActive,
                             ]}>
-                                {t === 'all' ? 'Tous' : t === 'image' ? '📷 Images' : '🎬 Vidéos'}
+                                {t === 'all' ? 'Tous' : t === 'image' ? '📷 Images' : t('assetLibrary.videos')}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -178,14 +180,14 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                     onPress={handleUploadImage}
                 >
                     <SafeIcon name="image" size={18} color="#fff" />
-                    <Text style={styles.uploadButtonText}>Ajouter image</Text>
+                    <Text style={styles.uploadButtonText}>{t('assetLibrary.ajouterImage')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.uploadButton}
                     onPress={handleUploadVideo}
                 >
                     <SafeIcon name="video" size={18} color="#fff" />
-                    <Text style={styles.uploadButtonText}>Ajouter vidéo</Text>
+                    <Text style={styles.uploadButtonText}>{t('assetLibrary.ajouterVideo')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -197,7 +199,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
             ) : filteredAssets.length === 0 ? (
                 <View style={styles.emptyState}>
                     <SafeIcon name="image" size={48} color={modernColors.border} />
-                    <Text style={styles.emptyText}>Aucun média</Text>
+                    <Text style={styles.emptyText}>{t('assetLibrary.aucunMedia')}</Text>
                     <Text style={styles.emptySubtext}>
                         Ajoutez vos premières images ou vidéos pour les réutiliser
                     </Text>

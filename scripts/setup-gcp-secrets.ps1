@@ -1,188 +1,228 @@
-# Script PowerShell pour créer les secrets GCP dans Secret Manager
-# Usage: .\scripts\setup-gcp-secrets.ps1
+# =============================================================================
+# Script PowerShell: Configuration COMPLETE des secrets GCP Secret Manager
+# Usage: .\scripts\setup-gcp-secrets.ps1 [-SkipExisting] [-OnlyMissing]
+# =============================================================================
 
 param(
     [string]$ProjectId = "yukpo-project",
     [string]$Region = "europe-west1",
-    [string]$ServiceAccountEmail = ""
+    [string]$ServiceAccountEmail = "",
+    [switch]$SkipExisting,
+    [switch]$OnlyMissing
 )
 
-Write-Host "🔐 Configuration des secrets GCP Secret Manager..." -ForegroundColor Yellow
+$ErrorActionPreference = "Continue"
+
+# =============================================================================
+# Liste COMPLETE des secrets requis pour la production
+# =============================================================================
+$REQUIRED_SECRETS = @(
+    @{ Name = "jwt-secret";              EnvVar = "JWT_SECRET";              Desc = "JWT authentication secret" },
+    @{ Name = "database-url";            EnvVar = "DATABASE_URL";            Desc = "PostgreSQL connection URL (Cloud SQL)" },
+    @{ Name = "redis-url";               EnvVar = "REDIS_URL";              Desc = "Redis connection URL (Memorystore)" },
+    @{ Name = "mongodb-url";             EnvVar = "MONGODB_URL";            Desc = "MongoDB connection URL" },
+    @{ Name = "openai-api-key";          EnvVar = "OPENAI_API_KEY";         Desc = "OpenAI API key (GPT, embeddings)" },
+    @{ Name = "sora-api-key";            EnvVar = "SORA_API_KEY";           Desc = "OpenAI Sora video generation API key" },
+    @{ Name = "s3-access-key";           EnvVar = "S3_ACCESS_KEY";          Desc = "GCS/S3 access key" },
+    @{ Name = "s3-secret-key";           EnvVar = "S3_SECRET_KEY";          Desc = "GCS/S3 secret key" },
+    @{ Name = "livekit-api-key";         EnvVar = "LIVEKIT_API_KEY";        Desc = "LiveKit API key" },
+    @{ Name = "livekit-api-secret";      EnvVar = "LIVEKIT_API_SECRET";     Desc = "LiveKit API secret" },
+    @{ Name = "google-maps-api-key";     EnvVar = "GOOGLE_MAPS_API_KEY";    Desc = "Google Maps server API key (Places, Geocoding)" },
+    @{ Name = "openweathermap-api-key";  EnvVar = "OPENWEATHERMAP_API_KEY"; Desc = "OpenWeatherMap API key (meteo)" },
+    @{ Name = "cinetpay-api-key";        EnvVar = "CINETPAY_API_KEY";       Desc = "CinetPay payment API key" },
+    @{ Name = "cinetpay-site-id";        EnvVar = "CINETPAY_SITE_ID";       Desc = "CinetPay site ID" },
+    @{ Name = "cinetpay-secret-key";     EnvVar = "CINETPAY_SECRET_KEY";    Desc = "CinetPay secret key (webhook verification)" },
+    @{ Name = "notchpay-public-key";     EnvVar = "NOTCHPAY_PUBLIC_KEY";    Desc = "NotchPay public key" },
+    @{ Name = "notchpay-secret-key";     EnvVar = "NOTCHPAY_SECRET_KEY";    Desc = "NotchPay secret key" }
+)
+
+Write-Host ""
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host "  YUKPO - Configuration des secrets GCP Secret Manager" -ForegroundColor Cyan
+Write-Host "  Projet: $ProjectId | Region: $Region" -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Vérifier que gcloud est installé
+# --- Verification gcloud ---
 if (-not (Get-Command gcloud -ErrorAction SilentlyContinue)) {
-    Write-Host "❌ ERREUR: gcloud CLI n'est pas installé" -ForegroundColor Red
-    Write-Host "   Installez-le depuis: https://cloud.google.com/sdk/docs/install" -ForegroundColor Yellow
+    Write-Host "[ERREUR] gcloud CLI n'est pas installe" -ForegroundColor Red
+    Write-Host "  Installez-le depuis: https://cloud.google.com/sdk/docs/install" -ForegroundColor Yellow
     exit 1
 }
 
-# Vérifier l'authentification
-Write-Host "🔍 Vérification de l'authentification GCP..." -ForegroundColor Cyan
-$authStatus = gcloud auth list --filter=status:ACTIVE --format="value(account)" 2>&1
-if (-not $authStatus) {
-    Write-Host "⚠️  Vous n'êtes pas authentifié. Exécution de gcloud auth login..." -ForegroundColor Yellow
+$authAccount = gcloud auth list --filter=status:ACTIVE --format="value(account)" 2>&1
+if (-not $authAccount) {
+    Write-Host "[!] Vous n'etes pas authentifie. Lancement de gcloud auth login..." -ForegroundColor Yellow
     gcloud auth login
+    $authAccount = gcloud auth list --filter=status:ACTIVE --format="value(account)" 2>&1
 }
+Write-Host "[OK] Authentifie: $authAccount" -ForegroundColor Green
 
-Write-Host "✅ Authentifié: $authStatus" -ForegroundColor Green
-Write-Host ""
+gcloud config set project $ProjectId 2>$null
 
-# Définir le projet
-Write-Host "🔧 Configuration du projet: $ProjectId" -ForegroundColor Cyan
-gcloud config set project $ProjectId
-Write-Host ""
-
-# Récupérer le service account si non fourni
+# --- Service Account ---
 if ([string]::IsNullOrEmpty($ServiceAccountEmail)) {
-    Write-Host "🔍 Récupération du service account Cloud Run..." -ForegroundColor Cyan
     $ServiceAccountEmail = gcloud run services describe yukpo-backend `
         --region=$Region `
         --format="value(spec.template.spec.serviceAccountName)" `
         --project=$ProjectId 2>&1
-    
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrEmpty($ServiceAccountEmail)) {
-        Write-Host "⚠️  Service account non trouvé, utilisation du compte par défaut" -ForegroundColor Yellow
-        $ServiceAccountEmail = "$ProjectId@appspot.gserviceaccount.com"
+        $ServiceAccountEmail = "376093909298-compute@developer.gserviceaccount.com"
+    }
+}
+Write-Host "[OK] Service Account: $ServiceAccountEmail" -ForegroundColor Green
+Write-Host ""
+
+# =============================================================================
+# Phase 1: Audit des secrets existants
+# =============================================================================
+Write-Host "--- Phase 1: Audit des secrets existants ---" -ForegroundColor Yellow
+
+$existingSecrets = @()
+$missingSecrets = @()
+
+foreach ($secret in $REQUIRED_SECRETS) {
+    $check = gcloud secrets describe $secret.Name --project=$ProjectId 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        $existingSecrets += $secret
+        Write-Host "  [EXISTS] $($secret.Name) ($($secret.Desc))" -ForegroundColor Green
+    } else {
+        $missingSecrets += $secret
+        Write-Host "  [MISSING] $($secret.Name) ($($secret.Desc))" -ForegroundColor Red
     }
 }
 
-Write-Host "✅ Service Account: $ServiceAccountEmail" -ForegroundColor Green
+Write-Host ""
+Write-Host "Resultat: $($existingSecrets.Count) existants, $($missingSecrets.Count) manquants" -ForegroundColor Cyan
 Write-Host ""
 
-# Fonction pour créer un secret
-function Create-Secret {
-    param(
-        [string]$SecretName,
-        [string]$Description,
-        [string]$SecretValue
-    )
+if ($missingSecrets.Count -eq 0) {
+    Write-Host "[OK] Tous les secrets sont deja configures!" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Pour mettre a jour un secret existant:" -ForegroundColor Yellow
+    Write-Host '  echo "NEW_VALUE" | gcloud secrets versions add SECRET_NAME --data-file=- --project=yukpo-project' -ForegroundColor White
+    Write-Host ""
+    exit 0
+}
+
+# =============================================================================
+# Phase 2: Creation des secrets manquants
+# =============================================================================
+Write-Host "--- Phase 2: Creation des secrets manquants ---" -ForegroundColor Yellow
+Write-Host ""
+
+$secretsToCreate = if ($OnlyMissing) { $missingSecrets } else { $REQUIRED_SECRETS }
+
+foreach ($secret in $secretsToCreate) {
+    $isExisting = $existingSecrets | Where-Object { $_.Name -eq $secret.Name }
     
-    Write-Host "🔐 Création du secret: $SecretName" -ForegroundColor Cyan
+    if ($isExisting -and $SkipExisting) {
+        Write-Host "  [SKIP] $($secret.Name) (existe deja)" -ForegroundColor Yellow
+        continue
+    }
     
-    # Vérifier si le secret existe déjà
-    $existing = gcloud secrets describe $SecretName --project=$ProjectId 2>&1
-    # ✅ CORRECTION: Utiliser un fichier temporaire pour éviter les retours à la ligne
-    # echo -n ne fonctionne pas dans PowerShell (le -n est ignoré)
+    if ($isExisting) {
+        $update = Read-Host "  $($secret.Name) existe deja. Mettre a jour? (o/N)"
+        if ($update -ne "o" -and $update -ne "O") {
+            Write-Host "  [SKIP] $($secret.Name)" -ForegroundColor Yellow
+            continue
+        }
+    }
+    
+    Write-Host ""
+    Write-Host "  Secret: $($secret.Name)" -ForegroundColor Cyan
+    Write-Host "  Env var: $($secret.EnvVar)" -ForegroundColor Cyan
+    Write-Host "  Description: $($secret.Desc)" -ForegroundColor Cyan
+    
+    $value = Read-Host "  Entrez la valeur (ou Entree pour ignorer)"
+    
+    if ([string]::IsNullOrEmpty($value)) {
+        Write-Host "  [SKIP] $($secret.Name) (valeur vide)" -ForegroundColor Yellow
+        continue
+    }
+    
     $tempFile = [System.IO.Path]::GetTempFileName()
     try {
-        [System.IO.File]::WriteAllText($tempFile, $SecretValue, [System.Text.Encoding]::UTF8)
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "⚠️  Le secret $SecretName existe déjà" -ForegroundColor Yellow
-            $update = Read-Host "Voulez-vous le mettre à jour? (o/N)"
-            if ($update -eq "o" -or $update -eq "O") {
-                Write-Host "📝 Mise à jour du secret $SecretName..." -ForegroundColor Cyan
-                gcloud secrets versions add $SecretName `
-                    --data-file=$tempFile `
-                    --project=$ProjectId
-                Write-Host "✅ Secret $SecretName mis à jour" -ForegroundColor Green
-            } else {
-                Write-Host "⏭️  Secret $SecretName ignoré" -ForegroundColor Yellow
-                return
-            }
+        [System.IO.File]::WriteAllText($tempFile, $value, (New-Object System.Text.UTF8Encoding $false))
+        
+        if ($isExisting) {
+            gcloud secrets versions add $secret.Name `
+                --data-file=$tempFile `
+                --project=$ProjectId 2>&1 | Out-Null
         } else {
-            # Créer le secret
-            gcloud secrets create $SecretName `
+            gcloud secrets create $secret.Name `
                 --data-file=$tempFile `
                 --replication-policy="automatic" `
-                --project=$ProjectId
+                --project=$ProjectId 2>&1 | Out-Null
         }
-    } finally {
-        if (Test-Path $tempFile) {
-            Remove-Item $tempFile -Force
-        }
-    }
         
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "✅ Secret $SecretName créé" -ForegroundColor Green
+            Write-Host "  [OK] Secret $($secret.Name) cree/mis a jour" -ForegroundColor Green
+            
+            # Accorder l'acces au service account
+            gcloud secrets add-iam-policy-binding $secret.Name `
+                --member="serviceAccount:$ServiceAccountEmail" `
+                --role="roles/secretmanager.secretAccessor" `
+                --project=$ProjectId 2>&1 | Out-Null
+            
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "  [OK] Permissions accordees" -ForegroundColor Green
+            }
         } else {
-            Write-Host "❌ Erreur lors de la création du secret $SecretName" -ForegroundColor Red
-            return
+            Write-Host "  [ERREUR] Echec pour $($secret.Name)" -ForegroundColor Red
         }
-    }
-    
-    # Donner accès au service account
-    Write-Host "🔑 Attribution des permissions au service account..." -ForegroundColor Cyan
-    gcloud secrets add-iam-policy-binding $SecretName `
-        --member="serviceAccount:$ServiceAccountEmail" `
-        --role="roles/secretmanager.secretAccessor" `
-        --project=$ProjectId
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ Permissions accordées pour $SecretName" -ForegroundColor Green
-    } else {
-        Write-Host "❌ Erreur lors de l'attribution des permissions" -ForegroundColor Red
-    }
-    Write-Host ""
-}
-
-# Demander les valeurs des secrets
-Write-Host "📝 Saisie des secrets (les valeurs ne seront pas affichées)" -ForegroundColor Yellow
-Write-Host ""
-
-# JWT_SECRET
-$jwtSecret = Read-Host "Entrez la valeur de JWT_SECRET" -AsSecureString
-$jwtSecretPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-    [Runtime.InteropServices.Marshal]::SecureStringToBSTR($jwtSecret)
-)
-
-if (-not [string]::IsNullOrEmpty($jwtSecretPlain)) {
-    Create-Secret -SecretName "jwt-secret" `
-        -Description "JWT Secret pour l'authentification" `
-        -SecretValue $jwtSecretPlain
-}
-
-# DATABASE_URL (optionnel)
-$dbUrl = Read-Host "Entrez la valeur de DATABASE_URL (ou appuyez sur Entrée pour ignorer)" -AsSecureString
-if ($dbUrl.Length -gt 0) {
-    $dbUrlPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($dbUrl)
-    )
-    if (-not [string]::IsNullOrEmpty($dbUrlPlain)) {
-        Create-Secret -SecretName "database-url" `
-            -Description "URL de connexion PostgreSQL" `
-            -SecretValue $dbUrlPlain
+    } finally {
+        if (Test-Path $tempFile) { Remove-Item $tempFile -Force }
     }
 }
 
-# MONGODB_URL (optionnel)
-$mongoUrl = Read-Host "Entrez la valeur de MONGODB_URL (ou appuyez sur Entrée pour ignorer)" -AsSecureString
-if ($mongoUrl.Length -gt 0) {
-    $mongoUrlPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($mongoUrl)
-    )
-    if (-not [string]::IsNullOrEmpty($mongoUrlPlain)) {
-        Create-Secret -SecretName "mongodb-url" `
-            -Description "URL de connexion MongoDB" `
-            -SecretValue $mongoUrlPlain
+# =============================================================================
+# Phase 3: Verification finale
+# =============================================================================
+Write-Host ""
+Write-Host "--- Phase 3: Verification finale ---" -ForegroundColor Yellow
+
+$stillMissing = @()
+foreach ($secret in $REQUIRED_SECRETS) {
+    $check = gcloud secrets describe $secret.Name --project=$ProjectId 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $stillMissing += $secret
     }
 }
 
-# REDIS_URL (optionnel)
-$redisUrl = Read-Host "Entrez la valeur de REDIS_URL (ou appuyez sur Entrée pour ignorer)" -AsSecureString
-if ($redisUrl.Length -gt 0) {
-    $redisUrlPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($redisUrl)
-    )
-    if (-not [string]::IsNullOrEmpty($redisUrlPlain)) {
-        Create-Secret -SecretName "redis-url" `
-            -Description "URL de connexion Redis" `
-            -SecretValue $redisUrlPlain
+if ($stillMissing.Count -eq 0) {
+    Write-Host "[OK] Tous les $($REQUIRED_SECRETS.Count) secrets sont configures!" -ForegroundColor Green
+} else {
+    Write-Host "[!] $($stillMissing.Count) secret(s) encore manquant(s):" -ForegroundColor Yellow
+    foreach ($s in $stillMissing) {
+        Write-Host "  - $($s.Name) ($($s.EnvVar))" -ForegroundColor Red
     }
 }
 
+# =============================================================================
+# Phase 4: Instructions LiveKit
+# =============================================================================
 Write-Host ""
-Write-Host "✅ Configuration terminée!" -ForegroundColor Green
+Write-Host "--- Configuration LiveKit ---" -ForegroundColor Yellow
+Write-Host "Le serveur LiveKit tourne sur: yukpo-livekit-server (GCE)" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "📋 Prochaines étapes:" -ForegroundColor Yellow
-Write-Host "1. Mettre à jour Cloud Run pour référencer les secrets:" -ForegroundColor White
-Write-Host "   gcloud run services update yukpo-backend \"
-Write-Host "     --region=$Region \"
-Write-Host "     --update-secrets='JWT_SECRET=jwt-secret:latest' \"
-Write-Host "     --project=$ProjectId"
+Write-Host "Pour obtenir l'IP publique du serveur LiveKit:" -ForegroundColor White
+Write-Host '  gcloud compute instances describe yukpo-livekit-server --zone=europe-west1-b --format="value(networkInterfaces[0].accessConfigs[0].natIP)"' -ForegroundColor Gray
 Write-Host ""
-Write-Host "2. Ou utiliser la console GCP:" -ForegroundColor White
-Write-Host "   Cloud Run → yukpo-backend → Modifier → Variables et secrets"
-Write-Host "   → Ajouter une variable → Référencer un secret"
+Write-Host "Puis mettre a jour les env vars Cloud Run:" -ForegroundColor White
+Write-Host '  gcloud run services update yukpo-backend --region=europe-west1 \' -ForegroundColor Gray
+Write-Host '    --update-env-vars="LIVEKIT_API_URL=http://<IP>:7880,LIVEKIT_WS_URL=ws://<IP>:7880"' -ForegroundColor Gray
 Write-Host ""
 
+# =============================================================================
+# Resume
+# =============================================================================
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host "  RESUME - Secrets geres par gcp-deploy.yml --update-secrets" -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Cyan
+foreach ($s in $REQUIRED_SECRETS) {
+    $status = if ($stillMissing | Where-Object { $_.Name -eq $s.Name }) { "[MISSING]" } else { "[OK]" }
+    $color = if ($status -eq "[OK]") { "Green" } else { "Red" }
+    Write-Host ("  {0,-10} {1,-30} -> {2}" -f $status, $s.Name, $s.EnvVar) -ForegroundColor $color
+}
+Write-Host ""

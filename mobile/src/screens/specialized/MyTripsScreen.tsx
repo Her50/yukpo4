@@ -17,6 +17,7 @@ import { NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Trip {
     id: number;
@@ -39,6 +40,7 @@ interface Trip {
 
 const MyTripsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
 
     const [trips, setTrips] = useState<Trip[]>([]);
@@ -204,7 +206,7 @@ const MyTripsScreen: React.FC = () => {
         { key: 'all', label: 'Tous' },
         { key: 'ouvert', label: 'Ouverts' },
         { key: 'complet', label: 'Complets' },
-        { key: 'annule', label: 'Annulés' },
+        { key: 'annule', label: t('myTrips.annules') },
     ];
 
     if (loading && trips.length === 0) {
@@ -217,11 +219,11 @@ const MyTripsScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Mes trajets</Text>
+                    <Text style={styles.title}>{t('myTrips.mesTrajets')}</Text>
                 </View>
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement de vos trajets...</Text>
+                    <Text style={styles.loadingText}>{t('myTrips.chargementDeVosTrajets')}</Text>
                 </View>
             </View>
         );
@@ -236,7 +238,7 @@ const MyTripsScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mes trajets</Text>
+                <Text style={styles.title}>{t('myTrips.mesTrajets')}</Text>
             </View>
 
             {/* Filtres de statut */}
@@ -271,10 +273,10 @@ const MyTripsScreen: React.FC = () => {
             {trips.length === 0 ? (
                 <View style={styles.centerContainer}>
                     <SafeIcon name="car" size={64} color="#D1D5DB" />
-                    <Text style={styles.emptyText}>Aucun trajet trouvé</Text>
+                    <Text style={styles.emptyText}>{t('myTrips.aucunTrajetTrouve')}</Text>
                     <Text style={styles.emptySubtext}>
                         {statusFilter === 'all'
-                            ? 'Créez votre premier trajet de covoiturage'
+                            ? t('myTripsScreen.creezVotrePremierTrajetDeCovoiturage')
                             : `Aucun trajet avec le statut "${statusFilters.find(f => f.key === statusFilter)?.label}"`}
                     </Text>
                     <TouchableOpacity
@@ -284,7 +286,7 @@ const MyTripsScreen: React.FC = () => {
                         }}
                     >
                         <SafeIcon name="plus" size={20} color="#fff" />
-                        <Text style={styles.createButtonText}>Créer un trajet</Text>
+                        <Text style={styles.createButtonText}>{t('myTrips.creerUnTrajet')}</Text>
                     </TouchableOpacity>
                 </View>
             ) : (

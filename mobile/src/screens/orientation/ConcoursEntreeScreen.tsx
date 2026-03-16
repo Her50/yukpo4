@@ -13,6 +13,7 @@ import {
     View,
 } from 'react-native';
 import { apiGet } from '../../services/api';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Concours {
     id: number;
@@ -29,6 +30,7 @@ interface Concours {
 
 const ConcoursEntreeScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const etablissementId = (route.params as any)?.etablissement_id;
     const actifsOnly = (route.params as any)?.actifs === true;
@@ -150,7 +152,7 @@ const ConcoursEntreeScreen: React.FC = () => {
                             style={styles.linkButton}
                             onPress={() => navigation.navigate('EtablissementDetails', { id: item.etablissement_id })}
                         >
-                            <Text style={styles.linkButtonText}>Voir établissement</Text>
+                            <Text style={styles.linkButtonText}>{t('concoursEntree.voirEtablissement')}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -165,7 +167,7 @@ const ConcoursEntreeScreen: React.FC = () => {
                 <View style={styles.filtersContainer}>
                     <TextInput
                         style={styles.input}
-                        placeholder="Filière (ex: Scientifique)"
+                        placeholder={t('concoursEntree.filiereExScientifique')}
                         value={filiere}
                         onChangeText={setFiliere}
                     />
@@ -176,7 +178,7 @@ const ConcoursEntreeScreen: React.FC = () => {
                             searchConcours();
                         }}
                     >
-                        <Text style={styles.searchButtonText}>Rechercher</Text>
+                        <Text style={styles.searchButtonText}>{t('concoursEntree.rechercher')}</Text>
                     </TouchableOpacity>
                 </View>
             )}
@@ -185,7 +187,7 @@ const ConcoursEntreeScreen: React.FC = () => {
             {loading ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color="#3B82F6" />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('concoursEntree.chargement')}</Text>
                 </View>
             ) : concours.length > 0 ? (
                 <>
@@ -207,7 +209,7 @@ const ConcoursEntreeScreen: React.FC = () => {
                 </>
             ) : (
                 <View style={styles.centerContainer}>
-                    <Text style={styles.emptyText}>Aucun concours trouvé</Text>
+                    <Text style={styles.emptyText}>{t('concoursEntree.aucunConcoursTrouve')}</Text>
                 </View>
             )}
         </View>

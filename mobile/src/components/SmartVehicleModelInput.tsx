@@ -11,6 +11,7 @@ import {
 import { apiGet, apiPost } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SmartVehicleModelInputProps {
     marque: string; // Marque du véhicule (pour suggestions contextuelles)
@@ -27,11 +28,12 @@ const SmartVehicleModelInput: React.FC<SmartVehicleModelInputProps> = ({
     value,
     onChangeText,
     placeholder = 'Ex: Corolla',
-    label = 'Modèle',
+    label={t('smartVehicleModelInput.modele')},
     required = false,
     autoLoadLastUsed = true,
 }) => {
-    const [suggestions, setSuggestions] = useState<string[]>([]);
+        const { t } = useLanguageSafe();
+const [suggestions, setSuggestions] = useState<string[]>([]);
     const [allModels, setAllModels] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
@@ -288,7 +290,7 @@ const SmartVehicleModelInput: React.FC<SmartVehicleModelInputProps> = ({
                                     </Text>
                                     {isLastUsed && (
                                         <View style={styles.lastUsedBadge}>
-                                            <Text style={styles.lastUsedBadgeText}>Récent</Text>
+                                            <Text style={styles.lastUsedBadgeText}>{t('smartVehicleModelInput.recent')}</Text>
                                         </View>
                                     )}
                                 </TouchableOpacity>

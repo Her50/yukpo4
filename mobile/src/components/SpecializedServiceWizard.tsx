@@ -17,6 +17,7 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -41,7 +42,8 @@ interface Props {
 }
 
 const SpecializedServiceWizard: React.FC<Props> = ({ onComplete, onCancel, initialData }) => {
-    const [currentStep, setCurrentStep] = useState(1);
+        const { t } = useLanguageSafe();
+const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [wizardData, setWizardData] = useState<WizardData>({
         type: initialData?.type || '',
@@ -52,27 +54,27 @@ const SpecializedServiceWizard: React.FC<Props> = ({ onComplete, onCancel, initi
     const steps: WizardStep[] = [
         {
             id: 1,
-            title: 'Type & Nom',
+            title: t('specializedServiceWizard.typeNom'),
             description: 'Choisissez le type de service et son nom',
             icon: 'tag',
         },
         {
             id: 2,
             title: 'Configuration',
-            description: 'Configurez les détails du service',
+            description: t('specializedServiceWizard.configurezLesDetailsDuService'),
             icon: 'settings',
         },
         {
             id: 3,
-            title: 'Vérification',
-            description: 'Vérifiez et publiez votre service',
+            title: t('specializedServiceWizard.verification'),
+            description: t('specializedServiceWizard.verifiezEtPubliezVotreService'),
             icon: 'check-circle',
         },
     ];
 
     const serviceTypes = [
         { id: 'pharmacie', name: 'Pharmacie', icon: 'Pill', color: '#10B981' },
-        { id: 'hopital', name: 'Hôpital/Clinique', icon: 'Hospital', color: '#EF4444' },
+        { id: 'hopital', name: t('specializedServiceWizard.hopitalclinique'), icon: 'Hospital', color: '#EF4444' },
         { id: 'laboratoire', name: 'Laboratoire', icon: 'Microscope', color: '#3B82F6' },
         { id: 'banque_sang', name: 'Banque de Sang', icon: 'Droplet', color: '#DC2626' },
         { id: 'agence_voyage', name: 'Agence de Voyage', icon: 'Bus', color: '#F59E0B' },
@@ -154,7 +156,7 @@ const SpecializedServiceWizard: React.FC<Props> = ({ onComplete, onCancel, initi
 
             {wizardData.type && (
                 <View style={styles.nomInputContainer}>
-                    <Text style={styles.inputLabel}>Nom du service *</Text>
+                    <Text style={styles.inputLabel}>{t('specializedServiceWizard.nomDuService')}/Text>
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={styles.input}
@@ -189,14 +191,14 @@ const SpecializedServiceWizard: React.FC<Props> = ({ onComplete, onCancel, initi
 
     const renderStep3 = () => (
         <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>Vérification</Text>
+            <Text style={styles.stepTitle}>{t('specializedServiceWizard.verification')}</Text>
             <Text style={styles.stepDescription}>
                 Vérifiez les informations avant de publier votre service
             </Text>
 
             <NativeCard style={styles.reviewCard}>
                 <View style={styles.reviewSection}>
-                    <Text style={styles.reviewLabel}>Type de service</Text>
+                    <Text style={styles.reviewLabel}>{t('specializedServiceWizard.typeDeService')}</Text>
                     <View style={styles.reviewValueContainer}>
                         <SafeIcon
                             name={serviceTypes.find((t) => t.id === wizardData.type)?.icon || 'circle'}
@@ -216,14 +218,14 @@ const SpecializedServiceWizard: React.FC<Props> = ({ onComplete, onCancel, initi
                 </View>
 
                 <View style={styles.checklistContainer}>
-                    <Text style={styles.checklistTitle}>Checklist de complétude</Text>
+                    <Text style={styles.checklistTitle}>{t('specializedServiceWizard.checklistDeCompletude')}</Text>
                     <View style={styles.checklistItem}>
                         <SafeIcon name="check" size={16} color={modernColors.success} />
-                        <Text style={styles.checklistText}>Type et nom renseignés</Text>
+                        <Text style={styles.checklistText}>{t('specializedServiceWizard.typeEtNomRenseignes')}</Text>
                     </View>
                     <View style={styles.checklistItem}>
                         <SafeIcon name="check" size={16} color={modernColors.success} />
-                        <Text style={styles.checklistText}>Configuration de base complétée</Text>
+                        <Text style={styles.checklistText}>{t('specializedServiceWizard.configurationDeBaseCompletee')}</Text>
                     </View>
                 </View>
             </NativeCard>
@@ -250,7 +252,7 @@ const SpecializedServiceWizard: React.FC<Props> = ({ onComplete, onCancel, initi
                 <TouchableOpacity onPress={onCancel} style={styles.cancelButton}>
                     <SafeIcon name="x" size={24} color={modernColors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Créer un service</Text>
+                <Text style={styles.headerTitle}>{t('specializedServiceWizard.creerUnService')}</Text>
                 <View style={styles.placeholder} />
             </View>
 
@@ -302,7 +304,7 @@ const SpecializedServiceWizard: React.FC<Props> = ({ onComplete, onCancel, initi
             <View style={styles.footer}>
                 {currentStep > 1 && (
                     <NativeButton
-                        title="Précédent"
+                        title={t('specializedServiceWizard.precedent')}
                         variant="outline"
                         onPress={handleBack}
                         style={styles.footerButton}
@@ -310,7 +312,7 @@ const SpecializedServiceWizard: React.FC<Props> = ({ onComplete, onCancel, initi
                 )}
                 <View style={styles.footerSpacer} />
                 <NativeButton
-                    title={currentStep === 3 ? 'Publier' : 'Suivant'}
+                    title={currentStep === 3 ? 'Publier' : t('specializedServiceWizard.suivant')}
                     variant="primary"
                     onPress={handleNext}
                     disabled={!canProceed() || loading}

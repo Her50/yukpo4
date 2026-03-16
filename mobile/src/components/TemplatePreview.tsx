@@ -15,6 +15,7 @@ import { VideoTemplate } from '../services/templateService';
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PREVIEW_WIDTH = SCREEN_WIDTH - 64; // Padding
@@ -33,7 +34,8 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
     onClose,
     onApply,
 }) => {
-    const [isLoading, setIsLoading] = useState(false);
+        const { t } = useLanguageSafe();
+const [isLoading, setIsLoading] = useState(false);
 
     const handleApply = async () => {
         setIsLoading(true);
@@ -89,7 +91,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
                         ) : (
                             <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
                                 <SafeIcon name="video" size={48} color={modernColors.textSecondary} />
-                                <Text style={styles.thumbnailPlaceholderText}>Aperçu</Text>
+                                <Text style={styles.thumbnailPlaceholderText}>{t('templatePreview.apercu')}</Text>
                             </View>
                         )}
 
@@ -103,7 +105,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
                         <View style={styles.metadata}>
                             <View style={styles.metadataItem}>
                                 <SafeIcon name="clock" size={16} color={modernColors.primary} />
-                                <Text style={styles.metadataLabel}>Durée</Text>
+                                <Text style={styles.metadataLabel}>{t('templatePreview.duree')}</Text>
                                 <Text style={styles.metadataValue}>{template.duration}s</Text>
                             </View>
                             <View style={styles.metadataItem}>
@@ -176,7 +178,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
                                     <Text style={styles.statValue}>{template.usage_count}</Text>
                                 </View>
                                 <View style={styles.statItem}>
-                                    <Text style={styles.statLabel}>Popularité</Text>
+                                    <Text style={styles.statLabel}>{t('templatePreview.popularite')}</Text>
                                     <Text style={styles.statValue}>
                                         {template.popularity_score.toFixed(1)}
                                     </Text>
@@ -189,7 +191,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
                     <View style={styles.footer}>
                         <NativeButton
                             variant="secondary"
-                            label="Fermer"
+                            label={t('templatePreview.fermer')}
                             onPress={onClose}
                             style={styles.footerButton}
                         />

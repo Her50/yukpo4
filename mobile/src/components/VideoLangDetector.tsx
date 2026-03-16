@@ -4,12 +4,14 @@ import * as React from "react";
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { apiPost } from '../services/api';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const VideoLangDetector: React.FC = () => {
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [result, setResult] = useState<{ language: string; transcription: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
   const handlePickVideo = async () => {
     try {
@@ -62,11 +64,11 @@ const VideoLangDetector: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🎥 Analyse de la langue et redirection automatique</Text>
+      <Text style={styles.title}>{t('videoLangDetector.analyseDeLaLangueEt')}/Text>
 
       <TouchableOpacity style={styles.pickButton} onPress={handlePickVideo}>
         <Text style={styles.pickButtonText}>
-          {videoUri ? 'Vidéo sélectionnée' : 'Sélectionner une vidéo'}
+          {videoUri ? t('videoLangDetector.videoSelectionnee') : t('videoLangDetector.selectionnerUneVideo')}
         </Text>
       </TouchableOpacity>
 

@@ -29,6 +29,7 @@ import PharmacieResultCard from '../specialized/PharmacieResultCard';
 import SafeIcon from '../SafeIcon';
 import SwipeableProductCard from '../SwipeableProductCard';
 import TaxiResultCard from '../specialized/TaxiResultCard';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -104,6 +105,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
     onScroll,
 }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const deviceType = useDeviceType();
 
     // Rendre un item spécialisé ou générique
@@ -362,7 +364,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
             return (
                 <View style={styles.loadMoreContainer}>
                     <ActivityIndicator size="small" color={modernColors.primary} />
-                    <Text style={styles.loadMoreText}>Chargement...</Text>
+                    <Text style={styles.loadMoreText}>{t('resultsList.chargement')}</Text>
                 </View>
             );
         }
@@ -384,7 +386,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
             return (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Recherche en cours...</Text>
+                    <Text style={styles.loadingText}>{t('resultsList.rechercheEnCours')}/Text>
                 </View>
             );
         }
@@ -392,7 +394,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
         return (
             <View style={styles.emptyState}>
                 <SafeIcon name="package-x" size={64} color="#D1D5DB" />
-                <Text style={styles.emptyTitle}>Aucun résultat</Text>
+                <Text style={styles.emptyTitle}>{t('resultsList.aucunResultat')}</Text>
                 <Text style={styles.emptyText}>
                     Essayez avec d'autres mots-clés ou ajustez les filtres
                 </Text>

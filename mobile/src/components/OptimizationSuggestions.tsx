@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../config/api';
 import { modernColors } from '../styles/theme';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface OptimizationSuggestion {
     suggestion_type: string;
@@ -31,7 +32,8 @@ interface OptimizationSuggestionsProps {
 }
 
 const OptimizationSuggestions: React.FC<OptimizationSuggestionsProps> = ({ userId }) => {
-    const [reports, setReports] = useState<OptimizationReport[]>([]);
+        const { t } = useLanguageSafe();
+const [reports, setReports] = useState<OptimizationReport[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [expandedCampaign, setExpandedCampaign] = useState<number | null>(null);
@@ -79,8 +81,8 @@ const OptimizationSuggestions: React.FC<OptimizationSuggestionsProps> = ({ userI
         return (
             <View style={styles.emptyContainer}>
                 <SafeIcon name="check-circle" size={64} color="#10B981" />
-                <Text style={styles.emptyTitle}>Toutes vos campagnes sont optimisées !</Text>
-                <Text style={styles.emptyText}>Aucune suggestion d'amélioration pour le moment.</Text>
+                <Text style={styles.emptyTitle}>{t('optimizationSuggestions.toutesVosCampagnesSontOptimisees')}</Text>
+                <Text style={styles.emptyText}>{t('optimizationSuggestions.aucuneSuggestionDameliorationPourLe')}</Text>
             </View>
         );
     }
@@ -221,7 +223,7 @@ const OptimizationSuggestions: React.FC<OptimizationSuggestionsProps> = ({ userI
                     {expandedCampaign === report.campaign_id && report.suggestions.length === 0 && (
                         <View style={styles.noSuggestions}>
                             <SafeIcon name="check-circle" size={32} color="#10B981" />
-                            <Text style={styles.noSuggestionsText}>Aucune suggestion pour cette campagne</Text>
+                            <Text style={styles.noSuggestionsText}>{t('optimizationSuggestions.aucuneSuggestionPourCetteCampagne')}</Text>
                         </View>
                     )}
                 </NativeCard>

@@ -9,6 +9,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SearchActionsBottomSheetProps {
     isOpen: boolean;
@@ -77,7 +78,7 @@ const SearchActionsBottomSheet: React.FC<SearchActionsBottomSheetProps> = ({
         >
             <BottomSheetView style={styles.contentContainer}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>Recherche avancée</Text>
+                    <Text style={styles.title}>{t('searchActionsBottomSheet.rechercheAvancee')}</Text>
                     <Text style={styles.subtitle}>Choisissez une option pour affiner votre recherche</Text>
                 </View>
 
@@ -90,7 +91,7 @@ const SearchActionsBottomSheet: React.FC<SearchActionsBottomSheetProps> = ({
                         <View style={[styles.actionIconContainer, { backgroundColor: '#ECFEFF' }]}>
                             <SafeIcon name="map-pin" size={24} color={modernColors.primary} />
                         </View>
-                        <Text style={styles.actionLabel}>Localisation</Text>
+                        <Text style={styles.actionLabel}>{t('searchActionsBottomSheet.localisation')}/Text>
                         <Text style={styles.actionDescription}>GPS ou zone</Text>
                     </TouchableOpacity>
 
@@ -115,7 +116,7 @@ const SearchActionsBottomSheet: React.FC<SearchActionsBottomSheetProps> = ({
                             <SafeIcon name="image" size={24} color={modernColors.primary} />
                         </View>
                         <Text style={styles.actionLabel}>Galerie</Text>
-                        <Text style={styles.actionDescription}>Choisir des images</Text>
+                        <Text style={styles.actionDescription}>{t('searchActionsBottomSheet.choisirDesImages')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity

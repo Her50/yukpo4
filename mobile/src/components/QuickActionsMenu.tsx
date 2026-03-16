@@ -4,6 +4,7 @@ import { Bell, Briefcase, Camera, ChartBar, ChatCircle, Clock, FileText, Gear, H
 import * as React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface QuickActionsMenuProps {
     isVisible: boolean;
@@ -37,11 +38,12 @@ const getActionIcon = (iconName: string, size: number, color: string) => {
 
 const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ isVisible, onClose }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
     const quickActions = [
         {
             id: 'myServices',
-            title: 'Mes Services',
+            title: t('quickActionsMenu.mesServices'),
             icon: 'briefcase',
             onPress: () => {
                 (navigation as any).navigate('Main', { screen: 'Services' });
@@ -50,7 +52,7 @@ const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ isVisible, onClose 
         },
         {
             id: 'history',
-            title: 'Mon Historique',
+            title: t('quickActionsMenu.monHistorique'),
             icon: 'time',
             onPress: () => {
                 navigation.navigate('SoldeDetail' as never);
@@ -68,7 +70,7 @@ const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ isVisible, onClose 
         },
         {
             id: 'videoFeed',
-            title: 'Flux Vidéo',
+            title: t('quickActionsMenu.fluxVideo'),
             icon: 'video',
             onPress: () => {
                 navigation.navigate('VideoFeed' as never);
@@ -77,7 +79,7 @@ const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ isVisible, onClose 
         },
         {
             id: 'videoAnalytics',
-            title: 'Analyse Vidéo',
+            title: t('quickActionsMenu.analyseVideo'),
             icon: 'analytics',
             onPress: () => {
                 navigation.navigate('VideoAnalytics' as never);
@@ -86,7 +88,7 @@ const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ isVisible, onClose 
         },
         {
             id: 'settings',
-            title: 'Paramètres',
+            title: t('quickActionsMenu.parametres'),
             icon: 'settings',
             onPress: () => {
                 navigation.navigate('Settings' as never);

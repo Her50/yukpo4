@@ -19,6 +19,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPatch, apiPost } from '../../services/api';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface LivreScolaire {
     id: number;
@@ -56,6 +57,7 @@ const getEtatColor = (etat: string): string => {
 
 const LivreScolaireDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
     const params = route.params as any;
@@ -100,8 +102,8 @@ const LivreScolaireDetailsScreen: React.FC = () => {
 
     const isOwner = (user?.id as any) === livre?.user_id;
 
-    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#EA580C" /><Text style={st.centerText}>Chargement...</Text></View>);
-    if (!livre) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#EA580C" /><Text style={st.centerText}>Livre non trouvé</Text></View>);
+    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#EA580C" /><Text style={st.centerText}>{t('livreScolaireDetails.chargement')}</Text></View>);
+    if (!livre) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#EA580C" /><Text style={st.centerText}>{t('livreScolaireDetails.livreNonTrouve')}</Text></View>);
 
     return (
         <View style={st.container}>
@@ -126,7 +128,7 @@ const LivreScolaireDetailsScreen: React.FC = () => {
                     <View style={st.exchangeViz}>
                         <View style={st.exchangeEnd}><Text style={st.exchangeLabel}>Classe</Text><Text style={st.exchangeVal}>{livre.classe_actuelle}</Text></View>
                         <SafeIcon name="arrow-right" size={18} color="rgba(255,255,255,0.7)" />
-                        <View style={st.exchangeEnd}><Text style={st.exchangeLabel}>Souhaitée</Text><Text style={st.exchangeVal}>{livre.classe_souhaitee}</Text></View>
+                        <View style={st.exchangeEnd}><Text style={st.exchangeLabel}>{t('livreScolaireDetails.souhaitee')}</Text><Text style={st.exchangeVal}>{livre.classe_souhaitee}</Text></View>
                     </View>
                 </View>
             </LinearGradient>
@@ -146,7 +148,7 @@ const LivreScolaireDetailsScreen: React.FC = () => {
                 {/* Quick Actions */}
                 <View style={st.quickRow}>
                     {[
-                        { icon: 'share-2', label: 'Partager', color: '#8B5CF6', onPress: handleShare },
+                        { icon: 'share-2', label: t('livreScolaireDetailsScreen.partager'), color: '#8B5CF6', onPress: handleShare },
                         !isOwner && livre.is_available && { icon: 'refresh-cw', label: 'Troquer', color: '#EA580C', onPress: handleFindMatching },
                     ].filter(Boolean).map((a: any, i) => (
                         <TouchableOpacity key={i} style={st.quickAction} onPress={a.onPress}>
@@ -159,15 +161,15 @@ const LivreScolaireDetailsScreen: React.FC = () => {
                 {/* Book Info */}
                 <View style={st.card}>
                     <View style={st.cardHeader}><SafeIcon name="book" size={18} color="#EA580C" /><Text style={st.cardTitle}>Informations</Text></View>
-                    <View style={st.infoRow}><Text style={st.infoLabel}>Matière</Text><Text style={st.infoValue}>{livre.matiere}</Text></View>
+                    <View style={st.infoRow}><Text style={st.infoLabel}>{t('livreScolaireDetails.matiere')}</Text><Text style={st.infoValue}>{livre.matiere}</Text></View>
                     {livre.niveau && <View style={st.infoRow}><Text style={st.infoLabel}>Niveau</Text><Text style={st.infoValue}>{livre.niveau}</Text></View>}
-                    {livre.editeur && <View style={st.infoRow}><Text style={st.infoLabel}>Éditeur</Text><Text style={st.infoValue}>{livre.editeur}</Text></View>}
+                    {livre.editeur && <View style={st.infoRow}><Text style={st.infoLabel}>{t('livreScolaireDetails.editeur')}</Text><Text style={st.infoValue}>{livre.editeur}</Text></View>}
                     {livre.isbn && <View style={st.infoRow}><Text style={st.infoLabel}>ISBN</Text><Text style={st.infoValue}>{livre.isbn}</Text></View>}
                 </View>
 
                 {/* Condition */}
                 <View style={st.card}>
-                    <View style={st.cardHeader}><SafeIcon name="check-circle" size={18} color={getEtatColor(livre.etat_livre)} /><Text style={st.cardTitle}>État du livre</Text></View>
+                    <View style={st.cardHeader}><SafeIcon name="check-circle" size={18} color={getEtatColor(livre.etat_livre)} /><Text style={st.cardTitle}>{t('livreScolaireDetails.etatDuLivre')}</Text></View>
                     <View style={[st.etatBadge, { backgroundColor: getEtatColor(livre.etat_livre) + '20' }]}>
                         <Text style={[st.etatText, { color: getEtatColor(livre.etat_livre) }]}>{livre.etat_livre}</Text>
                     </View>
@@ -177,8 +179,8 @@ const LivreScolaireDetailsScreen: React.FC = () => {
                 {/* Location */}
                 {(livre.ville || livre.quartier) && (
                     <View style={st.card}>
-                        <View style={st.cardHeader}><SafeIcon name="map-pin" size={18} color="#EA580C" /><Text style={st.cardTitle}>Localisation</Text></View>
-                        {livre.ville && <View style={st.infoRow}><Text style={st.infoLabel}>Ville</Text><Text style={st.infoValue}>{livre.ville}</Text></View>}
+                        <View style={st.cardHeader}><SafeIcon name="map-pin" size={18} color="#EA580C" /><Text style={st.cardTitle}>{t('livreScolaireDetails.localisation')}/Text></View>
+                        {livre.ville && <View style={st.infoRow}><Text style={st.infoLabel}>{t('livreScolaireDetails.ville')}/Text><Text style={st.infoValue}>{livre.ville}</Text></View>}
                         {livre.quartier && <View style={st.infoRow}><Text style={st.infoLabel}>Quartier</Text><Text style={st.infoValue}>{livre.quartier}</Text></View>}
                     </View>
                 )}
@@ -186,8 +188,8 @@ const LivreScolaireDetailsScreen: React.FC = () => {
                 {/* Video */}
                 {livre.video_url && (
                     <View style={st.card}>
-                        <View style={st.cardHeader}><SafeIcon name="video" size={18} color="#EA580C" /><Text style={st.cardTitle}>Vidéo</Text></View>
-                        <Text style={{ fontSize: 13, color: '#6B7280' }}>Vidéo d'appréciation disponible</Text>
+                        <View style={st.cardHeader}><SafeIcon name="video" size={18} color="#EA580C" /><Text style={st.cardTitle}>{t('livreScolaireDetails.video')}</Text></View>
+                        <Text style={{ fontSize: 13, color: '#6B7280' }}>{t('livreScolaireDetails.videoDappreciationDisponible')}</Text>
                     </View>
                 )}
 
@@ -203,7 +205,7 @@ const LivreScolaireDetailsScreen: React.FC = () => {
                         <>
                             <TouchableOpacity style={st.actionBtn} onPress={() => navigation.navigate('LivreScolaireForm' as never, { livreId: livre.id, mode: 'edit' } as never)}>
                                 <SafeIcon name="edit-2" size={18} color="#EA580C" />
-                                <Text style={st.actionBtnText}>Modifier</Text>
+                                <Text style={st.actionBtnText}>{t('livreScolaireDetailsScreen.modifier')}</Text>
                                 <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                             </TouchableOpacity>
                             <TouchableOpacity

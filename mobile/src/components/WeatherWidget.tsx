@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { getWeatherApiKey } from '../config/weatherConfig';
 import { theme } from '../theme/theme';
 import WeatherForecastModal from './WeatherForecastModal';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface WeatherData {
     temperature: number;
@@ -21,7 +22,8 @@ interface WeatherWidgetProps {
 }
 
 const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress, compact = false }) => {
-    const [weather, setWeather] = useState<WeatherData | null>(null);
+        const { t } = useLanguageSafe();
+const [weather, setWeather] = useState<WeatherData | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showForecastModal, setShowForecastModal] = useState(false);
@@ -111,11 +113,11 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
                 console.log('[WeatherWidget] ℹ️ Pas de position GPS disponible, utilisation des données mockées');
                 const mockWeather: WeatherData = {
                     temperature: Math.round(20 + Math.random() * 15), // 20-35°C
-                    description: ['Ensoleillé', 'Nuageux', 'Pluvieux', 'Orageux'][Math.floor(Math.random() * 4)],
+                    description: [t('weatherWidget.ensoleille'), 'Nuageux', 'Pluvieux', 'Orageux'][Math.floor(Math.random() * 4)],
                     humidity: Math.round(40 + Math.random() * 40), // 40-80%
                     windSpeed: Math.round(5 + Math.random() * 15), // 5-20 km/h
-                    location: 'Yaoundé, Cameroun',
-                    icon: getWeatherIcon('Ensoleillé')
+                    location: t('weatherWidget.yaoundeCameroun'),
+                    icon: getWeatherIcon(t('weatherWidget.ensoleille'))
                 };
                 setWeather(mockWeather);
                 setError(null);
@@ -140,7 +142,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
 
             if (!response.ok) {
                 console.warn('[WeatherWidget] ⚠️ Erreur API météo:', response.status, response.statusText);
-                throw new Error(`Erreur API météo: ${response.status}`);
+                throw new Error(t('weatherWidget.erreurApiMeteo', { response_status: response.status }));
             }
 
             const data = await response.json();
@@ -151,7 +153,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
             const geocodeResponse = await fetch(geocodeUrl);
             const geocodeData = await geocodeResponse.json();
 
-            const cityName = geocodeData[0]?.name || 'Position actuelle';
+            const cityName = geocodeData[0]?.name || t('weatherWidget.positionActuelle');
             const countryName = geocodeData[0]?.country || '';
 
             const weatherData: WeatherData = {
@@ -170,7 +172,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
             const errorMessage = err?.message || '';
             const isExpectedError =
                 errorMessage.includes('Position GPS requise') ||
-                errorMessage.includes('Clé API météo non configurée') ||
+                errorMessage.includes(t('weatherWidget.cleApiMeteoNonConfiguree')) ||
                 errorMessage.includes('GPS timeout');
 
             if (isExpectedError) {
@@ -184,11 +186,11 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
             // Fallback vers des données mockées en cas d'erreur
             const mockWeather: WeatherData = {
                 temperature: Math.round(20 + Math.random() * 15), // 20-35°C
-                description: ['Ensoleillé', 'Nuageux', 'Pluvieux', 'Orageux'][Math.floor(Math.random() * 4)],
+                description: [t('weatherWidget.ensoleille'), 'Nuageux', 'Pluvieux', 'Orageux'][Math.floor(Math.random() * 4)],
                 humidity: Math.round(40 + Math.random() * 40), // 40-80%
                 windSpeed: Math.round(5 + Math.random() * 15), // 5-20 km/h
-                location: (location || gpsLocation) ? 'Position actuelle' : 'Yaoundé, Cameroun',
-                icon: getWeatherIcon('Ensoleillé')
+                location: (location || gpsLocation) ? 'Position actuelle' : t('weatherWidget.yaoundeCameroun'),
+                icon: getWeatherIcon(t('weatherWidget.ensoleille'))
             };
 
             console.log('[WeatherWidget] Données mockées générées:', mockWeather);
@@ -216,7 +218,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
             <View style={compact ? styles.compactContainer : styles.container}>
                 <View style={compact ? styles.compactLoadingContainer : styles.loadingContainer}>
                     <ActivityIndicator size="small" color={theme.colors.primary} />
-                    <Text style={compact ? styles.compactLoadingText : styles.loadingText}>Météo...</Text>
+                    <Text style={compact ? styles.compactLoadingText : styles.loadingText}>{t('weatherWidget.meteo')}</Text>
                 </View>
             </View>
         );
@@ -228,9 +230,9 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
                 <TouchableOpacity style={compact ? styles.compactErrorContainer : styles.errorContainer} onPress={onLocationPress}>
                     <Text style={compact ? styles.compactErrorIcon : styles.errorIcon}>🌤️</Text>
                     <Text style={compact ? styles.compactErrorText : styles.errorText}>
-                        {compact ? 'Météo' : 'Météo indisponible'}
+                        {compact ? t('weatherWidget.meteo') : t('weatherWidget.meteoIndisponible')}
                     </Text>
-                    {!compact && <Text style={styles.errorSubtext}>Appuyez pour activer GPS</Text>}
+                    {!compact && <Text style={styles.errorSubtext}>{t('weatherWidget.appuyezPourActiverGps')}</Text>}
                 </TouchableOpacity>
             </View>
         );
@@ -241,7 +243,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
             <View style={compact ? styles.compactContainer : styles.container}>
                 <TouchableOpacity style={compact ? styles.compactNoDataContainer : styles.noDataContainer} onPress={onLocationPress}>
                     <Text style={compact ? styles.compactNoDataIcon : styles.noDataIcon}>🌤️</Text>
-                    <Text style={compact ? styles.compactNoDataText : styles.noDataText}>Météo</Text>
+                    <Text style={compact ? styles.compactNoDataText : styles.noDataText}>{t('weatherWidget.meteo')}</Text>
                     {!compact && <Text style={styles.noDataSubtext}>Activer GPS</Text>}
                 </TouchableOpacity>
             </View>
@@ -280,7 +282,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
                     <Text style={styles.weatherIcon}>{weather.icon}</Text>
                     <View style={styles.weatherInfo}>
                         <Text style={styles.temperature}>{weather.temperature != null ? `${weather.temperature}°C` : '--°C'}</Text>
-                        <Text style={styles.description}>{weather.description || 'Météo'}</Text>
+                        <Text style={styles.description}>{weather.description || t('weatherWidget.meteo')}</Text>
                     </View>
                 </View>
 

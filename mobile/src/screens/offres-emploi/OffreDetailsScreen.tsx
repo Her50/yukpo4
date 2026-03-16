@@ -138,7 +138,7 @@ const OffreDetailsScreen: React.FC = () => {
                     [
                         { text: t('common.cancel') },
                         {
-                            text: 'Créer mon profil',
+                            text: t('offreDetails.creerMonProfil'),
                             onPress: () => (navigation as any).navigate('ProfilCandidat'),
                         },
                     ]
@@ -168,20 +168,20 @@ const OffreDetailsScreen: React.FC = () => {
     };
 
     const formatSalaire = () => {
-        if (!offre) return 'Salaire non renseigné';
-        if (!offre.salaire_min && !offre.salaire_max) return 'Salaire non renseigné';
+        if (!offre) return t('offreDetailsScreen.salaireNonRenseigne');
+        if (!offre.salaire_min && !offre.salaire_max) return t('offreDetailsScreen.salaireNonRenseigne');
         if (offre.salaire_min && offre.salaire_max) {
             return `${offre.salaire_min.toLocaleString()} - ${offre.salaire_max.toLocaleString()} ${offre.devise}`;
         }
         if (offre.salaire_min) return `À partir de ${offre.salaire_min.toLocaleString()} ${offre.devise}`;
-        return `Jusqu'à ${offre.salaire_max?.toLocaleString()} ${offre.devise}`;
+        return t('offreDetailsScreen.jusqua', { offre_salaire_max?_toLocaleString(): offre.salaire_max?.toLocaleString(), offre_devise: offre.devise });
     };
 
     if (loading) {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('offreDetails.chargement')}</Text>
             </View>
         );
     }
@@ -189,7 +189,7 @@ const OffreDetailsScreen: React.FC = () => {
     if (!offre) {
         return (
             <View style={styles.centerContainer}>
-                <Text style={styles.errorText}>Offre non trouvée</Text>
+                <Text style={styles.errorText}>{t('offreDetails.offreNonTrouvee')}</Text>
             </View>
         );
     }
@@ -200,7 +200,7 @@ const OffreDetailsScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Détails</Text>
+                <Text style={styles.title}>{t('offreDetails.details')}</Text>
             </View>
 
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -209,7 +209,7 @@ const OffreDetailsScreen: React.FC = () => {
                     <NativeCard style={[styles.matchingCard, matchingScore.score_total >= 70 ? styles.matchingCardGood : styles.matchingCardLow]}>
                         <View style={styles.matchingHeader}>
                             <View>
-                                <Text style={styles.matchingLabel}>Votre score de correspondance</Text>
+                                <Text style={styles.matchingLabel}>{t('offreDetails.votreScoreDeCorrespondance')}</Text>
                                 <Text style={styles.matchingScore}>{matchingScore.score_total.toFixed(0)}%</Text>
                             </View>
                             <SafeIcon
@@ -221,7 +221,7 @@ const OffreDetailsScreen: React.FC = () => {
                         </View>
                         {matchingScore.competences_manquantes && matchingScore.competences_manquantes.length > 0 && (
                             <View style={styles.competencesMissing}>
-                                <Text style={styles.competencesMissingTitle}>Compétences manquantes :</Text>
+                                <Text style={styles.competencesMissingTitle}>{t('offreDetails.competencesManquantes')}</Text>
                                 <View style={styles.competencesTags}>
                                     {matchingScore.competences_manquantes.map((comp, idx) => (
                                         <View key={idx} style={styles.competenceTag}>
@@ -253,7 +253,7 @@ const OffreDetailsScreen: React.FC = () => {
                             <SafeIcon name="dollar-sign" size={16} color={modernColors.textSecondary} type="lucide" />
                             <Text style={styles.metaText}>{formatSalaire()}</Text>
                             {offre.salaire_negociable && (
-                                <Text style={styles.negotiableText}> (Négociable)</Text>
+                                <Text style={styles.negotiableText}>{t('offreDetails.negociable')}</Text>
                             )}
                         </View>
                     </View>
@@ -265,7 +265,7 @@ const OffreDetailsScreen: React.FC = () => {
 
                     {offre.competences_requises && offre.competences_requises.length > 0 && (
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Compétences requises</Text>
+                            <Text style={styles.sectionTitle}>{t('offreDetails.competencesRequises')}</Text>
                             <View style={styles.competencesTags}>
                                 {offre.competences_requises.map((comp, idx) => (
                                     <View
@@ -314,7 +314,7 @@ const OffreDetailsScreen: React.FC = () => {
                     }}
                 >
                     <SafeIcon name="edit" size={16} color={modernColors.primary} type="lucide" />
-                    <Text style={styles.profilLinkText}>Mettre à jour mon CV</Text>
+                    <Text style={styles.profilLinkText}>{t('offreDetails.mettreAJourMonCv')}</Text>
                 </TouchableOpacity>
             </View>
         </View>

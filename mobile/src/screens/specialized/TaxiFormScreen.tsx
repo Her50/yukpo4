@@ -124,7 +124,7 @@ const TaxiFormScreen: React.FC = () => {
         if (!serviceId && user?.id && formData.nom_chauffeur) {
             (async () => {
                 try {
-                    const resp = await servicesApi.createService({ titre_service: `Taxi ${formData.nom_chauffeur}`, description: 'Service de taxi', category: 'transport' });
+                    const resp = await servicesApi.createService({ titre_service: `Taxi ${formData.nom_chauffeur}`, description: t('taxiForm.serviceDeTaxi'), category: 'transport' });
                     if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) setServiceId((resp.data as any).id);
                 } catch (e) { console.error('[Taxi] Service:', e); }
             })();
@@ -204,7 +204,7 @@ const TaxiFormScreen: React.FC = () => {
         } catch (e: any) { Alert.alert(t('message.error'), e.message || t('taxiForm.genericError')); } finally { setLoading(false); }
     };
 
-    if (initialLoading) return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#F59E0B" /><Text style={s.loadingText}>Chargement...</Text></View>;
+    if (initialLoading) return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#F59E0B" /><Text style={s.loadingText}>{t('taxiForm.chargement')}</Text></View>;
 
     // ─── RENDER: Overview ────────────────────────────────────────────────
     const renderOverview = () => (
@@ -238,7 +238,7 @@ const TaxiFormScreen: React.FC = () => {
             <View style={s.quickRow}>
                 <TouchableOpacity style={s.quickAction} onPress={() => setActiveTab('service')}>
                     <View style={[s.quickIcon, { backgroundColor: '#F59E0B15' }]}><SafeIcon name="settings" size={22} color="#F59E0B" /></View>
-                    <Text style={s.quickLabel}>Mon service</Text>
+                    <Text style={s.quickLabel}>{t('taxiForm.monService')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.quickAction} onPress={() => setActiveTab('stats')}>
                     <View style={[s.quickIcon, { backgroundColor: '#3B82F615' }]}><SafeIcon name="bar-chart-2" size={22} color="#3B82F6" /></View>
@@ -249,7 +249,7 @@ const TaxiFormScreen: React.FC = () => {
             {/* Vehicle Info */}
             {taxiData && (
                 <>
-                    <Text style={s.sectionTitle}>Mon véhicule</Text>
+                    <Text style={s.sectionTitle}>{t('taxiForm.monVehicule')}</Text>
                     {[
                         taxiData.marque_modele && { icon: 'car', text: taxiData.marque_modele },
                         taxiData.immatriculation && { icon: 'hash', text: taxiData.immatriculation },
@@ -262,11 +262,11 @@ const TaxiFormScreen: React.FC = () => {
             )}
 
             {/* Payment badges */}
-            <Text style={[s.sectionTitle, { marginTop: 16 }]}>Paiements acceptés</Text>
+            <Text style={[s.sectionTitle, { marginTop: 16 }]}>{t('taxiForm.paiementsAcceptes')}</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
                 {formData.paiement_cash && <View style={s.payBadge}><Text style={s.payText}>💵 Cash</Text></View>}
                 {formData.paiement_mobile_money && <View style={s.payBadge}><Text style={s.payText}>📱 Mobile Money</Text></View>}
-                {formData.paiement_carte && <View style={s.payBadge}><Text style={s.payText}>💳 Carte</Text></View>}
+                {formData.paiement_carte && <View style={s.payBadge}><Text style={s.payText}>{t('taxiForm.carte')}/Text></View>}
             </View>
         </ScrollView>
     );
@@ -274,24 +274,24 @@ const TaxiFormScreen: React.FC = () => {
     // ─── RENDER: Service Form ────────────────────────────────────────────
     const renderServiceForm = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
-            <View style={s.field}><NativeInput label="Nom du chauffeur" value={formData.nom_chauffeur} onChangeText={t => setFormData({ ...formData, nom_chauffeur: t })} placeholder="Votre nom" /></View>
-            <View style={s.field}><NativeInput label="Téléphone *" value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+            <View style={s.field}><NativeInput label={t('taxiForm.nomDuChauffeur')} value={formData.nom_chauffeur} onChangeText={t => setFormData({ ...formData, nom_chauffeur: t })} placeholder={t('taxiForm.votreNom')} /></View>
+            <View style={s.field}><NativeInput label={t('taxiForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
             <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
 
-            <Text style={[s.sectionTitle, { marginTop: 8 }]}>Véhicule</Text>
+            <Text style={[s.sectionTitle, { marginTop: 8 }]}>{t('taxiForm.vehicule')}</Text>
             <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={[s.field, { flex: 1 }]}><NativeInput label="Type" value={formData.type_vehicule} onChangeText={t => setFormData({ ...formData, type_vehicule: t })} placeholder="Berline" /></View>
-                <View style={[s.field, { flex: 1 }]}><NativeInput label="Marque/Modèle" value={formData.marque_modele} onChangeText={t => setFormData({ ...formData, marque_modele: t })} placeholder="Toyota Corolla" /></View>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label={t('taxiForm.marquemodele')} value={formData.marque_modele} onChangeText={t => setFormData({ ...formData, marque_modele: t })} placeholder="Toyota Corolla" /></View>
             </View>
             <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={[s.field, { flex: 1 }]}><NativeInput label="Immatriculation" value={formData.immatriculation} onChangeText={t => setFormData({ ...formData, immatriculation: t })} placeholder="LT 1234 AB" /></View>
                 <View style={[s.field, { flex: 1 }]}><NativeInput label="Couleur" value={formData.couleur} onChangeText={t => setFormData({ ...formData, couleur: t })} placeholder="Jaune" /></View>
             </View>
-            <View style={s.field}><NativeInput label="Année" value={formData.annee} onChangeText={t => setFormData({ ...formData, annee: t })} placeholder="2020" keyboardType="numeric" /></View>
+            <View style={s.field}><NativeInput label={t('taxiForm.annee')} value={formData.annee} onChangeText={t => setFormData({ ...formData, annee: t })} placeholder="2020" keyboardType="numeric" /></View>
 
             {/* Photo */}
             <View style={s.field}>
-                <Text style={s.label}>Photo du véhicule</Text>
+                <Text style={s.label}>{t('taxiForm.photoDuVehicule')}</Text>
                 {formData.image_vehicule ? (
                     <View style={s.imgContainer}>
                         <Image source={{ uri: formData.image_vehicule }} style={s.imgPreview} />
@@ -309,7 +309,7 @@ const TaxiFormScreen: React.FC = () => {
             <View style={s.field}>
                 <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
                     <SafeIcon name="map-pin" size={20} color="#F59E0B" />
-                    <Text style={s.gpsBtnText}>{selectedGPS ? '✓ GPS sélectionné' : 'Position GPS'}</Text>
+                    <Text style={s.gpsBtnText}>{selectedGPS ? t('taxiFormScreen.gpsSelectionne') : 'Position GPS'}</Text>
                     <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                 </TouchableOpacity>
             </View>
@@ -322,11 +322,11 @@ const TaxiFormScreen: React.FC = () => {
             </View>
 
             {/* Options */}
-            <Text style={[s.sectionTitle, { marginTop: 8 }]}>Options & Paiements</Text>
+            <Text style={[s.sectionTitle, { marginTop: 8 }]}>{t('taxiForm.optionsPaiements')}/Text>
             {[
                 { label: 'Cash', key: 'paiement_cash' },
                 { label: 'Mobile Money', key: 'paiement_mobile_money' },
-                { label: 'Carte bancaire', key: 'paiement_carte' },
+                { label: t('taxiForm.carteBancaire'), key: 'paiement_carte' },
                 { label: 'Climatisation', key: 'climatisation' },
                 { label: 'WiFi', key: 'wifi' },
             ].map(opt => (
@@ -336,7 +336,7 @@ const TaxiFormScreen: React.FC = () => {
                 </View>
             ))}
 
-            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? 'Mettre à jour' : 'Enregistrer le Taxi')} onPress={handleSubmit} disabled={loading || !formData.telephone.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
+            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? t('taxiFormScreen.mettreAJour') : 'Enregistrer le Taxi')} onPress={handleSubmit} disabled={loading || !formData.telephone.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
         </ScrollView>
     );
 
@@ -348,7 +348,7 @@ const TaxiFormScreen: React.FC = () => {
                 {[
                     { l: 'Tarif de base', v: `${formData.tarif_base} ${devise}` },
                     { l: 'Prix par km', v: `${formData.tarif_par_km} ${devise}` },
-                    { l: 'Véhicule', v: formData.marque_modele || '—' },
+                    { l: t('taxiFormScreen.vehicule'), v: formData.marque_modele || '—' },
                     { l: 'Climatisation', v: formData.climatisation ? 'Oui' : 'Non' },
                 ].map((r, i) => (
                     <View key={i} style={s.analyticsRow}><Text style={s.analyticsLbl}>{r.l}</Text><Text style={s.analyticsVal}>{r.v}</Text></View>
@@ -356,7 +356,7 @@ const TaxiFormScreen: React.FC = () => {
             </View>
             <View style={s.analyticsCard}>
                 <View style={s.analyticsHdr}><SafeIcon name="sparkles" size={22} color="#8B5CF6" /><Text style={s.analyticsTitle}>Prix dynamique IA</Text></View>
-                <Text style={s.analyticsEmpty}>Le calcul de prix dynamique s'adapte à la demande en temps réel.</Text>
+                <Text style={s.analyticsEmpty}>{t('taxiForm.leCalculDePrixDynamique')}</Text>
             </View>
         </ScrollView>
     );
@@ -364,7 +364,7 @@ const TaxiFormScreen: React.FC = () => {
     // ─── RENDER: Dashboard ───────────────────────────────────────────────
     if (isDashboardMode) {
         const tabs: { key: TabType; label: string; icon: string }[] = [
-            { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
+            { key: 'overview', label: t('taxiForm.accueil'), icon: 'layout-dashboard' },
             { key: 'service', label: 'Service', icon: 'settings' },
             { key: 'stats', label: 'Stats', icon: 'bar-chart-2' },
         ];
@@ -374,8 +374,8 @@ const TaxiFormScreen: React.FC = () => {
                     <View style={s.dashHeaderRow}>
                         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
                         <View style={{ flex: 1 }}>
-                            <Text style={s.dashTitle}>{formData.nom_chauffeur || 'Mon Taxi'}</Text>
-                            <Text style={s.dashSub}>{formData.marque_modele || 'Véhicule'} · {isAvailable ? '🟢 Disponible' : '🔴 Hors service'}</Text>
+                            <Text style={s.dashTitle}>{formData.nom_chauffeur || t('taxiForm.monTaxi')}</Text>
+                            <Text style={s.dashSub}>{formData.marque_modele || t('taxiForm.vehicule')} · {isAvailable ? '🟢 Disponible' : '🔴 Hors service'}</Text>
                         </View>
                     </View>
                     <View style={s.tabsRow}>{tabs.map(t => (
@@ -400,7 +400,7 @@ const TaxiFormScreen: React.FC = () => {
         <View style={s.container}>
             <LinearGradient colors={['#92400E', '#F59E0B']} style={s.createHeader}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
-                <Text style={s.createTitle}>Enregistrer un Taxi</Text>
+                <Text style={s.createTitle}>{t('taxiFormScreen.enregistrerUnTaxi')}</Text>
             </LinearGradient>
             {renderServiceForm()}
             <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={(c: string) => { setSelectedGPS(c); setShowGPSModal(false); }} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Position du taxi" />

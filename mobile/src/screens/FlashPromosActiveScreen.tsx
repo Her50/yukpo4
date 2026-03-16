@@ -17,6 +17,7 @@ import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400x300?text=Produit';
 
@@ -44,7 +45,7 @@ const formatTimeRemaining = (endsAt: string): string => {
     const now = new Date();
     const diff = end.getTime() - now.getTime();
 
-    if (diff <= 0) return 'Terminé';
+    if (diff <= 0) return t('flashPromosActiveScreen.termine');
 
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -61,6 +62,7 @@ const formatTimeRemaining = (endsAt: string): string => {
 
 const FlashPromosActiveScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [flashPromos, setFlashPromos] = useState<FlashPromo[]>([]);
     const [loading, setLoading] = useState(true);
@@ -140,7 +142,7 @@ const FlashPromosActiveScreen: React.FC = () => {
             <SafeNativeView style={styles.container}>
                 <View style={styles.centerContent}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement des promotions...</Text>
+                    <Text style={styles.loadingText}>{t('flashPromosActive.chargementDesPromotions')}</Text>
                 </View>
             </SafeNativeView>
         );
@@ -164,7 +166,7 @@ const FlashPromosActiveScreen: React.FC = () => {
                 {flashPromos.length === 0 ? (
                     <View style={styles.emptyState}>
                         <Text style={styles.emptyStateIcon}>⚡</Text>
-                        <Text style={styles.emptyStateText}>Aucun flash promotionnel actif</Text>
+                        <Text style={styles.emptyStateText}>{t('flashPromosActive.aucunFlashPromotionnelActif')}</Text>
                         <Text style={styles.emptyStateSubtext}>
                             Les promotions limitées apparaîtront ici lorsqu'elles seront disponibles
                         </Text>
@@ -192,7 +194,7 @@ const FlashPromosActiveScreen: React.FC = () => {
                                             <View style={styles.timeContainer}>
                                                 <SafeIcon name="clock" size={14} color={isUrgent ? '#DC2626' : modernColors.textSecondary} />
                                                 <Text style={[styles.timeText, isUrgent && styles.urgentTimeText]}>
-                                                    {isEnded ? 'Terminé' : timeRemaining}
+                                                    {isEnded ? t('flashPromosActiveScreen.termine') : timeRemaining}
                                                 </Text>
                                             </View>
                                             <TouchableOpacity onPress={() => handleSharePromo(promo)} style={styles.shareButton}>

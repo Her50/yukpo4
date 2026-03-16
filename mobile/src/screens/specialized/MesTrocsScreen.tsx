@@ -93,10 +93,10 @@ const MesTrocsScreen: React.FC = () => {
     const getStatutLabel = (statut: string): string => {
         switch (statut) {
             case 'en_attente': return 'En attente';
-            case 'accepte': return 'Accepté';
-            case 'refuse': return 'Refusé';
-            case 'complete': return 'Complété';
-            case 'annule': return 'Annulé';
+            case 'accepte': return t('mesTrocsScreen.accepte');
+            case 'refuse': return t('mesTrocsScreen.refuse');
+            case 'complete': return t('mesTrocsScreen.complete');
+            case 'annule': return t('mesTrocsScreen.annule');
             default: return statut;
         }
     };
@@ -165,7 +165,7 @@ const MesTrocsScreen: React.FC = () => {
                             {item.type_troc === 'chaine' && (
                                 <View style={styles.chaineBadge}>
                                     <SafeIcon name="link" size={14} color={modernColors.primary} />
-                                    <Text style={styles.chaineText}>Chaîne</Text>
+                                    <Text style={styles.chaineText}>{t('mesTrocs.chaine')}</Text>
                                 </View>
                             )}
                         </View>
@@ -179,7 +179,7 @@ const MesTrocsScreen: React.FC = () => {
                                     {isInitiateur ? 'Vous offrez' : 'Vous recevez'}
                                 </Text>
                                 <Text style={styles.livreTitle} numberOfLines={2}>
-                                    {item.livre_offert?.titre || 'Livre offert'}
+                                    {item.livre_offert?.titre || t('mesTrocs.livreOffert')}
                                 </Text>
                             </View>
                             <SafeIcon name="arrow-right" size={20} color={modernColors.primary} />
@@ -188,7 +188,7 @@ const MesTrocsScreen: React.FC = () => {
                                     {isInitiateur ? 'Vous recevez' : 'Vous offrez'}
                                 </Text>
                                 <Text style={styles.livreTitle} numberOfLines={2}>
-                                    {item.livre_souhaite?.titre || 'Livre souhaité'}
+                                    {item.livre_souhaite?.titre || t('mesTrocs.livreSouhaite')}
                                 </Text>
                             </View>
                         </View>
@@ -254,16 +254,16 @@ const MesTrocsScreen: React.FC = () => {
 
     const filters = [
         { key: 'all', label: 'Tous' },
-        { key: 'en_attente', label: 'En attente' },
-        { key: 'accepte', label: 'Acceptés' },
-        { key: 'complete', label: 'Complétés' },
+        { key: 'en_attente', label: t('mesTrocs.enAttente') },
+        { key: 'accepte', label: t('mesTrocs.acceptes') },
+        { key: 'complete', label: t('mesTrocs.completes') },
     ];
 
     if (loading && trocs.length === 0) {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('mesTrocs.chargement')}</Text>
             </View>
         );
     }
@@ -277,7 +277,7 @@ const MesTrocsScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mes Troc</Text>
+                <Text style={styles.title}>{t('mesTrocs.mesTroc')}</Text>
             </View>
 
             {/* Filtres */}
@@ -310,10 +310,10 @@ const MesTrocsScreen: React.FC = () => {
             {trocs.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="repeat" size={64} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyText}>Aucun troc</Text>
+                    <Text style={styles.emptyText}>{t('mesTrocs.aucunTroc')}</Text>
                     <Text style={styles.emptySubtext}>
                         {filter === 'all'
-                            ? 'Vous n\'avez pas encore de troc. Créez-en un depuis un livre !'
+                            ? 'Vous n\t('mesTrocsScreen.avezPasEncoreDeTrocCreezen')
                             : `Aucun troc avec le statut "${filters.find(f => f.key === filter)?.label}".`
                         }
                     </Text>

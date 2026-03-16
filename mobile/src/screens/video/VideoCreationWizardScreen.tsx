@@ -76,7 +76,7 @@ const FALLBACK_STORY_TEMPLATES: StoryTemplateSpec[] = [
     {
         id: 'blog',
         label: 'Blog / Chronicle',
-        description: 'Récit éditorial idéal pour actus et annonces.',
+        description: t('videoCreationWizard.recitEditorialIdealPourActus'),
         recommendedCategories: [],
         tones: ['inspirational'],
         ctas: ['Découvrir'],
@@ -86,7 +86,7 @@ const FALLBACK_STORY_TEMPLATES: StoryTemplateSpec[] = [
     {
         id: 'tutorial',
         label: 'Tutoriel / How-to',
-        description: 'Pas-à-pas pour expliquer un service/app.',
+        description: t('videoCreationWizard.pasapasPourExpliquerUnServiceapp'),
         recommendedCategories: [],
         tones: ['educational'],
         ctas: ['Essayer'],
@@ -95,7 +95,7 @@ const FALLBACK_STORY_TEMPLATES: StoryTemplateSpec[] = [
     },
     {
         id: 'testimonial',
-        label: 'Témoignage client',
+        label: t('videoCreationWizard.temoignageClient'),
         description: 'Renforce la preuve sociale en quelques secondes.',
         recommendedCategories: [],
         tones: ['trust'],
@@ -109,7 +109,7 @@ const FALLBACK_STORY_TEMPLATES: StoryTemplateSpec[] = [
         description: 'Oppose deux options pour mettre en avant Yukpo.',
         recommendedCategories: [],
         tones: ['bold'],
-        ctas: ['Passer à Yukpo'],
+        ctas: [t('videoCreationWizardScreen.passerAYukpo')],
         defaultDurationSeconds: 32,
         suggestedScenes: 4,
     },
@@ -375,13 +375,13 @@ const VideoCreationWizardScreen: React.FC = () => {
                 if (brief.trim().length === 0 && !storyTemplateId) {
                     return {
                         canProceed: false,
-                        error: 'Veuillez renseigner un brief ou sélectionner un template narratif.'
+                        error: t('videoCreationWizardScreen.veuillezRenseignerUnBriefOuSelectionner')
                     };
                 }
                 if (!selectedStyle) {
                     return {
                         canProceed: false,
-                        error: 'Veuillez sélectionner un style de vidéo.'
+                        error: t('videoCreationWizardScreen.veuillezSelectionnerUnStyleDeVideo')
                     };
                 }
                 return { canProceed: true };
@@ -393,7 +393,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 // Validation finale avant génération
                 return { canProceed: true };
             default:
-                return { canProceed: false, error: 'Étape invalide' };
+                return { canProceed: false, error: t('videoCreationWizardScreen.etapeInvalide') };
         }
     }, [brief, storyTemplateId, selectedStyle]);
 
@@ -1039,13 +1039,13 @@ const VideoCreationWizardScreen: React.FC = () => {
 
             // Messages d'erreur plus spécifiques
             if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
-                message = 'Erreur de connexion. Vérifiez votre accès Internet.';
+                message = t('videoCreationWizardScreen.erreurDeConnexionVerifiezVotreAcces');
             } else if (error?.message?.includes('timeout')) {
-                message = 'Le délai d\'attente a expiré. Réessayez.';
+                message = t('videoCreationWizardScreen.leDelaiDattenteAExpireReessayez');
             } else if (error?.message?.includes('401') || error?.message?.includes('403')) {
-                message = 'Session expirée. Veuillez vous reconnecter.';
+                message = t('videoCreationWizardScreen.sessionExpireeVeuillezVousReconnecter');
             } else if (error?.message?.includes('500')) {
-                message = 'Erreur serveur. Réessayez dans quelques instants.';
+                message = t('videoCreationWizardScreen.erreurServeurReessayezDansQuelquesInstants');
             }
 
             Alert.alert(t('videoWizard.alert.estimationFailedTitle'), message);
@@ -1179,17 +1179,17 @@ const VideoCreationWizardScreen: React.FC = () => {
             console.error('[VideoCreationWizard] Erreur génération storyboard:', error);
             const title = t('videoWizard.alert.storyboardFailedTitle') ?? 'Storyboard IA';
             const defaultMessage = t('videoWizard.alert.storyboardFailedMessage');
-            let message = error?.message || defaultMessage || 'Impossible de générer le storyboard.';
+            let message = error?.message || defaultMessage || t('videoCreationWizard.impossibleDeGenererLeStoryboard');
 
             // Messages d'erreur plus spécifiques
             if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
-                message = 'Erreur de connexion. Vérifiez votre accès Internet.';
+                message = t('videoCreationWizardScreen.erreurDeConnexionVerifiezVotreAcces');
             } else if (error?.message?.includes('timeout')) {
-                message = 'Le délai d\'attente a expiré. Réessayez.';
+                message = t('videoCreationWizardScreen.leDelaiDattenteAExpireReessayez');
             } else if (error?.message?.includes('401') || error?.message?.includes('403')) {
-                message = 'Session expirée. Veuillez vous reconnecter.';
+                message = t('videoCreationWizardScreen.sessionExpireeVeuillezVousReconnecter');
             } else if (error?.message?.includes('500')) {
-                message = 'Erreur serveur. Réessayez dans quelques instants.';
+                message = t('videoCreationWizardScreen.erreurServeurReessayezDansQuelquesInstants');
             }
 
             Alert.alert(title, message);
@@ -1541,9 +1541,9 @@ const VideoCreationWizardScreen: React.FC = () => {
     const handleShortPreview = async () => {
         if (!studioSessionId) {
             Alert.alert(
-                t('videoWizard.alert.previewShortNoSessionTitle') ?? 'Prévisualisation rapide',
+                t('videoWizard.alert.previewShortNoSessionTitle') ?? t('videoCreationWizard.previsualisationRapide'),
                 t('videoWizard.alert.previewShortNoSessionMessage') ??
-                'Génère d’abord un storyboard IA ou une session Studio avant la prévisualisation.',
+                t('videoCreationWizardScreen.genereDabordUnStoryboardIaOu'),
             );
             return;
         }
@@ -1575,7 +1575,7 @@ const VideoCreationWizardScreen: React.FC = () => {
             const response = await studioService.requestShortPreview(studioSessionId);
             if (!response.preview_url) {
                 Alert.alert(
-                    t('videoWizard.alert.previewShortNoUrlTitle') ?? 'Prévisualisation rapide',
+                    t('videoWizard.alert.previewShortNoUrlTitle') ?? t('videoCreationWizard.previsualisationRapide'),
                     t('videoWizard.alert.previewShortNoUrlMessage') ??
                     "Impossible de récupérer l'URL de la prévisualisation.",
                 );
@@ -1608,10 +1608,10 @@ const VideoCreationWizardScreen: React.FC = () => {
             });
         } catch (error: any) {
             Alert.alert(
-                t('videoWizard.alert.previewShortFailedTitle') ?? 'Prévisualisation rapide',
+                t('videoWizard.alert.previewShortFailedTitle') ?? t('videoCreationWizard.previsualisationRapide'),
                 error?.message ||
                 t('videoWizard.alert.previewShortFailedMessage') ||
-                'Impossible de lancer la prévisualisation courte.',
+                t('videoCreationWizardScreen.impossibleDeLancerLaPrevisualisationCourte'),
             );
             const durationMs = Date.now() - startedAt;
             trackUxEvent('preview_short_failed', {
@@ -1665,7 +1665,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                             {item.ai_description || `Média #${item.id}`}
                         </Text>
                         <Text style={styles.mediaSubTitle}>
-                            {isVideo ? '🎬 Vidéo' : '📸 Image'}
+                            {isVideo ? t('videoCreationWizardScreen.video') : '📸 Image'}
                         </Text>
                     </View>
                 </NativeCard>
@@ -1715,23 +1715,23 @@ const VideoCreationWizardScreen: React.FC = () => {
                             <CreatorStudioCard serviceName={serviceName} productName={productName} />
 
                             <NativeCard style={styles.sectionCard}>
-                                <Text style={styles.sectionTitle}>Mode de création</Text>
+                                <Text style={styles.sectionTitle}>{t('videoCreationWizard.modeDeCreation')}</Text>
                                 <View style={styles.creationSourceRow}>
                                     <TouchableOpacity
                                         style={[styles.creationSourceOption, creationSource === 'media' && styles.creationSourceOptionActive]}
                                         onPress={() => setCreationSource('media')}
                                     >
                                         <SafeIcon name="image" size={22} color={creationSource === 'media' ? '#FFFFFF' : modernColors.textSecondary} />
-                                        <Text style={[styles.creationSourceLabel, creationSource === 'media' && styles.creationSourceLabelActive]}>Mes photos & vidéos</Text>
-                                        <Text style={[styles.creationSourceHint, creationSource === 'media' && styles.creationSourceHintActive]}>Utilise tes propres médias</Text>
+                                        <Text style={[styles.creationSourceLabel, creationSource === 'media' && styles.creationSourceLabelActive]}>{t('videoCreationWizard.mesPhotosVideos')}</Text>
+                                        <Text style={[styles.creationSourceHint, creationSource === 'media' && styles.creationSourceHintActive]}>{t('videoCreationWizard.utiliseTesPropresMedias')}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.creationSourceOption, creationSource === 'ai_virtual' && styles.creationSourceOptionActive]}
                                         onPress={() => setCreationSource('ai_virtual')}
                                     >
                                         <SafeIcon name="sparkles" size={22} color={creationSource === 'ai_virtual' ? '#FFFFFF' : modernColors.textSecondary} />
-                                        <Text style={[styles.creationSourceLabel, creationSource === 'ai_virtual' && styles.creationSourceLabelActive]}>Vidéo 100% IA</Text>
-                                        <Text style={[styles.creationSourceHint, creationSource === 'ai_virtual' && styles.creationSourceHintActive]}>L'IA génère tout pour toi</Text>
+                                        <Text style={[styles.creationSourceLabel, creationSource === 'ai_virtual' && styles.creationSourceLabelActive]}>{t('videoCreationWizard.video100Ia')}</Text>
+                                        <Text style={[styles.creationSourceHint, creationSource === 'ai_virtual' && styles.creationSourceHintActive]}>{t('videoCreationWizard.liaGenereToutPourToi')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </NativeCard>
@@ -1855,7 +1855,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                 <View style={styles.inlineRow}>
                                     <NativeButton
                                         testID="video-storyboard-generate-button"
-                                        title={storyboardLoading ? 'Storyboard…' : 'Générer storyboard'}
+                                        title={storyboardLoading ? 'Storyboard…' : t('videoCreationWizardScreen.genererStoryboard')}
                                         variant="primary"
                                         size="small"
                                         onPress={handleGenerateStoryboard}
@@ -1964,7 +1964,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                 ) : mediaItems.length === 0 ? (
                                     <View style={styles.emptyMediaState}>
                                         <SafeIcon name="image-off" size={32} color={modernColors.textSecondary} />
-                                        <Text style={styles.emptyMediaTitle}>Aucun média disponible</Text>
+                                        <Text style={styles.emptyMediaTitle}>{t('videoCreationWizard.aucunMediaDisponible')}</Text>
                                         <Text style={styles.emptyMediaText}>
                                             Les médias seront automatiquement sélectionnés depuis votre service et produit.
                                         </Text>
@@ -1985,19 +1985,19 @@ const VideoCreationWizardScreen: React.FC = () => {
 
                             <NativeCard style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>
-                                    {t('videoWizard.sections.timeline') || 'Montage par scène'}
+                                    {t('videoWizard.sections.timeline') || t('videoCreationWizard.montageParScene')}
                                 </Text>
                                 {scenesDraft.length === 0 ? (
                                     <View style={styles.emptyScenesState}>
                                         <SafeIcon name="film" size={48} color={modernColors.textSecondary} />
                                         <Text style={styles.emptyScenesTitle}>
-                                            {t('videoWizard.summary.noScenes') || 'Aucune scène définie'}
+                                            {t('videoWizard.summary.noScenes') || t('videoCreationWizard.aucuneSceneDefinie')}
                                         </Text>
                                         <Text style={styles.emptyScenesText}>
                                             Génère un storyboard pour créer des scènes automatiquement, ou configure-les manuellement.
                                         </Text>
                                         <NativeButton
-                                            title="Générer storyboard"
+                                            title={t('videoCreationWizard.genererStoryboard')}
                                             variant="primary"
                                             size="small"
                                             onPress={handleGenerateStoryboard}
@@ -2077,7 +2077,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                                             {t(
                                                                 'videoWizard.summary.optionalScene',
                                                                 {
-                                                                    defaultValue: 'Scène optionnelle',
+                                                                    defaultValue: t('videoCreationWizardScreen.sceneOptionnelle'),
                                                                 },
                                                             )}
                                                         </Text>
@@ -2256,7 +2256,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                     {stylePack === 'pulse'
                                         ? 'Pulse social'
                                         : stylePack === 'story'
-                                            ? 'Story éditoriale'
+                                            ? t('videoCreationWizardScreen.storyEditoriale')
                                             : 'Corporate clair'}
                                 </Text>
                                 {costEstimation && (
@@ -2278,7 +2278,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                             {/* ✅ Phase 9 - Amélioration 31 : Sélection de vidéos liées */}
                             {studioSessionId && (
                                 <NativeCard style={styles.sectionCard}>
-                                    <Text style={styles.sectionTitle}>Vidéos liées (chaînage)</Text>
+                                    <Text style={styles.sectionTitle}>{t('videoCreationWizard.videosLieesChainage')}</Text>
                                     <Text style={styles.sectionSubTitle}>
                                         Sélectionne les vidéos qui suivront celle-ci dans une séquence
                                     </Text>
@@ -2318,11 +2318,11 @@ const VideoCreationWizardScreen: React.FC = () => {
                                             scrollEnabled={false}
                                         />
                                     ) : (
-                                        <Text style={styles.summaryText}>Aucune autre session disponible</Text>
+                                        <Text style={styles.summaryText}>{t('videoCreationWizard.aucuneAutreSessionDisponible')}</Text>
                                     )}
                                     {selectedLinkedSessions.length > 0 && (
                                         <NativeButton
-                                            title="Enregistrer les liens"
+                                            title={t('videoCreationWizardScreen.enregistrerLesLiens')}
                                             variant="primary"
                                             size="small"
                                             onPress={async () => {
@@ -2341,7 +2341,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                     )}
                                     {dependencies.length > 0 && (
                                         <View style={{ marginTop: 12 }}>
-                                            <Text style={styles.sectionSubTitle}>Vidéos liées :</Text>
+                                            <Text style={styles.sectionSubTitle}>{t('videoCreationWizard.videosLiees')}</Text>
                                             {dependencies.map((dep, idx) => (
                                                 <Text key={dep.id} style={styles.summaryText}>
                                                     {idx + 1}. Session {dep.child_session_id.slice(0, 8)}
@@ -2364,7 +2364,7 @@ const VideoCreationWizardScreen: React.FC = () => {
 
                             <NativeCard style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>
-                                    {t('videoWizard.sections.previewShort') ?? 'Prévisualisation rapide'}
+                                    {t('videoWizard.sections.previewShort') ?? t('videoCreationWizard.previsualisationRapide')}
                                 </Text>
                                 <Text style={styles.sectionSubTitle}>
                                     Lance un aperçu court (~3–5s) de ton montage pour tester le rythme avant le rendu complet.
@@ -2373,8 +2373,8 @@ const VideoCreationWizardScreen: React.FC = () => {
                                     <NativeButton
                                         title={
                                             shortPreviewLoading
-                                                ? t('videoWizard.buttons.previewShortLoading') ?? 'Prévisualisation…'
-                                                : t('videoWizard.buttons.previewShort') ?? 'Prévisualiser 3s'
+                                                ? t('videoWizard.buttons.previewShortLoading') ?? t('videoCreationWizard.previsualisation')
+                                                : t('videoWizard.buttons.previewShort') ?? t('videoCreationWizard.previsualiser3s')
                                         }
                                         variant="primary"
                                         onPress={handleShortPreview}
@@ -2443,8 +2443,8 @@ const VideoCreationWizardScreen: React.FC = () => {
                             {(() => {
                                 const stepLabels = [
                                     t('videoWizard.steps.step1') || 'Configuration',
-                                    t('videoWizard.steps.step2') || 'Médias',
-                                    t('videoWizard.steps.step3') || 'Résumé'
+                                    t('videoWizard.steps.step2') || t('videoCreationWizard.medias'),
+                                    t('videoWizard.steps.step3') || t('videoCreationWizard.resume')
                                 ];
 
                                 return (

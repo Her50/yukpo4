@@ -11,6 +11,7 @@ import { useServiceReviews } from '../hooks/useServiceReviews';
 import { useServiceStats } from '../hooks/useServiceStats';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Service {
     id: string;
@@ -72,7 +73,8 @@ const ModernServiceCard: React.FC<ModernServiceCardProps> = ({
     onGallery,
     onReview,
 }) => {
-    const [showChatModal, setShowChatModal] = useState(false);
+        const { t } = useLanguageSafe();
+const [showChatModal, setShowChatModal] = useState(false);
     const [showRatingModal, setShowRatingModal] = useState(false);
 
     // ✅ CORRIGÉ 2025-12-30: Utiliser une valeur stable pour createdAt pour éviter les re-renders en boucle
@@ -89,7 +91,7 @@ const ModernServiceCard: React.FC<ModernServiceCardProps> = ({
     const { locationData, loading: locationLoading } = useLocationDisplay(service, prestataireInfo);
     // Fonction pour extraire la valeur d'un champ de service (comme le frontend)
     const getServiceFieldValue = (field: any): string => {
-        if (!field) return 'Non spécifié';
+        if (!field) return t('modernServiceCard.nonSpecifie');
         if (typeof field === 'string') return field;
         if (field && typeof field === 'object') {
             if (field.valeur !== undefined) {
@@ -103,18 +105,18 @@ const ModernServiceCard: React.FC<ModernServiceCardProps> = ({
         }
         if (typeof field === 'boolean') return field ? 'Oui' : 'Non';
         if (typeof field === 'number') return field.toString();
-        return 'Non spécifié';
+        return t('modernServiceCard.nonSpecifie');
     };
 
     // Normaliser les données du service avec extraction des vraies données
     const normalizedService: Service = {
         id: service.id?.toString() || '',
-        titre: getServiceFieldValue(service.data?.titre_service) || service.titre || service.title || 'Service sans titre',
-        description: getServiceFieldValue(service.data?.description) || service.description || 'Aucune description',
+        titre: getServiceFieldValue(service.data?.titre_service) || service.titre || service.title || t('modernServiceCard.serviceSansTitre'),
+        description: getServiceFieldValue(service.data?.description) || service.description || t('modernServiceCard.aucuneDescription'),
         prix: service.data?.prix?.valeur || service.prix || service.price || 0,
         devise: service.data?.devise?.valeur || service.devise || service.currency || 'XAF',
-        categorie: getServiceFieldValue(service.data?.category) || service.categorie || service.category || 'Non spécifié',
-        localisation: locationData?.location || getServiceFieldValue(service.data?.localisation) || service.localisation || service.location || 'Non spécifié',
+        categorie: getServiceFieldValue(service.data?.category) || service.categorie || service.category || t('modernServiceCard.nonSpecifie'),
+        localisation: locationData?.location || getServiceFieldValue(service.data?.localisation) || service.localisation || service.location || t('modernServiceCard.nonSpecifie'),
         prestataire: prestataireInfo || service.prestataire || {
             id: service.prestataire?.id || '',
             nom: prestataireInfo?.nom_complet || prestataireInfo?.nom || service.prestataire?.nom || service.prestataire?.name || 'Prestataire',
@@ -213,7 +215,7 @@ const ModernServiceCard: React.FC<ModernServiceCardProps> = ({
                     </View>
                     {normalizedService.isNew && (
                         <View style={styles.newBadge}>
-                            <Text style={styles.newBadgeText}>Nouveau</Text>
+                            <Text style={styles.newBadgeText}>{t('modernServiceCard.nouveau')}</Text>
                         </View>
                     )}
                 </View>
@@ -277,16 +279,16 @@ const ModernServiceCard: React.FC<ModernServiceCardProps> = ({
 
                 {/* Informations de contact */}
                 <View style={styles.contactInfoContainer}>
-                    {service.data?.whatsapp && getServiceFieldValue(service.data.whatsapp) !== 'Non spécifié' && (
+                    {service.data?.whatsapp && getServiceFieldValue(service.data.whatsapp) !== t('modernServiceCard.nonSpecifie') && (
                         <View style={styles.contactItem}>
                             <SafeIcon name="message-circle" size={12} color={modernColors.success} />
                             <Text style={styles.contactText}>WhatsApp: {getServiceFieldValue(service.data.whatsapp)}</Text>
                         </View>
                     )}
-                    {service.data?.telephone && getServiceFieldValue(service.data.telephone) !== 'Non spécifié' && (
+                    {service.data?.telephone && getServiceFieldValue(service.data.telephone) !== t('modernServiceCard.nonSpecifie') && (
                         <View style={styles.contactItem}>
                             <SafeIcon name="phone" size={12} color={modernColors.info} />
-                            <Text style={styles.contactText}>Tél: {getServiceFieldValue(service.data.telephone)}</Text>
+                            <Text style={styles.contactText}>{t('modernServiceCard.phone')}: {getServiceFieldValue(service.data.telephone)}</Text>
                         </View>
                     )}
                 </View>
@@ -302,7 +304,7 @@ const ModernServiceCard: React.FC<ModernServiceCardProps> = ({
                     style={styles.contactButtonGradient}
                 >
                     <SafeIcon name="message-circle" size={16} color="#FFFFFF" />
-                    <Text style={styles.contactButtonText}>Démarrer une conversation</Text>
+                    <Text style={styles.contactButtonText}>{t('modernServiceCard.demarrerUneConversation')}</Text>
                 </LinearGradient>
             </TouchableOpacity>
 
@@ -315,7 +317,7 @@ const ModernServiceCard: React.FC<ModernServiceCardProps> = ({
 
                 <TouchableOpacity style={styles.secondaryButton} onPress={handleFavorite}>
                     <SafeIcon name="heart" size={16} color={modernColors.textSecondary} />
-                    <Text style={styles.secondaryButtonText}>Favoris</Text>
+                    <Text style={styles.secondaryButtonText}>{t('modernServiceCard.favoris')}/Text>
                 </TouchableOpacity>
             </View>
 

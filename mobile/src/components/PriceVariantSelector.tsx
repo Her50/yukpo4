@@ -165,7 +165,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
 
             Alert.alert(
                 'Confirmer',
-                `Voulez-vous supprimer la modalité "${modalites[index].valeur}" ?`,
+                t('priceVariantSelector.voulezvousSupprimerLaModalite', { modalites[index]_valeur: modalites[index].valeur }),
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
@@ -189,7 +189,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
 
     const resolvedLabel = label?.trim() || 'Variantes';
     const resolvedVariable = variable?.trim();
-    const resolvedHelperText = helperText || 'Modifiez chaque modalité détectée (prix, devise, stock, image) ou ajoutez-en de nouvelles.';
+    const resolvedHelperText = helperText || t('priceVariantSelector.modifiezChaqueModaliteDetecteePrix');
 
     return (
         <View style={styles.container}>
@@ -201,7 +201,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                 </Text>
                 <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
                     <SafeIcon name="plus" size={18} color="#FFFFFF" />
-                    <Text style={styles.addButtonText}>Ajouter une modalité</Text>
+                    <Text style={styles.addButtonText}>{t('priceVariantSelector.ajouterUneModalite')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -266,7 +266,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                     <View style={styles.emptyStateIcon}>
                         <SafeIcon name="tag" size={32} color={modernColors.primary} />
                     </View>
-                    <Text style={styles.emptyStateTitle}>Aucune variante définie</Text>
+                    <Text style={styles.emptyStateTitle}>{t('priceVariantSelector.aucuneVarianteDefinie')}</Text>
                     <Text style={styles.emptyStateText}>
                         Appuyez sur « Ajouter » pour définir une variante (ex: Taille M) et le prix correspondant.
                     </Text>
@@ -275,8 +275,8 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                 <TouchableOpacity style={styles.compactEmptyState} onPress={openAddModal}>
                     <SafeIcon name="layers" size={18} color={modernColors.primary} />
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.compactEmptyTitle}>Ajouter une variante</Text>
-                        <Text style={styles.compactEmptyText}>Ex: Taille M, Formule VIP, Option Livraison...</Text>
+                        <Text style={styles.compactEmptyTitle}>{t('priceVariantSelector.ajouterUneVariante')}</Text>
+                        <Text style={styles.compactEmptyText}>{t('priceVariantSelector.exTailleMFormuleVip')}/Text>
                     </View>
                     <SafeIcon name="plus" size={18} color={modernColors.primary} />
                 </TouchableOpacity>
@@ -348,7 +348,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                                     }}
                                     keyboardType="numeric"
                                 />
-                                <Text style={styles.inputHint}>⚠️ Le prix doit être un nombre (jamais texte)</Text>
+                                <Text style={styles.inputHint}>{t('priceVariantSelector.lePrixDoitEtreUn')}</Text>
                             </View>
 
                             {/* Devise */}
@@ -381,7 +381,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
 
                             {/* Stock (optionnel) */}
                             <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Stock (optionnel)</Text>
+                                <Text style={styles.inputLabel}>{t('priceVariantSelector.stockOptionnel')}/Text>
                                 <TextInput
                                     style={styles.input}
                                     placeholder="0"
@@ -396,12 +396,12 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                                     }}
                                     keyboardType="numeric"
                                 />
-                                <Text style={styles.inputHint}>Laisser vide si illimité</Text>
+                                <Text style={styles.inputHint}>{t('priceVariantSelector.laisserVideSiIllimite')}</Text>
                             </View>
 
                             {/* Image (optionnel) */}
                             <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Image spécifique (optionnel)</Text>
+                                <Text style={styles.inputLabel}>{t('priceVariantSelector.imageSpecifiqueOptionnel')}</Text>
                                 {tempModality.image ? (
                                     <View style={styles.imagePreviewContainer}>
                                         <Image
@@ -447,10 +447,10 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                                         }}
                                     >
                                         <SafeIcon name="image" size={20} color={modernColors.primary} />
-                                        <Text style={styles.uploadImageText}>Ajouter une image</Text>
+                                        <Text style={styles.uploadImageText}>{t('priceVariantSelector.ajouterUneImage')}</Text>
                                     </TouchableOpacity>
                                 )}
-                                <Text style={styles.inputHint}>Image spécifique à cette modalité (ex: photo du produit en pointure 38)</Text>
+                                <Text style={styles.inputHint}>{t('priceVariantSelector.imageSpecifiqueACetteModalite')}</Text>
                             </View>
                         </ScrollView>
 
@@ -463,10 +463,10 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                                     setEditIndex(null);
                                 }}
                             >
-                                <Text style={styles.cancelButtonText}>Annuler</Text>
+                                <Text style={styles.cancelButtonText}>{t('priceVariantSelector.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.saveButton} onPress={saveModality}>
-                                <Text style={styles.saveButtonText}>Enregistrer</Text>
+                                <Text style={styles.saveButtonText}>{t('priceVariantSelector.enregistrer')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

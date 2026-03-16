@@ -19,6 +19,7 @@ import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type TabType = 'overview' | 'vehicles' | 'analytics';
 
@@ -45,6 +46,7 @@ const TYPES_VEHICULE = [
 
 const AutomobileDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
 
     const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -78,13 +80,13 @@ const AutomobileDashboardScreen: React.FC = () => {
     const handleRefresh = () => { setRefreshing(true); loadData(); };
 
     const TABS: { key: TabType; label: string; icon: string }[] = [
-        { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
-        { key: 'vehicles', label: 'Véhicules', icon: 'car' },
+        { key: 'overview', label: t('automobileDashboard.accueil'), icon: 'layout-dashboard' },
+        { key: 'vehicles', label: t('automobileDashboard.vehicules'), icon: 'car' },
         { key: 'analytics', label: 'Stats', icon: 'bar-chart-2' },
     ];
 
     if (loading) {
-        return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#F59E0B" /><Text style={s.loadingText}>Chargement...</Text></View>;
+        return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#F59E0B" /><Text style={s.loadingText}>{t('automobileDashboard.chargement')}</Text></View>;
     }
 
     const renderOverview = () => (
@@ -92,8 +94,8 @@ const AutomobileDashboardScreen: React.FC = () => {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
             <View style={s.statsGrid}>
                 {[
-                    { label: 'Véhicules', value: stats.total, icon: 'car', color: '#3B82F6' },
-                    { label: 'En ligne', value: stats.active, icon: 'check-circle', color: '#10B981' },
+                    { label: t('automobileDashboard.vehicules'), value: stats.total, icon: 'car', color: '#3B82F6' },
+                    { label: t('automobileDashboard.enLigne'), value: stats.active, icon: 'check-circle', color: '#10B981' },
                     { label: 'Occasion', value: stats.occasion, icon: 'refresh-cw', color: '#F59E0B' },
                     { label: 'Neufs', value: stats.neuf, icon: 'star', color: '#8B5CF6' },
                 ].map((st, i) => (
@@ -108,8 +110,8 @@ const AutomobileDashboardScreen: React.FC = () => {
             <Text style={s.sectionTitle}>Actions rapides</Text>
             <View style={s.quickRow}>
                 {[
-                    { label: 'Ajouter véhicule', icon: 'plus-circle', color: '#F59E0B', onPress: () => setActiveTab('vehicles') },
-                    { label: 'Recherche', icon: 'search', color: '#3B82F6', onPress: () => (navigation as any).navigate('AutoServicesSearch') },
+                    { label: t('automobileDashboard.ajouterVehicule'), icon: 'plus-circle', color: '#F59E0B', onPress: () => setActiveTab('vehicles') },
+                    { label: t('automobileDashboard.recherche'), icon: 'search', color: '#3B82F6', onPress: () => (navigation as any).navigate('AutoServicesSearch') },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#8B5CF6', onPress: () => setActiveTab('analytics') },
                     { label: 'Portefeuille', icon: 'wallet', color: '#10B981', onPress: () => (navigation as any).navigate('WalletFinancial') },
                 ].map((a, i) => (
@@ -138,7 +140,7 @@ const AutomobileDashboardScreen: React.FC = () => {
             {vehicles.length > 0 && (
                 <>
                     <View style={s.sectionRow}>
-                        <Text style={s.sectionTitle}>Véhicules récents</Text>
+                        <Text style={s.sectionTitle}>{t('automobileDashboard.vehiculesRecents')}</Text>
                         <TouchableOpacity onPress={() => setActiveTab('vehicles')}><Text style={s.seeAll}>Tout voir</Text></TouchableOpacity>
                     </View>
                     {vehicles.slice(0, 4).map((v, i) => (
@@ -156,9 +158,9 @@ const AutomobileDashboardScreen: React.FC = () => {
             {vehicles.length === 0 && (
                 <View style={s.emptyState}>
                     <SafeIcon name="car" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Aucun véhicule</Text>
-                    <Text style={s.emptyText}>Ajoutez vos premiers véhicules pour commencer à vendre.</Text>
-                    <NativeButton title="Ajouter un véhicule" onPress={() => setActiveTab('vehicles')} style={{ marginTop: 16 }} />
+                    <Text style={s.emptyTitle}>{t('automobileDashboard.aucunVehicule')}</Text>
+                    <Text style={s.emptyText}>{t('automobileDashboard.ajoutezVosPremiersVehiculesPour')}</Text>
+                    <NativeButton title={t('automobileDashboard.ajouterUnVehicule')} onPress={() => setActiveTab('vehicles')} style={{ marginTop: 16 }} />
                 </View>
             )}
         </ScrollView>
@@ -167,11 +169,11 @@ const AutomobileDashboardScreen: React.FC = () => {
     const renderVehicles = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-            <NativeButton title="+ Ajouter un véhicule" onPress={() => Alert.alert('Info', 'Utilisez le formulaire intelligent pour ajouter un véhicule.')} variant="primary" style={{ marginBottom: 16 }} />
+            <NativeButton title={t('automobileDashboard.ajouterUnVehicule')} onPress={() => Alert.alert('Info', 'Utilisez le formulaire intelligent pour ajouter un véhicule.')} variant="primary" style={{ marginBottom: 16 }} />
             {vehicles.length === 0 ? (
                 <View style={s.emptyState}>
                     <SafeIcon name="car" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Aucun véhicule enregistré</Text>
+                    <Text style={s.emptyTitle}>{t('automobileDashboard.aucunVehiculeEnregistre')}</Text>
                 </View>
             ) : (
                 vehicles.map((v, i) => (
@@ -194,10 +196,10 @@ const AutomobileDashboardScreen: React.FC = () => {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
             <View style={s.analyticsCard}>
-                <Text style={s.analyticsTitle}>Résumé du stock</Text>
+                <Text style={s.analyticsTitle}>{t('automobileDashboard.resumeDuStock')}</Text>
                 {[
-                    { label: 'Total véhicules', value: stats.total, color: '#3B82F6' },
-                    { label: 'En ligne', value: stats.active, color: '#10B981' },
+                    { label: t('automobileDashboard.totalVehicules'), value: stats.total, color: '#3B82F6' },
+                    { label: t('automobileDashboard.enLigne'), value: stats.active, color: '#10B981' },
                     { label: 'Occasion', value: stats.occasion, color: '#F59E0B' },
                     { label: 'Neufs', value: stats.neuf, color: '#8B5CF6' },
                 ].map((item, i) => (
@@ -219,8 +221,8 @@ const AutomobileDashboardScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={22} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>Dashboard Automobile</Text>
-                        <Text style={s.headerSub}>{user?.name || 'Partenaire'}</Text>
+                        <Text style={s.headerTitle}>{t('automobileDashboard.dashboardAutomobile')}/Text>
+                        <Text style={s.headerSub}>{user?.name || t('automobileDashboard.partenaire')}</Text>
                     </View>
                 </View>
                 <View style={s.tabRow}>

@@ -349,7 +349,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           if (configuredProducts.length > 0) {
             setExistingDeliveryConfig({
               hasConfig: true,
-              productName: configuredProducts[0].name || 'Produit existant',
+              productName: configuredProducts[0].name || t('formulaireYukpoIntelligent.produitExistant'),
               productIndex: configuredProducts[0].index,
             });
           } else {
@@ -552,7 +552,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const blocks = [
       {
         id: 'general',
-        title: 'Informations générales',
+        title: t('formulaireYukpoIntelligent.informationsGenerales'),
         icon: '📋',
         fields: [] as DynamicField[]
       },
@@ -564,19 +564,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       },
       {
         id: 'location',
-        title: 'Localisation',
+        title: t('formulaireYukpoIntelligent.localisation'),
         icon: '📍',
         fields: [] as DynamicField[]
       },
       {
         id: 'products',
-        title: 'Produits / Prestations',
+        title: t('formulaireYukpoIntelligent.produitsPrestations'),
         icon: '🛍️',
         fields: [] as DynamicField[]
       },
       {
         id: 'media',
-        title: 'Identité Visuelle',
+        title: t('formulaireYukpoIntelligent.identiteVisuelle'),
         icon: '🎨',
         fields: [] as DynamicField[]
       },
@@ -588,7 +588,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       },
       {
         id: 'other',
-        title: 'Autres informations',
+        title: t('formulaireYukpoIntelligent.autresInformations'),
         icon: 'ℹ️',
         fields: [] as DynamicField[]
       }
@@ -715,31 +715,31 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'nom_produit',
           type: 'text',
           typeDonnee: 'string',
-          label: 'Nom du produit / prestation',
+          label: t('formulaireYukpoIntelligent.nomDuProduitPrestation'),
           multiline: true,
           minLines: 1,
           required: false,
           placeholder: isPrestation
-            ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
+            ? t('formulaireYukpoIntelligentScreen.exCoursDeMathsNiveauTerminal')
             : 'Ex: iPhone 14 Pro Max 256GB, Toyota RAV4 2018 4x4...'
         },
         {
           name: 'categorie_produit',
           type: 'text',
           typeDonnee: 'string',
-          label: 'Catégorie du produit / prestation',
+          label: t('formulaireYukpoIntelligent.categorieDuProduitPrestation'),
           multiline: true,
           minLines: 1,
           required: false,
-          placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...'
+          placeholder: t('formulaireYukpoIntelligentScreen.exSmartphoneCoursParticulierServiceDe')
         },
         {
           name: 'description_produit',
           type: 'textarea',
           typeDonnee: 'string',
-          label: 'Description du produit / prestation',
+          label: t('formulaireYukpoIntelligentScreen.descriptionDuProduitPrestation'),
           required: false,
-          placeholder: 'Décrivez les caractéristiques spécifiques du produit...',
+          placeholder: t('formulaireYukpoIntelligentScreen.decrivezLesCaracteristiquesSpecifiquesDuProduit'),
           multiline: true,
           minLines: 3
         },
@@ -747,7 +747,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'quantite_disponible',
           type: 'number',
           typeDonnee: 'number',
-          label: 'Quantité disponible',
+          label: t('formulaireYukpoIntelligent.quantiteDisponible'),
           required: false,
           placeholder: 'Ex: 50'
         },
@@ -764,7 +764,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'produits',
           type: 'autocomplete',
           typeDonnee: 'autocomplete',
-          label: 'Caractéristiques produits / prestations',
+          label: t('formulaireYukpoIntelligent.caracteristiquesProduitsPrestations'),
           required: false,
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
@@ -776,13 +776,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
             // Caractéristiques secondaires
             annee: ['2024', '2023', '2022', '2021', '2020', '2019', '2018'],
-            etat: ['Neuf', 'Comme neuf', 'Bon état', 'Très bon état', 'Occasion', 'À rénover'],
+            etat: ['Neuf', 'Comme neuf', t('formulaireYukpoIntelligentScreen.bonEtat'), t('formulaireYukpoIntelligentScreen.tresBonEtat'), 'Occasion', t('formulaireYukpoIntelligentScreen.aRenover')],
             version: [],
 
             // Caractéristiques prestations
             competences: [],
-            experience: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel'],
-            niveau: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel']
+            experience: ['Débutant', t('formulaireYukpoIntelligentScreen.intermediaire'), t('formulaireYukpoIntelligentScreen.avance'), 'Expert', 'Professionnel'],
+            niveau: ['Débutant', t('formulaireYukpoIntelligentScreen.intermediaire'), t('formulaireYukpoIntelligentScreen.avance'), 'Expert', 'Professionnel']
           },
           separateur: ',',
           filtrable: true,
@@ -792,15 +792,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'lieu_produit',
           type: 'location',
           typeDonnee: 'location',
-          label: 'Lieu de commercialisation',
+          label: t('formulaireYukpoIntelligent.lieuDeCommercialisation'),
           required: true,  // ✅ OBLIGATOIRE pour hiérarchie géographique bidirectionnelle
-          placeholder: 'Rechercher ville, quartier, pays, région...',
+          placeholder: t('formulaireYukpoIntelligentScreen.rechercherVilleQuartierPaysRegion'),
           filtrable: true
         },
         {
           name: '_product_media_manager',
           type: 'custom',
-          label: 'Photos et vidéos du produit',
+          label: t('formulaireYukpoIntelligent.photosEtVideosDuProduit'),
           required: false
         }
       ];
@@ -827,31 +827,31 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'nom_produit',
           type: 'text',
           typeDonnee: 'string',
-          label: 'Nom du produit / prestation',
+          label: t('formulaireYukpoIntelligent.nomDuProduitPrestation'),
           multiline: true,
           minLines: 1,
           required: false,
           placeholder: isPrestation
-            ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
+            ? t('formulaireYukpoIntelligentScreen.exCoursDeMathsNiveauTerminal')
             : 'Ex: iPhone 14 Pro Max 256GB, Toyota RAV4 2018 4x4...'
         },
         {
           name: 'categorie_produit',
           type: 'text',
           typeDonnee: 'string',
-          label: 'Catégorie du produit / prestation',
+          label: t('formulaireYukpoIntelligent.categorieDuProduitPrestation'),
           multiline: true,
           minLines: 1,
           required: false,
-          placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...'
+          placeholder: t('formulaireYukpoIntelligentScreen.exSmartphoneCoursParticulierServiceDe')
         },
         {
           name: 'description_produit',
           type: 'textarea',
           typeDonnee: 'string',
-          label: 'Description du produit / prestation',
+          label: t('formulaireYukpoIntelligentScreen.descriptionDuProduitPrestation'),
           required: false,
-          placeholder: 'Décrivez les caractéristiques spécifiques du produit...',
+          placeholder: t('formulaireYukpoIntelligentScreen.decrivezLesCaracteristiquesSpecifiquesDuProduit'),
           multiline: true,
           minLines: 3
         },
@@ -859,7 +859,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'quantite_disponible',
           type: 'number',
           typeDonnee: 'number',
-          label: 'Quantité disponible',
+          label: t('formulaireYukpoIntelligent.quantiteDisponible'),
           required: false,
           placeholder: 'Ex: 50'
         },
@@ -876,7 +876,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'produits',
           type: 'autocomplete',
           typeDonnee: 'autocomplete',
-          label: 'Caractéristiques produits / prestations',
+          label: t('formulaireYukpoIntelligent.caracteristiquesProduitsPrestations'),
           required: false,
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
@@ -888,13 +888,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
             // Caractéristiques secondaires
             annee: ['2024', '2023', '2022', '2021', '2020', '2019', '2018'],
-            etat: ['Neuf', 'Comme neuf', 'Bon état', 'Très bon état', 'Occasion', 'À rénover'],
+            etat: ['Neuf', 'Comme neuf', t('formulaireYukpoIntelligentScreen.bonEtat'), t('formulaireYukpoIntelligentScreen.tresBonEtat'), 'Occasion', t('formulaireYukpoIntelligentScreen.aRenover')],
             version: [],
 
             // Caractéristiques prestations
             competences: [],
-            experience: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel'],
-            niveau: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel']
+            experience: ['Débutant', t('formulaireYukpoIntelligentScreen.intermediaire'), t('formulaireYukpoIntelligentScreen.avance'), 'Expert', 'Professionnel'],
+            niveau: ['Débutant', t('formulaireYukpoIntelligentScreen.intermediaire'), t('formulaireYukpoIntelligentScreen.avance'), 'Expert', 'Professionnel']
           },
           separateur: ',',
           filtrable: true,
@@ -904,15 +904,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'lieu_produit',
           type: 'location',
           typeDonnee: 'location',
-          label: 'Lieu de commercialisation',
+          label: t('formulaireYukpoIntelligent.lieuDeCommercialisation'),
           required: true,  // ✅ OBLIGATOIRE pour hiérarchie géographique bidirectionnelle
-          placeholder: 'Rechercher ville, quartier, pays, région...',
+          placeholder: t('formulaireYukpoIntelligentScreen.rechercherVilleQuartierPaysRegion'),
           filtrable: true
         },
         {
           name: '_product_media_manager',
           type: 'custom',
-          label: 'Photos et vidéos du produit',
+          label: t('formulaireYukpoIntelligent.photosEtVideosDuProduit'),
           required: false
         }
       ];
@@ -951,7 +951,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           minLines: 1,
           required: false,
           placeholder: isPrestation
-            ? 'Ex: Cours de mathématiques, Réparation téléphone, Consultation médicale...'
+            ? t('formulaireYukpoIntelligentScreen.exCoursDeMathematiquesReparationTelephone')
             : 'Ex: iPhone 14 Pro Max, Toyota RAV4 2018, Nike Air Max...'
         } as DynamicField);
       }
@@ -960,11 +960,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'categorie_produit',
           type: 'text',
           typeDonnee: 'string',
-          label: 'Catégorie du produit/prestation',
+          label: t('formulaireYukpoIntelligent.categorieDuProduitprestation'),
           multiline: true,
           minLines: 1,
           required: false,
-          placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...'
+          placeholder: t('formulaireYukpoIntelligentScreen.exSmartphoneCoursParticulierServiceDe')
         } as DynamicField);
       }
       if (!hasDescriptionProduit) {
@@ -972,9 +972,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'description_produit',
           type: 'textarea',
           typeDonnee: 'string',
-          label: 'Description du produit/prestation',
+          label: t('formulaireYukpoIntelligentScreen.descriptionDuProduitprestation'),
           required: false,
-          placeholder: 'Décrivez les caractéristiques spécifiques du produit/prestation...',
+          placeholder: t('formulaireYukpoIntelligentScreen.decrivezLesCaracteristiquesSpecifiquesDuProduitpre'),
           multiline: true,
           minLines: 3 // ✅ REFONTE: Même nombre de lignes que description (3 au lieu de 6)
         } as DynamicField);
@@ -989,7 +989,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'quantite_disponible',
           type: 'number',
           typeDonnee: 'number',
-          label: 'Quantité disponible',
+          label: t('formulaireYukpoIntelligent.quantiteDisponible'),
           required: false,
           placeholder: 'Ex: 50',
           value: formValues.quantite_disponible || ''
@@ -1006,7 +1006,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'produits',
           type: 'autocomplete',
           typeDonnee: 'autocomplete',
-          label: isPrestation ? 'Caractéristiques prestations' : 'Caractéristiques produits',
+          label: isPrestation ? t('formulaireYukpoIntelligentScreen.caracteristiquesPrestations') : t('formulaireYukpoIntelligentScreen.caracteristiquesProduits'),
           multiline: true,
           minLines: 1,
           required: false,
@@ -1019,12 +1019,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             couleur: ['Noir', 'Blanc', 'Gris', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Orange', 'Rose', 'Violet'],
             // Caractéristiques secondaires
             annee: ['2024', '2023', '2022', '2021', '2020', '2019', '2018'],
-            etat: ['Neuf', 'Comme neuf', 'Bon état', 'Très bon état', 'Occasion', 'À rénover'],
+            etat: ['Neuf', 'Comme neuf', t('formulaireYukpoIntelligentScreen.bonEtat'), t('formulaireYukpoIntelligentScreen.tresBonEtat'), 'Occasion', t('formulaireYukpoIntelligentScreen.aRenover')],
             version: [],
             // Caractéristiques prestations
             competences: [],
-            experience: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel'],
-            niveau: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel']
+            experience: ['Débutant', t('formulaireYukpoIntelligentScreen.intermediaire'), t('formulaireYukpoIntelligentScreen.avance'), 'Expert', 'Professionnel'],
+            niveau: ['Débutant', t('formulaireYukpoIntelligentScreen.intermediaire'), t('formulaireYukpoIntelligentScreen.avance'), 'Expert', 'Professionnel']
           },
           separateur: ',',
           filtrable: true,
@@ -1044,7 +1044,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'prix_produit',
           type: 'number',
           typeDonnee: 'number',
-          label: 'Prix du produit/prestation',
+          label: t('formulaireYukpoIntelligent.prixDuProduitprestation'),
           required: false,
           placeholder: 'Ex: 150000',
           value: formValues.prix_produit || ''
@@ -1086,9 +1086,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'lieu_produit',
           type: 'location',
           typeDonnee: 'location',
-          label: 'Lieu de commercialisation',
+          label: t('formulaireYukpoIntelligent.lieuDeCommercialisation'),
           required: true,  // ✅ OBLIGATOIRE pour hiérarchie géographique bidirectionnelle
-          placeholder: 'Rechercher ville, quartier, pays, région...',
+          placeholder: t('formulaireYukpoIntelligentScreen.rechercherVilleQuartierPaysRegion'),
           filtrable: true
         } as DynamicField);
       }
@@ -1098,7 +1098,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         productsBlock.fields.push({
           name: '_product_media_manager',
           type: 'custom',
-          label: 'Photos et vidéos du produit',
+          label: t('formulaireYukpoIntelligent.photosEtVideosDuProduit'),
           required: false
         } as DynamicField);
       }
@@ -1115,7 +1115,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         mediaBlock.fields.unshift({
           name: '_media_manager',
           type: 'custom',
-          label: 'Identité visuelle',
+          label: t('formulaireYukpoIntelligent.identiteVisuelle'),
           required: false
         } as any);
       }
@@ -1127,7 +1127,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       blocksWithFixedOnes.find(b => b.id === 'payment')!.fields.push({
         name: '_payment_manager',
         type: 'custom',
-        label: 'Mode de paiement',
+        label: t('formulaireYukpoIntelligent.modeDePaiement'),
         required: false
       } as any);
     }
@@ -1138,7 +1138,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       locationBlock.fields.push({
         name: 'gps_fixe',
         type: 'custom',
-        label: 'Position GPS fixe',
+        label: t('formulaireYukpoIntelligent.positionGpsFixe'),
         required: false,
         placeholder: 'Sélectionner une position'
       } as any);
@@ -1154,7 +1154,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           name: 'titre_service',
           type: 'text',
           typeDonnee: 'string',
-          label: 'Nom de votre structure',
+          label: t('formulaireYukpoIntelligent.nomDeVotreStructure'),
           required: true, // ✅ OBLIGATOIRE
           placeholder: 'Ex: Restaurant Le Gourmet, Garage Auto Pro, Ecole Primaire Saint Joseph...',
           multiline: true,
@@ -1167,7 +1167,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         const titreServiceField = generalBlock.fields.find(f => f.name === 'titre_service');
         if (titreServiceField && !titreServiceField.required) {
           titreServiceField.required = true;
-          titreServiceField.label = 'Nom de votre structure';
+          titreServiceField.label={t('formulaireYukpoIntelligent.nomDeVotreStructure')};
           titreServiceField.isStructureName = true;
           console.log('[FormulaireYukpoIntelligentScreen] ✅ Champ titre_service existant marqué comme obligatoire');
         }
@@ -1185,7 +1185,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             name: fieldName,
             type: fieldName === 'email' ? 'email' : fieldName === 'website' ? 'url' : 'text',
             label: fieldName === 'whatsapp' ? 'WhatsApp' :
-              fieldName === 'telephone' ? 'Téléphone' :
+              fieldName === 'telephone' ? t('formulaireYukpoIntelligentScreen.telephone') :
                 fieldName === 'email' ? 'Email' : 'Site web',
             required: fieldName === 'whatsapp', // Seul WhatsApp obligatoire
             placeholder: fieldName === 'whatsapp' ? '+237 6XX XX XX XX' :
@@ -1253,7 +1253,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       const whatsappRegex = /^(\+?237|00237)?[0-9]{9}$/;
       const cleanValue = trimmedValue.replace(/\s/g, '');
       if (!whatsappRegex.test(cleanValue)) {
-        return { isValid: false, error: 'Numéro WhatsApp invalide (ex: +237 6XX XX XX XX)' };
+        return { isValid: false, error: t('formulaireYukpoIntelligentScreen.numeroWhatsappInvalideEx2376xx') };
       }
     }
 
@@ -1262,7 +1262,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       const phoneRegex = /^(\+?237|00237)?[0-9]{9}$/;
       const cleanValue = trimmedValue.replace(/\s/g, '');
       if (!phoneRegex.test(cleanValue)) {
-        return { isValid: false, error: 'Numéro de téléphone invalide' };
+        return { isValid: false, error: t('formulaireYukpoIntelligentScreen.numeroDeTelephoneInvalide') };
       }
     }
 
@@ -2310,8 +2310,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         error,
         errorMessage: error instanceof Error ? error.message : String(error),
         errorStack: error instanceof Error ? error.stack : undefined,
-        suggestion: suggestion ? 'présent' : 'absent',
-        suggestionData: suggestion?.data ? 'présent' : 'absent',
+        suggestion: suggestion ? t('formulaireYukpoIntelligentScreen.present') : 'absent',
+        suggestionData: suggestion?.data ? t('formulaireYukpoIntelligentScreen.present') : 'absent',
       });
 
       // ✅ AMÉLIORATION : Essayer de générer des composants par défaut en cas d'erreur
@@ -2547,7 +2547,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           {
             name: 'titre_service',
             type: 'text',
-            label: 'Nom de votre structure', // ✅ CORRIGÉ 2026-02-10: Renommé de "Titre du service" à "Nom de votre structure"
+            label: t('formulaireYukpoIntelligent.nomDeVotreStructure'), // ✅ CORRIGÉ 2026-02-10: Renommé de "Titre du service" à "Nom de votre structure"
             required: true, // ✅ OBLIGATOIRE: Ne peut pas passer au bloc suivant sans ce champ
             placeholder: 'Ex: Restaurant Le Gourmet, Boutique XYZ...',
             isStructureName: true, // ✅ NOUVEAU: Flag pour distinction visuelle
@@ -2556,14 +2556,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           {
             name: 'description',
             type: 'textarea',
-            label: 'Description',
+            label: t('formulaireYukpoIntelligentScreen.description'),
             required: true,
             placeholder: 'Décrivez votre service...'
           },
           {
             name: 'prix',
             type: 'number',
-            label: 'Prix',
+            label: t('formulaireYukpoIntelligentScreen.prix'),
             required: true,
             placeholder: '0'
           }
@@ -2757,16 +2757,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const categorieNormalized = categorie.toLowerCase();
 
     const examples: Record<string, string> = {
-      'vehicule': 'Toyota,Corolla,Noir,Yaoundé,2024,Neuf',
-      'automobile': 'Toyota,Corolla,Noir,Yaoundé,2024,Neuf',
-      'meuble': 'Canapé 3 places,Cuir,Marron,Douala,Moderne,Neuf',
-      'telephone': 'Apple,iPhone 14 Pro,Noir,Yaoundé,256GB,Comme neuf',
+      'vehicule': t('formulaireYukpoIntelligentScreen.toyotacorollanoiryaounde2024neuf'),
+      'automobile': t('formulaireYukpoIntelligentScreen.toyotacorollanoiryaounde2024neuf'),
+      'meuble': t('formulaireYukpoIntelligentScreen.canape3Placescuirmarrondoualamoderneneuf'),
+      'telephone': t('formulaireYukpoIntelligentScreen.appleiphone14Pronoiryaounde256gbcommeNeuf'),
       'smartphone': 'Samsung,Galaxy S24,Noir,Douala,128GB,Neuf',
-      'vetement': 'Nike,Air Max,Blanc,Yaoundé - Bastos,42,Neuf',
+      'vetement': t('formulaireYukpoIntelligentScreen.nikeairMaxblancyaoundeBastos42neuf'),
       'chaussure': 'Adidas,Superstar,Blanc,Douala - Akwa,42,Comme neuf'
     };
 
-    return examples[categorieNormalized] || 'Marque,Modèle,Couleur,Localisation,Année,État';
+    return examples[categorieNormalized] || t('formulaireYukpoIntelligent.marquemodelecouleurlocalisationanneeetat');
   };
 
   // ✅ CORRIGÉ: Mémoriser renderField avec useCallback pour éviter les re-renders qui font sauter le curseur
@@ -2933,8 +2933,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // ✅ DEBUG CRITIQUE: Vérifier l'alignement des labels et valeurs pour les prestations
       const alignmentStatus = productLabels && Object.keys(currentSousCaracs).length > 0
         ? (productLabels.length === Object.keys(currentSousCaracs).length
-          ? '✅ Aligné'
-          : `⚠️ Désaligné: ${productLabels.length} labels vs ${Object.keys(currentSousCaracs).length} clés`)
+          ? t('formulaireYukpoIntelligentScreen.aligne')
+          : t('formulaireYukpoIntelligentScreen.desaligneLabelsVsCles', { productLabels_length: productLabels.length, Object_keys(currentSousCaracs)_length: Object.keys(currentSousCaracs).length }))
         : 'N/A';
 
       // ✅ DEBUG: Vérifier que tous les labels dans productLabels existent dans sousCaracteristiques
@@ -2957,7 +2957,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         currentValues,
         nbSousCaracsDisponibles: Object.keys(currentSousCaracs).length,
         separateur: safeSeparateur,
-        productLabels: productLabels || 'non disponible',
+        productLabels: productLabels || t('formulaireYukpoIntelligent.nonDisponible'),
         productLabelsLength: productLabels?.length || 0,
         sousCaracteristiquesKeys: Object.keys(currentSousCaracs || {}),
         sousCaracteristiquesKeysLength: Object.keys(currentSousCaracs || {}).length,
@@ -3206,7 +3206,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             disabled={isReadonly}
           >
             <Text style={styles.pickerButtonText}>
-              {valeursFormulaire[field.name] || field.placeholder || 'Sélectionner une date (YYYY-MM-DD)'}
+              {valeursFormulaire[field.name] || field.placeholder || t('formulaireYukpoIntelligent.selectionnerUneDateYyyymmdd')}
             </Text>
             <SafeIcon name="calendar" size={16} color="#666" />
           </TouchableOpacity>
@@ -3247,7 +3247,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               activeOpacity={0.7}
             >
               <Text style={[styles.selectText, isEmpty && styles.selectPlaceholderText]}>
-                {displayText || field.placeholder || 'Sélectionner un lieu...'}
+                {displayText || field.placeholder || t('formulaireYukpoIntelligent.selectionnerUnLieu')}
               </Text>
               <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
             </TouchableOpacity>
@@ -3289,7 +3289,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           />
           <View style={styles.hintBox}>
             <Text style={styles.hintText}>
-              💡 <Text style={styles.hintBold}>Recherche géographique intelligente :</Text> Vous pouvez rechercher des quartiers (ex: Bonanjo, Akwa), villes (ex: Douala, Yaoundé), pays (ex: Cameroun) ou régions (ex: Afrique Centrale). Le système gère automatiquement tous les niveaux géographiques.
+              💡 <Text style={styles.hintBold}>{t('formulaireYukpoIntelligent.rechercheGeographiqueIntelligente')}</Text> Vous pouvez rechercher des quartiers (ex: Bonanjo, Akwa), villes (ex: Douala, Yaoundé), pays (ex: Cameroun) ou régions (ex: Afrique Centrale). Le système gère automatiquement tous les niveaux géographiques.
             </Text>
           </View>
           {field.composants && Object.keys(field.composants).length > 0 && field.name !== 'lieu_produit' && (
@@ -3337,7 +3337,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     if (field.name === '_product_media_manager') {
       return (
         <View key={field.name} style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>{field.label || '📸 Médias du produit'}</Text>
+          <Text style={styles.fieldLabel}>{field.label || t('formulaireYukpoIntelligent.mediasDuProduit')}</Text>
           <Text style={styles.helperText}>
             Ajoutez des photos et vidéos pour illustrer votre produit/prestation
           </Text>
@@ -3386,7 +3386,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
           <View style={styles.hintBox}>
             <Text style={styles.hintText}>
-              💡 <Text style={styles.hintBold}>Conseil :</Text> Renseignez ce champ si votre service est basé dans un lieu fixe (boutique, bureau, atelier). Vous pouvez sélectionner un point ou dessiner une zone.
+              💡 <Text style={styles.hintBold}>Conseil :</Text>{t('formulaireYukpoIntelligentScreen.renseignezCeChampSiVotreService')}
             </Text>
           </View>
         </View>
@@ -3422,7 +3422,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               required={field.required}
               multiSelect={field.multiSelect || field.allowMultiple}
               maxSelections={field.maxSelections || 20}
-              placeholder={field.placeholder || 'Sélectionner...'}
+              placeholder={field.placeholder || t('formulaireYukpoIntelligent.selectionner')}
               customOptions={field.options} // ✅ NOUVEAU: Passer les options personnalisées
             />
             {fieldErrors[field.name] && (
@@ -3766,40 +3766,40 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // Erreur HTTP avec réponse du serveur
       switch (error.response.status) {
         case 400:
-          title = '⚠️ Données invalides';
-          message = error.response.data?.message || error.response.data?.error || 'Vérifiez les données saisies';
+          title={t('formulaireYukpoIntelligent.donneesInvalides')};
+          message = error.response.data?.message || error.response.data?.error || t('formulaireYukpoIntelligent.verifiezLesDonneesSaisies');
           break;
         case 401:
-          title = '🔐 Non autorisé';
-          message = 'Votre session a expiré. Veuillez vous reconnecter.';
+          title={t('formulaireYukpoIntelligent.nonAutorise')};
+          message = t('formulaireYukpoIntelligentScreen.votreSessionAExpireVeuillezVous');
           break;
         case 402:
           title = '💳 Solde insuffisant';
-          message = error.response.data?.message || 'Rechargez votre compte pour continuer.\n\nRendez-vous dans "Recharger" pour ajouter des crédits.';
+          message = error.response.data?.message || t('formulaireYukpoIntelligentScreen.rechargezVotreComptePourContinuernnrendezvousDans');
           break;
         case 404:
-          title = '🔍 Non trouvé';
-          message = 'La ressource demandée n\'existe pas ou a été supprimée.';
+          title={t('formulaireYukpoIntelligent.nonTrouve')};
+          message = t('formulaireYukpoIntelligentScreen.laRessourceDemandeeNexistePasOuA');
           break;
         case 413:
           title = '📦 Fichiers trop volumineux';
-          message = 'Les médias sont trop volumineux. Réduisez la taille des images/vidéos.';
+          message = t('formulaireYukpoIntelligentScreen.lesMediasSontTropVolumineuxReduisez');
           break;
         case 500:
-          title = '⚙️ Erreur serveur';
-          message = 'Le serveur rencontre un problème temporaire. Réessayez dans quelques instants.';
+          title={t('formulaireYukpoIntelligentScreen.erreurServeur')};
+          message = t('formulaireYukpoIntelligentScreen.leServeurRencontreUnProblemeTemporaire');
           break;
         case 503:
           title = '🔧 Service indisponible';
-          message = 'Le service est temporairement indisponible. Réessayez plus tard.';
+          message = t('formulaireYukpoIntelligentScreen.leServiceEstTemporairementIndisponibleReessayez');
           break;
         default:
           message = error.response.data?.message || error.response.data?.error || error.response.statusText || message;
       }
     } else if (error.request) {
       // Pas de réponse du serveur (problème réseau)
-      title = '📡 Pas de connexion';
-      message = 'Impossible de contacter le serveur.\n\nVérifiez votre connexion internet et réessayez.';
+      title={t('formulaireYukpoIntelligent.pasDeConnexion')};
+      message = t('formulaireYukpoIntelligentScreen.impossibleDeContacterLeServeurnnverifiezVotre');
     } else if (error.message) {
       // Autre type d'erreur
       message = error.message;
@@ -3817,7 +3817,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     if (retryFn) {
       buttons.push({
-        text: '🔄 Réessayer',
+        text: t('formulaireYukpoIntelligent.reessayer'),
         onPress: retryFn
       });
     }
@@ -4164,7 +4164,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           return produitsNode;
         } catch (error) {
           console.error(
-            '[FormulaireYukpoIntelligentScreen] ⚠️ ensurePrimaryMediaForFirstProduct a échoué',
+            t('formulaireYukpoIntelligentScreen.formulaireyukpointelligentscreenEnsureprimarymedia'),
             {
               error,
               hasMediaImages: !!media?.images?.length,
@@ -4333,7 +4333,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         const isFree = effectiveCost === 0;
 
         if (!balanceResponse.success) {
-          const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
+          const errorMsg = balanceResponse.error || t('formulaireYukpoIntelligent.impossibleDeVerifierVotreSolde');
           console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Erreur vérification solde:', errorMsg);
           if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('authentification')) {
             Alert.alert(t('formulaire.sessionExpired'), t('formulaire.sessionExpiredMsg'), [{ text: 'OK', onPress: () => logout() }]);
@@ -4535,7 +4535,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         const response = await apiPost(`/api/services/${serviceId}/update`, updatePayload);
 
         if (!response.success) {
-          throw new Error(response.error || 'Erreur lors de la modification');
+          throw new Error(response.error || t('formulaireYukpoIntelligent.erreurLorsDeLaModification'));
         }
 
         // ✅ SUPPRIMÉ: Vérification tickets de voyage - Géré maintenant via les champs dynamiques
@@ -4877,7 +4877,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       const isFree = coutReel === 0;
 
       if (!balanceResponse.success) {
-        const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
+        const errorMsg = balanceResponse.error || t('formulaireYukpoIntelligent.impossibleDeVerifierVotreSolde');
         console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Erreur vérification solde:', errorMsg);
 
         if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('authentification')) {
@@ -5451,26 +5451,26 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   Clipboard.setStringAsync(errorLogString);
 
                   // ✅ AMÉLIORATION : Messages d'erreur plus spécifiques selon le type d'erreur
-                  let alertTitle = '❌ Erreur de création';
+                  let alertTitle = t('formulaireYukpoIntelligentScreen.erreurDeCreation');
                   let alertMessage = errorMessage;
 
                   if (errorMessage.includes('Network request failed') || errorMessage.includes('Impossible de se connecter')) {
-                    alertTitle = '🌐 Problème de connexion';
-                    alertMessage = `Problème de connexion réseau détecté.\n\n${errorMessage}\n\nVérifiez votre connexion internet et réessayez.`;
-                  } else if (errorMessage.includes('timeout') || errorMessage.includes('expiré')) {
-                    alertTitle = '⏱️ Timeout de requête';
-                    alertMessage = `La requête a pris trop de temps.\n\n${errorMessage}\n\nVotre service contient peut-être trop de données. Essayez de réduire le nombre de médias.`;
+                    alertTitle = t('formulaireYukpoIntelligentScreen.problemeDeConnexion');
+                    alertMessage = t('formulaireYukpoIntelligentScreen.problemeDeConnexionReseauDetectennnnverifiezVotre', { errorMessage: errorMessage });
+                  } else if (errorMessage.includes('timeout') || errorMessage.includes(t('formulaireYukpoIntelligentScreen.expire'))) {
+                    alertTitle = t('formulaireYukpoIntelligentScreen.timeoutDeRequete');
+                    alertMessage = t('formulaireYukpoIntelligentScreen.laRequeteAPrisTropDe', { errorMessage: errorMessage });
                   } else if (errorMessage.includes('413') || errorMessage.includes('trop volumineux')) {
-                    alertTitle = '📦 Données trop volumineuses';
-                    alertMessage = `Votre service contient trop de données.\n\n${errorMessage}\n\nConseils :\n- Réduisez le nombre d'images par produit\n- Raccourcissez les vidéos\n- Supprimez les produits non essentiels`;
+                    alertTitle = t('formulaireYukpoIntelligentScreen.donneesTropVolumineuses');
+                    alertMessage = t('formulaireYukpoIntelligentScreen.votreServiceContientTropDeDonneesnnnnconseils', { errorMessage: errorMessage });
                   }
 
                   Alert.alert(
                     alertTitle,
-                    `${alertMessage}\n\n📋 Le log d'erreur détaillé a été copié dans votre presse-papiers.\n\nVous pouvez le coller pour analyse.`,
+                    t('formulaireYukpoIntelligentScreen.nnLeLogDerreurDetailleA', { alertMessage: alertMessage }),
                     [
                       {
-                        text: 'Copier à nouveau',
+                        text: t('formulaireYukpoIntelligent.copierANouveau'),
                         onPress: () => {
                           Clipboard.setStringAsync(errorLogString);
                           Alert.alert(t('formulaire.copied'), t('formulaire.errorLogCopied'));
@@ -5479,7 +5479,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       { text: 'OK', style: 'cancel' }
                     ]
                   );
-                  throw new Error(`Erreur création service: ${errorMessage}`);
+                  throw new Error(t('formulaireYukpoIntelligentScreen.erreurCreationService', { errorMessage: errorMessage }));
                 }
 
                 const result: any = response.data;
@@ -5521,7 +5521,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   // C'est un produit, préparer les données pour la modal de confirmation
                   const firstProductIndex = 0;
                   const firstProduct = finalServiceData.produits.valeur[0];
-                  const productName = firstProduct?.nom || valeursFormulaire.nom_produit || 'Nouveau produit';
+                  const productName = firstProduct?.nom || valeursFormulaire.nom_produit || t('formulaireYukpoIntelligent.nouveauProduit');
 
                   // Afficher la modal de confirmation
                   setSuccessModalData({
@@ -5568,11 +5568,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 Clipboard.setStringAsync(errorLogString);
 
                 Alert.alert(
-                  '❌ Erreur de création',
-                  `${innerError.message || 'Impossible de créer le service'}\n\n📋 Le log d'erreur a été copié dans votre presse-papiers.`,
+                  t('formulaireYukpoIntelligentScreen.erreurDeCreation'),
+                  `${innerError.message || t('formulaireYukpoIntelligent.impossibleDeCreerLeService')}\n\n📋 Le log d'erreur a été copié dans votre presse-papiers.`,
                   [
                     {
-                      text: 'Copier à nouveau',
+                      text: t('formulaireYukpoIntelligent.copierANouveau'),
                       onPress: () => {
                         Clipboard.setStringAsync(errorLogString);
                         Alert.alert(t('formulaire.copied'), t('formulaire.errorLogCopied'));
@@ -5615,10 +5615,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       Alert.alert(
         '❌ Erreur',
-        `${error instanceof Error ? error.message : 'Impossible de créer le service'}\n\n📋 Le log d'erreur a été copié dans votre presse-papiers.`,
+        `${error instanceof Error ? error.message : t('formulaireYukpoIntelligentScreen.impossibleDeCreerLeService')}\n\n📋 Le log d'erreur a été copié dans votre presse-papiers.`,
         [
           {
-            text: 'Copier à nouveau',
+            text: t('formulaireYukpoIntelligent.copierANouveau'),
             onPress: () => {
               Clipboard.setStringAsync(errorLogString);
               Alert.alert(t('formulaire.copied'), t('formulaire.errorLogCopied'));
@@ -5654,7 +5654,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           subtitle={
             activeStep === 2 && blocks.length > 0 && blocks[currentBlock]
               ? `${currentDisplayIndex + 1} / ${totalVisibleBlocks}`
-              : isReadonly ? 'Mode lecture seule' : mode === 'edit' ? 'Modification en cours' : 'Propulsé par l\'IA Yukpo'
+              : isReadonly ? 'Mode lecture seule' : mode === 'edit' ? 'Modification en cours' : t('formulaireYukpoIntelligentScreen.propulseParLiaYukpo')
           }
           onClose={handleGoBack}
         />
@@ -5673,7 +5673,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 <View style={styles.iconCircle}>
                   <SafeIcon name="star" size={32} color={modernColors.primary} />
                 </View>
-                <Text style={styles.introTitle}>Formulaire Yukpo Intelligent</Text>
+                <Text style={styles.introTitle}>{t('formulaireYukpoIntelligent.formulaireYukpoIntelligent')}/Text>
                 <Text style={styles.introDescription}>
                   Notre IA va analyser vos données et générer un formulaire personnalisé adapté à votre besoin
                 </Text>
@@ -5683,7 +5683,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               <NativeCard style={styles.dataCard}>
                 <View style={styles.cardHeader}>
                   <SafeIcon name="file" size={20} color={modernColors.primary} />
-                  <Text style={styles.cardTitle}>Données à analyser</Text>
+                  <Text style={styles.cardTitle}>{t('formulaireYukpoIntelligent.donneesAAnalyser')}</Text>
                 </View>
                 <NativeDivider style={styles.divider} />
 
@@ -5755,7 +5755,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       <SafeIcon name="map-pin" size={18} color={modernColors.error} />
                     </View>
                     <View style={styles.dataContent}>
-                      <Text style={styles.dataLabel}>Position GPS</Text>
+                      <Text style={styles.dataLabel}>{t('formulaireYukpoIntelligent.positionGps')}/Text>
                       <Text style={styles.dataText}>{gps}</Text>
                     </View>
                   </View>
@@ -5765,7 +5765,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 {!suggestion.data && !suggestion.texte && mediaFiles.images.length === 0 && mediaFiles.audios.length === 0 && !gps && (
                   <View style={styles.noDataContainer}>
                     <SafeIcon name="info" size={40} color={modernColors.textSecondary} />
-                    <Text style={styles.noDataText}>Aucune donnée à analyser</Text>
+                    <Text style={styles.noDataText}>{t('formulaireYukpoIntelligent.aucuneDonneeAAnalyser')}</Text>
                   </View>
                 )}
               </NativeCard>
@@ -5907,12 +5907,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                                 >
                                   <Text style={styles.finalActionButtonText}>
                                     {(loading || isSubmitting)
-                                      ? (isAddingProductToExistingService ? 'Création du produit...' :
-                                        isEditingServiceInfo ? 'Mise à jour...' :
-                                          mode === 'edit' ? 'Modification...' : 'Création...')
-                                      : (isAddingProductToExistingService ? 'Créer le produit' :
-                                        isEditingServiceInfo ? 'Modifier les données du service' :
-                                          mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
+                                      ? (isAddingProductToExistingService ? t('formulaireYukpoIntelligentScreen.creationDuProduit') :
+                                        isEditingServiceInfo ? t('formulaireYukpoIntelligentScreen.miseAJour') :
+                                          mode === 'edit' ? 'Modification...' : t('formulaireYukpoIntelligentScreen.creation'))
+                                      : (isAddingProductToExistingService ? t('formulaireYukpoIntelligentScreen.creerLeProduit') :
+                                        isEditingServiceInfo ? t('formulaireYukpoIntelligentScreen.modifierLesDonneesDuService') :
+                                          mode === 'edit' ? 'Modifier le service' : t('formulaireYukpoIntelligentScreen.creerLeService'))}
                                   </Text>
                                   <SafeIcon name="check" size={20} color="#FFFFFF" />
                                 </LinearGradient>
@@ -5936,7 +5936,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       disabled={currentDisplayIndex === 0}
                     >
                       <SafeIcon name="chevron-left" size={20} color="#6B7280" />
-                      <Text style={styles.navButtonTextSecondary}>Précédent</Text>
+                      <Text style={styles.navButtonTextSecondary}>{t('formulaireYukpoIntelligent.precedent')}</Text>
                     </TouchableOpacity>
 
                     {currentDisplayIndex < totalVisibleBlocks - 1 ? (
@@ -5944,7 +5944,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         style={[styles.navButton, styles.navButtonPrimary]}
                         onPress={goToNextBlock}
                       >
-                        <Text style={styles.navButtonTextPrimary}>Suivant</Text>
+                        <Text style={styles.navButtonTextPrimary}>{t('formulaireYukpoIntelligentScreen.suivant')}</Text>
                         <SafeIcon name="chevron-right" size={20} color="#FFFFFF" />
                       </TouchableOpacity>
                     ) : (
@@ -5980,12 +5980,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               <Text style={styles.successModalIconText}>✅</Text>
             </View>
             <Text style={styles.successModalTitle}>
-              {successModalData?.isPrestation ? 'Service créé avec succès !' : 'Produit créé avec succès !'}
+              {successModalData?.isPrestation ? t('formulaireYukpoIntelligentScreen.serviceCreeAvecSucces') : t('formulaireYukpoIntelligentScreen.produitCreeAvecSucces')}
             </Text>
             <Text style={styles.successModalMessage}>
               {successModalData?.isPrestation
                 ? `Votre service a été créé avec succès.${successModalData?.cout ? `\nCoût: ${successModalData.cout} tokens` : ''}`
-                : 'Votre produit a été ajouté à votre service avec succès.'}
+                : t('formulaireYukpoIntelligentScreen.votreProduitAEteAjouteA')}
             </Text>
             <NativeButton
               title="Ok"
@@ -6041,7 +6041,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                   if (geocodeResult) {
                     const fullAddress = geocodeResult.address;
-                    const placeName = geocodeResult.name || geocodeResult.street || geocodeResult.district || geocodeResult.city || 'Lieu sélectionné';
+                    const placeName = geocodeResult.name || geocodeResult.street || geocodeResult.district || geocodeResult.city || t('formulaireYukpoIntelligent.lieuSelectionne');
 
                     // Construire un LocationObject avec le nom complet
                     const locationObject: LocationObject = {
@@ -6068,7 +6068,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     // Fallback si pas de géocodage inverse
                     const locationObject: LocationObject = {
                       raw: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-                      place_name: 'Lieu sélectionné',
+                      place_name: t('formulaireYukpoIntelligentScreen.lieuSelectionne'),
                       components: {},
                       coordinates: { lat, lng },
                     };
@@ -6085,7 +6085,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   // Fallback en cas d'erreur
                   const locationObject: LocationObject = {
                     raw: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-                    place_name: 'Lieu sélectionné',
+                    place_name: t('formulaireYukpoIntelligentScreen.lieuSelectionne'),
                     components: {},
                     coordinates: { lat, lng },
                   };
@@ -6178,8 +6178,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 });
                 if (saveResponse.success) {
                   Alert.alert(
-                    '✅ Configuration copiée',
-                    `La configuration de livraison de "${existingDeliveryConfig.productName}" a été appliquée à "${successModalData.productName}".`,
+                    t('formulaireYukpoIntelligentScreen.configurationCopiee'),
+                    t('formulaireYukpoIntelligentScreen.laConfigurationDeLivraisonDeA', { existingDeliveryConfig_productName: existingDeliveryConfig.productName, successModalData_productName: successModalData.productName }),
                     [{
                       text: 'OK', onPress: () => {
                         setExistingDeliveryConfig(null);

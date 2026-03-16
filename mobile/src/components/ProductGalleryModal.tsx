@@ -19,6 +19,7 @@ import { config } from '../config/environment';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const GRID_GAP = 3;
@@ -70,7 +71,8 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
     services,
     onClose,
 }) => {
-    const [media, setMedia] = useState<MediaItem[]>([]);
+        const { t } = useLanguageSafe();
+const [media, setMedia] = useState<MediaItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState<'all' | 'images' | 'videos'>('all');
     const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
@@ -109,8 +111,8 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                     if (!serviceId || isNaN(serviceId)) continue;
 
                     const productIndex = service.product_index ?? service.data?.product_index ?? 0;
-                    const productName = service.title || service.nom || service.data?.nom || 'Produit sans nom';
-                    const serviceName = service.service_title || service.data?.serviceTitre || 'Service sans titre';
+                    const productName = service.title || service.nom || service.data?.nom || t('productGallery.produitSansNom');
+                    const serviceName = service.service_title || service.data?.serviceTitre || t('productGallery.serviceSansTitre');
 
                     // ✅ PRIORITÉ 1: Charger depuis API media table (comme ProductGalleryPickerModal)
                     let mediaFromApi: any[] = [];
@@ -282,10 +284,10 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                                             url: videoUrl,
                                             type: 'video',
                                             source: 'publicite',
-                                            productName: pub.titre || 'Publicité',
+                                            productName: pub.titre || t('productGallery.publicite'),
                                             serviceId: 0,
                                             productIndex: 0,
-                                            serviceName: 'Publicité',
+                                            serviceName: t('productGalleryModal.publicite'),
                                             thumbnail: pub.thumbnails?.[vidIdx]
                                                 ? (pub.thumbnails[vidIdx].startsWith('data:')
                                                     ? pub.thumbnails[vidIdx]
@@ -325,9 +327,9 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
 
     const getSourceLabel = (source: string) => {
         switch (source) {
-            case 'product_creation': return '📦 Création produit';
+            case 'product_creation': return t('productGalleryModal.creationProduit');
             case 'yukpo_video': return '🎬 Yukpo IA';
-            case 'publicite': return '📢 Publicité';
+            case 'publicite': return t('productGalleryModal.publicite');
             case 'product_api': return '🖼️ Produit';
             default: return '📁 Autre';
         }
@@ -372,7 +374,7 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                 ) : (
                     <View style={styles.failedPlaceholder}>
                         <SafeIcon name={item.type === 'video' ? 'video-off' : 'image'} size={24} color="#9CA3AF" />
-                        <Text style={styles.failedText}>Indisponible</Text>
+                        <Text style={styles.failedText}>{t('productGallery.indisponible')}</Text>
                     </View>
                 )}
 
@@ -410,7 +412,7 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                         <SafeIcon name="arrow-left" size={22} color="#374151" />
                     </TouchableOpacity>
                     <View style={styles.headerCenter}>
-                        <Text style={styles.headerTitle}>Galerie Produits</Text>
+                        <Text style={styles.headerTitle}>{t('productGallery.galerieProduits')}/Text>
                         <Text style={styles.headerSubtitle}>
                             {media.length} média{media.length !== 1 ? 's' : ''}
                         </Text>
@@ -423,7 +425,7 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                     {[
                         { key: 'all' as const, label: 'Tous', count: media.length, icon: 'grid' },
                         { key: 'images' as const, label: 'Photos', count: imageCount, icon: 'image' },
-                        { key: 'videos' as const, label: 'Vidéos', count: videoCount, icon: 'video' },
+                        { key: 'videos' as const, label: t('productGallery.videos'), count: videoCount, icon: 'video' },
                     ].map(f => (
                         <TouchableOpacity
                             key={f.key}
@@ -447,7 +449,7 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                 {loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Chargement de la galerie...</Text>
+                        <Text style={styles.loadingText}>{t('productGallery.chargementDeLaGalerie')}</Text>
                     </View>
                 ) : filteredMedia.length === 0 ? (
                     <View style={styles.emptyContainer}>
@@ -455,18 +457,18 @@ const ProductGalleryModal: React.FC<ProductGalleryModalProps> = ({
                             <SafeIcon name={filter === 'videos' ? 'video-off' : 'image'} size={36} color="#9CA3AF" />
                         </View>
                         <Text style={styles.emptyTitle}>
-                            {media.length === 0 ? 'Aucun média' : 'Aucun résultat'}
+                            {media.length === 0 ? t('productGalleryModal.aucunMedia') : t('productGalleryModal.aucunResultat')}
                         </Text>
                         <Text style={styles.emptyText}>
                             {filter === 'images'
                                 ? 'Aucune image dans vos produits'
                                 : filter === 'videos'
-                                    ? 'Aucune vidéo dans vos produits'
-                                    : 'Aucun média dans vos produits'}
+                                    ? t('productGalleryModal.aucuneVideoDansVosProduits')
+                                    : t('productGalleryModal.aucunMediaDansVosProduits')}
                         </Text>
                         {filter !== 'all' && (
                             <TouchableOpacity style={styles.emptyButton} onPress={() => setFilter('all')}>
-                                <Text style={styles.emptyButtonText}>Voir tous les médias</Text>
+                                <Text style={styles.emptyButtonText}>{t('productGallery.voirTousLesMedias')}</Text>
                             </TouchableOpacity>
                         )}
                     </View>

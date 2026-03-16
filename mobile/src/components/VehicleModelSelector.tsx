@@ -25,9 +25,10 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
     marque,
     onSelect,
     required = false,
-    placeholder = 'Sélectionner un modèle...'
+    placeholder={t('vehicleModelSelector.selectionnerUnModele')}
 }) => {
-    const [modalVisible, setModalVisible] = useState(false);
+        const { t } = useLanguageSafe();
+const [modalVisible, setModalVisible] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [models, setModels] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
@@ -68,8 +69,8 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
         if (model.includes('🆕 Autre')) {
             // Ajouter un nouveau modèle
             Alert.prompt(
-                `Nouveau modèle ${marque}`,
-                `Entrez le modèle de ${marque} :`,
+                t('vehicleModelSelector.nouveauModele', { marque: marque }),
+                t('vehicleModelSelector.entrezLeModeleDe', { marque: marque }),
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
@@ -92,8 +93,8 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
                                     setModalVisible(false);
 
                                     Alert.alert(
-                                        '✅ Modèle ajouté',
-                                        `"${marque} ${newModel}" a été ajouté et sera disponible pour tous les utilisateurs`,
+                                        t('vehicleModelSelector.modeleAjoute'),
+                                        t('vehicleModelSelector.aEteAjouteEtSeraDisponible', { marque: marque, newModel: newModel }),
                                         [{ text: 'OK' }]
                                     );
                                 } catch (error) {
@@ -102,8 +103,8 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
                                     onSelect(newModel);
                                     setModalVisible(false);
                                     Alert.alert(
-                                        '⚠️ Modèle enregistré localement',
-                                        `"${newModel}" a été enregistré. Il sera synchronisé avec la base de données.`,
+                                        t('vehicleModelSelector.modeleEnregistreLocalement'),
+                                        t('vehicleModelSelector.aEteEnregistreIlSeraSynchronise', { newModel: newModel }),
                                         [{ text: 'OK' }]
                                     );
                                 }
@@ -184,7 +185,7 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
                             <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Rechercher un modèle..."
+                                placeholder={t('vehicleModelSelector.rechercherUnModele')}
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 placeholderTextColor={modernColors.textSecondary}
@@ -194,7 +195,7 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
                         <ScrollView style={styles.optionsList} showsVerticalScrollIndicator={false}>
                             {loading ? (
                                 <View style={styles.loadingContainer}>
-                                    <Text style={styles.loadingText}>Chargement des modèles {marque}...</Text>
+                                    <Text style={styles.loadingText}>{t('vehicleModelSelector.chargementDesModeles')} {marque}...</Text>
                                 </View>
                             ) : filteredModels.length > 0 ? (
                                 filteredModels.map((model, index) => (
@@ -221,7 +222,7 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
                                 ))
                             ) : (
                                 <View style={styles.emptyContainer}>
-                                    <Text style={styles.emptyText}>Aucun modèle trouvé pour {marque}</Text>
+                                    <Text style={styles.emptyText}>{t('vehicleModelSelector.aucunModeleTrouvePour')} {marque}</Text>
                                 </View>
                             )}
                         </ScrollView>

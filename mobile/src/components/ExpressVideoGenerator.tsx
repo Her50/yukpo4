@@ -46,10 +46,10 @@ const EXPRESS_STYLES = {
         generate_square_variant: false,
         generate_landscape_variant: false,
         enable_watermark: true,
-        description: 'Narration élégante avec ambiance premium'
+        description: t('expressVideoGenerator.narrationEleganteAvecAmbiancePremium')
     },
     cinema_demo: {
-        name: 'Cinéma Démo',
+        name: t('expressVideoGenerator.cinemaDemo'),
         style: 'cinematic',
         music_mode: 'cinematic',
         duration_seconds: 30,
@@ -57,7 +57,7 @@ const EXPRESS_STYLES = {
         generate_square_variant: false,
         generate_landscape_variant: true,
         enable_watermark: true,
-        description: 'Production cinématographique immersive'
+        description: t('expressVideoGenerator.productionCinematographiqueImmersive')
     }
 };
 
@@ -128,12 +128,12 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
 
                 // ✅ Feedback positif
                 Alert.alert(
-                    '✅ Vidéo générée!',
-                    `Votre vidéo "${config.name}" est prête.\nDurée: ${config.duration_seconds}s\nStyle: ${config.description}`,
+                    t('expressVideoGenerator.videoGeneree'),
+                    t('expressVideoGenerator.votreVideoEstPretendureeSnstyle', { config_name: config.name, config_duration_seconds: config.duration_seconds, config_description: config.description }),
                     [{ text: 'OK', onPress: () => onSuccess?.(rd.video_url) }]
                 );
             } else {
-                throw new Error(response.error || 'Erreur génération vidéo');
+                throw new Error(response.error || t('expressVideoGenerator.erreurGenerationVideo'));
             }
 
         } catch (error: any) {
@@ -145,16 +145,16 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
                 error: error.message
             } as any);
 
-            const errorMsg = error.message || 'Erreur lors de la génération vidéo';
+            const errorMsg = error.message || t('expressVideoGenerator.erreurLorsDeLaGeneration');
 
             // ✅ Option de retry avec fallback
             Alert.alert(
-                '⚠️ Erreur de génération',
-                `${errorMsg}\n\nVoulez-vous essayer avec le mode avancé?`,
+                t('expressVideoGenerator.erreurDeGeneration'),
+                t('expressVideoGenerator.nnvoulezvousEssayerAvecLeModeAvance', { errorMsg: errorMsg }),
                 [
                     { text: t('common.retry'), onPress: () => generateExpressVideo() },
                     {
-                        text: 'Mode Avancé', onPress: () => {
+                        text: t('expressVideoGenerator.modeAvance'), onPress: () => {
                             // ✅ Rediriger vers l'interface complète existante
                             // Navigation vers ProductVideoCreationModal avec les mêmes params
                             onError?.('redirect_to_advanced');
@@ -174,8 +174,8 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
         <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
             <View style={styles.header}>
                 <SafeIcon name="zap" size={24} color={modernColors.primary} />
-                <Text style={styles.title}>Génération Express</Text>
-                <Text style={styles.subtitle}>Vidéo professionnelle en 1 clic</Text>
+                <Text style={styles.title}>{t('expressVideoGenerator.generationExpress')}</Text>
+                <Text style={styles.subtitle}>{t('expressVideoGenerator.videoProfessionnelleEn1Clic')}</Text>
             </View>
 
             <View style={styles.stylesContainer}>
@@ -229,7 +229,7 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
                 disabled={loading}
             >
                 <SafeIcon name="settings" size={16} color={modernColors.primary} />
-                <Text style={styles.advancedButtonText}>Mode avancé</Text>
+                <Text style={styles.advancedButtonText}>{t('expressVideoGenerator.modeAvance')}</Text>
             </TouchableOpacity>
         </Animated.View>
     );

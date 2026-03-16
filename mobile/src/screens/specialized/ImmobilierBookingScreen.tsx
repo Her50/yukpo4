@@ -6,6 +6,7 @@ import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { immobilierService } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type RouteParams = {
     propertyId: number;
@@ -14,9 +15,10 @@ type RouteParams = {
 
 const ImmobilierBookingScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute() as any;
     const propertyId = route.params?.propertyId;
-    const propertyName = route.params?.propertyName || 'Bien immobilier';
+    const propertyName = route.params?.propertyName || t('immobilierBooking.bienImmobilier');
 
     const [dateVisite, setDateVisite] = useState('');
     const [heureVisite, setHeureVisite] = useState('');
@@ -45,8 +47,8 @@ const ImmobilierBookingScreen: React.FC = () => {
 
             if (response.success) {
                 Alert.alert(
-                    'Succès',
-                    'Votre demande de visite a été enregistrée. Vous recevrez une confirmation sous peu.',
+                    t('immobilierBookingScreen.succes'),
+                    t('immobilierBookingScreen.votreDemandeDeVisiteAEte'),
                     [
                         {
                             text: 'OK',
@@ -68,14 +70,14 @@ const ImmobilierBookingScreen: React.FC = () => {
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
             <View style={styles.header}>
-                <Text style={styles.title}>Réserver une visite</Text>
+                <Text style={styles.title}>{t('immobilierBooking.reserverUneVisite')}</Text>
                 <Text style={styles.subtitle}>{propertyName}</Text>
             </View>
 
             <View style={styles.content}>
                 {/* Type de visite */}
                 <View style={styles.section}>
-                    <Text style={styles.label}>Type de visite</Text>
+                    <Text style={styles.label}>{t('immobilierBooking.typeDeVisite')}</Text>
                     <View style={styles.typeContainer}>
                         {['Physique', 'Virtuelle'].map((type) => (
                             <View
@@ -101,7 +103,7 @@ const ImmobilierBookingScreen: React.FC = () => {
 
                 {/* Date */}
                 <View style={styles.section}>
-                    <Text style={styles.label}>Date de visite</Text>
+                    <Text style={styles.label}>{t('immobilierBooking.dateDeVisite')}</Text>
                     <NativeInput
                         placeholder="YYYY-MM-DD (ex: 2025-02-15)"
                         value={dateVisite}
@@ -115,7 +117,7 @@ const ImmobilierBookingScreen: React.FC = () => {
 
                 {/* Heure */}
                 <View style={styles.section}>
-                    <Text style={styles.label}>Heure de visite</Text>
+                    <Text style={styles.label}>{t('immobilierBooking.heureDeVisite')}</Text>
                     <NativeInput
                         placeholder="HH:MM (ex: 14:30)"
                         value={heureVisite}
@@ -136,7 +138,7 @@ const ImmobilierBookingScreen: React.FC = () => {
                 </View>
 
                 <NativeButton
-                    title="Confirmer la réservation"
+                    title={t('immobilierBooking.confirmerLaReservation')}
                     onPress={handleSubmit}
                     style={styles.submitButton}
                     loading={loading}

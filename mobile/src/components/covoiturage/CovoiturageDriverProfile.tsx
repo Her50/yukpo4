@@ -10,6 +10,7 @@ import {
 import { modernColors } from '../../theme/modernTheme';
 import { NativeCard } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface DriverReview {
     id: number;
@@ -106,7 +107,7 @@ const CovoiturageDriverProfile: React.FC<CovoiturageDriverProfileProps> = ({
                         </Text>
                         {driver.is_verified && (
                             <View style={styles.verifiedLabel}>
-                                <Text style={styles.verifiedText}>Vérifié</Text>
+                                <Text style={styles.verifiedText}>{t('covoiturageDriverProfile.verifie')}</Text>
                             </View>
                         )}
                     </View>
@@ -165,10 +166,10 @@ const CovoiturageDriverProfile: React.FC<CovoiturageDriverProfileProps> = ({
             {reviews.length > 0 && (
                 <View style={styles.reviewsSection}>
                     <View style={styles.reviewsHeader}>
-                        <Text style={styles.sectionTitle}>Avis récents</Text>
+                        <Text style={styles.sectionTitle}>{t('covoiturageDriverProfile.avisRecents')}</Text>
                         {onViewAllReviews && (
                             <TouchableOpacity onPress={onViewAllReviews}>
-                                <Text style={styles.viewAllText}>Voir tout</Text>
+                                <Text style={styles.viewAllText}>{t('covoiturageDriverProfile.voirTout')}</Text>
                             </TouchableOpacity>
                         )}
                     </View>

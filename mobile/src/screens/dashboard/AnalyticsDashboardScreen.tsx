@@ -16,6 +16,7 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiCall } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface DeliveryStats {
   total_deliveries: number;
@@ -81,6 +82,7 @@ interface ProviderAnalytics {
 
 const AnalyticsDashboardScreen: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -131,7 +133,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={modernColors.primary} />
-        <Text style={styles.loadingText}>Chargement des analytics...</Text>
+        <Text style={styles.loadingText}>{t('analyticsDashboard.chargementDesAnalytics')}</Text>
       </View>
     );
   }
@@ -140,7 +142,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
     return (
       <View style={styles.container}>
         <NativeCard style={styles.emptyCard}>
-          <Text style={styles.emptyText}>Aucune donnée disponible</Text>
+          <Text style={styles.emptyText}>{t('analyticsDashboard.aucuneDonneeDisponible')}</Text>
           <NativeButton onPress={loadAnalytics} variant="primary" style={styles.retryButton}>
             Réessayer
           </NativeButton>
@@ -156,7 +158,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>📊 Analytics Dashboard</Text>
+        <Text style={styles.title}>{t('analyticsDashboard.analyticsDashboard')}/Text>
         <Text style={styles.subtitle}>
           {new Date(analytics.period_start).toLocaleDateString('fr-FR')} -{' '}
           {new Date(analytics.period_end).toLocaleDateString('fr-FR')}
@@ -196,7 +198,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
         <NativeCard style={styles.kpiCard}>
           <View style={styles.kpiHeader}>
             <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
-            <Text style={styles.kpiTitle}>Revenus totaux</Text>
+            <Text style={styles.kpiTitle}>{t('analyticsDashboard.revenusTotaux')}/Text>
           </View>
           <Text style={styles.kpiValue}>{formatCurrency(analytics.revenue_stats.total_revenue)}</Text>
           <Text style={styles.kpiSubtext}>
@@ -220,7 +222,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
         <NativeCard style={styles.kpiCard}>
           <View style={styles.kpiHeader}>
             <SafeIcon name="bar-chart-3" size={20} color={modernColors.primary} />
-            <Text style={styles.kpiTitle}>Taux de succès</Text>
+            <Text style={styles.kpiTitle}>{t('analyticsDashboard.tauxDeSucces')}</Text>
           </View>
           <Text style={styles.kpiValue}>{analytics.delivery_stats.success_rate.toFixed(1)}%</Text>
           <Text style={styles.kpiSubtext}>
@@ -233,7 +235,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
         <NativeCard style={styles.kpiCard}>
           <View style={styles.kpiHeader}>
             <SafeIcon name="package" size={20} color={modernColors.primary} />
-            <Text style={styles.kpiTitle}>Services actifs</Text>
+            <Text style={styles.kpiTitle}>{t('analyticsDashboard.servicesActifs')}/Text>
           </View>
           <Text style={styles.kpiValue}>{analytics.service_stats.active_services}</Text>
           <Text style={styles.kpiSubtext}>sur {analytics.service_stats.total_services} services</Text>
@@ -244,33 +246,33 @@ const AnalyticsDashboardScreen: React.FC = () => {
       <NativeCard style={styles.sectionCard}>
         <View style={styles.sectionHeader}>
           <SafeIcon name="truck" size={24} color={modernColors.primary} />
-          <Text style={styles.sectionTitle}>Statistiques de livraison</Text>
+          <Text style={styles.sectionTitle}>{t('analyticsDashboard.statistiquesDeLivraison')}/Text>
         </View>
         <View style={styles.statsList}>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Total livraisons</Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.totalLivraisons')}/Text>
             <Text style={styles.statValue}>{formatNumber(analytics.delivery_stats.total_deliveries)}</Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Complétées</Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.completees')}</Text>
             <Text style={[styles.statValue, styles.statValueSuccess]}>
               {formatNumber(analytics.delivery_stats.completed_deliveries)}
             </Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Annulées</Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.annulees')}</Text>
             <Text style={[styles.statValue, styles.statValueError]}>
               {formatNumber(analytics.delivery_stats.cancelled_deliveries)}
             </Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>En attente</Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.enAttente')}/Text>
             <Text style={[styles.statValue, styles.statValueWarning]}>
               {formatNumber(analytics.delivery_stats.pending_deliveries)}
             </Text>
           </View>
           <View style={[styles.statRow, styles.statRowBorder]}>
-            <Text style={[styles.statLabel, styles.statLabelBold]}>Revenu moyen par livraison</Text>
+            <Text style={[styles.statLabel, styles.statLabelBold]}>{t('analyticsDashboard.revenuMoyenParLivraison')}/Text>
             <Text style={[styles.statValue, styles.statValueBold]}>
               {formatCurrency(analytics.delivery_stats.avg_revenue_per_delivery)}
             </Text>
@@ -282,29 +284,29 @@ const AnalyticsDashboardScreen: React.FC = () => {
       <NativeCard style={styles.sectionCard}>
         <View style={styles.sectionHeader}>
           <SafeIcon name="package" size={24} color={modernColors.primary} />
-          <Text style={styles.sectionTitle}>Statistiques de services</Text>
+          <Text style={styles.sectionTitle}>{t('analyticsDashboard.statistiquesDeServices')}/Text>
         </View>
         <View style={styles.statsList}>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Total services</Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.totalServices')}/Text>
             <Text style={styles.statValue}>{formatNumber(analytics.service_stats.total_services)}</Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Services actifs</Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.servicesActifs')}/Text>
             <Text style={[styles.statValue, styles.statValueSuccess]}>
               {formatNumber(analytics.service_stats.active_services)}
             </Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Total vues</Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.totalVues')}/Text>
             <Text style={styles.statValue}>{formatNumber(analytics.service_stats.total_views)}</Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Total interactions</Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.totalInteractions')}/Text>
             <Text style={styles.statValue}>{formatNumber(analytics.service_stats.total_interactions)}</Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Note moyenne</Text>
+            <Text style={styles.statLabel}>{t('analyticsDashboard.noteMoyenne')}/Text>
             <Text style={styles.statValue}>
               {analytics.service_stats.avg_rating
                 ? `${analytics.service_stats.avg_rating.toFixed(1)} ⭐`
@@ -312,7 +314,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
             </Text>
           </View>
           <View style={[styles.statRow, styles.statRowBorder]}>
-            <Text style={[styles.statLabel, styles.statLabelBold]}>Total avis</Text>
+            <Text style={[styles.statLabel, styles.statLabelBold]}>{t('analyticsDashboard.totalAvis')}/Text>
             <Text style={[styles.statValue, styles.statValueBold]}>
               {formatNumber(analytics.service_stats.total_reviews)}
             </Text>
@@ -351,7 +353,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
         <NativeCard style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <SafeIcon name="map-pin" size={24} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>Zones de livraison les plus fréquentes</Text>
+            <Text style={styles.sectionTitle}>{t('analyticsDashboard.zonesDeLivraisonLesPlus')}</Text>
           </View>
           <View style={styles.topList}>
             {analytics.top_delivery_zones.map((zone, index) => (
@@ -359,7 +361,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
                 <View style={styles.topItemLeft}>
                   <Text style={styles.topItemRank}>#{index + 1}</Text>
                   <View style={styles.topItemInfo}>
-                    <Text style={styles.topItemName}>{zone.zone_name || 'Zone inconnue'}</Text>
+                    <Text style={styles.topItemName}>{zone.zone_name || t('analyticsDashboard.zoneInconnue')}</Text>
                     <Text style={styles.topItemSubtext}>
                       {formatNumber(zone.delivery_count)} livraison{zone.delivery_count > 1 ? 's' : ''}
                       {zone.avg_distance_km && ` • ${zone.avg_distance_km.toFixed(1)} km en moyenne`}
@@ -407,7 +409,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <SafeIcon name="wallet" size={22} color={modernColors.primary} />
             <View>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: modernColors.text }}>Mon portefeuille</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: modernColors.text }}>{t('analyticsDashboard.monPortefeuille')}</Text>
               <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>Solde, transactions, reversements</Text>
             </View>
           </View>

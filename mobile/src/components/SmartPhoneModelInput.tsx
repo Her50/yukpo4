@@ -11,6 +11,7 @@ import {
 import { apiGet, apiPost } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SmartPhoneModelInputProps {
     marque: string; // Marque du smartphone (pour suggestions contextuelles)
@@ -27,11 +28,12 @@ const SmartPhoneModelInput: React.FC<SmartPhoneModelInputProps> = ({
     value,
     onChangeText,
     placeholder = 'Ex: iPhone 14 Pro, Galaxy S23',
-    label = 'Modèle',
+    label={t('smartPhoneModelInput.modele')},
     required = false,
     autoLoadLastUsed = true,
 }) => {
-    const [suggestions, setSuggestions] = useState<string[]>([]);
+        const { t } = useLanguageSafe();
+const [suggestions, setSuggestions] = useState<string[]>([]);
     const [allModels, setAllModels] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
@@ -257,7 +259,7 @@ const SmartPhoneModelInput: React.FC<SmartPhoneModelInputProps> = ({
                     }}
                 >
                     <SafeIcon name="clock" size={14} color="#6366F1" />
-                    <Text style={styles.lastUsedText}>Dernière valeur : {lastUsedValue}</Text>
+                    <Text style={styles.lastUsedText}>{t('smartPhoneModelInput.lastValue')}: {lastUsedValue}</Text>
                 </TouchableOpacity>
             )}
 
@@ -299,7 +301,7 @@ const SmartPhoneModelInput: React.FC<SmartPhoneModelInputProps> = ({
             {!marque && (
                 <View style={styles.hintBox}>
                     <SafeIcon name="info" size={14} color="#6366F1" />
-                    <Text style={styles.hintText}>Sélectionnez d'abord une marque</Text>
+                    <Text style={styles.hintText}>{t('smartPhoneModelInput.selectionnezDabordUneMarque')}</Text>
                 </View>
             )}
         </View>

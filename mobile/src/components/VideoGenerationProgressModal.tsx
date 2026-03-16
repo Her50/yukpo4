@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ProgressStep {
     key: string;
@@ -36,14 +37,14 @@ interface VideoGenerationProgressModalProps {
 // Mapping des étapes pour affichage français
 const STEP_LABELS: Record<string, string> = {
     'initialization': 'Initialisation',
-    'brief_generation': 'Génération du script',
+    'brief_generation': t('videoGenerationProgressModal.generationDuScript'),
     'style_suggestion': 'Suggestion de style',
-    'timeline_generation': 'Création de la timeline',
-    'media_collection': 'Collecte des médias',
-    'audio_generation': 'Génération audio',
-    'voiceover': 'Génération de la voix',
+    'timeline_generation': t('videoGenerationProgressModal.creationDeLaTimeline'),
+    'media_collection': t('videoGenerationProgressModal.collecteDesMedias'),
+    'audio_generation': t('videoGenerationProgressModal.generationAudio'),
+    'voiceover': t('videoGenerationProgressModal.generationDeLaVoix'),
     'music_selection': 'Sélection musicale',
-    'video_rendering': 'Rendu vidéo',
+    'video_rendering': t('videoGenerationProgressModal.renduVideo'),
     'watermark': 'Application du watermark',
     'saving_media': 'Enregistrement',
     'finalizing': 'Finalisation',
@@ -74,7 +75,8 @@ export const VideoGenerationProgressModal: React.FC<VideoGenerationProgressModal
     errorMessage,
     onClose,
 }) => {
-    const [animatedProgress] = useState(new Animated.Value(0));
+        const { t } = useLanguageSafe();
+const [animatedProgress] = useState(new Animated.Value(0));
     const [pulseAnim] = useState(new Animated.Value(1));
 
     // Animation de la barre de progression
@@ -187,13 +189,13 @@ export const VideoGenerationProgressModal: React.FC<VideoGenerationProgressModal
                             )}
                             <View style={styles.headerText}>
                                 <Text style={styles.title}>
-                                    {isCompleted ? 'Vidéo générée avec succès !' : 
-                                     isFailed ? 'Génération échouée' : 
-                                     'Génération de votre vidéo'}
+                                    {isCompleted ? t('videoGenerationProgressModal.videoGenereeAvecSucces') : 
+                                     isFailed ? t('videoGenerationProgressModal.generationEchouee') : 
+                                     t('videoGenerationProgressModal.generationDeVotreVideo')}
                                 </Text>
                                 <Text style={styles.subtitle}>
-                                    {isCompleted ? 'Votre vidéo est prête' :
-                                     isFailed ? errorMessage || 'Une erreur est survenue' :
+                                    {isCompleted ? t('videoGenerationProgressModal.votreVideoEstPrete') :
+                                     isFailed ? errorMessage || t('videoGenerationProgress.uneErreurEstSurvenue') :
                                      `Étape ${currentStep}/${totalSteps}`}
                                 </Text>
                             </View>
@@ -300,7 +302,7 @@ export const VideoGenerationProgressModal: React.FC<VideoGenerationProgressModal
                                     <>
                                         <SafeIcon name="alert-circle" size={48} color={modernColors.error} style={{ marginBottom: 16 }} />
                                         <Text style={[styles.emptyStateText, { color: modernColors.error, fontWeight: '600' }]}>
-                                            {errorMessage || 'Une erreur est survenue'}
+                                            {errorMessage || t('videoGenerationProgress.uneErreurEstSurvenue')}
                                         </Text>
                                     </>
                                 ) : (

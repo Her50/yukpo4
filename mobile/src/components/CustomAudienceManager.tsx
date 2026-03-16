@@ -5,6 +5,7 @@ import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeCard, NativeInput } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface CustomAudience {
     id: string;
@@ -28,7 +29,8 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
     onAudiencesChange,
     userId,
 }) => {
-    const [audiences, setAudiences] = useState<CustomAudience[]>([]);
+        const { t } = useLanguageSafe();
+const [audiences, setAudiences] = useState<CustomAudience[]>([]);
     const [loading, setLoading] = useState(false);
     const [expanded, setExpanded] = useState(false);
     const [showCreateForm, setShowCreateForm] = useState(false);
@@ -189,7 +191,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
         <NativeCard style={styles.container}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.title}>👥 Audiences Personnalisées</Text>
+                    <Text style={styles.title}>{t('customAudienceManager.audiencesPersonnalisees')}</Text>
                     <Text style={styles.subtitle}>
                         Ciblez des utilisateurs similaires ou importez vos propres listes
                     </Text>
@@ -206,7 +208,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                     onPress={() => setShowCreateForm(true)}
                 >
                     <SafeIcon name="plus" size={18} color="#fff" />
-                    <Text style={styles.createButtonText}>Créer une audience</Text>
+                    <Text style={styles.createButtonText}>{t('customAudienceManager.creerUneAudience')}</Text>
                 </TouchableOpacity>
             )}
 
@@ -214,7 +216,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
             {showCreateForm && (
                 <View style={styles.createForm}>
                     <View style={styles.formHeader}>
-                        <Text style={styles.formTitle}>Créer une audience</Text>
+                        <Text style={styles.formTitle}>{t('customAudienceManager.creerUneAudience')}</Text>
                         <TouchableOpacity onPress={() => {
                             setShowCreateForm(false);
                             setCreateType(null);
@@ -251,7 +253,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                     ) : createType === 'lookalike' ? (
                         <View style={styles.formContent}>
                             <NativeInput
-                                placeholder="Nom de l'audience"
+                                placeholder={t('customAudienceManager.nomDeL')}audience"
                                 value={newAudienceName}
                                 onChangeText={setNewAudienceName}
                                 style={styles.input}
@@ -263,7 +265,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                                 onChangeText={setLookalikeSource}
                                 style={styles.input}
                             />
-                            <Text style={styles.label}>Similarité (1-10)</Text>
+                            <Text style={styles.label}>{t('customAudienceManager.similarite110')}</Text>
                             <View style={styles.similarityRow}>
                                 {[1, 3, 5, 7, 10].map((val) => (
                                     <TouchableOpacity
@@ -294,7 +296,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                                         setNewAudienceName('');
                                     }}
                                 >
-                                    <Text style={styles.cancelButtonText}>Annuler</Text>
+                                    <Text style={styles.cancelButtonText}>{t('customAudienceManager.annuler')}</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={styles.submitButton}
@@ -304,7 +306,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                                     {loading ? (
                                         <ActivityIndicator size="small" color="#fff" />
                                     ) : (
-                                        <Text style={styles.submitButtonText}>Créer</Text>
+                                        <Text style={styles.submitButtonText}>{t('customAudienceManager.creer')}</Text>
                                     )}
                                 </TouchableOpacity>
                             </View>
@@ -312,7 +314,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                     ) : (
                         <View style={styles.formContent}>
                             <NativeInput
-                                placeholder="Nom de l'audience"
+                                placeholder={t('customAudienceManager.nomDeL')}audience"
                                 value={newAudienceName}
                                 onChangeText={setNewAudienceName}
                                 style={styles.input}
@@ -332,7 +334,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                                             styles.sourceText,
                                             customSource === source && styles.sourceTextActive,
                                         ]}>
-                                            {source === 'email' ? '📧 Emails' : source === 'phone' ? '📱 Téléphones' : '📄 CSV'}
+                                            {source === 'email' ? '📧 Emails' : source === 'phone' ? t('customAudienceManager.telephones') : '📄 CSV'}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
@@ -378,7 +380,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                                         setCustomData('');
                                     }}
                                 >
-                                    <Text style={styles.cancelButtonText}>Annuler</Text>
+                                    <Text style={styles.cancelButtonText}>{t('customAudienceManager.annuler')}</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={styles.submitButton}
@@ -388,7 +390,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                                     {loading ? (
                                         <ActivityIndicator size="small" color="#fff" />
                                     ) : (
-                                        <Text style={styles.submitButtonText}>Créer</Text>
+                                        <Text style={styles.submitButtonText}>{t('customAudienceManager.creer')}</Text>
                                     )}
                                 </TouchableOpacity>
                             </View>
@@ -407,7 +409,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                     ) : audiences.length === 0 ? (
                         <View style={styles.emptyState}>
                             <SafeIcon name="users" size={48} color={modernColors.border} />
-                            <Text style={styles.emptyText}>Aucune audience</Text>
+                            <Text style={styles.emptyText}>{t('customAudienceManager.aucuneAudience')}</Text>
                             <Text style={styles.emptySubtext}>
                                 Créez votre première audience pour cibler précisément vos publicités
                             </Text>

@@ -26,6 +26,7 @@ import { genericProductAutoFillService, GenericAutoFillResult } from '../service
 import { getProductSuggestions } from '../data/enrichedProductDatabase';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface UniversalProductFormProps {
     category: string;                          // Ex: 'telephone', 'agriculture', 'vetement', etc.
@@ -43,7 +44,8 @@ export const UniversalProductForm: React.FC<UniversalProductFormProps> = ({
     initialProductName = ''
 }) => {
     // États
-    const [productQuery, setProductQuery] = useState(initialProductName);
+        const { t } = useLanguageSafe();
+const [productQuery, setProductQuery] = useState(initialProductName);
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     
@@ -101,8 +103,8 @@ export const UniversalProductForm: React.FC<UniversalProductFormProps> = ({
             // Notification si pré-remplissage significatif
             if (result.fields_saved > 2) {
                 Alert.alert(
-                    '✨ Génial !',
-                    `${result.fields_saved} champs pré-remplis automatiquement (${result.reduction_percentage}%).\n\nVous n'avez plus que ${result.required_fields.length} champs à remplir !`,
+                    t('universalProductForm.genial'),
+                    t('universalProductForm.champsPreremplisAutomatiquementNnvousNavezPlus', { result_fields_saved: result.fields_saved, result_reduction_percentage: result.reduction_percentage, result_required_fields_length: result.required_fields.length }),
                     [{ text: 'OK' }]
                 );
             }
@@ -241,7 +243,7 @@ export const UniversalProductForm: React.FC<UniversalProductFormProps> = ({
                     <SafeIcon name="search" size={20} color={modernColors.textSecondary} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Rechercher un produit..."
+                        placeholder={t('universalProductForm.rechercherUnProduit')}
                         value={productQuery}
                         onChangeText={handleProductSearch}
                     />

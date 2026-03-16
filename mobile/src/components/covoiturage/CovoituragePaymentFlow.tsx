@@ -62,7 +62,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                         [
                             { text: t('common.cancel'), style: 'cancel' },
                             {
-                                text: 'Recharger',
+                                text: t('common.reload'),
                                 onPress: () => {
                                     navigation.navigate('RechargeTokens' as never);
                                 }
@@ -122,7 +122,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                 // Paiement via Stripe (à implémenter avec SDK Stripe)
                 Alert.alert(
                     'Stripe',
-                    'Intégration Stripe en cours de développement',
+                    t('covoituragePaymentFlow.integrationStripeEnCoursDeDeveloppement'),
                     [{ text: 'OK' }]
                 );
                 // TODO: Implémenter Stripe SDK
@@ -130,7 +130,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                 // Paiement via PayPal (à implémenter avec SDK PayPal)
                 Alert.alert(
                     'PayPal',
-                    'Intégration PayPal en cours de développement',
+                    t('covoituragePaymentFlow.integrationPaypalEnCoursDeDeveloppement'),
                     [{ text: 'OK' }]
                 );
                 // TODO: Implémenter PayPal SDK
@@ -155,9 +155,9 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 {/* Récapitulatif */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>Récapitulatif</Text>
+                    <Text style={styles.cardTitle}>{t('covoituragePaymentFlow.recapitulatif')}</Text>
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Total à payer:</Text>
+                        <Text style={styles.summaryLabel}>{t('covoituragePaymentFlow.totalAPayer')}</Text>
                         <Text style={styles.summaryValue}>
                             {total.toLocaleString('fr-FR')} {devise}
                         </Text>
@@ -170,7 +170,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
 
                 {/* Méthodes de paiement */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>Méthode de paiement</Text>
+                    <Text style={styles.cardTitle}>{t('covoituragePaymentFlow.methodeDePaiement')}</Text>
 
                     {/* Wallet Yukpo */}
                     <TouchableOpacity

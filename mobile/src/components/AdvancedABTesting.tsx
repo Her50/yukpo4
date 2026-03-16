@@ -59,7 +59,8 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
     onRemoveVariant,
     userId,
 }) => {
-    const [expanded, setExpanded] = useState(false);
+        const { t } = useLanguageSafe();
+const [expanded, setExpanded] = useState(false);
     const [loadingStats, setLoadingStats] = useState(false);
     const [stats, setStats] = useState<ABTestStats[]>([]);
     const [selectedMetric, setSelectedMetric] = useState<'ctr' | 'conversion_rate' | 'roi'>('ctr');
@@ -96,7 +97,7 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
                     },
                     statistical_significance: Math.random() * 0.3 + 0.7,
                     is_winner: idx === 0, // Première variante gagnante par défaut
-                    recommendation: idx === 0 ? 'Variante recommandée' : 'Continuer le test',
+                    recommendation: idx === 0 ? t('advancedABTesting.varianteRecommandee') : 'Continuer le test',
                 }));
                 setStats(mockStats);
             }
@@ -144,7 +145,7 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
     };
 
     const getSignificanceLabel = (significance: number): string => {
-        if (significance >= 0.95) return 'Très significatif';
+        if (significance >{t('advancedABTesting.095ReturnTresSignificatif')}
         if (significance >= 0.80) return 'Significatif';
         return 'Non significatif';
     };
@@ -159,7 +160,7 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
                 <Text style={styles.expandText}>
                     A/B Testing Avancé ({variants.length} variante{variants.length > 1 ? 's' : ''})
                     {stats.length > 0 && stats.some(s => s.is_winner) && (
-                        <Text style={styles.winnerBadge}> 🏆 Gagnant identifié</Text>
+                        <Text style={styles.winnerBadge}>{t('advancedABTesting.gagnantIdentifie')}</Text>
                     )}
                 </Text>
                 <SafeIcon name="chevron-right" size={16} color={modernColors.textSecondary} />
@@ -175,7 +176,7 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
         <NativeCard style={styles.container}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.title}>🧪 A/B Testing Avancé</Text>
+                    <Text style={styles.title}>{t('advancedABTesting.abTestingAvance')}</Text>
                     <Text style={styles.subtitle}>
                         Analyse statistique et recommandations automatiques
                     </Text>
@@ -188,7 +189,7 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
             {/* Sélecteur de métrique */}
             {stats.length > 0 && (
                 <View style={styles.metricSelector}>
-                    <Text style={styles.metricSelectorLabel}>Métrique à comparer:</Text>
+                    <Text style={styles.metricSelectorLabel}>{t('advancedABTesting.metriqueAComparer')}</Text>
                     <View style={styles.metricButtons}>
                         {(['ctr', 'conversion_rate', 'roi'] as const).map((metric) => (
                             <TouchableOpacity
@@ -311,7 +312,7 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
                                         onPress={() => {
                                             Alert.alert(
                                                 'Appliquer la variante gagnante',
-                                                `Voulez-vous désactiver les autres variantes et ne garder que "${stat.variant_name}" ?`,
+                                                t('advancedABTesting.voulezvousDesactiverLesAutresVariantesEt', { stat_variant_name: stat.variant_name }),
                                                 [
                                                     { text: t('common.cancel'), style: 'cancel' },
                                                     {
@@ -342,7 +343,7 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
             ) : (
                 <View style={styles.emptyState}>
                     <SafeIcon name="flask" size={48} color={modernColors.border} />
-                    <Text style={styles.emptyText}>Aucune statistique disponible</Text>
+                    <Text style={styles.emptyText}>{t('advancedABTesting.aucuneStatistiqueDisponible')}</Text>
                     <Text style={styles.emptySubtext}>
                         Les statistiques apparaîtront après quelques jours de test
                     </Text>

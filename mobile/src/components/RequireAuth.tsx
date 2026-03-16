@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface RequireAuthProps {
   children: React.ReactNode;
@@ -15,7 +16,7 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ children }) => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Vérification de l'authentification...</Text>
+        <Text style={styles.loadingText}>{t('requireAuth.verificationDeLauthentification')}</Text>
       </View>
     );
   }
@@ -23,7 +24,7 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ children }) => {
   if (!user) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorTitle}>Accès non autorisé</Text>
+        <Text style={styles.errorTitle}>{t('requireAuth.accesNonAutorise')}</Text>
         <Text style={styles.errorText}>
           Vous devez être connecté pour accéder à cette page.
         </Text>

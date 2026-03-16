@@ -43,7 +43,7 @@ const ImmobilierPriceAlertsScreen: React.FC = () => {
             if (response.success && response.data) {
                 setAlerts((response as any).data);
             } else {
-                setError('Erreur lors du chargement des alertes');
+                setError(t('immobilierPriceAlertsScreen.erreurLorsDuChargementDesAlertes'));
             }
         } catch (err: any) {
             console.error('[ImmobilierPriceAlertsScreen] Erreur:', err);
@@ -70,7 +70,7 @@ const ImmobilierPriceAlertsScreen: React.FC = () => {
         // Pour l'instant, on affiche juste une confirmation
         Alert.alert(
             currentStatus ? 'Désactiver l\'alerte' : 'Activer l\'alerte',
-            'Cette fonctionnalité sera disponible prochainement',
+            t('immobilierPriceAlertsScreen.cetteFonctionnaliteSeraDisponibleProchainement'),
             [{ text: 'OK' }]
         );
     };
@@ -78,7 +78,7 @@ const ImmobilierPriceAlertsScreen: React.FC = () => {
     const handleDeleteAlert = (alertId: number) => {
         Alert.alert(
             'Supprimer l\'alerte',
-            'Êtes-vous sûr de vouloir supprimer cette alerte ?',
+            t('immobilierPriceAlertsScreen.etesvousSurDeVouloirSupprimerCette'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -118,7 +118,7 @@ const ImmobilierPriceAlertsScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement de vos alertes...</Text>
+                <Text style={styles.loadingText}>{t('immobilierPriceAlerts.chargementDeVosAlertes')}</Text>
             </View>
         );
     }
@@ -127,7 +127,7 @@ const ImmobilierPriceAlertsScreen: React.FC = () => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <SafeIcon name="bell" size={24} color={modernColors.primary} />
-                <Text style={styles.headerTitle}>Mes Alertes Prix</Text>
+                <Text style={styles.headerTitle}>{t('immobilierPriceAlerts.mesAlertesPrix')}</Text>
                 <Text style={styles.headerSubtitle}>
                     {alerts.length} alerte{alerts.length > 1 ? 's' : ''}
                 </Text>
@@ -171,7 +171,7 @@ const ImmobilierPriceAlertsScreen: React.FC = () => {
 
                         {item.search_criteria && (
                             <View style={styles.alertCriteria}>
-                                <Text style={styles.alertCriteriaLabel}>Critères :</Text>
+                                <Text style={styles.alertCriteriaLabel}>{t('immobilierPriceAlerts.criteres')}</Text>
                                 <Text style={styles.alertCriteriaText}>
                                     {JSON.stringify(item.search_criteria, null, 2)}
                                 </Text>
@@ -189,7 +189,7 @@ const ImmobilierPriceAlertsScreen: React.FC = () => {
                                     }}
                                 >
                                     <SafeIcon name="eye" size={16} color={modernColors.primary} />
-                                    <Text style={styles.alertActionText}>Voir le bien</Text>
+                                    <Text style={styles.alertActionText}>{t('immobilierPriceAlerts.voirLeBien')}</Text>
                                 </TouchableOpacity>
                             )}
                             <TouchableOpacity
@@ -215,12 +215,12 @@ const ImmobilierPriceAlertsScreen: React.FC = () => {
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
                         <SafeIcon name="bell-off" size={64} color="#9CA3AF" />
-                        <Text style={styles.emptyText}>Aucune alerte</Text>
+                        <Text style={styles.emptyText}>{t('immobilierPriceAlerts.aucuneAlerte')}</Text>
                         <Text style={styles.emptySubtext}>
                             Créez des alertes pour être notifié lorsque des biens correspondent à vos critères
                         </Text>
                         <NativeButton
-                            title="Créer une alerte"
+                            title={t('immobilierPriceAlerts.creerUneAlerte')}
                             onPress={() => {
                                 (navigation as any).navigate('ImmobilierSearch');
                             }}

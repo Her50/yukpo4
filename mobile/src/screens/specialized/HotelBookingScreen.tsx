@@ -38,7 +38,7 @@ const HotelBookingScreen: React.FC = () => {
 
     const params = (route.params || {}) as RouteParams;
     const propertyId = params.propertyId;
-    const propertyName = params.propertyName || 'Hébergement';
+    const propertyName = params.propertyName || t('hotelBooking.hebergement');
     const typeBien = params.typeBien || 'hotel';
     const prixNuitee = params.prixNuitee || 0;
     const ville = params.ville || '';
@@ -152,7 +152,7 @@ const HotelBookingScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={22} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>Réserver un séjour</Text>
+                        <Text style={s.headerTitle}>{t('hotelBooking.reserverUnSejour')}</Text>
                         <Text style={s.headerSub} numberOfLines={1}>{propertyName}</Text>
                     </View>
                 </View>
@@ -172,16 +172,16 @@ const HotelBookingScreen: React.FC = () => {
                     <View style={s.infoBadge}>
                         <SafeIcon name="info" size={16} color="#4F46E5" />
                         <Text style={s.infoBadgeText}>
-                            {typeBien === 'meuble' ? 'Location meublée' : 'Hôtel'} · {ville || 'Cameroun'}
+                            {typeBien === 'meuble' ? t('hotelBookingScreen.locationMeublee') : 'Hôtel'} · {ville || 'Cameroun'}
                             {prixNuitee > 0 ? ` · ${formatPrice(prixNuitee)}/nuit` : ''}
                         </Text>
                     </View>
 
                     {/* Dates */}
-                    <Text style={s.sectionTitle}>Dates du séjour</Text>
+                    <Text style={s.sectionTitle}>{t('hotelBooking.datesDuSejour')}</Text>
                     <View style={s.row}>
                         <View style={{ flex: 1 }}>
-                            <Text style={s.label}>Arrivée *</Text>
+                            <Text style={s.label}>{t('hotelBooking.arrivee')}</Text>
                             <TextInput
                                 style={s.input}
                                 value={dateArrivee}
@@ -191,7 +191,7 @@ const HotelBookingScreen: React.FC = () => {
                             />
                         </View>
                         <View style={{ flex: 1, marginLeft: 10 }}>
-                            <Text style={s.label}>Départ *</Text>
+                            <Text style={s.label}>{t('hotelBooking.depart')}</Text>
                             <TextInput
                                 style={s.input}
                                 value={dateDepart}
@@ -253,12 +253,12 @@ const HotelBookingScreen: React.FC = () => {
                     </View>
 
                     {/* Contact */}
-                    <Text style={s.sectionTitle}>Vos coordonnées</Text>
-                    <Text style={s.label}>Nom complet *</Text>
+                    <Text style={s.sectionTitle}>{t('hotelBooking.vosCoordonnees')}</Text>
+                    <Text style={s.label}>{t('hotelBooking.nomComplet')}</Text>
                     <TextInput style={s.input} value={nomClient} onChangeText={setNomClient}
-                        placeholder="Votre nom" placeholderTextColor="#9CA3AF" />
+                        placeholder={t('hotelBooking.votreNom')} placeholderTextColor="#9CA3AF" />
 
-                    <Text style={s.label}>Téléphone *</Text>
+                    <Text style={s.label}>{t('hotelBooking.telephone')}</Text>
                     <TextInput style={s.input} value={telephoneClient} onChangeText={setTelephoneClient}
                         placeholder="+237 6XX XXX XXX" placeholderTextColor="#9CA3AF" keyboardType="phone-pad" />
 
@@ -266,10 +266,10 @@ const HotelBookingScreen: React.FC = () => {
                     <TextInput style={s.input} value={emailClient} onChangeText={setEmailClient}
                         placeholder="votre@email.com" placeholderTextColor="#9CA3AF" keyboardType="email-address" />
 
-                    <Text style={s.label}>Notes / demandes spéciales</Text>
+                    <Text style={s.label}>{t('hotelBooking.notesDemandesSpeciales')}</Text>
                     <TextInput style={[s.input, { height: 80, textAlignVertical: 'top' }]}
                         value={notes} onChangeText={setNotes}
-                        placeholder="Ex: chambre calme, lit bébé..." placeholderTextColor="#9CA3AF" multiline />
+                        placeholder={t('hotelBooking.exChambreCalmeLitBebe')} placeholderTextColor="#9CA3AF" multiline />
 
                     {/* Price Summary */}
                     {prixNuitee > 0 && nbNuits > 0 && (
@@ -279,16 +279,16 @@ const HotelBookingScreen: React.FC = () => {
                                 <Text style={s.priceLabel}>{formatPrice(prixNuitee)} × {nbNuits} nuit{nbNuits > 1 ? 's' : ''} × {nbChambresNum} chambre{nbChambresNum > 1 ? 's' : ''}</Text>
                             </View>
                             <View style={[s.priceRow, s.priceTotalRow]}>
-                                <Text style={s.priceTotalLabel}>Total estimé</Text>
+                                <Text style={s.priceTotalLabel}>{t('hotelBooking.totalEstime')}</Text>
                                 <Text style={s.priceTotalValue}>{formatPrice(prixTotal)}</Text>
                             </View>
-                            <Text style={s.priceNote}>Le prix final sera confirmé par le gérant</Text>
+                            <Text style={s.priceNote}>{t('hotelBooking.lePrixFinalSeraConfirme')}</Text>
                         </View>
                     )}
 
                     {/* Submit */}
                     <NativeButton
-                        title={loading ? 'Envoi en cours...' : 'Envoyer la demande de réservation'}
+                        title={loading ? 'Envoi en cours...' : t('hotelBookingScreen.envoyerLaDemandeDeReservation')}
                         onPress={handleSubmit}
                         disabled={loading}
                         variant="primary"

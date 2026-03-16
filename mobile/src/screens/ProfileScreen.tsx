@@ -136,7 +136,7 @@ const ProfileScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Erreur chargement profil:', error);
-      const errorMessage = error?.message || 'Une erreur inattendue s\'est produite';
+      const errorMessage = error?.message || t('profile.uneErreurInattendueSestProduite');
       Alert.alert(t('message.error'), errorMessage);
     } finally {
       setLoading(false);

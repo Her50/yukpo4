@@ -18,6 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface CheckpointComment {
     id: number;
@@ -35,7 +36,8 @@ interface Props {
 
 const CheckpointCommentsSection: React.FC<Props> = ({ checkpointId, visible }) => {
     const { user } = useAuth();
-    const [comments, setComments] = useState<CheckpointComment[]>([]);
+        const { t } = useLanguageSafe();
+const [comments, setComments] = useState<CheckpointComment[]>([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -129,7 +131,7 @@ const CheckpointCommentsSection: React.FC<Props> = ({ checkpointId, visible }) =
             {loading ? (
                 <ActivityIndicator size="small" color={modernColors.primary} style={{ padding: 12 }} />
             ) : comments.length === 0 ? (
-                <Text style={styles.emptyText}>Aucun commentaire. Soyez le premier !</Text>
+                <Text style={styles.emptyText}>{t('checkpointCommentsSection.aucunCommentaireSoyezLePremier')}</Text>
             ) : (
                 <FlatList
                     data={comments}
@@ -144,7 +146,7 @@ const CheckpointCommentsSection: React.FC<Props> = ({ checkpointId, visible }) =
                 <TextInput
                     value={content}
                     onChangeText={setContent}
-                    placeholder="Ajouter un commentaire..."
+                    placeholder={t('checkpointCommentsSection.ajouterUnCommentaire')}
                     placeholderTextColor={modernColors.textSecondary}
                     style={styles.input}
                     maxLength={500}

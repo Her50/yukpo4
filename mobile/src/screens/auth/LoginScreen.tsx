@@ -23,6 +23,7 @@ import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { modernColors, modernStyles, modernTheme } from '../../theme/modernTheme';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import SmartLanguageSelector from '../../components/SmartLanguageSelector';
 
 // Configuration WebBrowser pour OAuth
 WebBrowser.maybeCompleteAuthSession();
@@ -31,6 +32,7 @@ const { width, height } = Dimensions.get('window');
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { t } = useLanguageSafe();
   const { login, loading, updateUser } = useAuth();
 
   // États du formulaire
@@ -81,18 +83,18 @@ const LoginScreen: React.FC = () => {
       console.error('[LoginScreen] URL erreur:', googleResponse.error?.url);
 
       // Messages d'erreur spécifiques selon le type d'erreur
-      let errorMessage = 'Erreur de connexion Google. Veuillez réessayer.';
+      let errorMessage = t('loginScreen.erreurDeConnexionGoogleVeuillezReessayer');
 
       if (googleResponse.error?.code === 'invalid_request' ||
         googleResponse.error?.message?.includes('Custom URI scheme') ||
         googleResponse.error?.message?.includes('invalid_request')) {
-        errorMessage = 'Configuration OAuth manquante. Le schéma URI personnalisé n\'est pas activé pour Android.\n\n' +
-          'URI utilisée: ' + (googleRequest?.redirectUri || 'non définie') + '\n\n' +
+        errorMessage = t('loginScreen.configurationOauthManquanteLeSchemaUriPersonnalise') +
+          'URI utilisée: ' + (googleRequest?.redirectUri || t('login.nonDefinie')) + '\n\n' +
           'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
       } else if (googleResponse.error?.code === 'access_denied') {
-        errorMessage = 'Connexion Google annulée.';
+        errorMessage = t('loginScreen.connexionGoogleAnnulee');
       } else if (googleResponse.error?.code === 'popup_closed') {
-        errorMessage = 'La fenêtre de connexion a été fermée.';
+        errorMessage = t('loginScreen.laFenetreDeConnexionAEte');
       }
 
       setError(errorMessage);
@@ -143,7 +145,7 @@ const LoginScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('[LoginScreen] Erreur OAuth:', error);
-      setError(error.message || 'Connexion échouée. Veuillez réessayer.');
+      setError(error.message || t('login.connexionEchoueeVeuillezReessayer'));
       Alert.alert('Erreur', error.message || 'Connexion échouée.');
     } finally {
       setFormLoading(false);
@@ -159,7 +161,7 @@ const LoginScreen: React.FC = () => {
       // Vérifier que le Client ID Android est configuré sur Android
       if (Platform.OS === 'android' && !process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID) {
         const errorMsg = 'Configuration OAuth Android manquante.\n\n' +
-          'Veuillez définir EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID dans vos variables d\'environnement.\n\n' +
+          t('loginScreen.veuillezDefinirExpopublicgoogleandroidclientidDansVosVa') +
           'Consultez: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
         setError(errorMsg);
         Alert.alert('Configuration requise', errorMsg);
@@ -170,10 +172,10 @@ const LoginScreen: React.FC = () => {
       await googlePromptAsync();
     } catch (error: any) {
       console.error('[LoginScreen] Erreur lors du lancement Google OAuth:', error);
-      let errorMessage = 'Impossible de lancer la connexion Google. Veuillez réessayer.';
+      let errorMessage = t('loginScreen.impossibleDeLancerLaConnexionGoogle');
 
       if (error?.message?.includes('Custom URI scheme') || error?.message?.includes('invalid_request')) {
-        errorMessage = 'Configuration OAuth manquante. Le schéma URI personnalisé n\'est pas activé pour Android.\n\n' +
+        errorMessage = t('loginScreen.configurationOauthManquanteLeSchemaUriPersonnalise') +
           'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
       }
 
@@ -189,7 +191,7 @@ const LoginScreen: React.FC = () => {
 
     if (!email || !password) {
       console.log('[LoginScreen] Champs manquants');
-      setError('Veuillez remplir tous les champs');
+      setError(t('loginScreen.veuillezRemplirTousLesChamps'));
       return;
     }
 
@@ -215,7 +217,7 @@ const LoginScreen: React.FC = () => {
       if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('Identifiants')) {
         errorMessage = 'Email ou mot de passe incorrect';
       } else if (errorMessage.includes('Network') || errorMessage.includes('fetch')) {
-        errorMessage = 'Erreur de connexion au serveur. Vérifiez votre connexion internet.';
+        errorMessage = t('loginScreen.erreurDeConnexionAuServeurVerifiez');
       }
 
       setError(errorMessage);
@@ -256,6 +258,11 @@ const LoginScreen: React.FC = () => {
       style={styles.gradientContainer}
     >
       <KeyboardAwareScreen style={styles.container} contentContainerStyle={styles.scrollContent}>
+        {/* ✅ Sélecteur de langue intelligent GPS — coin supérieur droit */}
+        <View style={styles.languageSelectorRow}>
+          <SmartLanguageSelector compact showCountryHint />
+        </View>
+
         <View style={styles.header}>
           <Title style={styles.title}>
             <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>
@@ -273,7 +280,7 @@ const LoginScreen: React.FC = () => {
             <Card style={styles.successCard}>
               <Card.Content style={styles.successContent}>
                 <CheckCircle size={24} color={modernColors.success} weight="fill" />
-                <Text style={styles.successText}>Vous êtes bien déconnecté.</Text>
+                <Text style={styles.successText}>{t('login.vousEtesBienDeconnecte')}</Text>
               </Card.Content>
             </Card>
           </View>
@@ -312,7 +319,7 @@ const LoginScreen: React.FC = () => {
         <Card style={styles.formCard}>
           <Card.Content>
             <TextInput
-              label="Adresse email"
+              label={t('loginScreen.adresseEmail')}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -325,7 +332,7 @@ const LoginScreen: React.FC = () => {
             />
 
             <TextInput
-              label="Mot de passe"
+              label={t('login.motDePasse')}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -357,10 +364,10 @@ const LoginScreen: React.FC = () => {
 
         {/* Lien vers l'inscription */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Pas encore inscrit ? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Register' as never)}>
-            <Text style={styles.footerLink}>Créer un compte</Text>
-          </TouchableOpacity>
+          <Text style={styles.footerText}>{t('login.pasEncoreInscrit')}/Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register' as never)}>
+              <Text style={styles.footerLink}>{t('login.creerUnCompte')}</Text>
+            </TouchableOpacity>
         </View>
 
         {/* ✅ NOUVEAU: Bouton Devenir partenaire avec confirmation */}
@@ -370,12 +377,12 @@ const LoginScreen: React.FC = () => {
               // ✅ NOUVEAU: Afficher un modal de confirmation avant de naviguer
               Alert.alert(
                 '⚠️ Inscription Partenaire',
-                'Ce bouton est uniquement destiné aux partenaires de l\'application.\n\n' +
+                t('loginScreen.ceBoutonEstUniquementDestineAuxPartenaires') +
                 '⚠️ Important :\n' +
-                '• Les fonctionnalités utilisateurs classiques ne seront pas accessibles\n' +
-                '• Votre compte devra être validé par un administrateur avant d\'être actif\n' +
-                '• Vous recevrez un email de confirmation une fois votre compte approuvé\n\n' +
-                'Êtes-vous sûr de vouloir continuer ?',
+                t('loginScreen.lesFonctionnalitesUtilisateursClassiquesNeSeront') +
+                t('loginScreen.votreCompteDevraEtreValideParUn') +
+                t('loginScreen.vousRecevrezUnEmailDeConfirmation') +
+                t('loginScreen.etesvousSurDeVouloirContinuer'),
                 [
                   {
                     text: t('common.cancel'),
@@ -385,7 +392,7 @@ const LoginScreen: React.FC = () => {
                     }
                   },
                   {
-                    text: 'Oui, je suis partenaire',
+                    text: t('login.ouiJeSuisPartenaire'),
                     style: 'default',
                     onPress: () => {
                       console.log('[LoginScreen] Confirmation inscription partenaire acceptée');
@@ -602,6 +609,12 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: '600',
+  },
+  languageSelectorRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginBottom: modernStyles.spacing.sm,
   },
 });
 

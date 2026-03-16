@@ -21,6 +21,7 @@ import { AnimatedCard } from './AnimatedCard';
 import ProductCard from './ProductCard';
 import SkeletonLoader from './SkeletonLoader';
 import { EmptyState } from './ux/EmptyState';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 const CARD_HEIGHT = 400; // Hauteur estimée d'une carte produit
@@ -41,6 +42,7 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
     location,
 }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [items, setItems] = useState<any[]>(initialItems);
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -262,7 +264,7 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
         return (
             <View style={styles.footerLoader}>
                 <ActivityIndicator size="small" color={modernColors.primary} />
-                <Text style={styles.footerText}>Chargement...</Text>
+                <Text style={styles.footerText}>{t('infiniteFeed.chargement')}</Text>
             </View>
         );
     }, [loadingMore]);
@@ -280,8 +282,8 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
             <View style={styles.emptyContainer}>
                 <EmptyState
                     variant={error ? 'error' : 'empty'}
-                    title={error ? 'Erreur de chargement' : 'Découvrez nos services'}
-                    description={error || 'Explorez une large sélection de produits et services près de chez vous. Utilisez la recherche pour trouver ce que vous cherchez !'}
+                    title={error ? t('infiniteFeed.erreurDeChargement') : t('infiniteFeed.decouvrezNosServices')}
+                    description={error || t('infiniteFeed.explorezUneLargeSelectionDeProduits')}
                     icon={error ? 'alert-circle' : 'sparkles'} // ✅ AMÉLIORÉ: Icône plus engageante
                     actionLabel={error ? 'Réessayer' : 'Rechercher'}
                     onAction={error ? () => {

@@ -11,6 +11,7 @@ import { API_ENDPOINTS } from '../config/api.config';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet, apiPost } from '../services/api';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Message {
     id: string;
@@ -57,7 +58,8 @@ const ChatModal: React.FC<ChatModalProps> = ({
     onSendMessage
 }) => {
     const { user } = useAuth();
-    const [messages, setMessages] = useState<Message[]>([]);
+        const { t } = useLanguageSafe();
+const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [uploadingMedia, setUploadingMedia] = useState(false);
@@ -435,7 +437,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
 
                 Alert.alert('Succès', `${mediaType === 'image' ? 'Image' : mediaType === 'audio' ? 'Audio' : 'Fichier'} envoyé avec succès`);
             } else {
-                throw new Error(response.error || 'Erreur envoi média');
+                throw new Error(response.error || t('chat.erreurEnvoiMedia'));
             }
         } catch (error) {
             console.error('[ChatModal] ❌ Erreur envoi média:', error);
@@ -597,7 +599,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
                     {isTyping && (
                         <View style={[styles.messageContainer, styles.messageLeft]}>
                             <View style={[styles.messageBubble, styles.messageBubbleLeft]}>
-                                <Text style={styles.typingText}>Prestataire en train d'écrire...</Text>
+                                <Text style={styles.typingText}>{t('chat.prestataireEnTrainDecrire')}</Text>
                             </View>
                         </View>
                     )}
@@ -650,7 +652,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
                             <>
                                 <TextInput
                                     style={styles.textInput}
-                                    placeholder="Tapez votre message..."
+                                    placeholder={t('chat.tapezVotreMessage')}
                                     value={newMessage}
                                     onChangeText={setNewMessage}
                                     multiline

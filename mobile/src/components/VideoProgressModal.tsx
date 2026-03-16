@@ -220,7 +220,7 @@ export const VideoProgressModal: React.FC<VideoProgressModalProps> = ({
                     <View style={styles.actions}>
                         {!isComplete && !isError && onCancel && (
                             <NativeButton
-                                title="Annuler"
+                                title={t('videoProgressModal.cancel')}
                                 variant="secondary"
                                 size="medium"
                                 onPress={onCancel}

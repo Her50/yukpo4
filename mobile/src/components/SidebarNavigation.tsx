@@ -8,6 +8,7 @@ import React from 'react';
 import { Dimensions, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -35,6 +36,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
     currentRoute,
 }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
     // Grouper les items par section
     const groupedItems = React.useMemo(() => {
@@ -69,7 +71,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
                     <View style={styles.header}>
                         <View style={styles.headerContent}>
                             <SafeIcon name="briefcase" size={24} color="#fff" />
-                            <Text style={styles.headerTitle}>Mes Services</Text>
+                            <Text style={styles.headerTitle}>{t('sidebarNavigation.mesServices')}</Text>
                         </View>
                         <TouchableOpacity
                             style={styles.closeButton}

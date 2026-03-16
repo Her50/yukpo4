@@ -6,6 +6,7 @@ import {
     View
 } from 'react-native';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Service {
     id: string;
@@ -64,12 +65,12 @@ const ServiceResultCard: React.FC<ServiceResultCardProps> = ({
     // Normaliser les données du service
     const normalizedService: Service = {
         id: service.id?.toString() || '',
-        titre: service.titre || service.title || 'Service sans titre',
-        description: service.description || 'Aucune description',
+        titre: service.titre || service.title || t('serviceResultCard.serviceSansTitre'),
+        description: service.description || t('serviceResultCard.aucuneDescription'),
         prix: service.prix || service.price || 0,
         devise: service.devise || service.currency || 'XAF',
-        categorie: service.categorie || service.category || 'Non spécifié',
-        localisation: service.localisation || service.location || 'Non spécifié',
+        categorie: service.categorie || service.category || t('serviceResultCard.nonSpecifie'),
+        localisation: service.localisation || service.location || t('serviceResultCard.nonSpecifie'),
         prestataire: service.prestataire || {
             id: service.prestataire?.id || '',
             nom: service.prestataire?.nom || service.prestataire?.name || 'Prestataire',
@@ -155,7 +156,7 @@ const ServiceResultCard: React.FC<ServiceResultCardProps> = ({
                     </View>
                     {normalizedService.isNew && (
                         <View style={styles.statItem}>
-                            <Text style={styles.statValue}>Nouveau</Text>
+                            <Text style={styles.statValue}>{t('serviceResultCard.nouveau')}</Text>
                         </View>
                     )}
                 </View>
@@ -188,7 +189,7 @@ const ServiceResultCard: React.FC<ServiceResultCardProps> = ({
                     <Text style={styles.prestataireName}>{normalizedService.prestataire?.nom}</Text>
                     <View style={styles.onlineIndicator}>
                         <View style={styles.onlineDot} />
-                        <Text style={styles.onlineText}>En ligne</Text>
+                        <Text style={styles.onlineText}>{t('serviceResultCard.enLigne')}/Text>
                     </View>
                 </View>
             </View>
@@ -206,7 +207,7 @@ const ServiceResultCard: React.FC<ServiceResultCardProps> = ({
             <View style={styles.actionsContainer}>
                 <TouchableOpacity style={styles.primaryButton} onPress={() => handleContact('message')}>
                     <Text style={styles.primaryButtonIcon}>💬</Text>
-                    <Text style={styles.primaryButtonText}>Démarrer une conversation</Text>
+                    <Text style={styles.primaryButtonText}>{t('serviceResultCard.demarrerUneConversation')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -216,7 +217,7 @@ const ServiceResultCard: React.FC<ServiceResultCardProps> = ({
                     <Text style={styles.secondaryButtonText}>Galerie</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.secondaryButton} onPress={handleFavorite}>
-                    <Text style={styles.secondaryButtonText}>Favoris</Text>
+                    <Text style={styles.secondaryButtonText}>{t('serviceResultCard.favoris')}/Text>
                 </TouchableOpacity>
             </View>
 

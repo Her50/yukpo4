@@ -3,6 +3,7 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { Text, TouchableOpacity, View } from 'react-native';
 import { API_BASE_URL } from '../config/api';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 type StatusData = {
   enabled: boolean;
@@ -11,7 +12,8 @@ type StatusData = {
 };
 
 const SchedulerStatusCard: React.FC = () => {
-  const [data, setData] = useState<StatusData | null>(null);
+      const { t } = useLanguageSafe();
+const [data, setData] = useState<StatusData | null>(null);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/admin/scheduler-status`)
@@ -22,7 +24,7 @@ const SchedulerStatusCard: React.FC = () => {
   if (!data) {
     return (
       <View style="p-4">
-        <Text>Chargement...</Text>
+        <Text>{t('schedulerStatusCard.chargement')}</Text>
         <TouchableOpacity
           onPress={() =>
             fetch(`${API_BASE_URL}/api/admin/run-summary-now`, { method: "POST" })
@@ -31,7 +33,7 @@ const SchedulerStatusCard: React.FC = () => {
           }
           style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#4F46E5', borderRadius: 6 } as any}
         >
-          <Text style={{ color: '#fff' }}>🧠 Résumer maintenant</Text>
+          <Text style={{ color: '#fff' }}>{t('schedulerStatusCard.resumerMaintenant')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -44,7 +46,7 @@ const SchedulerStatusCard: React.FC = () => {
 
   return (
     <View style="p-4 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 border rounded shadow">
-      <Text style="text-lg font-semibold mb-2">🕐 Statut de la Planification IA</Text>
+      <Text style="text-lg font-semibold mb-2">{t('schedulerStatusCard.statutDeLaPlanificationIa')}/Text>
 
       <Text>
         État :{" "}
@@ -60,10 +62,10 @@ const SchedulerStatusCard: React.FC = () => {
         </Text>
       </Text>
 
-      <Text>Prochaine prévue : {data.next_run}</Text>
+      <Text>{t('schedulerStatusCard.nextScheduled')}: {data.next_run}</Text>
 
       {showAlert && (
-        <Text style="text-red-500 mt-2">🚨 Plus de 48h depuis le dernier résumé</Text>
+        <Text style="text-red-500 mt-2">{t('schedulerStatusCard.plusDe48hDepuisLe')}</Text>
       )}
 
       <TouchableOpacity
@@ -74,7 +76,7 @@ const SchedulerStatusCard: React.FC = () => {
         }
         style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#4F46E5', borderRadius: 6 } as any}
       >
-        <Text style={{ color: '#fff' }}>🧠 Résumer maintenant</Text>
+        <Text style={{ color: '#fff' }}>{t('schedulerStatusCard.resumerMaintenant')}</Text>
       </TouchableOpacity>
     </View>
   );

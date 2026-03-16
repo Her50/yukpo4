@@ -2,6 +2,7 @@ import * as React from 'react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { Text } from 'react-native';
 import { authApi } from '../services/api';
+import { PassiveActivityTracker } from '../services/PassiveActivityTracker';
 import { jwtDecode } from '../utils/jwtDecode';
 import SafeStorage from '../utils/safeStorage';
 
@@ -144,6 +145,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           };
 
           setUser(userData);
+
+          // ✅ Auto-reprendre le tracking passif si activé précédemment
+          PassiveActivityTracker.resumeIfEnabled().catch(() => { });
         } else {
           await SafeStorage.removeItem('auth_token');
           setUser(null);
@@ -237,6 +241,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           } catch (pushError) {
             // Ne pas bloquer le login si push échoue
           }
+
+          // ✅ Auto-démarrer le tracking passif des déplacements
+          PassiveActivityTracker.start().then((ok) => {
+            if (ok) console.log('[AuthContext] ✅ Tracking passif démarré automatiquement');
+          }).catch(() => { });
+
           setForceRender(prev => prev + 1);
         } else {
           throw new Error('Token expiré');
@@ -283,6 +293,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             };
 
             setUser(newUserData);
+
+            // ✅ Auto-démarrer le tracking passif après inscription
+            PassiveActivityTracker.start().then((ok) => {
+              if (ok) console.log('[AuthContext] ✅ Tracking passif démarré après inscription');
+            }).catch(() => { });
+
             // ✅ NOUVEAU 2026-02-25: Inclure user_id pour le flux OTP
             return { success: true, data: { ...newUserData, user_id: (response.data as any)?.user_id || (response.data as any)?.id || decoded.sub, token: response.data.token } };
           } else {
@@ -313,6 +329,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
+      // ✅ Sauvegarder la session en cours et arrêter le tracking passif
+      await PassiveActivityTracker.flushCurrentSession().catch(() => { });
+      await PassiveActivityTracker.stop().catch(() => { });
+
       await authApi.logout();
       await SafeStorage.removeItem('auth_token');
       setUser(null);

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import ReactNative from 'react-native';
 import { Button, Card, IconButton, TextInput } from 'react-native-paper';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert } = ReactNative;
 
@@ -21,7 +22,8 @@ interface ProductManagerProps {
 }
 
 const ProductManager: React.FC<ProductManagerProps> = ({ products = [], onProductsChange, compact = false }) => {
-    const [showAddForm, setShowAddForm] = useState(false);
+        const { t } = useLanguageSafe();
+const [showAddForm, setShowAddForm] = useState(false);
     const [newProduct, setNewProduct] = useState({
         name: '',
         description: '',
@@ -95,13 +97,13 @@ const ProductManager: React.FC<ProductManagerProps> = ({ products = [], onProduc
         <Card style={styles.container}>
             <Card.Content>
                 <View style={styles.header}>
-                    <Text style={styles.title}>Gestion des produits</Text>
+                    <Text style={styles.title}>{t('productManager.gestionDesProduits')}/Text>
                     <TouchableOpacity
                         style={styles.addButton}
                         onPress={() => setShowAddForm(!showAddForm)}
                     >
                         <Plus size={16} color={theme.colors.primary} />
-                        <Text style={styles.addButtonText}>Ajouter</Text>
+                        <Text style={styles.addButtonText}>{t('productManager.ajouter')}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -109,10 +111,10 @@ const ProductManager: React.FC<ProductManagerProps> = ({ products = [], onProduc
                 {showAddForm && (
                     <Card style={styles.addForm}>
                         <Card.Content>
-                            <Text style={styles.formTitle}>Nouveau produit</Text>
+                            <Text style={styles.formTitle}>{t('productManager.nouveauProduit')}</Text>
 
                             <TextInput
-                                label="Nom du produit"
+                                label={t('productManager.nomDuProduit')}
                                 value={newProduct.name}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, name: text })}
                                 mode="outlined"
@@ -120,7 +122,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ products = [], onProduc
                             />
 
                             <TextInput
-                                label="Description (optionnel)"
+                                label={t('productManager.descriptionOptionnel')}
                                 value={newProduct.description}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                 mode="outlined"
@@ -131,7 +133,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ products = [], onProduc
 
                             <View style={styles.priceRow}>
                                 <TextInput
-                                    label="Prix"
+                                    label={t('productManager.prix')}
                                     value={newProduct.price.toString()}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, price: parseFloat(text) || 0 })}
                                     mode="outlined"
@@ -140,7 +142,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ products = [], onProduc
                                 />
 
                                 <TextInput
-                                    label="Unité"
+                                    label={t('productManager.unite')}
                                     value={newProduct.unit}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, unit: text })}
                                     mode="outlined"
@@ -175,7 +177,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ products = [], onProduc
                     {(!products || products.length === 0) && (
                         <View style={styles.emptyState}>
                             <Package size={48} color="#E0E0E0" />
-                            <Text style={styles.emptyText}>Aucun produit ajouté</Text>
+                            <Text style={styles.emptyText}>{t('productManager.aucunProduitAjoute')}</Text>
                             <Text style={styles.emptySubtext}>
                                 Ajoutez des produits pour définir vos offres
                             </Text>

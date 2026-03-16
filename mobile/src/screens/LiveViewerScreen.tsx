@@ -171,7 +171,7 @@ export default function LiveViewerScreen() {
             <SafeAreaView style={styles.container}>
                 <View style={styles.centerContent}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement du live...</Text>
+                    <Text style={styles.loadingText}>{t('liveViewer.chargementDuLive')}</Text>
                 </View>
             </SafeAreaView>
         );
@@ -184,7 +184,7 @@ export default function LiveViewerScreen() {
                     <SafeIcon name="video-off" size={48} color="#9CA3AF" />
                     <Text style={styles.emptyText}>Ce live n'est plus disponible</Text>
                     <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-                        <Text style={styles.backBtnText}>Retour</Text>
+                        <Text style={styles.backBtnText}>{t('liveViewer.retour')}/Text>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -231,7 +231,7 @@ export default function LiveViewerScreen() {
                 {/* Flash Sales section */}
                 {flashSales.length > 0 && (
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Ventes Flash</Text>
+                        <Text style={styles.sectionTitle}>{t('liveViewer.ventesFlash')}/Text>
                         {flashSales.map(sale => {
                             const startsAtMs = new Date(sale.start_at).getTime();
                             const endsAtMs = new Date(sale.end_at).getTime();
@@ -259,7 +259,7 @@ export default function LiveViewerScreen() {
                                             <Text style={styles.flashTitle}>{linked?.title || `Produit #${sale.service_id}`}</Text>
                                             <View style={[styles.statusPill, isUrgent && styles.urgentPill]}>
                                                 <Text style={[styles.statusPillText, isUrgent && styles.urgentPillText]}>
-                                                    {isEnded ? 'Terminé' : isUpcoming
+                                                    {isEnded ? t('liveViewerScreen.termine') : isUpcoming
                                                         ? `Dans ${formatRelativeTime(timeDiff)}`
                                                         : `Fin ${formatRelativeTime(timeDiff)}`}
                                                 </Text>
@@ -290,11 +290,11 @@ export default function LiveViewerScreen() {
                                                 <ActivityIndicator size="small" color="#FFF" />
                                             ) : (
                                                 <Text style={styles.reserveBtnText}>
-                                                    {isEnded ? 'Terminé'
-                                                        : isUpcoming ? 'Bientôt'
-                                                            : isSoldOut ? 'Épuisé'
+                                                    {isEnded ? t('liveViewerScreen.termine')
+                                                        : isUpcoming ? t('liveViewerScreen.bientot')
+                                                            : isSoldOut ? t('liveViewerScreen.epuise')
                                                                 : ticket?.status === 'pending' ? 'Traitement...'
-                                                                    : ticket?.status === 'confirmed' ? 'Réservé'
+                                                                    : ticket?.status === 'confirmed' ? t('liveViewerScreen.reserve')
                                                                         : user ? 'Réserver' : 'Se connecter'}
                                                 </Text>
                                             )}
@@ -309,7 +309,7 @@ export default function LiveViewerScreen() {
                 {/* Linked services */}
                 {session.linked_services && session.linked_services.length > 0 && (
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Services liés</Text>
+                        <Text style={styles.sectionTitle}>{t('liveViewer.servicesLies')}</Text>
                         {session.linked_services.map((svc: any) => (
                             <TouchableOpacity
                                 key={svc.id}
@@ -349,7 +349,7 @@ export default function LiveViewerScreen() {
                     }}
                 >
                     <SafeIcon name="Redo2" size={20} color="#FFF" />
-                    <Text style={styles.bottomBtnText}>Partager</Text>
+                    <Text style={styles.bottomBtnText}>{t('liveViewerScreen.partager')}</Text>
                 </TouchableOpacity>
             </View>
 

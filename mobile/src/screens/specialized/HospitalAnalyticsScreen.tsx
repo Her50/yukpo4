@@ -16,6 +16,7 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface HospitalAnalyticsScreenParams {
     hospitalId: number;
@@ -34,6 +35,7 @@ interface HospitalAnalytics {
 
 const HospitalAnalyticsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
     const params = route.params as HospitalAnalyticsScreenParams;
@@ -97,7 +99,7 @@ const HospitalAnalyticsScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement des analytics...</Text>
+                <Text style={styles.loadingText}>{t('hospitalAnalytics.chargementDesAnalytics')}</Text>
             </View>
         );
     }
@@ -108,7 +110,7 @@ const HospitalAnalyticsScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Analytics Hôpital</Text>
+                <Text style={styles.title}>{t('hospitalAnalytics.analyticsHopital')}</Text>
             </View>
 
             <ScrollView
@@ -122,9 +124,9 @@ const HospitalAnalyticsScreen: React.FC = () => {
                     <>
                         <View style={styles.statsGrid}>
                             <StatCard icon="calendar" title="Total RDV" value={formatNumber(analytics.total_appointments)} color={modernColors.primary} />
-                            <StatCard icon="check-circle" title="Complétés" value={formatNumber(analytics.completed_appointments)} color="#10B981" />
+                            <StatCard icon="check-circle" title={t('hospitalAnalytics.completes')} value={formatNumber(analytics.completed_appointments)} color="#10B981" />
                             <StatCard icon="clock" title="En attente" value={formatNumber(analytics.pending_appointments)} color="#F59E0B" />
-                            <StatCard icon="x-circle" title="Annulés" value={formatNumber(analytics.cancelled_appointments)} color="#EF4444" />
+                            <StatCard icon="x-circle" title={t('hospitalAnalytics.annules')} value={formatNumber(analytics.cancelled_appointments)} color="#EF4444" />
                         </View>
 
                         <NativeCard style={styles.revenueCard}>
@@ -134,7 +136,7 @@ const HospitalAnalyticsScreen: React.FC = () => {
 
                         {analytics.top_services && analytics.top_services.length > 0 && (
                             <NativeCard style={styles.topServicesCard}>
-                                <Text style={styles.sectionTitle}>Services les plus demandés</Text>
+                                <Text style={styles.sectionTitle}>{t('hospitalAnalytics.servicesLesPlusDemandes')}</Text>
                                 {analytics.top_services.map((service, index) => (
                                     <View key={index} style={styles.serviceRow}>
                                         <Text style={styles.serviceName}>{service.name}</Text>
@@ -147,8 +149,8 @@ const HospitalAnalyticsScreen: React.FC = () => {
                 ) : (
                     <View style={styles.emptyContainer}>
                         <SafeIcon name="bar-chart-2" size={64} color="#D1D5DB" />
-                        <Text style={styles.emptyText}>Les analytics seront disponibles après les premières consultations.</Text>
-                        <NativeButton title="Actualiser" onPress={loadAnalytics} variant="primary" style={styles.retryButton} />
+                        <Text style={styles.emptyText}>{t('hospitalAnalytics.lesAnalyticsSerontDisponiblesApres')}</Text>
+                        <NativeButton title={t('hospitalAnalytics.actualiser')} onPress={loadAnalytics} variant="primary" style={styles.retryButton} />
                     </View>
                 )}
             </ScrollView>

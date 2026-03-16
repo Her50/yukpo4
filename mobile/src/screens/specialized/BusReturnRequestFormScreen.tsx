@@ -57,19 +57,19 @@ const BusReturnRequestFormScreen: React.FC = () => {
 
     const confirmationSections: ConfirmationSection[] = [
         {
-            title: 'Retour',
+            title: t('busReturnRequestForm.retour'),
             icon: 'calendar',
             fields: [
-                { label: 'Date retour', value: formatDate(returnDate) },
-                { label: 'Heure', value: returnTime || 'Non spécifiée' },
-                { label: 'Flexibilité', value: `± ${flexibilityDays} jour(s)` },
+                { label: t('busReturnRequestFormScreen.dateRetour'), value: formatDate(returnDate) },
+                { label: 'Heure', value: returnTime || t('busReturnRequestForm.nonSpecifiee') },
+                { label: t('busReturnRequestForm.flexibilite'), value: `± ${flexibilityDays} jour(s)` },
             ],
         },
         {
             title: 'Passagers',
             icon: 'users',
             fields: [
-                { label: 'Nombre de places', value: String(numberOfSeats), type: 'number' as const },
+                { label: t('busReturnRequestForm.nombreDePlaces'), value: String(numberOfSeats), type: 'number' as const },
                 { label: 'Passagers', value: passengerNames.filter(n => n.trim()).join(', ') },
             ],
         },
@@ -160,10 +160,10 @@ const BusReturnRequestFormScreen: React.FC = () => {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Demande de retour</Text>
+                    <Text style={styles.title}>{t('busReturnRequestForm.demandeDeRetour')}/Text>
                 </View>
                 <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>Informations de ticket manquantes</Text>
+                    <Text style={styles.errorText}>{t('busReturnRequestForm.informationsDeTicketManquantes')}/Text>
                 </View>
             </View>
         );
@@ -175,13 +175,13 @@ const BusReturnRequestFormScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Créer une demande de retour</Text>
+                <Text style={styles.title}>{t('busReturnRequestForm.creerUneDemandeDeRetour')}</Text>
             </View>
 
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 {outboundTicket && (
                     <View style={styles.ticketInfoCard}>
-                        <Text style={styles.cardTitle}>Ticket aller</Text>
+                        <Text style={styles.cardTitle}>{t('busReturnRequestForm.ticketAller')}/Text>
                         <Text style={styles.ticketRoute}>
                             {outboundTicket.departure_city} → {outboundTicket.arrival_city}
                         </Text>
@@ -193,7 +193,7 @@ const BusReturnRequestFormScreen: React.FC = () => {
 
                 <View style={styles.form}>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Date de retour souhaitée *</Text>
+                        <Text style={styles.label}>{t('busReturnRequestForm.dateDeRetourSouhaitee')}</Text>
                         <TouchableOpacity
                             style={styles.dateButton}
                             onPress={() => setShowDatePicker(true)}
@@ -219,7 +219,7 @@ const BusReturnRequestFormScreen: React.FC = () => {
                     )}
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Heure de retour (optionnel)</Text>
+                        <Text style={styles.label}>{t('busReturnRequestForm.heureDeRetourOptionnel')}</Text>
                         <NativeInput
                             value={returnTime}
                             onChangeText={setReturnTime}
@@ -232,7 +232,7 @@ const BusReturnRequestFormScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Flexibilité sur la date</Text>
+                        <Text style={styles.label}>{t('busReturnRequestForm.flexibiliteSurLaDate')}</Text>
                         <View style={styles.flexibilityRow}>
                             <TouchableOpacity
                                 style={[
@@ -286,7 +286,7 @@ const BusReturnRequestFormScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Nombre de places *</Text>
+                        <Text style={styles.label}>{t('busReturnRequestForm.nombreDePlaces')}</Text>
                         <View style={styles.seatsRow}>
                             <TouchableOpacity
                                 style={styles.seatsButton}
@@ -337,7 +337,7 @@ const BusReturnRequestFormScreen: React.FC = () => {
                     </View>
 
                     <NativeButton
-                        title={loading ? 'Création en cours...' : 'Créer la demande'}
+                        title={loading ? t('busReturnRequestFormScreen.creationEnCours') : t('busReturnRequestFormScreen.creerLaDemande')}
                         onPress={handleSubmit}
                         disabled={loading}
                         variant="primary"

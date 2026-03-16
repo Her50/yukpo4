@@ -19,6 +19,7 @@ import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface VideoAnalytics {
     video_id: string;
@@ -71,14 +72,15 @@ interface CreatorAnalyticsResponse {
 const CreatorAnalyticsScreen: React.FC = () => {
     const { user } = useAuth();
     const insets = useSafeAreaInsets();
-    const [loading, setLoading] = useState(true);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [analytics, setAnalytics] = useState<CreatorAnalyticsResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const loadAnalytics = useCallback(async () => {
         if (!user?.id) {
-            setError('Utilisateur non connecté');
+            setError(t('creatorAnalytics.utilisateurNonConnecte'));
             setLoading(false);
             return;
         }
@@ -134,7 +136,7 @@ const CreatorAnalyticsScreen: React.FC = () => {
             <SafeNativeView style={styles.container}>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement des analytics...</Text>
+                    <Text style={styles.loadingText}>{t('creatorAnalytics.chargementDesAnalytics')}</Text>
                 </View>
             </SafeNativeView>
         );
@@ -168,7 +170,7 @@ const CreatorAnalyticsScreen: React.FC = () => {
             >
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Analytics Créateur</Text>
+                    <Text style={styles.headerTitle}>{t('creatorAnalytics.analyticsCreateur')}</Text>
                     <Text style={styles.headerSubtitle}>
                         {new Date(overview.period_start).toLocaleDateString()} -{' '}
                         {new Date(overview.period_end).toLocaleDateString()}
@@ -193,7 +195,7 @@ const CreatorAnalyticsScreen: React.FC = () => {
                     </NativeCard>
                     <NativeCard style={styles.statCard}>
                         <Text style={styles.statValue}>{formatNumber(overview.total_followers)}</Text>
-                        <Text style={styles.statLabel}>Abonnés</Text>
+                        <Text style={styles.statLabel}>{t('creatorAnalytics.abonnes')}</Text>
                     </NativeCard>
                 </View>
 
@@ -278,7 +280,7 @@ const CreatorAnalyticsScreen: React.FC = () => {
 
                 {/* All Videos */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Toutes les Vidéos</Text>
+                    <Text style={styles.sectionTitle}>{t('creatorAnalytics.toutesLesVideos')}</Text>
                     {videos.map((video) => (
                         <NativeCard key={video.video_id} style={styles.videoCard}>
                             <Text style={styles.videoTitle} numberOfLines={2}>

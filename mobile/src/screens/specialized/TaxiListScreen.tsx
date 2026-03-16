@@ -15,6 +15,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Taxi {
     id: number;
@@ -46,6 +47,7 @@ interface TaxiListScreenParams {
 
 const TaxiListScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const params = route.params as TaxiListScreenParams;
 
@@ -128,7 +130,7 @@ const TaxiListScreen: React.FC = () => {
                     </View>
                     <View style={[styles.statusBadge, item.is_available_now && styles.statusBadgeAvailable]}>
                         <Text style={[styles.statusText, item.is_available_now && styles.statusTextAvailable]}>
-                            {item.is_available_now ? 'Disponible' : 'Occupé'}
+                            {item.is_available_now ? 'Disponible' : t('taxiListScreen.occupe')}
                         </Text>
                     </View>
                 </View>
@@ -160,7 +162,7 @@ const TaxiListScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement des taxis...</Text>
+                <Text style={styles.loadingText}>{t('taxiList.chargementDesTaxis')}</Text>
             </View>
         );
     }
@@ -175,11 +177,11 @@ const TaxiListScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Résultats de recherche</Text>
+                    <Text style={styles.title}>{t('taxiList.resultatsDeRecherche')}</Text>
                 </View>
                 <View style={styles.centerContainer}>
                     <SafeIcon name="taxi" size={64} color="#D1D5DB" />
-                    <Text style={styles.emptyText}>Aucun taxi trouvé</Text>
+                    <Text style={styles.emptyText}>{t('taxiList.aucunTaxiTrouve')}</Text>
                     <Text style={styles.emptySubtext}>
                         Essayez de modifier vos critères de recherche
                     </Text>

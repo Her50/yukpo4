@@ -10,6 +10,7 @@ import { SearchSuggestion as HistorySuggestion, searchHistoryService } from '../
 import { modernColors } from '../theme/modernTheme';
 import LocationSelector, { LocationObject } from './LocationSelector';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface IntelligentSearchBarProps {
     placeholder?: string;
@@ -100,7 +101,7 @@ const buildLabeledPairs = (
             const rawLabel = labels[index];
             const label = rawLabel && rawLabel.trim().length > 0
                 ? rawLabel
-                : `Caractéristique ${index + 1}`;
+                : t('intelligentSearchBar.caracteristique', { index + 1: index + 1 });
 
             return {
                 label,
@@ -167,7 +168,7 @@ const computeCombinationRanking = (
 };
 
 export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
-    placeholder = 'Rechercher...',
+    placeholder={t('intelligentSearchBar.rechercher')},
     onSubmit,
     onGPSPress,
     showSendButton = true,
@@ -177,7 +178,8 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
     enableSuggestions = true,
     onSearchRecorded,
 }) => {
-    const [query, setQuery] = useState(initialValue);
+        const { t } = useLanguageSafe();
+const [query, setQuery] = useState(initialValue);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [suggestions, setSuggestions] = useState<HistorySuggestion[]>([]);
     const [popularSearches, setPopularSearches] = useState<HistorySuggestion[]>([]);
@@ -392,7 +394,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                     }
 
                     if (normalized.length === 0) {
-                        setCombinationError('Aucune caractéristique populaire correspondant à cette recherche.');
+                        setCombinationError(t('intelligentSearchBar.aucuneCaracteristiquePopulaireCorrespondantACette'));
                     } else {
                         const scored = normalized.map((suggestion) => {
                             const { popularityScore, relevanceScore, totalScore } = computeCombinationRanking(
@@ -432,11 +434,11 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                     }
                 } else {
                     setCombinationSuggestions([]);
-                    setCombinationError('Aucune caractéristique populaire trouvée.');
+                    setCombinationError(t('intelligentSearchBar.aucuneCaracteristiquePopulaireTrouvee'));
                 }
             } catch (error) {
                 console.error('[IntelligentSearchBar] Erreur chargement combinaisons:', error);
-                setCombinationError('Impossible de charger les caractéristiques populaires pour cette recherche.');
+                setCombinationError(t('intelligentSearchBar.impossibleDeChargerLesCaracteristiquesPopulaires'));
                 setCombinationSuggestions([]);
             } finally {
                 setIsLoadingCombinations(false);
@@ -647,7 +649,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                     <View style={styles.combinationSuggestionsHeader}>
                         <View style={styles.combinationSuggestionsHeaderLeft}>
                             <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
-                            <Text style={styles.combinationSuggestionsTitle}>Caractéristiques recommandées</Text>
+                            <Text style={styles.combinationSuggestionsTitle}>{t('intelligentSearchBar.caracteristiquesRecommandees')}</Text>
                             {combinationSuggestions.length > 0 && (
                                 <Text style={styles.combinationSuggestionsCount}>({combinationSuggestions.length})</Text>
                             )}
@@ -657,7 +659,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                     {isLoadingCombinations && (
                         <View style={styles.loadingCombinationsContainer}>
                             <ActivityIndicator size="small" color={modernColors.primary} />
-                            <Text style={styles.loadingCombinationsText}>Chargement des caractéristiques…</Text>
+                            <Text style={styles.loadingCombinationsText}>{t('intelligentSearchBar.chargementDesCaracteristiques')}</Text>
                         </View>
                     )}
 
@@ -666,7 +668,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                     )}
 
                     {!isLoadingCombinations && !combinationError && combinationSuggestions.length === 0 && (
-                        <Text style={styles.emptyCombinationsText}>Aucune caractéristique populaire trouvée pour cette recherche.</Text>
+                        <Text style={styles.emptyCombinationsText}>{t('intelligentSearchBar.aucuneCaracteristiquePopulaireTrouveePou')}</Text>
                     )}
 
                     {!isLoadingCombinations && !combinationError && topCombinationSuggestion && (
@@ -678,7 +680,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                                         size={16}
                                         color={topCombinationSuggestion.isPreferred ? modernColors.primary : '#F97316'}
                                     />
-                                    <Text style={styles.topCombinationTitle}>Caractéristiques pertinentes détectées</Text>
+                                    <Text style={styles.topCombinationTitle}>{t('intelligentSearchBar.caracteristiquesPertinentesDetectees')}</Text>
                                 </View>
                                 {typeof topCombinationSuggestion.usageCount === 'number' && topCombinationSuggestion.usageCount > 0 && (
                                     <View style={styles.topCombinationBadge}>
@@ -692,7 +694,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
 
                             <View style={styles.topCombinationTable}>
                                 {topCombinationRows.length === 0 ? (
-                                    <Text style={styles.topCombinationEmptyRow}>Aucune modalité disponible.</Text>
+                                    <Text style={styles.topCombinationEmptyRow}>{t('intelligentSearchBar.aucuneModaliteDisponible')}</Text>
                                 ) : (
                                     topCombinationRows.slice(0, 6).map((row, index) => (
                                         <View
@@ -732,7 +734,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
 
                             <View style={styles.topCombinationLocation}>
                                 <LocationSelector
-                                    label="Lieu de recherche"
+                                    label={t('intelligentSearchBar.lieuDeRecherche')}
                                     value={searchLocation || ''}
                                     onSelect={(loc) => {
                                         if (!loc || !loc.raw) {

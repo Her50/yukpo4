@@ -5,6 +5,7 @@ import { apiGet } from '../services/api';
 import { PlaceResult, PlaceScope, placesService } from '../services/placesService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // ✅ AMÉLIORÉ: Parser string location en composants (gère établissements, "Pays - Ville", "Quartier, Ville, Pays", "Pays" seul)
 const parseLocationString = (locationStr: string): LocationObject => {
@@ -13,11 +14,11 @@ const parseLocationString = (locationStr: string): LocationObject => {
 
     // ✅ AMÉLIORÉ: Liste étendue pour détecter les établissements, sites, bâtiments, boutiques
     const establishmentKeywords = [
-        'restaurant', 'café', 'cafe', 'hôtel', 'hotel', 'hôpital', 'hopital', 'clinique', 'pharmacie',
-        'école', 'ecole', 'université', 'universite', 'banque', 'supermarché', 'supermarche',
-        'marché', 'marche', 'gare', 'aéroport', 'aeroport', 'station', 'église', 'eglise',
-        'mosquée', 'mosquee', 'stade', 'cinéma', 'cinema', 'théâtre', 'theatre', 'musée', 'musee',
-        'bibliothèque', 'bibliotheque', 'parc', 'jardin', 'plage', 'bar', 'discothèque', 'discotheque',
+        'restaurant', t('locationSelector.cafe'), 'cafe', 'hôtel', 'hotel', 'hôpital', 'hopital', 'clinique', 'pharmacie',
+        'école', 'ecole', t('locationSelector.universite'), 'universite', 'banque', 'supermarché', 'supermarche',
+        t('locationSelector.marche'), 'marche', 'gare', 'aéroport', 'aeroport', 'station', 'église', 'eglise',
+        t('locationSelector.mosquee'), 'mosquee', 'stade', 'cinéma', 'cinema', 'théâtre', 'theatre', 'musée', 'musee',
+        t('locationSelector.bibliotheque'), 'bibliotheque', 'parc', 'jardin', 'plage', 'bar', 'discothèque', 'discotheque',
         'boîte', 'boite', 'magasin', 'boutique', 'centre commercial', 'mall', 'bâtiment', 'batiment',
         'immeuble', 'tour', 'tower', 'centre', 'center', 'complexe', 'complex', 'siège', 'siege',
         'bureau', 'office', 'agence', 'poste', 'mairie', 'préfecture', 'prefecture'
@@ -68,8 +69,8 @@ const parseLocationString = (locationStr: string): LocationObject => {
     // Format 3 : Simple (pays seul, établissement seul ou lieu simple)
     else {
         // ✅ NOUVEAU: Vérifier si c'est un pays connu
-        const paysConnus = ['Cameroun', 'Côte d\'Ivoire', 'Sénégal', 'Mali', 'Burkina Faso',
-            'Niger', 'Tchad', 'Guinée', 'Bénin', 'Togo', 'Congo', 'Gabon',
+        const paysConnus = ['Cameroun', 'Côte d\'Ivoire', t('locationSelector.senegal'), 'Mali', 'Burkina Faso',
+            'Niger', 'Tchad', t('locationSelector.guinee'), 'Bénin', 'Togo', 'Congo', 'Gabon',
             'Centrafrique', 'Madagascar', 'Burundi', 'Rwanda', 'Djibouti',
             'Comores', 'Mauritanie', 'RD Congo'];
         const isPays = paysConnus.some(p => locationStr.toLowerCase() === p.toLowerCase());
@@ -156,28 +157,28 @@ const detectPlaceTypeFromText = (placeText: string): 'city' | 'neighborhood' | '
     // ✅ LISTE ÉTENDUE: Mots-clés indiquant un établissement, site, bâtiment, boutique, etc.
     const establishmentKeywords = [
         // Restaurants & Cafés
-        'restaurant', 'café', 'cafe', 'fast food', 'pizzeria', 'boulangerie', 'patisserie',
+        'restaurant', t('locationSelector.cafe'), 'cafe', 'fast food', 'pizzeria', 'boulangerie', 'patisserie',
         // Hébergement
         'hôtel', 'hotel', 'auberge', 'resort', 'motel',
         // Santé
-        'hôpital', 'hopital', 'clinique', 'pharmacie', 'laboratoire', 'cabinet médical', 'dispensaire',
+        'hôpital', 'hopital', 'clinique', 'pharmacie', 'laboratoire', t('locationSelector.cabinetMedical'), 'dispensaire',
         // Éducation
-        'école', 'ecole', 'université', 'universite', 'lycée', 'lycee', 'collège', 'college', 'institut',
+        'école', 'ecole', t('locationSelector.universite'), 'universite', 'lycée', 'lycee', 'collège', 'college', 'institut',
         // Commerce
-        'banque', 'supermarché', 'supermarche', 'marché', 'marche', 'magasin', 'boutique', 'shop',
+        'banque', t('locationSelector.supermarche'), 'supermarche', 'marché', 'marche', 'magasin', 'boutique', 'shop',
         'centre commercial', 'mall', 'galerie', 'librairie', 'papeterie',
         // Transport
-        'gare', 'aéroport', 'aeroport', 'station', 'terminal', 'arrêt', 'arret',
+        'gare', 'aéroport', 'aeroport', 'station', 'terminal', t('locationSelector.arret'), 'arret',
         // Religion
-        'église', 'eglise', 'mosquée', 'mosquee', 'temple', 'cathédrale', 'cathedrale',
+        'église', 'eglise', t('locationSelector.mosquee'), 'mosquee', 'temple', 'cathédrale', 'cathedrale',
         // Culture & Loisirs
-        'stade', 'cinéma', 'cinema', 'théâtre', 'theatre', 'musée', 'musee', 'bibliothèque', 'bibliotheque',
+        'stade', t('locationSelector.cinema'), 'cinema', 'théâtre', 'theatre', 'musée', 'musee', 'bibliothèque', 'bibliotheque',
         'parc', 'jardin', 'plage', 'piscine', 'salle de sport', 'gym',
         // Divertissement
-        'bar', 'discothèque', 'discotheque', 'boîte', 'boite', 'nightclub', 'club',
+        'bar', t('locationSelector.discotheque'), 'discotheque', 'boîte', 'boite', 'nightclub', 'club',
         // Bâtiments & Sites
         'bâtiment', 'batiment', 'immeuble', 'tour', 'tower', 'centre', 'center', 'complexe', 'complex',
-        'siège', 'siege', 'bureau', 'office', 'agence', 'entrepôt', 'entrepot', 'usine', 'usine',
+        'siège', 'siege', 'bureau', 'office', 'agence', t('locationSelector.entrepot'), 'entrepot', 'usine', 'usine',
         // Autres établissements
         'poste', 'post office', 'mairie', 'préfecture', 'prefecture', 'tribunal', 'palais de justice',
         'commissariat', 'gendarmerie', 'caserne', 'ambassade', 'consulat'
@@ -201,7 +202,7 @@ const detectPlaceTypeFromText = (placeText: string): 'city' | 'neighborhood' | '
         // Si le premier élément est court (< 20 caractères) et ne ressemble pas à une ville, c'est probablement un quartier
         if (parts.length >= 2 && parts[0].length < 20 && !firstPart.includes(' - ')) {
             // Vérifier si ce n'est pas un établissement avec un nom court
-            const shortEstablishmentKeywords = ['bar', 'café', 'cafe', 'shop', 'boutique', 'magasin'];
+            const shortEstablishmentKeywords = ['bar', t('locationSelector.cafe'), 'cafe', 'shop', 'boutique', 'magasin'];
             if (!shortEstablishmentKeywords.some(keyword => firstPart.includes(keyword))) {
                 return 'neighborhood';
             }
@@ -214,8 +215,8 @@ const detectPlaceTypeFromText = (placeText: string): 'city' | 'neighborhood' | '
     }
 
     // ✅ Vérifier si c'est un pays connu
-    const paysConnus = ['cameroun', 'côte d\'ivoire', 'cote d\'ivoire', 'sénégal', 'senegal',
-        'mali', 'burkina faso', 'niger', 'tchad', 'guinée', 'guinee',
+    const paysConnus = ['cameroun', 'côte d\'ivoire', 'cote d\'ivoire', t('locationSelector.senegal'), 'senegal',
+        'mali', 'burkina faso', 'niger', 'tchad', t('locationSelector.guinee'), 'guinee',
         'bénin', 'benin', 'togo', 'congo', 'gabon', 'centrafrique',
         'madagascar', 'burundi', 'rwanda', 'djibouti', 'comores',
         'mauritanie', 'rd congo'];
@@ -270,7 +271,7 @@ const getPlaceIcon = (
             // ✅ Fallback: Détection depuis le texte si types Google non disponibles
             if (placeText) {
                 const text = placeText.toLowerCase();
-                if (text.includes('restaurant') || text.includes('café') || text.includes('cafe')) {
+                if (text.includes('restaurant') || text.includes(t('locationSelector.cafe')) || text.includes('cafe')) {
                     return 'utensils';
                 }
                 if (text.includes('hôtel') || text.includes('hotel')) {
@@ -279,7 +280,7 @@ const getPlaceIcon = (
                 if (text.includes('hôpital') || text.includes('hopital') || text.includes('pharmacie')) {
                     return 'heart';
                 }
-                if (text.includes('école') || text.includes('ecole') || text.includes('université')) {
+                if (text.includes('école') || text.includes('ecole') || text.includes(t('locationSelector.universite'))) {
                     return 'graduation-cap';
                 }
                 if (text.includes('magasin') || text.includes('boutique') || text.includes('mall')) {
@@ -288,7 +289,7 @@ const getPlaceIcon = (
                 if (text.includes('gare') || text.includes('aéroport') || text.includes('aeroport')) {
                     return 'navigation';
                 }
-                if (text.includes('église') || text.includes('eglise') || text.includes('mosquée')) {
+                if (text.includes('église') || text.includes('eglise') || text.includes(t('locationSelector.mosquee'))) {
                     return 'church';
                 }
                 if (text.includes('banque')) {
@@ -531,7 +532,8 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     // ✅ NOUVEAU 2026-01-04: Utiliser useLocation pour obtenir la localisation de l'utilisateur
     const { location: userLocation } = useLocation();
 
-    const [query, setQuery] = useState('');
+        const { t } = useLanguageSafe();
+const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [enriching, setEnriching] = useState(false);
     const [options, setOptions] = useState<string[]>([]);
@@ -832,9 +834,9 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                         bounces={false} // ✅ NOUVEAU: Évite les rebonds qui peuvent interférer avec les clics
                     >
                         {loading ? (
-                            <Text style={styles.loadingText}>Chargement...</Text>
+                            <Text style={styles.loadingText}>{t('locationSelector.chargement')}</Text>
                         ) : options.length === 0 && query.length >= 2 ? (
-                            <Text style={styles.emptyText}>Aucun résultat</Text>
+                            <Text style={styles.emptyText}>{t('locationSelector.aucunResultat')}</Text>
                         ) : (
                             options.map((opt, index) => {
                                 // ✅ AMÉLIORÉ: Utiliser les types Google Places au lieu du hardcodage

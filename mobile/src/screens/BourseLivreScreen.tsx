@@ -85,10 +85,10 @@ const BourseLivreScreen: React.FC = () => {
     const [hasMore, setHasMore] = useState(true);
 
     // Options de filtres
-    const classes = ['6ème', '5ème', '4ème', '3ème', 'Seconde', 'Première', 'Terminale'];
-    const matieres = ['Mathématiques', 'Français', 'Anglais', 'Physique', 'Chimie', 'SVT', 'Histoire', 'Géographie', 'Philosophie'];
+    const classes = ['6ème', '5ème', '4ème', '3ème', 'Seconde', t('bourseLivreScreen.premiere'), 'Terminale'];
+    const matieres = [t('bourseLivreScreen.mathematiques'), t('bourseLivreScreen.francais'), 'Anglais', 'Physique', 'Chimie', 'SVT', 'Histoire', 'Géographie', 'Philosophie'];
     const etats = ['Neuf', 'Très bon', 'Bon', 'Acceptable'];
-    const niveaux = ['Primaire', 'Collège', 'Lycée'];
+    const niveaux = ['Primaire', t('bourseLivreScreen.college'), t('bourseLivreScreen.lycee')];
 
     // Charger les livres
     const loadLivres = useCallback(async (reset = false) => {
@@ -163,22 +163,22 @@ const BourseLivreScreen: React.FC = () => {
         const result = await callWithFallback(
             async () => {
                 const request: BookRecommendationRequest = {
-                    classe_actuelle: filters.classe_actuelle || '6ème',
-                    classe_souhaitee: filters.classe_souhaitee || '5ème',
-                    matiere: filters.matiere || 'Mathématiques',
+                    classe_actuelle: filters.classe_actuelle || t('bourseLivre.6eme'),
+                    classe_souhaitee: filters.classe_souhaitee || t('bourseLivre.5eme'),
+                    matiere: filters.matiere || t('bourseLivre.mathematiques'),
                     niveau: filters.niveau,
                     ville: filters.ville,
                 };
                 return await bourseLivreApi.getRecommendations(request);
             },
             'bourse_livre_reco',
-            `Recommandations livres: ${filters.classe_actuelle || '6ème'} vers ${filters.classe_souhaitee || '5ème'}, ${filters.matiere || 'Mathématiques'}`,
+            `Recommandations livres: ${filters.classe_actuelle || t('bourseLivre.6eme')} vers ${filters.classe_souhaitee || t('bourseLivre.5eme')}, ${filters.matiere || t('bourseLivre.mathematiques')}`,
             () => ({
                 recommendations: [
-                    { titre: 'CIAM Mathématiques', raison: 'Manuel de référence pour cette classe', score: 0.9 },
-                    { titre: 'Excellence en Français', raison: 'Très utilisé dans les établissements', score: 0.8 },
+                    { titre: t('bourseLivreScreen.ciamMathematiques'), raison: 'Manuel de référence pour cette classe', score: 0.9 },
+                    { titre: t('bourseLivreScreen.excellenceEnFrancais'), raison: 'Très utilisé dans les établissements', score: 0.8 },
                 ],
-                conseil: 'Vérifiez la liste officielle de votre établissement pour les manuels obligatoires.',
+                conseil: t('bourseLivreScreen.verifiezLaListeOfficielleDeVotre'),
             })
         );
         if (result.success && result.data) {
@@ -210,7 +210,7 @@ const BourseLivreScreen: React.FC = () => {
                 return await bourseLivreApi.getPriceSuggestions(request);
             },
             'bourse_livre_prix',
-            `Estimation prix: ${livre.titre} (${livre.etat_livre}) à ${livre.ville || 'Cameroun'}`,
+            t('bourseLivreScreen.estimationPrixA', { livre_titre: livre.titre, livre_etat_livre: livre.etat_livre, livre_ville || 'Cameroun': livre.ville || 'Cameroun' }),
             () => {
                 const basePrices: Record<string, number> = {
                     'Neuf': 5000, 'Très bon': 3500, 'Bon': 2500, 'Acceptable': 1500,
@@ -221,7 +221,7 @@ const BourseLivreScreen: React.FC = () => {
                     prix_min: Math.round(base * 0.7),
                     prix_max: Math.round(base * 1.3),
                     devise: 'FCFA',
-                    conseil: `Pour un livre en état "${livre.etat_livre}", le prix moyen observé est d'environ ${base} FCFA.`,
+                    conseil: t('bourseLivreScreen.pourUnLivreEnEtatLe', { livre_etat_livre: livre.etat_livre, base: base }),
                 } as any;
             }
         );
@@ -345,7 +345,7 @@ const BourseLivreScreen: React.FC = () => {
         <View style={styles.container}>
             {/* Header avec recherche */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Bourse du Livre</Text>
+                <Text style={styles.headerTitle}>{t('bourseLivre.bourseDuLivre')}/Text>
                 <Text style={styles.headerSubtitle}>
                     Échangez vos livres scolaires facilement
                 </Text>
@@ -354,7 +354,7 @@ const BourseLivreScreen: React.FC = () => {
                     <SafeIcon name="search" size={20} color={modernColors.textSecondary} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Rechercher un livre..."
+                        placeholder={t('bourseLivre.rechercherUnLivre')}
                         placeholderTextColor={modernColors.textSecondary}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
@@ -428,7 +428,7 @@ const BourseLivreScreen: React.FC = () => {
 
                             {/* Matière */}
                             <View style={styles.filterGroup}>
-                                <Text style={styles.filterLabel}>Matière</Text>
+                                <Text style={styles.filterLabel}>{t('bourseLivre.matiere')}</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                     {matieres.map(matiere => (
                                         <TouchableOpacity
@@ -455,7 +455,7 @@ const BourseLivreScreen: React.FC = () => {
 
                             {/* État */}
                             <View style={styles.filterGroup}>
-                                <Text style={styles.filterLabel}>État</Text>
+                                <Text style={styles.filterLabel}>{t('bourseLivre.etat')}</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                     {etats.map(etat => (
                                         <TouchableOpacity
@@ -484,7 +484,7 @@ const BourseLivreScreen: React.FC = () => {
                                 style={styles.resetFiltersButton}
                                 onPress={resetFilters}
                             >
-                                <Text style={styles.resetFiltersText}>Réinitialiser</Text>
+                                <Text style={styles.resetFiltersText}>{t('bourseLivre.reinitialiser')}</Text>
                             </TouchableOpacity>
                         </View>
                     </ScrollView>
@@ -523,7 +523,7 @@ const BourseLivreScreen: React.FC = () => {
                 ListEmptyComponent={
                     !loading ? (
                         <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyText}>Aucun livre trouvé</Text>
+                            <Text style={styles.emptyText}>{t('bourseLivre.aucunLivreTrouve')}</Text>
                             <Text style={styles.emptySubtext}>
                                 Essayez de modifier vos filtres ou votre recherche
                             </Text>
@@ -580,15 +580,15 @@ const BourseLivreScreen: React.FC = () => {
                                             <Text style={styles.modalDetailValue}>{selectedLivre.classe_actuelle}</Text>
                                         </View>
                                         <View style={styles.modalDetailRow}>
-                                            <Text style={styles.modalDetailLabel}>Classe souhaitée:</Text>
+                                            <Text style={styles.modalDetailLabel}>{t('bourseLivre.classeSouhaitee')}</Text>
                                             <Text style={styles.modalDetailValue}>{selectedLivre.classe_souhaitee}</Text>
                                         </View>
                                         <View style={styles.modalDetailRow}>
-                                            <Text style={styles.modalDetailLabel}>Matière:</Text>
+                                            <Text style={styles.modalDetailLabel}>{t('bourseLivre.matiere')}</Text>
                                             <Text style={styles.modalDetailValue}>{selectedLivre.matiere}</Text>
                                         </View>
                                         <View style={styles.modalDetailRow}>
-                                            <Text style={styles.modalDetailLabel}>État:</Text>
+                                            <Text style={styles.modalDetailLabel}>{t('bourseLivre.etat')}</Text>
                                             <NativeBadge text={selectedLivre.etat_livre} variant="success" />
                                         </View>
                                         {selectedLivre.description_etat && (
@@ -702,7 +702,7 @@ const BourseLivreScreen: React.FC = () => {
                             <ScrollView>
                                 <View style={styles.priceSuggestionContent}>
                                     <View style={styles.priceRange}>
-                                        <Text style={styles.priceLabel}>Prix suggéré:</Text>
+                                        <Text style={styles.priceLabel}>{t('bourseLivre.prixSuggere')}</Text>
                                         <Text style={styles.priceValue}>
                                             {priceSuggestion.prix_suggere_min.toLocaleString()} - {priceSuggestion.prix_suggere_max.toLocaleString()} {priceSuggestion.devise}
                                         </Text>

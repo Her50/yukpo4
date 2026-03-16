@@ -40,13 +40,13 @@ interface RegisterForm {
 // Indicatifs téléphoniques par pays africain francophone
 const COUNTRY_CODES = [
   { code: 'CM', label: '🇨🇲 Cameroun', prefix: '+237' },
-  { code: 'CI', label: '🇨🇮 Côte d\'Ivoire', prefix: '+225' },
-  { code: 'SN', label: '🇸🇳 Sénégal', prefix: '+221' },
+  { code: 'CI', label: t('register.coteDivoire'), prefix: '+225' },
+  { code: 'SN', label: t('register.senegal'), prefix: '+221' },
   { code: 'CD', label: '🇨🇩 RD Congo', prefix: '+243' },
   { code: 'GA', label: '🇬🇦 Gabon', prefix: '+241' },
   { code: 'BF', label: '🇧🇫 Burkina Faso', prefix: '+226' },
   { code: 'ML', label: '🇲🇱 Mali', prefix: '+223' },
-  { code: 'GN', label: '🇬🇳 Guinée', prefix: '+224' },
+  { code: 'GN', label: t('register.guinee'), prefix: '+224' },
   { code: 'TD', label: '🇹🇩 Tchad', prefix: '+235' },
   { code: 'CG', label: '🇨🇬 Congo', prefix: '+242' },
   { code: 'FR', label: '🇫🇷 France', prefix: '+33' },
@@ -118,13 +118,13 @@ const RegisterScreen: React.FC = () => {
       if (googleResponse.error?.code === 'invalid_request' ||
         googleResponse.error?.message?.includes('Custom URI scheme') ||
         googleResponse.error?.message?.includes('invalid_request')) {
-        errorMessage = 'Configuration OAuth manquante. Le schéma URI personnalisé n\'est pas activé pour Android.\n\n' +
-          'URI utilisée: ' + (googleRequest?.redirectUri || 'non définie') + '\n\n' +
+        errorMessage = t('registerScreen.configurationOauthManquanteLeSchemaUriPersonnalise') +
+          'URI utilisée: ' + (googleRequest?.redirectUri || t('register.nonDefinie')) + '\n\n' +
           'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
       } else if (googleResponse.error?.code === 'access_denied') {
-        errorMessage = 'Connexion Google annulée.';
+        errorMessage = t('registerScreen.connexionGoogleAnnulee');
       } else if (googleResponse.error?.code === 'popup_closed') {
-        errorMessage = 'La fenêtre de connexion a été fermée.';
+        errorMessage = t('registerScreen.laFenetreDeConnexionAEte');
       }
 
       setError(errorMessage);
@@ -192,7 +192,7 @@ const RegisterScreen: React.FC = () => {
       // Vérifier que le Client ID Android est configuré sur Android
       if (Platform.OS === 'android' && !process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID) {
         const errorMsg = 'Configuration OAuth Android manquante.\n\n' +
-          'Veuillez définir EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID dans vos variables d\'environnement.\n\n' +
+          t('registerScreen.veuillezDefinirExpopublicgoogleandroidclientidDansVosVa') +
           'Consultez: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
         setError(errorMsg);
         Alert.alert('Configuration requise', errorMsg);
@@ -203,10 +203,10 @@ const RegisterScreen: React.FC = () => {
       await googlePromptAsync();
     } catch (error: any) {
       console.error('[RegisterScreen] Erreur lors du lancement Google OAuth:', error);
-      let errorMessage = 'Impossible de lancer l\'inscription Google. Veuillez réessayer.';
+      let errorMessage = 'Impossible de lancer l\t('registerScreen.inscriptionGoogleVeuillezReessayer');
 
       if (error?.message?.includes('Custom URI scheme') || error?.message?.includes('invalid_request')) {
-        errorMessage = 'Configuration OAuth manquante. Le schéma URI personnalisé n\'est pas activé pour Android.\n\n' +
+        errorMessage = t('registerScreen.configurationOauthManquanteLeSchemaUriPersonnalise') +
           'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
       }
 

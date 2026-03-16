@@ -14,6 +14,7 @@ import {
 import { ColorGradingResponse, colorGradingService } from '../services/colorGradingService';
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ColorGradingPanelProps {
     mediaUrl: string;
@@ -23,8 +24,8 @@ interface ColorGradingPanelProps {
 }
 
 const GRADING_PRESETS = [
-    { key: 'cinematic', label: 'Cinematic', icon: '🎬', description: 'Style cinéma professionnel' },
-    { key: 'vibrant', label: 'Vibrant', icon: '🌈', description: 'Couleurs vives et énergiques' },
+    { key: 'cinematic', label: 'Cinematic', icon: '🎬', description: t('colorGradingPanel.styleCinemaProfessionnel') },
+    { key: 'vibrant', label: 'Vibrant', icon: '🌈', description: t('colorGradingPanel.couleursVivesEtEnergiques') },
     { key: 'moody', label: 'Moody', icon: '🌙', description: 'Ambiance sombre et dramatique' },
     { key: 'warm', label: 'Warm', icon: '☀️', description: 'Tons chauds et accueillants' },
     { key: 'cool', label: 'Cool', icon: '❄️', description: 'Tons froids et modernes' },
@@ -36,7 +37,8 @@ export const ColorGradingPanel: React.FC<ColorGradingPanelProps> = ({
     stylePreset,
     onGradingComplete,
 }) => {
-    const [loading, setLoading] = useState(false);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(false);
     const [selectedPreset, setSelectedPreset] = useState(stylePreset || 'cinematic');
     const [intensity, setIntensity] = useState(0.7);
     const [result, setResult] = useState<ColorGradingResponse | null>(null);
@@ -101,7 +103,7 @@ export const ColorGradingPanel: React.FC<ColorGradingPanelProps> = ({
 
             {result && result.before_after_comparison && (
                 <View style={styles.comparison}>
-                    <Text style={styles.comparisonTitle}>Avant / Après</Text>
+                    <Text style={styles.comparisonTitle}>{t('colorGradingPanel.avantApres')}</Text>
                     <Image
                         source={{ uri: result.before_after_comparison }}
                         style={styles.comparisonImage}

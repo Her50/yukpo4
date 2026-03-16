@@ -8,8 +8,8 @@
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import React, { memo, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import React, { memo, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, Platform, StyleSheet, Text, View } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
@@ -36,7 +36,6 @@ import ProfileScreen from '../screens/ProfileScreen';
 
 // Navigation de base
 import ContactScreen from '../screens/ContactScreen';
-import NavigationScreen from '../screens/NavigationScreen';
 
 // Services spécialisés (core)
 import GestionServicesSpecialisesScreen from '../screens/specialized/GestionServicesSpecialisesScreen';
@@ -142,6 +141,7 @@ reg('BusBoardingManagement', () => import('../screens/BusBoardingManagementScree
 reg('Catalogue', () => import('../screens/CatalogueScreen'));
 reg('Confirmation', () => import('../screens/ConfirmationScreen'));
 reg('ConnectionTest', () => import('../screens/ConnectionTestScreen'));
+reg('Contact', () => import('../screens/ContactScreen'));
 reg('CreateFlashPromo', () => import('../screens/CreateFlashPromoScreen'));
 reg('CreatePublicite', () => import('../screens/CreatePubliciteScreen'));
 reg('CreationService', () => import('../screens/CreationService'));
@@ -174,6 +174,7 @@ reg('MonEspace', () => import('../screens/MonEspace'));
 reg('MonProfilPage', () => import('../screens/MonProfil'));
 reg('MonProfil', () => import('../screens/MonProfilScreen'));
 reg('MyBusTickets', () => import('../screens/MyBusTicketsScreen'));
+reg('Navigation', () => import('../screens/NavigationScreen'));
 reg('OrderStatus', () => import('../screens/OrderStatusScreen'));
 reg('PaiementPlan', () => import('../screens/PaiementPlanScreen'));
 reg('PlatformPaymentSettings', () => import('../screens/PlatformPaymentSettingsScreen'));
@@ -397,6 +398,7 @@ reg('ImmobilierList', () => import('../screens/specialized/ImmobilierListScreen'
 reg('ImmobilierPriceAlerts', () => import('../screens/specialized/ImmobilierPriceAlertsScreen'));
 reg('ImmobilierSearch', () => import('../screens/specialized/ImmobilierSearchScreen'));
 reg('MesReservations', () => import('../screens/specialized/MesReservationsScreen'));
+reg('HotelMeubleHome', () => import('../screens/specialized/HotelMeubleHomeScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Laboratoire (7)
@@ -515,9 +517,9 @@ S['Search'] = S['SpecializedSearch'];
 S['Videos'] = S['VideoFeed'];
 S['LiveViewerScreen'] = S['LiveViewer'];
 S['Payment'] = S['PaiementPlan'];
-S['HotelSearch'] = createLazy(() => import('../screens/specialized/HotelMeubleHomeScreen'), 'HotelSearch');
-S['MeubleSearch'] = createLazy(() => import('../screens/specialized/HotelMeubleHomeScreen'), 'MeubleSearch');
-S['NavigationScreen'] = createLazy(() => import('../screens/NavigationScreen'), 'NavigationScreen');
+S['HotelSearch'] = S['HotelMeubleHome'];
+S['MeubleSearch'] = S['HotelMeubleHome'];
+S['NavigationScreen'] = S['Navigation'];
 
 // ============================================================================
 // TAB NAVIGATOR - 5 onglets principaux (restauré depuis version originale)
@@ -787,13 +789,27 @@ function MainStackNavigator() {
   useDeepLinkRedirect();
 
   // ✅ Tracking passif automatique des déplacements (background)
+  // Démarre au montage + redémarre quand l'app revient au premier plan
+  const appStateRef = useRef(AppState.currentState);
   useEffect(() => {
+    // Démarrage initial
     PassiveActivityTracker.resumeIfEnabled().then(() => {
-      // Démarrer le tracking passif automatiquement après connexion
       PassiveActivityTracker.start().then(ok => {
-        if (ok) console.log('[AppNav] Tracking passif activé');
+        if (ok) console.log('[AppNav] ✅ Tracking passif activé');
       });
     });
+
+    // ✅ Listener AppState: redémarrer le tracking quand l'app revient au foreground
+    // Android peut tuer la tâche background — ce listener la relance automatiquement
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
+        console.log('[AppNav] 📱 App revenue au premier plan, vérification tracking...');
+        PassiveActivityTracker.resumeIfEnabled().catch(() => { });
+      }
+      appStateRef.current = nextAppState;
+    });
+
+    return () => subscription.remove();
   }, []);
 
   return (
@@ -803,7 +819,7 @@ function MainStackNavigator() {
 
       {/* === Écrans statiques (toujours disponibles) === */}
       <Stack.Screen name="Contact" component={ContactScreen} />
-      <Stack.Screen name="Navigation" component={NavigationScreen} />
+      <Stack.Screen name="Navigation" component={S['Navigation'] || ContactScreen} />
       <Stack.Screen name="GestionServicesSpecialises" component={GestionServicesSpecialisesScreen} />
       <Stack.Screen name="ServicesDashboard" component={ServicesDashboard} />
 

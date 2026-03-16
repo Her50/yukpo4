@@ -19,6 +19,7 @@ import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ImmobilierSearchFilters {
     ville?: string;
@@ -40,6 +41,7 @@ interface ImmobilierSearchFilters {
 const ImmobilierSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     const [ville, setVille] = useState<LocationObject | string>('');
     const [quartier, setQuartier] = useState<LocationObject | string>('');
@@ -77,7 +79,7 @@ const ImmobilierSearchScreen: React.FC = () => {
         if (searchMode === 'zone') {
             // Format polygonale: "lat1,lng1|lat2,lng2|..."
             setSearchZone(coordinates);
-            setGpsString('Zone délimitée');
+            setGpsString(t('immobilierSearchScreen.zoneDelimitee'));
         } else {
             // Point unique
             setGpsString(coordinates);
@@ -154,14 +156,14 @@ const ImmobilierSearchScreen: React.FC = () => {
     };
 
     const typesBiens = ['Appartement', 'Villa', 'Studio', 'Duplex', 'Triplex', 'Maison', 'Bureau', 'Commerce'];
-    const statuts = ['À vendre', 'À louer (bail)', 'À louer meublé', 'Location courte durée', 'Colocation'];
+    const statuts = ['À vendre', 'À louer (bail)', t('immobilierSearchScreen.aLouerMeuble'), t('immobilierSearchScreen.locationCourteDuree'), 'Colocation'];
     const standings = ['Économique', 'Standard', 'Bon standing', 'Haut standing', 'Luxe / Prestige'];
 
     // Recherches rapides spécifiques immobilier
     const quickSearches = [
         {
             id: 'vente',
-            title: 'À vendre',
+            title: t('immobilierSearch.aVendre'),
             icon: 'tag',
             description: 'Biens en vente',
             action: () => {
@@ -171,9 +173,9 @@ const ImmobilierSearchScreen: React.FC = () => {
         },
         {
             id: 'location',
-            title: 'À louer',
+            title: t('immobilierSearch.aLouer'),
             icon: 'key',
-            description: 'Biens à louer',
+            description: t('immobilierSearch.biensALouer'),
             action: () => {
                 hapticPress();
                 setStatut('À louer (bail)');
@@ -183,7 +185,7 @@ const ImmobilierSearchScreen: React.FC = () => {
             id: 'proche',
             title: 'Plus proche',
             icon: 'map-pin',
-            description: 'À proximité',
+            description: t('immobilierSearch.aProximite'),
             action: () => {
                 hapticPress();
                 setMaxDistance(10);
@@ -213,7 +215,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="home" size={32} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>Rechercher un bien immobilier</Text>
+                        <Text style={styles.headerTitle}>{t('immobilierSearch.rechercherUnBienImmobilier')}</Text>
                         <Text style={styles.headerSubtitle}>
                             Trouvez le bien idéal selon vos critères
                         </Text>
@@ -243,7 +245,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                                 <SafeIcon name="sparkles" size={24} color="#FFFFFF" type="lucide" />
                             </View>
                             <View style={styles.aiFeaturesBannerText}>
-                                <Text style={styles.aiFeaturesBannerTitle}>Fonctionnalités IA</Text>
+                                <Text style={styles.aiFeaturesBannerTitle}>{t('immobilierSearch.fonctionnalitesIa')}</Text>
                                 <Text style={styles.aiFeaturesBannerSubtitle}>
                                     Recommandations, estimation prix, comparaison, alertes
                                 </Text>
@@ -283,7 +285,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                 <View style={styles.searchFormCard}>
                     {/* Mode de recherche */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.sectionTitle}>🔍 Mode de recherche</Text>
+                        <Text style={styles.sectionTitle}>{t('immobilierSearch.modeDeRecherche')}/Text>
                         <View style={styles.modeSelector}>
                             <TouchableOpacity
                                 style={[styles.modeButton, searchMode === 'point' && styles.modeButtonActive]}
@@ -328,25 +330,25 @@ const ImmobilierSearchScreen: React.FC = () => {
                     {/* Localisation selon le mode */}
                     {searchMode === 'point' && (
                         <View style={styles.inputGroup}>
-                            <Text style={styles.sectionTitle}>📍 Localisation</Text>
+                            <Text style={styles.sectionTitle}>{t('immobilierSearch.localisation')}/Text>
                             <LocationSelector
-                                label="Ville"
+                                label={t('immobilierSearch.ville')}
                                 value={typeof ville === 'string' ? (ville ? { raw: ville, place_name: ville } : '') : ville}
                                 onSelect={(location: LocationObject) => {
                                     setVille(location);
                                 }}
-                                placeholder="Rechercher un lieu (ville, quartier, adresse...)"
+                                placeholder={t('immobilierSearch.rechercherUnLieuVilleQuartier')}
                                 scope="all"
                                 enrichWithBackend={true}
                             />
                             <View style={{ marginTop: 12 }}>
                                 <LocationSelector
-                                    label="Quartier (optionnel)"
+                                    label={t('immobilierSearch.quartierOptionnel')}
                                     value={typeof quartier === 'string' ? (quartier ? { raw: quartier, place_name: quartier } : '') : quartier}
                                     onSelect={(location: LocationObject) => {
                                         setQuartier(location);
                                     }}
-                                    placeholder="Rechercher un lieu précis (quartier, rue, adresse...)"
+                                    placeholder={t('immobilierSearch.rechercherUnLieuPrecisQuartier')}
                                     scope="all"
                                     cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
                                     enrichWithBackend={true}
@@ -361,7 +363,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                             >
                                 <SafeIcon name="map-pin" size={20} color="#1E40AF" type="lucide" />
                                 <Text style={styles.gpsButtonText}>
-                                    {gpsString || 'Sélectionner un point GPS'}
+                                    {gpsString || t('immobilierSearch.selectionnerUnPointGps')}
                                 </Text>
                                 <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
                             </TouchableOpacity>
@@ -370,7 +372,7 @@ const ImmobilierSearchScreen: React.FC = () => {
 
                     {searchMode === 'zone' && (
                         <View style={styles.inputGroup}>
-                            <Text style={styles.sectionTitle}>🗺️ Zone de recherche</Text>
+                            <Text style={styles.sectionTitle}>{t('immobilierSearch.zoneDeRecherche')}/Text>
                             <TouchableOpacity
                                 style={styles.zoneButton}
                                 onPress={() => {
@@ -380,7 +382,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                             >
                                 <SafeIcon name="map" size={20} color="#1E40AF" type="lucide" />
                                 <Text style={styles.zoneButtonText}>
-                                    {searchZone ? 'Zone délimitée (modifier)' : 'Délimiter une zone sur la carte'}
+                                    {searchZone ? t('immobilierSearchScreen.zoneDelimiteeModifier') : 'Délimiter une zone sur la carte'}
                                 </Text>
                                 <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
                             </TouchableOpacity>
@@ -397,7 +399,7 @@ const ImmobilierSearchScreen: React.FC = () => {
 
                     {searchMode === 'quartiers' && (
                         <View style={styles.inputGroup}>
-                            <Text style={styles.sectionTitle}>🏘️ Sélectionner des quartiers</Text>
+                            <Text style={styles.sectionTitle}>{t('immobilierSearch.selectionnerDesQuartiers')}</Text>
                             <Text style={styles.sectionSubtitle}>
                                 Sélectionnez un ou plusieurs quartiers pour filtrer la recherche
                             </Text>
@@ -440,7 +442,7 @@ const ImmobilierSearchScreen: React.FC = () => {
 
                     {/* Type et Statut */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.sectionTitle}>🏠 Type de bien</Text>
+                        <Text style={styles.sectionTitle}>{t('immobilierSearch.typeDeBien')}</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
                             {typesBiens.map((type) => (
                                 <TouchableOpacity
@@ -484,14 +486,14 @@ const ImmobilierSearchScreen: React.FC = () => {
                         <Text style={styles.sectionTitle}>💵 Prix (FCFA)</Text>
                         <View style={styles.row}>
                             <NativeInput
-                                placeholder="Prix min"
+                                placeholder={t('immobilierSearch.prixMin')}
                                 value={prixMin}
                                 onChangeText={setPrixMin}
                                 keyboardType="numeric"
                                 style={[styles.input, styles.halfInput]}
                             />
                             <NativeInput
-                                placeholder="Prix max"
+                                placeholder={t('immobilierSearch.prixMax')}
                                 value={prixMax}
                                 onChangeText={setPrixMax}
                                 keyboardType="numeric"
@@ -523,9 +525,9 @@ const ImmobilierSearchScreen: React.FC = () => {
 
                     {/* Caractéristiques */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.sectionTitle}>🏡 Caractéristiques</Text>
+                        <Text style={styles.sectionTitle}>{t('immobilierSearch.caracteristiques')}</Text>
                         <NativeInput
-                            placeholder="Nombre de chambres minimum"
+                            placeholder={t('immobilierSearch.nombreDeChambresMinimum')}
                             value={nbChambresMin}
                             onChangeText={setNbChambresMin}
                             keyboardType="numeric"
@@ -600,7 +602,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                 <View style={styles.infoCard}>
                     <View style={styles.infoHeader}>
                         <SafeIcon name="info" size={20} color="#1E40AF" type="lucide" />
-                        <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
+                        <Text style={styles.infoTitle}>{t('immobilierSearch.bonASavoir')}</Text>
                     </View>
                     <Text style={styles.infoText}>
                         • La recherche par zone permet de délimiter précisément votre zone d'intérêt{'\n'}
@@ -620,7 +622,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                 onSelect={handleGPSSelect}
                 initialCoordinates={searchMode === 'zone' ? searchZone : gpsString}
                 allowZoneSelection={searchMode === 'zone'}
-                title={searchMode === 'zone' ? 'Délimiter une zone de recherche' : 'Sélectionner un point GPS'}
+                title={searchMode === 'zone' ? t('immobilierSearchScreen.delimiterUneZoneDeRecherche') : t('immobilierSearchScreen.selectionnerUnPointGps')}
             />
 
             {/* ✅ NOUVEAU: Modal fonctionnalités IA */}

@@ -37,11 +37,11 @@ const OrientationAIProfileAnalysisScreen: React.FC = () => {
             if (!profile) {
                 Alert.alert(
                     'Profil requis',
-                    'Veuillez d\'abord compléter votre profil étudiant',
+                    'Veuillez d\t('orientationAIProfileAnalysisScreen.abordCompleterVotreProfilEtudiant'),
                     [
                         { text: t('common.cancel'), style: 'cancel' },
                         {
-                            text: 'Créer profil',
+                            text: t('orientationAIProfileAnalysis.creerProfil'),
                             onPress: () => navigation.navigate('ProfilEtudiant')
                         }
                     ]
@@ -91,13 +91,13 @@ const OrientationAIProfileAnalysisScreen: React.FC = () => {
                         <Text style={styles.sectionTitle}>Scores d'analyse</Text>
                         <View style={styles.scoresContainer}>
                             <View style={styles.scoreItem}>
-                                <Text style={styles.scoreLabel}>Académique</Text>
+                                <Text style={styles.scoreLabel}>{t('orientationAIProfileAnalysis.academique')}</Text>
                                 <Text style={styles.scoreValue}>
                                     {analysis.score_academique?.toFixed(1) || 'N/A'}%
                                 </Text>
                             </View>
                             <View style={styles.scoreItem}>
-                                <Text style={styles.scoreLabel}>Intérêts</Text>
+                                <Text style={styles.scoreLabel}>{t('orientationAIProfileAnalysis.interets')}</Text>
                                 <Text style={styles.scoreValue}>
                                     {analysis.score_interets?.toFixed(1) || 'N/A'}%
                                 </Text>
@@ -108,7 +108,7 @@ const OrientationAIProfileAnalysisScreen: React.FC = () => {
                     {/* Points forts */}
                     {analysis.points_forts && analysis.points_forts.length > 0 && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>Points forts</Text>
+                            <Text style={styles.sectionTitle}>{t('orientationAIProfileAnalysis.pointsForts')}/Text>
                             <View style={styles.badgesContainer}>
                                 {analysis.points_forts.map((point: string, index: number) => (
                                     <NativeBadge
@@ -125,7 +125,7 @@ const OrientationAIProfileAnalysisScreen: React.FC = () => {
                     {/* Points faibles */}
                     {analysis.points_faibles && analysis.points_faibles.length > 0 && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>Points à améliorer</Text>
+                            <Text style={styles.sectionTitle}>{t('orientationAIProfileAnalysis.pointsAAmeliorer')}</Text>
                             <View style={styles.badgesContainer}>
                                 {analysis.points_faibles.map((point: string, index: number) => (
                                     <NativeBadge
@@ -142,7 +142,7 @@ const OrientationAIProfileAnalysisScreen: React.FC = () => {
                     {/* Filières suggérées */}
                     {analysis.filieres_suggestees && analysis.filieres_suggestees.length > 0 && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>Filières suggérées</Text>
+                            <Text style={styles.sectionTitle}>{t('orientationAIProfileAnalysis.filieresSuggerees')}</Text>
                             <View style={styles.badgesContainer}>
                                 {analysis.filieres_suggestees.map((filiere: string, index: number) => (
                                     <NativeBadge
@@ -167,20 +167,20 @@ const OrientationAIProfileAnalysisScreen: React.FC = () => {
                     {/* Reasoning */}
                     {analysis.reasoning && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>Analyse détaillée</Text>
+                            <Text style={styles.sectionTitle}>{t('orientationAIProfileAnalysis.analyseDetaillee')}</Text>
                             <Text style={styles.reasoningText}>{analysis.reasoning}</Text>
                         </NativeCard>
                     )}
 
                     <View style={styles.actions}>
                         <NativeButton
-                            title="Voir recommandations programmes"
+                            title={t('orientationAIProfileAnalysisScreen.voirRecommandationsProgrammes')}
                             onPress={() => navigation.navigate('OrientationAIRecommendations')}
                             variant="primary"
                             style={styles.actionButton}
                         />
                         <NativeButton
-                            title="Nouvelle analyse"
+                            title={t('orientationAIProfileAnalysis.nouvelleAnalyse')}
                             onPress={() => setAnalysis(null)}
                             variant="outline"
                             style={styles.actionButton}

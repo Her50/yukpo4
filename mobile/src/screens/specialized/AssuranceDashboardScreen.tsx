@@ -33,7 +33,7 @@ type TabType = 'overview' | 'products' | 'policies' | 'claims' | 'analytics';
 
 const TYPES_ASSURANCE = [
     { key: 'auto', label: 'Automobile', icon: 'car', color: '#3B82F6' },
-    { key: 'sante', label: 'Santé', icon: 'heart', color: '#DC2626' },
+    { key: 'sante', label: t('assuranceDashboard.sante'), icon: 'heart', color: '#DC2626' },
     { key: 'habitation', label: 'Habitation', icon: 'home', color: '#10B981' },
     { key: 'vie', label: 'Vie', icon: 'shield', color: '#8B5CF6' },
     { key: 'voyage', label: 'Voyage', icon: 'plane', color: '#F59E0B' },
@@ -41,36 +41,36 @@ const TYPES_ASSURANCE = [
 ];
 
 const SOUS_CATEGORIES: Record<string, string[]> = {
-    auto: ['Tous risques', 'Tiers collision', 'Responsabilité civile', 'Vol/Incendie'],
-    sante: ['Hospitalisation', 'Ambulatoire', 'Maternité', 'Dentaire', 'Optique'],
-    habitation: ['Multirisque', 'Incendie', 'Vol', 'Dégâts des eaux'],
-    vie: ['Décès', 'Épargne', 'Retraite', 'Mixte'],
+    auto: ['Tous risques', 'Tiers collision', t('assuranceDashboardScreen.responsabiliteCivile'), 'Vol/Incendie'],
+    sante: ['Hospitalisation', 'Ambulatoire', t('assuranceDashboardScreen.maternite'), 'Dentaire', 'Optique'],
+    habitation: ['Multirisque', 'Incendie', 'Vol', t('assuranceDashboardScreen.degatsDesEaux')],
+    vie: [t('assuranceDashboardScreen.deces'), 'Épargne', 'Retraite', 'Mixte'],
     voyage: ['Annulation', 'Rapatriement', 'Bagages', 'Multi-garanties'],
-    entreprise: ['RC Pro', 'Multirisque', 'Homme clé', 'Flotte auto'],
+    entreprise: ['RC Pro', 'Multirisque', t('assuranceDashboardScreen.hommeCle'), 'Flotte auto'],
 };
 
 const CLAIM_STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-    declare: { label: 'Déclaré', color: '#D97706', bg: '#FEF3C7' },
+    declare: { label: t('assuranceDashboard.declare'), color: '#D97706', bg: '#FEF3C7' },
     en_cours_instruction: { label: 'En instruction', color: '#2563EB', bg: '#DBEAFE' },
-    expertise_demandee: { label: 'Expertise demandée', color: '#7C3AED', bg: '#EDE9FE' },
+    expertise_demandee: { label: t('assuranceDashboard.expertiseDemandee'), color: '#7C3AED', bg: '#EDE9FE' },
     expertise_en_cours: { label: 'Expertise en cours', color: '#7C3AED', bg: '#EDE9FE' },
     en_attente_documents: { label: 'Attente documents', color: '#D97706', bg: '#FEF3C7' },
-    approuve: { label: 'Approuvé', color: '#059669', bg: '#D1FAE5' },
-    partiellement_approuve: { label: 'Partiellement approuvé', color: '#059669', bg: '#D1FAE5' },
-    refuse: { label: 'Refusé', color: '#DC2626', bg: '#FEE2E2' },
-    indemnise: { label: 'Indemnisé', color: '#059669', bg: '#D1FAE5' },
+    approuve: { label: t('assuranceDashboard.approuve'), color: '#059669', bg: '#D1FAE5' },
+    partiellement_approuve: { label: t('assuranceDashboard.partiellementApprouve'), color: '#059669', bg: '#D1FAE5' },
+    refuse: { label: t('assuranceDashboard.refuse'), color: '#DC2626', bg: '#FEE2E2' },
+    indemnise: { label: t('assuranceDashboard.indemnise'), color: '#059669', bg: '#D1FAE5' },
     clos: { label: 'Clos', color: '#6B7280', bg: '#F3F4F6' },
-    conteste: { label: 'Contesté', color: '#DC2626', bg: '#FEE2E2' },
+    conteste: { label: t('assuranceDashboard.conteste'), color: '#DC2626', bg: '#FEE2E2' },
 };
 
 const POLICY_STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
     brouillon: { label: 'Brouillon', color: '#6B7280', bg: '#F3F4F6' },
-    en_attente: { label: 'En attente', color: '#D97706', bg: '#FEF3C7' },
+    en_attente: { label: t('assuranceDashboard.enAttente'), color: '#D97706', bg: '#FEF3C7' },
     active: { label: 'Active', color: '#059669', bg: '#D1FAE5' },
     suspendue: { label: 'Suspendue', color: '#D97706', bg: '#FEF3C7' },
-    resiliee: { label: 'Résiliée', color: '#DC2626', bg: '#FEE2E2' },
-    expiree: { label: 'Expirée', color: '#6B7280', bg: '#F3F4F6' },
-    annulee: { label: 'Annulée', color: '#DC2626', bg: '#FEE2E2' },
+    resiliee: { label: t('assuranceDashboard.resiliee'), color: '#DC2626', bg: '#FEE2E2' },
+    expiree: { label: t('assuranceDashboard.expiree'), color: '#6B7280', bg: '#F3F4F6' },
+    annulee: { label: t('assuranceDashboard.annulee'), color: '#DC2626', bg: '#FEE2E2' },
 };
 
 const AssuranceDashboardScreen: React.FC = () => {
@@ -206,7 +206,7 @@ const AssuranceDashboardScreen: React.FC = () => {
                 { text: t('common.cancel') },
                 {
                     text: t('common.confirm'), onPress: async () => {
-                        await assuranceService.updateClaimStatus(claim.id, newStatus, { motif_refus: 'Refusé par l\'assureur' });
+                        await assuranceService.updateClaimStatus(claim.id, newStatus, { motif_refus: t('assuranceDashboardScreen.refuseParLassureur') });
                         loadData();
                     }
                 },
@@ -233,7 +233,7 @@ const AssuranceDashboardScreen: React.FC = () => {
     };
 
     const TABS: { key: TabType; label: string; icon: string }[] = [
-        { key: 'overview', label: 'Accueil', icon: 'layout-dashboard' },
+        { key: 'overview', label: t('assuranceDashboard.accueil'), icon: 'layout-dashboard' },
         { key: 'products', label: 'Produits', icon: 'package' },
         { key: 'policies', label: 'Polices', icon: 'file-text' },
         { key: 'claims', label: 'Sinistres', icon: 'alert-triangle' },
@@ -241,7 +241,7 @@ const AssuranceDashboardScreen: React.FC = () => {
     ];
 
     if (loading) {
-        return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#6366F1" /><Text style={s.loadingText}>Chargement du dashboard...</Text></View>;
+        return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#6366F1" /><Text style={s.loadingText}>{t('assuranceDashboard.chargementDuDashboard')}</Text></View>;
     }
 
     const ps = dashStats?.products || { total: 0, actifs: 0, total_souscriptions: 0 };
@@ -263,7 +263,7 @@ const AssuranceDashboardScreen: React.FC = () => {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
             <View style={s.statsGrid}>
                 {[
-                    { label: 'Produits actifs', value: ps.actifs, icon: 'package', color: '#3B82F6' },
+                    { label: t('assuranceDashboard.produitsActifs'), value: ps.actifs, icon: 'package', color: '#3B82F6' },
                     { label: 'Polices actives', value: pol.actives, icon: 'file-text', color: '#10B981' },
                     { label: 'Sinistres ouverts', value: cl.declares + cl.en_instruction + cl.en_expertise, icon: 'alert-triangle', color: '#F59E0B' },
                     { label: 'Souscriptions', value: ps.total_souscriptions, icon: 'users', color: '#8B5CF6' },
@@ -295,8 +295,8 @@ const AssuranceDashboardScreen: React.FC = () => {
             <Text style={s.sectionTitle}>Actions rapides</Text>
             <View style={s.quickRow}>
                 {[
-                    { label: 'Nouveau produit', icon: 'plus-circle', color: '#6366F1', onPress: () => setShowProductModal(true) },
-                    { label: 'Émettre police', icon: 'file-plus', color: '#10B981', onPress: () => setActiveTab('policies') },
+                    { label: t('assuranceDashboard.nouveauProduit'), icon: 'plus-circle', color: '#6366F1', onPress: () => setShowProductModal(true) },
+                    { label: t('assuranceDashboard.emettrePolice'), icon: 'file-plus', color: '#10B981', onPress: () => setActiveTab('policies') },
                     { label: 'Sinistres', icon: 'alert-triangle', color: '#F59E0B', onPress: () => setActiveTab('claims') },
                     { label: 'Devis IA', icon: 'cpu', color: '#7C3AED', onPress: () => (navigation as any).navigate('InsuranceQuoteRequest') },
                     { label: 'Portefeuille', icon: 'wallet', color: '#10B981', onPress: () => (navigation as any).navigate('WalletFinancial') },
@@ -332,7 +332,7 @@ const AssuranceDashboardScreen: React.FC = () => {
             {policies.length > 0 && (
                 <>
                     <View style={s.sectionRow}>
-                        <Text style={s.sectionTitle}>Dernières polices</Text>
+                        <Text style={s.sectionTitle}>{t('assuranceDashboard.dernieresPolices')}</Text>
                         <TouchableOpacity onPress={() => setActiveTab('policies')}><Text style={s.seeAll}>Tout voir</Text></TouchableOpacity>
                     </View>
                     {policies.slice(0, 3).map((p, i) => (
@@ -355,14 +355,14 @@ const AssuranceDashboardScreen: React.FC = () => {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
             <TouchableOpacity style={s.addBtn} onPress={() => setShowProductModal(true)}>
                 <SafeIcon name="plus-circle" size={20} color="#fff" />
-                <Text style={s.addBtnText}>Ajouter un produit d'assurance</Text>
+                <Text style={s.addBtnText}>{t('assuranceDashboard.ajouterUnProduitDassurance')}</Text>
             </TouchableOpacity>
 
             {products.length === 0 ? (
                 <View style={s.emptyState}>
                     <SafeIcon name="package" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Aucun produit d'assurance</Text>
-                    <Text style={s.emptyText}>Créez vos produits pour que les clients puissent souscrire en ligne.</Text>
+                    <Text style={s.emptyTitle}>{t('assuranceDashboard.aucunProduitDassurance')}</Text>
+                    <Text style={s.emptyText}>{t('assuranceDashboard.creezVosProduitsPourQue')}</Text>
                 </View>
             ) : (
                 products.map((p) => (
@@ -411,8 +411,8 @@ const AssuranceDashboardScreen: React.FC = () => {
             {policies.length === 0 ? (
                 <View style={s.emptyState}>
                     <SafeIcon name="file-text" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Aucune police émise</Text>
-                    <Text style={s.emptyText}>Les polices émises à vos clients apparaîtront ici.</Text>
+                    <Text style={s.emptyTitle}>{t('assuranceDashboard.aucunePoliceEmise')}</Text>
+                    <Text style={s.emptyText}>{t('assuranceDashboard.lesPolicesEmisesAVos')}</Text>
                 </View>
             ) : (
                 policies.map((p) => (
@@ -426,7 +426,7 @@ const AssuranceDashboardScreen: React.FC = () => {
                         </View>
                         <View style={s.policyBody}>
                             <Text style={s.policyInfo}>Produit: {p.nom_produit || 'N/A'} ({p.type_assurance})</Text>
-                            {p.client_telephone && <Text style={s.policyInfo}>Tél: {p.client_telephone}</Text>}
+                            {p.client_telephone && <Text style={s.policyInfo}>{t('assuranceDashboardScreen.phone')}: {p.client_telephone}</Text>}
                             <View style={s.policyDatesRow}>
                                 <Text style={s.policyDate}>Du {p.date_effet || '?'}</Text>
                                 <Text style={s.policyDate}>Au {p.date_expiration || '?'}</Text>
@@ -449,7 +449,7 @@ const AssuranceDashboardScreen: React.FC = () => {
                                         { text: t('common.yes'), style: 'destructive', onPress: async () => { await assuranceService.updatePolicyStatus(p.id, 'resiliee', 'Résiliation par l\'assureur'); loadData(); } },
                                     ]);
                                 }}>
-                                    <Text style={[s.policyActionText, { color: '#DC2626' }]}>Résilier</Text>
+                                    <Text style={[s.policyActionText, { color: '#DC2626' }]}>{t('assuranceDashboard.resilier')}</Text>
                                 </TouchableOpacity>
                             </View>
                         )}
@@ -466,8 +466,8 @@ const AssuranceDashboardScreen: React.FC = () => {
             {claims.length === 0 ? (
                 <View style={s.emptyState}>
                     <SafeIcon name="alert-triangle" size={48} color="#9CA3AF" />
-                    <Text style={s.emptyTitle}>Aucun sinistre</Text>
-                    <Text style={s.emptyText}>Les déclarations de sinistres de vos clients apparaîtront ici.</Text>
+                    <Text style={s.emptyTitle}>{t('assuranceDashboard.aucunSinistre')}</Text>
+                    <Text style={s.emptyText}>{t('assuranceDashboard.lesDeclarationsDeSinistresDe')}</Text>
                 </View>
             ) : (
                 claims.map((c) => (
@@ -486,8 +486,8 @@ const AssuranceDashboardScreen: React.FC = () => {
                             {c.description_sinistre && <Text style={s.claimDesc} numberOfLines={2}>{c.description_sinistre}</Text>}
                             <View style={s.claimAmounts}>
                                 {c.dommages_estimes && <Text style={s.claimAmount}>Dommages: {parseFloat(c.dommages_estimes).toLocaleString()} {devise}</Text>}
-                                {c.montant_reclame && <Text style={s.claimAmount}>Réclamé: {parseFloat(c.montant_reclame).toLocaleString()} {devise}</Text>}
-                                {c.montant_indemnise && <Text style={[s.claimAmount, { color: '#059669', fontWeight: '700' }]}>Indemnisé: {parseFloat(c.montant_indemnise).toLocaleString()} {devise}</Text>}
+                                {c.montant_reclame && <Text style={s.claimAmount}>{t('assuranceDashboardScreen.claimed')}: {parseFloat(c.montant_reclame).toLocaleString()} {devise}</Text>}
+                                {c.montant_indemnise && <Text style={[s.claimAmount, { color: '#059669', fontWeight: '700' }]}>{t('assuranceDashboardScreen.indemnise')} {parseFloat(c.montant_indemnise).toLocaleString()} {devise}</Text>}
                             </View>
                             {c.fraud_score && (
                                 <View style={s.fraudRow}>
@@ -541,8 +541,8 @@ const AssuranceDashboardScreen: React.FC = () => {
             <View style={s.analyticsCard}>
                 <Text style={s.analyticsTitle}>Portefeuille produits</Text>
                 {[
-                    { label: 'Total produits', value: ps.total, color: '#3B82F6' },
-                    { label: 'Produits actifs', value: ps.actifs, color: '#10B981' },
+                    { label: t('assuranceDashboard.totalProduits'), value: ps.total, color: '#3B82F6' },
+                    { label: t('assuranceDashboard.produitsActifs'), value: ps.actifs, color: '#10B981' },
                     { label: 'Souscriptions totales', value: ps.total_souscriptions, color: '#8B5CF6' },
                 ].map((item, i) => (
                     <View key={i} style={s.analyticsRow}>
@@ -558,8 +558,8 @@ const AssuranceDashboardScreen: React.FC = () => {
                 {[
                     { label: 'Polices actives', value: pol.actives, color: '#10B981' },
                     { label: 'Suspendues', value: pol.suspendues, color: '#D97706' },
-                    { label: 'Expirées', value: pol.expirees, color: '#6B7280' },
-                    { label: 'À renouveler', value: pol.a_renouveler, color: '#DC2626' },
+                    { label: t('assuranceDashboard.expirees'), value: pol.expirees, color: '#6B7280' },
+                    { label: t('assuranceDashboard.aRenouveler'), value: pol.a_renouveler, color: '#DC2626' },
                 ].map((item, i) => (
                     <View key={i} style={s.analyticsRow}>
                         <View style={[s.analyticsDot, { backgroundColor: item.color }]} />
@@ -578,12 +578,12 @@ const AssuranceDashboardScreen: React.FC = () => {
             <View style={[s.analyticsCard, { marginTop: 12 }]}>
                 <Text style={s.analyticsTitle}>Sinistres</Text>
                 {[
-                    { label: 'Déclarés (en attente)', value: cl.declares, color: '#D97706' },
+                    { label: t('assuranceDashboard.declaresEnAttente'), value: cl.declares, color: '#D97706' },
                     { label: 'En instruction', value: cl.en_instruction, color: '#2563EB' },
                     { label: 'En expertise', value: cl.en_expertise, color: '#7C3AED' },
-                    { label: 'Approuvés', value: cl.approuves, color: '#059669' },
-                    { label: 'Indemnisés', value: cl.indemnises, color: '#10B981' },
-                    { label: 'Refusés', value: cl.refuses, color: '#DC2626' },
+                    { label: t('assuranceDashboard.approuves'), value: cl.approuves, color: '#059669' },
+                    { label: t('assuranceDashboard.indemnises'), value: cl.indemnises, color: '#10B981' },
+                    { label: t('assuranceDashboard.refuses'), value: cl.refuses, color: '#DC2626' },
                 ].map((item, i) => (
                     <View key={i} style={s.analyticsRow}>
                         <View style={[s.analyticsDot, { backgroundColor: item.color }]} />
@@ -593,8 +593,8 @@ const AssuranceDashboardScreen: React.FC = () => {
                 ))}
                 {(dashStats?.claims?.total_reclame || dashStats?.claims?.total_indemnise) && (
                     <View style={s.claimTotals}>
-                        {dashStats.claims.total_reclame && <Text style={s.claimTotalText}>Total réclamé: {parseFloat(dashStats.claims.total_reclame).toLocaleString()} {devise}</Text>}
-                        {dashStats.claims.total_indemnise && <Text style={[s.claimTotalText, { color: '#059669' }]}>Total indemnisé: {parseFloat(dashStats.claims.total_indemnise).toLocaleString()} {devise}</Text>}
+                        {dashStats.claims.total_reclame && <Text style={s.claimTotalText}>{t('assuranceDashboardScreen.totalReclame')} {parseFloat(dashStats.claims.total_reclame).toLocaleString()} {devise}</Text>}
+                        {dashStats.claims.total_indemnise && <Text style={[s.claimTotalText, { color: '#059669' }]}>{t('assuranceDashboardScreen.totalIndemnise')} {parseFloat(dashStats.claims.total_indemnise).toLocaleString()} {devise}</Text>}
                     </View>
                 )}
             </View>
@@ -607,16 +607,16 @@ const AssuranceDashboardScreen: React.FC = () => {
             <View style={s.modalOverlay}>
                 <View style={s.modalContent}>
                     <View style={s.modalHeader}>
-                        <Text style={s.modalTitle}>Nouveau produit d'assurance</Text>
+                        <Text style={s.modalTitle}>{t('assuranceDashboard.nouveauProduitDassurance')}</Text>
                         <TouchableOpacity onPress={() => setShowProductModal(false)}>
                             <SafeIcon name="x" size={24} color="#374151" />
                         </TouchableOpacity>
                     </View>
                     <ScrollView style={{ maxHeight: 500 }} showsVerticalScrollIndicator={false}>
-                        <Text style={s.fieldLabel}>Nom du produit *</Text>
+                        <Text style={s.fieldLabel}>{t('assuranceDashboard.nomDuProduit')}/Text>
                         <TextInput style={s.input} placeholder="Ex: Assurance Auto Tous Risques" value={newProduct.nom_produit || ''} onChangeText={v => setNewProduct(p => ({ ...p, nom_produit: v }))} />
 
-                        <Text style={s.fieldLabel}>Type d'assurance</Text>
+                        <Text style={s.fieldLabel}>{t('assuranceDashboard.typeDassurance')}/Text>
                         <View style={s.typeSelector}>
                             {TYPES_ASSURANCE.map(t => (
                                 <TouchableOpacity key={t.key}
@@ -627,7 +627,7 @@ const AssuranceDashboardScreen: React.FC = () => {
                             ))}
                         </View>
 
-                        <Text style={s.fieldLabel}>Sous-catégorie</Text>
+                        <Text style={s.fieldLabel}>{t('assuranceDashboard.souscategorie')}</Text>
                         <View style={s.typeSelector}>
                             {(SOUS_CATEGORIES[newProduct.type_assurance || 'auto'] || []).map(sc => (
                                 <TouchableOpacity key={sc}
@@ -639,10 +639,10 @@ const AssuranceDashboardScreen: React.FC = () => {
                         </View>
 
                         <Text style={s.fieldLabel}>Compagnie</Text>
-                        <TextInput style={s.input} placeholder="Nom de la compagnie" value={newProduct.compagnie || ''} onChangeText={v => setNewProduct(p => ({ ...p, compagnie: v }))} />
+                        <TextInput style={s.input} placeholder={t('assuranceDashboard.nomDeLaCompagnie')} value={newProduct.compagnie || ''} onChangeText={v => setNewProduct(p => ({ ...p, compagnie: v }))} />
 
                         <Text style={s.fieldLabel}>Description</Text>
-                        <TextInput style={[s.input, { height: 80 }]} placeholder="Description du produit" multiline value={newProduct.description || ''} onChangeText={v => setNewProduct(p => ({ ...p, description: v }))} />
+                        <TextInput style={[s.input, { height: 80 }]} placeholder={t('assuranceDashboardScreen.descriptionDuProduit')} multiline value={newProduct.description || ''} onChangeText={v => setNewProduct(p => ({ ...p, description: v }))} />
 
                         <View style={s.fieldRow}>
                             <View style={{ flex: 1 }}>
@@ -668,21 +668,21 @@ const AssuranceDashboardScreen: React.FC = () => {
 
                         <View style={s.fieldRow}>
                             <View style={{ flex: 1 }}>
-                                <Text style={s.fieldLabel}>Âge min</Text>
+                                <Text style={s.fieldLabel}>{t('assuranceDashboard.ageMin')}</Text>
                                 <TextInput style={s.input} placeholder="18" keyboardType="numeric" value={newProduct.age_min?.toString() || ''} onChangeText={v => setNewProduct(p => ({ ...p, age_min: v ? parseInt(v) : undefined }))} />
                             </View>
                             <View style={{ flex: 1, marginLeft: 8 }}>
-                                <Text style={s.fieldLabel}>Âge max</Text>
+                                <Text style={s.fieldLabel}>{t('assuranceDashboard.ageMax')}</Text>
                                 <TextInput style={s.input} placeholder="70" keyboardType="numeric" value={newProduct.age_max?.toString() || ''} onChangeText={v => setNewProduct(p => ({ ...p, age_max: v ? parseInt(v) : undefined }))} />
                             </View>
                             <View style={{ flex: 1, marginLeft: 8 }}>
-                                <Text style={s.fieldLabel}>Durée (mois)</Text>
+                                <Text style={s.fieldLabel}>{t('assuranceDashboard.dureeMois')}</Text>
                                 <TextInput style={s.input} placeholder="12" keyboardType="numeric" value={newProduct.duree_contrat_mois?.toString() || ''} onChangeText={v => setNewProduct(p => ({ ...p, duree_contrat_mois: v ? parseInt(v) : undefined }))} />
                             </View>
                         </View>
                     </ScrollView>
                     <TouchableOpacity style={s.createBtn} onPress={handleCreateProduct} disabled={actionLoading}>
-                        {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.createBtnText}>Créer le produit</Text>}
+                        {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.createBtnText}>{t('assuranceDashboard.creerLeProduit')}</Text>}
                     </TouchableOpacity>
                 </View>
             </View>
@@ -697,8 +697,8 @@ const AssuranceDashboardScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={22} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>Dashboard Assurance</Text>
-                        <Text style={s.headerSub}>{user?.name || 'Partenaire'}</Text>
+                        <Text style={s.headerTitle}>{t('assuranceDashboard.dashboardAssurance')}/Text>
+                        <Text style={s.headerSub}>{user?.name || t('assuranceDashboard.partenaire')}</Text>
                     </View>
                     <TouchableOpacity onPress={() => (navigation as any).navigate('InsuranceServicesSearch')} style={s.backBtn}>
                         <SafeIcon name="search" size={18} color="#fff" />

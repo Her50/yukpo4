@@ -30,7 +30,8 @@ interface Props {
 }
 
 const SavedSearches: React.FC<Props> = ({ onSelect, specializedType }) => {
-    const [saved, setSaved] = useState<SavedSearch[]>([]);
+        const { t } = useLanguageSafe();
+const [saved, setSaved] = useState<SavedSearch[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -62,7 +63,7 @@ const SavedSearches: React.FC<Props> = ({ onSelect, specializedType }) => {
     const handleDelete = async (id: number, name: string) => {
         Alert.alert(
             'Supprimer la recherche',
-            `Êtes-vous sûr de vouloir supprimer "${name}" ?`,
+            t('savedSearches.etesvousSurDeVouloirSupprimer', { name: name }),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -89,7 +90,7 @@ const SavedSearches: React.FC<Props> = ({ onSelect, specializedType }) => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <SafeIcon name="bookmark" size={18} color={modernColors.primary} type="lucide" />
-                <Text style={styles.title}>Recherches sauvegardées</Text>
+                <Text style={styles.title}>{t('savedSearches.recherchesSauvegardees')}</Text>
             </View>
             <FlatList
                 data={saved}

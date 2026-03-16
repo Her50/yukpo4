@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export type PlacementType = 'feed' | 'stories' | 'carousel' | 'search' | 'reels' | 'sidebar';
 
@@ -26,37 +27,37 @@ const PLACEMENT_OPTIONS: Omit<Placement, 'enabled' | 'budget'>[] = [
         type: 'feed',
         label: 'Feed Principal',
         icon: 'grid',
-        description: 'Apparaît dans le fil d\'actualité',
+        description: t('placementSelector.apparaitDansLeFilDactualite'),
     },
     {
         type: 'stories',
         label: 'Stories',
         icon: 'circle',
-        description: 'Format vertical plein écran',
+        description: t('placementSelector.formatVerticalPleinEcran'),
     },
     {
         type: 'carousel',
         label: 'Carousel',
         icon: 'layers',
-        description: 'Plusieurs images/vidéos défilantes',
+        description: t('placementSelector.plusieursImagesvideosDefilantes'),
     },
     {
         type: 'search',
-        label: 'Résultats de recherche',
+        label: t('placementSelector.resultatsDeRecherche'),
         icon: 'search',
-        description: 'Affichage dans les résultats',
+        description: t('placementSelector.affichageDansLesResultats'),
     },
     {
         type: 'reels',
         label: 'Reels',
         icon: 'video',
-        description: 'Format vidéo court vertical',
+        description: t('placementSelector.formatVideoCourtVertical'),
     },
     {
         type: 'sidebar',
-        label: 'Barre latérale',
+        label: t('placementSelector.barreLaterale'),
         icon: 'sidebar',
-        description: 'Espace publicitaire latéral',
+        description: t('placementSelector.espacePublicitaireLateral'),
     },
 ];
 
@@ -65,7 +66,8 @@ export const PlacementSelector: React.FC<PlacementSelectorProps> = ({
     onPlacementsChange,
     totalBudget,
 }) => {
-    const [expanded, setExpanded] = useState(false);
+        const { t } = useLanguageSafe();
+const [expanded, setExpanded] = useState(false);
 
     const togglePlacement = (type: PlacementType) => {
         const updated = placements.map(p =>
@@ -199,9 +201,9 @@ export const PlacementSelector: React.FC<PlacementSelectorProps> = ({
 
             {enabledCount > 0 && (
                 <View style={styles.summaryBox}>
-                    <Text style={styles.summaryTitle}>Résumé des budgets</Text>
+                    <Text style={styles.summaryTitle}>{t('placementSelector.resumeDesBudgets')}</Text>
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Total alloué:</Text>
+                        <Text style={styles.summaryLabel}>{t('placementSelector.totalAlloue')}</Text>
                         <Text style={styles.summaryValue}>
                             {totalAllocated.toLocaleString()} FCFA
                         </Text>

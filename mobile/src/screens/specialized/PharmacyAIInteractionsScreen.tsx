@@ -15,9 +15,11 @@ import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { MedicationInteraction, pharmacyService } from '../../services/pharmacyService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const PharmacyAIInteractionsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
 
     const [medications, setMedications] = useState<string[]>([]);
@@ -103,11 +105,11 @@ const PharmacyAIInteractionsScreen: React.FC = () => {
     const getSeverityLabel = (severity: string) => {
         switch (severity) {
             case 'contraindicated':
-                return 'Contre-indiqué';
+                return t('pharmacyAIInteractionsScreen.contreindique');
             case 'major':
                 return 'Majeure';
             case 'moderate':
-                return 'Modérée';
+                return t('pharmacyAIInteractionsScreen.moderee');
             case 'minor':
                 return 'Mineure';
             case 'none':
@@ -139,7 +141,7 @@ const PharmacyAIInteractionsScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Vérification Interactions IA</Text>
+                <Text style={styles.title}>{t('pharmacyAIInteractions.verificationInteractionsIa')}</Text>
             </View>
 
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -148,23 +150,23 @@ const PharmacyAIInteractionsScreen: React.FC = () => {
                         <NativeCard style={styles.card}>
                             <View style={styles.cardHeader}>
                                 <SafeIcon name="shield-check" size={32} color={modernColors.primary} />
-                                <Text style={styles.cardTitle}>Vérifier les interactions médicamenteuses</Text>
+                                <Text style={styles.cardTitle}>{t('pharmacyAIInteractions.verifierLesInteractionsMedicamenteuses')}</Text>
                                 <Text style={styles.cardSubtitle}>
                                     Ajoutez les médicaments que vous prenez pour vérifier d'éventuelles interactions
                                 </Text>
                             </View>
 
                             <View style={styles.formContainer}>
-                                <Text style={styles.label}>Médicaments *</Text>
+                                <Text style={styles.label}>{t('pharmacyAIInteractions.medicaments')}</Text>
                                 <View style={styles.inputRow}>
                                     <NativeInput
-                                        placeholder="Nom du médicament ou DCI"
+                                        placeholder={t('pharmacyAIInteractions.nomDuMedicamentOuDci')}
                                         value={medicationInput}
                                         onChangeText={setMedicationInput}
                                         style={styles.medicationInput}
                                     />
                                     <NativeButton
-                                        title="Ajouter"
+                                        title={t('pharmacyAIInteractions.ajouter')}
                                         onPress={addMedication}
                                         disabled={!medicationInput.trim()}
                                         variant="primary"
@@ -185,7 +187,7 @@ const PharmacyAIInteractionsScreen: React.FC = () => {
                                     </View>
                                 )}
 
-                                <Text style={styles.label}>Âge (optionnel)</Text>
+                                <Text style={styles.label}>{t('pharmacyAIInteractions.ageOptionnel')}</Text>
                                 <NativeInput
                                     placeholder="Ex: 45"
                                     value={age}
@@ -194,16 +196,16 @@ const PharmacyAIInteractionsScreen: React.FC = () => {
                                     style={styles.ageInput}
                                 />
 
-                                <Text style={styles.label}>Conditions médicales (optionnel)</Text>
+                                <Text style={styles.label}>{t('pharmacyAIInteractions.conditionsMedicalesOptionnel')}</Text>
                                 <View style={styles.inputRow}>
                                     <NativeInput
-                                        placeholder="Ex: Diabète, Hypertension..."
+                                        placeholder={t('pharmacyAIInteractions.exDiabeteHypertension')}
                                         value={conditionInput}
                                         onChangeText={setConditionInput}
                                         style={styles.conditionInput}
                                     />
                                     <NativeButton
-                                        title="Ajouter"
+                                        title={t('pharmacyAIInteractions.ajouter')}
                                         onPress={addCondition}
                                         disabled={!conditionInput.trim()}
                                         variant="outline"
@@ -225,7 +227,7 @@ const PharmacyAIInteractionsScreen: React.FC = () => {
                                 )}
 
                                 <NativeButton
-                                    title="🔍 Vérifier les interactions"
+                                    title={t('pharmacyAIInteractions.verifierLesInteractions')}
                                     onPress={handleCheckInteractions}
                                     disabled={loading || medications.length === 0}
                                     variant="primary"
@@ -244,7 +246,7 @@ const PharmacyAIInteractionsScreen: React.FC = () => {
                                     size={32}
                                     color={getSeverityColor(interactionResult.severity)}
                                 />
-                                <Text style={styles.cardTitle}>Résultat de l'analyse</Text>
+                                <Text style={styles.cardTitle}>{t('pharmacyAIInteractions.resultatDeLanalyse')}</Text>
                             </View>
 
                             <View style={[
@@ -280,7 +282,7 @@ const PharmacyAIInteractionsScreen: React.FC = () => {
                             {interactionResult.alternative_suggestions &&
                                 interactionResult.alternative_suggestions.length > 0 && (
                                     <View style={styles.alternativesContainer}>
-                                        <Text style={styles.alternativesTitle}>Alternatives suggérées:</Text>
+                                        <Text style={styles.alternativesTitle}>{t('pharmacyAIInteractions.alternativesSuggerees')}</Text>
                                         {interactionResult.alternative_suggestions.map((alt, idx) => (
                                             <View key={idx} style={styles.alternativeItem}>
                                                 <SafeIcon name="check" size={16} color={modernColors.success} />
@@ -292,7 +294,7 @@ const PharmacyAIInteractionsScreen: React.FC = () => {
                         </NativeCard>
 
                         <NativeButton
-                            title="🔄 Nouvelle vérification"
+                            title={t('pharmacyAIInteractions.nouvelleVerification')}
                             onPress={() => {
                                 setInteractionResult(null);
                                 setMedications([]);

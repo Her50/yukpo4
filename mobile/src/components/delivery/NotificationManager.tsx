@@ -8,6 +8,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import { DeliverySummary } from '../../types/delivery';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 // Configuration des notifications
 Notifications.setNotificationHandler({
@@ -27,7 +28,8 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({
     delivery,
     onNotificationPress,
 }) => {
-    const [expoPushToken, setExpoPushToken] = useState<string>('');
+        const { t } = useLanguageSafe();
+const [expoPushToken, setExpoPushToken] = useState<string>('');
     const [notification, setNotification] = useState<Notifications.Notification | null>(null);
     const notificationListener = useRef<Notifications.Subscription>();
     const responseListener = useRef<Notifications.Subscription>();
@@ -109,8 +111,8 @@ export const sendNewDeliveryAvailableNotification = async (
 ) => {
     await Notifications.scheduleNotificationAsync({
         content: {
-            title: '🚚 Nouvelle livraison disponible',
-            body: `Livraison à ${distance.toFixed(1)} km • ~${estimatedEarnings.toLocaleString('fr-FR')} FCFA`,
+            title: t('notificationManager.nouvelleLivraisonDisponible'),
+            body: t('notificationManager.livraisonAKmFcfa', { distance_toFixed(1): distance.toFixed(1), estimatedEarnings_toLocaleString('fr-FR'): estimatedEarnings.toLocaleString('fr-FR') }),
             data: { deliveryId, type: 'new_delivery' },
             sound: true,
             priority: Notifications.AndroidNotificationPriority.HIGH,
@@ -127,7 +129,7 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
 
     if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('delivery-updates', {
-            name: 'Mises à jour de livraison',
+            name: t('notificationManager.misesAJourDeLivraison'),
             importance: Notifications.AndroidImportance.MAX,
             vibrationPattern: [0, 250, 250, 250],
             lightColor: modernColors.primary,

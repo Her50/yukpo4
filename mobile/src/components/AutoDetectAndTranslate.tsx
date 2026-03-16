@@ -46,7 +46,7 @@ const AutoDetectAndTranslate = () => {
       </TouchableOpacity>
 
       {detectedLang && (
-        <Text style={{ fontSize: 14, color: '#666' }}>Langue détectée : {String(detectedLang)}</Text>
+        <Text style={{ fontSize: 14, color: '#666' }}>{t('autoDetectAndTranslate.detectedLanguage')}: {String(detectedLang)}</Text>
       )}
 
       {translatedText && (

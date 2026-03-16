@@ -192,7 +192,7 @@ const ManageAgencySchedulesScreen: React.FC = () => {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('manageAgencySchedules.chargement')}</Text>
             </View>
         );
     }
@@ -204,7 +204,7 @@ const ManageAgencySchedulesScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Horaires de départ</Text>
+                <Text style={styles.headerTitle}>{t('manageAgencySchedules.horairesDeDepart')}</Text>
                 <TouchableOpacity onPress={handleAddSchedule} style={styles.addButton}>
                     <SafeIcon name="plus" size={24} color={modernColors.primary} />
                 </TouchableOpacity>
@@ -214,13 +214,13 @@ const ManageAgencySchedulesScreen: React.FC = () => {
                 {schedules.length === 0 ? (
                     <View style={styles.emptyState}>
                         <SafeIcon name="clock" size={64} color="#D1D5DB" />
-                        <Text style={styles.emptyStateTitle}>Aucun horaire configuré</Text>
+                        <Text style={styles.emptyStateTitle}>{t('manageAgencySchedules.aucunHoraireConfigure')}</Text>
                         <Text style={styles.emptyStateText}>
                             Créez votre premier horaire de départ pour permettre aux clients de sélectionner l'heure de retour souhaitée
                         </Text>
                         <TouchableOpacity style={styles.emptyStateButton} onPress={handleAddSchedule}>
                             <SafeIcon name="plus" size={20} color="#fff" />
-                            <Text style={styles.emptyStateButtonText}>Créer un horaire</Text>
+                            <Text style={styles.emptyStateButtonText}>{t('manageAgencySchedules.creerUnHoraire')}</Text>
                         </TouchableOpacity>
                     </View>
                 ) : (
@@ -258,7 +258,7 @@ const ManageAgencySchedulesScreen: React.FC = () => {
                                         </View>
                                     ))
                                 ) : (
-                                    <Text style={styles.allDaysText}>Tous les jours</Text>
+                                    <Text style={styles.allDaysText}>{t('manageAgencySchedules.tousLesJours')}</Text>
                                 )}
                             </View>
                             <View style={styles.scheduleActions}>
@@ -267,14 +267,14 @@ const ManageAgencySchedulesScreen: React.FC = () => {
                                     onPress={() => handleEditSchedule(schedule)}
                                 >
                                     <SafeIcon name="edit" size={18} color={modernColors.primary} />
-                                    <Text style={styles.actionButtonText}>Modifier</Text>
+                                    <Text style={styles.actionButtonText}>{t('manageAgencySchedulesScreen.modifier')}</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[styles.actionButton, styles.deleteButton]}
                                     onPress={() => handleDeleteSchedule(schedule)}
                                 >
                                     <SafeIcon name="trash-2" size={18} color="#DC2626" />
-                                    <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Supprimer</Text>
+                                    <Text style={[styles.actionButtonText, styles.deleteButtonText]}>{t('manageAgencySchedulesScreen.supprimer')}</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -297,7 +297,7 @@ const ManageAgencySchedulesScreen: React.FC = () => {
 
                         <ScrollView style={styles.modalBody}>
                             <View style={styles.formGroup}>
-                                <Text style={styles.label}>Ville de départ *</Text>
+                                <Text style={styles.label}>{t('manageAgencySchedules.villeDeDepart')}</Text>
                                 <TextInput
                                     style={styles.input}
                                     value={departureCity}
@@ -307,17 +307,17 @@ const ManageAgencySchedulesScreen: React.FC = () => {
                             </View>
 
                             <View style={styles.formGroup}>
-                                <Text style={styles.label}>Ville d'arrivée *</Text>
+                                <Text style={styles.label}>{t('manageAgencySchedules.villeDarrivee')}</Text>
                                 <TextInput
                                     style={styles.input}
                                     value={arrivalCity}
                                     onChangeText={setArrivalCity}
-                                    placeholder="Ex: Yaoundé"
+                                    placeholder={t('manageAgencySchedules.exYaounde')}
                                 />
                             </View>
 
                             <View style={styles.formGroup}>
-                                <Text style={styles.label}>Heure de départ *</Text>
+                                <Text style={styles.label}>{t('manageAgencySchedules.heureDeDepart')}</Text>
                                 <TextInput
                                     style={styles.input}
                                     value={departureTime}
@@ -328,7 +328,7 @@ const ManageAgencySchedulesScreen: React.FC = () => {
                             </View>
 
                             <View style={styles.formGroup}>
-                                <Text style={styles.label}>Jours de la semaine *</Text>
+                                <Text style={styles.label}>{t('manageAgencySchedules.joursDeLaSemaine')}/Text>
                                 <View style={styles.daysGrid}>
                                     {DAYS_OF_WEEK.map((day) => (
                                         <TouchableOpacity
@@ -369,14 +369,14 @@ const ManageAgencySchedulesScreen: React.FC = () => {
                                 style={[styles.modalButton, styles.cancelButton]}
                                 onPress={() => setShowAddModal(false)}
                             >
-                                <Text style={styles.cancelButtonText}>Annuler</Text>
+                                <Text style={styles.cancelButtonText}>{t('manageAgencySchedulesScreen.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.modalButton, styles.saveButton]}
                                 onPress={handleSaveSchedule}
                             >
                                 <Text style={styles.saveButtonText}>
-                                    {editingSchedule ? 'Modifier' : 'Créer'}
+                                    {editingSchedule ? 'Modifier' : t('manageAgencySchedulesScreen.creer')}
                                 </Text>
                             </TouchableOpacity>
                         </View>

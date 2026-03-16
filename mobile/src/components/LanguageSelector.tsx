@@ -10,14 +10,15 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // 7 langues les plus parlées au monde
 export const LANGUAGES = [
   { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧', speakers: '1.5B' },
   { code: 'zh', name: 'Chinese', nativeName: '中文', flag: '🇨🇳', speakers: '1.1B' },
   { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', flag: '🇮🇳', speakers: '600M' },
-  { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸', speakers: '560M' },
-  { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷', speakers: '280M' },
+  { code: 'es', name: 'Spanish', nativeName: t('languageSelector.espanol'), flag: '🇪🇸', speakers: '560M' },
+  { code: 'fr', name: 'French', nativeName: t('languageSelector.francais'), flag: '🇫🇷', speakers: '280M' },
   { code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '🇸🇦', speakers: '274M' },
   { code: 'ru', name: 'Russian', nativeName: 'Русский', flag: '🇷🇺', speakers: '258M' },
 ];
@@ -33,7 +34,8 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   onLanguageChange,
   compact = true,
 }) => {
-  const [modalVisible, setModalVisible] = useState(false);
+      const { t } = useLanguageSafe();
+const [modalVisible, setModalVisible] = useState(false);
 
   const currentLanguage = LANGUAGES.find(lang => lang.code === selectedLanguage) || LANGUAGES[4]; // Français par défaut
 
@@ -68,7 +70,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
               <View style={styles.modalHeader}>
                 <View style={styles.modalTitleContainer}>
                   <SafeIcon name="globe" size={24} color={modernColors.primary} />
-                  <Text style={styles.modalTitle}>Choisir la langue</Text>
+                  <Text style={styles.modalTitle}>{t('languageSelector.choisirLaLangue')}</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => setModalVisible(false)}
@@ -128,7 +130,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   // Version complète (pour les settings)
   return (
     <View style={styles.fullContainer}>
-      <Text style={styles.sectionTitle}>Langue de l'application</Text>
+      <Text style={styles.sectionTitle}>{t('languageSelector.langueDeLapplication')}/Text>
       {LANGUAGES.map((language) => {
         const isSelected = language.code === selectedLanguage;
         return (

@@ -26,6 +26,7 @@ import { uploadMultipleToCloud } from '../services/cloudUpload';
 import { modernColors } from '../theme/modernTheme';
 import ModernGPSModal from './ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const primaryColor = modernColors?.primary ?? '#6366F1';
 const accentColor = modernColors?.accent ?? '#F97316';
@@ -46,7 +47,7 @@ interface ChatInputMobileProps {
 const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
     onSubmit,
     loading = false,
-    placeholder = 'Décrivez votre besoin ou service...',
+    placeholder={t('chatInputMobile.decrivezVotreBesoinOuService')},
     onGPSPress,
     showSendButton = true,
     showAutocomplete = false, // ✅ NOUVEAU
@@ -66,7 +67,8 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
     const { location } = useLocationSafe();
     const { colors } = useTheme(); // ✅ NOUVEAU: Support thème
 
-    const [text, setText] = useState('');
+        const { t } = useLanguageSafe();
+const [text, setText] = useState('');
     const [images, setImages] = useState<string[]>([]);
     const [audioUri, setAudioUri] = useState<string | null>(null);
     const [audioBase64, setAudioBase64] = useState<string | null>(null);
@@ -635,7 +637,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
             console.error('[ChatInput] ❌ Erreur complète enregistrement:', error);
             Alert.alert(
                 'Erreur Audio',
-                'Impossible de démarrer l\'enregistrement. Vérifiez que le microphone n\'est pas utilisé par une autre app.',
+                t('chatInputMobile.impossibleDeDemarrerLenregistrementVerifiezQueLe')',
                 [{ text: 'OK' }]
             );
             setIsRecording(false);
@@ -1053,7 +1055,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                     ) : (
                         <View style={styles.audioItem}>
                             <Text style={styles.audioIcon}>🎤</Text>
-                            <Text style={styles.audioText}>Audio enregistré ({formatDuration(lastRecordedDuration)})</Text>
+                            <Text style={styles.audioText}>{t('chatInputMobile.audioRecorded')} ({formatDuration(lastRecordedDuration)})</Text>
                             <TouchableOpacity onPress={removeAudio}>
                                 <Text style={styles.closeIconSmall}>❌</Text>
                             </TouchableOpacity>
@@ -1193,7 +1195,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                         style={styles.actionButton}
                         onPress={pickImage}
                         disabled={loading}
-                        accessibilityLabel="Sélectionner une image"
+                        accessibilityLabel={t('chatInputMobile.selectionnerUneImage')}
                         accessibilityRole="button"
                         accessibilityHint="Ouvre la galerie pour sélectionner une image"
                     >
@@ -1206,7 +1208,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                         style={styles.actionButton}
                         onPress={pickDocument}
                         disabled={loading}
-                        accessibilityLabel="Sélectionner un fichier"
+                        accessibilityLabel={t('chatInputMobile.selectionnerUnFichier')}
                         accessibilityRole="button"
                         accessibilityHint="Ouvre le sélecteur de fichiers pour choisir un document"
                     >
@@ -1314,7 +1316,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                     ) : (
                         <View style={styles.emptySuggestions}>
                             <SafeIcon name="search" size={18} color={textSecondaryColor} />
-                            <Text style={dynamicStyles.emptySuggestionsText}>Aucune suggestion disponible</Text>
+                            <Text style={dynamicStyles.emptySuggestionsText}>{t('chatInputMobile.aucuneSuggestionDisponible')}</Text>
                         </View>
                     )}
                 </View>
@@ -1368,7 +1370,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                     setShowGPSModal(false);
                 }}
                 currentLocation={gpsData}
-                title="Sélection de localisation GPS"
+                title={t('chatInputMobile.selectionDeLocalisationGps')}
                 allowZoneSelection={true}
             />
         </View>

@@ -150,7 +150,7 @@ const PharmacieDetailsScreen: React.FC = () => {
                 context: 'pharmacy_health_tips',
             });
             const d = (resp?.data || resp) as any;
-            setAiSuggestion(d?.response || d?.message || d?.data?.response || 'Aucun conseil disponible.');
+            setAiSuggestion(d?.response || d?.message || d?.data?.response || t('pharmacieDetails.aucunConseilDisponible'));
         } catch {
             setAiSuggestion('Service IA temporairement indisponible.');
         } finally { setLoadingAI(false); }
@@ -228,10 +228,10 @@ const PharmacieDetailsScreen: React.FC = () => {
 
     // ─── Rendering ──────────────────────────────────────────────────────
     if (loading) {
-        return (<View style={st.center}><ActivityIndicator size="large" color="#10B981" /><Text style={st.centerText}>Chargement...</Text></View>);
+        return (<View style={st.center}><ActivityIndicator size="large" color="#10B981" /><Text style={st.centerText}>{t('pharmacieDetails.chargement')}</Text></View>);
     }
     if (!pharmacie) {
-        return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#EF4444" /><Text style={st.centerText}>Pharmacie non trouvée</Text></View>);
+        return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#EF4444" /><Text style={st.centerText}>{t('pharmacieDetails.pharmacieNonTrouvee')}</Text></View>);
     }
 
     const isOpen = pharmacie.is_available_now;
@@ -255,7 +255,7 @@ const PharmacieDetailsScreen: React.FC = () => {
                     <View style={st.heroBadges}>
                         <View style={[st.badge, { backgroundColor: isOpen ? 'rgba(255,255,255,0.25)' : 'rgba(239,68,68,0.3)' }]}>
                             <View style={[st.badgeDot, { backgroundColor: isOpen ? '#fff' : '#FCA5A5' }]} />
-                            <Text style={st.badgeText}>{isOpen ? 'Ouvert' : 'Fermé'}</Text>
+                            <Text style={st.badgeText}>{isOpen ? 'Ouvert' : t('pharmacieDetailsScreen.ferme')}</Text>
                         </View>
                         {isGuard && (
                             <View style={[st.badge, { backgroundColor: 'rgba(59,130,246,0.3)' }]}>
@@ -266,7 +266,7 @@ const PharmacieDetailsScreen: React.FC = () => {
                         {pharmacie.is_verified && (
                             <View style={[st.badge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
                                 <SafeIcon name="check-circle" size={12} color="#fff" />
-                                <Text style={st.badgeText}>Vérifiée</Text>
+                                <Text style={st.badgeText}>{t('pharmacieDetails.verifiee')}</Text>
                             </View>
                         )}
                         {pharmacie.permanent_24h && (
@@ -313,7 +313,7 @@ const PharmacieDetailsScreen: React.FC = () => {
 
                 {/* Horaires */}
                 <View style={st.section}>
-                    <View style={st.sectionHeader}><SafeIcon name="clock" size={18} color="#10B981" /><Text style={st.sectionTitle}>Horaires</Text></View>
+                    <View style={st.sectionHeader}><SafeIcon name="clock" size={18} color="#10B981" /><Text style={st.sectionTitle}>{t('pharmacieDetails.horaires')}/Text></View>
                     {pharmacie.permanent_24h ? (
                         <View style={st.infoCard}><SafeIcon name="clock" size={16} color="#F59E0B" /><Text style={st.infoCardText}>Ouvert 24h/24 - 7j/7</Text></View>
                     ) : (
@@ -346,9 +346,9 @@ const PharmacieDetailsScreen: React.FC = () => {
 
                 {/* Recherche médicament */}
                 <View style={st.section}>
-                    <View style={st.sectionHeader}><SafeIcon name="search" size={18} color="#10B981" /><Text style={st.sectionTitle}>Rechercher un médicament</Text></View>
+                    <View style={st.sectionHeader}><SafeIcon name="search" size={18} color="#10B981" /><Text style={st.sectionTitle}>{t('pharmacieDetails.rechercherUnMedicament')}</Text></View>
                     <View style={st.searchRow}>
-                        <TextInput style={st.searchInput} placeholder="Nom du médicament ou DCI..." placeholderTextColor="#9CA3AF" value={searchMedication} onChangeText={setSearchMedication} />
+                        <TextInput style={st.searchInput} placeholder={t('pharmacieDetails.nomDuMedicamentOuDci')} placeholderTextColor="#9CA3AF" value={searchMedication} onChangeText={setSearchMedication} />
                         <TouchableOpacity style={[st.searchBtn, !searchMedication.trim() && { opacity: 0.5 }]} disabled={!searchMedication.trim()} onPress={() => setShowSearchModal(true)}>
                             <SafeIcon name="search" size={18} color="#fff" />
                         </TouchableOpacity>
@@ -366,17 +366,17 @@ const PharmacieDetailsScreen: React.FC = () => {
                                 <>
                                     <Text style={st.resultLine}><Text style={st.resultLabel}>Nom: </Text>{medicationAvailability.medication.name}</Text>
                                     {medicationAvailability.medication.dci && <Text style={st.resultLine}><Text style={st.resultLabel}>DCI: </Text>{medicationAvailability.medication.dci}</Text>}
-                                    <Text style={st.resultLine}><Text style={st.resultLabel}>Stock: </Text>{medicationAvailability.medication.stock_quantity} unité(s)</Text>
+                                    <Text style={st.resultLine}><Text style={st.resultLabel}>{t('pharmacieDetailsScreen.stock')}: </Text>{medicationAvailability.medication.stock_quantity} unité(s)</Text>
                                     {medicationAvailability.medication.price && <Text style={st.resultLine}><Text style={st.resultLabel}>Prix: </Text>{medicationAvailability.medication.price} FCFA</Text>}
                                     {medicationAvailability.medication.requires_prescription && (
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
                                             <SafeIcon name="alert-triangle" size={14} color="#F59E0B" />
-                                            <Text style={{ fontSize: 13, color: '#F59E0B', fontStyle: 'italic' }}>Prescription médicale requise</Text>
+                                            <Text style={{ fontSize: 13, color: '#F59E0B', fontStyle: 'italic' }}>{t('pharmacieDetails.prescriptionMedicaleRequise')}</Text>
                                         </View>
                                     )}
                                     <TouchableOpacity style={st.reserveBtn} onPress={handleReserveMedication}>
                                         <SafeIcon name="shopping-bag" size={16} color="#fff" />
-                                        <Text style={st.reserveBtnText}>Réserver ce médicament</Text>
+                                        <Text style={st.reserveBtnText}>{t('pharmacieDetails.reserverCeMedicament')}</Text>
                                     </TouchableOpacity>
                                 </>
                             )}
@@ -386,7 +386,7 @@ const PharmacieDetailsScreen: React.FC = () => {
 
                 {/* IA Interactions + Conseils */}
                 <View style={st.section}>
-                    <View style={st.sectionHeader}><SafeIcon name="brain" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>Assistant IA Santé</Text></View>
+                    <View style={st.sectionHeader}><SafeIcon name="brain" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>{t('pharmacieDetails.assistantIaSante')}</Text></View>
                     <View style={{ flexDirection: 'row', gap: 10 }}>
                         <TouchableOpacity style={[st.iaBtn, { flex: 1 }]} onPress={() => setShowInteractionsModal(true)}>
                             <SafeIcon name="alert-triangle" size={18} color="#EF4444" />
@@ -394,7 +394,7 @@ const PharmacieDetailsScreen: React.FC = () => {
                         </TouchableOpacity>
                         <TouchableOpacity style={[st.iaBtn, { flex: 1, borderColor: '#7C3AED' }]} onPress={handleAISuggest}>
                             <SafeIcon name="sparkles" size={18} color="#7C3AED" />
-                            <Text style={[st.iaBtnText, { color: '#7C3AED' }]}>Conseils santé</Text>
+                            <Text style={[st.iaBtnText, { color: '#7C3AED' }]}>{t('pharmacieDetails.conseilsSante')}</Text>
                         </TouchableOpacity>
                     </View>
                     {loadingAI && (
@@ -412,7 +412,7 @@ const PharmacieDetailsScreen: React.FC = () => {
                             <Text style={{ fontSize: 13, color: '#374151', lineHeight: 20 }}>{aiSuggestion}</Text>
                             <TouchableOpacity onPress={handleAISuggest} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
                                 <SafeIcon name="refresh-cw" size={13} color="#7C3AED" />
-                                <Text style={{ fontSize: 12, color: '#7C3AED', fontWeight: '600' }}>Actualiser</Text>
+                                <Text style={{ fontSize: 12, color: '#7C3AED', fontWeight: '600' }}>{t('pharmacieDetails.actualiser')}</Text>
                             </TouchableOpacity>
                         </View>
                     )}
@@ -425,7 +425,7 @@ const PharmacieDetailsScreen: React.FC = () => {
                         navigation.navigate('MyPharmacyOrders' as never);
                     }}>
                         <SafeIcon name="clipboard-list" size={18} color="#3B82F6" />
-                        <Text style={st.fullBtnText}>Mes commandes</Text>
+                        <Text style={st.fullBtnText}>{t('pharmacieDetails.mesCommandes')}</Text>
                         <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                     </TouchableOpacity>
                     {isOwner && (
@@ -458,16 +458,16 @@ const PharmacieDetailsScreen: React.FC = () => {
                 <View style={st.modalBg}>
                     <View style={st.modal}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <Text style={st.modalTitle}>Rechercher un médicament</Text>
+                            <Text style={st.modalTitle}>{t('pharmacieDetails.rechercherUnMedicament')}</Text>
                             <TouchableOpacity onPress={() => { setShowSearchModal(false); setSearchMedication(''); }}><SafeIcon name="x" size={22} color="#6B7280" /></TouchableOpacity>
                         </View>
-                        <NativeInput placeholder="Nom du médicament ou DCI" value={searchMedication} onChangeText={setSearchMedication} />
+                        <NativeInput placeholder={t('pharmacieDetails.nomDuMedicamentOuDci')} value={searchMedication} onChangeText={setSearchMedication} />
                         <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
                             <TouchableOpacity style={[st.modalBtn, { backgroundColor: '#F3F4F6' }]} onPress={() => { setShowSearchModal(false); setSearchMedication(''); }}>
-                                <Text style={{ color: '#6B7280', fontWeight: '600' }}>Annuler</Text>
+                                <Text style={{ color: '#6B7280', fontWeight: '600' }}>{t('pharmacieDetailsScreen.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={[st.modalBtn, { backgroundColor: '#10B981', flex: 2, opacity: checkingAvailability || !searchMedication.trim() ? 0.5 : 1 }]} disabled={checkingAvailability || !searchMedication.trim()} onPress={handleCheckAvailability}>
-                                {checkingAvailability ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Vérifier</Text>}
+                                {checkingAvailability ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>{t('pharmacieDetails.verifier')}</Text>}
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -479,11 +479,11 @@ const PharmacieDetailsScreen: React.FC = () => {
                 <View style={st.modalBg}>
                     <View style={[st.modal, { maxHeight: '85%' }]}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <Text style={st.modalTitle}>Interactions médicamenteuses</Text>
+                            <Text style={st.modalTitle}>{t('pharmacieDetails.interactionsMedicamenteuses')}</Text>
                             <TouchableOpacity onPress={() => { setShowInteractionsModal(false); setMedicationsForInteraction([]); setInteractionResult(null); }}><SafeIcon name="x" size={22} color="#6B7280" /></TouchableOpacity>
                         </View>
                         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                            <TextInput style={[st.searchInput, { flex: 1 }]} placeholder="Nom du médicament..." placeholderTextColor="#9CA3AF" value={medicationInput} onChangeText={setMedicationInput} />
+                            <TextInput style={[st.searchInput, { flex: 1 }]} placeholder={t('pharmacieDetails.nomDuMedicament')} placeholderTextColor="#9CA3AF" value={medicationInput} onChangeText={setMedicationInput} />
                             <TouchableOpacity style={[st.searchBtn, !medicationInput.trim() && { opacity: 0.5 }]} disabled={!medicationInput.trim()} onPress={addMedicationForInteraction}>
                                 <SafeIcon name="plus" size={18} color="#fff" />
                             </TouchableOpacity>
@@ -505,7 +505,7 @@ const PharmacieDetailsScreen: React.FC = () => {
                                         backgroundColor: interactionResult.severity === 'contraindicated' ? '#FEE2E2' : interactionResult.severity === 'major' ? '#FEF3C7' : interactionResult.severity === 'moderate' ? '#DBEAFE' : '#F0FDF4',
                                     }]}>
                                         <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827' }}>
-                                            {interactionResult.severity === 'contraindicated' ? 'Contre-indiqué' : interactionResult.severity === 'major' ? 'Majeure' : interactionResult.severity === 'moderate' ? 'Modérée' : interactionResult.severity === 'minor' ? 'Mineure' : 'Aucune'}
+                                            {interactionResult.severity === 'contraindicated' ? t('pharmacieDetailsScreen.contreindique') : interactionResult.severity === 'major' ? 'Majeure' : interactionResult.severity === 'moderate' ? 'Modérée' : interactionResult.severity === 'minor' ? 'Mineure' : 'Aucune'}
                                         </Text>
                                     </View>
                                     <Text style={{ fontSize: 13, color: '#374151', lineHeight: 20, marginBottom: 8 }}>{interactionResult.description}</Text>
@@ -522,7 +522,7 @@ const PharmacieDetailsScreen: React.FC = () => {
                             </ScrollView>
                         )}
                         <TouchableOpacity style={[st.modalBtn, { backgroundColor: '#EF4444', marginTop: 12, opacity: checkingInteractions || medicationsForInteraction.length === 0 ? 0.5 : 1 }]} disabled={checkingInteractions || medicationsForInteraction.length === 0} onPress={handleCheckInteractions}>
-                            {checkingInteractions ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center' }}>Vérifier les interactions</Text>}
+                            {checkingInteractions ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center' }}>{t('pharmacieDetails.verifierLesInteractions')}</Text>}
                         </TouchableOpacity>
                     </View>
                 </View>

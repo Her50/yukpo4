@@ -22,11 +22,13 @@ import { NativeGradient } from '../components/SafeNativeDesign';
 import { SafeIcon } from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { modernColors, modernStyles } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
 const ModernHomeScreen: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   // ✅ MIGRÉ: Utilise useSharedValue au lieu de Animated.Value
   const fadeAnim = useSharedValue(0);
   const slideAnim = useSharedValue(50);
@@ -93,8 +95,8 @@ const ModernHomeScreen: React.FC = () => {
           {/* Header moderne */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Text style={styles.greeting}>Bonjour ! 👋</Text>
-              <Text style={styles.userName}>Prêt à découvrir ?</Text>
+              <Text style={styles.greeting}>{t('modernHome.bonjour')}/Text>
+              <Text style={styles.userName}>{t('modernHome.pretADecouvrir')}</Text>
             </View>
             <View style={styles.headerRight}>
               <TouchableOpacity style={styles.iconButton}>
@@ -109,7 +111,7 @@ const ModernHomeScreen: React.FC = () => {
             <ModernCard variant="glass" style={styles.searchCard}>
               <View style={styles.searchContainer}>
                 <SafeIcon name="search" size={20} color="white" />
-                <Text style={styles.searchPlaceholder}>Rechercher un service...</Text>
+                <Text style={styles.searchPlaceholder}>{t('modernHome.rechercherUnService')}</Text>
               </View>
             </ModernCard>
           </TouchableOpacity>
@@ -120,13 +122,13 @@ const ModernHomeScreen: React.FC = () => {
             <View style={styles.quickActions}>
               <QuickAction
                 iconName="plus"
-                title="Créer"
+                title={t('modernHome.creer')}
                 gradient={modernColors.secondaryGradient}
                 onPress={() => (navigation as any).navigate('Create')}
               />
               <QuickAction
                 iconName="search"
-                title="Rechercher"
+                title={t('modernHome.rechercher')}
                 gradient={modernColors.successGradient}
                 onPress={() => (navigation as any).navigate('Search')}
               />
@@ -147,7 +149,7 @@ const ModernHomeScreen: React.FC = () => {
 
           {/* Statistiques */}
           <View style={styles.statsContainer}>
-            <Text style={styles.sectionTitle}>Vos statistiques</Text>
+            <Text style={styles.sectionTitle}>{t('modernHome.vosStatistiques')}</Text>
             <View style={styles.statsGrid}>
               <StatCard
                 iconName="briefcase"
@@ -158,7 +160,7 @@ const ModernHomeScreen: React.FC = () => {
               />
               <StatCard
                 iconName="star"
-                title="Évaluations"
+                title={t('modernHome.evaluations')}
                 value="4.8"
                 color={modernColors.warning}
                 trend="+0.2"
@@ -175,7 +177,7 @@ const ModernHomeScreen: React.FC = () => {
 
           {/* Services récents */}
           <View style={styles.recentContainer}>
-            <Text style={styles.sectionTitle}>Services récents</Text>
+            <Text style={styles.sectionTitle}>{t('modernHome.servicesRecents')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {[1, 2, 3].map((item) => (
                 <ModernCard key={item} variant="glass" style={styles.serviceCard}>

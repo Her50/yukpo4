@@ -242,7 +242,7 @@ const PubliciteDashboardScreen: React.FC = () => {
 
         return (
             <View style={styles.videoMetaSection}>
-                <Text style={styles.videoMetaTitle}>Vidéos</Text>
+                <Text style={styles.videoMetaTitle}>{t('publiciteDashboard.videos')}</Text>
                 {metas.length > 0 && (
                     <View style={styles.videoMetaChipRow}>
                         {metas.slice(0, 4).map((meta, index) => {
@@ -358,13 +358,13 @@ const PubliciteDashboardScreen: React.FC = () => {
 
                 {/* Résumé vidéos */}
                 <NativeCard style={styles.videoSummaryCard}>
-                    <Text style={styles.videoSummaryTitle}>Performance vidéos</Text>
+                    <Text style={styles.videoSummaryTitle}>{t('publiciteDashboard.performanceVideos')}</Text>
                     <View style={styles.videoSummaryRow}>
                         <View style={styles.videoSummaryItem}>
                             <SafeIcon name="sparkles" size={18} color="#6366F1" />
                             <View>
                                 <Text style={styles.videoSummaryValue}>{globalStats.video_summary.ai_generated_videos}</Text>
-                                <Text style={styles.videoSummaryLabel}>IA générées</Text>
+                                <Text style={styles.videoSummaryLabel}>{t('publiciteDashboard.iaGenerees')}</Text>
                             </View>
                         </View>
                         <View style={styles.videoSummaryItem}>
@@ -387,7 +387,7 @@ const PubliciteDashboardScreen: React.FC = () => {
                     <NativeCard style={styles.analyticsCard}>
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="trending-up" size={24} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Analytics Avancés</Text>
+                            <Text style={styles.sectionTitle}>{t('publiciteDashboard.analyticsAvances')}</Text>
                             <ExportButton
                                 data={publicites.map(pub => ({
                                     titre: pub.titre,
@@ -421,7 +421,7 @@ const PubliciteDashboardScreen: React.FC = () => {
                 {/* Liste des publicités */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Mes publicités ({publicites.length})</Text>
+                        <Text style={styles.sectionTitle}>{t('publiciteDashboardScreen.myAds')} ({publicites.length})</Text>
                         <View style={styles.activeBadge}>
                             <View style={styles.activeDot} />
                             <Text style={styles.activeText}>{globalStats.publicites_actives} actives</Text>
@@ -431,8 +431,8 @@ const PubliciteDashboardScreen: React.FC = () => {
                     {publicites.length === 0 ? (
                         <NativeCard style={styles.emptyCard}>
                             <SafeIcon name="megaphone" size={64} color={modernColors.border} />
-                            <Text style={styles.emptyText}>Aucune publicité</Text>
-                            <Text style={styles.emptySubtext}>Créez votre première publicité pour booster vos produits</Text>
+                            <Text style={styles.emptyText}>{t('publiciteDashboard.aucunePublicite')}</Text>
+                            <Text style={styles.emptySubtext}>{t('publiciteDashboard.creezVotrePremierePublicitePour')}</Text>
                             <TouchableOpacity
                                 style={styles.createButton}
                                 onPress={() => (navigation as any).navigate('CreatePublicite')}
@@ -489,7 +489,7 @@ const PubliciteDashboardScreen: React.FC = () => {
                                         <Text style={styles.infoText}>
                                             {pub.jours_restants > 0
                                                 ? `${pub.jours_restants} jours restants`
-                                                : 'Expiré'
+                                                : t('publiciteDashboardScreen.expire')
                                             }
                                         </Text>
                                     </View>
@@ -568,7 +568,7 @@ const PubliciteDashboardScreen: React.FC = () => {
                                         onPress={() => (navigation as any).navigate('CreatePublicite', { publiciteId: pub.id })}
                                     >
                                         <SafeIcon name="edit" size={12} color="#6366F1" />
-                                        <Text style={styles.modifyButtonText}>Éditer</Text>
+                                        <Text style={styles.modifyButtonText}>{t('publiciteDashboard.editer')}</Text>
                                     </TouchableOpacity>
                                     {/* Historique */}
                                     <TouchableOpacity

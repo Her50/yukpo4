@@ -44,12 +44,12 @@ interface SlotManagementScreenProps {
 }
 
 const CONSULTATION_TYPES_HOPITAL = [
-    'Consultation générale',
-    'Consultation spécialisée',
+    t('slotManagementScreen.consultationGenerale'),
+    t('slotManagementScreen.consultationSpecialisee'),
     'Urgences',
     'Suivi',
     'Pédiatrie',
-    'Maternité',
+    t('slotManagementScreen.maternite'),
     'Chirurgie',
     'Radiologie',
 ];
@@ -57,9 +57,9 @@ const CONSULTATION_TYPES_HOPITAL = [
 const CONSULTATION_TYPES_LABO = [
     'Prise de sang',
     'Analyse urine',
-    'Bactériologie',
+    t('slotManagementScreen.bacteriologie'),
     'Imagerie - Radio',
-    'Imagerie - Échographie',
+    t('slotManagementScreen.imagerieEchographie'),
     'Imagerie - Scanner',
     'Imagerie - IRM',
     'Biochimie',
@@ -161,7 +161,7 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Générer',
+                    text: t('slotManagement.generer'),
                     onPress: async () => {
                         try {
                             setSaving(true);
@@ -251,7 +251,7 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.headerTitle}>Gestion des créneaux</Text>
+                    <Text style={styles.headerTitle}>{t('slotManagement.gestionDesCreneaux')}</Text>
                     <Text style={styles.headerSubtitle}>{serviceName || (serviceType === 'hopital' ? 'Hôpital' : 'Laboratoire')}</Text>
                 </View>
             </View>
@@ -273,7 +273,7 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
             <View style={styles.actions}>
                 <TouchableOpacity style={styles.actionBtn} onPress={() => setShowAddModal(true)}>
                     <SafeIcon name="plus" size={18} color="#fff" />
-                    <Text style={styles.actionBtnText}>Ajouter</Text>
+                    <Text style={styles.actionBtnText}>{t('slotManagementScreen.ajouter')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSecondary]} onPress={handleGenerateSlots}>
                     <SafeIcon name="zap" size={18} color={modernColors.primary} />
@@ -294,8 +294,8 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
                     ListEmptyComponent={
                         <View style={styles.empty}>
                             <SafeIcon name="calendar" size={48} color="#D1D5DB" />
-                            <Text style={styles.emptyText}>Aucun créneau pour cette date</Text>
-                            <Text style={styles.emptySubtext}>Ajoutez des créneaux ou générez-les automatiquement</Text>
+                            <Text style={styles.emptyText}>{t('slotManagement.aucunCreneauPourCetteDate')}</Text>
+                            <Text style={styles.emptySubtext}>{t('slotManagement.ajoutezDesCreneauxOuGenerezles')}</Text>
                         </View>
                     }
                 />
@@ -306,19 +306,19 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Nouveau créneau</Text>
+                            <Text style={styles.modalTitle}>{t('slotManagement.nouveauCreneau')}</Text>
                             <TouchableOpacity onPress={() => setShowAddModal(false)}>
                                 <SafeIcon name="x" size={24} color="#6B7280" />
                             </TouchableOpacity>
                         </View>
                         <ScrollView style={styles.modalBody}>
-                            <Text style={styles.fieldLabel}>Heure de début *</Text>
+                            <Text style={styles.fieldLabel}>{t('slotManagement.heureDeDebut')}</Text>
                             <NativeInput
                                 value={newSlot.start_time}
                                 onChangeText={(v: string) => setNewSlot({ ...newSlot, start_time: v })}
                                 placeholder="08:00"
                             />
-                            <Text style={styles.fieldLabel}>Heure de fin *</Text>
+                            <Text style={styles.fieldLabel}>{t('slotManagement.heureDeFin')}</Text>
                             <NativeInput
                                 value={newSlot.end_time}
                                 onChangeText={(v: string) => setNewSlot({ ...newSlot, end_time: v })}
@@ -331,7 +331,7 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
                                 keyboardType="numeric"
                                 placeholder="1"
                             />
-                            <Text style={styles.fieldLabel}>Type de consultation</Text>
+                            <Text style={styles.fieldLabel}>{t('slotManagement.typeDeConsultation')}</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
                                 {consultationTypes.map((type) => (
                                     <TouchableOpacity
@@ -350,7 +350,7 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
                                 keyboardType="numeric"
                                 placeholder="Ex: 5000"
                             />
-                            <Text style={styles.fieldLabel}>Notes (optionnel)</Text>
+                            <Text style={styles.fieldLabel}>{t('slotManagement.notesOptionnel')}/Text>
                             <NativeInput
                                 value={newSlot.notes}
                                 onChangeText={(v: string) => setNewSlot({ ...newSlot, notes: v })}
@@ -360,7 +360,7 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
                         </ScrollView>
                         <View style={styles.modalFooter}>
                             <NativeButton
-                                title={saving ? 'Enregistrement...' : 'Ajouter le créneau'}
+                                title={saving ? 'Enregistrement...' : t('slotManagementScreen.ajouterLeCreneau')}
                                 onPress={handleAddSlot}
                                 disabled={saving}
                             />

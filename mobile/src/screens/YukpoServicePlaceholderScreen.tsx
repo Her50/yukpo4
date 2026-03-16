@@ -12,6 +12,7 @@ import {
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import SafeIcon from '../components/SafeIcon';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ServiceInfo {
     id: string;
@@ -24,22 +25,23 @@ interface ServiceInfo {
 
 const YukpoServicePlaceholderScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const serviceId = (route.params as any)?.serviceId || '';
 
     const serviceInfo: ServiceInfo[] = [
         {
             id: 'sante',
-            title: 'Yukpo Santé',
+            title: t('yukpoServicePlaceholder.yukpoSante'),
             icon: 'Activity',
             gradient: ['#EF4444', '#F87171'],
-            description: 'Plateforme complète de services médicaux et de santé au Cameroun',
+            description: t('yukpoServicePlaceholder.plateformeCompleteDeServicesMedicaux'),
             features: [
-                'Rendez-vous médicaux en ligne',
-                'Téléconsultation avec médecins',
+                t('yukpoServicePlaceholderScreen.rendezvousMedicauxEnLigne'),
+                t('yukpoServicePlaceholderScreen.teleconsultationAvecMedecins'),
                 'Pharmacie de garde',
                 'Ambulances d\'urgence',
-                'Suivi médical personnalisé',
+                t('yukpoServicePlaceholderScreen.suiviMedicalPersonnalise'),
                 'Assurance santé intégrée'
             ]
         },
@@ -48,13 +50,13 @@ const YukpoServicePlaceholderScreen: React.FC = () => {
             title: 'Yukpo Scolaire',
             icon: 'BookOpen',
             gradient: ['#3B82F6', '#60A5FA'],
-            description: 'Éducation et formation pour tous les niveaux',
+            description: t('yukpoServicePlaceholder.educationEtFormationPourTous'),
             features: [
                 'Cours particuliers',
                 'Préparation aux examens',
                 'Formation professionnelle',
                 'Soutien scolaire',
-                'Bibliothèque numérique',
+                t('yukpoServicePlaceholderScreen.bibliothequeNumerique'),
                 'Orientation académique'
             ]
         },
@@ -63,10 +65,10 @@ const YukpoServicePlaceholderScreen: React.FC = () => {
             title: 'Yukpo Bayamselam',
             icon: 'ShoppingBag',
             gradient: ['#10B981', '#34D399'],
-            description: 'Commerce et vente en ligne sécurisée',
+            description: t('yukpoServicePlaceholder.commerceEtVenteEnLigne'),
             features: [
                 'Boutique en ligne',
-                'Paiement sécurisé',
+                t('yukpoServicePlaceholderScreen.paiementSecurise'),
                 'Livraison express',
                 'Gestion des stocks',
                 'Analytics de vente',
@@ -93,13 +95,13 @@ const YukpoServicePlaceholderScreen: React.FC = () => {
             title: 'Yukpo Colis',
             icon: 'Package',
             gradient: ['#F59E0B', '#FBBF24'],
-            description: 'Livraison et transport de colis',
+            description: t('yukpoServicePlaceholder.livraisonEtTransportDeColis'),
             features: [
                 'Envoi de colis',
-                'Suivi en temps réel',
+                t('yukpoServicePlaceholderScreen.suiviEnTempsReel'),
                 'Livraison express',
                 'Assurance transport',
-                'Tarifs compétitifs',
+                t('yukpoServicePlaceholderScreen.tarifsCompetitifs'),
                 'Couverture nationale'
             ]
         },
@@ -108,10 +110,10 @@ const YukpoServicePlaceholderScreen: React.FC = () => {
             title: 'Yukpo Travel',
             icon: 'Car',
             gradient: ['#06B6D4', '#22D3EE'],
-            description: 'Voyage et transport au Cameroun',
+            description: t('yukpoServicePlaceholder.voyageEtTransportAuCameroun'),
             features: [
                 'Réservation de billets',
-                'Location de véhicules',
+                t('yukpoServicePlaceholderScreen.locationDeVehicules'),
                 'Guides touristiques',
                 'Hébergement',
                 'Assistance voyage',
@@ -148,7 +150,7 @@ const YukpoServicePlaceholderScreen: React.FC = () => {
                 <View style={styles.comingSoonContainer}>
                     <View style={styles.badgeContainer}>
                         <SafeIcon name="clock" size={20} color="#F59E0B" />
-                        <Text style={styles.badgeText}>Bientôt disponible</Text>
+                        <Text style={styles.badgeText}>{t('yukpoServicePlaceholder.bientotDisponible')}</Text>
                     </View>
 
                     <Text style={styles.comingSoonTitle}>
@@ -161,7 +163,7 @@ const YukpoServicePlaceholderScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.featuresContainer}>
-                    <Text style={styles.featuresTitle}>Fonctionnalités prévues</Text>
+                    <Text style={styles.featuresTitle}>{t('yukpoServicePlaceholder.fonctionnalitesPrevues')}</Text>
 
                     {currentService.features.map((feature, index) => (
                         <View key={index} style={styles.featureItem}>

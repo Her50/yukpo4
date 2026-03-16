@@ -24,6 +24,7 @@ import {
 import { apiGet, apiPost } from '../services/api';
 import { hapticPress } from '../utils/hapticFeedback';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface RecommendationResult {
     properties: Array<{
@@ -74,7 +75,8 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
     onClose,
     propertyId
 }) => {
-    const [activeTab, setActiveTab] = useState<'recommendations' | 'estimate' | 'compare' | 'alerts'>('recommendations');
+        const { t } = useLanguageSafe();
+const [activeTab, setActiveTab] = useState<'recommendations' | 'estimate' | 'compare' | 'alerts'>('recommendations');
     const [loading, setLoading] = useState(false);
 
     // État pour recommandations
@@ -247,7 +249,7 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
                             <View style={styles.headerIconContainer}>
                                 <SafeIcon name="home" size={24} color="#FFFFFF" type="lucide" />
                             </View>
-                            <Text style={styles.headerTitle}>Fonctionnalités IA Immobilier</Text>
+                            <Text style={styles.headerTitle}>{t('realEstateAIFeatures.fonctionnalitesIaImmobilier')}</Text>
                             <TouchableOpacity
                                 style={styles.closeButton}
                                 onPress={onClose}
@@ -319,14 +321,14 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
 
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Localisation recherchée *"
+                                    placeholder={t('realEstateAIFeatures.localisationRecherchee')}
                                     value={location}
                                     onChangeText={setLocation}
                                 />
 
                                 <TextInput
                                     style={styles.textArea}
-                                    placeholder="Préférences (ex: proche école, parking, jardin...)"
+                                    placeholder={t('realEstateAIFeatures.preferencesExProcheEcoleParking')}
                                     value={preferences}
                                     onChangeText={setPreferences}
                                     multiline
@@ -349,7 +351,7 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
                                     <View style={styles.resultCard}>
                                         <Text style={styles.resultTitle}>Raisonnement:</Text>
                                         <Text style={styles.resultText}>{recommendationResult.reasoning}</Text>
-                                        <Text style={styles.resultSubtitle}>Biens recommandés:</Text>
+                                        <Text style={styles.resultSubtitle}>{t('realEstateAIFeatures.biensRecommandes')}</Text>
                                         {recommendationResult.properties.map((property, index) => (
                                             <View key={index} style={styles.propertyCard}>
                                                 <Text style={styles.propertyName}>{property.property_name}</Text>
@@ -382,7 +384,7 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
 
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Type de bien (ex: Appartement, Maison, Studio...)"
+                                    placeholder={t('realEstateAIFeatures.typeDeBienExAppartement')}
                                     value={propertyType}
                                     onChangeText={setPropertyType}
                                 />
@@ -397,7 +399,7 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
                                     />
                                     <TextInput
                                         style={[styles.input, styles.inputHalf]}
-                                        placeholder="Nombre de pièces"
+                                        placeholder={t('realEstateAIFeatures.nombreDePieces')}
                                         value={rooms}
                                         onChangeText={setRooms}
                                         keyboardType="numeric"
@@ -406,7 +408,7 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
 
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Localisation *"
+                                    placeholder={t('realEstateAIFeatures.localisation')}
                                     value={locationEstimate}
                                     onChangeText={setLocationEstimate}
                                 />
@@ -459,7 +461,7 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
 
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="IDs des biens (séparés par des virgules, ex: 123, 456, 789)"
+                                    placeholder={t('realEstateAIFeatures.idsDesBiensSeparesPar')}
                                     value={propertyIds}
                                     onChangeText={setPropertyIds}
                                     keyboardType="numeric"
@@ -476,9 +478,9 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
 
                                 {comparisonResult && (
                                     <View style={styles.resultCard}>
-                                        <Text style={styles.resultTitle}>Résumé:</Text>
+                                        <Text style={styles.resultTitle}>{t('realEstateAIFeatures.resume')}</Text>
                                         <Text style={styles.resultText}>{comparisonResult.summary}</Text>
-                                        <Text style={styles.resultSubtitle}>Comparaison détaillée:</Text>
+                                        <Text style={styles.resultSubtitle}>{t('realEstateAIFeatures.comparaisonDetaillee')}</Text>
                                         {comparisonResult.properties.map((property, index) => (
                                             <View key={index} style={[
                                                 styles.propertyCard,
@@ -514,7 +516,7 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
 
                                 <TextInput
                                     style={styles.textArea}
-                                    placeholder="Critères de recherche (ex: Appartement 3 pièces, Yaoundé, proche école...)"
+                                    placeholder={t('realEstateAIFeatures.criteresDeRechercheExAppartement')}
                                     value={alertCriteria}
                                     onChangeText={setAlertCriteria}
                                     multiline
@@ -523,7 +525,7 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
 
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Prix maximum (FCFA)"
+                                    placeholder={t('realEstateAIFeatures.prixMaximumFcfa')}
                                     value={alertPriceMax}
                                     onChangeText={setAlertPriceMax}
                                     keyboardType="numeric"
@@ -538,12 +540,12 @@ const RealEstateAIFeatures: React.FC<RealEstateAIFeaturesProps> = ({
                                     ]}
                                     activeOpacity={0.8}
                                 >
-                                    <Text style={styles.actionButtonText}>Créer une alerte</Text>
+                                    <Text style={styles.actionButtonText}>{t('realEstateAIFeatures.creerUneAlerte')}</Text>
                                 </TouchableOpacity>
 
                                 {savedAlerts.length > 0 && (
                                     <View style={styles.resultCard}>
-                                        <Text style={styles.resultSubtitle}>Mes alertes actives:</Text>
+                                        <Text style={styles.resultSubtitle}>{t('realEstateAIFeatures.mesAlertesActives')}</Text>
                                         {savedAlerts.map((alert, index) => (
                                             <View key={index} style={styles.alertCard}>
                                                 <Text style={styles.alertCriteria}>{alert.criteria}</Text>

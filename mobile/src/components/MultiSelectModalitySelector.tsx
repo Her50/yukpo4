@@ -26,7 +26,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
     fieldName,
     onSelect,
     required = false,
-    placeholder = 'Sélectionner...',
+    placeholder={t('multiSelectModalitySelector.selectionner')},
     maxSelections = 10,
     customOptions: propsCustomOptions // ✅ NOUVEAU: Renommer pour éviter conflit
 }) => {
@@ -121,7 +121,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                 if (values.length >= maxSelections) {
                     Alert.alert(
                         '⚠️ Limite atteinte',
-                        `Vous ne pouvez sélectionner que ${maxSelections} ${label.toLowerCase()}s maximum.`,
+                        t('multiSelectModalitySelector.vousNePouvezSelectionnerQueS', { maxSelections: maxSelections, label_toLowerCase(): label.toLowerCase() }),
                         [{ text: 'OK' }]
                     );
                     return;
@@ -144,8 +144,8 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
 
     const clearAll = () => {
         Alert.alert(
-            'Effacer toutes les sélections',
-            `Voulez-vous effacer toutes les ${label.toLowerCase()}s sélectionnées ?`,
+            t('multiSelectModalitySelector.effacerToutesLesSelections'),
+            t('multiSelectModalitySelector.voulezvousEffacerToutesLesSSelectionnees', { label_toLowerCase(): label.toLowerCase() }),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -240,7 +240,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
             {/* Indicateur du nombre d'options disponibles */}
             {allOptions.length > 0 && !loading && (
                 <Text style={styles.optionsCount}>
-                    {allOptions.length} option{allOptions.length > 1 ? 's' : ''} disponible{allOptions.length > 1 ? 's' : ''}{allOptions.some(opt => !opt.includes('🆕')) ? ' (inclut les modalités partagées)' : ''}
+                    {allOptions.length} option{allOptions.length > 1 ? 's' : ''} disponible{allOptions.length > 1 ? 's' : ''}{allOptions.some(opt => !opt.includes('🆕')) ? t('multiSelectModalitySelector.inclutLesModalitesPartagees') : ''}
                 </Text>
             )}
             {loading && (
@@ -415,7 +415,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                                 style={[styles.addModalButton, { backgroundColor: '#F3F4F6' }]}
                                 onPress={() => { setShowAddModal(false); setNewModalityText(''); }}
                             >
-                                <Text style={[styles.addModalButtonText, { color: modernColors.textSecondary }]}>Annuler</Text>
+                                <Text style={[styles.addModalButtonText, { color: modernColors.textSecondary }]}>{t('multiSelectModalitySelector.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.addModalButton, { backgroundColor: modernColors.primary }]}
@@ -443,8 +443,8 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                                         setShowAddModal(false);
                                         setNewModalityText('');
                                         Alert.alert(
-                                            '✅ Modalité ajoutée',
-                                            `"${newModality}" a été ajouté et sélectionné !`,
+                                            t('multiSelectModalitySelector.modaliteAjoutee'),
+                                            t('multiSelectModalitySelector.aEteAjouteEtSelectionne', { newModality: newModality }),
                                             [{ text: 'OK' }]
                                         );
                                     } else {
@@ -452,7 +452,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                                     }
                                 }}
                             >
-                                <Text style={[styles.addModalButtonText, { color: '#FFFFFF' }]}>Ajouter</Text>
+                                <Text style={[styles.addModalButtonText, { color: '#FFFFFF' }]}>{t('multiSelectModalitySelector.ajouter')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

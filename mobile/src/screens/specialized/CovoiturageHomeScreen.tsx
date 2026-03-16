@@ -159,7 +159,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                     setCovoiturages(response.data.data);
                     setTotalResults(response.data.total || 0);
                 } else {
-                    setError('Aucun trajet trouvé à proximité');
+                    setError(t('covoiturageHome.aucunTrajetTrouveAProximite'));
                     setCovoiturages([]);
                 }
             } else {
@@ -239,13 +239,13 @@ const CovoiturageHomeScreen: React.FC = () => {
                 setHasSearched(true); // ✅ NOUVEAU: Marquer qu'une recherche a été effectuée
                 setError(null);
             } else {
-                setError('Aucun trajet trouvé pour ce trajet');
+                setError(t('covoiturageHome.aucunTrajetTrouvePourCe'));
                 setCovoiturages([]);
                 setHasSearched(true);
             }
         } catch (err: any) {
             console.error('[CovoiturageHomeScreen] Erreur recherche:', err);
-            setError(err.message || 'Erreur lors de la recherche');
+            setError(err.message || t('covoiturageHome.erreurLorsDeLaRecherche'));
             setCovoiturages([]);
             setHasSearched(true);
         } finally {
@@ -431,7 +431,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                             ]}>
                                 <View style={styles.labelRow}>
                                     <SafeIcon name="map-pin" size={14} color="#3B82F6" type="lucide" />
-                                    <Text style={styles.routeLabel}>Départ *</Text>
+                                    <Text style={styles.routeLabel}>{t('covoiturageHome.depart')}</Text>
                                 </View>
                                 <LocationSelector
                                     label=""
@@ -450,7 +450,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                                             }, 150);
                                         }
                                     }}
-                                    placeholder="Lieu de départ (ville, quartier, adresse...)"
+                                    placeholder={t('covoiturageHome.lieuDeDepartVilleQuartier')}
                                     scope="all"
                                     enrichWithBackend={true}
                                 />
@@ -483,7 +483,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                                             }, 150);
                                         }
                                     }}
-                                    placeholder="Lieu de destination (ville, quartier, adresse...)"
+                                    placeholder={t('covoiturageHome.lieuDeDestinationVilleQuartier')}
                                     scope="all"
                                     enrichWithBackend={true}
                                 />
@@ -539,7 +539,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                     !hasSearched && !loading ? (
                         <View style={styles.centerContainer}>
                             <SafeIcon name="map-pin" size={64} color="#9CA3AF" />
-                            <Text style={styles.emptyText}>Sélectionnez votre trajet</Text>
+                            <Text style={styles.emptyText}>{t('covoiturageHome.selectionnezVotreTrajet')}</Text>
                             <Text style={styles.emptySubtext} numberOfLines={3}>
                                 Choisissez une ville de départ et une ville de destination, puis cliquez sur "Rechercher"
                             </Text>
@@ -547,7 +547,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                     ) : loading && covoiturages.length === 0 ? (
                         <View style={styles.centerContainer}>
                             <ActivityIndicator size="large" color={modernColors.primary} />
-                            <Text style={styles.loadingText}>Recherche de trajets...</Text>
+                            <Text style={styles.loadingText}>{t('covoiturageHome.rechercheDeTrajets')}/Text>
                         </View>
                     ) : error && covoiturages.length === 0 ? (
                         <View style={styles.centerContainer}>
@@ -557,7 +557,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                                 style={styles.retryButton}
                                 onPress={loadNearbyTrips}
                             >
-                                <Text style={styles.retryButtonText}>Réessayer</Text>
+                                <Text style={styles.retryButtonText}>{t('covoiturageHome.reessayer')}</Text>
                             </TouchableOpacity>
                         </View>
                     ) : (
@@ -590,7 +590,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                             ListEmptyComponent={
                                 <View style={styles.emptyContainer}>
                                     <SafeIcon name="car" size={64} color="#9CA3AF" />
-                                    <Text style={styles.emptyText}>Aucun trajet trouvé</Text>
+                                    <Text style={styles.emptyText}>{t('covoiturageHome.aucunTrajetTrouve')}</Text>
                                     <Text style={styles.emptySubtext} numberOfLines={2}>
                                         Essayez de modifier vos critères de recherche
                                     </Text>
@@ -659,11 +659,11 @@ const TrajetCard: React.FC<TrajetCardProps> = ({ trajet, onPress, onReserve, onC
                     </View>
                     <View style={styles.routeInfo}>
                         <Text style={styles.routeDepart} numberOfLines={1}>
-                            {trajet.depart || 'Départ non spécifié'}
+                            {trajet.depart || t('covoiturageHome.departNonSpecifie')}
                         </Text>
                         <View style={styles.routeLineHorizontal} />
                         <Text style={styles.routeDestination} numberOfLines={1}>
-                            {trajet.destination || 'Destination non spécifiée'}
+                            {trajet.destination || t('covoiturageHome.destinationNonSpecifiee')}
                         </Text>
                     </View>
                 </View>
@@ -748,7 +748,7 @@ const TrajetCard: React.FC<TrajetCardProps> = ({ trajet, onPress, onReserve, onC
                             onReserve();
                         }}
                     >
-                        <Text style={styles.reserveButtonText}>Réserver</Text>
+                        <Text style={styles.reserveButtonText}>{t('covoiturageHome.reserver')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -795,19 +795,19 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                             Alert.alert(t('covoiturage.createService'), t('covoiturage.redirectToCreateService'));
                         }}
                     >
-                        <Text style={styles.serviceWarningButtonText}>Créer un service</Text>
+                        <Text style={styles.serviceWarningButtonText}>{t('covoiturageHome.creerUnService')}</Text>
                     </TouchableOpacity>
                 </View>
             )}
             <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Itinéraire *</Text>
+                <Text style={styles.formSectionTitle}>{t('covoiturageHome.itineraire')}</Text>
                 <View style={styles.locationInputs}>
                     <View style={styles.locationInput}>
                         <View style={styles.locationIcon}>
                             <SafeIcon name="map-pin" size={16} color="#3B82F6" type="lucide" />
                         </View>
                         <LocationSelector
-                            label="Lieu de départ"
+                            label={t('covoiturageHome.lieuDeDepart')}
                             value={trajetForm.depart as LocationObject | string || ''}
                             onSelect={(location: any) => {
                                 const departStr = location?.place_name || '';
@@ -816,7 +816,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                                     : undefined;
                                 onFormChange({ ...trajetForm, depart: departStr, gps_depart: gps });
                             }}
-                            placeholder="Lieu de départ *"
+                            placeholder={t('covoiturageHome.lieuDeDepart')}
                             scope="all"
                         />
                     </View>
@@ -853,7 +853,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                     </Text>
                 </TouchableOpacity>
                 <NativeInput
-                    placeholder="Heure de départ (HH:MM) *"
+                    placeholder={t('covoiturageHome.heureDeDepartHhmm')}
                     value={trajetForm.heure_depart || ''}
                     onChangeText={(text) => onFormChange({ ...trajetForm, heure_depart: text })}
                     style={styles.formInput}
@@ -861,15 +861,15 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
             </View>
 
             <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Véhicule</Text>
+                <Text style={styles.formSectionTitle}>{t('covoiturageHome.vehicule')}</Text>
                 <NativeInput
-                    placeholder="Type de véhicule (ex: Berline, SUV)"
+                    placeholder={t('covoiturageHome.typeDeVehiculeExBerline')}
                     value={trajetForm.type_vehicule || ''}
                     onChangeText={(text) => onFormChange({ ...trajetForm, type_vehicule: text })}
                     style={styles.formInput}
                 />
                 <NativeInput
-                    placeholder="Marque et modèle (ex: Toyota Corolla)"
+                    placeholder={t('covoiturageHome.marqueEtModeleExToyota')}
                     value={trajetForm.marque_modele || ''}
                     onChangeText={(text) => onFormChange({ ...trajetForm, marque_modele: text })}
                     style={styles.formInput}
@@ -900,7 +900,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                 </View>
                 <View style={styles.priceRow}>
                     <NativeInput
-                        placeholder="Prix par place (FCFA) *"
+                        placeholder={t('covoiturageHome.prixParPlaceFcfa')}
                         value={trajetForm.prix_par_place?.toString() || ''}
                         onChangeText={(text) => onFormChange({ ...trajetForm, prix_par_place: parseInt(text) || 0 })}
                         keyboardType="numeric"
@@ -918,7 +918,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                     >
                         {trajetForm.bagages_autorises && <SafeIcon name="check" size={16} color="#3B82F6" type="lucide" />}
                     </TouchableOpacity>
-                    <Text style={styles.checkboxLabel}>Bagages autorisés</Text>
+                    <Text style={styles.checkboxLabel}>{t('covoiturageHome.bagagesAutorises')}</Text>
                 </View>
                 <View style={styles.checkboxRow}>
                     <TouchableOpacity
@@ -927,7 +927,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                     >
                         {trajetForm.animaux_autorises && <SafeIcon name="check" size={16} color="#3B82F6" type="lucide" />}
                     </TouchableOpacity>
-                    <Text style={styles.checkboxLabel}>Animaux autorisés</Text>
+                    <Text style={styles.checkboxLabel}>{t('covoiturageHome.animauxAutorises')}</Text>
                 </View>
                 <View style={styles.checkboxRow}>
                     <TouchableOpacity

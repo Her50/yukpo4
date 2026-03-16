@@ -15,6 +15,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface BloodDonationRequest {
     id: string;
@@ -39,6 +40,7 @@ interface UserBloodGroup {
 
 const MyBloodDonationsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
 
     const [loading, setLoading] = useState(true);
@@ -130,11 +132,11 @@ const MyBloodDonationsScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Mes dons de sang</Text>
+                    <Text style={styles.title}>{t('myBloodDonations.mesDonsDeSang')}</Text>
                 </View>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('myBloodDonations.chargement')}</Text>
                 </View>
             </View>
         );
@@ -149,7 +151,7 @@ const MyBloodDonationsScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mes dons de sang</Text>
+                <Text style={styles.title}>{t('myBloodDonations.mesDonsDeSang')}</Text>
             </View>
 
             <ScrollView
@@ -167,7 +169,7 @@ const MyBloodDonationsScreen: React.FC = () => {
                                 <Text style={styles.bloodGroupText}>{bloodGroup.groupe_sanguin}</Text>
                             </View>
                             <View style={styles.bloodGroupInfo}>
-                                <Text style={styles.bloodGroupLabel}>Mon groupe sanguin</Text>
+                                <Text style={styles.bloodGroupLabel}>{t('myBloodDonations.monGroupeSanguin')}</Text>
                                 <Text style={styles.availabilityStatus}>
                                     {canDonateAgain()
                                         ? '✅ Disponible pour donner'
@@ -195,7 +197,7 @@ const MyBloodDonationsScreen: React.FC = () => {
                         )}
 
                         <NativeButton
-                            title="Gérer mon groupe sanguin"
+                            title={t('myBloodDonations.gererMonGroupeSanguin')}
                             onPress={() => {
                                 navigation.navigate('BloodGroupManagement' as never);
                             }}
@@ -210,14 +212,14 @@ const MyBloodDonationsScreen: React.FC = () => {
                 <View style={styles.statsCard}>
                     <View style={styles.statItem}>
                         <Text style={styles.statValue}>{requests.length}</Text>
-                        <Text style={styles.statLabel}>Demandes créées</Text>
+                        <Text style={styles.statLabel}>{t('myBloodDonations.demandesCreees')}</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
                         <Text style={[styles.statValue, { color: '#10B981' }]}>
                             {requests.reduce((sum, r) => sum + r.accepted_matches_count, 0)}
                         </Text>
-                        <Text style={styles.statLabel}>Matches acceptés</Text>
+                        <Text style={styles.statLabel}>{t('myBloodDonations.matchesAcceptes')}</Text>
                     </View>
                 </View>
 
@@ -268,12 +270,12 @@ const MyBloodDonationsScreen: React.FC = () => {
                 {requests.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <SafeIcon name="droplet" size={48} color="#9CA3AF" />
-                        <Text style={styles.emptyText}>Aucune demande de don</Text>
+                        <Text style={styles.emptyText}>{t('myBloodDonations.aucuneDemandeDeDon')}</Text>
                         <Text style={styles.emptySubtext}>
                             Créez votre première demande de don de sang
                         </Text>
                         <NativeButton
-                            title="Créer une demande"
+                            title={t('myBloodDonations.creerUneDemande')}
                             onPress={() => {
                                 navigation.navigate('BloodDonationRequest' as never);
                             }}
@@ -356,7 +358,7 @@ const MyBloodDonationsScreen: React.FC = () => {
                                             },
                                         ]}
                                     >
-                                        {request.status === 'active' ? 'Active' : 'Complétée'}
+                                        {request.status === 'active' ? 'Active' : t('myBloodDonationsScreen.completee')}
                                     </Text>
                                 </View>
                                 <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />

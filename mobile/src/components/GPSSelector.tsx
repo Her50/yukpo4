@@ -6,6 +6,7 @@ import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-na
 import { Button, Card, Paragraph, Title } from 'react-native-paper';
 import { theme } from '../theme/theme';
 import InteractiveMap from './InteractiveMap';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface GPSSelectorProps {
     visible: boolean;
@@ -20,7 +21,8 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
     onSelect,
     currentLocation
 }) => {
-    const [location, setLocation] = useState<Location.LocationObject | null>(null);
+        const { t } = useLanguageSafe();
+const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [loading, setLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
     const [showMap, setShowMap] = useState(false);
@@ -44,7 +46,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
-                    'L\'accès à la localisation est nécessaire pour utiliser cette fonctionnalité.',
+                    'L\t('gPSSelector.accesALaLocalisationEstNecessaire'),
                     [{ text: 'OK' }]
                 );
                 return;
@@ -130,7 +132,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                         <Text style={styles.closeIcon}>❌</Text>
                     </TouchableOpacity>
-                    <Title style={styles.title}>Sélectionner une position</Title>
+                    <Title style={styles.title}>{t('gPSSelector.selectionnerUnePosition')}</Title>
                 </View>
 
                 <View style={styles.content}>
@@ -140,14 +142,14 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                                 <Text style={styles.locationIcon}>🗺️</Text>
                             </View>
 
-                            <Title style={styles.cardTitle}>Position GPS</Title>
+                            <Title style={styles.cardTitle}>{t('gPSSelector.positionGps')}/Title>
                             <Paragraph style={styles.cardDescription}>
                                 Choisissez votre position pour une recherche plus précise
                             </Paragraph>
 
                             {loading ? (
                                 <View style={styles.loadingContainer}>
-                                    <Text style={styles.loadingText}>Récupération de votre position...</Text>
+                                    <Text style={styles.loadingText}>{t('gPSSelector.recuperationDeVotrePosition')}</Text>
                                 </View>
                             ) : location ? (
                                 <View style={styles.locationInfo}>
@@ -217,7 +219,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                     {currentLocation && (
                         <Card style={styles.currentCard}>
                             <View style={styles.cardContent}>
-                                <Title style={styles.currentTitle}>Position actuelle</Title>
+                                <Title style={styles.currentTitle}>{t('gPSSelector.positionActuelle')}/Title>
                                 <View style={styles.coordinatesContainer}>
                                     <Text style={styles.pinIcon}>📌</Text>
                                     <Text style={styles.coordinatesText}>

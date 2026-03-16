@@ -17,9 +17,11 @@ import { SkeletonList } from '../../components/SkeletonLoader';
 import { useAuth } from '../../contexts/AuthContext';
 import { PharmacyOrder, pharmacyService } from '../../services/pharmacyService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const MyPharmacyOrdersScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
 
     const [orders, setOrders] = useState<PharmacyOrder[]>([]);
@@ -102,7 +104,7 @@ const MyPharmacyOrdersScreen: React.FC = () => {
             case 'en_attente':
                 return modernColors.warning;
             case 'confirmed':
-            case 'confirmée':
+            case t('myPharmacyOrdersScreen.confirmee'):
                 return modernColors.info;
             case 'processing':
             case 'en_traitement':
@@ -111,10 +113,10 @@ const MyPharmacyOrdersScreen: React.FC = () => {
             case 'prête':
                 return '#059669';
             case 'delivered':
-            case 'livrée':
+            case t('myPharmacyOrdersScreen.livree'):
                 return modernColors.success;
             case 'cancelled':
-            case 'annulée':
+            case t('myPharmacyOrdersScreen.annulee'):
                 return modernColors.error;
             default:
                 return modernColors.textSecondary;
@@ -128,27 +130,27 @@ const MyPharmacyOrdersScreen: React.FC = () => {
             case 'en_attente':
                 return 'En attente';
             case 'confirmed':
-            case 'confirmée':
-                return 'Confirmée';
+            case t('myPharmacyOrdersScreen.confirmee'):
+                return t('myPharmacyOrdersScreen.confirmee');
             case 'processing':
             case 'en_traitement':
                 return 'En traitement';
             case 'ready':
             case 'prête':
-                return 'Prête à récupérer';
+                return t('myPharmacyOrdersScreen.preteARecuperer');
             case 'delivered':
-            case 'livrée':
-                return 'Livrée';
+            case t('myPharmacyOrdersScreen.livree'):
+                return t('myPharmacyOrdersScreen.livree');
             case 'cancelled':
-            case 'annulée':
-                return 'Annulée';
+            case t('myPharmacyOrdersScreen.annulee'):
+                return t('myPharmacyOrdersScreen.annulee');
             default:
                 return status;
         }
     };
 
     const formatDate = (dateString: string | null) => {
-        if (!dateString) return 'Non spécifié';
+        if (!dateString) return t('myPharmacyOrdersScreen.nonSpecifie');
         try {
             const date = new Date(dateString);
             return date.toLocaleString('fr-FR', {
@@ -164,7 +166,7 @@ const MyPharmacyOrdersScreen: React.FC = () => {
     };
 
     const formatAmount = (amount: string | null) => {
-        if (!amount) return 'Non spécifié';
+        if (!amount) return t('myPharmacyOrdersScreen.nonSpecifie');
         try {
             const num = parseFloat(amount);
             return `${num.toLocaleString('fr-FR')} XAF`;
@@ -195,7 +197,7 @@ const MyPharmacyOrdersScreen: React.FC = () => {
                             <SafeIcon name="pill" size={24} color={modernColors.primary} />
                             <View style={styles.pharmacyDetails}>
                                 <Text style={styles.pharmacyName}>
-                                    {item.pharmacy_name || 'Pharmacie non spécifiée'}
+                                    {item.pharmacy_name || t('myPharmacyOrders.pharmacieNonSpecifiee')}
                                 </Text>
                                 <Text style={styles.deliveryMethod}>
                                     {deliveryMethod}
@@ -232,7 +234,7 @@ const MyPharmacyOrdersScreen: React.FC = () => {
                             Commande du {formatDate(item.created_at)}
                         </Text>
                         <NativeButton
-                            title="Voir détails"
+                            title={t('myPharmacyOrders.voirDetails')}
                             onPress={() => handleViewDetails(item)}
                             variant="outline"
                             size="small"
@@ -337,7 +339,7 @@ const MyPharmacyOrdersScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mes commandes</Text>
+                <Text style={styles.title}>{t('myPharmacyOrders.mesCommandes')}</Text>
             </View>
 
             {renderFilters()}
@@ -349,12 +351,12 @@ const MyPharmacyOrdersScreen: React.FC = () => {
             ) : orders.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="shopping-cart" size={64} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyTitle}>Aucune commande</Text>
+                    <Text style={styles.emptyTitle}>{t('myPharmacyOrders.aucuneCommande')}</Text>
                     <Text style={styles.emptyText}>
                         Vous n'avez pas encore passé de commande dans une pharmacie.
                     </Text>
                     <NativeButton
-                        title="Rechercher une pharmacie"
+                        title={t('myPharmacyOrders.rechercherUnePharmacie')}
                         onPress={() => navigation.navigate('PharmacieSearch' as never)}
                         variant="primary"
                         style={styles.emptyButton}

@@ -6,6 +6,7 @@ import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } fr
 import { apiGet } from '../../services/api';
 import { SafeIcon } from '../SafeIcon';
 import { NativeButton, NativeCard } from '../SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface QRCodeDisplayProps {
     reservationId: number;
@@ -16,7 +17,8 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
     reservationId,
     onRefresh,
 }) => {
-    const [qrCode, setQrCode] = useState<{
+        const { t } = useLanguageSafe();
+const [qrCode, setQrCode] = useState<{
         qr_code: string;
         qr_code_url: string;
         status: string;
@@ -44,7 +46,7 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
                 if (response && response.qr_code) {
                     setQrCode(response as any);
                 } else {
-                    setError('Impossible de générer le QR code');
+                    setError(t('qRCodeDisplay.impossibleDeGenererLeQr'));
                 }
             }
         } catch (err: any) {
@@ -58,7 +60,7 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color="#6366F1" />
-                <Text style={styles.loadingText}>Chargement du QR code...</Text>
+                <Text style={styles.loadingText}>{t('qRCodeDisplay.chargementDuQrCode')}</Text>
             </View>
         );
     }
@@ -81,8 +83,8 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
 
     return (
         <NativeCard style={styles.card}>
-            <Text style={styles.title}>QR Code de réservation</Text>
-            <Text style={styles.subtitle}>Présentez ce code au conducteur</Text>
+            <Text style={styles.title}>{t('qRCodeDisplay.qrCodeDeReservation')}</Text>
+            <Text style={styles.subtitle}>{t('qRCodeDisplay.presentezCeCodeAuConducteur')}</Text>
 
             <View style={styles.qrContainer}>
                 {qrCode.qr_code_url ? (
@@ -114,14 +116,14 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
                     color={qrCode.status === 'validated' ? '#10B981' : '#6B7280'}
                 />
                 <Text style={styles.statusText}>
-                    {qrCode.status === 'validated' ? 'Validé' : 'En attente de validation'}
+                    {qrCode.status === 'validated' ? t('qRCodeDisplay.valide') : 'En attente de validation'}
                 </Text>
             </View>
 
             {onRefresh && (
                 <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
                     <SafeIcon name="refresh-cw" size={16} color="#6366F1" />
-                    <Text style={styles.refreshText}>Actualiser</Text>
+                    <Text style={styles.refreshText}>{t('qRCodeDisplay.actualiser')}</Text>
                 </TouchableOpacity>
             )}
         </NativeCard>

@@ -110,7 +110,7 @@ const LaboratoireDetailsScreen: React.FC = () => {
         if (!laboratoire) return;
         try {
             await Share.share({
-                message: `${laboratoire.nom} (${laboratoire.type_laboratoire})${laboratoire.adresse ? ' - ' + laboratoire.adresse : ''}${laboratoire.ville ? ', ' + laboratoire.ville : ''}${laboratoire.telephone ? '\nTel: ' + laboratoire.telephone : ''}${laboratoire.resultats_en_ligne ? '\nRésultats en ligne' : ''}\nVia Yukpo`,
+                message: `${laboratoire.nom} (${laboratoire.type_laboratoire})${laboratoire.adresse ? ' - ' + laboratoire.adresse : ''}${laboratoire.ville ? ', ' + laboratoire.ville : ''}${laboratoire.telephone ? '\nTel: ' + laboratoire.telephone : ''}${laboratoire.resultats_en_ligne ? t('laboratoireDetailsScreen.nresultatsEnLigne') : ''}\nVia Yukpo`,
                 title: laboratoire.nom,
             });
         } catch { }
@@ -184,8 +184,8 @@ const LaboratoireDetailsScreen: React.FC = () => {
     const rating = laboratoire?.note_moyenne || (ratingStats?.average_rating as number) || 0;
     const reviewCount = laboratoire?.nombre_avis || (ratingStats?.total_ratings as number) || 0;
 
-    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#0D9488" /><Text style={st.centerText}>Chargement...</Text></View>);
-    if (!laboratoire) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#EF4444" /><Text style={st.centerText}>Laboratoire non trouvé</Text></View>);
+    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#0D9488" /><Text style={st.centerText}>{t('laboratoireDetails.chargement')}</Text></View>);
+    if (!laboratoire) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#EF4444" /><Text style={st.centerText}>{t('laboratoireDetails.laboratoireNonTrouve')}</Text></View>);
 
     const isOpen = laboratoire.is_available_now;
     const starsFull = Math.floor(rating);
@@ -209,7 +209,7 @@ const LaboratoireDetailsScreen: React.FC = () => {
                     <View style={st.heroBadges}>
                         <View style={[st.badge, { backgroundColor: isOpen ? 'rgba(255,255,255,0.25)' : 'rgba(239,68,68,0.3)' }]}>
                             <View style={[st.badgeDot, { backgroundColor: isOpen ? '#fff' : '#FCA5A5' }]} />
-                            <Text style={st.badgeText}>{isOpen ? 'Ouvert' : 'Fermé'}</Text>
+                            <Text style={st.badgeText}>{isOpen ? 'Ouvert' : t('laboratoireDetailsScreen.ferme')}</Text>
                         </View>
                         {laboratoire.rdv_requis && (
                             <View style={[st.badge, { backgroundColor: 'rgba(245,158,11,0.3)' }]}>
@@ -220,13 +220,13 @@ const LaboratoireDetailsScreen: React.FC = () => {
                         {laboratoire.resultats_en_ligne && (
                             <View style={[st.badge, { backgroundColor: 'rgba(16,185,129,0.3)' }]}>
                                 <SafeIcon name="wifi" size={12} color="#fff" />
-                                <Text style={st.badgeText}>Résultats en ligne</Text>
+                                <Text style={st.badgeText}>{t('laboratoireDetails.resultatsEnLigne')}</Text>
                             </View>
                         )}
                         {laboratoire.is_verified && (
                             <View style={[st.badge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
                                 <SafeIcon name="check-circle" size={12} color="#fff" />
-                                <Text style={st.badgeText}>Vérifié</Text>
+                                <Text style={st.badgeText}>{t('laboratoireDetails.verifie')}</Text>
                             </View>
                         )}
                     </View>
@@ -302,7 +302,7 @@ const LaboratoireDetailsScreen: React.FC = () => {
                                         {type.price && <Text style={st.examPrice}>{type.price} XAF</Text>}
                                         {type.duration_minutes && <Text style={st.examDur}>{type.duration_minutes} min</Text>}
                                     </View>
-                                    {type.requires_fasting && <Text style={st.examFasting}>Jeûne requis</Text>}
+                                    {type.requires_fasting && <Text style={st.examFasting}>{t('laboratoireDetails.jeuneRequis')}</Text>}
                                 </View>
                                 <View style={st.examBookBtn}><SafeIcon name="calendar-plus" size={18} color="#0D9488" /></View>
                             </TouchableOpacity>
@@ -312,8 +312,8 @@ const LaboratoireDetailsScreen: React.FC = () => {
 
                 {/* IA Symptômes */}
                 <View style={st.section}>
-                    <View style={st.sectionHeader}><SafeIcon name="brain" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>IA - Examens par symptômes</Text></View>
-                    <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 10 }}>Décrivez vos symptômes et l'IA suggérera les examens pertinents</Text>
+                    <View style={st.sectionHeader}><SafeIcon name="brain" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>{t('laboratoireDetails.iaExamensParSymptomes')}</Text></View>
+                    <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 10 }}>{t('laboratoireDetails.decrivezVosSymptomesEtLia')}</Text>
                     <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
                         <TextInput style={[st.searchInput, { flex: 1 }]} placeholder="Ex: fatigue, douleur..." placeholderTextColor="#9CA3AF" value={symptomInput} onChangeText={setSymptomInput} onSubmitEditing={addSymptom} />
                         <TouchableOpacity style={[st.addBtn, !symptomInput.trim() && { opacity: 0.4 }]} disabled={!symptomInput.trim()} onPress={addSymptom}>
@@ -344,7 +344,7 @@ const LaboratoireDetailsScreen: React.FC = () => {
                             )}
                             {pathologyResult.suggested_examinations?.length > 0 && (
                                 <View style={{ marginBottom: 8 }}>
-                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4, fontSize: 13 }}>Examens suggérés:</Text>
+                                    <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 4, fontSize: 13 }}>{t('laboratoireDetails.examensSuggeres')}</Text>
                                     {pathologyResult.suggested_examinations.map((exam: string, idx: number) => (
                                         <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 8, marginBottom: 2 }}>
                                             <SafeIcon name="check" size={12} color="#059669" /><Text style={{ fontSize: 13, color: '#374151' }}>{exam}</Text>
@@ -379,7 +379,7 @@ const LaboratoireDetailsScreen: React.FC = () => {
                         navigation.navigate('MyLabExaminations' as never);
                     }}>
                         <SafeIcon name="clipboard-list" size={18} color="#0D9488" />
-                        <Text style={st.fullBtnText}>Mes examens</Text>
+                        <Text style={st.fullBtnText}>{t('laboratoireDetails.mesExamens')}</Text>
                         <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                     </TouchableOpacity>
                     {isOwner && (
@@ -412,7 +412,7 @@ const LaboratoireDetailsScreen: React.FC = () => {
                 <View style={st.modalBg}>
                     <View style={st.modalCard}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>Réserver un examen</Text>
+                            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>{t('laboratoireDetails.reserverUnExamen')}</Text>
                             <TouchableOpacity onPress={() => { setShowBookingModal(false); setSelectedExamination(null); setBookingNotes(''); }}>
                                 <SafeIcon name="x" size={22} color="#6B7280" />
                             </TouchableOpacity>
@@ -420,9 +420,9 @@ const LaboratoireDetailsScreen: React.FC = () => {
                         {selectedExamination && (
                             <View style={{ backgroundColor: '#F0FDFA', borderRadius: 12, padding: 14, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: '#0D9488' }}>
                                 <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 4 }}>{selectedExamination.name}</Text>
-                                {selectedExamination.category && <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 4 }}>Catégorie: {selectedExamination.category}</Text>}
+                                {selectedExamination.category && <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 4 }}>{t('laboratoireDetailsScreen.category')}: {selectedExamination.category}</Text>}
                                 {selectedExamination.price && <Text style={{ fontSize: 15, fontWeight: '600', color: '#059669', marginBottom: 4 }}>{selectedExamination.price} XAF</Text>}
-                                {selectedExamination.requires_fasting && <Text style={{ fontSize: 13, color: '#F59E0B', fontStyle: 'italic', marginTop: 4 }}>Jeûne requis avant l'examen</Text>}
+                                {selectedExamination.requires_fasting && <Text style={{ fontSize: 13, color: '#F59E0B', fontStyle: 'italic', marginTop: 4 }}>{t('laboratoireDetails.jeuneRequisAvantLexamen')}</Text>}
                                 {selectedExamination.preparation_instructions && (
                                     <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#D1FAE5' }}>
                                         <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827', marginBottom: 4 }}>Instructions:</Text>
@@ -431,10 +431,10 @@ const LaboratoireDetailsScreen: React.FC = () => {
                                 )}
                             </View>
                         )}
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 6 }}>Notes (optionnel)</Text>
-                        <TextInput style={[st.searchInput, { minHeight: 80, marginBottom: 16 }]} placeholder="Ajoutez des notes..." placeholderTextColor="#9CA3AF" value={bookingNotes} onChangeText={setBookingNotes} multiline />
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 6 }}>{t('laboratoireDetails.notesOptionnel')}/Text>
+                        <TextInput style={[st.searchInput, { minHeight: 80, marginBottom: 16 }]} placeholder={t('laboratoireDetails.ajoutezDesNotes')} placeholderTextColor="#9CA3AF" value={bookingNotes} onChangeText={setBookingNotes} multiline />
                         <TouchableOpacity style={[st.analyzeBtn, { backgroundColor: '#0D9488' }, (bookingExamination || !selectedExamination) && { opacity: 0.5 }]} disabled={bookingExamination || !selectedExamination} onPress={handleConfirmBooking}>
-                            {bookingExamination ? <ActivityIndicator size="small" color="#fff" /> : <Text style={st.analyzeBtnText}>Confirmer la réservation</Text>}
+                            {bookingExamination ? <ActivityIndicator size="small" color="#fff" /> : <Text style={st.analyzeBtnText}>{t('laboratoireDetails.confirmerLaReservation')}</Text>}
                         </TouchableOpacity>
                     </View>
                 </View>

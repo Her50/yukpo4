@@ -17,6 +17,7 @@ import { modernColors } from '../theme/modernTheme';
 import { useDebugLogger } from '../utils/DebugLogger';
 import CrashRecoveryScreen from './CrashRecoveryScreen';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -29,7 +30,8 @@ const DebugOverlay: React.FC<DebugOverlayProps> = ({
     isVisible = false,
     onToggle
 }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
+        const { t } = useLanguageSafe();
+const [isExpanded, setIsExpanded] = useState(false);
     const [showCrashScreen, setShowCrashScreen] = useState(false);
     const [logs, setLogs] = useState<any[]>([]);
     const [summary, setSummary] = useState<any>(null);
@@ -164,7 +166,7 @@ const DebugOverlay: React.FC<DebugOverlayProps> = ({
                                     </Text>
                                 </View>
                                 <View style={styles.summaryItem}>
-                                    <Text style={styles.summaryLabel}>Total logs:</Text>
+                                    <Text style={styles.summaryLabel}>{t('debugOverlay.totalLogs')}/Text>
                                     <Text style={styles.summaryValue}>{summary.total}</Text>
                                 </View>
                                 <View style={styles.summaryItem}>
@@ -205,7 +207,7 @@ const DebugOverlay: React.FC<DebugOverlayProps> = ({
 
                         {/* Logs récents */}
                         <ScrollView style={styles.logsContainer}>
-                            <Text style={styles.logsTitle}>Logs récents:</Text>
+                            <Text style={styles.logsTitle}>{t('debugOverlay.logsRecents')}</Text>
                             {logs.map((log, index) => (
                                 <View key={index} style={styles.logEntry}>
                                     <View style={styles.logHeader}>

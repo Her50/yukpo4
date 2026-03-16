@@ -28,7 +28,8 @@ const CrashRecoveryScreen: React.FC<CrashRecoveryScreenProps> = ({
     onRetry,
     onContinue
 }) => {
-    const [logs, setLogs] = useState<any[]>([]);
+        const { t } = useLanguageSafe();
+const [logs, setLogs] = useState<any[]>([]);
     const [isExporting, setIsExporting] = useState(false);
     const [logsSummary, setLogsSummary] = useState<any>(null);
     const logger = useDebugLogger();
@@ -124,7 +125,7 @@ const CrashRecoveryScreen: React.FC<CrashRecoveryScreenProps> = ({
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <SafeIcon name="bug" size={48} color={modernColors.error} />
-                <Text style={styles.title}>Récupération après Crash</Text>
+                <Text style={styles.title}>{t('crashRecovery.recuperationApresCrash')}</Text>
                 <Text style={styles.subtitle}>
                     L'application a rencontré une erreur. Voici les informations de debug.
                 </Text>
@@ -132,7 +133,7 @@ const CrashRecoveryScreen: React.FC<CrashRecoveryScreenProps> = ({
 
             {error && (
                 <View style={styles.errorSection}>
-                    <Text style={styles.sectionTitle}>Erreur détectée:</Text>
+                    <Text style={styles.sectionTitle}>{t('crashRecovery.erreurDetectee')}</Text>
                     <Text style={styles.errorText}>{error.message}</Text>
                     {error.stack && (
                         <ScrollView style={styles.stackTrace}>
@@ -144,7 +145,7 @@ const CrashRecoveryScreen: React.FC<CrashRecoveryScreenProps> = ({
 
             {logsSummary && (
                 <View style={styles.summarySection}>
-                    <Text style={styles.sectionTitle}>Résumé des logs:</Text>
+                    <Text style={styles.sectionTitle}>{t('crashRecovery.resumeDesLogs')}</Text>
                     <View style={styles.summaryGrid}>
                         <View style={styles.summaryItem}>
                             <Text style={styles.summaryLabel}>Total:</Text>
@@ -208,7 +209,7 @@ const CrashRecoveryScreen: React.FC<CrashRecoveryScreenProps> = ({
             </View>
 
             <ScrollView style={styles.logsContainer}>
-                <Text style={styles.sectionTitle}>Logs récents ({logs.length}):</Text>
+                <Text style={styles.sectionTitle}>{t('crashRecoveryScreen.recentLogs')} ({logs.length}):</Text>
                 {logs.slice(-50).map((log, index) => (
                     <View key={index} style={styles.logEntry}>
                         <View style={styles.logHeader}>
@@ -242,7 +243,7 @@ const CrashRecoveryScreen: React.FC<CrashRecoveryScreenProps> = ({
                         onPress={onRetry}
                     >
                         <SafeIcon name="arrow-clockwise" size={20} color="#FFF" />
-                        <Text style={styles.buttonText}>Réessayer</Text>
+                        <Text style={styles.buttonText}>{t('crashRecovery.reessayer')}</Text>
                     </TouchableOpacity>
                 )}
 

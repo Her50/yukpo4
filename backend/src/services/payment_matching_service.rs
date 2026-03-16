@@ -1,7 +1,7 @@
 // ✅ Phase 5 - Matching Intelligent des Modes de Paiement
 // Intégration réelle: wallet interne (user_wallets) + disbursement via agrégateur CinetPay/NotchPay
 use crate::core::types::{AppError, AppResult};
-use crate::services::payment_aggregator::{AggregatorProvider, PaymentAggregator};
+use crate::services::payment_aggregator::PaymentAggregator;
 use serde_json::{json, Value};
 use sqlx::{FromRow, PgPool, Row};
 

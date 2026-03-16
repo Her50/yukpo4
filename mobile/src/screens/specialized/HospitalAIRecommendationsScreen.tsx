@@ -15,6 +15,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { HospitalRecommendation, hospitalService } from '../../services/hospitalService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface HospitalAIRecommendationsScreenParams {
     hospitalId?: number;
@@ -23,6 +24,7 @@ interface HospitalAIRecommendationsScreenParams {
 
 const HospitalAIRecommendationsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
     const params = route.params as HospitalAIRecommendationsScreenParams | undefined;
@@ -85,7 +87,7 @@ const HospitalAIRecommendationsScreen: React.FC = () => {
     };
 
     const getUrgencyLabel = (level?: number) => {
-        if (!level) return 'Non spécifié';
+        if (!level) return t('hospitalAIRecommendationsScreen.nonSpecifie');
         if (level <= 2) return 'Critique';
         if (level <= 3) return 'Urgent';
         return 'Normal';
@@ -106,25 +108,25 @@ const HospitalAIRecommendationsScreen: React.FC = () => {
                         <NativeCard style={styles.card}>
                             <View style={styles.cardHeader}>
                                 <SafeIcon name="sparkles" size={32} color={modernColors.primary} />
-                                <Text style={styles.cardTitle}>Décrivez vos symptômes</Text>
+                                <Text style={styles.cardTitle}>{t('hospitalAIRecommendations.decrivezVosSymptomes')}</Text>
                                 <Text style={styles.cardSubtitle}>
                                     Notre IA analysera vos symptômes et vous recommandera les meilleurs hôpitaux
                                 </Text>
                             </View>
 
                             <View style={styles.formContainer}>
-                                <Text style={styles.label}>Symptômes *</Text>
+                                <Text style={styles.label}>{t('hospitalAIRecommendations.symptomes')}</Text>
                                 <NativeInput
-                                    placeholder="Ex: Fièvre, toux, maux de tête, douleur abdominale..."
+                                    placeholder={t('hospitalAIRecommendations.exFievreTouxMauxDe')}
                                     value={symptoms}
                                     onChangeText={setSymptoms}
                                     multiline
                                     style={styles.symptomsInput}
                                 />
 
-                                <Text style={styles.label}>Localisation (optionnel)</Text>
+                                <Text style={styles.label}>{t('hospitalAIRecommendations.localisationOptionnel')}/Text>
                                 <NativeInput
-                                    placeholder="Ex: Yaoundé, Douala..."
+                                    placeholder={t('hospitalAIRecommendations.exYaoundeDouala')}
                                     value={location}
                                     onChangeText={setLocation}
                                     style={styles.locationInput}
@@ -153,7 +155,7 @@ const HospitalAIRecommendationsScreen: React.FC = () => {
                         <NativeCard style={styles.card}>
                             <View style={styles.cardHeader}>
                                 <SafeIcon name="check-circle" size={32} color={modernColors.success} />
-                                <Text style={styles.cardTitle}>Recommandations générées</Text>
+                                <Text style={styles.cardTitle}>{t('hospitalAIRecommendations.recommandationsGenerees')}</Text>
                             </View>
 
                             {recommendations.urgency_level && (
@@ -197,7 +199,7 @@ const HospitalAIRecommendationsScreen: React.FC = () => {
 
                             {recommendations.specialties && recommendations.specialties.length > 0 && (
                                 <View style={styles.specialtiesContainer}>
-                                    <Text style={styles.specialtiesTitle}>Spécialités recommandées:</Text>
+                                    <Text style={styles.specialtiesTitle}>{t('hospitalAIRecommendations.specialitesRecommandees')}</Text>
                                     <View style={styles.specialtiesList}>
                                         {recommendations.specialties.map((specialty, idx) => (
                                             <View key={idx} style={styles.specialtyTag}>
@@ -212,7 +214,7 @@ const HospitalAIRecommendationsScreen: React.FC = () => {
                         {/* Hôpitaux suggérés */}
                         {recommendations.hospital_ids && recommendations.hospital_ids.length > 0 && (
                             <NativeCard style={styles.card}>
-                                <Text style={styles.hospitalsTitle}>Hôpitaux suggérés:</Text>
+                                <Text style={styles.hospitalsTitle}>{t('hospitalAIRecommendations.hopitauxSuggeres')}</Text>
                                 {recommendations.hospital_ids.map((hospitalId, idx) => (
                                     <TouchableOpacity
                                         key={idx}
@@ -230,7 +232,7 @@ const HospitalAIRecommendationsScreen: React.FC = () => {
                         )}
 
                         <NativeButton
-                            title="🔄 Nouvelle recherche"
+                            title={t('hospitalAIRecommendations.nouvelleRecherche')}
                             onPress={() => {
                                 setRecommendations(null);
                                 setSymptoms('');

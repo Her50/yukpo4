@@ -19,6 +19,7 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface HopitalSearchFilters {
     ville?: string;
@@ -40,6 +41,7 @@ interface HopitalSearchFilters {
 const HopitalSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     const [ville, setVille] = useState<LocationObject | string>('');
     const [quartier, setQuartier] = useState<LocationObject | string>('');
@@ -123,22 +125,22 @@ const HopitalSearchScreen: React.FC = () => {
         navigation.navigate('HopitalList' as never, { filters } as never);
     };
 
-    const typesEtablissements = ['Hôpital', 'Clinique', 'Dispensaire', 'Centre de santé'];
+    const typesEtablissements = ['Hôpital', 'Clinique', 'Dispensaire', t('hopitalSearchScreen.centreDeSante')];
     const prestations = [
-        'Urgences', 'Consultation générale', 'Chirurgie', 'Maternité',
+        'Urgences', t('hopitalSearchScreen.consultationGenerale'), 'Chirurgie', 'Maternité',
         'Pédiatrie', 'Cardiologie', 'Neurologie', 'Radiologie'
     ];
     // ✅ NOUVEAU: Spécialités médicales complètes
     const specialites = [
-        'Médecine générale', 'Pédiatrie', 'Gynécologie', 'Cardiologie',
+        t('hopitalSearchScreen.medecineGenerale'), 'Pédiatrie', 'Gynécologie', 'Cardiologie',
         'Chirurgie', 'Dentaire', 'Ophtalmologie', 'Dermatologie',
-        'Neurologie', 'Orthopédie', 'Urologie', 'Oncologie',
-        'Psychiatrie', 'Radiologie', 'Anesthésie', 'Réanimation'
+        'Neurologie', t('hopitalSearchScreen.orthopedie'), 'Urologie', 'Oncologie',
+        'Psychiatrie', 'Radiologie', t('hopitalSearchScreen.anesthesie'), 'Réanimation'
     ];
     // ✅ NOUVEAU: Assurances acceptées
     const assurances = [
-        'CNPS', 'CNSS', 'Assurance privée', 'Mutuelle',
-        'Assurance internationale', 'Prise en charge étatique'
+        'CNPS', 'CNSS', t('hopitalSearchScreen.assurancePrivee'), 'Mutuelle',
+        'Assurance internationale', t('hopitalSearchScreen.priseEnChargeEtatique')
     ];
 
     // Recherches rapides spécifiques hôpitaux
@@ -147,7 +149,7 @@ const HopitalSearchScreen: React.FC = () => {
             id: 'urgences',
             title: 'Urgences',
             icon: 'alert-triangle',
-            description: 'Service urgences',
+            description: t('hopitalSearch.serviceUrgences'),
             action: () => {
                 hapticPress();
                 setUrgencesOnly(true);
@@ -159,7 +161,7 @@ const HopitalSearchScreen: React.FC = () => {
             id: 'proche',
             title: 'Plus proche',
             icon: 'map-pin',
-            description: 'À proximité',
+            description: t('hopitalSearch.aProximite'),
             action: () => {
                 hapticPress();
                 setMaxDistance(15);
@@ -200,7 +202,7 @@ const HopitalSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="hospital" size={32} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>Rechercher un hôpital</Text>
+                        <Text style={styles.headerTitle}>{t('hopitalSearch.rechercherUnHopital')}</Text>
                         <Text style={styles.headerSubtitle}>
                             Trouvez rapidement un établissement de santé près de chez vous
                         </Text>
@@ -241,7 +243,7 @@ const HopitalSearchScreen: React.FC = () => {
 
                 {/* ✅ RÉORIENTÉ: Formulaire de recherche - Priorité sur services médicaux */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>🏥 Recherche de services médicaux</Text>
+                    <Text style={styles.sectionTitle}>{t('hopitalSearch.rechercheDeServicesMedicaux')}</Text>
                     <Text style={styles.sectionDescription}>
                         Recherchez un service médical spécifique (consultation, chirurgie, spécialité...)
                     </Text>
@@ -249,7 +251,7 @@ const HopitalSearchScreen: React.FC = () => {
                     {/* Service médical recherché (PRIORITAIRE) */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="stethoscope" size={14} color={modernColors.primary} type="lucide" /> Service médical recherché *
+                            <SafeIcon name="stethoscope" size={14} color={modernColors.primary} type="lucide" />{t('hopitalSearchScreen.serviceMedicalRecherche')}
                         </Text>
                         <NativeInput
                             value={prestation}
@@ -260,7 +262,7 @@ const HopitalSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Localisation (optionnelle pour recherche de services) */}
-                    <Text style={styles.sectionTitle}>📍 Localisation (optionnelle)</Text>
+                    <Text style={styles.sectionTitle}>{t('hopitalSearch.localisationOptionnelle')}/Text>
                     <Text style={styles.sectionDescription}>
                         Ajoutez votre position pour trouver des services à proximité
                     </Text>
@@ -319,7 +321,7 @@ const HopitalSearchScreen: React.FC = () => {
                     {/* Type établissement */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="building" size={14} color={modernColors.primary} type="lucide" /> Type d'établissement
+                            <SafeIcon name="building" size={14} color={modernColors.primary} type="lucide" />{t('hopitalSearchScreen.typeDetablissement')}
                         </Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
                             {typesEtablissements.map((type) => (
@@ -348,7 +350,7 @@ const HopitalSearchScreen: React.FC = () => {
                     {/* Prestation médicale */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="stethoscope" size={14} color={modernColors.primary} type="lucide" /> Prestation médicale
+                            <SafeIcon name="stethoscope" size={14} color={modernColors.primary} type="lucide" />{t('hopitalSearchScreen.prestationMedicale')}
                         </Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
                             {prestations.map((prest) => (
@@ -394,7 +396,7 @@ const HopitalSearchScreen: React.FC = () => {
                             {/* Spécialités multiples */}
                             <View style={styles.inputGroup}>
                                 <Text style={styles.label}>
-                                    <SafeIcon name="list" size={14} color={modernColors.primary} type="lucide" /> Spécialités médicales
+                                    <SafeIcon name="list" size={14} color={modernColors.primary} type="lucide" />{t('hopitalSearchScreen.specialitesMedicales')}
                                 </Text>
                                 <View style={styles.servicesGrid}>
                                     {specialites.map((spec) => {
@@ -430,7 +432,7 @@ const HopitalSearchScreen: React.FC = () => {
                             {/* Assurances acceptées */}
                             <View style={styles.inputGroup}>
                                 <Text style={styles.label}>
-                                    <SafeIcon name="shield" size={14} color={modernColors.primary} type="lucide" /> Assurances acceptées
+                                    <SafeIcon name="shield" size={14} color={modernColors.primary} type="lucide" />{t('hopitalSearchScreen.assurancesAcceptees')}
                                 </Text>
                                 <View style={styles.servicesGrid}>
                                     {assurances.map((assurance) => {
@@ -539,7 +541,7 @@ const HopitalSearchScreen: React.FC = () => {
 
                     {/* Options */}
                     <View style={styles.optionsSection}>
-                        <Text style={styles.sectionTitle}>⚙️ Options de recherche</Text>
+                        <Text style={styles.sectionTitle}>{t('hopitalSearch.optionsDeRecherche')}/Text>
 
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>
@@ -608,7 +610,7 @@ const HopitalSearchScreen: React.FC = () => {
                 <View style={styles.infoCard}>
                     <View style={styles.infoHeader}>
                         <SafeIcon name="info" size={20} color="#3B82F6" type="lucide" />
-                        <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
+                        <Text style={styles.infoTitle}>{t('hopitalSearch.bonASavoir')}</Text>
                     </View>
                     <Text style={styles.infoText}>
                         • Les urgences sont disponibles 24h/24 dans la plupart des hôpitaux{'\n'}

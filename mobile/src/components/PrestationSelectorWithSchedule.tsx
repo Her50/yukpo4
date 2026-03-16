@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const DAYS_OF_WEEK = [
     { value: 1, label: 'Lundi', short: 'L' },
@@ -61,9 +62,10 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
     selected,
     onSelectionChange,
     allowCustom = true,
-    placeholder = 'Ajouter une prestation personnalisée'
+    placeholder={t('prestationSelectorWithSchedule.ajouterUnePrestationPersonnalisee')}
 }) => {
-    const [showSelectionModal, setShowSelectionModal] = useState(false);
+        const { t } = useLanguageSafe();
+const [showSelectionModal, setShowSelectionModal] = useState(false);
     const [showScheduleModal, setShowScheduleModal] = useState(false);
     const [currentPrestation, setCurrentPrestation] = useState<string | null>(null);
     const [customInput, setCustomInput] = useState('');
@@ -243,7 +245,7 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
             ? scheduleByDay.map(d => d.day).sort()
             : (prestation.days || []);
 
-        if (days.length === 0) return 'Non planifié';
+        if (days.length === 0) return t('prestationSelectorWithSchedule.nonPlanifie');
 
         const daysStr = days.length === 7 ? 'Tous les jours' :
             days.length === 5 && days.every(d => d <= 5) ? 'Lun-Ven' :
@@ -256,7 +258,7 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
                 const uniqueSlots = Array.from(new Set(allTimeSlots.map(s => `${s.start}-${s.end}`)));
                 const timeStr = uniqueSlots.length === 1
                     ? uniqueSlots[0]
-                    : `${uniqueSlots.length} créneau(x)`;
+                    : t('prestationSelectorWithSchedule.creneaux', { uniqueSlots_length: uniqueSlots.length });
                 return `${daysStr} • ${timeStr}`;
             }
         }
@@ -281,15 +283,15 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
                     onPress={() => setShowSelectionModal(true)}
                 >
                     <SafeIcon name="plus" size={18} color={modernColors.primary} />
-                    <Text style={styles.addButtonText}>Ajouter</Text>
+                    <Text style={styles.addButtonText}>{t('prestationSelectorWithSchedule.ajouter')}</Text>
                 </TouchableOpacity>
             </View>
 
             {/* Liste des prestations sélectionnées */}
             {selected.length === 0 ? (
                 <View style={styles.emptyState}>
-                    <Text style={styles.emptyText}>Aucune prestation sélectionnée</Text>
-                    <Text style={styles.emptyHint}>Appuyez sur "Ajouter" pour commencer</Text>
+                    <Text style={styles.emptyText}>{t('prestationSelectorWithSchedule.aucunePrestationSelectionnee')}</Text>
+                    <Text style={styles.emptyHint}>{t('prestationSelectorWithSchedule.appuyezSurAjouterPourCommencer')}</Text>
                 </View>
             ) : (
                 <View style={styles.selectedList}>
@@ -332,7 +334,7 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Sélectionner une prestation</Text>
+                            <Text style={styles.modalTitle}>{t('prestationSelectorWithSchedule.selectionnerUnePrestation')}</Text>
                             <TouchableOpacity onPress={() => setShowSelectionModal(false)}>
                                 <SafeIcon name="x" size={24} color="#6B7280" />
                             </TouchableOpacity>
@@ -342,7 +344,7 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
                             <SafeIcon name="search" size={18} color="#9CA3AF" />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Rechercher..."
+                                placeholder={t('prestationSelectorWithSchedule.rechercher')}
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 placeholderTextColor="#9CA3AF"
@@ -351,7 +353,7 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
 
                         <ScrollView style={styles.optionsList}>
                             {filteredOptions.length === 0 ? (
-                                <Text style={styles.noResults}>Aucun résultat</Text>
+                                <Text style={styles.noResults}>{t('prestationSelectorWithSchedule.aucunResultat')}</Text>
                             ) : (
                                 filteredOptions.map((option) => (
                                     <TouchableOpacity
@@ -454,7 +456,7 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
                                                         <View key={slotIndex} style={styles.timeSlotCard}>
                                                             <View style={styles.timeSlotRow}>
                                                                 <View style={styles.timeInputGroup}>
-                                                                    <Text style={styles.timeLabel}>Début</Text>
+                                                                    <Text style={styles.timeLabel}>{t('prestationSelectorWithSchedule.debut')}</Text>
                                                                     <ScrollView
                                                                         horizontal
                                                                         showsHorizontalScrollIndicator={false}
@@ -512,7 +514,7 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
                                                                     onPress={() => removeTimeSlot(currentPrestation, day.value, slotIndex)}
                                                                 >
                                                                     <SafeIcon name="trash-2" size={16} color="#DC2626" />
-                                                                    <Text style={styles.removeSlotText}>Supprimer</Text>
+                                                                    <Text style={styles.removeSlotText}>{t('prestationSelectorWithSchedule.supprimer')}</Text>
                                                                 </TouchableOpacity>
                                                             )}
                                                         </View>
@@ -522,7 +524,7 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
                                                         onPress={() => addTimeSlot(currentPrestation, day.value)}
                                                     >
                                                         <SafeIcon name="plus" size={18} color="#fff" />
-                                                        <Text style={styles.addSlotText}>Ajouter un horaire supplémentaire</Text>
+                                                        <Text style={styles.addSlotText}>{t('prestationSelectorWithSchedule.ajouterUnHoraireSupplementaire')}</Text>
                                                     </TouchableOpacity>
                                                 </View>
                                             )}
@@ -536,7 +538,7 @@ const PrestationSelectorWithSchedule: React.FC<PrestationSelectorWithSchedulePro
                                     style={styles.doneButton}
                                     onPress={() => setShowScheduleModal(false)}
                                 >
-                                    <Text style={styles.doneButtonText}>Terminé</Text>
+                                    <Text style={styles.doneButtonText}>{t('prestationSelectorWithSchedule.termine')}</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>

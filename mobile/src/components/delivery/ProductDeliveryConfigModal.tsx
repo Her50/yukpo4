@@ -222,7 +222,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         };
                         setPickupAddresses([{
                             id: `pickup_reuse_${Date.now()}`,
-                            placeName: pickupAddr || pickupLocationObj?.place_name || 'Lieu non spécifié',
+                            placeName: pickupAddr || pickupLocationObj?.place_name || t('productDeliveryConfig.lieuNonSpecifie'),
                             address: pickupAddr,
                             location: pickupLocationObj,
                             latitude: pickupLat,
@@ -337,7 +337,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                     if (addressText.match(/^\d+\.\d+,\s*\d+\.\d+$/)) {
                                         return locationObj?.place_name && !locationObj.place_name.match(/^\d+\.\d+/)
                                             ? locationObj.place_name
-                                            : 'Lieu de récupération';
+                                            : t('productDeliveryConfigModal.lieuDeRecuperation');
                                     }
                                     return addressText;
                                 }
@@ -350,7 +350,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                     }
                                     return placeName;
                                 }
-                                return 'Lieu non spécifié';
+                                return t('productDeliveryConfigModal.lieuNonSpecifie');
                             })();
                             if (addressText) {
                                 console.log('[ProductDeliveryConfigModal] ✅ Lieu produit trouvé:', addressText);
@@ -377,7 +377,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         break;
                     } catch (error: any) {
                         const errorMsg = error?.message || error?.error || String(error);
-                        const isNotFoundError = errorMsg.includes('non trouvé') ||
+                        const isNotFoundError = errorMsg.includes(t('productDeliveryConfigModal.nonTrouve')) ||
                             errorMsg.includes('not found') ||
                             errorMsg.includes('404') ||
                             errorMsg.includes('Produit');
@@ -1010,7 +1010,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             });
 
                             // Si l'erreur indique que le produit n'existe pas, retry
-                            if (errorMsg.includes('non trouvé') || errorMsg.includes('not found') || errorMsg.includes('Produit') || errorMsg.includes('synchronisé')) {
+                            if (errorMsg.includes(t('productDeliveryConfigModal.nonTrouve')) || errorMsg.includes('not found') || errorMsg.includes('Produit') || errorMsg.includes('synchronisé')) {
                                 if (retryCount < maxRetries) {
                                     const delay = retryDelays[retryCount] || 2000;
                                     console.log(`[SAUVEGARDE_CONFIG_LIVRAISON] ⏳ Produit non trouvé, retry ${retryCount + 1}/${maxRetries} dans ${delay}ms...`);
@@ -1041,7 +1041,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         });
 
                         // Si l'erreur indique que le produit n'existe pas, retry
-                        if (errorMsg.includes('non trouvé') || errorMsg.includes('not found') || errorMsg.includes('Produit') || errorMsg.includes('synchronisé')) {
+                        if (errorMsg.includes(t('productDeliveryConfigModal.nonTrouve')) || errorMsg.includes('not found') || errorMsg.includes('Produit') || errorMsg.includes('synchronisé')) {
                             if (retryCount < maxRetries) {
                                 const delay = retryDelays[retryCount] || 2000;
                                 console.log(`[SAUVEGARDE_CONFIG_LIVRAISON] ⏳ Produit non trouvé (exception), retry ${retryCount + 1}/${maxRetries} dans ${delay}ms...`);
@@ -1063,7 +1063,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     payload: JSON.stringify(payload, null, 2),
                 });
 
-                const errorMessage = lastError?.message || lastError?.error || lastResponse?.message || lastResponse?.error || lastError?.response?.data?.message || 'Erreur lors de la sauvegarde de la configuration. Le produit peut ne pas être encore synchronisé. Veuillez réessayer dans quelques instants.';
+                const errorMessage = lastError?.message || lastError?.error || lastResponse?.message || lastResponse?.error || lastError?.response?.data?.message || t('productDeliveryConfigModal.erreurLorsDeLaSauvegardeDe');
                 console.error('[SAUVEGARDE_CONFIG_LIVRAISON] ❌ Message d\'erreur final:', errorMessage);
                 Alert.alert('Erreur', errorMessage);
             }
@@ -1082,7 +1082,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             });
 
             // ✅ AMÉLIORÉ: Afficher le message d'erreur détaillé du backend
-            const errorMessage = error?.message || error?.error || error?.response?.data?.message || error?.response?.data?.error || 'Erreur lors de la sauvegarde de la configuration';
+            const errorMessage = error?.message || error?.error || error?.response?.data?.message || error?.response?.data?.error || t('productDeliveryConfig.erreurLorsDeLaSauvegarde');
             console.error('[SAUVEGARDE_CONFIG_LIVRAISON] ❌ Message d\'erreur final:', errorMessage);
             Alert.alert('Erreur', errorMessage);
         } finally {
@@ -1151,7 +1151,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
                                 {useExistingConfig && (
                                     <View style={styles.selectContainer}>
-                                        <Text style={styles.hint}>Sélectionnez un produit pour copier sa configuration :</Text>
+                                        <Text style={styles.hint}>{t('productDeliveryConfig.selectionnezUnProduitPourCopier')}</Text>
                                         <TouchableOpacity
                                             style={styles.select}
                                             onPress={() => {
@@ -1165,13 +1165,13 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                         >
                                             <Text style={[styles.selectText, !selectedProductIndex && styles.selectPlaceholder]}>
                                                 {selectedProductIndex !== null
-                                                    ? availableProducts.find(p => p.index === selectedProductIndex)?.name || 'Sélectionner...'
+                                                    ? availableProducts.find(p => p.index === selectedProductIndex)?.name || t('productDeliveryConfig.selectionner')
                                                     : 'Sélectionner un produit...'}
                                             </Text>
                                             <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
                                         </TouchableOpacity>
                                         {loadingProducts && (
-                                            <Text style={styles.hint}>Chargement des produits...</Text>
+                                            <Text style={styles.hint}>{t('productDeliveryConfig.chargementDesProduits')}</Text>
                                         )}
                                     </View>
                                 )}
@@ -1182,13 +1182,13 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     {/* ✅ NOUVEAU: Adresses de récupération du produit (au moins une obligatoire) */}
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.label}>Adresses de récupération du produit *</Text>
+                            <Text style={styles.label}>{t('productDeliveryConfig.adressesDeRecuperationDuProduit')}</Text>
                             <TouchableOpacity
                                 style={styles.addButton}
                                 onPress={handleAddPickupAddress}
                             >
                                 <SafeIcon name="plus" size={20} color={modernColors.primary} />
-                                <Text style={styles.addButtonText}>Ajouter</Text>
+                                <Text style={styles.addButtonText}>{t('productDeliveryConfigModal.ajouter')}</Text>
                             </TouchableOpacity>
                         </View>
                         <Text style={styles.hint}>
@@ -1256,7 +1256,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     {/* ✅ Lieu de stockage GPS (cohérent avec GlobalDeliveryConfigModal) */}
                     {Array.isArray(storageLocations) && storageLocations.length > 0 && (
                         <View style={styles.section}>
-                            <Text style={styles.label}>📍 Lieu de stockage GPS</Text>
+                            <Text style={styles.label}>{t('productDeliveryConfig.lieuDeStockageGps')}</Text>
                             <Text style={styles.hint}>
                                 Sélectionnez le lieu de stockage principal pour ce produit. Ce lieu sera utilisé pour le calcul automatique des frais de livraison.
                             </Text>
@@ -1268,7 +1268,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                         'Sélectionnez un lieu de stock (optionnel)',
                                         [
                                             {
-                                                text: 'Aucun (saisie manuelle)',
+                                                text: t('productDeliveryConfig.aucunSaisieManuelle'),
                                                 onPress: () => setConfig(prev => ({ ...prev, storage_location_id: null }))
                                             },
                                             ...storageLocations.map(loc => ({
@@ -1287,7 +1287,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             >
                                 <Text style={styles.selectText}>
                                     {config.storage_location_id
-                                        ? (storageLocations.find(loc => loc.id === config.storage_location_id)?.name || 'Lieu sélectionné')
+                                        ? (storageLocations.find(loc => loc.id === config.storage_location_id)?.name || t('productDeliveryConfig.lieuSelectionne'))
                                         : 'Sélectionner un lieu de stock (optionnel)'}
                                 </Text>
                                 <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
@@ -1297,7 +1297,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
                     {/* ✅ CORRIGÉ 2026-01-02: Type de véhicule avec modal personnalisé (toutes les options) */}
                     <View style={styles.section}>
-                        <Text style={styles.label}>Type de véhicule requis *</Text>
+                        <Text style={styles.label}>{t('productDeliveryConfig.typeDeVehiculeRequis')}</Text>
                         <TouchableOpacity
                             style={styles.select}
                             onPress={() => setShowVehicleModal(true)}
@@ -1324,7 +1324,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
                     {/* ✅ NOUVEAU: Temps de préparation */}
                     <View style={styles.section}>
-                        <Text style={styles.label}>Temps de préparation (minutes) *</Text>
+                        <Text style={styles.label}>{t('productDeliveryConfig.tempsDePreparationMinutes')}</Text>
                         <Text style={styles.hint}>
                             Temps nécessaire pour préparer le produit avant la collecte. 0 = instantané (ex: produits en stock). Exemples: repas (15-30 min), commandes sur mesure (60-120 min).
                         </Text>
@@ -1345,17 +1345,17 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                 style={styles.input}
                                 value={config.weight_kg}
                                 onChangeText={(text) => setConfig(prev => ({ ...prev, weight_kg: text }))}
-                                placeholder="Optionnel"
+                                placeholder={t('productDeliveryConfig.optionnel')}
                                 keyboardType="numeric"
                             />
                         </View>
                         <View style={[styles.section, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={styles.label}>Volume (cm³)</Text>
+                            <Text style={styles.label}>{t('productDeliveryConfig.volumeCm')}/Text>
                             <TextInput
                                 style={styles.input}
                                 value={config.volume_cm3}
                                 onChangeText={(text) => setConfig(prev => ({ ...prev, volume_cm3: text }))}
-                                placeholder="Optionnel"
+                                placeholder={t('productDeliveryConfig.optionnel')}
                                 keyboardType="numeric"
                             />
                         </View>
@@ -1411,7 +1411,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
                     {/* Plages horaires */}
                     <View style={styles.section}>
-                        <Text style={styles.label}>Plages horaires de départ *</Text>
+                        <Text style={styles.label}>{t('productDeliveryConfig.plagesHorairesDeDepart')}</Text>
                         <Text style={styles.hint}>
                             Configurez les horaires de récupération pour chaque jour de la semaine
                         </Text>
@@ -1423,12 +1423,12 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
                     {/* Instructions */}
                     <View style={styles.section}>
-                        <Text style={styles.label}>Instructions de départ</Text>
+                        <Text style={styles.label}>{t('productDeliveryConfig.instructionsDeDepart')}</Text>
                         <TextInput
                             style={[styles.input, styles.textArea]}
                             value={config.pickup_instructions}
                             onChangeText={(text) => setConfig(prev => ({ ...prev, pickup_instructions: text }))}
-                            placeholder="Instructions spéciales pour le coursier"
+                            placeholder={t('productDeliveryConfig.instructionsSpecialesPourLeCoursier')}
                             multiline
                             numberOfLines={3}
                         />
@@ -1436,7 +1436,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
                     {/* Mode de facturation */}
                     <View style={styles.section}>
-                        <Text style={styles.label}>Mode de facturation</Text>
+                        <Text style={styles.label}>{t('productDeliveryConfig.modeDeFacturation')}/Text>
                         <TouchableOpacity
                             style={styles.select}
                             onPress={() => {
@@ -1445,7 +1445,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                     '',
                                     [
                                         { text: 'Standard', onPress: () => setConfig(prev => ({ ...prev, billing_mode: 'standard' })) },
-                                        { text: 'Partenaire', onPress: () => setConfig(prev => ({ ...prev, billing_mode: 'partner' })) },
+                                        { text: t('productDeliveryConfig.partenaire'), onPress: () => setConfig(prev => ({ ...prev, billing_mode: 'partner' })) },
                                         { text: t('common.cancel'), style: 'cancel' as const }
                                     ]
                                 );
@@ -1465,7 +1465,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                 style={styles.input}
                                 value={config.billing_partner_label}
                                 onChangeText={(text) => setConfig(prev => ({ ...prev, billing_partner_label: text }))}
-                                placeholder="Nom du partenaire"
+                                placeholder={t('productDeliveryConfig.nomDuPartenaire')}
                             />
                         </View>
                     )}
@@ -1473,7 +1473,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     {/* Actions */}
                     <View style={styles.actions}>
                         <NativeButton
-                            title="Annuler"
+                            title={t('productDeliveryConfigModal.annuler')}
                             variant="secondary"
                             onPress={onClose}
                             style={styles.actionButton}
@@ -1481,7 +1481,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         <NativeButton
                             title={loading
                                 ? (isTransversalMode ? 'Application...' : 'Enregistrement...')
-                                : (isTransversalMode ? `Appliquer à ${normalizedAllProducts.length} produit(s)` : 'Enregistrer')
+                                : (isTransversalMode ? t('productDeliveryConfigModal.appliquerAProduits', { normalizedAllProducts_length: normalizedAllProducts.length }) : 'Enregistrer')
                             }
                             variant="primary"
                             onPress={handleSave}
@@ -1539,7 +1539,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             }
                             : null
                 }
-                title="Sélectionner le lieu de récupération du produit"
+                title={t('productDeliveryConfig.selectionnerLeLieuDeRecuperation')}
                 allowZoneSelection={false}
             />
 
@@ -1553,7 +1553,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 <View style={styles.vehicleModalOverlay}>
                     <View style={styles.vehicleModalContent}>
                         <View style={styles.vehicleModalHeader}>
-                            <Text style={styles.vehicleModalTitle}>Sélectionner un type de véhicule</Text>
+                            <Text style={styles.vehicleModalTitle}>{t('productDeliveryConfig.selectionnerUnTypeDeVehicule')}</Text>
                             <TouchableOpacity
                                 onPress={() => setShowVehicleModal(false)}
                                 style={styles.vehicleModalCloseButton}

@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import NavigatorToolbar from '../components/NavigatorToolbar';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SimpleErrorScreenProps {
   message?: string;
@@ -15,6 +16,7 @@ const SimpleErrorScreen: React.FC<SimpleErrorScreenProps> = ({
   onRetry
 }) => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
   const handleGoHome = () => {
     (navigation as any).navigate('Home');
@@ -27,7 +29,7 @@ const SimpleErrorScreen: React.FC<SimpleErrorScreenProps> = ({
   return (
     <View style={styles.container}>
       <NavigatorToolbar
-        title="Fonctionnalité indisponible"
+        title={t('simpleError.fonctionnaliteIndisponible')}
         subtitle={message}
         showHandle={false}
         density="compact"
@@ -37,20 +39,20 @@ const SimpleErrorScreen: React.FC<SimpleErrorScreenProps> = ({
       <View style={styles.errorCard}>
         <Ionicons name="construct" size={64} color="#FFD700" style={styles.errorIcon} />
 
-        <Text style={styles.errorTitle}>En cours de développement</Text>
+        <Text style={styles.errorTitle}>{t('simpleError.enCoursDeDeveloppement')}</Text>
         <Text style={styles.errorMessage}>{message}</Text>
 
         <View style={styles.buttonContainer}>
           {onRetry ? (
             <TouchableOpacity style={styles.secondaryButton} onPress={onRetry}>
               <Ionicons name="refresh" size={20} color="#FFD700" />
-              <Text style={styles.secondaryButtonText}>Réessayer</Text>
+              <Text style={styles.secondaryButtonText}>{t('simpleError.reessayer')}</Text>
             </TouchableOpacity>
           ) : null}
 
           <TouchableOpacity style={styles.homeButton} onPress={handleGoHome}>
             <Ionicons name="home" size={20} color="white" />
-            <Text style={styles.homeButtonText}>Accueil</Text>
+            <Text style={styles.homeButtonText}>{t('simpleError.accueil')}/Text>
           </TouchableOpacity>
         </View>
       </View>

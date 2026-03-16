@@ -4,6 +4,7 @@ import { modernColors } from '../theme/modernTheme';
 import { NativeCard, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 import { LocationSelector, LocationObject } from './LocationSelector';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface TargetingOptions {
     ageRange: { min: number; max: number };
@@ -20,19 +21,20 @@ interface AdvancedTargetingProps {
 
 const INTERESTS = [
     'Immobilier', 'Automobile', 'Mode', 'Technologie', 'Voyage',
-    'Alimentation', 'Sport', 'Beauté', 'Éducation', 'Santé',
+    'Alimentation', 'Sport', t('advancedTargeting.beaute'), 'Éducation', 'Santé',
 ];
 
 const BEHAVIORS = [
-    'Acheteurs fréquents', 'Nouveaux utilisateurs', 'Abandon panier',
-    'Visiteurs récents', 'Clients VIP', 'Inactifs',
+    t('advancedTargeting.acheteursFrequents'), 'Nouveaux utilisateurs', 'Abandon panier',
+    t('advancedTargeting.visiteursRecents'), 'Clients VIP', 'Inactifs',
 ];
 
 export const AdvancedTargeting: React.FC<AdvancedTargetingProps> = ({
     targeting,
     onTargetingChange,
 }) => {
-    const [expanded, setExpanded] = useState(false);
+        const { t } = useLanguageSafe();
+const [expanded, setExpanded] = useState(false);
 
     const toggleInterest = (interest: string) => {
         const newInterests = targeting.interests.includes(interest)
@@ -55,7 +57,7 @@ export const AdvancedTargeting: React.FC<AdvancedTargetingProps> = ({
                 onPress={() => setExpanded(true)}
             >
                 <SafeIcon name="target" size={20} color={modernColors.primary} />
-                <Text style={styles.expandText}>Ciblage avancé (optionnel)</Text>
+                <Text style={styles.expandText}>{t('advancedTargeting.ciblageAvanceOptionnel')}</Text>
                 <SafeIcon name="chevron-right" size={16} color={modernColors.textSecondary} />
             </TouchableOpacity>
         );
@@ -64,7 +66,7 @@ export const AdvancedTargeting: React.FC<AdvancedTargetingProps> = ({
     return (
         <NativeCard style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>🎯 Ciblage avancé</Text>
+                <Text style={styles.title}>{t('advancedTargeting.ciblageAvance')}</Text>
                 <TouchableOpacity onPress={() => setExpanded(false)}>
                     <SafeIcon name="x" size={20} color={modernColors.textSecondary} />
                 </TouchableOpacity>
@@ -72,7 +74,7 @@ export const AdvancedTargeting: React.FC<AdvancedTargetingProps> = ({
 
             {/* Tranche d'âge */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Âge</Text>
+                <Text style={styles.sectionTitle}>{t('advancedTargeting.age')}</Text>
                 <View style={styles.ageRow}>
                     <NativeInput
                         placeholder="Min"
@@ -132,7 +134,7 @@ export const AdvancedTargeting: React.FC<AdvancedTargetingProps> = ({
 
             {/* Intérêts */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Intérêts</Text>
+                <Text style={styles.sectionTitle}>{t('advancedTargeting.interets')}</Text>
                 <View style={styles.tagsContainer}>
                     {INTERESTS.map((interest) => (
                         <TouchableOpacity
@@ -184,14 +186,14 @@ export const AdvancedTargeting: React.FC<AdvancedTargetingProps> = ({
 
             {/* ✅ NOUVEAU: Zones géographiques avec autocomplete Google Places */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>📍 Zones géographiques</Text>
+                <Text style={styles.sectionTitle}>{t('advancedTargeting.zonesGeographiques')}</Text>
                 <Text style={styles.sectionHint}>
                     Recherchez et sélectionnez des lieux spécifiques pour cibler votre publicité (villes, quartiers, établissements)
                 </Text>
                 
                 {/* ✅ NOUVEAU: Champ de recherche avec autocomplete Google Places */}
                 <LocationSelector
-                    label="Rechercher un lieu"
+                    label={t('advancedTargeting.rechercherUnLieu')}
                     value=""
                     onSelect={(location: LocationObject) => {
                         const locationString = location.raw || location.place_name || '';
@@ -200,7 +202,7 @@ export const AdvancedTargeting: React.FC<AdvancedTargetingProps> = ({
                             onTargetingChange({ ...targeting, locations: newLocations });
                         }
                     }}
-                    placeholder="Ex: Douala, Yaoundé, Restaurant Le Gourmet..."
+                    placeholder={t('advancedTargeting.exDoualaYaoundeRestaurantLe')}
                     scope="all"
                     enrichWithBackend={true}
                 />

@@ -5,6 +5,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Text } from 'react-native';
 
 import i18n, { SUPPORTED_LANGUAGES } from '../i18n';
+import { detectGeoLanguageContext } from '../services/geoLanguageService';
 import SafeStorage from '../utils/safeStorage';
 
 interface LanguageContextType {
@@ -74,9 +75,22 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
                 // ✅ Synchroniser i18next avec la langue sauvegardée
                 await i18n.changeLanguage(savedLanguage);
             } else {
-                setLanguageState('fr');
-                await SafeStorage.setItem('app_language', 'fr');
-                await i18n.changeLanguage('fr');
+                // ✅ NOUVEAU: Détection automatique de la langue via GPS au premier lancement
+                try {
+                    const geoCtx = await detectGeoLanguageContext();
+                    const detectedLang = geoCtx.defaultLanguage;
+                    const supported = SUPPORTED_LANGUAGES.map(l => l.code) as readonly string[];
+                    const safeLang = supported.includes(detectedLang) ? detectedLang : 'fr';
+                    console.log('[LanguageContext] Langue détectée par GPS:', safeLang, '(pays:', geoCtx.countryCode, ')');
+                    setLanguageState(safeLang);
+                    await SafeStorage.setItem('app_language', safeLang);
+                    await i18n.changeLanguage(safeLang);
+                } catch (geoError) {
+                    console.warn('[LanguageContext] Détection GPS échouée, fallback fr:', geoError);
+                    setLanguageState('fr');
+                    await SafeStorage.setItem('app_language', 'fr');
+                    await i18n.changeLanguage('fr');
+                }
             }
         } catch (error) {
             console.error('Erreur chargement langue:', error);
@@ -133,3 +147,4 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
 // ✅ Ré-exporter les utilitaires i18n pour usage direct dans les nouveaux écrans
 export { useTranslation } from 'react-i18next';
 export { SUPPORTED_LANGUAGES } from '../i18n';
+

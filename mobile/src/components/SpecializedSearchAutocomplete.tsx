@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // Fonction debounce simple
 function useDebounce<T extends (...args: any[]) => any>(
@@ -53,7 +54,8 @@ const SpecializedSearchAutocomplete: React.FC<Props> = ({
     placeholder,
     prefillQuery,
 }) => {
-    const [query, setQuery] = useState(prefillQuery || '');
+        const { t } = useLanguageSafe();
+const [query, setQuery] = useState(prefillQuery || '');
     const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
     const [loading, setLoading] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -62,7 +64,7 @@ const SpecializedSearchAutocomplete: React.FC<Props> = ({
     const defaultSuggestions: Suggestion[] = ([
         { text: 'pharmacie de garde', type: 'query' as const, icon: 'clock' },
         { text: 'pharmacie 24h', type: 'query' as const, icon: 'clock' },
-        { text: 'médecin disponible', type: 'query' as const, icon: 'user-md' },
+        { text: t('specializedSearchAutocomplete.medecinDisponible'), type: 'query' as const, icon: 'user-md' },
         { text: 'urgences ouvertes', type: 'query' as const, icon: 'alert-circle' },
     ] as Suggestion[]).filter((s) => {
         if (specializedType === 'pharmacie') {

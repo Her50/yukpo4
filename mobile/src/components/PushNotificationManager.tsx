@@ -46,7 +46,7 @@ const PushNotificationManager: React.FC = () => {
 
                 setIncomingCall({
                     callType: data.call_type || 'audio',
-                    callerName: data.caller_name || 'Utilisateur',
+                    callerName: data.caller_name || t('pushNotificationManager.utilisateur'),
                     callerId: data.caller_id,
                     serviceId: data.service_id,
                 });
@@ -57,7 +57,7 @@ const PushNotificationManager: React.FC = () => {
 
                 // Afficher une alerte avec option d'ouvrir le chat
                 Alert.alert(
-                    notification.request.content.title || '💬 Nouveau message',
+                    notification.request.content.title || t('pushNotificationManager.nouveauMessage'),
                     notification.request.content.body || '',
                     [
                         { text: t('common.close'), style: 'cancel' },
@@ -87,7 +87,7 @@ const PushNotificationManager: React.FC = () => {
 
                 // Afficher une alerte avec options d'accepter ou voir les détails
                 Alert.alert(
-                    notification.request.content.title || '📦 Nouvelle livraison disponible',
+                    notification.request.content.title || t('pushNotificationManager.nouvelleLivraisonDisponible'),
                     notification.request.content.body || '',
                     [
                         { text: t('common.close'), style: 'cancel' },
@@ -121,7 +121,7 @@ const PushNotificationManager: React.FC = () => {
 
                 // Alerte visuelle aussi
                 Alert.alert(
-                    notification.request.content.title || '📦 Mise à jour livraison',
+                    notification.request.content.title || t('pushNotificationManager.miseAJourLivraison'),
                     notification.request.content.body || '',
                     [
                         { text: 'OK' },
@@ -171,7 +171,7 @@ const PushNotificationManager: React.FC = () => {
                 console.log('[PushNotificationManager] ⚡ Notification Flash Promo:', data.event, data.flash_sale_id);
 
                 const buttonText = data.event === 'live_flash_sale_live' ? 'Acheter maintenant'
-                    : data.event === 'live_flash_sale_ending' ? 'Dernière chance' : 'Voir';
+                    : data.event === 'live_flash_sale_ending' ? t('pushNotificationManager.derniereChance') : 'Voir';
 
                 Alert.alert(
                     notification.request.content.title || '⚡ Flash Promo',
@@ -202,12 +202,12 @@ const PushNotificationManager: React.FC = () => {
                 console.log('[PushNotificationManager] 📊 Alerte Publicité:', data.alert_type, data.campaign_id);
 
                 Alert.alert(
-                    notification.request.content.title || '📊 Alerte Publicité',
+                    notification.request.content.title || t('pushNotificationManager.alertePublicite'),
                     notification.request.content.body || '',
                     [
                         { text: t('common.close'), style: 'cancel' },
                         {
-                            text: 'Voir le dashboard',
+                            text: t('pushNotificationManager.voirLeDashboard'),
                             onPress: () => {
                                 (navigation as any).navigate('PubliciteDashboard');
                             }
@@ -240,7 +240,7 @@ const PushNotificationManager: React.FC = () => {
             if (data?.type === 'incoming_call') {
                 setIncomingCall({
                     callType: data.call_type || 'audio',
-                    callerName: data.caller_name || 'Utilisateur',
+                    callerName: data.caller_name || t('pushNotificationManager.utilisateur'),
                     callerId: data.caller_id,
                     serviceId: data.service_id,
                 });

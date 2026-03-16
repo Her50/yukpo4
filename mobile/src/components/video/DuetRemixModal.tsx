@@ -20,6 +20,7 @@ import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 import VideoRecorder from './VideoRecorder';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface FeedItem {
     contentId: string;
@@ -44,7 +45,8 @@ const DuetRemixModal: React.FC<DuetRemixModalProps> = ({
     onSuccess,
 }) => {
     const { user } = useAuth();
-    const [selectedType, setSelectedType] = useState<DuetType | null>(null);
+        const { t } = useLanguageSafe();
+const [selectedType, setSelectedType] = useState<DuetType | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [step, setStep] = useState<'select' | 'recording' | 'uploading'>('select');
     const [recordedVideoUri, setRecordedVideoUri] = useState<string | null>(null);
@@ -83,7 +85,7 @@ const DuetRemixModal: React.FC<DuetRemixModalProps> = ({
             formData.append('duet_type', selectedType);
             formData.append('service_id', originalVideo.serviceId?.toString() || '');
             formData.append('titre', `${selectedType === 'audio' ? 'Remix' : 'Duet'} - ${originalVideo.titre}`);
-            formData.append('description', `Créé avec ${selectedType === 'audio' ? 'remix' : 'duet'}`);
+            formData.append('description', t('duetRemixModal.creeAvec', { selectedType === 'audio' ? 'remix' : 'duet': selectedType === 'audio' ? 'remix' : 'duet' }));
 
             const response = await apiPost('/api/duets/upload', formData, {
                 'Content-Type': 'multipart/form-data',
@@ -91,8 +93,8 @@ const DuetRemixModal: React.FC<DuetRemixModalProps> = ({
 
             if (response.success) {
                 Alert.alert(
-                    'Succès',
-                    'Votre duet/remix a été créé avec succès !',
+                    t('duetRemixModal.succes'),
+                    t('duetRemixModal.votreDuetremixAEteCreeAvec'),
                     [
                         {
                             text: 'OK',
@@ -104,13 +106,13 @@ const DuetRemixModal: React.FC<DuetRemixModalProps> = ({
                     ]
                 );
             } else {
-                throw new Error(response.error || 'Erreur lors de la création');
+                throw new Error(response.error || t('duetRemix.erreurLorsDeLaCreation'));
             }
         } catch (error: any) {
             console.error('[DuetRemixModal] Erreur création:', error);
             Alert.alert(
                 'Erreur',
-                error.message || 'Impossible de créer le duet/remix'
+                error.message || t('duetRemix.impossibleDeCreerLeDuetremix')
             );
             setStep('recording');
         } finally {
@@ -133,7 +135,7 @@ const DuetRemixModal: React.FC<DuetRemixModalProps> = ({
                 <View style={styles.modalContainer}>
                     {/* Header */}
                     <View style={styles.header}>
-                        <Text style={styles.title}>Créer un Duet/Remix</Text>
+                        <Text style={styles.title}>{t('duetRemix.creerUnDuetremix')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>
@@ -175,7 +177,7 @@ const DuetRemixModal: React.FC<DuetRemixModalProps> = ({
                                         <SafeIcon name="users" size={32} color={modernColors.primary} />
                                     </View>
                                     <View style={styles.optionContent}>
-                                        <Text style={styles.optionTitle}>Duet (Côte à côte)</Text>
+                                        <Text style={styles.optionTitle}>{t('duetRemix.duetCoteACote')}</Text>
                                         <Text style={styles.optionDescription}>
                                             Créez une vidéo côte à côte avec la vidéo originale
                                         </Text>
@@ -200,7 +202,7 @@ const DuetRemixModal: React.FC<DuetRemixModalProps> = ({
                         {step === 'uploading' && (
                             <View style={styles.uploadingContainer}>
                                 <ActivityIndicator size="large" color={modernColors.primary} />
-                                <Text style={styles.uploadingText}>Création du duet/remix...</Text>
+                                <Text style={styles.uploadingText}>{t('duetRemix.creationDuDuetremix')}</Text>
                             </View>
                         )}
                     </View>

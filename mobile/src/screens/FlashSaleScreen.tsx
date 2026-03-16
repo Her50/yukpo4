@@ -177,7 +177,7 @@ const FlashSaleScreen: React.FC = () => {
             <SafeNativeView style={styles.container}>
                 <View style={styles.centerContent}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement des ventes flash...</Text>
+                    <Text style={styles.loadingText}>{t('flashSale.chargementDesVentesFlash')}</Text>
                 </View>
             </SafeNativeView>
         );
@@ -187,9 +187,9 @@ const FlashSaleScreen: React.FC = () => {
         <SafeNativeView style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Text style={styles.backButtonText}>← Retour</Text>
+                    <Text style={styles.backButtonText}>{t('flashSale.retour')}/Text>
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>🔥 Ventes Flash</Text>
+                <Text style={styles.headerTitle}>{t('flashSale.ventesFlash')}/Text>
                 <View style={styles.placeholder} />
             </View>
 
@@ -200,8 +200,8 @@ const FlashSaleScreen: React.FC = () => {
             >
                 {flashSales.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Text style={styles.emptyStateText}>Aucune vente flash disponible</Text>
-                        <Text style={styles.emptyStateSubtext}>Revenez plus tard pour découvrir les promotions</Text>
+                        <Text style={styles.emptyStateText}>{t('flashSale.aucuneVenteFlashDisponible')}</Text>
+                        <Text style={styles.emptyStateSubtext}>{t('flashSale.revenezPlusTardPourDecouvrir')}</Text>
                     </View>
                 ) : (
                     flashSales.map((sale) => {
@@ -213,7 +213,7 @@ const FlashSaleScreen: React.FC = () => {
                         const isUpcoming = nowMs < startsAtMs;
                         const timeDiff = isUpcoming ? startsAtMs - nowMs : endsAtMs - nowMs;
                         const statusLabel = isEnded
-                            ? 'Terminé'
+                            ? t('flashSaleScreen.termine')
                             : isUpcoming
                                 ? `Débute dans ${formatRelativeTime(timeDiff)}`
                                 : `En cours · fin dans ${formatRelativeTime(timeDiff)}`;
@@ -234,15 +234,15 @@ const FlashSaleScreen: React.FC = () => {
                             ticketStatus !== 'confirmed';
 
                         const buttonLabel = isEnded
-                            ? 'Terminé'
+                            ? t('flashSaleScreen.termine')
                             : isUpcoming
-                                ? 'Bientôt disponible'
+                                ? t('flashSaleScreen.bientotDisponible')
                                 : isSoldOut
-                                    ? 'Stock épuisé'
+                                    ? t('flashSaleScreen.stockEpuise')
                                     : ticketStatus === 'pending'
                                         ? 'Traitement...'
                                         : ticketStatus === 'confirmed'
-                                            ? '✅ Réservé'
+                                            ? t('flashSaleScreen.reserve')
                                             : reservingSaleId === sale.id
                                                 ? 'Réservation...'
                                                 : user
@@ -308,12 +308,12 @@ const FlashSaleScreen: React.FC = () => {
                                             onPress={async () => {
                                                 try {
                                                     await Share.share({
-                                                        message: `Vente flash : ${linked?.title || 'Produit'} à ${sale.promo_price_cfa.toLocaleString('fr-FR')} CFA ! Découvrez sur Yukpo.`,
+                                                        message: t('flashSaleScreen.venteFlashACfaDecouvrezSur', { linked?_title || 'Produit': linked?.title || 'Produit', sale_promo_price_cfa_toLocaleString('fr-FR'): sale.promo_price_cfa.toLocaleString('fr-FR') }),
                                                     });
                                                 } catch (_e) { /* cancelled */ }
                                             }}
                                         >
-                                            <Text style={styles.shareIconText}>Partager</Text>
+                                            <Text style={styles.shareIconText}>{t('flashSaleScreen.partager')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 </View>

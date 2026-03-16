@@ -15,6 +15,7 @@ import { modernColors } from '../../theme/modernTheme';
 import ChatModalMobile from '../ChatModalMobile';
 import OrderDeliveryModal from '../delivery/OrderDeliveryModal';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface BloodBankResultCardProps {
     banque: {
@@ -38,6 +39,7 @@ interface BloodBankResultCardProps {
 
 const BloodBankResultCard: React.FC<BloodBankResultCardProps> = ({ banque }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [showChatModal, setShowChatModal] = useState(false);
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
@@ -79,7 +81,7 @@ const BloodBankResultCard: React.FC<BloodBankResultCardProps> = ({ banque }) => 
                 </View>
                 {banque.is_available_now && (
                     <View style={styles.availableBadge}>
-                        <Text style={styles.availableText}>Disponible</Text>
+                        <Text style={styles.availableText}>{t('bloodBankResultCard.disponible')}</Text>
                     </View>
                 )}
             </View>
@@ -97,7 +99,7 @@ const BloodBankResultCard: React.FC<BloodBankResultCardProps> = ({ banque }) => 
             <View style={styles.stocksSection}>
                 <View style={styles.stocksHeader}>
                     <View style={styles.stocksHeaderLeft}>
-                        <Text style={styles.stocksLabel}>Stocks disponibles</Text>
+                        <Text style={styles.stocksLabel}>{t('bloodBankResultCard.stocksDisponibles')}/Text>
                         {totalStock > 0 && (
                             <Text style={styles.stocksTotal}>
                                 {totalStock} poches totales
@@ -109,7 +111,7 @@ const BloodBankResultCard: React.FC<BloodBankResultCardProps> = ({ banque }) => 
                             onPress={() => setShowStocksDetail(true)}
                             style={styles.viewAllButton}
                         >
-                            <Text style={styles.viewAllText}>Voir tout</Text>
+                            <Text style={styles.viewAllText}>{t('bloodBankResultCard.voirTout')}</Text>
                             <SafeIcon name="chevron-right" size={14} color={modernColors.primary} />
                         </TouchableOpacity>
                     )}
@@ -159,7 +161,7 @@ const BloodBankResultCard: React.FC<BloodBankResultCardProps> = ({ banque }) => 
                     </View>
                 ) : (
                     <View style={styles.noStockContainer}>
-                        <Text style={styles.noStockText}>Aucun stock disponible</Text>
+                        <Text style={styles.noStockText}>{t('bloodBankResultCard.aucunStockDisponible')}</Text>
                     </View>
                 )}
             </View>
@@ -258,7 +260,7 @@ const BloodBankResultCard: React.FC<BloodBankResultCardProps> = ({ banque }) => 
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Stocks détaillés</Text>
+                            <Text style={styles.modalTitle}>{t('bloodBankResultCard.stocksDetailles')}</Text>
                             <TouchableOpacity
                                 onPress={() => setShowStocksDetail(false)}
                                 style={styles.modalCloseButton}
@@ -313,14 +315,14 @@ const BloodBankResultCard: React.FC<BloodBankResultCardProps> = ({ banque }) => 
                                                             ? 'Moyen'
                                                             : stock.statut === 'faible'
                                                                 ? 'Faible'
-                                                                : 'Épuisé'}
+                                                                : t('bloodBankResultCard.epuise')}
                                                 </Text>
                                             </View>
                                         </View>
                                     </View>
                                 ))
                             ) : (
-                                <Text style={styles.noStockText}>Aucun stock enregistré</Text>
+                                <Text style={styles.noStockText}>{t('bloodBankResultCard.aucunStockEnregistre')}</Text>
                             )}
                         </ScrollView>
                     </View>

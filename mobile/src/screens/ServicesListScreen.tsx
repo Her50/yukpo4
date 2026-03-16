@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useNavigation } from '@react-navigation/native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ServiceItem {
   id: string;
@@ -25,7 +26,7 @@ const mockServices: ServiceItem[] = [
   {
     id: '2',
     nom: 'Yukpo Transport',
-    description: 'Réservation de billets et hôtels',
+    description: t('servicesList.reservationDeBilletsEtHotels'),
     categorie: 'Transport',
     type: 'service',
     icon: '🚗',
@@ -33,7 +34,7 @@ const mockServices: ServiceItem[] = [
   {
     id: '3',
     nom: 'Yukpo Social Listening',
-    description: 'Suivi intelligent des tendances sociales',
+    description: t('servicesList.suiviIntelligentDesTendancesSociales'),
     categorie: 'Analyse & Intelligence',
     type: 'moteur',
     icon: '📊',
@@ -41,7 +42,7 @@ const mockServices: ServiceItem[] = [
   {
     id: '4',
     nom: 'Yukpo Commerce',
-    description: 'Gestion de boutique en ligne',
+    description: t('servicesList.gestionDeBoutiqueEnLigne'),
     categorie: 'E-commerce',
     type: 'plateforme',
     icon: '🛍️',
@@ -50,7 +51,7 @@ const mockServices: ServiceItem[] = [
     id: '5',
     nom: 'Yukpo Formation',
     description: 'Plateforme de cours et formations',
-    categorie: 'Éducation',
+    categorie: t('servicesListScreen.education'),
     type: 'service',
     icon: '📚',
   },
@@ -58,6 +59,7 @@ const mockServices: ServiceItem[] = [
 
 const ServicesListScreen: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
   const [query, setQuery] = useState('');
 
   const filtered = mockServices.filter(
@@ -72,7 +74,7 @@ const ServicesListScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>🎯 Catalogue des services</Text>
+          <Text style={styles.title}>{t('servicesList.catalogueDesServices')}/Text>
           <Text style={styles.subtitle}>
             Découvrez tous les services disponibles sur{' '}
             <Text style={styles.brandYuk}>Yuk</Text>
@@ -85,7 +87,7 @@ const ServicesListScreen: React.FC = () => {
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder="Rechercher un service..."
+            placeholder={t('servicesList.rechercherUnService')}
             placeholderTextColor="#999"
             value={query}
             onChangeText={setQuery}
@@ -110,7 +112,7 @@ const ServicesListScreen: React.FC = () => {
             onPress={() => (navigation as any).navigate('Home')}
           >
             <Text style={styles.actionIcon}>⚙️</Text>
-            <Text style={styles.actionTitle}>Créer un service</Text>
+            <Text style={styles.actionTitle}>{t('servicesList.creerUnService')}</Text>
             <Text style={styles.actionDescription}>
               Service assisté personnalisé en quelques clics
             </Text>
@@ -118,7 +120,7 @@ const ServicesListScreen: React.FC = () => {
         </View>
 
         {/* Liste des services */}
-        <Text style={styles.sectionTitle}>📦 Services disponibles</Text>
+        <Text style={styles.sectionTitle}>{t('servicesList.servicesDisponibles')}/Text>
 
         {filtered.length === 0 ? (
           <View style={styles.emptyState}>
@@ -150,7 +152,7 @@ const ServicesListScreen: React.FC = () => {
                   <View style={styles.serviceFooter}>
                     <Text style={styles.serviceType}>{service.type.toUpperCase()}</Text>
                     <TouchableOpacity style={styles.discoverButton}>
-                      <Text style={styles.discoverText}>Découvrir →</Text>
+                      <Text style={styles.discoverText}>{t('servicesList.decouvrir')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

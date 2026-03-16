@@ -19,6 +19,7 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { useToaster } from './ToasterProvider'; // ✅ NOUVEAU: Pour afficher les toasts de confirmation
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface SubCharacteristicRow {
     label: string;
@@ -46,6 +47,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
 }) => {
     // ✅ NOUVEAU: Toast pour les notifications
     const toaster = useToaster();
+    const { t } = useLanguageSafe();
 
     // État du tableau : chaque ligne contient un label et une valeur
     const [rows, setRows] = useState<SubCharacteristicRow[]>([]);
@@ -290,7 +292,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
 
         // ✅ NOUVEAU: Feedback visuel pour la modification
         if (toaster) {
-            toaster.success('Modification enregistrée');
+            toaster.success(t('subCharacteristicsTable.modificationEnregistree'));
         }
 
         // ✅ NOUVEAU: Mettre à jour le compteur pour le feedback
@@ -327,7 +329,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
 
         // ✅ NOUVEAU: Feedback visuel pour la suppression
         if (toaster) {
-            toaster.info('Ligne supprimée');
+            toaster.info(t('subCharacteristicsTable.ligneSupprimee'));
         }
 
         // ✅ NOUVEAU: Réactiver le bouton si on supprime après validation
@@ -354,7 +356,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
 
         // ✅ NOUVEAU: Feedback visuel pour l'ajout
         if (toaster) {
-            toaster.info('Nouvelle ligne ajoutée');
+            toaster.info(t('subCharacteristicsTable.nouvelleLigneAjoutee'));
         }
 
         // ✅ NOUVEAU: Réactiver le bouton si on ajoute après validation
@@ -431,7 +433,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             // ✅ NOUVEAU: Afficher un toast de confirmation
             const nbCaracteristiques = validRows.length;
             toaster.success(
-                `✅ ${nbCaracteristiques} sous-caractéristique${nbCaracteristiques > 1 ? 's' : ''} validée${nbCaracteristiques > 1 ? 's' : ''} avec succès !`
+                t('subCharacteristicsTable.souscaracteristiqueValideeAvecSucces', { nbCaracteristiques: nbCaracteristiques, nbCaracteristiques > 1 ? 's' : '': nbCaracteristiques > 1 ? 's' : '', nbCaracteristiques > 1 ? 's' : '': nbCaracteristiques > 1 ? 's' : '' })
             );
 
             // ✅ NOUVEAU: Animation de la bordure verte pour feedback visuel clair
@@ -451,7 +453,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             // ✅ NOTE: On ne remet plus setIsValidated(false) automatiquement pour garder le bouton grisé
         } catch (error) {
             console.error('[SubCharacteristicsTable] ❌ Erreur validation:', error);
-            toaster.error('❌ Erreur lors de la validation. Veuillez réessayer.');
+            toaster.error(t('subCharacteristicsTable.erreurLorsDeLaValidationVeuillez'));
             // ✅ Afficher un message d'erreur (sera géré par le parent si nécessaire)
         } finally {
             setIsValidating(false);
@@ -572,7 +574,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                     onPress={addRow}
                 >
                     <SafeIcon name="plus" size={18} color="#FFFFFF" />
-                    <Text style={styles.addButtonText}>Ajouter</Text>
+                    <Text style={styles.addButtonText}>{t('subCharacteristicsTable.ajouter')}</Text>
                 </TouchableOpacity>
                 <Animated.View style={{ flex: 1, transform: [{ scale: scaleAnim }] }}>
                     <TouchableOpacity
@@ -593,12 +595,12 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                         ) : isValidated ? (
                             <>
                                 <SafeIcon name="check-circle" size={20} color="#FFFFFF" />
-                                <Text style={[styles.validateButtonText, styles.validateButtonTextSuccess]}>✓ Sauvegardé !</Text>
+                                <Text style={[styles.validateButtonText, styles.validateButtonTextSuccess]}>{t('subCharacteristicsTable.sauvegarde')}</Text>
                             </>
                         ) : (
                             <>
                                 <SafeIcon name="check-circle" size={18} color="#FFFFFF" />
-                                <Text style={styles.validateButtonText}>Valider</Text>
+                                <Text style={styles.validateButtonText}>{t('subCharacteristicsTable.valider')}/Text>
                             </>
                         )}
                     </TouchableOpacity>
@@ -609,7 +611,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             {isValidated && (
                 <View style={styles.successBadge}>
                     <SafeIcon name="check-circle" size={16} color="#10B981" />
-                    <Text style={styles.successBadgeText}>Validation réussie</Text>
+                    <Text style={styles.successBadgeText}>{t('subCharacteristicsTable.validationReussie')}</Text>
                 </View>
             )}
         </Animated.View>

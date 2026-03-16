@@ -35,8 +35,8 @@ const ExternalServiceShare: React.FC = () => {
       setLoading(true);
       const mockService: ServiceData = {
         id: '1',
-        title: 'Réparation plomberie professionnelle',
-        description: 'Service de réparation de plomberie à domicile avec garantie. Intervention rapide 24h/24.',
+        title: t('externalServiceShare.reparationPlomberieProfessionnelle'),
+        description: t('externalServiceShare.serviceDeReparationDePlomberie'),
         category: 'Plomberie',
         price: 15000,
         location: 'Douala, Cameroun',
@@ -75,7 +75,7 @@ const ExternalServiceShare: React.FC = () => {
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Contacter',
+          text: t('common.contact'),
           onPress: () => {
             Alert.alert('Contact', 'Fonctionnalité de contact à implémenter');
           }
@@ -89,7 +89,7 @@ const ExternalServiceShare: React.FC = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Chargement du service...</Text>
+          <Text style={styles.loadingText}>{t('externalServiceShare.chargementDuService')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -100,7 +100,7 @@ const ExternalServiceShare: React.FC = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={64} color={theme.colors.error} />
-          <Text style={styles.errorTitle}>Service non trouvé</Text>
+          <Text style={styles.errorTitle}>{t('externalServiceShare.serviceNonTrouve')}</Text>
           <Text style={styles.errorText}>
             Le service que vous recherchez n'existe pas ou a été supprimé.
           </Text>
@@ -171,7 +171,7 @@ const ExternalServiceShare: React.FC = () => {
 
         <Card style={styles.infoCard}>
           <Card.Content>
-            <Title style={styles.infoTitle}>À propos de Yukpo</Title>
+            <Title style={styles.infoTitle}>{t('externalServiceShare.aProposDeYukpo')}</Title>
             <Paragraph style={styles.infoText}>
               Yukpo est une plateforme de connexion directe entre les besoins exprimés et les solutions concrètes.
               Téléchargez l'application pour découvrir plus de services et créer votre propre profil de prestataire.

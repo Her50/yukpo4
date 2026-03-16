@@ -7,9 +7,11 @@ import React, { useEffect, useState } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
 import { offlineService } from '../../services/offlineService';
 import { SafeIcon } from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export const OfflineIndicator: React.FC = React.memo(() => {
-    const [isOnline, setIsOnline] = useState(true);
+        const { t } = useLanguageSafe();
+const [isOnline, setIsOnline] = useState(true);
     const slideAnim = React.useRef(new Animated.Value(-100)).current;
 
     useEffect(() => {
@@ -79,7 +81,7 @@ export const OfflineIndicator: React.FC = React.memo(() => {
             accessibilityRole="alert"
         >
             <SafeIcon name="wifi-off" size={20} color="#FFFFFF" />
-            <Text style={styles.text}>Mode hors ligne</Text>
+            <Text style={styles.text}>{t('offlineIndicator.modeHorsLigne')}/Text>
         </Animated.View>
     );
 });

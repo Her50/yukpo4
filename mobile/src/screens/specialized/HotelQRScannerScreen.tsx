@@ -47,7 +47,7 @@ const HotelQRScannerScreen: React.FC = () => {
   const [scanData, setScanData] = useState<ScanResponse | null>(null);
   const [rawCode, setRawCode] = useState<string | null>(null);
 
-  const propertyName = route.params?.propertyName || 'Votre établissement';
+  const propertyName = route.params?.propertyName || t('hotelQRScanner.votreEtablissement');
 
   const handleScan = useCallback(
     async (qrData: string) => {
@@ -153,22 +153,22 @@ const HotelQRScannerScreen: React.FC = () => {
 
     switch (status) {
       case 'pending':
-        label = 'En attente';
+        label={t('hotelQRScanner.enAttente')};
         bg = '#FEF3C7';
         color = '#92400E';
         break;
       case 'confirmed':
-        label = 'Confirmée';
+        label={t('hotelQRScanner.confirmee')};
         bg = '#DBEAFE';
         color = '#1D4ED8';
         break;
       case 'checked_in':
-        label = 'Client en séjour';
+        label={t('hotelQRScanner.clientEnSejour')};
         bg = '#DCFCE7';
         color = '#166534';
         break;
       case 'checked_out':
-        label = 'Séjour terminé';
+        label={t('hotelQRScanner.sejourTermine')};
         bg = '#E5E7EB';
         color = '#4B5563';
         break;
@@ -193,12 +193,12 @@ const HotelQRScannerScreen: React.FC = () => {
         color = '#92400E';
         break;
       case 'advance_paid':
-        label = 'Avance payée';
+        label={t('hotelQRScanner.avancePayee')};
         bg = '#DBEAFE';
         color = '#1D4ED8';
         break;
       case 'fully_paid':
-        label = 'Totalement soldée';
+        label={t('hotelQRScanner.totalementSoldee')};
         bg = '#DCFCE7';
         color = '#166534';
         break;
@@ -220,7 +220,7 @@ const HotelQRScannerScreen: React.FC = () => {
           <Text style={[styles.badgeText, { color: '#7C3AED' }]}>
             {guest_label && guest_label.trim().length > 0
               ? guest_label
-              : 'QR invité / co‑chambrier'}
+              : t('hotelQRScannerScreen.qrInviteCochambrier')}
           </Text>
         </View>
       );
@@ -246,7 +246,7 @@ const HotelQRScannerScreen: React.FC = () => {
             onPress={() => navigation.goBack()}
           />
           <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Scan QR réservation</Text>
+            <Text style={styles.headerTitle}>{t('hotelQRScanner.scanQrReservation')}</Text>
             <Text style={styles.headerSubtitle} numberOfLines={1}>
               {propertyName}
             </Text>
@@ -301,7 +301,7 @@ const HotelQRScannerScreen: React.FC = () => {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Séjour</Text>
+              <Text style={styles.sectionTitle}>{t('hotelQRScanner.sejour')}</Text>
               <View style={styles.row}>
                 <SafeIcon name="calendar" size={18} color="#4B5563" />
                 <Text style={styles.rowText}>
@@ -330,19 +330,19 @@ const HotelQRScannerScreen: React.FC = () => {
                 {renderPaymentStatusBadge(scanData.payment_status)}
               </View>
               <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>Montant total</Text>
+                <Text style={styles.amountLabel}>{t('hotelQRScanner.montantTotal')}/Text>
                 <Text style={styles.amountValue}>
                   {formatAmount(scanData.montant_total)}
                 </Text>
               </View>
               <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>Avance payée</Text>
+                <Text style={styles.amountLabel}>{t('hotelQRScanner.avancePayee')}</Text>
                 <Text style={styles.amountValue}>
                   {formatAmount(scanData.montant_avance)}
                 </Text>
               </View>
               <View style={[styles.amountRow, styles.amountRowStrong]}>
-                <Text style={styles.amountLabelStrong}>Reste à payer</Text>
+                <Text style={styles.amountLabelStrong}>{t('hotelQRScanner.resteAPayer')}</Text>
                 <Text style={styles.amountValueStrong}>
                   {formatAmount(scanData.montant_restant)}
                 </Text>
@@ -371,7 +371,7 @@ const HotelQRScannerScreen: React.FC = () => {
 
             {rawCode && (
               <View style={styles.rawCodeContainer}>
-                <Text style={styles.rawCodeLabel}>Code brut scanné :</Text>
+                <Text style={styles.rawCodeLabel}>{t('hotelQRScanner.codeBrutScanne')}</Text>
                 <Text style={styles.rawCodeValue} numberOfLines={2}>
                   {rawCode}
                 </Text>
@@ -386,7 +386,7 @@ const HotelQRScannerScreen: React.FC = () => {
                 style={styles.footerButton}
               />
               <NativeButton
-                title="Fermer"
+                title={t('hotelQRScannerScreen.fermer')}
                 variant="outline"
                 onPress={() => navigation.goBack()}
                 style={styles.footerButton}

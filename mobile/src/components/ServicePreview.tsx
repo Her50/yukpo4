@@ -6,6 +6,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ChecklistItem {
     id: string;
@@ -42,7 +43,7 @@ const ServicePreview: React.FC<Props> = ({
 
     const serviceTypes: Record<string, { name: string; icon: string; color: string }> = {
         pharmacie: { name: 'Pharmacie', icon: 'Pill', color: '#10B981' },
-        hopital: { name: 'Hôpital/Clinique', icon: 'Hospital', color: '#EF4444' },
+        hopital: { name: t('servicePreview.hopitalclinique'), icon: 'Hospital', color: '#EF4444' },
         laboratoire: { name: 'Laboratoire', icon: 'Microscope', color: '#3B82F6' },
         banque_sang: { name: 'Banque de Sang', icon: 'Droplet', color: '#DC2626' },
         agence_voyage: { name: 'Agence de Voyage', icon: 'Bus', color: '#F59E0B' },
@@ -60,7 +61,7 @@ const ServicePreview: React.FC<Props> = ({
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
             {/* Header avec pourcentage de complétude */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Aperçu du service</Text>
+                <Text style={styles.headerTitle}>{t('servicePreview.apercuDuService')}</Text>
                 <View style={styles.completionContainer}>
                     <View style={styles.completionBar}>
                         <View
@@ -99,7 +100,7 @@ const ServicePreview: React.FC<Props> = ({
 
             {/* Checklist de complétude */}
             <NativeCard style={styles.checklistCard}>
-                <Text style={styles.checklistTitle}>Checklist de complétude</Text>
+                <Text style={styles.checklistTitle}>{t('servicePreview.checklistDeCompletude')}</Text>
                 <View style={styles.checklistContainer}>
                     {checklist.map((item) => (
                         <View key={item.id} style={styles.checklistItem}>
@@ -139,7 +140,7 @@ const ServicePreview: React.FC<Props> = ({
 
             {/* Informations détaillées */}
             <NativeCard style={styles.detailsCard}>
-                <Text style={styles.detailsTitle}>Informations détaillées</Text>
+                <Text style={styles.detailsTitle}>{t('servicePreview.informationsDetaillees')}</Text>
                 <View style={styles.detailsList}>
                     {Object.entries(data)
                         .filter(([key]) => key !== 'type' && key !== 'nom')
@@ -157,7 +158,7 @@ const ServicePreview: React.FC<Props> = ({
             {/* Actions */}
             <View style={styles.actionsContainer}>
                 <NativeButton
-                    title="💾 Enregistrer comme brouillon"
+                    title={t('servicePreview.enregistrerCommeBrouillon')}
                     variant="outline"
                     onPress={onSaveDraft}
                     style={styles.actionButton}

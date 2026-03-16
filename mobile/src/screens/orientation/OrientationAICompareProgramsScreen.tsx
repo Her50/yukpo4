@@ -48,11 +48,11 @@ const OrientationAICompareProgramsScreen: React.FC = () => {
             if (!profile) {
                 Alert.alert(
                     'Profil requis',
-                    'Veuillez d\'abord compléter votre profil étudiant',
+                    'Veuillez d\t('orientationAICompareProgramsScreen.abordCompleterVotreProfilEtudiant'),
                     [
                         { text: t('common.cancel'), style: 'cancel' },
                         {
-                            text: 'Créer profil',
+                            text: t('orientationAIComparePrograms.creerProfil'),
                             onPress: () => navigation.navigate('ProfilEtudiant')
                         }
                     ]
@@ -92,7 +92,7 @@ const OrientationAICompareProgramsScreen: React.FC = () => {
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Programme 1</Text>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>ID Établissement 1</Text>
+                        <Text style={styles.label}>{t('orientationAIComparePrograms.idEtablissement1')}</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="Ex: 1"
@@ -103,7 +103,7 @@ const OrientationAICompareProgramsScreen: React.FC = () => {
                         />
                     </View>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Filière 1</Text>
+                        <Text style={styles.label}>{t('orientationAIComparePrograms.filiere1')}</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="Ex: Informatique"
@@ -115,7 +115,7 @@ const OrientationAICompareProgramsScreen: React.FC = () => {
 
                     <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Programme 2</Text>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>ID Établissement 2</Text>
+                        <Text style={styles.label}>{t('orientationAIComparePrograms.idEtablissement2')}</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="Ex: 2"
@@ -126,10 +126,10 @@ const OrientationAICompareProgramsScreen: React.FC = () => {
                         />
                     </View>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Filière 2</Text>
+                        <Text style={styles.label}>{t('orientationAIComparePrograms.filiere2')}</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Ex: Génie Logiciel"
+                            placeholder={t('orientationAIComparePrograms.exGenieLogiciel')}
                             value={filiere2}
                             onChangeText={setFiliere2}
                             placeholderTextColor={modernColors.textSecondary}
@@ -147,7 +147,7 @@ const OrientationAICompareProgramsScreen: React.FC = () => {
             ) : (
                 <View>
                     <NativeCard style={styles.comparisonCard}>
-                        <Text style={styles.comparisonTitle}>Résultat de la comparaison</Text>
+                        <Text style={styles.comparisonTitle}>{t('orientationAIComparePrograms.resultatDeLaComparaison')}</Text>
                         <View style={styles.scoresContainer}>
                             <View style={styles.scoreItem}>
                                 <Text style={styles.scoreLabel}>Programme 1</Text>
@@ -181,7 +181,7 @@ const OrientationAICompareProgramsScreen: React.FC = () => {
 
                     {comparison.comparison_details && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>Détails de la comparaison</Text>
+                            <Text style={styles.sectionTitle}>{t('orientationAIComparePrograms.detailsDeLaComparaison')}</Text>
                             {Object.entries(comparison.comparison_details).map(([key, value]: [string, any]) => (
                                 <View key={key} style={styles.detailRow}>
                                     <Text style={styles.detailLabel}>{key}:</Text>
@@ -193,7 +193,7 @@ const OrientationAICompareProgramsScreen: React.FC = () => {
 
                     <View style={styles.actions}>
                         <NativeButton
-                            title="Nouvelle comparaison"
+                            title={t('orientationAIComparePrograms.nouvelleComparaison')}
                             onPress={() => {
                                 setComparison(null);
                                 setEtablissement1Id('');

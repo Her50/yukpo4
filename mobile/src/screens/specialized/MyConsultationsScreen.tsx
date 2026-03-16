@@ -17,9 +17,11 @@ import { SkeletonList } from '../../components/SkeletonLoader';
 import { useAuth } from '../../contexts/AuthContext';
 import { HospitalConsultation, hospitalService } from '../../services/hospitalService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const MyConsultationsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
 
     const [consultations, setConsultations] = useState<HospitalConsultation[]>([]);
@@ -103,7 +105,7 @@ const MyConsultationsScreen: React.FC = () => {
             case 'completed':
                 return modernColors.primary;
             case 'cancelled':
-            case 'annulée':
+            case t('myConsultationsScreen.annulee'):
                 return modernColors.error;
             default:
                 return modernColors.textSecondary;
@@ -114,24 +116,24 @@ const MyConsultationsScreen: React.FC = () => {
         if (!status) return 'Inconnu';
         switch (status.toLowerCase()) {
             case 'confirmed':
-            case 'confirmée':
-                return 'Confirmée';
+            case t('myConsultationsScreen.confirmee'):
+                return t('myConsultationsScreen.confirmee');
             case 'pending':
             case 'en_attente':
                 return 'En attente';
             case 'completed':
-            case 'terminée':
-                return 'Terminée';
+            case t('myConsultationsScreen.terminee'):
+                return t('myConsultationsScreen.terminee');
             case 'cancelled':
-            case 'annulée':
-                return 'Annulée';
+            case t('myConsultationsScreen.annulee'):
+                return t('myConsultationsScreen.annulee');
             default:
                 return status;
         }
     };
 
     const formatDate = (dateString: string | null) => {
-        if (!dateString) return 'Non spécifié';
+        if (!dateString) return t('myConsultationsScreen.nonSpecifie');
         try {
             const date = new Date(dateString);
             return date.toLocaleString('fr-FR', {
@@ -167,7 +169,7 @@ const MyConsultationsScreen: React.FC = () => {
                             <SafeIcon name="hospital" size={24} color={modernColors.primary} />
                             <View style={styles.hospitalDetails}>
                                 <Text style={styles.hospitalName}>
-                                    {item.hospital_name || 'Hôpital non spécifié'}
+                                    {item.hospital_name || t('myConsultations.hopitalNonSpecifie')}
                                 </Text>
                                 {item.type_etablissement && (
                                     <Text style={styles.hospitalType}>
@@ -213,7 +215,7 @@ const MyConsultationsScreen: React.FC = () => {
                             Créée le {formatDate(item.created_at)}
                         </Text>
                         <NativeButton
-                            title="Voir détails"
+                            title={t('myConsultations.voirDetails')}
                             onPress={() => handleViewDetails(item)}
                             variant="outline"
                             size="small"
@@ -302,7 +304,7 @@ const MyConsultationsScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mes consultations</Text>
+                <Text style={styles.title}>{t('myConsultations.mesConsultations')}</Text>
             </View>
 
             {renderFilters()}
@@ -314,12 +316,12 @@ const MyConsultationsScreen: React.FC = () => {
             ) : consultations.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="clipboard-list" size={64} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyTitle}>Aucune consultation</Text>
+                    <Text style={styles.emptyTitle}>{t('myConsultations.aucuneConsultation')}</Text>
                     <Text style={styles.emptyText}>
                         Vous n'avez pas encore de consultations enregistrées.
                     </Text>
                     <NativeButton
-                        title="Rechercher un hôpital"
+                        title={t('myConsultations.rechercherUnHopital')}
                         onPress={() => navigation.navigate('HopitalSearch' as never)}
                         variant="primary"
                         style={styles.emptyButton}

@@ -17,6 +17,7 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import { hapticPress } from '../utils/hapticFeedback';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SpecializedServicesButtonProps {
     onPress?: () => void;
@@ -26,6 +27,7 @@ export const SpecializedServicesButton: React.FC<SpecializedServicesButtonProps>
     onPress,
 }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [isNavigating, setIsNavigating] = useState(false);
 
     const handlePress = async () => {
@@ -56,7 +58,7 @@ export const SpecializedServicesButton: React.FC<SpecializedServicesButtonProps>
             // ✅ AMÉLIORÉ: Afficher un message d'erreur à l'utilisateur
             Alert.alert(
                 'Erreur',
-                'Impossible d\'accéder aux services spécialisés. Veuillez réessayer.',
+                'Impossible d\t('specializedServicesButton.accederAuxServicesSpecialisesVeuillezReessayer'),
                 [{ text: 'OK' }]
             );
         } finally {
@@ -73,7 +75,7 @@ export const SpecializedServicesButton: React.FC<SpecializedServicesButtonProps>
             onPress={handlePress}
             activeOpacity={0.8}
             disabled={isNavigating}
-            accessibilityLabel="Accéder aux services spécialisés"
+            accessibilityLabel={t('specializedServicesButton.accederAuxServicesSpecialises')}
             accessibilityRole="button"
             accessibilityHint="Ouvre la page des services spécialisés : santé, transport, immobilier, éducation et cuisine"
             accessibilityState={{ disabled: isNavigating }}
@@ -87,7 +89,7 @@ export const SpecializedServicesButton: React.FC<SpecializedServicesButtonProps>
                     )}
                 </View>
                 <View style={styles.textContainer}>
-                    <Text style={styles.title}>Services Spécialisés</Text>
+                    <Text style={styles.title}>{t('specializedServicesButton.servicesSpecialises')}</Text>
                     <Text style={styles.subtitle}>
                         Santé • Transport • Immobilier • Éducation • Cuisine
                     </Text>

@@ -17,6 +17,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface LivreScolaire {
     livre: {
@@ -38,6 +39,7 @@ interface LivreScolaire {
 
 const LivreScolaireListScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const params = route.params as any;
 
@@ -184,7 +186,7 @@ const LivreScolaireListScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+                <Text style={styles.loadingText}>{t('livreScolaireList.chargement')}</Text>
             </View>
         );
     }
@@ -206,7 +208,7 @@ const LivreScolaireListScreen: React.FC = () => {
             {livres.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="book-open" size={64} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyText}>Aucun livre trouvé</Text>
+                    <Text style={styles.emptyText}>{t('livreScolaireList.aucunLivreTrouve')}</Text>
                     <Text style={styles.emptySubtext}>
                         Essayez de modifier vos critères de recherche
                     </Text>

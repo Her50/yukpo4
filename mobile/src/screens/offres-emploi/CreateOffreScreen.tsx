@@ -62,19 +62,19 @@ const CreateOffreScreen: React.FC = () => {
 
     const typesContrat = ['CDI', 'CDD', 'Stage', 'Freelance', 'Temps partiel', 'Alternance'];
     const secteurs = [
-        'Informatique', 'Commerce', 'Santé', 'Éducation', 'Finance',
-        'Marketing', 'Ressources Humaines', 'Ingénierie', 'Design', 'Autre'
+        'Informatique', 'Commerce', t('createOffreScreen.sante'), 'Éducation', 'Finance',
+        'Marketing', 'Ressources Humaines', t('createOffreScreen.ingenierie'), 'Design', 'Autre'
     ];
 
     if (!user) {
         return (
             <View style={styles.centerContainer}>
-                <Text style={styles.errorText}>Connexion requise</Text>
+                <Text style={styles.errorText}>{t('createOffre.connexionRequise')}</Text>
                 <TouchableOpacity
                     style={styles.button}
                     onPress={() => (navigation as any).navigate('Login')}
                 >
-                    <Text style={styles.buttonText}>Se connecter</Text>
+                    <Text style={styles.buttonText}>{t('createOffre.seConnecter')}/Text>
                 </TouchableOpacity>
             </View>
         );
@@ -229,7 +229,7 @@ const CreateOffreScreen: React.FC = () => {
                 const offreId = (response.data as any)?.id || (response.data as any)?.offre_id;
                 Alert.alert(t('message.success'), t('createOffre.offerCreated'), [
                     {
-                        text: 'Voir les candidatures',
+                        text: t('createOffre.voirLesCandidatures'),
                         onPress: () => {
                             if (offreId) {
                                 (navigation as any).navigate('OffreCandidatures', { offreId });
@@ -292,7 +292,7 @@ const CreateOffreScreen: React.FC = () => {
                     <NativeInput
                         value={formData.titre_poste}
                         onChangeText={(text) => setFormData({ ...formData, titre_poste: text })}
-                        placeholder="Ex: Développeur Full Stack"
+                        placeholder={t('createOffre.exDeveloppeurFullStack')}
                     />
                 </View>
 
@@ -303,7 +303,7 @@ const CreateOffreScreen: React.FC = () => {
                         style={styles.textArea}
                         value={formData.description}
                         onChangeText={(text) => setFormData({ ...formData, description: text })}
-                        placeholder="Décrivez le poste..."
+                        placeholder={t('createOffre.decrivezLePoste')}
                         multiline
                         numberOfLines={6}
                     />
@@ -311,7 +311,7 @@ const CreateOffreScreen: React.FC = () => {
 
                 {/* Secteur */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Secteur d'activité *</Text>
+                    <Text style={styles.label}>{t('createOffre.secteurDactivite')}</Text>
                     <View style={styles.pickerContainer}>
                         {secteurs.map((s) => (
                             <TouchableOpacity
@@ -337,7 +337,7 @@ const CreateOffreScreen: React.FC = () => {
 
                 {/* Type de contrat */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Type de contrat *</Text>
+                    <Text style={styles.label}>{t('createOffre.typeDeContrat')}</Text>
                     <View style={styles.chipContainer}>
                         {typesContrat.map((type) => (
                             <TouchableOpacity
@@ -364,7 +364,7 @@ const CreateOffreScreen: React.FC = () => {
                 {/* Durée (si CDD) */}
                 {formData.type_contrat === 'CDD' && (
                     <View style={styles.field}>
-                        <Text style={styles.label}>Durée (mois)</Text>
+                        <Text style={styles.label}>{t('createOffre.dureeMois')}</Text>
                         <NativeInput
                             value={formData.duree_contrat}
                             onChangeText={(text) => setFormData({ ...formData, duree_contrat: text })}
@@ -376,11 +376,11 @@ const CreateOffreScreen: React.FC = () => {
 
                 {/* Localisation */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Lieu de travail *</Text>
+                    <Text style={styles.label}>{t('createOffre.lieuDeTravail')}</Text>
                     <NativeInput
                         value={formData.lieu_travail}
                         onChangeText={(text) => setFormData({ ...formData, lieu_travail: text })}
-                        placeholder="Ex: Douala, Yaoundé"
+                        placeholder={t('createOffre.exDoualaYaounde')}
                     />
                 </View>
 
@@ -389,7 +389,7 @@ const CreateOffreScreen: React.FC = () => {
                     <NativeInput
                         value={formData.adresse}
                         onChangeText={(text) => setFormData({ ...formData, adresse: text })}
-                        placeholder="Adresse complète"
+                        placeholder={t('createOffre.adresseComplete')}
                     />
                 </View>
 
@@ -413,7 +413,7 @@ const CreateOffreScreen: React.FC = () => {
 
                 {/* Remote */}
                 <View style={styles.switchRow}>
-                    <Text style={styles.label}>Télétravail possible</Text>
+                    <Text style={styles.label}>{t('createOffre.teletravailPossible')}</Text>
                     <Switch
                         value={formData.remote}
                         onValueChange={(value) => setFormData({ ...formData, remote: value })}
@@ -444,7 +444,7 @@ const CreateOffreScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.switchRow}>
-                    <Text style={styles.label}>Salaire négociable</Text>
+                    <Text style={styles.label}>{t('createOffre.salaireNegociable')}</Text>
                     <Switch
                         value={formData.salaire_negociable}
                         onValueChange={(value) => setFormData({ ...formData, salaire_negociable: value })}
@@ -454,12 +454,12 @@ const CreateOffreScreen: React.FC = () => {
 
                 {/* Compétences */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Compétences requises</Text>
+                    <Text style={styles.label}>{t('createOffre.competencesRequises')}</Text>
                     <View style={styles.addRow}>
                         <NativeInput
                             value={competenceInput}
                             onChangeText={setCompetenceInput}
-                            placeholder="Ajouter une compétence"
+                            placeholder={t('createOffre.ajouterUneCompetence')}
                             style={styles.addInput}
                         />
                         <TouchableOpacity style={styles.addButton} onPress={handleAddCompetence}>
@@ -480,7 +480,7 @@ const CreateOffreScreen: React.FC = () => {
 
                 {/* Bouton submit */}
                 <NativeButton
-                    title={loading ? 'Création...' : 'Publier l\'offre'}
+                    title={loading ? t('createOffreScreen.creation') : 'Publier l\'offre'}
                     onPress={handleSubmit}
                     disabled={loading}
                     style={styles.submitButton}
@@ -489,7 +489,7 @@ const CreateOffreScreen: React.FC = () => {
 
             {/* ✅ NOUVEAU: Section d'accès rapide aux fonctionnalités de gestion */}
             <View style={styles.quickAccessSection}>
-                <Text style={styles.quickAccessTitle}>Accès rapide</Text>
+                <Text style={styles.quickAccessTitle}>{t('createOffre.accesRapide')}</Text>
                 <Text style={styles.quickAccessSubtitle}>
                     Une fois l'offre publiée, vous pourrez :
                 </Text>
@@ -797,7 +797,7 @@ const AIModal: React.FC<AIModalProps> = ({
                     <View style={aiModalStyles.header}>
                         <View style={aiModalStyles.headerLeft}>
                             <SafeIcon name="sparkles" size={24} color={modernColors.primary} type="lucide" />
-                            <Text style={aiModalStyles.title}>Création intelligente avec IA</Text>
+                            <Text style={aiModalStyles.title}>{t('createOffre.creationIntelligenteAvecIa')}</Text>
                         </View>
                         <TouchableOpacity onPress={onClose} style={aiModalStyles.closeButton}>
                             <SafeIcon name="x" size={24} color="#111827" type="lucide" />
@@ -824,7 +824,7 @@ const AIModal: React.FC<AIModalProps> = ({
 
                         <TextInput
                             style={aiModalStyles.input}
-                            placeholder="Ex: Je cherche un développeur Full Stack avec expérience en Node.js et React, CDI à Douala, salaire négociable, télétravail possible..."
+                            placeholder={t('createOffre.exJeChercheUnDeveloppeur')}
                             placeholderTextColor="#9CA3AF"
                             value={prompt}
                             onChangeText={onPromptChange}

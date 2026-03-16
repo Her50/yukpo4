@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { Linking, StyleSheet, Text, TextProps, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface LinkableTextProps extends TextProps {
   text: string;
@@ -31,6 +32,7 @@ const LinkableText: React.FC<LinkableTextProps> = ({
   ...textProps
 }) => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
   const handleLinkPress = async (url: string) => {
     try {
@@ -251,7 +253,7 @@ const LinkableText: React.FC<LinkableTextProps> = ({
               </View>
               <View style={styles.linkCardContent}>
                 <Text style={styles.reviewLinkTitle}>Laisser un avis</Text>
-                <Text style={styles.linkCardHint}>Partagez votre expérience</Text>
+                <Text style={styles.linkCardHint}>{t('linkableText.partagezVotreExperience')}</Text>
               </View>
               <Text style={styles.linkCardArrow}>›</Text>
             </View>
@@ -270,8 +272,8 @@ const LinkableText: React.FC<LinkableTextProps> = ({
                 <Text style={{ fontSize: 14 }}>📦</Text>
               </View>
               <View style={styles.linkCardContent}>
-                <Text style={styles.productLinkTitle}>Voir le produit</Text>
-                <Text style={styles.linkCardHint}>Appuyez pour ouvrir</Text>
+                <Text style={styles.productLinkTitle}>{t('linkableText.voirLeProduit')}</Text>
+                <Text style={styles.linkCardHint}>{t('linkableText.appuyezPourOuvrir')}</Text>
               </View>
               <Text style={styles.linkCardArrow}>›</Text>
             </View>

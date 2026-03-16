@@ -18,6 +18,7 @@ import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface VideoItem {
     id: string;
@@ -44,6 +45,7 @@ interface HashtagInfo {
 
 const HashtagDiscoveryScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const hashtag = (route.params as any)?.hashtag || '';
 
@@ -219,12 +221,12 @@ const HashtagDiscoveryScreen: React.FC = () => {
             {loading && videos.length === 0 ? (
                 <View style={styles.loader}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loaderText}>Chargement des vidéos...</Text>
+                    <Text style={styles.loaderText}>{t('hashtagDiscovery.chargementDesVideos')}</Text>
                 </View>
             ) : videos.length === 0 ? (
                 <View style={styles.emptyState}>
                     <SafeIcon name="video-off" size={48} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyTitle}>Aucune vidéo trouvée</Text>
+                    <Text style={styles.emptyTitle}>{t('hashtagDiscovery.aucuneVideoTrouvee')}</Text>
                     <Text style={styles.emptySubtitle}>
                         Aucune vidéo n'utilise ce hashtag pour le moment.
                     </Text>

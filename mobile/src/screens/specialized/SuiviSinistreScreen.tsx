@@ -16,19 +16,20 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import assuranceService, { type InsuranceClaim } from '../../services/assuranceService';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const STATUS_FLOW = [
-    { key: 'declare', label: 'Déclaré', icon: 'file-plus', color: '#D97706' },
+    { key: 'declare', label: t('suiviSinistre.declare'), icon: 'file-plus', color: '#D97706' },
     { key: 'en_cours_instruction', label: 'En instruction', icon: 'search', color: '#2563EB' },
-    { key: 'expertise_demandee', label: 'Expertise demandée', icon: 'clipboard', color: '#7C3AED' },
+    { key: 'expertise_demandee', label: t('suiviSinistre.expertiseDemandee'), icon: 'clipboard', color: '#7C3AED' },
     { key: 'expertise_en_cours', label: 'Expertise en cours', icon: 'activity', color: '#7C3AED' },
     { key: 'en_attente_documents', label: 'Attente documents', icon: 'file', color: '#D97706' },
-    { key: 'approuve', label: 'Approuvé', icon: 'check-circle', color: '#059669' },
-    { key: 'partiellement_approuve', label: 'Partiellement approuvé', icon: 'check', color: '#059669' },
-    { key: 'indemnise', label: 'Indemnisé', icon: 'dollar-sign', color: '#10B981' },
-    { key: 'refuse', label: 'Refusé', icon: 'x-circle', color: '#DC2626' },
+    { key: 'approuve', label: t('suiviSinistre.approuve'), icon: 'check-circle', color: '#059669' },
+    { key: 'partiellement_approuve', label: t('suiviSinistre.partiellementApprouve'), icon: 'check', color: '#059669' },
+    { key: 'indemnise', label: t('suiviSinistre.indemnise'), icon: 'dollar-sign', color: '#10B981' },
+    { key: 'refuse', label: t('suiviSinistre.refuse'), icon: 'x-circle', color: '#DC2626' },
     { key: 'clos', label: 'Clos', icon: 'archive', color: '#6B7280' },
-    { key: 'conteste', label: 'Contesté', icon: 'alert-circle', color: '#DC2626' },
+    { key: 'conteste', label: t('suiviSinistre.conteste'), icon: 'alert-circle', color: '#DC2626' },
 ];
 
 const getStatusInfo = (statut: string) => {
@@ -42,6 +43,7 @@ const getStatusIndex = (statut: string) => {
 
 const SuiviSinistreScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const policyId = (route.params as any)?.policy_id;
 
@@ -71,7 +73,7 @@ const SuiviSinistreScreen: React.FC = () => {
     };
 
     if (loading) {
-        return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#D97706" /><Text style={s.loadingText}>Chargement...</Text></View>;
+        return <View style={s.loadingScreen}><ActivityIndicator size="large" color="#D97706" /><Text style={s.loadingText}>{t('suiviSinistre.chargement')}</Text></View>;
     }
 
     const openCount = claims.filter(c => !['clos', 'refuse', 'indemnise'].includes(c.statut)).length;
@@ -84,7 +86,7 @@ const SuiviSinistreScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={22} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>Suivi des sinistres</Text>
+                        <Text style={s.headerTitle}>{t('suiviSinistre.suiviDesSinistres')}/Text>
                         <Text style={s.headerSub}>{claims.length} sinistre(s) - {openCount} en cours</Text>
                     </View>
                 </View>
@@ -95,8 +97,8 @@ const SuiviSinistreScreen: React.FC = () => {
                 {claims.length === 0 ? (
                     <View style={s.emptyState}>
                         <SafeIcon name="shield" size={48} color="#9CA3AF" />
-                        <Text style={s.emptyTitle}>Aucun sinistre</Text>
-                        <Text style={s.emptyText}>Vous n'avez aucune déclaration de sinistre en cours.</Text>
+                        <Text style={s.emptyTitle}>{t('suiviSinistre.aucunSinistre')}</Text>
+                        <Text style={s.emptyText}>{t('suiviSinistre.vousNavezAucuneDeclarationDe')}</Text>
                     </View>
                 ) : (
                     claims.map(c => {
@@ -124,7 +126,7 @@ const SuiviSinistreScreen: React.FC = () => {
                                 <View style={s.claimSummary}>
                                     {c.nom_produit && <Text style={s.summaryText}>Produit: {c.nom_produit}</Text>}
                                     <Text style={s.summaryText}>Date sinistre: {c.date_sinistre || 'N/A'}</Text>
-                                    {c.montant_reclame && <Text style={s.summaryAmount}>Réclamé: {parseFloat(c.montant_reclame).toLocaleString()} {devise}</Text>}
+                                    {c.montant_reclame && <Text style={s.summaryAmount}>{t('suiviSinistreScreen.claimed')}: {parseFloat(c.montant_reclame).toLocaleString()} {devise}</Text>}
                                     {c.montant_indemnise && (
                                         <Text style={[s.summaryAmount, { color: '#059669' }]}>
                                             Indemnisé: {parseFloat(c.montant_indemnise).toLocaleString()} {devise}
@@ -161,7 +163,7 @@ const SuiviSinistreScreen: React.FC = () => {
                                         )}
                                         {c.dommages_estimes && (
                                             <View style={s.detailRow}>
-                                                <Text style={s.detailLabel}>Dommages estimés</Text>
+                                                <Text style={s.detailLabel}>{t('suiviSinistre.dommagesEstimes')}</Text>
                                                 <Text style={s.detailValue}>{parseFloat(c.dommages_estimes).toLocaleString()} {devise}</Text>
                                             </View>
                                         )}
@@ -173,7 +175,7 @@ const SuiviSinistreScreen: React.FC = () => {
                                         )}
                                         {c.priorite && (
                                             <View style={s.detailRow}>
-                                                <Text style={s.detailLabel}>Priorité</Text>
+                                                <Text style={s.detailLabel}>{t('suiviSinistre.priorite')}</Text>
                                                 <View style={[s.priorityBadge, {
                                                     backgroundColor: c.priorite === 'urgente' ? '#FEE2E2' : c.priorite === 'haute' ? '#FEF3C7' : '#F3F4F6'
                                                 }]}>
@@ -185,7 +187,7 @@ const SuiviSinistreScreen: React.FC = () => {
                                         )}
                                         {c.fraud_score && (
                                             <View style={s.detailRow}>
-                                                <Text style={s.detailLabel}>Score vérification</Text>
+                                                <Text style={s.detailLabel}>{t('suiviSinistre.scoreVerification')}</Text>
                                                 <Text style={[s.detailValue, { color: parseFloat(c.fraud_score) > 0.5 ? '#DC2626' : '#059669' }]}>
                                                     {(parseFloat(c.fraud_score) * 100).toFixed(0)}%
                                                 </Text>
@@ -195,7 +197,7 @@ const SuiviSinistreScreen: React.FC = () => {
                                         {/* Status timeline */}
                                         {c.historique_statuts && Array.isArray(c.historique_statuts) && c.historique_statuts.length > 0 && (
                                             <View style={s.timelineSection}>
-                                                <Text style={s.timelineTitle}>Historique</Text>
+                                                <Text style={s.timelineTitle}>{t('suiviSinistre.historique')}/Text>
                                                 {(c.historique_statuts as any[]).map((h, idx) => {
                                                     const hst = getStatusInfo(h.statut || h.status || '');
                                                     return (
@@ -213,7 +215,7 @@ const SuiviSinistreScreen: React.FC = () => {
                                         )}
 
                                         {c.created_at && (
-                                            <Text style={s.createdAt}>Déclaré le {new Date(c.created_at).toLocaleDateString('fr-FR')}</Text>
+                                            <Text style={s.createdAt}>{t('suiviSinistreScreen.declaredOn')} {new Date(c.created_at).toLocaleDateString('fr-FR')}</Text>
                                         )}
                                     </View>
                                 )}
@@ -221,7 +223,7 @@ const SuiviSinistreScreen: React.FC = () => {
                                 {/* Expand indicator */}
                                 <View style={s.expandIndicator}>
                                     <SafeIcon name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color="#9CA3AF" />
-                                    <Text style={s.expandText}>{expanded ? 'Réduire' : 'Voir les détails'}</Text>
+                                    <Text style={s.expandText}>{expanded ? 'Réduire' : t('suiviSinistreScreen.voirLesDetails')}</Text>
                                 </View>
                             </TouchableOpacity>
                         );

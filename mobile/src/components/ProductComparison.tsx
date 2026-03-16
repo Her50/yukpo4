@@ -10,6 +10,7 @@ import { triggerHaptic } from '../utils/hapticFeedback';
 import ProductCard from './ProductCard';
 import SafeIcon from './SafeIcon';
 import { useToaster } from './ToasterProvider';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -36,6 +37,7 @@ export const ProductComparison: React.FC<ProductComparisonProps> = ({
 }) => {
     const [showComparison, setShowComparison] = useState(false);
     const toaster = useToaster();
+    const { t } = useLanguageSafe();
 
     useEffect(() => {
         if (selectedProducts.length >= 2) {
@@ -64,9 +66,9 @@ export const ProductComparison: React.FC<ProductComparisonProps> = ({
         if (selectedProducts.length === 0) return [];
 
         const fields = [
-            { key: 'prix', label: 'Prix', format: (p: Product) => `${p.prix?.toLocaleString()} ${p.devise || 'XAF'}` },
-            { key: 'nom', label: 'Nom', format: (p: Product) => p.nom || 'N/A' },
-            { key: 'location', label: 'Localisation', format: (p: Product) => p.chosen_location || p.ville || 'N/A' },
+            { key: 'prix', label: t('productComparison.prix'), format: (p: Product) => `${p.prix?.toLocaleString()} ${p.devise || 'XAF'}` },
+            { key: 'nom', label: t('productComparison.nom'), format: (p: Product) => p.nom || 'N/A' },
+            { key: 'location', label: t('productComparison.localisation'), format: (p: Product) => p.chosen_location || p.ville || 'N/A' },
             { key: 'distance', label: 'Distance', format: (p: Product) => p.distance_km ? `${p.distance_km.toFixed(1)} km` : 'N/A' },
             { key: 'rating', label: 'Note', format: (p: Product) => p.average_rating ? `${p.average_rating.toFixed(1)}/5` : 'N/A' },
             { key: 'reviews', label: 'Avis', format: (p: Product) => `${p.rating_count || 0} avis` },
@@ -103,7 +105,7 @@ export const ProductComparison: React.FC<ProductComparisonProps> = ({
             >
                 <View style={styles.modalContainer}>
                     <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Comparaison Produits</Text>
+                        <Text style={styles.modalTitle}>{t('productComparison.comparaisonProduits')}/Text>
                         <TouchableOpacity onPress={() => setShowComparison(false)}>
                             <SafeIcon name="x" size={24} color="#6B7280" />
                         </TouchableOpacity>
@@ -162,7 +164,7 @@ export const ProductComparison: React.FC<ProductComparisonProps> = ({
                                         }}
                                     >
                                         <SafeIcon name="eye" size={16} color={modernColors.primary} />
-                                        <Text style={styles.actionButtonText}>Voir</Text>
+                                        <Text style={styles.actionButtonText}>{t('productComparison.voir')}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.actionButton, styles.actionButtonPrimary]}

@@ -34,7 +34,8 @@ interface Reservation {
 
 const MesReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     const { user } = useAuth();
-    const [reservations, setReservations] = useState<Reservation[]>([]);
+        const { t } = useLanguageSafe();
+const [reservations, setReservations] = useState<Reservation[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -62,8 +63,8 @@ const MesReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
     const handleCancel = async (reservationId: number) => {
         Alert.alert(
-            'Annuler la réservation',
-            'Êtes-vous sûr de vouloir annuler cette réservation ?',
+            t('mesReservationsScreen.annulerLaReservation'),
+            t('mesReservationsScreen.etesvousSurDeVouloirAnnulerCette'),
             [
                 { text: t('common.no'), style: 'cancel' },
                 {
@@ -73,7 +74,7 @@ const MesReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                         try {
                             const response = await apiPatch(
                                 `/api/specialized-services/reservations/${reservationId}/cancel`,
-                                { reason: 'Annulé par le client' }
+                                { reason: t('mesReservationsScreen.annuleParLeClient') }
                             );
 
                             const cancelData = (response?.data || response) as any;
@@ -123,18 +124,18 @@ const MesReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             case 'pending':
                 return 'En attente';
             case 'confirmed':
-                return 'Confirmée';
+                return t('mesReservationsScreen.confirmee');
             case 'completed':
-                return 'Terminée';
+                return t('mesReservationsScreen.terminee');
             case 'cancelled':
-                return 'Annulée';
+                return t('mesReservationsScreen.annulee');
             default:
                 return status;
         }
     };
 
     const formatDate = (dateString: string | null) => {
-        if (!dateString) return 'Non spécifié';
+        if (!dateString) return t('mesReservationsScreen.nonSpecifie');
         try {
             const date = new Date(dateString);
             return date.toLocaleString('fr-FR', {
@@ -165,12 +166,12 @@ const MesReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                 </View>
             </View>
 
-            <Text style={styles.dateLabel}>Date demandée:</Text>
+            <Text style={styles.dateLabel}>{t('mesReservations.dateDemandee')}</Text>
             <Text style={styles.date}>{formatDate(item.requested_date)}</Text>
 
             {item.confirmed_date && (
                 <>
-                    <Text style={styles.dateLabel}>Date confirmée:</Text>
+                    <Text style={styles.dateLabel}>{t('mesReservations.dateConfirmee')}</Text>
                     <Text style={styles.date}>{formatDate(item.confirmed_date)}</Text>
                 </>
             )}
@@ -187,7 +188,7 @@ const MesReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             <View style={styles.actions}>
                 {item.status === 'pending' && (
                     <NativeButton
-                        title="Annuler"
+                        title={t('mesReservationsScreen.annuler')}
                         variant="secondary"
                         onPress={() => handleCancel(item.id)}
                         style={styles.actionButton}
@@ -208,7 +209,7 @@ const MesReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                         navigation.navigate('ServiceDetail', { serviceId: item.service_id })
                     }
                 >
-                    <Text style={styles.detailLink}>Voir le service</Text>
+                    <Text style={styles.detailLink}>{t('mesReservations.voirLeService')}</Text>
                 </TouchableOpacity>
             </View>
         </NativeCard>
@@ -217,7 +218,7 @@ const MesReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
     if (loading && reservations.length === 0) {
         return (
             <View style={styles.center}>
-                <Text>Chargement...</Text>
+                <Text>{t('mesReservations.chargement')}</Text>
             </View>
         );
     }
@@ -235,7 +236,7 @@ const MesReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                     style={[styles.filterButton, statusFilter === 'pending' && styles.filterActive]}
                     onPress={() => setStatusFilter('pending')}
                 >
-                    <Text style={styles.filterText}>En attente</Text>
+                    <Text style={styles.filterText}>{t('mesReservations.enAttente')}/Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[
@@ -244,7 +245,7 @@ const MesReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                     ]}
                     onPress={() => setStatusFilter('confirmed')}
                 >
-                    <Text style={styles.filterText}>Confirmées</Text>
+                    <Text style={styles.filterText}>{t('mesReservations.confirmees')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -258,7 +259,7 @@ const MesReservationsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                 ListEmptyComponent={
                     <View style={styles.center}>
                         <SafeIcon name="calendar" size={48} color={modernColors.textSecondary} />
-                        <Text style={styles.emptyText}>Aucune réservation</Text>
+                        <Text style={styles.emptyText}>{t('mesReservations.aucuneReservation')}</Text>
                     </View>
                 }
             />

@@ -9,9 +9,11 @@ import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useShoppingBasket } from '../../hooks/useShoppingBasket';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const ShoppingBudgetScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const { t } = useLanguageSafe();
     const { budget, setBudget, currency, comment, setComment, estimate } = useShoppingBasket();
     const [budgetInput, setBudgetInput] = useState(
         budget ? budget.toString() : estimate?.total?.toString() ?? ''
@@ -79,13 +81,13 @@ const ShoppingBudgetScreen: React.FC = () => {
                         onChangeText={setComment}
                         multiline
                         minLines={3}
-                        placeholder='Ajoute des précisions : préférences de marque, alternatives, code de caisse...'
+                        placeholder={t('shoppingBudget.ajouteDesPrecisionsPreferencesDe')}
                     />
                 </View>
             </KeyboardAwareScreen>
 
             <View style={styles.footer}>
-                <NativeButton title='Choisir pick-up & drop-off' onPress={handleContinue} />
+                <NativeButton title={t('shoppingBudget.choisirPickupDropoff')} onPress={handleContinue} />
             </View>
         </SafeNativeView>
     );

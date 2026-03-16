@@ -20,6 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPatch } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { isAdminUser } from '../../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface UserListItem {
     id: number;
@@ -46,6 +47,7 @@ const VALID_ROLES = ['user', 'admin', 'client', 'prestataire'];
 
 const UserRoleManagementScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [users, setUsers] = useState<UserListItem[]>([]);
@@ -61,7 +63,7 @@ const UserRoleManagementScreen: React.FC = () => {
     useEffect(() => {
         // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
         if (!user || !isAdminUser(user)) {
-            Alert.alert('Accès refusé', 'Cette page est réservée aux administrateurs', [
+            Alert.alert('Accès refusé', t('userRoleManagement.cettePageEstReserveeAux'), [
                 { text: 'OK', onPress: () => navigation.goBack() },
             ]);
             return;
@@ -124,7 +126,7 @@ const UserRoleManagementScreen: React.FC = () => {
                     },
                 ]);
             } else {
-                throw new Error(response.message || 'Erreur lors de la mise à jour du rôle');
+                throw new Error(response.message || t('userRoleManagement.erreurLorsDeLaMise'));
             }
         } catch (error: any) {
             console.error('[UserRoleManagementScreen] Erreur mise à jour rôle:', error);
@@ -212,7 +214,7 @@ const UserRoleManagementScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Gestion des rôles</Text>
+                <Text style={styles.title}>{t('userRoleManagement.gestionDesRoles')}</Text>
             </View>
 
             {/* Recherche */}
@@ -221,7 +223,7 @@ const UserRoleManagementScreen: React.FC = () => {
                     <SafeIcon name="search" size={20} color={modernColors.textSecondary} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Rechercher par email ou nom..."
+                        placeholder={t('userRoleManagement.rechercherParEmailOuNom')}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                         placeholderTextColor={modernColors.textSecondary}
@@ -269,12 +271,12 @@ const UserRoleManagementScreen: React.FC = () => {
             {loading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement...</Text>
+                    <Text style={styles.loadingText}>{t('userRoleManagement.chargement')}</Text>
                 </View>
             ) : users.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="users" size={64} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyText}>Aucun utilisateur trouvé</Text>
+                    <Text style={styles.emptyText}>{t('userRoleManagement.aucunUtilisateurTrouve')}</Text>
                 </View>
             ) : (
                 <>
@@ -322,7 +324,7 @@ const UserRoleManagementScreen: React.FC = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Modifier le rôle</Text>
+                            <Text style={styles.modalTitle}>{t('userRoleManagement.modifierLeRole')}</Text>
                             <TouchableOpacity
                                 onPress={() => setShowRoleModal(false)}
                                 style={styles.closeButton}
@@ -369,7 +371,7 @@ const UserRoleManagementScreen: React.FC = () => {
                                 </View>
 
                                 <NativeButton
-                                    title={updating ? 'Mise à jour...' : 'Confirmer'}
+                                    title={updating ? t('userRoleManagementScreen.miseAJour') : 'Confirmer'}
                                     onPress={handleUpdateRole}
                                     disabled={updating || newRole === selectedUser.role}
                                     style={styles.updateButton}

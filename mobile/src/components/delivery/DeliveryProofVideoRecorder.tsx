@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface DeliveryProofVideoRecorderProps {
     proofType: 'pickup' | 'delivery';
@@ -33,7 +34,8 @@ const DeliveryProofVideoRecorder: React.FC<DeliveryProofVideoRecorderProps> = ({
     onCancel,
     maxDuration = 30, // 30 secondes max pour preuve de livraison
 }) => {
-    const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+        const { t } = useLanguageSafe();
+const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
     const [cameraType, setCameraType] = useState<CameraType>('back' as CameraType); // Caméra arrière par défaut pour livraison
@@ -131,20 +133,20 @@ const DeliveryProofVideoRecorder: React.FC<DeliveryProofVideoRecorderProps> = ({
     const getInstructions = () => {
         if (proofType === 'pickup') {
             return {
-                title: '📦 Preuve de récupération',
-                subtitle: 'Montrez le colis avant la récupération',
+                title: t('deliveryProofVideoRecorder.preuveDeRecuperation'),
+                subtitle: t('deliveryProofVideoRecorder.montrezLeColisAvantLaRecuperation'),
                 tips: [
                     'Montrez l\'état du colis',
                     'Vérifiez l\'adresse de destination',
-                    'Confirmez l\'identité du destinataire si présent'
+                    'Confirmez l\t('deliveryProofVideoRecorder.identiteDuDestinataireSiPresent')
                 ]
             };
         } else {
             return {
                 title: '✅ Preuve de livraison',
-                subtitle: 'Montrez le colis à son emplacement final',
+                subtitle: t('deliveryProofVideoRecorder.montrezLeColisASonEmplacement'),
                 tips: [
-                    'Montrez où le colis a été déposé',
+                    t('deliveryProofVideoRecorder.montrezOuLeColisAEte'),
                     'Vérifiez que le colis est intact',
                     'Confirmez l\'adresse de livraison'
                 ]
@@ -158,7 +160,7 @@ const DeliveryProofVideoRecorder: React.FC<DeliveryProofVideoRecorderProps> = ({
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Demande de permissions...</Text>
+                <Text style={styles.loadingText}>{t('deliveryProofVideoRecorder.demandeDePermissions')}/Text>
             </View>
         );
     }
@@ -167,12 +169,12 @@ const DeliveryProofVideoRecorder: React.FC<DeliveryProofVideoRecorderProps> = ({
         return (
             <View style={styles.container}>
                 <SafeIcon name="camera-off" size={48} color={modernColors.textSecondary} />
-                <Text style={styles.errorText}>Accès à la caméra refusé</Text>
+                <Text style={styles.errorText}>{t('deliveryProofVideoRecorder.accesALaCameraRefuse')}</Text>
                 <Text style={styles.errorSubtext}>
                     Veuillez autoriser l'accès à la caméra dans les paramètres
                 </Text>
                 <TouchableOpacity style={styles.button} onPress={onCancel}>
-                    <Text style={styles.buttonText}>Fermer</Text>
+                    <Text style={styles.buttonText}>{t('deliveryProofVideoRecorder.fermer')}</Text>
                 </TouchableOpacity>
             </View>
         );

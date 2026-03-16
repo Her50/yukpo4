@@ -19,6 +19,7 @@ import ChatModalMobile from './ChatModalMobile';
 import SafeIcon from './SafeIcon';
 import ServiceMediaGallery from './ServiceMediaGallery';
 import ServiceRatingModal from './ServiceRatingModal';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Service {
     id: string;
@@ -112,7 +113,8 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
     onGallery,
     onReview,
 }) => {
-    const [showChatModal, setShowChatModal] = useState(false);
+        const { t } = useLanguageSafe();
+const [showChatModal, setShowChatModal] = useState(false);
     const [showRatingModal, setShowRatingModal] = useState(false);
     const [showMediaGallery, setShowMediaGallery] = useState(false);
 
@@ -145,7 +147,7 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
 
     // Fonction pour extraire la valeur d'un champ de service (comme le frontend)
     const getServiceFieldValue = (field: any): string => {
-        if (!field) return 'Non spécifié';
+        if (!field) return t('ultraModernServiceCard.nonSpecifie');
         if (typeof field === 'string') return field;
         if (field && typeof field === 'object') {
             if (field.valeur !== undefined) {
@@ -159,18 +161,18 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
         }
         if (typeof field === 'boolean') return field ? 'Oui' : 'Non';
         if (typeof field === 'number') return field.toString();
-        return 'Non spécifié';
+        return t('ultraModernServiceCard.nonSpecifie');
     };
 
     // Normaliser les données du service avec extraction des vraies données
     const normalizedService: Service = {
         id: service.id?.toString() || '',
-        titre: getServiceFieldValue(service.data?.titre_service) || service.titre || service.title || 'Service sans titre',
-        description: getServiceFieldValue(service.data?.description) || service.description || 'Aucune description',
+        titre: getServiceFieldValue(service.data?.titre_service) || service.titre || service.title || t('ultraModernServiceCard.serviceSansTitre'),
+        description: getServiceFieldValue(service.data?.description) || service.description || t('ultraModernServiceCard.aucuneDescription'),
         prix: service.data?.prix?.valeur || service.prix || 0,
         devise: service.data?.devise?.valeur || service.devise || 'XAF',
-        categorie: getServiceFieldValue(service.data?.category) || service.categorie || service.category || 'Non spécifié',
-        localisation: locationData?.location || getServiceFieldValue(service.data?.localisation) || service.localisation || service.location || 'Non spécifié',
+        categorie: getServiceFieldValue(service.data?.category) || service.categorie || service.category || t('ultraModernServiceCard.nonSpecifie'),
+        localisation: locationData?.location || getServiceFieldValue(service.data?.localisation) || service.localisation || service.location || t('ultraModernServiceCard.nonSpecifie'),
         prestataire: prestataireInfo || service.prestataire || {
             id: service.prestataire?.id || '',
             nom: prestataireInfo?.nom_complet || prestataireInfo?.nom || prestataireInfo?.name || service.prestataire?.nom || service.prestataire?.name || 'Prestataire',
@@ -228,7 +230,7 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
             return 'trending-down';
         }
         // Santé
-        if (categoryLower.includes('santé') || categoryLower.includes('sante') || categoryLower.includes('médical') || categoryLower.includes('pharmacie') || categoryLower.includes('hôpital')) {
+        if (categoryLower.includes(t('ultraModernServiceCard.sante')) || categoryLower.includes('sante') || categoryLower.includes('médical') || categoryLower.includes('pharmacie') || categoryLower.includes('hôpital')) {
             return 'heart';
         }
         // Éducation
@@ -252,7 +254,7 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
             return 'tool';
         }
         // Beauté/Bien-être
-        if (categoryLower.includes('beauté') || categoryLower.includes('coiffure') || categoryLower.includes('esthétique')) {
+        if (categoryLower.includes(t('ultraModernServiceCard.beaute')) || categoryLower.includes('coiffure') || categoryLower.includes('esthétique')) {
             return 'scissors';
         }
         // Défaut
@@ -282,7 +284,7 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
             // ✅ CORRIGÉ: Utiliser l'URL du backend Cloud Run qui sert la route /service/:id
             const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
             const serviceUrl = `${SHARE_BASE_URL}/service/${service.id}`;
-            const shareText = `🌟 Découvrez ce service sur Yukpo :\n\n${normalizedService.titre}\n\n${normalizedService.description}\n\n💰 Prix: ${normalizedService.prix} ${normalizedService.devise}\n📍 Localisation: ${locationData?.location || 'Non spécifiée'}\n\n🔗 ${serviceUrl}`;
+            const shareText = `🌟 Découvrez ce service sur Yukpo :\n\n${normalizedService.titre}\n\n${normalizedService.description}\n\n💰 Prix: ${normalizedService.prix} ${normalizedService.devise}\n📍 Localisation: ${locationData?.location || t('ultraModernServiceCard.nonSpecifiee')}\n\n🔗 ${serviceUrl}`;
 
             const result = await Share.share({
                 message: shareText,
@@ -350,7 +352,7 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
                         </View>
                         {normalizedService.isNew && (
                             <View style={styles.newBadge}>
-                                <Text style={styles.newBadgeText}>Nouveau</Text>
+                                <Text style={styles.newBadgeText}>{t('ultraModernServiceCard.nouveau')}</Text>
                             </View>
                         )}
                     </View>
@@ -439,7 +441,7 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
                                     // Fallback : afficher les coordonnées
                                     Alert.alert(
                                         'Navigation',
-                                        `Coordonnées: ${lat}, ${lng}\n\nAucune application de cartes n'est disponible sur cet appareil.`,
+                                        t('ultraModernServiceCard.coordonneesNnaucuneApplicationDeCartesNest', { lat: lat, lng: lng }),
                                         [{ text: 'OK' }]
                                     );
                                 } else {
@@ -466,16 +468,16 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
 
                     {/* Informations de contact réelles */}
                     <View style={styles.contactInfoContainer}>
-                        {service.data?.whatsapp && getServiceFieldValue(service.data.whatsapp) !== 'Non spécifié' && (
+                        {service.data?.whatsapp && getServiceFieldValue(service.data.whatsapp) !== t('ultraModernServiceCard.nonSpecifie') && (
                             <View style={styles.contactItem}>
                                 <SafeIcon name="message-circle" size={12} color={modernColors.success} />
                                 <Text style={styles.contactText}>WhatsApp: {getServiceFieldValue(service.data.whatsapp)}</Text>
                             </View>
                         )}
-                        {service.data?.telephone && getServiceFieldValue(service.data.telephone) !== 'Non spécifié' && (
+                        {service.data?.telephone && getServiceFieldValue(service.data.telephone) !== t('ultraModernServiceCard.nonSpecifie') && (
                             <View style={styles.contactItem}>
                                 <SafeIcon name="phone" size={12} color={modernColors.info} />
-                                <Text style={styles.contactText}>Tél: {getServiceFieldValue(service.data.telephone)}</Text>
+                                <Text style={styles.contactText}>{t('ultraModernServiceCard.phone')}: {getServiceFieldValue(service.data.telephone)}</Text>
                             </View>
                         )}
                     </View>
@@ -514,7 +516,7 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
                         style={styles.contactButtonGradient}
                     >
                         <SafeIcon name="message-circle" size={16} color="#FFFFFF" />
-                        <Text style={styles.contactButtonText}>Démarrer une conversation</Text>
+                        <Text style={styles.contactButtonText}>{t('ultraModernServiceCard.demarrerUneConversation')}</Text>
                     </LinearGradient>
                 </TouchableOpacity>
 
@@ -527,7 +529,7 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
 
                     <TouchableOpacity style={styles.secondaryButton} onPress={handleFavorite}>
                         <SafeIcon name="heart" size={16} color={modernColors.textSecondary} />
-                        <Text style={styles.secondaryButtonText}>Favoris</Text>
+                        <Text style={styles.secondaryButtonText}>{t('ultraModernServiceCard.favoris')}/Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.secondaryButton} onPress={handleReview}>

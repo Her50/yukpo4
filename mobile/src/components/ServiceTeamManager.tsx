@@ -43,7 +43,8 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
     onMemberRemoved
 }) => {
     const { user } = useAuth();
-    const [members, setMembers] = useState<ServiceTeamMember[]>([]);
+        const { t } = useLanguageSafe();
+const [members, setMembers] = useState<ServiceTeamMember[]>([]);
     const [invitations, setInvitations] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showInviteModal, setShowInviteModal] = useState(false);
@@ -79,7 +80,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
         const role: ServiceTeamRole = backendMember.role && typeof backendMember.role === 'object'
             ? {
                 id: backendMember.role.id || roleId,
-                name: backendMember.role.name || 'Rôle inconnu',
+                name: backendMember.role.name || t('serviceTeamManager.roleInconnu'),
                 description: backendMember.role.description || '',
                 level: typeof backendMember.role.level === 'number' ? backendMember.role.level : 4,
                 color: backendMember.role.color || '#6B7280',
@@ -97,7 +98,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
         return {
             id: String(backendMember.id),
             userId: String(backendMember.user_id || backendMember.userId || ''),
-            userName: backendMember.username || backendMember.userName || 'Utilisateur inconnu',
+            userName: backendMember.username || backendMember.userName || t('serviceTeamManager.utilisateurInconnu'),
             userEmail: backendMember.email || backendMember.userEmail || '',
             userAvatar: backendMember.avatar_url || backendMember.userAvatar || undefined,
             role: role,
@@ -147,7 +148,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                                 email: inv.email || '',
                                 role: inv.role && typeof inv.role === 'object' ? inv.role : {
                                     id: inv.role_id || 'viewer',
-                                    name: inv.role?.name || 'Rôle inconnu',
+                                    name: inv.role?.name || t('serviceTeamManager.roleInconnu'),
                                     description: inv.role?.description || '',
                                     level: inv.role?.level || 4,
                                     color: inv.role?.color || '#6B7280',
@@ -214,7 +215,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
     const handleRemoveMember = async (memberId: string) => {
         Alert.alert(
             'Confirmer la suppression',
-            'Êtes-vous sûr de vouloir retirer ce membre de l\'équipe ?',
+            t('serviceTeamManager.etesvousSurDeVouloirRetirerCeMembre'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -309,7 +310,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                             style={styles.memberAvatar}
                         />
                         <View style={styles.memberDetails}>
-                            <Text style={styles.memberName}>{item.userName || 'Utilisateur inconnu'}</Text>
+                            <Text style={styles.memberName}>{item.userName || t('serviceTeamManager.utilisateurInconnu')}</Text>
                             <Text style={styles.memberEmail}>{item.userEmail || 'Email inconnu'}</Text>
                         </View>
                     </View>
@@ -324,7 +325,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                         >
                             <SafeIcon name={role.icon || 'user'} size={16} color={role.color || '#6B7280'} />
                             <Text style={[styles.roleText, { color: role.color || '#6B7280' }]}>
-                                {role.name || 'Rôle inconnu'}
+                                {role.name || t('serviceTeamManager.roleInconnu')}
                             </Text>
                         </TouchableOpacity>
                         {String(item.userId) !== String(user?.id || '') && (
@@ -405,7 +406,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
         >
             <LinearGradient colors={(Array.isArray(modernColors.primaryGradient) && modernColors.primaryGradient.length >= 2) ? modernColors.primaryGradient as [string, string, ...string[]] : ['#6366F1', '#8B5CF6'] as [string, string]} style={styles.modalContainer}>
                 <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>Changer le rôle</Text>
+                    <Text style={styles.modalTitle}>{t('serviceTeamManager.changerLeRole')}</Text>
                     <TouchableOpacity onPress={() => setShowRoleModal(false)}>
                         <SafeIcon name="x" size={24} color="#fff" />
                     </TouchableOpacity>
@@ -417,7 +418,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                         if (!SERVICE_TEAM_ROLES || !Array.isArray(SERVICE_TEAM_ROLES) || SERVICE_TEAM_ROLES.length === 0) {
                             return (
                                 <View style={styles.emptyState}>
-                                    <Text style={styles.emptyStateText}>Aucun rôle disponible</Text>
+                                    <Text style={styles.emptyStateText}>{t('serviceTeamManager.aucunRoleDisponible')}</Text>
                                 </View>
                             );
                         }
@@ -427,7 +428,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                         if (validRoles.length === 0) {
                             return (
                                 <View style={styles.emptyState}>
-                                    <Text style={styles.emptyStateText}>Aucun rôle valide disponible</Text>
+                                    <Text style={styles.emptyStateText}>{t('serviceTeamManager.aucunRoleValideDisponible')}</Text>
                                 </View>
                             );
                         }
@@ -443,15 +444,15 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                             >
                                 <View style={styles.roleOptionHeader}>
                                     <SafeIcon name={role?.icon || 'user'} size={20} color={role?.color || '#6B7280'} />
-                                    <Text style={styles.roleOptionName}>{role?.name || 'Rôle inconnu'}</Text>
+                                    <Text style={styles.roleOptionName}>{role?.name || t('serviceTeamManager.roleInconnu')}</Text>
                                 </View>
-                                <Text style={styles.roleOptionDescription}>{role?.description || 'Aucune description'}</Text>
+                                <Text style={styles.roleOptionDescription}>{role?.description || t('serviceTeamManager.aucuneDescription')}</Text>
                             </TouchableOpacity>
                         ));
                     })()}
 
                     <NativeButton
-                        title="Confirmer"
+                        title={t('serviceTeamManager.confirmer')}
                         onPress={() => {
                             if (selectedRole && selectedMemberId) {
                                 handleUpdateRole(selectedMemberId, selectedRole);
@@ -497,18 +498,18 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                             onPress={() => setShowUserPicker(true)}
                         >
                             <SafeIcon name="users" size={16} color="#6366F1" />
-                            <Text style={styles.userPickerText}>Choisir dans la communauté</Text>
+                            <Text style={styles.userPickerText}>{t('serviceTeamManager.choisirDansLaCommunaute')}</Text>
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Rôle</Text>
+                        <Text style={styles.inputLabel}>{t('serviceTeamManager.role')}</Text>
                         {(() => {
                             // ✅ CORRECTION CRITIQUE: Vérifier que SERVICE_TEAM_ROLES existe et est un tableau
                             if (!SERVICE_TEAM_ROLES || !Array.isArray(SERVICE_TEAM_ROLES) || SERVICE_TEAM_ROLES.length === 0) {
                                 return (
                                     <View style={styles.emptyState}>
-                                        <Text style={styles.emptyStateText}>Aucun rôle disponible</Text>
+                                        <Text style={styles.emptyStateText}>{t('serviceTeamManager.aucunRoleDisponible')}</Text>
                                     </View>
                                 );
                             }
@@ -518,7 +519,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                             if (validRoles.length === 0) {
                                 return (
                                     <View style={styles.emptyState}>
-                                        <Text style={styles.emptyStateText}>Aucun rôle valide disponible</Text>
+                                        <Text style={styles.emptyStateText}>{t('serviceTeamManager.aucunRoleValideDisponible')}</Text>
                                     </View>
                                 );
                             }
@@ -534,16 +535,16 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                                 >
                                     <View style={styles.roleOptionHeader}>
                                         <SafeIcon name={role?.icon || 'user'} size={20} color={role?.color || '#6B7280'} />
-                                        <Text style={styles.roleOptionName}>{role?.name || 'Rôle inconnu'}</Text>
+                                        <Text style={styles.roleOptionName}>{role?.name || t('serviceTeamManager.roleInconnu')}</Text>
                                     </View>
-                                    <Text style={styles.roleOptionDescription}>{role?.description || 'Aucune description'}</Text>
+                                    <Text style={styles.roleOptionDescription}>{role?.description || t('serviceTeamManager.aucuneDescription')}</Text>
                                 </TouchableOpacity>
                             ));
                         })()}
                     </View>
 
                     <NativeButton
-                        title="Envoyer l'invitation"
+                        title={t('serviceTeamManager.envoyerL')}invitation"
                         onPress={handleInviteUser}
                         variant="primary"
                         style={styles.confirmButton}
@@ -557,7 +558,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#6366F1" />
-                <Text style={styles.loadingText}>Chargement de l'équipe...</Text>
+                <Text style={styles.loadingText}>{t('serviceTeamManager.chargementDeLequipe')}</Text>
             </View>
         );
     }
@@ -570,7 +571,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                         <SafeIcon name="arrow-left" size={24} color="#fff" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>
-                        {serviceId ? 'Équipe du service' : 'Mon équipe'}
+                        {serviceId ? 'Équipe du service' : t('serviceTeamManager.monEquipe')}
                     </Text>
                     <TouchableOpacity
                         style={styles.inviteButton}
@@ -594,7 +595,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                 </View>
 
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Membres de l'équipe</Text>
+                    <Text style={styles.sectionTitle}>{t('serviceTeamManager.membresDeLequipe')}</Text>
                     {members && Array.isArray(members) && members.length > 0 ? (
                         <FlatList
                             data={members.filter(m => m && m.id)} // ✅ PROTECTION: Filtrer les membres invalides
@@ -605,7 +606,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                         />
                     ) : (
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyStateText}>Aucun membre dans l'équipe</Text>
+                            <Text style={styles.emptyStateText}>{t('serviceTeamManager.aucunMembreDansLequipe')}</Text>
                         </View>
                     )}
                 </View>
@@ -623,10 +624,10 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                                 <NativeCard key={invitation?.id || `invitation-${index}`} style={styles.invitationCard}>
                                     <View style={styles.invitationContent}>
                                         <Text style={styles.invitationEmail}>{invitation?.email || 'Email inconnu'}</Text>
-                                        <Text style={styles.invitationRole}>{invitation?.role?.name || 'Rôle inconnu'}</Text>
+                                        <Text style={styles.invitationRole}>{invitation?.role?.name || t('serviceTeamManager.roleInconnu')}</Text>
                                         <Text style={styles.invitationDate}>
                                             {invitation?.invitedAt
-                                                ? `Invité le ${new Date(invitation.invitedAt).toLocaleDateString()}`
+                                                ? t('serviceTeamManager.inviteLe', { new Date(invitation_invitedAt)_toLocaleDateString(): new Date(invitation.invitedAt).toLocaleDateString() })
                                                 : 'Date inconnue'}
                                         </Text>
                                     </View>

@@ -14,6 +14,7 @@ import { audioSyncService, Beat, SyncPoint } from '../services/audioSyncService'
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AudioSyncPanelProps {
     videoUrl: string;
@@ -30,7 +31,8 @@ export const AudioSyncPanel: React.FC<AudioSyncPanelProps> = ({
     videoTransitions,
     onSyncComplete,
 }) => {
-    const [loading, setLoading] = useState(false);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(false);
     const [beatDetection, setBeatDetection] = useState(true);
     const [autoDucking, setAutoDucking] = useState(true);
     const [syncWithTransitions, setSyncWithTransitions] = useState(true);
@@ -65,11 +67,11 @@ export const AudioSyncPanel: React.FC<AudioSyncPanelProps> = ({
 
     return (
         <NativeCard style={styles.container}>
-            <Text style={styles.title}>Synchronisation Audio-Vidéo</Text>
+            <Text style={styles.title}>{t('audioSyncPanel.synchronisationAudiovideo')}</Text>
 
             <View style={styles.optionRow}>
                 <View style={styles.optionText}>
-                    <Text style={styles.optionLabel}>Détection de beats</Text>
+                    <Text style={styles.optionLabel}>{t('audioSyncPanel.detectionDeBeats')}</Text>
                     <Text style={styles.optionDescription}>
                         Synchronise les transitions avec le rythme musical
                     </Text>
@@ -126,7 +128,7 @@ export const AudioSyncPanel: React.FC<AudioSyncPanelProps> = ({
 
             {bpm && (
                 <View style={styles.infoBox}>
-                    <Text style={styles.infoLabel}>BPM détecté:</Text>
+                    <Text style={styles.infoLabel}>{t('audioSyncPanel.bpmDetecte')}</Text>
                     <Text style={styles.infoValue}>{bpm.toFixed(0)}</Text>
                 </View>
             )}

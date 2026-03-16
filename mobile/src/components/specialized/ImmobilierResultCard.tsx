@@ -14,6 +14,7 @@ import { RealEstateProperty } from '../../services/immobilierService';
 import { mediaService } from '../../services/mediaService';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -25,6 +26,7 @@ interface ImmobilierResultCardProps {
 
 const ImmobilierResultCard: React.FC<ImmobilierResultCardProps> = ({ property, onPress, onContact }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const scrollViewRef = useRef<ScrollView>(null);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -108,7 +110,7 @@ const ImmobilierResultCard: React.FC<ImmobilierResultCardProps> = ({ property, o
             ) : (
                 <View style={styles.imagePlaceholder}>
                     <SafeIcon name="home" size={48} color="#D1D5DB" />
-                    <Text style={styles.placeholderText}>Aucune photo</Text>
+                    <Text style={styles.placeholderText}>{t('immobilierResultCard.aucunePhoto')}</Text>
                 </View>
             )}
 

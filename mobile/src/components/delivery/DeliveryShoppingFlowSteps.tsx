@@ -12,6 +12,7 @@ import { LocationObject } from '../LocationSelector';
 import { SafeIcon } from '../SafeIcon';
 import { NativeButton, NativeCard } from '../SafeNativeDesign';
 import { SavedAddressSelector } from './SavedAddressSelector';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 // Types
 interface Supermarket {
@@ -87,7 +88,7 @@ export const SupermarketSelectionStep: React.FC<{
                     <NativeCard style={styles.selectedCard}>
                         <View style={styles.selectedHeader}>
                             <SafeIcon name="check-circle" size={24} color={modernColors.success} />
-                            <Text style={styles.selectedTitle}>Supermarché sélectionné</Text>
+                            <Text style={styles.selectedTitle}>{t('deliveryShoppingFlowSteps.supermarcheSelectionne')}</Text>
                         </View>
                         <Text style={styles.supermarketName}>{selectedSupermarket.name}</Text>
                         <Text style={styles.supermarketAddress}>{selectedSupermarket.address}</Text>
@@ -105,7 +106,7 @@ export const SupermarketSelectionStep: React.FC<{
                                 style={styles.changeButton}
                             />
                             <NativeButton
-                                title="Voir les produits"
+                                title={t('deliveryShoppingFlowSteps.voirLesProduits')}
                                 variant="primary"
                                 size="small"
                                 onPress={() => {
@@ -125,7 +126,7 @@ export const SupermarketSelectionStep: React.FC<{
 
         return (
             <View style={styles.stepContainer}>
-                <Text style={styles.stepTitle}>Choisissez votre supermarché</Text>
+                <Text style={styles.stepTitle}>{t('deliveryShoppingFlowSteps.choisissezVotreSupermarche')}</Text>
                 <Text style={styles.stepSubtitle}>
                     Sélectionnez le supermarché où vous souhaitez faire vos courses
                 </Text>
@@ -134,7 +135,7 @@ export const SupermarketSelectionStep: React.FC<{
                 <View style={styles.searchContainer}>
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Rechercher un supermarché..."
+                        placeholder={t('deliveryShoppingFlowSteps.rechercherUnSupermarche')}
                         value={searchQuery}
                         onChangeText={onSearchChange}
                         placeholderTextColor={modernColors.textSecondary}
@@ -163,13 +164,13 @@ export const SupermarketSelectionStep: React.FC<{
                 {loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Chargement des supermarchés...</Text>
+                        <Text style={styles.loadingText}>{t('deliveryShoppingFlowSteps.chargementDesSupermarches')}</Text>
                     </View>
                 ) : filtered.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <SafeIcon name="store" size={48} color={modernColors.textSecondary} />
                         <Text style={styles.emptyText}>
-                            {searchQuery ? 'Aucun supermarché trouvé' : 'Aucun supermarché disponible'}
+                            {searchQuery ? t('deliveryShoppingFlowSteps.aucunSupermarcheTrouve') : t('deliveryShoppingFlowSteps.aucunSupermarcheDisponible')}
                         </Text>
                     </View>
                 ) : (
@@ -246,46 +247,46 @@ export const BasketCompositionStep: React.FC<{
         return (
             <View style={styles.stepContainer}>
                 <View style={styles.stepHeader}>
-                    <Text style={styles.stepTitle}>Votre panier</Text>
+                    <Text style={styles.stepTitle}>{t('deliveryShoppingFlowSteps.votrePanier')}</Text>
                     <TouchableOpacity style={styles.addButton} onPress={onToggleAddForm}>
                         <SafeIcon name="plus" size={16} color={modernColors.primary} />
-                        <Text style={styles.addButtonText}>Ajouter</Text>
+                        <Text style={styles.addButtonText}>{t('deliveryShoppingFlowSteps.ajouter')}</Text>
                     </TouchableOpacity>
                 </View>
 
                 {showAddForm && (
                     <NativeCard style={styles.addForm}>
-                        <Text style={styles.formLabel}>Nouvel article</Text>
+                        <Text style={styles.formLabel}>{t('deliveryShoppingFlowSteps.nouvelArticle')}</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Nom du produit *"
+                            placeholder={t('deliveryShoppingFlowSteps.nomDuProduit')}
                             value={newItemName}
                             onChangeText={onNewItemNameChange}
                         />
                         <View style={styles.formRow}>
                             <TextInput
                                 style={[styles.input, styles.inputHalf]}
-                                placeholder="Quantité"
+                                placeholder={t('deliveryShoppingFlowSteps.quantite')}
                                 value={newItemQuantity}
                                 onChangeText={onNewItemQuantityChange}
                                 keyboardType="numeric"
                             />
                             <TextInput
                                 style={[styles.input, styles.inputHalf]}
-                                placeholder="Unité (kg, L...)"
+                                placeholder={t('deliveryShoppingFlowSteps.uniteKgL')}
                                 value={newItemUnit}
                                 onChangeText={onNewItemUnitChange}
                             />
                         </View>
                         <TextInput
                             style={styles.input}
-                            placeholder={`Prix estimé (${detectedCurrency})`}
+                            placeholder={t('deliveryShoppingFlowSteps.prixEstime', { detectedCurrency: detectedCurrency })}
                             value={newItemPrice}
                             onChangeText={onNewItemPriceChange}
                             keyboardType="numeric"
                         />
                         <NativeButton
-                            title="Ajouter au panier"
+                            title={t('deliveryShoppingFlowSteps.ajouterAuPanier')}
                             variant="primary"
                             size="small"
                             onPress={() => {
@@ -309,7 +310,7 @@ export const BasketCompositionStep: React.FC<{
                 {basketItems.length === 0 ? (
                     <View style={styles.emptyBasket}>
                         <SafeIcon name="shopping-bag" size={64} color={modernColors.textSecondary} />
-                        <Text style={styles.emptyBasketText}>Votre panier est vide</Text>
+                        <Text style={styles.emptyBasketText}>{t('deliveryShoppingFlowSteps.votrePanierEstVide')}</Text>
                         <Text style={styles.emptyBasketSubtext}>
                             Ajoutez des articles pour continuer
                         </Text>
@@ -321,7 +322,7 @@ export const BasketCompositionStep: React.FC<{
                                 <View style={styles.basketItemInfo}>
                                     <Text style={styles.basketItemName}>{item.name}</Text>
                                     <Text style={styles.basketItemDetails}>
-                                        {item.quantity} {item.unit || 'unité(s)'}
+                                        {item.quantity} {item.unit || t('deliveryShoppingFlowSteps.unites')}
                                         {item.estimatedPrice && ` • ${item.estimatedPrice.toLocaleString('fr-FR')} ${detectedCurrency}`}
                                     </Text>
                                 </View>
@@ -331,7 +332,7 @@ export const BasketCompositionStep: React.FC<{
                             </NativeCard>
                         ))}
                         <NativeCard style={styles.totalCard}>
-                            <Text style={styles.totalLabel}>Total estimé</Text>
+                            <Text style={styles.totalLabel}>{t('deliveryShoppingFlowSteps.totalEstime')}</Text>
                             <Text style={styles.totalValue}>
                                 {total.toLocaleString('fr-FR')} {detectedCurrency}
                             </Text>
@@ -376,7 +377,7 @@ export const DeliveryAddressStep: React.FC<{
 
         return (
             <View style={styles.stepContainer}>
-                <Text style={styles.stepTitle}>Adresse de livraison</Text>
+                <Text style={styles.stepTitle}>{t('deliveryShoppingFlowSteps.adresseDeLivraison')}</Text>
                 <Text style={styles.stepSubtitle}>
                     Où souhaitez-vous recevoir vos courses ?
                 </Text>
@@ -402,7 +403,7 @@ export const DeliveryAddressStep: React.FC<{
                     <NativeCard style={styles.locationCard}>
                         <View style={styles.locationHeader}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.locationLabel}>Adresse sélectionnée</Text>
+                            <Text style={styles.locationLabel}>{t('deliveryShoppingFlowSteps.adresseSelectionnee')}</Text>
                         </View>
                         <Text style={styles.locationText}>
                             {dropoffLocation.address ||
@@ -414,7 +415,7 @@ export const DeliveryAddressStep: React.FC<{
                             </Text>
                         )}
                         <NativeButton
-                            title="Sélectionner sur la carte (nouveau)"
+                            title={t('deliveryShoppingFlowSteps.selectionnerSurLaCarteNouveau')}
                             variant="outline"
                             size="small"
                             onPress={onSelectLocation}
@@ -431,7 +432,7 @@ export const DeliveryAddressStep: React.FC<{
                             style={styles.locationButton}
                         />
                         <NativeButton
-                            title="Sélectionner sur la carte"
+                            title={t('deliveryShoppingFlowSteps.selectionnerSurLaCarte')}
                             variant="outline"
                             onPress={onSelectLocation}
                             style={styles.locationButton}

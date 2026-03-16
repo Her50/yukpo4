@@ -22,11 +22,12 @@ import { useLocation } from '../../contexts/LocationContext';
 import { immobilierService, PropertySearchFilters, RealEstateProperty } from '../../services/immobilierService';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 // Standings hôteliers
 const STANDINGS = [
     { id: 'all', label: 'Tous', icon: 'list' },
-    { id: 'Économique', label: 'Économique', icon: 'wallet' },
+    { id: 'Économique', label: t('hotelMeubleHome.economique'), icon: 'wallet' },
     { id: 'Standard', label: 'Standard', icon: 'home' },
     { id: 'Bon standing', label: 'Confort', icon: 'star' },
     { id: 'Haut standing', label: 'Premium', icon: 'award' },
@@ -37,14 +38,15 @@ const HotelMeubleHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
 
     const routeParams = (route.params as any) || {};
     // 'hotel' ou 'meuble' selon la route
     const mode: 'hotel' | 'meuble' = routeParams.mode || routeParams.initialFilter?.type_bien || 'hotel';
 
     const isHotel = mode === 'hotel';
-    const screenTitle = isHotel ? 'Hôtels' : 'Meublés';
-    const screenSubtitle = isHotel ? 'Trouvez l\'hébergement idéal' : 'Locations meublées disponibles';
+    const screenTitle = isHotel ? 'Hôtels' : t('hotelMeubleHomeScreen.meubles');
+    const screenSubtitle = isHotel ? 'Trouvez l\'hébergement idéal' : t('hotelMeubleHomeScreen.locationsMeubleesDisponibles');
     const gradientColors: [string, string] = isHotel ? ['#1E3A5F', '#2563EB'] : ['#7C3AED', '#A855F7'];
     const accentColor = isHotel ? '#2563EB' : '#8B5CF6';
 
@@ -113,7 +115,7 @@ const HotelMeubleHomeScreen: React.FC = () => {
             }
         } catch (err: any) {
             console.error('[HotelMeubleHome] Erreur:', err);
-            setError('Impossible de charger les hébergements');
+            setError(t('hotelMeubleHome.impossibleDeChargerLesHebergements'));
             setProperties([]);
         } finally {
             setLoading(false);
@@ -175,7 +177,7 @@ const HotelMeubleHomeScreen: React.FC = () => {
                 />
                 {item.is_available_now && (
                     <View style={s.availableBadge}>
-                        <Text style={s.availableBadgeText}>Disponible</Text>
+                        <Text style={s.availableBadgeText}>{t('hotelMeubleHome.disponible')}</Text>
                     </View>
                 )}
             </View>
@@ -235,7 +237,7 @@ const HotelMeubleHomeScreen: React.FC = () => {
                         onPress={() => navigateToBooking(item)}
                     >
                         <SafeIcon name="calendar" size={14} color="#FFF" type="lucide" />
-                        <Text style={s.bookBtnText}>Réserver</Text>
+                        <Text style={s.bookBtnText}>{t('hotelMeubleHome.reserver')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -268,7 +270,7 @@ const HotelMeubleHomeScreen: React.FC = () => {
                     <SafeIcon name="search" size={18} color="#9CA3AF" type="lucide" />
                     <TextInput
                         style={s.searchInput}
-                        placeholder={`Rechercher un ${isHotel ? 'hôtel' : 'meublé'}...`}
+                        placeholder={`Rechercher un ${isHotel ? 'hôtel' : t('hotelMeubleHomeScreen.meuble')}...`}
                         placeholderTextColor="#9CA3AF"
                         value={searchQuery}
                         onChangeText={setSearchQuery}
@@ -288,7 +290,7 @@ const HotelMeubleHomeScreen: React.FC = () => {
                         <SafeIcon name="map-pin" size={14} color="#FFFFFFCC" type="lucide" />
                         <TextInput
                             style={s.quickFilterInput}
-                            placeholder="Ville..."
+                            placeholder={t('hotelMeubleHomeScreen.ville')}
                             placeholderTextColor="#FFFFFF88"
                             value={villeFilter}
                             onChangeText={setVilleFilter}
@@ -363,14 +365,14 @@ const HotelMeubleHomeScreen: React.FC = () => {
                 {loading && properties.length === 0 ? (
                     <View style={s.centerContainer}>
                         <ActivityIndicator size="large" color={accentColor} />
-                        <Text style={s.loadingText}>Recherche d'hébergements...</Text>
+                        <Text style={s.loadingText}>{t('hotelMeubleHome.rechercheDhebergements')}</Text>
                     </View>
                 ) : error && properties.length === 0 ? (
                     <View style={s.centerContainer}>
                         <SafeIcon name={isHotel ? 'building' : 'home'} size={64} color="#D1D5DB" type="lucide" />
                         <Text style={s.errorText}>{error}</Text>
                         <TouchableOpacity style={[s.retryBtn, { backgroundColor: accentColor }]} onPress={() => loadProperties()}>
-                            <Text style={s.retryBtnText}>Réessayer</Text>
+                            <Text style={s.retryBtnText}>{t('hotelMeubleHome.reessayer')}</Text>
                         </TouchableOpacity>
                     </View>
                 ) : (
@@ -389,7 +391,7 @@ const HotelMeubleHomeScreen: React.FC = () => {
                         ListEmptyComponent={
                             <View style={s.emptyContainer}>
                                 <SafeIcon name={isHotel ? 'building' : 'home'} size={64} color="#D1D5DB" type="lucide" />
-                                <Text style={s.emptyTitle}>Aucun {isHotel ? 'hôtel' : 'meublé'} trouvé</Text>
+                                <Text style={s.emptyTitle}>Aucun {isHotel ? 'hôtel' : t('hotelMeubleHomeScreen.meuble')} trouvé</Text>
                                 <Text style={s.emptySubtext}>
                                     Essayez de modifier vos critères de recherche ou élargissez la zone
                                 </Text>

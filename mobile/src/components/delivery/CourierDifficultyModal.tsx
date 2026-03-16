@@ -20,6 +20,7 @@ import { modernColors } from '../../theme/modernTheme';
 import ModernGPSModal from '../ModernGPSModal';
 import { NativeButton, NativeCard, NativeInput } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface CourierDifficultyModalProps {
     visible: boolean;
@@ -34,7 +35,8 @@ const CourierDifficultyModal: React.FC<CourierDifficultyModalProps> = ({
     deliveryId,
     onSuccess,
 }) => {
-    const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | null>(null);
+        const { t } = useLanguageSafe();
+const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | null>(null);
     const [relayLocation, setRelayLocation] = useState<{
         latitude: number;
         longitude: number;
@@ -131,8 +133,8 @@ const CourierDifficultyModal: React.FC<CourierDifficultyModalProps> = ({
 
             if (response.success) {
                 Alert.alert(
-                    'Difficulté signalée',
-                    'Votre difficulté a été signalée. Un nouveau coursier va être recherché pour prendre le relais.',
+                    t('courierDifficultyModal.difficulteSignalee'),
+                    t('courierDifficultyModal.votreDifficulteAEteSignaleeUn'),
                     [
                         {
                             text: 'OK',
@@ -170,7 +172,7 @@ const CourierDifficultyModal: React.FC<CourierDifficultyModalProps> = ({
             >
                 <View style={styles.container}>
                     <View style={styles.header}>
-                        <Text style={styles.headerTitle}>Signaler une difficulté</Text>
+                        <Text style={styles.headerTitle}>{t('courierDifficulty.signalerUneDifficulte')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>
@@ -185,7 +187,7 @@ const CourierDifficultyModal: React.FC<CourierDifficultyModalProps> = ({
 
                         {/* Type de difficulté */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Type de difficulté *</Text>
+                            <Text style={styles.label}>{t('courierDifficulty.typeDeDifficulte')}</Text>
                             <View style={styles.difficultyOptions}>
                                 <TouchableOpacity
                                     style={[
@@ -241,7 +243,7 @@ const CourierDifficultyModal: React.FC<CourierDifficultyModalProps> = ({
 
                         {/* Position du relais */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Position du relais *</Text>
+                            <Text style={styles.label}>{t('courierDifficulty.positionDuRelais')}/Text>
                             <Text style={styles.helperText}>
                                 Indiquez où le nouveau coursier doit venir récupérer le colis
                             </Text>
@@ -250,7 +252,7 @@ const CourierDifficultyModal: React.FC<CourierDifficultyModalProps> = ({
                                 <NativeCard style={styles.locationCard}>
                                     <View style={styles.locationHeader}>
                                         <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                                        <Text style={styles.locationLabel}>Position sélectionnée</Text>
+                                        <Text style={styles.locationLabel}>{t('courierDifficulty.positionSelectionnee')}</Text>
                                     </View>
                                     <Text style={styles.locationText}>
                                         {relayLocation.address ||
@@ -274,7 +276,7 @@ const CourierDifficultyModal: React.FC<CourierDifficultyModalProps> = ({
                                         style={styles.locationButton}
                                     />
                                     <NativeButton
-                                        title="Sélectionner sur la carte"
+                                        title={t('courierDifficulty.selectionnerSurLaCarte')}
                                         variant="outline"
                                         onPress={() => setShowGPSModal(true)}
                                         style={styles.locationButton}
@@ -285,9 +287,9 @@ const CourierDifficultyModal: React.FC<CourierDifficultyModalProps> = ({
 
                         {/* Notes optionnelles */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Notes (optionnel)</Text>
+                            <Text style={styles.label}>{t('courierDifficulty.notesOptionnel')}/Text>
                             <NativeInput
-                                placeholder="Détails supplémentaires sur la difficulté..."
+                                placeholder={t('courierDifficulty.detailsSupplementairesSurLaDifficulte')}
                                 value={notes}
                                 onChangeText={setNotes}
                                 multiline
@@ -298,7 +300,7 @@ const CourierDifficultyModal: React.FC<CourierDifficultyModalProps> = ({
                         {/* Bouton de soumission */}
                         <View style={styles.submitSection}>
                             <NativeButton
-                                title={loading ? 'Envoi en cours...' : 'Signaler la difficulté'}
+                                title={loading ? 'Envoi en cours...' : t('courierDifficultyModal.signalerLaDifficulte')}
                                 variant="primary"
                                 onPress={handleSubmit}
                                 disabled={loading || !difficultyType || !relayLocation}
@@ -309,7 +311,7 @@ const CourierDifficultyModal: React.FC<CourierDifficultyModalProps> = ({
                                 style={styles.cancelButton}
                                 disabled={loading}
                             >
-                                <Text style={styles.cancelButtonText}>Annuler</Text>
+                                <Text style={styles.cancelButtonText}>{t('courierDifficultyModal.annuler')}</Text>
                             </TouchableOpacity>
                         </View>
                     </ScrollView>
@@ -322,7 +324,7 @@ const CourierDifficultyModal: React.FC<CourierDifficultyModalProps> = ({
                 onClose={() => setShowGPSModal(false)}
                 onSelect={handleGPSSelect}
                 currentLocation={relayLocation ? { lat: relayLocation.latitude, lng: relayLocation.longitude } : undefined}
-                title="Sélectionner la position du relais"
+                title={t('courierDifficulty.selectionnerLaPositionDuRelais')}
                 allowZoneSelection={false}
             />
         </>

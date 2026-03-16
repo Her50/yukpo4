@@ -2,6 +2,7 @@ import React from 'react';
 import { Dimensions, Image, StyleSheet, Text, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 const PREVIEW_WIDTH = width * 0.4;
@@ -40,7 +41,7 @@ export const AdPreviewCard: React.FC<AdPreviewCardProps> = ({
 
     return (
         <View style={styles.container}>
-            <Text style={styles.previewTitle}>👁️ Aperçu</Text>
+            <Text style={styles.previewTitle}>{t('adPreviewCard.apercu')}</Text>
             <View style={styles.card}>
                 {/* Media Section */}
                 <View style={styles.mediaSection}>
@@ -66,7 +67,7 @@ export const AdPreviewCard: React.FC<AdPreviewCardProps> = ({
                 {/* Content Section */}
                 <View style={styles.contentSection}>
                     <Text style={styles.cardTitle} numberOfLines={2}>
-                        {titre || 'Titre de votre publicité'}
+                        {titre || t('adPreviewCard.titreDeVotrePublicite')}
                     </Text>
                     {description ? (
                         <Text style={styles.cardDescription} numberOfLines={2}>

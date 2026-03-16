@@ -353,7 +353,7 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = () => {
                 preferred_vehicle_type: preferredVehicleType || undefined,
                 parcel: {
                     type_id: undefined, // ✅ CORRECTION: Le backend utilisera un type par défaut
-                    notes: notes || `Courses supermarché: ${selectedSupermarket.name}`,
+                    notes: notes || t('deliveryShoppingFlowNew.coursesSupermarche', { selectedSupermarket_name: selectedSupermarket.name }),
                     photos: [],
                     constraints: {},
                 },
@@ -412,7 +412,7 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = () => {
     const steps = [
         {
             id: 'supermarket',
-            label: 'Supermarché',
+            label: t('deliveryShoppingFlowNew.supermarche'),
             icon: 'store',
             component: (
                 <SupermarketSelectionStep
@@ -435,7 +435,7 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = () => {
         },
         {
             id: 'basket',
-            label: 'Panier',
+            label: t('deliveryShoppingFlowNew.panier'),
             icon: 'shopping-bag',
             component: (
                 <BasketCompositionStep
@@ -460,7 +460,7 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = () => {
         },
         {
             id: 'address',
-            label: 'Adresse',
+            label: t('deliveryShoppingFlowNew.adresse'),
             icon: 'map-pin',
             component: (
                 <DeliveryAddressStep
@@ -490,7 +490,7 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = () => {
                     <View style={styles.headerContent}>
                         <SafeIcon name="shopping-cart" size={24} color="#FFFFFF" />
                         <View style={styles.headerText}>
-                            <Text style={styles.headerTitle}>Courses supermarché</Text>
+                            <Text style={styles.headerTitle}>{t('deliveryShoppingFlowNew.coursesSupermarche')}</Text>
                             <Text style={styles.headerSubtitle}>Composez votre panier et suivez votre coursier</Text>
                         </View>
                     </View>
@@ -525,7 +525,7 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = () => {
                             ? { lat: userLocation.coords.latitude, lng: userLocation.coords.longitude }
                             : null
                 }
-                title="Sélectionner le point de livraison"
+                title={t('deliveryShoppingFlowNew.selectionnerLePointDeLivraison')}
                 allowZoneSelection={false}
             />
         </>

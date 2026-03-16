@@ -26,6 +26,7 @@ import {
 import { intelligentProductAutocomplete } from '../services/intelligentProductAutocomplete';
 import { modernColors } from '../theme/modernTheme';
 import { NativeInput } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface IntelligentProductFieldProps {
     label: string;
@@ -59,7 +60,8 @@ export const IntelligentProductField: React.FC<IntelligentProductFieldProps> = (
     required = false,
     userId
 }) => {
-    const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+        const { t } = useLanguageSafe();
+const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState(value);
@@ -183,7 +185,7 @@ export const IntelligentProductField: React.FC<IntelligentProductFieldProps> = (
                     {loading ? (
                         <View style={styles.loadingContainer}>
                             <ActivityIndicator size="small" color={modernColors.primary} />
-                            <Text style={styles.loadingText}>Chargement des suggestions...</Text>
+                            <Text style={styles.loadingText}>{t('intelligentProductField.chargementDesSuggestions')}</Text>
                         </View>
                     ) : suggestions.length > 0 ? (
                         <FlatList
@@ -235,12 +237,12 @@ export const IntelligentProductField: React.FC<IntelligentProductFieldProps> = (
 
                     {/* Légende des icônes */}
                     <View style={styles.legend}>
-                        <Text style={styles.legendTitle}>Légende :</Text>
+                        <Text style={styles.legendTitle}>{t('intelligentProductField.legende')}</Text>
                         <View style={styles.legendItems}>
-                            <Text style={styles.legendItem}>🎯 Basé sur vos saisies</Text>
-                            <Text style={styles.legendItem}>📊 Votre historique</Text>
+                            <Text style={styles.legendItem}>{t('intelligentProductField.baseSurVosSaisies')}</Text>
+                            <Text style={styles.legendItem}>{t('intelligentProductField.votreHistorique')}</Text>
                             <Text style={styles.legendItem}>🔥 Populaire</Text>
-                            <Text style={styles.legendItem}>🧠 Suggéré par IA</Text>
+                            <Text style={styles.legendItem}>{t('intelligentProductField.suggereParIa')}</Text>
                         </View>
                     </View>
                 </View>

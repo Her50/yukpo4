@@ -455,7 +455,8 @@ impl KYCService {
         let applicant_payload = json!({
             "first_name": "User", // TODO: Récupérer depuis users table
             "last_name": submission.user_id.to_string(),
-            "email": format!("user{}@yukpomnang.com", submission.user_id), // TODO: Récupérer depuis users
+            "email": format!("user{}@{}", submission.user_id,
+                std::env::var("APP_DOMAIN").unwrap_or_else(|_| "yukpo.com".to_string())), // TODO: Récupérer depuis users
         });
 
         let client = reqwest::Client::new();
@@ -634,9 +635,9 @@ impl KYCService {
             "userReference": submission.user_id.to_string(),
             "workflowId": 100, // Workflow par défaut (à configurer selon besoins)
             "callbackUrl": format!("{}/api/kyc/webhook/jumio",
-                std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://api.yukpomnang.com".to_string())),
+                std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://yukpo-backend-376093909298.europe-west1.run.app".to_string())),
             "redirectUrl": format!("{}/kyc/redirect",
-                std::env::var("FRONTEND_URL").unwrap_or_else(|_| "https://yukpomnang.com".to_string())),
+                std::env::var("FRONTEND_URL").unwrap_or_else(|_| "https://yukpo.com".to_string())),
         });
 
         let client = reqwest::Client::new();
@@ -727,7 +728,8 @@ impl KYCService {
         // Étape 1: Créer un applicant
         let applicant_payload = json!({
             "externalUserId": format!("user_{}", submission.user_id),
-            "email": format!("user{}@yukpomnang.com", submission.user_id), // TODO: Récupérer depuis users
+            "email": format!("user{}@{}", submission.user_id,
+                std::env::var("APP_DOMAIN").unwrap_or_else(|_| "yukpo.com".to_string())), // TODO: Récupérer depuis users
             "phone": null,
             "lang": "fr"
         });
@@ -849,7 +851,7 @@ impl KYCService {
         let session_payload = json!({
             "verification": {
                 "callback": format!("{}/api/kyc/webhook/veriff",
-                    std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://api.yukpomnang.com".to_string())),
+                    std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://yukpo-backend-376093909298.europe-west1.run.app".to_string())),
                 "person": {
                     "firstName": "User",
                     "lastName": submission.user_id.to_string()

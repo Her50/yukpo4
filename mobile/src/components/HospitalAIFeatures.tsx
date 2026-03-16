@@ -24,6 +24,7 @@ import {
 import { apiGet, apiPost } from '../services/api';
 import { hapticPress } from '../utils/hapticFeedback';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface TriageResult {
     severity: 'low' | 'moderate' | 'high' | 'critical';
@@ -67,7 +68,8 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
     visible,
     onClose
 }) => {
-    const [activeTab, setActiveTab] = useState<'triage' | 'recommendations' | 'wait_time' | 'slots'>('triage');
+        const { t } = useLanguageSafe();
+const [activeTab, setActiveTab] = useState<'triage' | 'recommendations' | 'wait_time' | 'slots'>('triage');
     const [loading, setLoading] = useState(false);
 
     // État pour triage
@@ -219,7 +221,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
                             <View style={styles.headerIconContainer}>
                                 <SafeIcon name="hospital" size={24} color="#FFFFFF" type="lucide" />
                             </View>
-                            <Text style={styles.headerTitle}>Fonctionnalités IA Hôpital</Text>
+                            <Text style={styles.headerTitle}>{t('hospitalAIFeatures.fonctionnalitesIaHopital')}</Text>
                             <TouchableOpacity
                                 style={styles.closeButton}
                                 onPress={onClose}
@@ -235,7 +237,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
                             { id: 'triage', label: 'Triage', icon: 'alert-triangle' },
                             { id: 'recommendations', label: 'Recommandations', icon: 'sparkles' },
                             { id: 'wait_time', label: 'Temps attente', icon: 'clock' },
-                            { id: 'slots', label: 'Créneaux', icon: 'calendar' },
+                            { id: 'slots', label: t('hospitalAIFeatures.creneaux'), icon: 'calendar' },
                         ].map((tab) => (
                             <TouchableOpacity
                                 key={tab.id}
@@ -283,7 +285,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
 
                                 <TextInput
                                     style={styles.textArea}
-                                    placeholder="Décrivez vos symptômes en détail..."
+                                    placeholder={t('hospitalAIFeatures.decrivezVosSymptomesEnDetail')}
                                     value={symptoms}
                                     onChangeText={setSymptoms}
                                     multiline
@@ -292,7 +294,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
 
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Âge (optionnel)"
+                                    placeholder={t('hospitalAIFeatures.ageOptionnel')}
                                     value={age}
                                     onChangeText={setAge}
                                     keyboardType="numeric"
@@ -315,17 +317,17 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
                                             </Text>
                                         </View>
                                         <Text style={styles.resultTitle}>Score d'urgence: {triageResult.urgency_score}/10</Text>
-                                        <Text style={styles.resultTitle}>Action recommandée:</Text>
+                                        <Text style={styles.resultTitle}>{t('hospitalAIFeatures.actionRecommandee')}</Text>
                                         <Text style={styles.resultText}>{triageResult.recommended_action}</Text>
-                                        <Text style={styles.resultTitle}>Type d'établissement recommandé:</Text>
+                                        <Text style={styles.resultTitle}>{t('hospitalAIFeatures.typeDetablissementRecommande')}</Text>
                                         <Text style={styles.resultText}>{triageResult.recommended_hospital_type}</Text>
                                         {triageResult.estimated_wait_time && (
                                             <>
-                                                <Text style={styles.resultTitle}>Temps d'attente estimé:</Text>
+                                                <Text style={styles.resultTitle}>{t('hospitalAIFeatures.tempsDattenteEstime')}</Text>
                                                 <Text style={styles.resultText}>{triageResult.estimated_wait_time} minutes</Text>
                                             </>
                                         )}
-                                        <Text style={styles.resultTitle}>Analyse des symptômes:</Text>
+                                        <Text style={styles.resultTitle}>{t('hospitalAIFeatures.analyseDesSymptomes')}</Text>
                                         <Text style={styles.resultText}>{triageResult.symptoms_analysis}</Text>
                                     </View>
                                 )}
@@ -342,7 +344,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
 
                                 <TextInput
                                     style={styles.textArea}
-                                    placeholder="Décrivez votre besoin médical (ex: consultation cardiologie, chirurgie orthopédique...)"
+                                    placeholder={t('hospitalAIFeatures.decrivezVotreBesoinMedicalEx')}
                                     value={recommendationQuery}
                                     onChangeText={setRecommendationQuery}
                                     multiline
@@ -362,7 +364,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
                                     <View style={styles.resultCard}>
                                         <Text style={styles.resultTitle}>Raisonnement:</Text>
                                         <Text style={styles.resultText}>{recommendationResult.reasoning}</Text>
-                                        <Text style={styles.resultSubtitle}>Hôpitaux recommandés:</Text>
+                                        <Text style={styles.resultSubtitle}>{t('hospitalAIFeatures.hopitauxRecommandes')}</Text>
                                         {recommendationResult.hospitals.map((hospital, index) => (
                                             <View key={index} style={styles.hospitalCard}>
                                                 <Text style={styles.hospitalName}>{hospital.hospital_name}</Text>
@@ -398,7 +400,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
                             <View>
                                 <Text style={styles.sectionTitle}>Temps d'attente</Text>
                                 <Text style={styles.sectionDescription}>
-                                    Consultez les temps d'attente actuels à l'hôpital
+                                    Consultez les temps dt('hospitalAIFeatures.attenteActuelsAL')hôpital
                                 </Text>
 
                                 {hospitalId ? (
@@ -408,7 +410,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
                                             style={styles.actionButton}
                                             activeOpacity={0.8}
                                         >
-                                            <Text style={styles.actionButtonText}>Actualiser les temps d'attente</Text>
+                                            <Text style={styles.actionButtonText}>{t('hospitalAIFeatures.actualiserLesTempsDattente')}</Text>
                                         </TouchableOpacity>
 
                                         {waitTimeResult && (
@@ -420,7 +422,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
                                                         <Text style={styles.waitTimeValue}>{waitTimeResult.current_wait_time} min</Text>
                                                     </View>
                                                     <View style={styles.waitTimeItem}>
-                                                        <Text style={styles.waitTimeLabel}>Temps estimé:</Text>
+                                                        <Text style={styles.waitTimeLabel}>{t('hospitalAIFeatures.tempsEstime')}</Text>
                                                         <Text style={styles.waitTimeValue}>{waitTimeResult.estimated_wait_time} min</Text>
                                                     </View>
                                                     <View style={styles.waitTimeItem}>
@@ -445,7 +447,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
                         {/* Slots Tab */}
                         {activeTab === 'slots' && !loading && (
                             <View>
-                                <Text style={styles.sectionTitle}>Créneaux disponibles</Text>
+                                <Text style={styles.sectionTitle}>{t('hospitalAIFeatures.creneauxDisponibles')}</Text>
                                 <Text style={styles.sectionDescription}>
                                     Consultez et réservez des créneaux disponibles
                                 </Text>
@@ -454,14 +456,14 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
                                     <>
                                         <TextInput
                                             style={styles.input}
-                                            placeholder="Date (JJ/MM/AAAA) - Laisser vide pour aujourd'hui"
+                                            placeholder={t('hospitalAIFeatures.dateJjmmaaaaLaisserVidePourAujourd')}hui"
                                             value={selectedDate}
                                             onChangeText={setSelectedDate}
                                         />
 
                                         <TextInput
                                             style={styles.input}
-                                            placeholder="Service (optionnel)"
+                                            placeholder={t('hospitalAIFeatures.serviceOptionnel')}
                                             value={selectedService}
                                             onChangeText={setSelectedService}
                                         />
@@ -471,7 +473,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
                                             style={styles.actionButton}
                                             activeOpacity={0.8}
                                         >
-                                            <Text style={styles.actionButtonText}>Rechercher créneaux</Text>
+                                            <Text style={styles.actionButtonText}>{t('hospitalAIFeatures.rechercherCreneaux')}</Text>
                                         </TouchableOpacity>
 
                                         {availableSlots.length > 0 ? (
@@ -489,14 +491,14 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
                                                         )}
                                                         {slot.available && (
                                                             <TouchableOpacity style={styles.bookSlotButton}>
-                                                                <Text style={styles.bookSlotText}>Réserver</Text>
+                                                                <Text style={styles.bookSlotText}>{t('hospitalAIFeatures.reserver')}</Text>
                                                             </TouchableOpacity>
                                                         )}
                                                     </View>
                                                 ))}
                                             </View>
                                         ) : availableSlots.length === 0 && selectedDate ? (
-                                            <Text style={styles.infoText}>Aucun créneau disponible pour cette date</Text>
+                                            <Text style={styles.infoText}>{t('hospitalAIFeatures.aucunCreneauDisponiblePourCette')}</Text>
                                         ) : null}
                                     </>
                                 ) : (

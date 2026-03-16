@@ -15,6 +15,7 @@ import SafeIcon from '../../components/SafeIcon';
 import ImmobilierResultCard from '../../components/specialized/ImmobilierResultCard';
 import { immobilierService, PropertySearchFilters, RealEstateProperty } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type RouteParams = {
     filters: PropertySearchFilters;
@@ -22,6 +23,7 @@ type RouteParams = {
 
 const ImmobilierListScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute() as any;
     const filters = route.params?.filters || {};
 
@@ -38,7 +40,7 @@ const ImmobilierListScreen: React.FC = () => {
             if (response.success && response.data) {
                 setProperties((response as any).data);
             } else {
-                setError('Aucun bien trouvé');
+                setError(t('immobilierList.aucunBienTrouve'));
             }
         } catch (err: any) {
             console.error('[ImmobilierListScreen] Erreur chargement:', err);
@@ -92,7 +94,7 @@ const ImmobilierListScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement des biens...</Text>
+                <Text style={styles.loadingText}>{t('immobilierList.chargementDesBiens')}</Text>
             </View>
         );
     }
@@ -174,7 +176,7 @@ const ImmobilierListScreen: React.FC = () => {
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
                         <SafeIcon name="home" size={64} color="#9CA3AF" />
-                        <Text style={styles.emptyText}>Aucun bien trouvé</Text>
+                        <Text style={styles.emptyText}>{t('immobilierList.aucunBienTrouve')}</Text>
                         <Text style={styles.emptySubtext}>
                             Essayez de modifier vos critères de recherche
                         </Text>

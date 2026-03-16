@@ -142,7 +142,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
     // Fonction utilitaire pour extraire la valeur d'un champ de service
     const getServiceFieldValue = (field: any): string => {
-        if (!field) return 'Non spécifié';
+        if (!field) return t('chatModalMobile.nonSpecifie');
         if (typeof field === 'string') return field;
         if (field && typeof field === 'object') {
             if (field.valeur !== undefined) {
@@ -154,7 +154,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 return String(value);
             }
         }
-        return 'Non spécifié';
+        return t('chatModalMobile.nonSpecifie');
     };
 
     const nomPrestataire = prestataireInfo?.nom_complet || prestataireInfo?.nom || `Prestataire #${service?.user_id}`;
@@ -237,8 +237,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
             if (response.success) {
                 Alert.alert(
-                    'Utilisateur invité',
-                    'L\'utilisateur a été ajouté à la conversation et peut maintenant voir les nouveaux messages.',
+                    t('chatModalMobile.utilisateurInvite'),
+                    'L\t('chatModalMobile.utilisateurAEteAjouteALa'),
                     [{ text: 'OK' }]
                 );
                 loadParticipants(); // Recharger la liste
@@ -255,7 +255,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
         Alert.alert(
             'Retirer le participant',
-            'Êtes-vous sûr de vouloir retirer cette personne de la conversation ?',
+            t('chatModalMobile.etesvousSurDeVouloirRetirerCette'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -320,7 +320,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const handleDeleteMessage = async (messageId: string) => {
         Alert.alert(
             'Supprimer le message',
-            'Êtes-vous sûr de vouloir supprimer ce message ?',
+            t('chatModalMobile.etesvousSurDeVouloirSupprimerCe'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -346,7 +346,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         const phoneNumber = getServiceFieldValue(service?.data?.telephone) ||
             getServiceFieldValue(service?.data?.whatsapp);
 
-        if (phoneNumber && phoneNumber !== 'Non spécifié') {
+        if (phoneNumber && phoneNumber !== t('chatModalMobile.nonSpecifie')) {
             const cleanPhone = phoneNumber.replace(/[^\d+]/g, '');
             Alert.alert(
                 'Appeler le prestataire',
@@ -354,7 +354,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
-                        text: 'Appeler',
+                        text: t('common.call'),
                         onPress: () => {
                             // Ici vous pouvez implémenter l'appel téléphonique
                             Alert.alert('Appel', `Appel vers ${cleanPhone}`);
@@ -1036,7 +1036,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                         {message.reply_to.content_type === 'audio' ? '🎤 Message audio' : null}
                                                         {message.reply_to.content_type === 'image' ? '🖼️ Image' : null}
                                                         {message.reply_to.content_type === 'file' ? '📄 Fichier' : null}
-                                                        {message.reply_to.content_type === 'video' ? '🎥 Vidéo' : null}
+                                                        {message.reply_to.content_type === 'video' ? t('chatModalMobile.video') : null}
                                                     </Text>
                                                 </View>
                                             </View>
@@ -1074,7 +1074,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                 ]}>
                                                     {formatMessageTime(message.timestamp)}
                                                     {message.edited && (
-                                                        <Text style={styles.editedIndicator}> (modifié)</Text>
+                                                        <Text style={styles.editedIndicator}>{t('chatModalMobile.modifie')}</Text>
                                                     )}
                                                 </Text>
 
@@ -1092,7 +1092,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                     })}
                                                 >
                                                     <SafeIcon name="corner-down-left" size={14} color={modernColors.textSecondary} />
-                                                    <Text style={styles.replyButtonText}>Répondre</Text>
+                                                    <Text style={styles.replyButtonText}>{t('chatModalMobile.repondre')}</Text>
                                                 </TouchableOpacity>
                                             </View>
 
@@ -1127,7 +1127,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     <View style={styles.typingDot} />
                                     <View style={styles.typingDot} />
                                 </View>
-                                <Text style={styles.typingText}>En train d'écrire...</Text>
+                                <Text style={styles.typingText}>{t('chatModalMobile.enTrainDecrire')}</Text>
                             </View>
                         </View>
                     )}
@@ -1187,7 +1187,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         <View style={styles.audioInfo}>
                                             <SafeIcon name="mic" size={16} color="#FFFFFF" />
                                             <Text style={styles.audioPreviewText}>
-                                                {isPlayingAudio ? 'En lecture...' : 'Audio enregistré'}
+                                                {isPlayingAudio ? 'En lecture...' : t('chatModalMobile.audioEnregistre')}
                                             </Text>
                                         </View>
                                     </View>
@@ -1264,7 +1264,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     if (!deliveryEnabled) {
                                         Alert.alert(
                                             'Livraison non disponible',
-                                            'La livraison n\'est pas activée pour ce service. Contactez le prestataire pour plus d\'informations.'
+                                            'La livraison n\t('chatModalMobile.estPasActiveePourCeServiceContactez')
                                         );
                                         return;
                                     }
@@ -1452,7 +1452,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             const productName = (p: any) => p.name || p.titre || (p.titre_service?.valeur) || (typeof p.titre_service === 'string' ? p.titre_service : null) || 'Produit';
                                             Alert.alert(
                                                 'Négocier le prix',
-                                                'Choisissez le produit pour lequel vous voulez négocier le prix',
+                                                t('chatModalMobile.choisissezLeProduitPourLequelVous'),
                                                 productsWithPrice.map((product: any, index: number) => {
                                                     const originalPrice = extractNumericPrice(product);
                                                     return {
@@ -1497,7 +1497,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     {replyingTo.content_type === 'audio' ? '🎤 Message audio' : null}
                                     {replyingTo.content_type === 'image' ? '🖼️ Image' : null}
                                     {replyingTo.content_type === 'file' ? '📄 Fichier' : null}
-                                    {replyingTo.content_type === 'video' ? '🎥 Vidéo' : null}
+                                    {replyingTo.content_type === 'video' ? t('chatModalMobile.video') : null}
                                 </Text>
                             </View>
                             <TouchableOpacity
@@ -1549,7 +1549,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 { backgroundColor: isConnected ? modernColors.success : modernColors.textSecondary }
                             ]} />
                             <Text style={styles.connectionText}>
-                                {isConnected ? 'Connexion sécurisée' : 'Mode hors ligne'}
+                                {isConnected ? t('chatModalMobile.connexionSecurisee') : 'Mode hors ligne'}
                             </Text>
                         </View>
                     </View>
@@ -1707,8 +1707,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         <View style={styles.participantDetails}>
                                             <Text style={styles.participantName}>{participant.user_name}</Text>
                                             <Text style={styles.participantRole}>
-                                                {participant.role === 'owner' ? '👑 Propriétaire' :
-                                                    participant.invited_by ? '👤 Invité' : '👥 Participant'}
+                                                {participant.role === 'owner' ? t('chatModalMobile.proprietaire') :
+                                                    participant.invited_by ? t('chatModalMobile.invite') : '👥 Participant'}
                                             </Text>
                                         </View>
                                     </View>

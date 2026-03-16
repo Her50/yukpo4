@@ -1,6 +1,7 @@
 // @ts-nocheck
 // src/components/ui/FloatingHelpButton.tsx
 import React from 'react';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const FloatingHelpButton: React.FC = () => (
   <a
@@ -8,7 +9,7 @@ const FloatingHelpButton: React.FC = () => (
     style="fixed bottom-6 right-6 bg-green-500 text-white px-4 py-2 rounded-full shadow-lg z-50 hover:bg-green-600 transition"
     target="_blank"
     rel="noopener noreferrer"
-    aria-label="💬 besoin d’aide ?"
+    aria-label={t('floatingHelpButton.besoinDaide')}
   >
     💬 besoin d’aide ?
   </a>

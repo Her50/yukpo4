@@ -110,36 +110,36 @@ const ImmobilierHomeScreen: React.FC = () => {
     // Types de biens et statuts - ✅ ALIGNÉS avec ImmobilierFormScreen
     // Valeurs backend : 'maison', 'appartement', 'terrain', 'bureau', 'local_commercial', 'hotel', 'meuble'
     const typesBiens = [
-        { value: 'maison', label: 'Maison' },
+        { value: 'maison', label: t('immobilierHome.maison') },
         { value: 'appartement', label: 'Appartement' },
         { value: 'terrain', label: 'Terrain' },
         { value: 'bureau', label: 'Bureau' },
         { value: 'local_commercial', label: 'Local commercial' },
-        { value: 'hotel', label: 'Hôtel' },
-        { value: 'meuble', label: 'Meublé / Location meublée' },
+        { value: 'hotel', label: t('immobilierHome.hotel') },
+        { value: 'meuble', label: t('immobilierHome.meubleLocationMeublee') },
     ];
     // Valeurs backend : 'vente', 'location', 'les_deux'
     const statuts = [
-        { value: 'vente', label: 'À vendre' },
-        { value: 'location', label: 'À louer' },
-        { value: 'les_deux', label: 'Vente et location' },
+        { value: 'vente', label: t('immobilierHome.aVendre') },
+        { value: 'location', label: t('immobilierHome.aLouer') },
+        { value: 'les_deux', label: t('immobilierHome.venteEtLocation') },
     ];
     const standings = ['Économique', 'Standard', 'Bon standing', 'Haut standing', 'Luxe / Prestige'];
 
     const sortOptions: { value: SortOption; label: string; icon: string }[] = [
         { value: 'relevance', label: 'Pertinence', icon: 'star' },
-        { value: 'price_asc', label: 'Prix croissant', icon: 'arrow-up' },
-        { value: 'price_desc', label: 'Prix décroissant', icon: 'arrow-down' },
-        { value: 'date_desc', label: 'Plus récents', icon: 'clock' },
+        { value: 'price_asc', label: t('immobilierHomeScreen.prixCroissant'), icon: 'arrow-up' },
+        { value: 'price_desc', label: t('immobilierHome.prixDecroissant'), icon: 'arrow-down' },
+        { value: 'date_desc', label: t('immobilierHome.plusRecents'), icon: 'clock' },
         { value: 'superficie_desc', label: 'Plus grand', icon: 'maximize' },
     ];
 
     // Quick filters (recherches rapides)
     const quickFilters = [
-        { id: 'vente', label: 'À vendre', icon: 'tag', statut: 'À vendre' },
-        { id: 'location', label: 'À louer', icon: 'key', statut: 'À louer (bail)' },
+        { id: 'vente', label: t('immobilierHome.aVendre'), icon: 'tag', statut: 'À vendre' },
+        { id: 'location', label: t('immobilierHome.aLouer'), icon: 'key', statut: 'À louer (bail)' },
         { id: 'proche', label: 'Proche de moi', icon: 'map-pin', distance: 10 },
-        { id: 'recent', label: 'Nouveautés', icon: 'clock' },
+        { id: 'recent', label: t('immobilierHome.nouveautes'), icon: 'clock' },
     ];
 
     // Initialiser avec localisation GPS
@@ -227,7 +227,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                 setTotalResults(prev => reset ? newProperties.length : prev + newProperties.length);
             } else {
                 if (reset) {
-                    setError('Aucun bien trouvé');
+                    setError(t('immobilierHome.aucunBienTrouve'));
                     setProperties([]);
                 }
                 setHasMore(false);
@@ -317,7 +317,7 @@ const ImmobilierHomeScreen: React.FC = () => {
         hapticPress();
         Alert.alert(
             'Réserver une visite',
-            `Voulez-vous réserver une visite pour "${property.titre}" ?`,
+            t('immobilierHomeScreen.voulezvousReserverUneVisitePour', { property_titre: property.titre }),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -389,7 +389,7 @@ const ImmobilierHomeScreen: React.FC = () => {
             const source = result.source === 'local' ? ' (estimation locale)' : '';
             Alert.alert(
                 `Estimation IA${source}`,
-                `Prix estimé: ${est.estimated_price?.toLocaleString() || '?'} FCFA\n` +
+                t('immobilierHomeScreen.prixEstimeFcfan', { est_estimated_price?_toLocaleString() || '?': est.estimated_price?.toLocaleString() || '?' }) +
                 `Fourchette: ${(est.price_range_min || 0).toLocaleString()} - ${(est.price_range_max || 0).toLocaleString()} FCFA\n` +
                 `Prix/m²: ${est.price_per_m2?.toLocaleString() || '?'} FCFA\n\n` +
                 `${est.reasoning || ''}`,
@@ -465,7 +465,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                                 {filters.type_bien === 'hotel'
                                     ? 'Hôtels'
                                     : filters.type_bien === 'meuble'
-                                        ? 'Meublés / Locations meublées'
+                                        ? t('immobilierHomeScreen.meublesLocationsMeublees')
                                         : 'Immobilier'}
                             </Text>
                             {totalResults > 0 && (
@@ -513,7 +513,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                             <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Rechercher un bien, quartier, ville..."
+                                placeholder={t('immobilierHome.rechercherUnBienQuartierVille')}
                                 placeholderTextColor="#9CA3AF"
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
@@ -582,7 +582,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-up-down" size={18} color="#6B7280" type="lucide" />
                         <Text style={styles.sortButtonText}>
-                            {sortOptions.find(o => o.value === sortBy)?.label || 'Trier'}
+                            {sortOptions.find(o => o.value === sortBy)?.label || t('immobilierHome.trier')}
                         </Text>
                     </TouchableOpacity>
                     <View style={styles.viewToggle}>
@@ -622,7 +622,7 @@ const ImmobilierHomeScreen: React.FC = () => {
             {loading && properties.length === 0 ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Recherche de biens...</Text>
+                    <Text style={styles.loadingText}>{t('immobilierHome.rechercheDeBiens')}/Text>
                 </View>
             ) : error && properties.length === 0 ? (
                 <View style={styles.centerContainer}>
@@ -636,7 +636,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                             style={styles.clearFiltersButton}
                             onPress={clearFilters}
                         >
-                            <Text style={styles.clearFiltersText}>Réinitialiser les filtres</Text>
+                            <Text style={styles.clearFiltersText}>{t('immobilierHome.reinitialiserLesFiltres')}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -657,7 +657,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                                     onPress={() => handleToggleFavorite(item)}
                                 >
                                     <SafeIcon name="heart" size={14} color={favorites.has(item.id.toString()) ? '#EF4444' : '#9CA3AF'} type="lucide" />
-                                    <Text style={{ marginLeft: 4, fontSize: 11, color: favorites.has(item.id.toString()) ? '#EF4444' : '#6B7280' }}>Favori</Text>
+                                    <Text style={{ marginLeft: 4, fontSize: 11, color: favorites.has(item.id.toString()) ? '#EF4444' : '#6B7280' }}>{t('immobilierHome.favori')}/Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFF6FF', borderRadius: 8, paddingVertical: 7, borderWidth: 1, borderColor: '#BFDBFE' }}
@@ -678,7 +678,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                                     onPress={() => handleShareProperty(item)}
                                 >
                                     <SafeIcon name="share" size={14} color="#6B7280" type="lucide" />
-                                    <Text style={{ marginLeft: 4, fontSize: 11, color: '#6B7280' }}>Partager</Text>
+                                    <Text style={{ marginLeft: 4, fontSize: 11, color: '#6B7280' }}>{t('immobilierHomeScreen.partager')}</Text>
                                 </TouchableOpacity>
                             </View>
                             {item.prix_vente && (
@@ -688,7 +688,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                                         onPress={() => handleLoanSimulation(item)}
                                     >
                                         <SafeIcon name="calculator" size={14} color="#10B981" type="lucide" />
-                                        <Text style={{ marginLeft: 4, fontSize: 11, color: '#10B981' }}>Simuler prêt</Text>
+                                        <Text style={{ marginLeft: 4, fontSize: 11, color: '#10B981' }}>{t('immobilierHome.simulerPret')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -718,7 +718,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="home" size={64} color="#9CA3AF" />
-                            <Text style={styles.emptyText}>Aucun bien trouvé</Text>
+                            <Text style={styles.emptyText}>{t('immobilierHome.aucunBienTrouve')}</Text>
                             <Text style={styles.emptySubtext}>
                                 Essayez de modifier vos critères de recherche
                             </Text>
@@ -727,7 +727,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                                     style={styles.clearFiltersButton}
                                     onPress={clearFilters}
                                 >
-                                    <Text style={styles.clearFiltersText}>Réinitialiser les filtres</Text>
+                                    <Text style={styles.clearFiltersText}>{t('immobilierHome.reinitialiserLesFiltres')}</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -762,7 +762,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
                     <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '80%' }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>Simulation de prêt</Text>
+                            <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>{t('immobilierHome.simulationDePret')}</Text>
                             <TouchableOpacity onPress={() => setShowLoanModal(false)}>
                                 <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
                             </TouchableOpacity>
@@ -779,7 +779,7 @@ const ImmobilierHomeScreen: React.FC = () => {
                             </View>
                         )}
 
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Durée (années)</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6 }}>{t('immobilierHome.dureeAnnees')}</Text>
                         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                             {['10', '15', '20', '25'].map(d => (
                                 <TouchableOpacity
@@ -807,7 +807,7 @@ const ImmobilierHomeScreen: React.FC = () => {
 
                         {(() => {
                             const loan = calculateLoan();
-                            if (!loan) return <Text style={{ color: '#9CA3AF', textAlign: 'center' }}>Prix non disponible</Text>;
+                            if (!loan) return <Text style={{ color: '#9CA3AF', textAlign: 'center' }}>{t('immobilierHome.prixNonDisponible')}/Text>;
                             return (
                                 <View style={{ backgroundColor: '#ECFDF5', borderRadius: 12, padding: 16 }}>
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -815,20 +815,20 @@ const ImmobilierHomeScreen: React.FC = () => {
                                         <Text style={{ fontWeight: '600', color: '#111827' }}>{loan.apport.toLocaleString()} FCFA</Text>
                                     </View>
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                                        <Text style={{ color: '#6B7280' }}>Montant emprunté</Text>
+                                        <Text style={{ color: '#6B7280' }}>{t('immobilierHome.montantEmprunte')}</Text>
                                         <Text style={{ fontWeight: '600', color: '#111827' }}>{loan.montant.toLocaleString()} FCFA</Text>
                                     </View>
                                     <View style={{ height: 1, backgroundColor: '#D1FAE5', marginVertical: 8 }} />
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                                        <Text style={{ color: '#059669', fontWeight: '700', fontSize: 16 }}>Mensualité</Text>
+                                        <Text style={{ color: '#059669', fontWeight: '700', fontSize: 16 }}>{t('immobilierHome.mensualite')}</Text>
                                         <Text style={{ fontWeight: '700', fontSize: 18, color: '#059669' }}>{loan.mensualite.toLocaleString()} FCFA</Text>
                                     </View>
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                                        <Text style={{ color: '#6B7280', fontSize: 12 }}>Coût total du crédit</Text>
+                                        <Text style={{ color: '#6B7280', fontSize: 12 }}>{t('immobilierHome.coutTotalDuCredit')}</Text>
                                         <Text style={{ fontSize: 12, color: '#6B7280' }}>{loan.coutTotal.toLocaleString()} FCFA</Text>
                                     </View>
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                                        <Text style={{ color: '#6B7280', fontSize: 12 }}>Intérêts totaux</Text>
+                                        <Text style={{ color: '#6B7280', fontSize: 12 }}>{t('immobilierHome.interetsTotaux')}</Text>
                                         <Text style={{ fontSize: 12, color: '#EF4444' }}>{loan.interets.toLocaleString()} FCFA</Text>
                                     </View>
                                 </View>
@@ -931,7 +931,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
                     <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
                         {/* Type de bien */}
                         <View style={styles.filterSection}>
-                            <Text style={styles.filterSectionTitle}>Type de bien</Text>
+                            <Text style={styles.filterSectionTitle}>{t('immobilierHome.typeDeBien')}</Text>
                             <View style={styles.filterChips}>
                                 {typesBiens.map((type) => (
                                     <TouchableOpacity
@@ -1039,7 +1039,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
 
                         {/* Chambres */}
                         <View style={styles.filterSection}>
-                            <Text style={styles.filterSectionTitle}>Nombre de chambres (min)</Text>
+                            <Text style={styles.filterSectionTitle}>{t('immobilierHome.nombreDeChambresMin')}</Text>
                             <TextInput
                                 style={styles.singleInput}
                                 placeholder="Ex: 2"

@@ -23,11 +23,13 @@ import { genererSuggestionsService } from '../lib/yukpoaclient';
 import { apiGet, servicesApi } from '../services/api';
 import { modernStyles } from '../theme/modernTheme';
 import SafeStorage from '../utils/safeStorage';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 
 const HomeScreenNew: React.FC = () => {
     const { user } = useAuth();
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [loading, setLoading] = useState(false);
     const [isCreateService, setIsCreateService] = useState(false);
     const [showChatHistory, setShowChatHistory] = useState(false);
@@ -194,7 +196,7 @@ const HomeScreenNew: React.FC = () => {
         return (
             <SafeNativeView style={styles.container}>
                 <View style={styles.loadingContainer}>
-                    <Text style={styles.loadingText}>Chargement de votre profil...</Text>
+                    <Text style={styles.loadingText}>{t('homeScreenNew.chargementDeVotreProfil')}</Text>
                 </View>
             </SafeNativeView>
         );
@@ -218,7 +220,7 @@ const HomeScreenNew: React.FC = () => {
         return (
             <SafeNativeView style={styles.container}>
                 <View style={styles.loadingContainer}>
-                    <Text style={styles.loadingText}>Erreur de chargement...</Text>
+                    <Text style={styles.loadingText}>{t('homeScreenNew.erreurDeChargement')}</Text>
                 </View>
             </SafeNativeView>
         );
@@ -251,10 +253,10 @@ const HomeScreenNew: React.FC = () => {
                         </View>
 
                         <View style={styles.headerCenter}>
-                            <Text style={styles.greeting}>Bonjour 👋</Text>
-                            <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
+                            <Text style={styles.greeting}>{t('homeScreenNew.bonjour')}/Text>
+                            <Text style={styles.userName}>{user?.name || t('homeScreenNew.utilisateur')}</Text>
                             <View style={styles.balanceContainer}>
-                                <Text style={styles.balanceLabel}>Votre solde</Text>
+                                <Text style={styles.balanceLabel}>{t('homeScreenNew.votreSolde')}</Text>
                                 <Text style={styles.balanceValue}>
                                     {(user?.credits || 0).toLocaleString()} FCFA
                                 </Text>
@@ -342,7 +344,7 @@ const HomeScreenNew: React.FC = () => {
                             <ChatInputMobile
                                 onSubmit={handleChatSubmit}
                                 loading={loading}
-                                placeholder="Décrivez votre besoin ou service..."
+                                placeholder={t('homeScreenNew.decrivezVotreBesoinOuService')}
                             />
                         </View>
                     </View>

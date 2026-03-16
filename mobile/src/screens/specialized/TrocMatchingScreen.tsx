@@ -103,7 +103,7 @@ const TrocMatchingScreen: React.FC = () => {
                     t('trocMatching.trocProposed'),
                     [
                         {
-                            text: 'Voir mes trocs',
+                            text: t('trocMatchingScreen.voirMesTrocs'),
                             onPress: () => {
                                 navigation.navigate('MesTrocs' as never);
                             },
@@ -137,7 +137,7 @@ const TrocMatchingScreen: React.FC = () => {
                     t('trocMatching.chainCreated', { count: chaine.nombre_participants }),
                     [
                         {
-                            text: 'Voir mes trocs',
+                            text: t('trocMatchingScreen.voirMesTrocs'),
                             onPress: () => {
                                 navigation.navigate('MesTrocs' as never);
                             },
@@ -162,7 +162,7 @@ const TrocMatchingScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Recherche de matchings...</Text>
+                <Text style={styles.loadingText}>{t('trocMatching.rechercheDeMatchings')}/Text>
             </View>
         );
     }
@@ -187,7 +187,7 @@ const TrocMatchingScreen: React.FC = () => {
                 {totalMatches === 0 ? (
                     <View style={styles.emptyContainer}>
                         <SafeIcon name="search-x" size={64} color={modernColors.textSecondary} />
-                        <Text style={styles.emptyText}>Aucun matching trouvé</Text>
+                        <Text style={styles.emptyText}>{t('trocMatching.aucunMatchingTrouve')}</Text>
                         <Text style={styles.emptySubtext}>
                             Aucun livre ne correspond à vos critères pour le moment.
                         </Text>
@@ -205,10 +205,10 @@ const TrocMatchingScreen: React.FC = () => {
                                         <View style={styles.matchHeader}>
                                             <View style={styles.matchInfo}>
                                                 <Text style={styles.matchTitle}>
-                                                    {match.livre_offert?.titre || 'Livre offert'} ↔
+                                                    {match.livre_offert?.titre || t('trocMatching.livreOffert')} ↔
                                                 </Text>
                                                 <Text style={styles.matchSubtitle}>
-                                                    {match.livre_souhaite?.titre || 'Livre souhaité'}
+                                                    {match.livre_souhaite?.titre || t('trocMatching.livreSouhaite')}
                                                 </Text>
                                             </View>
                                             <View style={styles.scoreContainer}>
@@ -279,7 +279,7 @@ const TrocMatchingScreen: React.FC = () => {
                                             )}
                                         </View>
                                         <NativeButton
-                                            title="🔗 Créer cette chaîne"
+                                            title={t('trocMatching.creerCetteChaine')}
                                             variant="outline"
                                             onPress={() => handleCreateChaineTroc(chaine)}
                                             style={styles.actionButton}

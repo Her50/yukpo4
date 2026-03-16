@@ -15,6 +15,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Covoiturage {
     id: number;
@@ -45,6 +46,7 @@ interface CovoiturageListScreenParams {
 
 const CovoiturageListScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const params = route.params as CovoiturageListScreenParams;
 
@@ -182,7 +184,7 @@ const CovoiturageListScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement des trajets...</Text>
+                <Text style={styles.loadingText}>{t('covoiturageList.chargementDesTrajets')}</Text>
             </View>
         );
     }
@@ -197,11 +199,11 @@ const CovoiturageListScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Résultats de recherche</Text>
+                    <Text style={styles.title}>{t('covoiturageList.resultatsDeRecherche')}</Text>
                 </View>
                 <View style={styles.centerContainer}>
                     <SafeIcon name="car" size={64} color="#D1D5DB" />
-                    <Text style={styles.emptyText}>Aucun trajet trouvé</Text>
+                    <Text style={styles.emptyText}>{t('covoiturageList.aucunTrajetTrouve')}</Text>
                     <Text style={styles.emptySubtext}>
                         Essayez de modifier vos critères de recherche
                     </Text>

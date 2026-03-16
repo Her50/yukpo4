@@ -20,6 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, apiPost } from '../../services/api';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface BanqueSangSearchFilters {
     lat?: number;
@@ -146,6 +147,7 @@ const BloodDonationButton: React.FC<{ onPress: () => void }> = ({ onPress }) => 
 const BanqueSangSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
+    const { t } = useLanguageSafe();
     const { user } = useAuth();
 
     const [gpsData, setGpsData] = useState<{ lat: number; lng: number } | null>(null);
@@ -182,7 +184,7 @@ const BanqueSangSearchScreen: React.FC = () => {
                     addr.region,
                     addr.country
                 ].filter(Boolean);
-                setLocationText(addressParts.join(', ') || 'Position GPS');
+                setLocationText(addressParts.join(', ') || t('banqueSangSearch.positionGps'));
             } else {
                 setLocationText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
             }
@@ -327,7 +329,7 @@ const BanqueSangSearchScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                     <View style={styles.headerContent}>
-                        <Text style={styles.headerTitle}>Rechercher une banque de sang</Text>
+                        <Text style={styles.headerTitle}>{t('banqueSangSearch.rechercherUneBanqueDeSang')}</Text>
                         <Text style={styles.headerSubtitle}>
                             Trouvez rapidement une banque de sang pour un don ou une demande urgente
                         </Text>
@@ -387,7 +389,7 @@ const BanqueSangSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>📍 Localisation</Text>
+                    <Text style={styles.sectionTitle}>{t('banqueSangSearch.localisation')}/Text>
 
                     {/* Localisation GPS */}
                     <View style={styles.inputGroup}>
@@ -408,7 +410,7 @@ const BanqueSangSearchScreen: React.FC = () => {
                                 <SafeIcon name="map-pin" size={18} color="#6B7280" type="lucide" />
                             )}
                             <Text style={styles.locationButtonText} numberOfLines={2}>
-                                {locationText || 'Sélectionner une localisation GPS'}
+                                {locationText || t('banqueSangSearch.selectionnerUneLocalisationGps')}
                             </Text>
                             <SafeIcon name="chevron-right" size={18} color="#9CA3AF" type="lucide" />
                         </TouchableOpacity>
@@ -468,11 +470,11 @@ const BanqueSangSearchScreen: React.FC = () => {
                 <View style={styles.infoCard}>
                     <View style={styles.infoHeader}>
                         <SafeIcon name="info" size={18} color="#F87171" type="lucide" />
-                        <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
+                        <Text style={styles.infoTitle}>{t('banqueSangSearch.bonASavoir')}</Text>
                     </View>
                     <Text style={styles.infoText}>
                         • Les banques de sang acceptent les dons volontaires{'\n'}
-                        • En cas d'urgence, contactez directement le téléphone d'urgence{'\n'}
+                        • En cas dt('banqueSangSearchScreen.urgenceContactezDirectementLeTelephoneDurgence')\n'}
                         • Vérifiez les stocks disponibles avant de vous déplacer{'\n'}
                         • Les groupes sanguins compatibles sont automatiquement suggérés
                     </Text>
@@ -490,7 +492,7 @@ const BanqueSangSearchScreen: React.FC = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Enregistrer votre groupe sanguin</Text>
+                            <Text style={styles.modalTitle}>{t('banqueSangSearchScreen.enregistrerVotreGroupeSanguin')}</Text>
                             <TouchableOpacity
                                 onPress={() => setShowCompatibility(false)}
                                 style={styles.modalCloseButton}

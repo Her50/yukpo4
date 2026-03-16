@@ -16,6 +16,7 @@ import { modernColors } from '../../theme/modernTheme';
 import ModernGPSModal from '../ModernGPSModal';
 import SafeIcon from '../SafeIcon';
 import { NativeButton } from '../SafeNativeDesign';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface FindCourierModalProps {
     visible: boolean;
@@ -39,7 +40,8 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
     service,
     onSuccess,
 }) => {
-    const [loading, setLoading] = useState(false);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(false);
 
     // Points de pickup et delivery
     const [pickupLocation, setPickupLocation] = useState<LocationData | null>(null);
@@ -229,7 +231,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                     : `${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`;
 
                 // ✅ Construire le nom du lieu (première partie de l'adresse)
-                const placeName = addr.street || addr.name || addr.subThoroughfare || 'Localisation';
+                const placeName = addr.street || addr.name || addr.subThoroughfare || t('findCourier.localisation');
 
                 setDeliveryLocation({
                     latitude: location.coords.latitude,
@@ -306,8 +308,8 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                 const deliveryId = response.delivery?.id || response.id;
 
                 Alert.alert(
-                    '✅ Commande créée',
-                    'Votre commande a été créée avec succès. Le matching intelligent est en cours. Vous recevrez une notification dès qu\'un coursier sera assigné.',
+                    t('findCourierModal.commandeCreee'),
+                    t('findCourierModal.votreCommandeAEteCreeeAvecSucces'),
                     [
                         {
                             text: 'OK',
@@ -326,13 +328,13 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                     [{ text: 'OK' }]
                 );
             } else {
-                throw new Error(response.message || 'Réponse invalide de l\'API');
+                throw new Error(response.message || t('findCourier.reponseInvalideDeLapi'));
             }
         } catch (error: any) {
             console.error('[FindCourierModal] Erreur création livraison:', error);
             Alert.alert(
                 'Erreur',
-                error.message || error.error || 'Impossible de créer la commande. Veuillez réessayer.'
+                error.message || error.error || t('findCourier.impossibleDeCreerLaCommande')
             );
         } finally {
             setLoading(false);
@@ -379,28 +381,28 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                     <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
                         {/* Points de pickup et delivery */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Points de livraison</Text>
+                            <Text style={styles.sectionTitle}>{t('findCourier.pointsDeLivraison')}/Text>
 
                             {/* ✅ Point de pickup - Récupéré depuis la configuration (non modifiable) */}
                             {loadingConfig ? (
                                 <View style={styles.locationCard}>
                                     <View style={styles.locationHeader}>
                                         <SafeIcon name="package" size={16} color={modernColors.primary} />
-                                        <Text style={styles.locationLabel}>Point de récupération</Text>
+                                        <Text style={styles.locationLabel}>{t('findCourier.pointDeRecuperation')}</Text>
                                     </View>
                                     <View style={styles.loadingLocation}>
                                         <ActivityIndicator size="small" color={modernColors.primary} />
-                                        <Text style={styles.loadingLocationText}>Chargement de la configuration...</Text>
+                                        <Text style={styles.loadingLocationText}>{t('findCourier.chargementDeLaConfiguration')}</Text>
                                     </View>
                                 </View>
                             ) : pickupLocation ? (
                                 <View style={styles.locationCard}>
                                     <View style={styles.locationHeader}>
                                         <SafeIcon name="package" size={16} color={modernColors.primary} />
-                                        <Text style={styles.locationLabel}>Point de récupération</Text>
+                                        <Text style={styles.locationLabel}>{t('findCourier.pointDeRecuperation')}</Text>
                                         <View style={styles.configBadge}>
                                             <SafeIcon name="check-circle" size={12} color={modernColors.success} />
-                                            <Text style={styles.configBadgeText}>Configuré</Text>
+                                            <Text style={styles.configBadgeText}>{t('findCourier.configure')}</Text>
                                         </View>
                                     </View>
                                     <View style={styles.locationInfo}>
@@ -416,7 +418,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                                 <View style={styles.locationCard}>
                                     <View style={styles.locationHeader}>
                                         <SafeIcon name="package" size={16} color={modernColors.warning} />
-                                        <Text style={styles.locationLabel}>Point de récupération</Text>
+                                        <Text style={styles.locationLabel}>{t('findCourier.pointDeRecuperation')}</Text>
                                     </View>
                                     <Text style={styles.locationErrorText}>
                                         ⚠️ Aucune configuration de livraison trouvée pour ce produit
@@ -428,7 +430,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                             <View style={styles.locationCard}>
                                 <View style={styles.locationHeader}>
                                     <SafeIcon name="map-pin" size={16} color={modernColors.success} />
-                                    <Text style={styles.locationLabel}>Point de livraison</Text>
+                                    <Text style={styles.locationLabel}>{t('findCourier.pointDeLivraison')}</Text>
                                 </View>
                                 {deliveryLocation ? (
                                     <View style={styles.locationInfo}>
@@ -444,7 +446,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                                             style={styles.locationButton}
                                             onPress={() => setShowDeliveryGPSModal(true)}
                                         >
-                                            <Text style={styles.locationButtonText}>Modifier</Text>
+                                            <Text style={styles.locationButtonText}>{t('findCourierModal.modifier')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 ) : (
@@ -452,7 +454,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                                         style={styles.locationButton}
                                         onPress={() => setShowDeliveryGPSModal(true)}
                                     >
-                                        <Text style={styles.locationButtonText}>Définir votre adresse de livraison</Text>
+                                        <Text style={styles.locationButtonText}>{t('findCourier.definirVotreAdresseDeLivraison')}</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -461,7 +463,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                         {/* ✅ Type de transport - Affiche celui configuré (non modifiable) */}
                         {deliveryConfig?.required_vehicle_type_id && (
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Type de transport</Text>
+                                <Text style={styles.sectionTitle}>{t('findCourier.typeDeTransport')}</Text>
                                 <View style={styles.transportInfoCard}>
                                     <View style={styles.transportInfoHeader}>
                                         <SafeIcon
@@ -479,7 +481,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                                         </Text>
                                         <View style={styles.configBadge}>
                                             <SafeIcon name="check-circle" size={12} color={modernColors.success} />
-                                            <Text style={styles.configBadgeText}>Configuré</Text>
+                                            <Text style={styles.configBadgeText}>{t('findCourier.configure')}</Text>
                                         </View>
                                     </View>
                                     <Text style={styles.transportInfoText}>
@@ -491,10 +493,10 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
 
                         {/* Notes */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Notes (optionnel)</Text>
+                            <Text style={styles.sectionTitle}>{t('findCourier.notesOptionnel')}/Text>
                             <TextInput
                                 style={styles.notesInput}
-                                placeholder="Instructions spéciales pour le coursier..."
+                                placeholder={t('findCourier.instructionsSpecialesPourLeCoursier')}
                                 value={deliveryNotes}
                                 onChangeText={setDeliveryNotes}
                                 multiline
@@ -524,13 +526,13 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                     {/* Footer */}
                     <View style={styles.footer}>
                         <NativeButton
-                            title="Annuler"
+                            title={t('findCourierModal.annuler')}
                             variant="outline"
                             onPress={onClose}
                             disabled={loading}
                         />
                         <NativeButton
-                            title={loading ? 'Création en cours...' : 'Créer la commande'}
+                            title={loading ? t('findCourierModal.creationEnCours') : t('findCourierModal.creerLaCommande')}
                             variant="primary"
                             onPress={handleCreateDelivery}
                             disabled={!pickupLocation || !deliveryLocation || loading}
@@ -572,7 +574,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                                         ? addressParts.join(', ')
                                         : `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
-                                    const placeName = addr2.street || addr2.name || addr2.subThoroughfare || 'Localisation';
+                                    const placeName = addr2.street || addr2.name || addr2.subThoroughfare || t('findCourier.localisation');
 
                                     setDeliveryLocation({
                                         latitude: lat,
@@ -593,7 +595,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                         console.error('[FindCourierModal] Erreur parsing delivery GPS:', error);
                     }
                 }}
-                title="Point de livraison"
+                title={t('findCourier.pointDeLivraison')}
                 currentLocation={deliveryLocation ? { lat: deliveryLocation.latitude, lng: deliveryLocation.longitude } : null}
             />
         </Modal>

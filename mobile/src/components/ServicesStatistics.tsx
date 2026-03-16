@@ -5,6 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ServicesStatisticsProps {
     total: number;
@@ -21,7 +22,7 @@ const ServicesStatistics: React.FC<ServicesStatisticsProps> = ({
 }) => {
     const typeLabels: Record<string, string> = {
         pharmacie: 'Pharmacies',
-        hopital: 'Hôpitaux',
+        hopital: t('servicesStatistics.hopitaux'),
         laboratoire: 'Laboratoires',
         banque_sang: 'Banques de Sang',
         agence_voyage: 'Agences',
@@ -80,7 +81,7 @@ const ServicesStatistics: React.FC<ServicesStatisticsProps> = ({
             {/* Répartition par type */}
             {typesWithCount.length > 0 && (
                 <View style={styles.typesContainer}>
-                    <Text style={styles.typesTitle}>Répartition par type</Text>
+                    <Text style={styles.typesTitle}>{t('servicesStatistics.repartitionParType')}</Text>
                     {typesWithCount.map(([type, count]) => (
                         <View key={type} style={styles.typeItem}>
                             <View style={styles.typeItemLeft}>

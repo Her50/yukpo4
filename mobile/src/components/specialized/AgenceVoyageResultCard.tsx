@@ -12,6 +12,7 @@ import { modernColors } from '../../theme/modernTheme';
 import BusSeatSelector, { SelectedSeat } from '../bus/BusSeatSelector';
 import BusTicketCard, { BusTicketData } from '../bus/BusTicketCard';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AgenceVoyageResultCardProps {
     agency: {
@@ -41,6 +42,7 @@ const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({
     onReserve,
 }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const [showSeatSelector, setShowSeatSelector] = useState(false);
     const [selectedTicket, setSelectedTicket] = useState<BusTicketData | null>(null);
 
@@ -122,7 +124,7 @@ const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({
                     <Text style={styles.title}>{agency.nom_agence}</Text>
                     {agency.peut_emettre_tickets_bus && (
                         <View style={styles.badge}>
-                            <Text style={styles.badgeText}>🎫 Tickets Bus</Text>
+                            <Text style={styles.badgeText}>{t('agenceVoyageResultCard.ticketsBus')}/Text>
                         </View>
                     )}
                 </View>
@@ -161,7 +163,7 @@ const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({
             {/* Afficher les tickets bus disponibles si présents */}
             {busTickets && busTickets.length > 0 && (
                 <View style={styles.ticketsSection}>
-                    <Text style={styles.ticketsSectionTitle}>Tickets disponibles</Text>
+                    <Text style={styles.ticketsSectionTitle}>{t('agenceVoyageResultCard.ticketsDisponibles')}/Text>
                     {busTickets.map((ticket, index) => (
                         <BusTicketCard
                             key={ticket.product_id || index}

@@ -3,6 +3,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useOffline } from '../hooks/useOffline';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const OfflineIndicator: React.FC = () => {
     const { isOnline, isSyncing, queueLength } = useOffline();
@@ -15,7 +16,7 @@ const OfflineIndicator: React.FC = () => {
         <View style={styles.container}>
             {!isOnline ? (
                 <View style={[styles.banner, styles.offlineBanner]}>
-                    <Text style={styles.text}>📴 Mode hors ligne</Text>
+                    <Text style={styles.text}>{t('offlineIndicator.modeHorsLigne')}/Text>
                     {queueLength > 0 && (
                         <Text style={styles.subtext}>
                             {queueLength} action{queueLength > 1 ? 's' : ''} en attente

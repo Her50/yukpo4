@@ -22,6 +22,7 @@ import { QRCodeDisplay } from '../../components/covoiturage/QRCodeDisplay';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import PushNotificationService from '../../services/pushNotificationService';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface TaxiDetails {
     id: number;
@@ -62,6 +63,7 @@ interface TaxiDetails {
 
 const TaxiDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const { user } = useAuth();
     const params = route.params as { taxiId: number };
@@ -102,7 +104,7 @@ const TaxiDetailsScreen: React.FC = () => {
         const driverName = taxi.driver?.nom_complet || taxi.nom_chauffeur || taxi.prestataire?.nom_complet || '';
         try {
             await Share.share({
-                message: `Taxi ${taxi.zone}${driverName ? ' - ' + driverName : ''}${taxi.type_vehicule ? '\nVéhicule: ' + taxi.type_vehicule : ''}${taxi.marque_modele ? ' ' + taxi.marque_modele : ''}${taxi.tarif_base ? '\nTarif base: ' + taxi.tarif_base + ' ' + (taxi.devise || 'XAF') : ''}\nVia Yukpo`,
+                message: `Taxi ${taxi.zone}${driverName ? ' - ' + driverName : ''}${taxi.type_vehicule ? t('taxiDetailsScreen.nvehicule') + taxi.type_vehicule : ''}${taxi.marque_modele ? ' ' + taxi.marque_modele : ''}${taxi.tarif_base ? '\nTarif base: ' + taxi.tarif_base + ' ' + (taxi.devise || 'XAF') : ''}\nVia Yukpo`,
                 title: `Taxi ${taxi.zone}`,
             });
         } catch { }
@@ -129,14 +131,14 @@ const TaxiDetailsScreen: React.FC = () => {
                 try { await apiPost(`/api/reservations/${resId}/qr-code`, {}); } catch { }
                 try { await PushNotificationService.registerForPushNotifications(); } catch { }
             } else {
-                Alert.alert('Erreur', (response as any).error || 'Impossible de créer la réservation');
+                Alert.alert('Erreur', (response as any).error || t('taxiDetails.impossibleDeCreerLaReservation'));
             }
         } catch (error: any) { Alert.alert('Erreur', error.message || 'Erreur de réservation'); }
         finally { setBooking(false); }
     };
 
-    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#F59E0B" /><Text style={st.centerText}>Chargement...</Text></View>);
-    if (!taxi) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#F59E0B" /><Text style={st.centerText}>Taxi non trouvé</Text></View>);
+    if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#F59E0B" /><Text style={st.centerText}>{t('taxiDetails.chargement')}</Text></View>);
+    if (!taxi) return (<View style={st.center}><SafeIcon name="alert-circle" size={48} color="#F59E0B" /><Text style={st.centerText}>{t('taxiDetails.taxiNonTrouve')}</Text></View>);
 
     const isAvailable = taxi.is_available_now;
     const driverName = taxi.driver?.nom_complet || taxi.nom_chauffeur || taxi.prestataire?.nom_complet || '';
@@ -164,12 +166,12 @@ const TaxiDetailsScreen: React.FC = () => {
                     <View style={st.heroBadges}>
                         <View style={[st.badge, { backgroundColor: isAvailable ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)' }]}>
                             <View style={[st.badgeDot, { backgroundColor: isAvailable ? '#fff' : '#FCA5A5' }]} />
-                            <Text style={st.badgeText}>{isAvailable ? 'Disponible' : 'Occupé'}</Text>
+                            <Text style={st.badgeText}>{isAvailable ? 'Disponible' : t('taxiDetailsScreen.occupe')}</Text>
                         </View>
                         {taxi.driver?.is_verified && (
                             <View style={[st.badge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
                                 <SafeIcon name="check-circle" size={12} color="#fff" />
-                                <Text style={st.badgeText}>Vérifié</Text>
+                                <Text style={st.badgeText}>{t('taxiDetails.verifie')}</Text>
                             </View>
                         )}
                         {taxi.type_vehicule && (
@@ -196,7 +198,7 @@ const TaxiDetailsScreen: React.FC = () => {
                         taxi.telephone && { icon: 'phone', label: 'Appeler', color: '#D97706', onPress: handleCall },
                         { icon: 'message-circle', label: 'WhatsApp', color: '#25D366', onPress: handleWhatsApp },
                         taxi.email && { icon: 'mail', label: 'Email', color: '#3B82F6', onPress: handleEmail },
-                        { icon: 'share-2', label: 'Partager', color: '#8B5CF6', onPress: handleShare },
+                        { icon: 'share-2', label: t('taxiDetailsScreen.partager'), color: '#8B5CF6', onPress: handleShare },
                     ].filter(Boolean).map((a: any, i) => (
                         <TouchableOpacity key={i} style={st.quickAction} onPress={a.onPress}>
                             <View style={[st.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon} size={20} color={a.color} /></View>
@@ -207,7 +209,7 @@ const TaxiDetailsScreen: React.FC = () => {
 
                 {/* Vehicle & Pricing Card */}
                 <View style={st.card}>
-                    <View style={st.cardHeader}><SafeIcon name="car" size={18} color="#D97706" /><Text style={st.cardTitle}>Véhicule & Tarifs</Text></View>
+                    <View style={st.cardHeader}><SafeIcon name="car" size={18} color="#D97706" /><Text style={st.cardTitle}>{t('taxiDetails.vehiculeTarifs')}</Text></View>
                     {taxi.marque_modele && (
                         <View style={st.infoRow}><SafeIcon name="info" size={16} color="#6B7280" /><Text style={st.infoText}>{taxi.marque_modele}</Text></View>
                     )}
@@ -252,8 +254,8 @@ const TaxiDetailsScreen: React.FC = () => {
                     <View style={[st.card, { backgroundColor: '#F0FDF4', borderColor: '#86EFAC', borderWidth: 1 }]}>
                         <View style={{ alignItems: 'center', padding: 8 }}>
                             <SafeIcon name="check-circle" size={56} color="#10B981" />
-                            <Text style={{ fontSize: 20, fontWeight: '700', color: '#065F46', marginTop: 10 }}>Réservation confirmée !</Text>
-                            <Text style={{ fontSize: 14, color: '#047857', marginTop: 4, textAlign: 'center' }}>Le chauffeur sera notifié.</Text>
+                            <Text style={{ fontSize: 20, fontWeight: '700', color: '#065F46', marginTop: 10 }}>{t('taxiDetails.reservationConfirmee')}</Text>
+                            <Text style={{ fontSize: 14, color: '#047857', marginTop: 4, textAlign: 'center' }}>{t('taxiDetails.leChauffeurSeraNotifie')}</Text>
                             <Text style={{ fontSize: 16, fontWeight: '700', color: '#064E3B', marginTop: 8 }}>N° {reservationId}</Text>
                             <QRCodeDisplay reservationId={reservationId} />
                         </View>
@@ -275,7 +277,7 @@ const TaxiDetailsScreen: React.FC = () => {
                             {selectedInsurance && (
                                 <View style={st.insuranceRow}>
                                     <SafeIcon name="shield" size={18} color="#10B981" />
-                                    <Text style={st.insuranceText}>Assurance {selectedInsurance} sélectionnée</Text>
+                                    <Text style={st.insuranceText}>{t('taxiDetailsScreen.insurance')} {selectedInsurance} sélectionnée</Text>
                                 </View>
                             )}
                             {showInsuranceSelector && (
@@ -291,7 +293,7 @@ const TaxiDetailsScreen: React.FC = () => {
                             <TouchableOpacity style={[st.fullBtn, { borderLeftColor: '#6366F1', borderLeftWidth: 3 }]}
                                 onPress={() => navigation.navigate('TaxiAvailability' as never, { taxiId: taxi.id } as never)}>
                                 <SafeIcon name="settings" size={18} color="#6366F1" />
-                                <Text style={[st.fullBtnText, { color: '#4338CA' }]}>Gérer la disponibilité</Text>
+                                <Text style={[st.fullBtnText, { color: '#4338CA' }]}>{t('taxiDetails.gererLaDisponibilite')}</Text>
                                 <SafeIcon name="chevron-right" size={18} color="#A5B4FC" />
                             </TouchableOpacity>
                         )}
@@ -304,7 +306,7 @@ const TaxiDetailsScreen: React.FC = () => {
                                 disabled={!isAvailable || !taxi.is_on_duty || booking}
                             >
                                 {booking ? <ActivityIndicator color="#fff" /> : <SafeIcon name="calendar" size={20} color="#fff" />}
-                                <Text style={st.bookBtnText}>Réserver maintenant</Text>
+                                <Text style={st.bookBtnText}>{t('taxiDetails.reserverMaintenant')}</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -322,7 +324,7 @@ const TaxiDetailsScreen: React.FC = () => {
                     <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
                         <TouchableOpacity style={st.bookBtn} onPress={() => navigation.navigate('MesReservations' as never)}>
                             <SafeIcon name="list" size={20} color="#fff" />
-                            <Text style={st.bookBtnText}>Voir mes réservations</Text>
+                            <Text style={st.bookBtnText}>{t('taxiDetails.voirMesReservations')}</Text>
                         </TouchableOpacity>
                     </View>
                 )}

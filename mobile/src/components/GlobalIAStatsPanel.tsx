@@ -3,6 +3,7 @@ import React from 'react';
 import ReactNative from 'react-native';
 import { Card } from 'react-native-paper';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { StyleSheet, Text, View } = ReactNative;
 
@@ -28,25 +29,25 @@ const GlobalIAStatsPanel: React.FC<GlobalIAStatsPanelProps> = ({
     const statItems = [
         {
             icon: <Brain size={20} color={theme.colors.primary} />,
-            label: 'Services créés',
+            label: t('globalIAStatsPanel.servicesCrees'),
             value: stats.totalServices.toString(),
             color: theme.colors.primary
         },
         {
             icon: <CurrencyDollar size={20} color="#10B981" />,
-            label: 'Tokens utilisés',
+            label: t('globalIAStatsPanel.tokensUtilises'),
             value: stats.totalTokens.toString(),
             color: '#10B981'
         },
         {
             icon: <TrendUp size={20} color="#F59E0B" />,
-            label: 'Coût moyen',
+            label: t('globalIAStatsPanel.coutMoyen'),
             value: `${stats.averageCost} tokens`,
             color: '#F59E0B'
         },
         {
             icon: <Clock size={20} color="#8B5CF6" />,
-            label: 'Taux de succès',
+            label: t('globalIAStatsPanel.tauxDeSucces'),
             value: `${stats.successRate}%`,
             color: '#8B5CF6'
         }
@@ -68,7 +69,7 @@ const GlobalIAStatsPanel: React.FC<GlobalIAStatsPanelProps> = ({
             <Card.Content>
                 <View style={styles.header}>
                     <Brain size={24} color={theme.colors.primary} />
-                    <Text style={styles.title}>Statistiques IA</Text>
+                    <Text style={styles.title}>{t('globalIAStatsPanel.statistiquesIa')}/Text>
                 </View>
 
                 <View style={styles.statsGrid}>

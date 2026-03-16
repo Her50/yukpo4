@@ -2,6 +2,7 @@ import { useNavigation } from "@react-navigation/native";
 import * as React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Feature {
   icon: string;
@@ -19,11 +20,12 @@ const YukpoBrand: React.FC = () => (
 const WhyUsSection: React.FC = () => {
   const { user } = useAuth();
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
   const features: Feature[] = [
     {
       icon: "🎯",
-      title: "Connexion intelligente",
+      title: t('whyUsSection.connexionIntelligente'),
       desc: (
         <>
           <YukpoBrand /> vous connecte au bon service, au bon moment.
@@ -33,7 +35,7 @@ const WhyUsSection: React.FC = () => {
     },
     {
       icon: "⚡",
-      title: "Réponse immédiate",
+      title: t('whyUsSection.reponseImmediate'),
       desc: "Trouvez une solution sans attendre.",
       link: user ? "Dashboard" : "Login",
     },
@@ -49,7 +51,7 @@ const WhyUsSection: React.FC = () => {
     },
     {
       icon: "🛠️",
-      title: "Création de service 1-clic",
+      title: t('whyUsSection.creationDeService1clic'),
       desc: "Créez un service en quelques secondes.",
       link: user ? "FormulaireYukpoIntelligent" : "Register",
     },

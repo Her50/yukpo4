@@ -8,6 +8,7 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View }
 import { modernColors } from '../../theme/modernTheme';
 import { NativeCard } from '../SafeNativeDesign';
 import { SafeIcon } from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface SuggestedProduct {
     id: string;
@@ -31,7 +32,8 @@ const SuggestedProducts: React.FC<SuggestedProductsProps> = ({
     onAddProduct,
     style,
 }) => {
-    const [suggestions, setSuggestions] = useState<SuggestedProduct[]>([]);
+        const { t } = useLanguageSafe();
+const [suggestions, setSuggestions] = useState<SuggestedProduct[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -48,7 +50,7 @@ const SuggestedProducts: React.FC<SuggestedProductsProps> = ({
             const mockSuggestions: SuggestedProduct[] = [
                 {
                     id: '1',
-                    name: 'Eau minérale',
+                    name: t('suggestedProducts.eauMinerale'),
                     category: 'Boissons',
                     estimatedPrice: 500,
                     reason: 'Produit populaire',
@@ -59,7 +61,7 @@ const SuggestedProducts: React.FC<SuggestedProductsProps> = ({
                     name: 'Pain de mie',
                     category: 'Boulangerie',
                     estimatedPrice: 800,
-                    reason: 'Souvent acheté ensemble',
+                    reason: t('suggestedProducts.souventAcheteEnsemble'),
                     icon: 'bread',
                 },
             ];
@@ -87,7 +89,7 @@ const SuggestedProducts: React.FC<SuggestedProductsProps> = ({
         <View style={[styles.container, style]}>
             <View style={styles.header}>
                 <SafeIcon name="sparkles" size={18} color={modernColors.primary} />
-                <Text style={styles.title}>Suggestions pour vous</Text>
+                <Text style={styles.title}>{t('suggestedProducts.suggestionsPourVous')}/Text>
             </View>
             <FlatList
                 data={suggestions}
@@ -115,7 +117,7 @@ const SuggestedProducts: React.FC<SuggestedProductsProps> = ({
                             onPress={() => onAddProduct(item)}
                         >
                             <SafeIcon name="plus" size={16} color="#FFFFFF" />
-                            <Text style={styles.addButtonText}>Ajouter</Text>
+                            <Text style={styles.addButtonText}>{t('suggestedProducts.ajouter')}</Text>
                         </TouchableOpacity>
                     </NativeCard>
                 )}

@@ -17,6 +17,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { trackQRScan } from '../../services/analytics';
 import { apiPost } from '../../services/api';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ValidationResult {
     success: boolean;
@@ -31,6 +32,7 @@ interface ValidationResult {
 
 const BusTicketQRScannerScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
     const route = useRoute();
     const [scannerVisible, setScannerVisible] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -62,7 +64,7 @@ const BusTicketQRScannerScreen: React.FC = () => {
             } else {
                 setResult({
                     success: false,
-                    error: d.error || 'Ticket invalide ou déjà validé',
+                    error: d.error || t('busTicketQRScanner.ticketInvalideOuDejaValide'),
                 });
             }
         } catch (error: any) {
@@ -87,7 +89,7 @@ const BusTicketQRScannerScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.title}>Scanner Ticket Bus</Text>
+                    <Text style={styles.title}>{t('busTicketQRScanner.scannerTicketBus')}/Text>
                     <Text style={styles.subtitle}>{scanCount} ticket(s) validé(s)</Text>
                 </View>
             </View>
@@ -117,7 +119,7 @@ const BusTicketQRScannerScreen: React.FC = () => {
                             </View>
 
                             <Text style={[styles.resultTitle, { color: result.success ? '#059669' : '#DC2626' }]}>
-                                {result.success ? 'Ticket Validé ✓' : 'Validation Échouée'}
+                                {result.success ? t('busTicketQRScannerScreen.ticketValide') : t('busTicketQRScannerScreen.validationEchouee')}
                             </Text>
 
                             {result.success ? (

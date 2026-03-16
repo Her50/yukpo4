@@ -197,10 +197,10 @@ const pickSquareThumbnail = async (
 const STEPS = [
     { id: 'info', label: 'Infos', icon: 'file-text' },
     { id: 'products', label: 'Produits', icon: 'package' },
-    { id: 'media', label: 'Médias', icon: 'video' },
+    { id: 'media', label: t('createPublicite.medias'), icon: 'video' },
     { id: 'budget', label: 'Budget', icon: 'dollar-sign' },
     { id: 'targeting', label: 'Ciblage', icon: 'target' },
-    { id: 'confirm', label: 'Créer', icon: 'check-circle' },
+    { id: 'confirm', label: t('createPublicite.creer'), icon: 'check-circle' },
 ];
 
 const CreatePubliciteScreen: React.FC = () => {
@@ -266,9 +266,9 @@ const CreatePubliciteScreen: React.FC = () => {
         { type: 'feed' as PlacementType, label: 'Feed Principal', icon: 'grid', description: '', enabled: true, budget: 0 },
         { type: 'stories' as PlacementType, label: 'Stories', icon: 'circle', description: '', enabled: false, budget: 0 },
         { type: 'carousel' as PlacementType, label: 'Carousel', icon: 'layers', description: '', enabled: false, budget: 0 },
-        { type: 'search' as PlacementType, label: 'Résultats de recherche', icon: 'search', description: '', enabled: false, budget: 0 },
+        { type: 'search' as PlacementType, label: t('createPublicite.resultatsDeRecherche'), icon: 'search', description: '', enabled: false, budget: 0 },
         { type: 'reels' as PlacementType, label: 'Reels', icon: 'video', description: '', enabled: false, budget: 0 },
-        { type: 'sidebar' as PlacementType, label: 'Barre latérale', icon: 'sidebar', description: '', enabled: false, budget: 0 },
+        { type: 'sidebar' as PlacementType, label: t('createPublicite.barreLaterale'), icon: 'sidebar', description: '', enabled: false, budget: 0 },
     ]);
     const [bidStrategy, setBidStrategy] = useState({
         type: 'auto' as BidStrategyType,
@@ -279,9 +279,9 @@ const CreatePubliciteScreen: React.FC = () => {
     });
     const [retargetingRules, setRetargetingRules] = useState([
         { id: '1', type: 'viewed_product' as const, label: 'A vu un produit', description: '', enabled: false, daysSince: 7 },
-        { id: '2', type: 'abandoned_cart' as const, label: 'Panier abandonné', description: '', enabled: false, daysSince: 7 },
-        { id: '3', type: 'visited_service' as const, label: 'A visité un service', description: '', enabled: false, daysSince: 7 },
-        { id: '4', type: 'searched' as const, label: 'A recherché', description: '', enabled: false, daysSince: 7 },
+        { id: '2', type: 'abandoned_cart' as const, label: t('createPublicite.panierAbandonne'), description: '', enabled: false, daysSince: 7 },
+        { id: '3', type: 'visited_service' as const, label: t('createPublicite.aVisiteUnService'), description: '', enabled: false, daysSince: 7 },
+        { id: '4', type: 'searched' as const, label: t('createPublicite.aRecherche'), description: '', enabled: false, daysSince: 7 },
     ]);
     const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
     const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
@@ -429,7 +429,7 @@ const CreatePubliciteScreen: React.FC = () => {
                     rawProductId: product.id.toString(),
                     serviceId: product.service_id.toString(),
                     productIndex: product.product_index,
-                    nom: product.product_name || productData.nom || productData.nom_produit || 'Produit sans nom',
+                    nom: product.product_name || productData.nom || productData.nom_produit || t('createPublicite.produitSansNom'),
                     prix: product.product_price || productData.prix || productData.prix_produit || 0,
                     devise: productData.devise || 'FCFA',
                     type: product.product_type || productData.type || 'autre',
@@ -529,15 +529,15 @@ const CreatePubliciteScreen: React.FC = () => {
                 const productNames = selectedProducts.map(p => p.nom).join(', ');
                 const suggestionsMap: Record<string, string[]> = {
                     titre: [
-                        `Promotion ${productNames} - Offre spéciale`,
-                        `Découvrez ${productNames} - Prix réduits`,
-                        `${productNames} - Promotion limitée`,
+                        t('createPubliciteScreen.promotionOffreSpeciale', { productNames: productNames }),
+                        t('createPubliciteScreen.decouvrezPrixReduits', { productNames: productNames }),
+                        t('createPubliciteScreen.promotionLimitee', { productNames: productNames }),
                         `Offre exclusive sur ${productNames}`,
                     ],
                     description: [
-                        `Profitez de nos produits ${productNames} à prix réduits. Offre limitée dans le temps !`,
-                        `Découvrez notre sélection ${productNames}. Qualité garantie et livraison rapide.`,
-                        `Ne manquez pas cette opportunité sur ${productNames}. Commandez maintenant !`,
+                        t('createPubliciteScreen.profitezDeNosProduitsAPrix', { productNames: productNames }),
+                        t('createPubliciteScreen.decouvrezNotreSelectionQualiteGarantieEt', { productNames: productNames }),
+                        t('createPubliciteScreen.neManquezPasCetteOpportuniteSur', { productNames: productNames }),
                     ],
                 };
                 setSuggestions(suggestionsMap[field] || []);
@@ -548,8 +548,8 @@ const CreatePubliciteScreen: React.FC = () => {
             const selectedProducts = produitsList.filter(p => selectedProduits.includes(p.id));
             const productNames = selectedProducts.map(p => p.nom).join(', ');
             const suggestionsMap: Record<string, string[]> = {
-                titre: [`Promotion ${productNames} - Offre spéciale`],
-                description: [`Profitez de nos produits ${productNames} à prix réduits.`],
+                titre: [t('createPubliciteScreen.promotionOffreSpeciale', { productNames: productNames })],
+                description: [t('createPubliciteScreen.profitezDeNosProduitsAPrix', { productNames: productNames })],
             };
             setSuggestions(suggestionsMap[field] || []);
         } finally {
@@ -562,11 +562,11 @@ const CreatePubliciteScreen: React.FC = () => {
         const errors: Record<string, string> = {};
 
         if (titre.trim().length < 5) {
-            errors.titre = 'Le titre doit contenir au moins 5 caractères';
+            errors.titre = t('createPubliciteScreen.leTitreDoitContenirAuMoins');
         }
 
         if (titre.trim().length > 100) {
-            errors.titre = 'Le titre ne peut pas dépasser 100 caractères';
+            errors.titre = t('createPubliciteScreen.leTitreNePeutPasDepasser');
         }
 
         setValidationErrors(errors);
@@ -576,23 +576,23 @@ const CreatePubliciteScreen: React.FC = () => {
     const handleTemplateSelect = useCallback((template: any) => {
         switch (template.id) {
             case 'promo':
-                setTitre('Promotion Flash - Offre limitée !');
-                setDescription('Profitez de nos prix réduits pour une durée limitée. Ne manquez pas cette opportunité !');
+                setTitre(t('createPubliciteScreen.promotionFlashOffreLimitee'));
+                setDescription(t('createPubliciteScreen.profitezDeNosPrixReduitsPour'));
                 setDuree('7');
                 break;
             case 'new_product':
-                setTitre('Nouveau Produit - Découvrez maintenant !');
-                setDescription('Soyez parmi les premiers à découvrir notre nouveau produit. Qualité garantie !');
+                setTitre(t('createPubliciteScreen.nouveauProduitDecouvrezMaintenant'));
+                setDescription(t('createPubliciteScreen.soyezParmiLesPremiersADecouvrir'));
                 setDuree('14');
                 break;
             case 'seasonal':
-                setTitre('Offre Saisonnière - Spécial événement');
-                setDescription('Célébrez avec nous ! Offres spéciales pour cette occasion unique.');
+                setTitre(t('createPubliciteScreen.offreSaisonniereSpecialEvenement'));
+                setDescription(t('createPubliciteScreen.celebrezAvecNousOffresSpecialesPour'));
                 setDuree('30');
                 break;
             case 'testimonial':
-                setTitre('Nos clients recommandent - Avis vérifiés');
-                setDescription('Rejoignez nos clients satisfaits. Découvrez pourquoi ils nous font confiance.');
+                setTitre(t('createPubliciteScreen.nosClientsRecommandentAvisVerifies'));
+                setDescription(t('createPubliciteScreen.rejoignezNosClientsSatisfaitsDecouvrezPourquoi'));
                 setDuree('14');
                 break;
         }
@@ -1032,7 +1032,7 @@ const CreatePubliciteScreen: React.FC = () => {
                         )}
 
                         <NativeCard style={styles.sectionCard}>
-                            <Text style={styles.sectionTitle}>📝 Informations générales</Text>
+                            <Text style={styles.sectionTitle}>{t('createPublicite.informationsGenerales')}</Text>
 
                             <View style={styles.fieldContainer}>
                                 <View style={styles.fieldLabelRow}>
@@ -1041,7 +1041,7 @@ const CreatePubliciteScreen: React.FC = () => {
                                     </Text>
                                 </View>
                                 <NativeInput
-                                    placeholder="Ex: Promotion Immobilier - 20% de remise"
+                                    placeholder={t('createPublicite.exPromotionImmobilier20De')}
                                     value={titre}
                                     onChangeText={setTitre}
                                     style={[styles.input, validationErrors.titre && styles.inputError]}
@@ -1064,7 +1064,7 @@ const CreatePubliciteScreen: React.FC = () => {
                             <View style={styles.fieldContainer}>
                                 <Text style={styles.fieldLabel}>{t('publicite.description')}</Text>
                                 <NativeInput
-                                    placeholder="Décrivez votre offre promotionnelle..."
+                                    placeholder={t('createPublicite.decrivezVotreOffrePromotionnelle')}
                                     value={description}
                                     onChangeText={setDescription}
                                     style={styles.input}
@@ -1128,15 +1128,15 @@ const CreatePubliciteScreen: React.FC = () => {
                 {currentStep === 1 && (
                     <NativeCard style={styles.sectionCard}>
                         <Text style={styles.sectionTitle}>📦 {t('publicite.products')} ({selectedProduits.length})</Text>
-                        <Text style={styles.sectionHint}>Optionnel — Sélectionnez les produits à promouvoir</Text>
+                        <Text style={styles.sectionHint}>{t('createPublicite.optionnelSelectionnezLesProduitsA')}</Text>
 
                         {loading ? (
                             <ActivityIndicator size="small" color={modernColors.primary} />
                         ) : produitsList.length === 0 ? (
                             <View style={styles.emptyState}>
                                 <SafeIcon name="package" size={48} color="#D1D5DB" />
-                                <Text style={styles.emptyText}>Aucun produit disponible</Text>
-                                <Text style={styles.emptySubtext}>Créez d'abord un service avec des produits</Text>
+                                <Text style={styles.emptyText}>{t('createPublicite.aucunProduitDisponible')}</Text>
+                                <Text style={styles.emptySubtext}>{t('createPublicite.creezDabordUnServiceAvec')}</Text>
                             </View>
                         ) : (
                             <View style={styles.productsList}>
@@ -1170,7 +1170,7 @@ const CreatePubliciteScreen: React.FC = () => {
                 {currentStep === 2 && (
                     <NativeCard style={styles.sectionCard}>
                         <Text style={styles.sectionTitle}>🎬 {t('publicite.videos')} ({videos.length})</Text>
-                        <Text style={styles.sectionHint}>Maximum 30 secondes par vidéo</Text>
+                        <Text style={styles.sectionHint}>{t('createPublicite.maximum30SecondesParVideo')}</Text>
 
                         <TouchableOpacity
                             style={[styles.addVideoButton, isConvertingVideo && styles.addVideoButtonDisabled]}
@@ -1178,7 +1178,7 @@ const CreatePubliciteScreen: React.FC = () => {
                             disabled={isConvertingVideo}
                         >
                             <SafeIcon name="video" size={20} color={modernColors.primary} />
-                            <Text style={styles.addVideoText}>Ajouter une vidéo</Text>
+                            <Text style={styles.addVideoText}>{t('createPublicite.ajouterUneVideo')}</Text>
                         </TouchableOpacity>
 
                         {isExistingMode && (
@@ -1194,7 +1194,7 @@ const CreatePubliciteScreen: React.FC = () => {
                             Générer automatiquement une vidéo carrée optimisée grâce à Yukpo IA.
                         </Text>
                         <NativeButton
-                            title={isConvertingVideo ? 'Génération IA en cours...' : 'Générer une vidéo carrée IA'}
+                            title={isConvertingVideo ? t('createPubliciteScreen.generationIaEnCours') : t('createPubliciteScreen.genererUneVideoCarreeIa')}
                             onPress={openVideoCreator}
                             variant="secondary"
                             size="medium"
@@ -1204,7 +1204,7 @@ const CreatePubliciteScreen: React.FC = () => {
                         {isConvertingVideo && (
                             <View style={styles.aiProgressRow}>
                                 <ActivityIndicator size="small" color={modernColors.primary} />
-                                <Text style={styles.aiProgressText}>Conversion du média IA...</Text>
+                                <Text style={styles.aiProgressText}>{t('createPublicite.conversionDuMediaIa')}</Text>
                             </View>
                         )}
 
@@ -1258,7 +1258,7 @@ const CreatePubliciteScreen: React.FC = () => {
                                 <Text style={styles.infoTitle}>{t('publicite.pricing')}</Text>
                             </View>
                             <Text style={styles.infoText}>• {t('publicite.price_per_day')}</Text>
-                            <Text style={styles.infoText}>• +2 000 FCFA par vidéo</Text>
+                            <Text style={styles.infoText}>{t('createPublicite.2000FcfaParVideo')}</Text>
                             <Text style={styles.infoText}>• Conversion automatique en {userCurrency}</Text>
                         </NativeCard>
 
@@ -1359,9 +1359,9 @@ const CreatePubliciteScreen: React.FC = () => {
                         {/* Aperçu final */}
                         {(titre || videos.length > 0 || selectedProduits.length > 0) && (
                             <NativeCard style={styles.previewCard}>
-                                <Text style={styles.previewTitle}>Aperçu de votre publicité</Text>
+                                <Text style={styles.previewTitle}>{t('createPublicite.apercuDeVotrePublicite')}</Text>
                                 <AdPreviewCard
-                                    titre={titre || 'Titre de votre publicité'}
+                                    titre={titre || t('createPublicite.titreDeVotrePublicite')}
                                     description={description}
                                     thumbnail={previewThumbnail}
                                     videoCount={videos.length}
@@ -1374,7 +1374,7 @@ const CreatePubliciteScreen: React.FC = () => {
 
                         {/* Récapitulatif final */}
                         <NativeCard style={[styles.sectionCard, styles.summaryCard]}>
-                            <Text style={styles.sectionTitle}>Récapitulatif</Text>
+                            <Text style={styles.sectionTitle}>{t('createPublicite.recapitulatif')}</Text>
                             <View style={styles.summaryRow}>
                                 <Text style={styles.summaryLabel}>Titre</Text>
                                 <Text style={[styles.summaryValue, { flex: 1, textAlign: 'right' }]} numberOfLines={1}>{titre || '—'}</Text>
@@ -1406,7 +1406,7 @@ const CreatePubliciteScreen: React.FC = () => {
                         <NativeButton
                             title={loading ? t('message.loading') :
                                 mode === 'edit' ? 'Enregistrer les modifications' :
-                                    mode === 'relance' ? 'Relancer la publicité' :
+                                    mode === 'relance' ? t('createPubliciteScreen.relancerLaPublicite') :
                                         t('publicite.create')}
                             onPress={handleCreatePublicite}
                             disabled={loading || !titre.trim()}
@@ -1428,7 +1428,7 @@ const CreatePubliciteScreen: React.FC = () => {
                         onPress={() => setCurrentStep(Math.max(0, currentStep - 1))}
                     >
                         <SafeIcon name="chevron-left" size={20} color={modernColors.primary} />
-                        <Text style={styles.navButtonTextPrev}>Précédent</Text>
+                        <Text style={styles.navButtonTextPrev}>{t('createPublicite.precedent')}</Text>
                     </TouchableOpacity>
                 ) : (
                     <View style={styles.navButton} />
@@ -1444,7 +1444,7 @@ const CreatePubliciteScreen: React.FC = () => {
                             setCurrentStep(Math.min(STEPS.length - 1, currentStep + 1));
                         }}
                     >
-                        <Text style={styles.navButtonTextNext}>Suivant</Text>
+                        <Text style={styles.navButtonTextNext}>{t('createPubliciteScreen.suivant')}</Text>
                         <SafeIcon name="chevron-right" size={20} color="#fff" />
                     </TouchableOpacity>
                 ) : (

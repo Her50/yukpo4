@@ -16,6 +16,7 @@ import {
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface Company {
     id: string;
@@ -37,10 +38,11 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
     selected = [], // ✅ CORRECTION CRASH: Valeur par défaut pour éviter undefined
     onSelectionChange,
     allowCustom = true,
-    placeholder = 'Ajouter une compagnie',
+    placeholder={t('companySelector.ajouterUneCompagnie')},
     hint
 }) => {
-    const [showModal, setShowModal] = useState(false);
+        const { t } = useLanguageSafe();
+const [showModal, setShowModal] = useState(false);
     const [companyName, setCompanyName] = useState('');
     const [companyType, setCompanyType] = useState<'bus' | 'flight'>('bus');
     const [searchQuery, setSearchQuery] = useState('');
@@ -130,14 +132,14 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
                     onPress={() => setShowModal(true)}
                 >
                     <SafeIcon name="plus" size={18} color="#fff" />
-                    <Text style={styles.addButtonText}>Ajouter</Text>
+                    <Text style={styles.addButtonText}>{t('companySelector.ajouter')}</Text>
                 </TouchableOpacity>
             </View>
 
             {selected.length === 0 ? (
                 <View style={styles.emptyState}>
-                    <Text style={styles.emptyText}>Aucune compagnie ajoutée</Text>
-                    <Text style={styles.emptyHint}>Appuyez sur "Ajouter" pour commencer</Text>
+                    <Text style={styles.emptyText}>{t('companySelector.aucuneCompagnieAjoutee')}</Text>
+                    <Text style={styles.emptyHint}>{t('companySelector.appuyezSurAjouterPourCommencer')}</Text>
                 </View>
             ) : (
                 <View style={styles.selectedList}>
@@ -191,7 +193,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Ajouter une compagnie</Text>
+                            <Text style={styles.modalTitle}>{t('companySelector.ajouterUneCompagnie')}</Text>
                             <TouchableOpacity onPress={() => setShowModal(false)}>
                                 <SafeIcon name="x" size={24} color="#6B7280" />
                             </TouchableOpacity>
@@ -231,7 +233,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
                         </View>
 
                         <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>Nom de la compagnie</Text>
+                            <Text style={styles.inputLabel}>{t('companySelector.nomDeLaCompagnie')}</Text>
                             <TextInput
                                 style={styles.input}
                                 value={companyName}
@@ -273,7 +275,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
                                     setCompanyName('');
                                 }}
                             >
-                                <Text style={styles.cancelButtonText}>Annuler</Text>
+                                <Text style={styles.cancelButtonText}>{t('companySelector.annuler')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.modalButton, styles.saveButton]}
@@ -283,7 +285,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
                                 }}
                                 disabled={!companyName.trim()}
                             >
-                                <Text style={styles.saveButtonText}>Ajouter</Text>
+                                <Text style={styles.saveButtonText}>{t('companySelector.ajouter')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

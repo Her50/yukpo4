@@ -90,8 +90,8 @@ const BusTicketBookingScreen: React.FC = () => {
                 // (Les notifications seront planifiées après le paiement)
 
                 Alert.alert(
-                    'Réservation créée',
-                    `${selectedSeats.length} place(s) réservée(s) avec succès. Vous avez 30 minutes pour compléter le paiement.`,
+                    t('busTicketBookingScreen.reservationCreee'),
+                    t('busTicketBookingScreen.placesReserveesAvecSuccesVousAvez', { selectedSeats_length: selectedSeats.length }),
                     [
                         {
                             text: 'Payer maintenant',
@@ -110,7 +110,7 @@ const BusTicketBookingScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', (response as any).error || 'Impossible de créer la réservation');
+                Alert.alert('Erreur', (response as any).error || t('busTicketBooking.impossibleDeCreerLaReservation'));
             }
         } catch (error: any) {
             console.error('[BusTicketBookingScreen] Erreur réservation:', error);
@@ -130,10 +130,10 @@ const BusTicketBookingScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Réservation</Text>
+                    <Text style={styles.title}>{t('busTicketBooking.reservation')}</Text>
                 </View>
                 <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>Informations de ticket manquantes</Text>
+                    <Text style={styles.errorText}>{t('busTicketBooking.informationsDeTicketManquantes')}/Text>
                 </View>
             </View>
         );
@@ -148,7 +148,7 @@ const BusTicketBookingScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Réserver des places</Text>
+                <Text style={styles.title}>{t('busTicketBooking.reserverDesPlaces')}</Text>
             </View>
 
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -161,7 +161,7 @@ const BusTicketBookingScreen: React.FC = () => {
                             <View style={styles.cityDot} />
                             <View style={styles.cityInfo}>
                                 <Text style={styles.cityName}>
-                                    {ticketData?.departure_city || 'Départ'}
+                                    {ticketData?.departure_city || t('busTicketBooking.depart')}
                                 </Text>
                                 {ticketData?.departure_time && (
                                     <Text style={styles.time}>{ticketData.departure_time.substring(0, 5)}</Text>
@@ -175,7 +175,7 @@ const BusTicketBookingScreen: React.FC = () => {
                             <View style={[styles.cityDot, styles.cityDotArrival]} />
                             <View style={styles.cityInfo}>
                                 <Text style={styles.cityName}>
-                                    {ticketData?.arrival_city || 'Arrivée'}
+                                    {ticketData?.arrival_city || t('busTicketBooking.arrivee')}
                                 </Text>
                             </View>
                         </View>
@@ -193,14 +193,14 @@ const BusTicketBookingScreen: React.FC = () => {
 
                     {/* ✅ NOUVEAU: Carte du trajet */}
                     <TripMap
-                        departureCity={ticketData?.departure_city || 'Départ'}
-                        arrivalCity={ticketData?.arrival_city || 'Arrivée'}
+                        departureCity={ticketData?.departure_city || t('busTicketBooking.depart')}
+                        arrivalCity={ticketData?.arrival_city || t('busTicketBooking.arrivee')}
                         distanceKm={ticketData?.distance_km}
                         durationMinutes={(ticketData as any)?.duration_minutes}
                     />
 
                     <View style={styles.priceContainer}>
-                        <Text style={styles.priceLabel}>Prix par place</Text>
+                        <Text style={styles.priceLabel}>{t('busTicketBooking.prixParPlace')}/Text>
                         <Text style={styles.price}>
                             {ticketData?.ticket_price
                                 ? `${ticketData.ticket_price.toLocaleString('fr-FR')} FCFA`
@@ -211,13 +211,13 @@ const BusTicketBookingScreen: React.FC = () => {
 
                 {/* Sélection des places */}
                 <View style={styles.selectionCard}>
-                    <Text style={styles.cardTitle}>Sélectionner les places</Text>
+                    <Text style={styles.cardTitle}>{t('busTicketBooking.selectionnerLesPlaces')}</Text>
                     <Text style={styles.cardSubtitle}>
                         {ticketData?.available_seats || 0} place(s) disponible(s)
                     </Text>
 
                     <NativeButton
-                        title="Choisir les places"
+                        title={t('busTicketBooking.choisirLesPlaces')}
                         onPress={handleSelectSeats}
                         variant="primary"
                         size="large"

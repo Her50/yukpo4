@@ -14,6 +14,7 @@ import { effectLibraryService } from '../services/effectLibraryService';
 import { modernColors } from '../theme/modernTheme';
 import { SafeIcon } from './SafeIcon';
 import { NativeButton, NativeInput } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export type TransitionCategory = 'transitions_tiktok' | 'transitions_creative' | 'transitions_professional' | 'transitions_glitch' | 'transitions_nature' | 'all';
 
@@ -27,7 +28,7 @@ interface TrendingTransitionsLibraryProps {
 const CATEGORIES: { key: TransitionCategory; label: string; icon: string; color: string }[] = [
     { key: 'all', label: 'Toutes', icon: 'grid', color: modernColors.primary },
     { key: 'transitions_tiktok', label: '🔥 TikTok', icon: 'trending-up', color: '#FF0050' },
-    { key: 'transitions_creative', label: '✨ Créatives', icon: 'sparkles', color: '#8B5CF6' },
+    { key: 'transitions_creative', label: t('trendingTransitionsLibrary.creatives'), icon: 'sparkles', color: '#8B5CF6' },
     { key: 'transitions_professional', label: '💼 Pro', icon: 'briefcase', color: '#3B82F6' },
     { key: 'transitions_glitch', label: '⚡ Glitch', icon: 'zap', color: '#10B981' },
     { key: 'transitions_nature', label: '🌿 Nature', icon: 'leaf', color: '#059669' },
@@ -46,7 +47,8 @@ export const TrendingTransitionsLibrary: React.FC<TrendingTransitionsLibraryProp
     maxSelection = 5,
     showPreview = true,
 }) => {
-    const [transitions, setTransitions] = useState<any[]>([]);
+        const { t } = useLanguageSafe();
+const [transitions, setTransitions] = useState<any[]>([]);
     const [filteredTransitions, setFilteredTransitions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -224,7 +226,7 @@ export const TrendingTransitionsLibrary: React.FC<TrendingTransitionsLibraryProp
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement des transitions tendance...</Text>
+                <Text style={styles.loadingText}>{t('trendingTransitionsLibrary.chargementDesTransitionsTendance')}</Text>
             </View>
         );
     }
@@ -234,7 +236,7 @@ export const TrendingTransitionsLibrary: React.FC<TrendingTransitionsLibraryProp
             <View style={styles.errorContainer}>
                 <SafeIcon name="alert-circle" size={24} color={modernColors.error} />
                 <Text style={styles.errorText}>{error}</Text>
-                <NativeButton title="Réessayer" onPress={loadTransitions} />
+                <NativeButton title={t('trendingTransitionsLibrary.reessayer')} onPress={loadTransitions} />
             </View>
         );
     }
@@ -259,7 +261,7 @@ export const TrendingTransitionsLibrary: React.FC<TrendingTransitionsLibraryProp
 
             <View style={styles.filtersContainer}>
                 <NativeInput
-                    placeholder="Rechercher une transition..."
+                    placeholder={t('trendingTransitionsLibrary.rechercherUneTransition')}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     style={styles.searchInput}

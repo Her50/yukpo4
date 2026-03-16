@@ -2325,6 +2325,21 @@ pub async fn dispatch_book_package(
         ));
     }
 
+    // E2: VALIDATION BESOIN — vérifier que tous les paquets du destinataire sont constitués
+    let troc_service = crate::services::troc_intelligent_service::TrocIntelligentService::new(
+        Arc::new(state.pg.clone()),
+    );
+
+    let (is_ready, validation_msg, _) =
+        troc_service.validate_need_fulfillment(package.destinataire_id).await?;
+
+    if !is_ready {
+        return Err(AppError::BadRequest(format!(
+            "Impossible de dispatcher: {}. Tous les paquets du besoin doivent être constitués avant le dispatch coursier.",
+            validation_msg
+        )));
+    }
+
     // Parser les coordonnées GPS
     let parse_gps = |gps: &str| -> Option<(f64, f64)> {
         let parts: Vec<&str> = gps.split(',').collect();
@@ -2347,32 +2362,47 @@ pub async fn dispatch_book_package(
     let (exp_lat, exp_lng) = expediteur_pos.unwrap();
     let (dest_lat, dest_lng) = destinataire_pos.unwrap();
 
+    // E3: ROUTE OPTIMISÉE — récupérer TOUS les paquets non-dispatchés
+    // pour les mêmes utilisateurs, afin que le coursier ne revienne pas
+    let all_user_packages = troc_service
+        .get_all_packages_for_user(package.destinataire_id)
+        .await
+        .unwrap_or_default();
+
+    // Calculer l'itinéraire optimisé si plusieurs paquets
+    let itineraire = if all_user_packages.len() > 1 {
+        let optimized = troc_service
+            .compute_optimized_route(&all_user_packages)
+            .await
+            .unwrap_or_default();
+        json!(optimized)
+    } else {
+        json!([
+            {
+                "type": "pickup",
+                "gps": format!("{},{}", exp_lat, exp_lng),
+                "adresse": package.expediteur_adresse,
+                "user_id": package.expediteur_id,
+                "ordre": 1,
+                "instructions": package.expediteur_instructions
+            },
+            {
+                "type": "dropoff",
+                "gps": format!("{},{}", dest_lat, dest_lng),
+                "adresse": package.destinataire_adresse,
+                "user_id": package.destinataire_id,
+                "ordre": 2,
+                "instructions": package.destinataire_instructions
+            }
+        ])
+    };
+
     // Calculer la distance et l'ETA
     let distance_m = crate::services::delivery_service::haversine_distance(
         (exp_lat, exp_lng),
         (dest_lat, dest_lng),
     );
     let eta_min = ((distance_m / 1000.0) / 25.0 * 60.0).max(15.0) as i32; // ~25 km/h en ville
-
-    // Construire l'itinéraire multi-points
-    let itineraire = json!([
-        {
-            "type": "pickup",
-            "gps": format!("{},{}", exp_lat, exp_lng),
-            "adresse": package.expediteur_adresse,
-            "user_id": package.expediteur_id,
-            "ordre": 1,
-            "instructions": package.expediteur_instructions
-        },
-        {
-            "type": "dropoff",
-            "gps": format!("{},{}", dest_lat, dest_lng),
-            "adresse": package.destinataire_adresse,
-            "user_id": package.destinataire_id,
-            "ordre": 2,
-            "instructions": package.destinataire_instructions
-        }
-    ]);
 
     // Calculer les frais de livraison si pas encore fait
     let frais_livraison = package
@@ -2833,6 +2863,318 @@ pub async fn user_book_dashboard(
             "total_recus": total_recus,
             "en_cours_envoi": paquets_a_envoyer.len(),
             "en_cours_reception": paquets_a_recevoir.len(),
+        }
+    })))
+}
+
+// ============================================================================
+// CONSTITUTION INTELLIGENTE DES PAQUETS
+// ============================================================================
+
+/// POST /api/bourse-livre/v2/packages/build-intelligent
+/// Constituer intelligemment les paquets pour l'utilisateur connecté.
+/// Regroupe par couple (expéditeur → destinataire) à partir des trocs complétés non-packagés.
+pub async fn build_intelligent_packages(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[build_intelligent_packages] Constitution paquets pour user {}",
+        user_id
+    );
+
+    let troc_service = crate::services::troc_intelligent_service::TrocIntelligentService::new(
+        Arc::new(state.pg.clone()),
+    );
+
+    let packages = troc_service.build_intelligent_packages(user_id).await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "packages_crees": packages.len(),
+        "packages": packages,
+        "message": if packages.is_empty() {
+            "Aucun troc complété en attente de packaging"
+        } else {
+            "Paquets constitués avec succès"
+        }
+    })))
+}
+
+/// POST /api/bourse-livre/v2/packages/build-all
+/// (Admin) Constituer les paquets pour TOUS les utilisateurs ayant des trocs non-packagés.
+pub async fn build_all_pending_packages(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[build_all_pending_packages] Constitution batch déclenchée par user {}",
+        user_id
+    );
+
+    // Vérifier que l'utilisateur est admin
+    let is_admin: bool =
+        sqlx::query_scalar("SELECT COALESCE(role = 'admin', false) FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(&state.pg)
+            .await
+            .unwrap_or(false);
+
+    if !is_admin {
+        return Err(AppError::Forbidden(
+            "Seul un administrateur peut déclencher la constitution batch".to_string(),
+        ));
+    }
+
+    let troc_service = crate::services::troc_intelligent_service::TrocIntelligentService::new(
+        Arc::new(state.pg.clone()),
+    );
+
+    let packages = troc_service.build_all_pending_packages().await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "packages_crees": packages.len(),
+        "packages": packages,
+    })))
+}
+
+// ============================================================================
+// VALIDATION BESOIN & ROUTE OPTIMISÉE
+// ============================================================================
+
+/// GET /api/bourse-livre/v2/packages/validate-need
+/// Vérifie que tous les paquets liés au besoin de l'utilisateur sont constitués
+/// avant de permettre le dispatch coursier.
+pub async fn validate_need_fulfillment(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[validate_need_fulfillment] Validation besoin pour user {}",
+        user_id
+    );
+
+    let troc_service = crate::services::troc_intelligent_service::TrocIntelligentService::new(
+        Arc::new(state.pg.clone()),
+    );
+
+    let (is_ready, message, details) = troc_service.validate_need_fulfillment(user_id).await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "is_ready_for_dispatch": is_ready,
+        "message": message,
+        "details": details,
+    })))
+}
+
+/// POST /api/bourse-livre/v2/packages/optimized-route
+/// Calcule la route optimisée pour un ensemble de paquets (coursier visite chaque user 1 seule fois).
+/// Body: { "package_ids": [1, 2, 3] }
+#[derive(Debug, Deserialize)]
+pub struct OptimizedRouteRequest {
+    pub package_ids: Vec<i32>,
+}
+
+pub async fn compute_optimized_route(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(body): Json<OptimizedRouteRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[compute_optimized_route] User: {}, {} paquets",
+        user_id,
+        body.package_ids.len()
+    );
+
+    let troc_service = crate::services::troc_intelligent_service::TrocIntelligentService::new(
+        Arc::new(state.pg.clone()),
+    );
+
+    let waypoints = troc_service.compute_optimized_route(&body.package_ids).await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "waypoints": waypoints,
+        "total_stops": waypoints.len(),
+        "message": format!("{} arrêts optimisés pour {} paquets", waypoints.len(), body.package_ids.len()),
+    })))
+}
+
+/// GET /api/bourse-livre/v2/packages/user-packages
+/// Retourne tous les paquets non-dispatchés impliquant l'utilisateur
+/// (pour que le coursier puisse tout prendre en un seul passage)
+pub async fn get_all_packages_for_user(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let troc_service = crate::services::troc_intelligent_service::TrocIntelligentService::new(
+        Arc::new(state.pg.clone()),
+    );
+
+    let package_ids = troc_service.get_all_packages_for_user(user_id).await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "package_ids": package_ids,
+        "total": package_ids.len(),
+    })))
+}
+
+// ============================================================================
+// V3: CHAÎNE DAG — ENDPOINTS
+// ============================================================================
+
+/// POST /api/bourse-livre/v2/chains/create
+/// Sauvegarde une chaîne trouvée par find_matching_chaine dans la DB.
+#[derive(Debug, Deserialize)]
+pub struct CreateChainRequest {
+    pub participants: Vec<serde_json::Value>,
+    pub transfers: Vec<serde_json::Value>,
+    pub distance_totale_km: Option<f64>,
+    pub score_proximite: Option<f64>,
+}
+
+pub async fn create_chain_from_matching(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(body): Json<CreateChainRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[create_chain] User {} crée chaîne, {} transferts",
+        user_id,
+        body.transfers.len()
+    );
+
+    let chaine_id: i32 = sqlx::query_scalar(
+        r#"
+        INSERT INTO chaines_troc_livres (
+            participants, transfers, statut, score_proximite, distance_totale_km
+        )
+        VALUES ($1, $2, 'en_formation', $3, $4)
+        RETURNING id
+        "#,
+    )
+    .bind(serde_json::json!(body.participants))
+    .bind(serde_json::json!(body.transfers))
+    .bind(body.score_proximite)
+    .bind(body.distance_totale_km)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur création chaîne: {}", e)))?;
+
+    Ok(Json(json!({
+        "success": true,
+        "chaine_id": chaine_id,
+        "statut": "en_formation",
+    })))
+}
+
+/// POST /api/bourse-livre/v2/chains/{id}/finalize
+/// Finalise la chaîne: désactive livres, crée paquets, calcule route.
+pub async fn finalize_chain(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(chaine_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[finalize_chain] User {} finalise chaîne {}",
+        user_id, chaine_id
+    );
+
+    let svc = crate::services::troc_intelligent_service::TrocIntelligentService::new(Arc::new(
+        state.pg.clone(),
+    ));
+    let result = svc.finalize_chain(chaine_id).await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "data": result,
+    })))
+}
+
+/// POST /api/bourse-livre/v2/packages/cancel-book
+/// Le coursier annule un livre sur le terrain.
+/// Body: { "package_id": 1, "livre_id": 2, "raison": "livre introuvable" }
+pub async fn cancel_book_on_site(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: coursier_id, ..
+    }): Extension<AuthenticatedUser>,
+    Json(body): Json<crate::models::troc_livre::BookCancellationRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[cancel_book_on_site] Coursier {} annule livre {} du paquet {}",
+        coursier_id, body.livre_id, body.package_id
+    );
+
+    let svc = crate::services::troc_intelligent_service::TrocIntelligentService::new(Arc::new(
+        state.pg.clone(),
+    ));
+    let result = svc.cancel_book_on_site(coursier_id, body).await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "data": result,
+    })))
+}
+
+/// POST /api/bourse-livre/v2/chains/{id}/schedule
+/// Génère le planning multi-jours pour une chaîne finalisée.
+pub async fn build_delivery_schedule(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(chaine_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[build_delivery_schedule] User {} pour chaîne {}",
+        user_id, chaine_id
+    );
+
+    let svc = crate::services::troc_intelligent_service::TrocIntelligentService::new(Arc::new(
+        state.pg.clone(),
+    ));
+    let result = svc.build_delivery_schedule(chaine_id).await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "data": result,
+    })))
+}
+
+/// GET /api/bourse-livre/v2/chains/{id}
+/// Récupère les détails d'une chaîne (transfers, route, schedule, paquets).
+pub async fn get_chain_details(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: _user_id, .. }): Extension<AuthenticatedUser>,
+    Path(chaine_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    let chaine = sqlx::query_as::<_, crate::models::troc_livre::ChaineTrocLivre>(
+        "SELECT * FROM chaines_troc_livres WHERE id = $1",
+    )
+    .bind(chaine_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Chaîne non trouvée".to_string()))?;
+
+    Ok(Json(json!({
+        "success": true,
+        "chaine": {
+            "id": chaine.id,
+            "statut": chaine.statut,
+            "reference": chaine.reference,
+            "participants": chaine.participants,
+            "transfers": chaine.transfers,
+            "route_optimisee": chaine.route_optimisee,
+            "delivery_schedule": chaine.delivery_schedule,
+            "package_ids": chaine.package_ids,
+            "nombre_vendeurs": chaine.nombre_vendeurs,
+            "score_proximite": chaine.score_proximite,
+            "distance_totale_km": chaine.distance_totale_km,
+            "date_validation": chaine.date_validation,
+            "created_at": chaine.created_at,
         }
     })))
 }

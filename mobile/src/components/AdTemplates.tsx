@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Template {
     id: string;
@@ -19,27 +20,27 @@ const TEMPLATES: Template[] = [
     {
         id: 'promo',
         name: 'Promotion Flash',
-        description: 'Idéal pour les offres limitées dans le temps',
+        description: t('adTemplates.idealPourLesOffresLimitees'),
         icon: 'zap',
         category: 'promotion',
     },
     {
         id: 'new_product',
-        name: 'Nouveau Produit',
-        description: 'Mettez en avant vos nouveautés',
+        name: t('adTemplates.nouveauProduit'),
+        description: t('adTemplates.mettezEnAvantVosNouveautes'),
         icon: 'sparkles',
         category: 'product',
     },
     {
         id: 'seasonal',
-        name: 'Saisonnière',
-        description: 'Adapté aux événements et saisons',
+        name: t('adTemplates.saisonniere'),
+        description: t('adTemplates.adapteAuxEvenementsEtSaisons'),
         icon: 'calendar',
         category: 'seasonal',
     },
     {
         id: 'testimonial',
-        name: 'Témoignage',
+        name: t('adTemplates.temoignage'),
         description: 'Mettez en avant les avis clients',
         icon: 'star',
         category: 'social',
@@ -50,7 +51,7 @@ export const AdTemplates: React.FC<AdTemplatesProps> = ({ onSelectTemplate }) =>
     return (
         <View style={styles.container}>
             <Text style={styles.title}>📋 Templates</Text>
-            <Text style={styles.subtitle}>Choisissez un modèle pour démarrer rapidement</Text>
+            <Text style={styles.subtitle}>{t('adTemplates.choisissezUnModelePourDemarrer')}</Text>
             <View style={styles.grid}>
                 {TEMPLATES.map((template) => (
                     <TouchableOpacity

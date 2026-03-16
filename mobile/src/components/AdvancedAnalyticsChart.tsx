@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../config/api';
 import { modernColors } from '../styles/theme';
 import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface TimeSeriesData {
     date: string;
@@ -67,7 +68,8 @@ const AdvancedAnalyticsChart: React.FC<AdvancedAnalyticsChartProps> = ({
     userId,
     periodDays = 30,
 }) => {
-    const [data, setData] = useState<AdvancedAnalyticsData | null>(null);
+        const { t } = useLanguageSafe();
+const [data, setData] = useState<AdvancedAnalyticsData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'time' | 'campaigns' | 'funnel' | 'placement' | 'targeting'>('time');
@@ -98,7 +100,7 @@ const AdvancedAnalyticsChart: React.FC<AdvancedAnalyticsChartProps> = ({
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement des analytics...</Text>
+                <Text style={styles.loadingText}>{t('advancedAnalyticsChart.chargementDesAnalytics')}</Text>
             </View>
         );
     }
@@ -114,7 +116,7 @@ const AdvancedAnalyticsChart: React.FC<AdvancedAnalyticsChartProps> = ({
     if (!data) {
         return (
             <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>Aucune donnée disponible</Text>
+                <Text style={styles.emptyText}>{t('advancedAnalyticsChart.aucuneDonneeDisponible')}</Text>
             </View>
         );
     }

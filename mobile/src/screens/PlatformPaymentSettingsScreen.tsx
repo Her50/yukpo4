@@ -15,6 +15,7 @@ import { NativeInput } from '../components/SafeNativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import { apiGet, apiPut } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface PlatformSetting {
   id: number;
@@ -26,7 +27,8 @@ interface PlatformSetting {
 }
 
 const PlatformPaymentSettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const [loading, setLoading] = useState(true);
+      const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // MTN Money
@@ -131,7 +133,7 @@ const PlatformPaymentSettingsScreen: React.FC<{ navigation: any }> = ({ navigati
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={modernColors.primary} />
-        <Text style={styles.loadingText}>Chargement des paramètres...</Text>
+        <Text style={styles.loadingText}>{t('platformPaymentSettings.chargementDesParametres')}</Text>
       </View>
     );
   }
@@ -159,7 +161,7 @@ const PlatformPaymentSettingsScreen: React.FC<{ navigation: any }> = ({ navigati
           />
         </View>
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Numéro de téléphone MTN</Text>
+          <Text style={styles.fieldLabel}>{t('platformPaymentSettings.numeroDeTelephoneMtn')}</Text>
           <NativeInput
             placeholder="Ex: 670 XX XX XX"
             value={mtnPhone}
@@ -194,7 +196,7 @@ const PlatformPaymentSettingsScreen: React.FC<{ navigation: any }> = ({ navigati
           />
         </View>
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Numéro de téléphone Orange</Text>
+          <Text style={styles.fieldLabel}>{t('platformPaymentSettings.numeroDeTelephoneOrange')}</Text>
           <NativeInput
             placeholder="Ex: 690 XX XX XX"
             value={orangePhone}
@@ -219,7 +221,7 @@ const PlatformPaymentSettingsScreen: React.FC<{ navigation: any }> = ({ navigati
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionEmoji}>🏦</Text>
-            <Text style={[styles.sectionTitle, bankEnabled && { color: '#1D4ED8' }]}>Compte Bancaire</Text>
+            <Text style={[styles.sectionTitle, bankEnabled && { color: '#1D4ED8' }]}>{t('platformPaymentSettings.compteBancaire')}/Text>
           </View>
           <Switch
             value={bankEnabled}
@@ -229,7 +231,7 @@ const PlatformPaymentSettingsScreen: React.FC<{ navigation: any }> = ({ navigati
           />
         </View>
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Nom de la banque</Text>
+          <Text style={styles.fieldLabel}>{t('platformPaymentSettings.nomDeLaBanque')}</Text>
           <NativeInput
             placeholder="Ex: Afriland First Bank"
             value={bankName}
@@ -238,9 +240,9 @@ const PlatformPaymentSettingsScreen: React.FC<{ navigation: any }> = ({ navigati
           />
         </View>
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Numéro de compte</Text>
+          <Text style={styles.fieldLabel}>{t('platformPaymentSettings.numeroDeCompte')}</Text>
           <NativeInput
-            placeholder="Numéro de compte"
+            placeholder={t('platformPaymentSettings.numeroDeCompte')}
             value={bankAccount}
             onChangeText={setBankAccount}
             style={styles.input}
@@ -269,7 +271,7 @@ const PlatformPaymentSettingsScreen: React.FC<{ navigation: any }> = ({ navigati
 
       {/* Bouton Sauvegarder */}
       <NativeButton
-        title={saving ? 'Sauvegarde en cours...' : 'Sauvegarder les paramètres'}
+        title={saving ? 'Sauvegarde en cours...' : t('platformPaymentSettingsScreen.sauvegarderLesParametres')}
         onPress={handleSaveAll}
         disabled={saving}
         style={styles.saveButton}

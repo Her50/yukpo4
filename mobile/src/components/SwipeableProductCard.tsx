@@ -10,6 +10,7 @@ import { modernColors } from '../theme/modernTheme';
 import { hapticPress, hapticSuccess } from '../utils/hapticFeedback';
 import SafeIcon from './SafeIcon';
 import ProductCard from './ProductCard';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SwipeableProductCardProps {
   product: any;
@@ -121,7 +122,7 @@ const SwipeableProductCard: React.FC<SwipeableProductCardProps> = ({
               color="#FFFFFF"
               type="ionicons"
             />
-            <Text style={styles.actionButtonText}>Favoris</Text>
+            <Text style={styles.actionButtonText}>{t('swipeableProductCard.favoris')}/Text>
           </TouchableOpacity>
         </Animated.View>
         <Animated.View
@@ -142,7 +143,7 @@ const SwipeableProductCard: React.FC<SwipeableProductCardProps> = ({
               color="#FFFFFF"
               type="ionicons"
             />
-            <Text style={styles.actionButtonText}>Partager</Text>
+            <Text style={styles.actionButtonText}>{t('swipeableProductCard.partager')}</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>

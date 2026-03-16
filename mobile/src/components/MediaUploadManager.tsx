@@ -92,8 +92,8 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
           hasLaunchLibrary: typeof ImagePicker?.launchImageLibraryAsync === 'function'
         });
         Alert.alert(
-          'Fonctionnalité indisponible',
-          'L\'accès à la galerie n\'est pas disponible sur cet appareil. Veuillez mettre à jour l\'application ou contacter le support.',
+          t('mediaUploadManager.fonctionnaliteIndisponible'),
+          'L\t('mediaUploadManager.accesALaGalerieNestPasDisponible')',
           [{ text: 'OK' }]
         );
         setUploading(false);
@@ -105,12 +105,12 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
       if (!permissionResult.granted) {
         console.warn('[MediaUploadManager] Permission galerie refusée:', permissionResult);
         Alert.alert(
-          'Permission refusée',
-          'Vous devez autoriser l\'accès à la galerie pour ajouter des images. Veuillez activer cette permission dans les paramètres de l\'application.',
+          t('mediaUploadManager.permissionRefusee'),
+          'Vous devez autoriser l\t('mediaUploadManager.accesALaGaleriePourAjouterDes'),
           [
             { text: t('common.cancel'), style: 'cancel' },
             {
-              text: 'Paramètres', onPress: () => {
+              text: t('mediaUploadManager.parametres'), onPress: () => {
                 // L'utilisateur peut ouvrir les paramètres manuellement
               }
             }
@@ -152,7 +152,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
           if (newImages.length > remainingSlots) {
             Alert.alert(
               'Limite atteinte',
-              `Seulement ${remainingSlots} image(s) ajoutée(s). Limite: ${maxImages} images.`
+              t('mediaUploadManager.seulementImagesAjouteesLimiteImages', { remainingSlots: remainingSlots, maxImages: maxImages })
             );
           }
         }
@@ -182,8 +182,8 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
           hasLaunchLibrary: typeof ImagePicker?.launchImageLibraryAsync === 'function'
         });
         Alert.alert(
-          'Fonctionnalité indisponible',
-          'L\'accès à la galerie n\'est pas disponible sur cet appareil. Veuillez mettre à jour l\'application ou contacter le support.',
+          t('mediaUploadManager.fonctionnaliteIndisponible'),
+          'L\t('mediaUploadManager.accesALaGalerieNestPasDisponible')',
           [{ text: 'OK' }]
         );
         setUploading(false);
@@ -195,12 +195,12 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
       if (!permissionResult.granted) {
         console.warn('[MediaUploadManager] Permission galerie refusée:', permissionResult);
         Alert.alert(
-          'Permission refusée',
-          'Vous devez autoriser l\'accès à la galerie pour ajouter des vidéos. Veuillez activer cette permission dans les paramètres de l\'application.',
+          t('mediaUploadManager.permissionRefusee'),
+          'Vous devez autoriser l\t('mediaUploadManager.accesALaGaleriePourAjouterDes'),
           [
             { text: t('common.cancel'), style: 'cancel' },
             {
-              text: 'Paramètres', onPress: () => {
+              text: t('mediaUploadManager.parametres'), onPress: () => {
                 // L'utilisateur peut ouvrir les paramètres manuellement
               }
             }
@@ -273,8 +273,8 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
             Alert.alert(
               'Erreur',
               error instanceof Error && error.message.includes('OutOfMemory')
-                ? 'La vidéo est trop volumineuse. Veuillez choisir une vidéo plus petite ou la compresser.'
-                : 'Impossible de traiter la vidéo. Veuillez réessayer.'
+                ? t('mediaUploadManager.laVideoEstTropVolumineuseVeuillez')
+                : t('mediaUploadManager.impossibleDeTraiterLaVideoVeuillez')
             );
           }
         }
@@ -290,7 +290,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
   const removeImage = (index: number) => {
     Alert.alert(
       'Supprimer l\'image',
-      'Êtes-vous sûr de vouloir supprimer cette image ?',
+      t('mediaUploadManager.etesvousSurDeVouloirSupprimerCette'),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -307,8 +307,8 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
 
   const removeVideo = (index: number) => {
     Alert.alert(
-      'Supprimer la vidéo',
-      'Êtes-vous sûr de vouloir supprimer cette vidéo ?',
+      t('mediaUploadManager.supprimerLaVideo'),
+      t('mediaUploadManager.etesvousSurDeVouloirSupprimerCette'),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -326,7 +326,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
   if (readonly) {
     return (
       <View style={styles.readonlyContainer}>
-        <Text style={styles.readonlyText}>Médias (lecture seule)</Text>
+        <Text style={styles.readonlyText}>{t('mediaUploadManager.mediasLectureSeule')}</Text>
         <View style={styles.readonlyGrid}>
           {images.length > 0 && (
             <View style={styles.readonlyItem}>
@@ -426,9 +426,9 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
             ) : (
               <>
                 <SafeIcon name="camera" size={32} color={modernColors.primary} />
-                <Text style={styles.uploadText}>Ajouter des photos</Text>
+                <Text style={styles.uploadText}>{t('mediaUploadManager.ajouterDesPhotos')}/Text>
                 <Text style={styles.uploadHint}>
-                  {images.length === 0 ? 'La première sera l\'image principale' : `Encore ${maxImages - images.length} photo(s)`}
+                  {images.length === 0 ? t('mediaUploadManager.laPremiereSeraLimagePrincipale') : `Encore ${maxImages - images.length} photo(s)`}
                 </Text>
               </>
             )}
@@ -440,7 +440,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <SafeIcon name="video" size={24} color={modernColors.accent} />
-          <Text style={styles.sectionTitle}>Vidéos ({videos.length}/{maxVideos})</Text>
+          <Text style={styles.sectionTitle}>{t('mediaUploadManager.videos')} ({videos.length}/{maxVideos})</Text>
         </View>
         <Text style={styles.sectionSubtitle}>
           Ajoutez des vidéos de démonstration (optionnel)
@@ -480,8 +480,8 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
             ) : (
               <>
                 <SafeIcon name="video" size={32} color={modernColors.accent} />
-                <Text style={[styles.uploadText, { color: modernColors.accent }]}>Ajouter une vidéo</Text>
-                <Text style={styles.uploadHint}>Durée max: 30 secondes</Text>
+                <Text style={[styles.uploadText, { color: modernColors.accent }]}>{t('mediaUploadManager.ajouterUneVideo')}</Text>
+                <Text style={styles.uploadHint}>{t('mediaUploadManager.dureeMax30Secondes')}</Text>
               </>
             )}
           </TouchableOpacity>
