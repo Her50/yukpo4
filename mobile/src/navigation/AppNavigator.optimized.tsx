@@ -11,6 +11,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import React, { memo, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Platform, StyleSheet, Text, View } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
+import { OfflineIndicator } from '../components/ux/OfflineIndicator';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useDeepLinkRedirect } from '../hooks/useDeepLinkRedirect';
@@ -850,10 +851,20 @@ function AppNavigator() {
   }
 
   if (!user) {
-    return <AuthStackNavigator />;
+    return (
+      <View style={{ flex: 1 }}>
+        <OfflineIndicator />
+        <AuthStackNavigator />
+      </View>
+    );
   }
 
-  return <MainStackNavigator />;
+  return (
+    <View style={{ flex: 1 }}>
+      <OfflineIndicator />
+      <MainStackNavigator />
+    </View>
+  );
 }
 
 // ============================================================================

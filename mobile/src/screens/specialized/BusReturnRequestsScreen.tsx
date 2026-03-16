@@ -14,9 +14,9 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ReturnTripRequest {
     id: string;
@@ -210,7 +210,7 @@ const BusReturnRequestsScreen: React.FC = () => {
                                         </Text>
                                         {request.preferred_return_time && (
                                             <>
-                                                <Text style={styles.infoText}> à </Text>
+                                                <Text style={styles.infoText}> {t('busReturnRequestsScreen.at')} </Text>
                                                 <Text style={styles.infoText}>
                                                     {request.preferred_return_time}
                                                 </Text>

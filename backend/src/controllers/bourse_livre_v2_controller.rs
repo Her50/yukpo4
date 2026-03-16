@@ -592,10 +592,16 @@ pub async fn get_programmes_scolaires(
         query = query.bind(pays);
     }
 
-    let programmes = query
-        .fetch_all(&state.pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur récupération programmes: {}", e)))?;
+    let programmes = match query.fetch_all(&state.pg).await {
+        Ok(p) => p,
+        Err(e) => {
+            tracing::warn!(
+                "[get_programmes_scolaires] DB error (table may not exist yet): {}",
+                e
+            );
+            vec![]
+        }
+    };
 
     Ok(Json(json!({ "success": true, "programmes": programmes })))
 }

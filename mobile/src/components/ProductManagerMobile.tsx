@@ -2081,7 +2081,7 @@ Plafonnier LED,25000,XAF,Plafonnier moderne 3 spots orientables,Luminaires inté
                 ordinateur: t('productManagerMobile.modeleDeLordinateur'),
                 mobilier: 'Nom du meuble',
                 decoration: t('productManagerMobile.nomDeLarticleDeco'),
-            ustensiles_cuisine: 'Nom de l\'ustensile',
+                ustensiles_cuisine: 'Nom de l\'ustensile',
                 pieces_auto: t('productManagerMobile.referenceDeLaPiece'),
                 pieces_industrielles: t('productManagerMobile.referenceDeLaPiece'),
                 jouets_enfants: 'Nom du jouet',
@@ -2099,7 +2099,7 @@ Plafonnier LED,25000,XAF,Plafonnier moderne 3 spots orientables,Luminaires inté
                 coiffure_beaute: 'Nom du produit',
                 restauration: 'Nom du restaurant',
                 sport_fitness: t('productManagerMobile.titreDeLactivite'),
-            formation_education: 'Titre de la formation',
+                formation_education: 'Titre de la formation',
                 evenementiel: 'Titre de l\'événement',
                 electricite: t('productManagerMobile.nomDuProduitElectrique'),
                 plomberie: 'Titre de la prestation',
@@ -4999,28 +4999,28 @@ const renderSpecificFields = () => {
                     {/* GPS */}
                     <View style={styles.fieldContainer}>
                         <Text style={styles.fieldLabel}>{t('productManagerMobile.localisationGps')}</Text>
-                            <TouchableOpacity
-                                style={styles.gpsButton}
-                                onPress={() => setShowGPSModal(true)}
-                            >
-                                <SafeIcon name="map-pin" size={16} color={modernColors.primary} />
-                                <Text style={styles.gpsButtonText}>
-                                    {newProduct.gpsImmobilier ? 'Modifier la localisation' : 'Ajouter la localisation GPS'}
-                                </Text>
-                            </TouchableOpacity>
-                            {newProduct.gpsImmobilier && (
-                                <View style={styles.gpsInfoCard}>
-                                    <SafeIcon name="check-circle" size={14} color={modernColors.success} />
-                                    <Text style={styles.gpsInfoText}>
-                                        Position enregistrée : {newProduct.gpsImmobilier}
-                                    </Text>
-                                </View>
-                            )}
-                            <View style={styles.hintBox}>
-                                <Text style={styles.hintText}>
-                                    💡 La localisation GPS aide les acheteurs à trouver facilement le bien
+                        <TouchableOpacity
+                            style={styles.gpsButton}
+                            onPress={() => setShowGPSModal(true)}
+                        >
+                            <SafeIcon name="map-pin" size={16} color={modernColors.primary} />
+                            <Text style={styles.gpsButtonText}>
+                                {newProduct.gpsImmobilier ? 'Modifier la localisation' : 'Ajouter la localisation GPS'}
+                            </Text>
+                        </TouchableOpacity>
+                        {newProduct.gpsImmobilier && (
+                            <View style={styles.gpsInfoCard}>
+                                <SafeIcon name="check-circle" size={14} color={modernColors.success} />
+                                <Text style={styles.gpsInfoText}>
+                                    Position enregistrée : {newProduct.gpsImmobilier}
                                 </Text>
                             </View>
+                        )}
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                💡 La localisation GPS aide les acheteurs à trouver facilement le bien
+                            </Text>
+                        </View>
                     </View>
 
                     {/* Titre de section : Informations spécifiques */}
@@ -5367,10 +5367,10 @@ placeholder = { t('productManagerMobile.exCuisineEquipeeLavelingeDraps') }
     < View style = { styles.sectionHeader } >
                             <SafeIcon name="star" size={20} color={modernColors.primary} />
                             <Text style={styles.sectionTitle}>{t('productManagerMobile.servicesInclus')}</Text>
-                        </View>
+                        </View >
 
-{/* Toggles services */ }
-<View style={styles.togglesContainer}>
+    {/* Toggles services */ }
+    < View style = { styles.togglesContainer } >
     <TouchableOpacity
         style={[styles.toggleOption, newProduct.nettoyageInclus && styles.toggleOptionActive]}
         onPress={() => setNewProduct({ ...newProduct, nettoyageInclus: !newProduct.nettoyageInclus })}
@@ -5404,31 +5404,31 @@ placeholder = { t('productManagerMobile.exCuisineEquipeeLavelingeDraps') }
             Réservation instantanée
         </Text>
     </TouchableOpacity>
-</View>
+</View >
 
-{/* Services supplémentaires */ }
-<MultiSelectModalitySelector
-    label={t('productManagerMobile.servicesSupplementaires')}
-    values={newProduct.servicesLocationCourte || []}
-    productType="immobilier_location_courte"
-    fieldName="services"
-    onSelect={(values) => setNewProduct({ ...newProduct, servicesLocationCourte: values })}
-    placeholder={t('productManagerMobile.exTransfertAeroportPetitdejeunerConcierg')}
-/>
+    {/* Services supplémentaires */ }
+    < MultiSelectModalitySelector
+label = { t('productManagerMobile.servicesSupplementaires') }
+values = { newProduct.servicesLocationCourte || [] }
+productType = "immobilier_location_courte"
+fieldName = "services"
+onSelect = {(values) => setNewProduct({ ...newProduct, servicesLocationCourte: values })}
+placeholder = { t('productManagerMobile.exTransfertAeroportPetitdejeunerConcierg') }
+    />
 
-{/* Titre de section : Politiques & Règles */ }
-<View style={styles.sectionHeader}>
+    {/* Titre de section : Politiques & Règles */ }
+    < View style = { styles.sectionHeader } >
     <SafeIcon name="file-text" size={20} color={modernColors.primary} />
     <Text style={styles.sectionTitle}>{t('productManagerMobile.politiquesRegles')}</Text>
-</View>
+</View >
 
-{/* Politique d'annulation */ }
-<SelectModalitySelector
-    label="Politique d'annulation"
-    value={newProduct.politiqueAnnulation || ''}
-    productType="immobilier_location_courte"
-    fieldName="politiques_annulation"
-    onSelect={(value) => setNewProduct({ ...newProduct, politiqueAnnulation: value })}
+    {/* Politique d'annulation */ }
+    < SelectModalitySelector
+label = "Politique d'annulation"
+value = { newProduct.politiqueAnnulation || '' }
+productType = "immobilier_location_courte"
+fieldName = "politiques_annulation"
+onSelect = {(value) => setNewProduct({ ...newProduct, politiqueAnnulation: value })}
 />
 
 {/* Règles de la maison */ }
@@ -6059,28 +6059,28 @@ return (
         {/* GPS */}
         <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>{t('productManagerMobile.localisationGps')}</Text>
-                <TouchableOpacity
-                    style={styles.gpsButton}
-                    onPress={() => setShowGPSModal(true)}
-                >
-                    <SafeIcon name="map-pin" size={16} color={modernColors.primary} />
-                    <Text style={styles.gpsButtonText}>
-                        {newProduct.gpsImmobilier ? 'Modifier la localisation' : 'Ajouter la localisation GPS'}
-                    </Text>
-                </TouchableOpacity>
-                {newProduct.gpsImmobilier && (
-                    <View style={styles.gpsInfoCard}>
-                        <SafeIcon name="check-circle" size={14} color={modernColors.success} />
-                        <Text style={styles.gpsInfoText}>
-                            Position enregistrée : {newProduct.gpsImmobilier}
-                        </Text>
-                    </View>
-                )}
-                <View style={styles.hintBox}>
-                    <Text style={styles.hintText}>
-                        💡 La localisation GPS précise augmente la visibilité du terrain
+            <TouchableOpacity
+                style={styles.gpsButton}
+                onPress={() => setShowGPSModal(true)}
+            >
+                <SafeIcon name="map-pin" size={16} color={modernColors.primary} />
+                <Text style={styles.gpsButtonText}>
+                    {newProduct.gpsImmobilier ? 'Modifier la localisation' : 'Ajouter la localisation GPS'}
+                </Text>
+            </TouchableOpacity>
+            {newProduct.gpsImmobilier && (
+                <View style={styles.gpsInfoCard}>
+                    <SafeIcon name="check-circle" size={14} color={modernColors.success} />
+                    <Text style={styles.gpsInfoText}>
+                        Position enregistrée : {newProduct.gpsImmobilier}
                     </Text>
                 </View>
+            )}
+            <View style={styles.hintBox}>
+                <Text style={styles.hintText}>
+                    💡 La localisation GPS précise augmente la visibilité du terrain
+                </Text>
+            </View>
         </View>
     </>
 );
@@ -6403,7 +6403,7 @@ return (
             <SafeIcon name="info" size={14} color={modernColors.primary} />
             <Text style={styles.hintText}>
                 💡 <Text style={styles.hintBold}>{t('productManagerMobile.localisation')}</Text> Indiquez où se trouve le véhicule pour faciliter les visites des acheteurs potentiels
-                </Text>
+            </Text>
         </View>
 
         {/* Section 5: Prix de Vente */}
@@ -6619,14 +6619,14 @@ placeholder = "Ex: Oui - 24h/24..."
     < View style = { styles.sectionHeader } >
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
                             <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}</Text>
-                        </View>
+                        </View >
 
-                        <View style={styles.hintBox}>
-                            <SafeIcon name="info" size={16} color={modernColors.info} />
-                            <Text style={styles.hintText}>
-                                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
-                            </Text>
-                        </View>
+    <View style={styles.hintBox}>
+        <SafeIcon name="info" size={16} color={modernColors.info} />
+        <Text style={styles.hintText}>
+            🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+        </Text>
+    </View>
 
 {/* Zone d'intervention MULTIPLE avec système intelligent */ }
 <MultiSelectModalitySelector
@@ -7416,27 +7416,27 @@ return (
         {/* Services booléens (toggles) */}
         <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>{t('productManagerMobile.servicesAdditionnels')}</Text>
-                <View style={styles.togglesContainer}>
-                    <TouchableOpacity
-                        style={[styles.toggleOption, newProduct.repas && styles.toggleOptionActive]}
-                        onPress={() => setNewProduct({ ...newProduct, repas: !newProduct.repas })}
-                    >
-                        <SafeIcon name="coffee" size={20} color={newProduct.repas ? modernColors.primary : '#9CA3AF'} />
-                        <Text style={[styles.toggleLabel, newProduct.repas && styles.toggleLabelActive]}>
-                            Repas inclus
-                        </Text>
-                    </TouchableOpacity>
+            <View style={styles.togglesContainer}>
+                <TouchableOpacity
+                    style={[styles.toggleOption, newProduct.repas && styles.toggleOptionActive]}
+                    onPress={() => setNewProduct({ ...newProduct, repas: !newProduct.repas })}
+                >
+                    <SafeIcon name="coffee" size={20} color={newProduct.repas ? modernColors.primary : '#9CA3AF'} />
+                    <Text style={[styles.toggleLabel, newProduct.repas && styles.toggleLabelActive]}>
+                        Repas inclus
+                    </Text>
+                </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={[styles.toggleOption, newProduct.wifi && styles.toggleOptionActive]}
-                        onPress={() => setNewProduct({ ...newProduct, wifi: !newProduct.wifi })}
-                    >
-                        <SafeIcon name="wifi" size={20} color={newProduct.wifi ? modernColors.primary : '#9CA3AF'} />
-                        <Text style={[styles.toggleLabel, newProduct.wifi && styles.toggleLabelActive]}>
-                            Wi-Fi disponible
-                        </Text>
-                    </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                    style={[styles.toggleOption, newProduct.wifi && styles.toggleOptionActive]}
+                    onPress={() => setNewProduct({ ...newProduct, wifi: !newProduct.wifi })}
+                >
+                    <SafeIcon name="wifi" size={20} color={newProduct.wifi ? modernColors.primary : '#9CA3AF'} />
+                    <Text style={[styles.toggleLabel, newProduct.wifi && styles.toggleLabelActive]}>
+                        Wi-Fi disponible
+                    </Text>
+                </TouchableOpacity>
+            </View>
         </View>
 
         {/* Section 3: Tarifs spéciaux */}
@@ -7525,32 +7525,32 @@ return (
 
             <View style={styles.fieldContainer}>
                 <Text style={styles.fieldLabel}>{t('productManagerMobile.logoDeLagenceOptionnel')}</Text>
-                    <TouchableOpacity
-                        style={styles.logoUploadButton}
-                        onPress={async () => {
-                            const result = await handlePickImages();
-                            if (result && result.length > 0) {
-                                setNewProduct({ ...newProduct, logoAgence: result[0] });
-                            }
-                        }}
-                    >
-                        {newProduct.logoAgence ? (
-                            <View style={styles.logoPreview}>
-                                <Image source={{ uri: newProduct.logoAgence }} style={styles.logoImage} />
-                                <TouchableOpacity
-                                    style={styles.removeLogo}
-                                    onPress={() => setNewProduct({ ...newProduct, logoAgence: null })}
-                                >
-                                    <SafeIcon name="x" size={16} color="#FFFFFF" />
-                                </TouchableOpacity>
-                            </View>
-                        ) : (
-                            <View style={styles.logoUploadContent}>
-                                <SafeIcon name="upload" size={24} color={modernColors.primary} />
-                                <Text style={styles.logoUploadText}>{t('productManagerMobile.ajouterLogoAgence')}</Text>
-                            </View>
-                        )}
-                    </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.logoUploadButton}
+                    onPress={async () => {
+                        const result = await handlePickImages();
+                        if (result && result.length > 0) {
+                            setNewProduct({ ...newProduct, logoAgence: result[0] });
+                        }
+                    }}
+                >
+                    {newProduct.logoAgence ? (
+                        <View style={styles.logoPreview}>
+                            <Image source={{ uri: newProduct.logoAgence }} style={styles.logoImage} />
+                            <TouchableOpacity
+                                style={styles.removeLogo}
+                                onPress={() => setNewProduct({ ...newProduct, logoAgence: null })}
+                            >
+                                <SafeIcon name="x" size={16} color="#FFFFFF" />
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <View style={styles.logoUploadContent}>
+                            <SafeIcon name="upload" size={24} color={modernColors.primary} />
+                            <Text style={styles.logoUploadText}>{t('productManagerMobile.ajouterLogoAgence')}</Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
             </View>
 
             <View style={styles.fieldContainer}>
@@ -7721,23 +7721,23 @@ return (
         {/* GPS de l'hôtel */}
         <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>{t('productManagerMobile.localisationGps')}</Text>
-                <TouchableOpacity
-                    style={styles.gpsButton}
-                    onPress={() => setShowGPSModal(true)}
-                >
-                    <SafeIcon name="map-pin" size={16} color={modernColors.primary} />
-                    <Text style={styles.gpsButtonText}>
-                        {newProduct.gpsHotel ? 'Modifier la localisation' : 'Ajouter la localisation GPS'}
+            <TouchableOpacity
+                style={styles.gpsButton}
+                onPress={() => setShowGPSModal(true)}
+            >
+                <SafeIcon name="map-pin" size={16} color={modernColors.primary} />
+                <Text style={styles.gpsButtonText}>
+                    {newProduct.gpsHotel ? 'Modifier la localisation' : 'Ajouter la localisation GPS'}
+                </Text>
+            </TouchableOpacity>
+            {newProduct.gpsHotel && (
+                <View style={styles.gpsInfoCard}>
+                    <SafeIcon name="check-circle" size={14} color={modernColors.success} />
+                    <Text style={styles.gpsInfoText}>
+                        Position enregistrée : {newProduct.gpsHotel}
                     </Text>
-                </TouchableOpacity>
-                {newProduct.gpsHotel && (
-                    <View style={styles.gpsInfoCard}>
-                        <SafeIcon name="check-circle" size={14} color={modernColors.success} />
-                        <Text style={styles.gpsInfoText}>
-                            Position enregistrée : {newProduct.gpsHotel}
-                        </Text>
-                    </View>
-                )}
+                </View>
+            )}
         </View>
 
         {/* Section 3: Chambres & Tarifs (Variantes) */}
@@ -8018,13 +8018,13 @@ return (
             </View>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>{t('productManagerMobile.prixParPlace')}</Text>
-                    <NativeInput
-                        placeholder="Ex: 5000"
-                        value={newProduct.prixParPlace || ''}
-                        onChangeText={(text) => setNewProduct({ ...newProduct, prixParPlace: text })}
-                        style={styles.fieldInput}
-                        keyboardType="numeric"
-                    />
+                <NativeInput
+                    placeholder="Ex: 5000"
+                    value={newProduct.prixParPlace || ''}
+                    onChangeText={(text) => setNewProduct({ ...newProduct, prixParPlace: text })}
+                    style={styles.fieldInput}
+                    keyboardType="numeric"
+                />
             </View>
         </View>
 
@@ -8251,7 +8251,7 @@ return (
             <SafeIcon name="info" size={14} color={modernColors.primary} />
             <Text style={styles.hintText}>
                 📸 <Text style={styles.hintBold}>{t('productManagerMobile.photos')}</Text> Ajoutez 3-5 photos par variante montrant la couleur, les détails et le rendu porté.
-                </Text>
+            </Text>
         </View>
     </>
 );
@@ -8448,54 +8448,54 @@ return (
         <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>{t('productManagerMobile.joursDouverture')}</Text>
 
-                {/* ✅ NOUVEAU: Bouton "Tout sélectionner" */}
-                <TouchableOpacity
-                    style={styles.selectAllButton}
-                    onPress={() => {
-                        const joursSemaine = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-                        const tousSelectionnes = newProduct.joursOuverture?.length === 7;
-                        setNewProduct({
-                            ...newProduct,
-                            joursOuverture: tousSelectionnes ? [] : joursSemaine
-                        });
-                    }}
-                >
-                    <SafeIcon
-                        name={newProduct.joursOuverture?.length === 7 ? "check-square" : "square"}
-                        size={18}
-                        color={newProduct.joursOuverture?.length === 7 ? modernColors.primary : modernColors.textSecondary}
-                    />
-                    <Text style={[styles.selectAllText, newProduct.joursOuverture?.length === 7 && styles.selectAllTextActive]}>
-                        {newProduct.joursOuverture?.length === 7 ? t('productManagerMobile.toutDeselectionner') : 'Sélectionner tous les jours'}
-                    </Text>
-                </TouchableOpacity>
+            {/* ✅ NOUVEAU: Bouton "Tout sélectionner" */}
+            <TouchableOpacity
+                style={styles.selectAllButton}
+                onPress={() => {
+                    const joursSemaine = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+                    const tousSelectionnes = newProduct.joursOuverture?.length === 7;
+                    setNewProduct({
+                        ...newProduct,
+                        joursOuverture: tousSelectionnes ? [] : joursSemaine
+                    });
+                }}
+            >
+                <SafeIcon
+                    name={newProduct.joursOuverture?.length === 7 ? "check-square" : "square"}
+                    size={18}
+                    color={newProduct.joursOuverture?.length === 7 ? modernColors.primary : modernColors.textSecondary}
+                />
+                <Text style={[styles.selectAllText, newProduct.joursOuverture?.length === 7 && styles.selectAllTextActive]}>
+                    {newProduct.joursOuverture?.length === 7 ? t('productManagerMobile.toutDeselectionner') : 'Sélectionner tous les jours'}
+                </Text>
+            </TouchableOpacity>
 
-                {/* Jours individuels */}
-                <View style={styles.weekDaysContainer}>
-                    {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map((jour) => (
-                        <TouchableOpacity
-                            key={jour}
-                            style={[
-                                styles.dayButton,
-                                newProduct.joursOuverture?.includes(jour) && styles.dayButtonActive
-                            ]}
-                            onPress={() => {
-                                const current = newProduct.joursOuverture || [];
-                                const updated = current.includes(jour)
-                                    ? current.filter(j => j !== jour)
-                                    : [...current, jour];
-                                setNewProduct({ ...newProduct, joursOuverture: updated });
-                            }}
-                        >
-                            <Text style={[
-                                styles.dayButtonText,
-                                newProduct.joursOuverture?.includes(jour) && styles.dayButtonTextActive
-                            ]}>
-                                {jour.substring(0, 3)}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+            {/* Jours individuels */}
+            <View style={styles.weekDaysContainer}>
+                {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map((jour) => (
+                    <TouchableOpacity
+                        key={jour}
+                        style={[
+                            styles.dayButton,
+                            newProduct.joursOuverture?.includes(jour) && styles.dayButtonActive
+                        ]}
+                        onPress={() => {
+                            const current = newProduct.joursOuverture || [];
+                            const updated = current.includes(jour)
+                                ? current.filter(j => j !== jour)
+                                : [...current, jour];
+                            setNewProduct({ ...newProduct, joursOuverture: updated });
+                        }}
+                    >
+                        <Text style={[
+                            styles.dayButtonText,
+                            newProduct.joursOuverture?.includes(jour) && styles.dayButtonTextActive
+                        ]}>
+                            {jour.substring(0, 3)}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
         </View>
 
         <View style={styles.fieldRow}>
@@ -8720,53 +8720,53 @@ return (
         <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>{t('productManagerMobile.joursDouverture')}</Text>
 
-                {/* Bouton "Tout sélectionner" */}
-                <TouchableOpacity
-                    style={styles.selectAllButton}
-                    onPress={() => {
-                        const joursSemaine = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-                        const tousSelectionnes = newProduct.joursOuverturePharmacie?.length === 7;
-                        setNewProduct({
-                            ...newProduct,
-                            joursOuverturePharmacie: tousSelectionnes ? [] : joursSemaine
-                        });
-                    }}
-                >
-                    <SafeIcon
-                        name={newProduct.joursOuverturePharmacie?.length === 7 ? "check-square" : "square"}
-                        size={18}
-                        color={newProduct.joursOuverturePharmacie?.length === 7 ? modernColors.primary : modernColors.textSecondary}
-                    />
-                    <Text style={[styles.selectAllText, newProduct.joursOuverturePharmacie?.length === 7 && styles.selectAllTextActive]}>
-                        {newProduct.joursOuverturePharmacie?.length === 7 ? t('productManagerMobile.toutDeselectionner') : 'Sélectionner tous les jours'}
-                    </Text>
-                </TouchableOpacity>
+            {/* Bouton "Tout sélectionner" */}
+            <TouchableOpacity
+                style={styles.selectAllButton}
+                onPress={() => {
+                    const joursSemaine = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+                    const tousSelectionnes = newProduct.joursOuverturePharmacie?.length === 7;
+                    setNewProduct({
+                        ...newProduct,
+                        joursOuverturePharmacie: tousSelectionnes ? [] : joursSemaine
+                    });
+                }}
+            >
+                <SafeIcon
+                    name={newProduct.joursOuverturePharmacie?.length === 7 ? "check-square" : "square"}
+                    size={18}
+                    color={newProduct.joursOuverturePharmacie?.length === 7 ? modernColors.primary : modernColors.textSecondary}
+                />
+                <Text style={[styles.selectAllText, newProduct.joursOuverturePharmacie?.length === 7 && styles.selectAllTextActive]}>
+                    {newProduct.joursOuverturePharmacie?.length === 7 ? t('productManagerMobile.toutDeselectionner') : 'Sélectionner tous les jours'}
+                </Text>
+            </TouchableOpacity>
 
-                <View style={styles.weekDaysContainer}>
-                    {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map((jour) => (
-                        <TouchableOpacity
-                            key={jour}
-                            style={[
-                                styles.dayButton,
-                                newProduct.joursOuverturePharmacie?.includes(jour) && styles.dayButtonActive
-                            ]}
-                            onPress={() => {
-                                const current = newProduct.joursOuverturePharmacie || [];
-                                const updated = current.includes(jour)
-                                    ? current.filter(j => j !== jour)
-                                    : [...current, jour];
-                                setNewProduct({ ...newProduct, joursOuverturePharmacie: updated });
-                            }}
-                        >
-                            <Text style={[
-                                styles.dayButtonText,
-                                newProduct.joursOuverturePharmacie?.includes(jour) && styles.dayButtonTextActive
-                            ]}>
-                                {jour.substring(0, 3)}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+            <View style={styles.weekDaysContainer}>
+                {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map((jour) => (
+                    <TouchableOpacity
+                        key={jour}
+                        style={[
+                            styles.dayButton,
+                            newProduct.joursOuverturePharmacie?.includes(jour) && styles.dayButtonActive
+                        ]}
+                        onPress={() => {
+                            const current = newProduct.joursOuverturePharmacie || [];
+                            const updated = current.includes(jour)
+                                ? current.filter(j => j !== jour)
+                                : [...current, jour];
+                            setNewProduct({ ...newProduct, joursOuverturePharmacie: updated });
+                        }}
+                    >
+                        <Text style={[
+                            styles.dayButtonText,
+                            newProduct.joursOuverturePharmacie?.includes(jour) && styles.dayButtonTextActive
+                        ]}>
+                            {jour.substring(0, 3)}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
         </View>
 
         <View style={styles.fieldRow}>
@@ -8855,52 +8855,52 @@ return (
         <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>{t('productManagerMobile.joursDouverture')}</Text>
 
-                <TouchableOpacity
-                    style={styles.selectAllButton}
-                    onPress={() => {
-                        const joursSemaine = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-                        const tousSelectionnes = newProduct.joursOuvertureLabo?.length === 7;
-                        setNewProduct({
-                            ...newProduct,
-                            joursOuvertureLabo: tousSelectionnes ? [] : joursSemaine
-                        });
-                    }}
-                >
-                    <SafeIcon
-                        name={newProduct.joursOuvertureLabo?.length === 7 ? "check-square" : "square"}
-                        size={18}
-                        color={newProduct.joursOuvertureLabo?.length === 7 ? modernColors.primary : modernColors.textSecondary}
-                    />
-                    <Text style={[styles.selectAllText, newProduct.joursOuvertureLabo?.length === 7 && styles.selectAllTextActive]}>
-                        {newProduct.joursOuvertureLabo?.length === 7 ? t('productManagerMobile.toutDeselectionner') : 'Sélectionner tous les jours'}
-                    </Text>
-                </TouchableOpacity>
+            <TouchableOpacity
+                style={styles.selectAllButton}
+                onPress={() => {
+                    const joursSemaine = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+                    const tousSelectionnes = newProduct.joursOuvertureLabo?.length === 7;
+                    setNewProduct({
+                        ...newProduct,
+                        joursOuvertureLabo: tousSelectionnes ? [] : joursSemaine
+                    });
+                }}
+            >
+                <SafeIcon
+                    name={newProduct.joursOuvertureLabo?.length === 7 ? "check-square" : "square"}
+                    size={18}
+                    color={newProduct.joursOuvertureLabo?.length === 7 ? modernColors.primary : modernColors.textSecondary}
+                />
+                <Text style={[styles.selectAllText, newProduct.joursOuvertureLabo?.length === 7 && styles.selectAllTextActive]}>
+                    {newProduct.joursOuvertureLabo?.length === 7 ? t('productManagerMobile.toutDeselectionner') : 'Sélectionner tous les jours'}
+                </Text>
+            </TouchableOpacity>
 
-                <View style={styles.weekDaysContainer}>
-                    {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map((jour) => (
-                        <TouchableOpacity
-                            key={jour}
-                            style={[
-                                styles.dayButton,
-                                newProduct.joursOuvertureLabo?.includes(jour) && styles.dayButtonActive
-                            ]}
-                            onPress={() => {
-                                const current = newProduct.joursOuvertureLabo || [];
-                                const updated = current.includes(jour)
-                                    ? current.filter(j => j !== jour)
-                                    : [...current, jour];
-                                setNewProduct({ ...newProduct, joursOuvertureLabo: updated });
-                            }}
-                        >
-                            <Text style={[
-                                styles.dayButtonText,
-                                newProduct.joursOuvertureLabo?.includes(jour) && styles.dayButtonTextActive
-                            ]}>
-                                {jour.substring(0, 3)}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+            <View style={styles.weekDaysContainer}>
+                {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map((jour) => (
+                    <TouchableOpacity
+                        key={jour}
+                        style={[
+                            styles.dayButton,
+                            newProduct.joursOuvertureLabo?.includes(jour) && styles.dayButtonActive
+                        ]}
+                        onPress={() => {
+                            const current = newProduct.joursOuvertureLabo || [];
+                            const updated = current.includes(jour)
+                                ? current.filter(j => j !== jour)
+                                : [...current, jour];
+                            setNewProduct({ ...newProduct, joursOuvertureLabo: updated });
+                        }}
+                    >
+                        <Text style={[
+                            styles.dayButtonText,
+                            newProduct.joursOuvertureLabo?.includes(jour) && styles.dayButtonTextActive
+                        ]}>
+                            {jour.substring(0, 3)}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
         </View>
 
         <View style={styles.fieldRow}>
@@ -9520,9 +9520,9 @@ return (
 
             {newProduct.livraison && (
                 <View style={[styles.fieldContainer, { marginTop: 8 }]}>
-                    <Text style={styles.fieldLabel}>Frais de livraison (XAF)</Text>
+                    <Text style={styles.fieldLabel}>{t('productManagerMobile.fraisLivraisonXaf')}</Text>
                     <NativeInput
-                        placeholder="Ex: 5000 (ou 'Gratuit')"
+                        placeholder={t('productManagerMobile.exFraisLivraison')}
                         value={newProduct.fraisLivraison || ''}
                         onChangeText={(text) => setNewProduct({ ...newProduct, fraisLivraison: text })}
                         style={styles.fieldInput}
@@ -9601,7 +9601,7 @@ return (
         <View style={styles.hintBox}>
             <Text style={styles.hintText}>
                 📸 <Text style={styles.hintBold}>{t('productManagerMobile.photos')}</Text> Ajoutez 4 à 8 images (vue d'ensemble, détails matériaux, dimensions, défauts éventuels)
-                </Text>
+            </Text>
         </View>
 
         <View style={styles.hintBox}>
@@ -10209,13 +10209,13 @@ return (
         {/* Stock disponible */}
         <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>{t('productManagerMobile.stockDisponible')}</Text>
-                <NativeInput
-                    placeholder="Ex: 10"
-                    value={newProduct.stockDisponiblePieceAuto?.toString() || ''}
-                    onChangeText={(text) => setNewProduct({ ...newProduct, stockDisponiblePieceAuto: text ? parseInt(text) : undefined })}
-                    style={styles.fieldInput}
-                    keyboardType="numeric"
-                />
+            <NativeInput
+                placeholder="Ex: 10"
+                value={newProduct.stockDisponiblePieceAuto?.toString() || ''}
+                onChangeText={(text) => setNewProduct({ ...newProduct, stockDisponiblePieceAuto: text ? parseInt(text) : undefined })}
+                style={styles.fieldInput}
+                keyboardType="numeric"
+            />
         </View>
 
         {/* Ville et Lieu */}
@@ -10449,13 +10449,13 @@ return (
             </View>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>{t('productManagerMobile.stockDisponible')}</Text>
-                    <NativeInput
-                        placeholder="Ex: 50"
-                        value={newProduct.stockDisponible?.toString() || ''}
-                        onChangeText={(text) => setNewProduct({ ...newProduct, stockDisponible: parseInt(text) || 0 })}
-                        style={styles.fieldInput}
-                        keyboardType="numeric"
-                    />
+                <NativeInput
+                    placeholder="Ex: 50"
+                    value={newProduct.stockDisponible?.toString() || ''}
+                    onChangeText={(text) => setNewProduct({ ...newProduct, stockDisponible: parseInt(text) || 0 })}
+                    style={styles.fieldInput}
+                    keyboardType="numeric"
+                />
             </View>
         </View>
 
@@ -10820,7 +10820,7 @@ return (
 
                 {/* Niveau d'expérience (12 niveaux) */}
                 <ProductFieldSelector
-                    label="Niveau d'expérience"
+                    label={t('productManagerMobile.niveauExperience')}
                     fieldName="niveaux_experience"
                     productType="prestation_service"
                     value={newProduct.niveauExperience || ''}
@@ -10874,12 +10874,12 @@ return (
                 {prestationFieldsConfig.showHoraires && (
                     <View style={styles.fieldContainer}>
                         <Text style={styles.fieldLabel}>{t('productManagerMobile.horairesDeService')}</Text>
-                            <NativeInput
-                                placeholder="Ex: Lundi-Vendredi 8h-18h"
-                                value={newProduct.horairesService || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, horairesService: text })}
-                                style={styles.fieldInput}
-                            />
+                        <NativeInput
+                            placeholder="Ex: Lundi-Vendredi 8h-18h"
+                            value={newProduct.horairesService || ''}
+                            onChangeText={(text) => setNewProduct({ ...newProduct, horairesService: text })}
+                            style={styles.fieldInput}
+                        />
                     </View>
                 )}
 
@@ -11295,17 +11295,17 @@ return (
                     <View style={styles.prestationFieldRow}>
                         <View style={[styles.prestationFieldContainerCompact, { flex: 1 }]}>
                             <Text style={styles.prestationFieldLabelCompact}>{t('productManagerMobile.prixMinXaf')}</Text>
-                                <NativeInput
-                                    placeholder="50000"
-                                    value={prestation.prixAPartirDe}
-                                    onChangeText={(text) => {
-                                        const prestations = [...(newProduct.prestations || [])];
-                                        prestations[index].prixAPartirDe = text;
-                                        setNewProduct({ ...newProduct, prestations });
-                                    }}
-                                    style={styles.fieldInputCompact}
-                                    keyboardType="numeric"
-                                />
+                            <NativeInput
+                                placeholder="50000"
+                                value={prestation.prixAPartirDe}
+                                onChangeText={(text) => {
+                                    const prestations = [...(newProduct.prestations || [])];
+                                    prestations[index].prixAPartirDe = text;
+                                    setNewProduct({ ...newProduct, prestations });
+                                }}
+                                style={styles.fieldInputCompact}
+                                keyboardType="numeric"
+                            />
                         </View>
                         <View style={[styles.prestationFieldContainerCompact, { flex: 2 }]}>
                             <Text style={styles.prestationFieldLabelCompact}>Description (opt.)</Text>
@@ -11782,75 +11782,75 @@ return (
 
                                         {/* Jours disponibles */}
                                         <Text style={styles.fieldHint}>{t('productManagerMobile.joursDisponibles')}</Text>
-                                            <View style={styles.weekDaysContainer}>
-                                                {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour) => {
-                                                    const joursArray = (newProduct.planningHebdomadaire?.[prestation]?.jours || '').split(',').map(j => j.trim());
-                                                    const isJourSelected = joursArray.includes(jour);
-                                                    return (
-                                                        <TouchableOpacity
-                                                            key={jour}
-                                                            style={[
-                                                                styles.dayButton,
-                                                                isJourSelected && styles.dayButtonActive
-                                                            ]}
-                                                            onPress={() => {
-                                                                const current = (newProduct.planningHebdomadaire?.[prestation]?.jours || '').split(',').map(j => j.trim()).filter(j => j);
-                                                                const updated = isJourSelected
-                                                                    ? current.filter(j => j !== jour)
-                                                                    : [...current, jour];
-                                                                setNewProduct({
-                                                                    ...newProduct,
-                                                                    planningHebdomadaire: {
-                                                                        ...newProduct.planningHebdomadaire,
-                                                                        [prestation]: {
-                                                                            ...newProduct.planningHebdomadaire?.[prestation],
-                                                                            jours: updated.join(', ')
-                                                                        }
-                                                                    }
-                                                                });
-                                                            }}
-                                                        >
-                                                            <Text style={[
-                                                                styles.dayButtonText,
-                                                                isJourSelected && styles.dayButtonTextActive
-                                                            ]}>
-                                                                {jour}
-                                                            </Text>
-                                                        </TouchableOpacity>
-                                                    );
-                                                })}
-                                            </View>
-
-                                            {/* Moment de disponibilité */}
-                                            <Text style={styles.fieldHint}>{t('productManagerMobile.momentDeDisponibilite')}</Text>
-                                            <View style={styles.pickerButtons}>
-                                                {[t('productManagerMobile.journee'), 'Nuit', '24h/24'].map((moment) => (
+                                        <View style={styles.weekDaysContainer}>
+                                            {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour) => {
+                                                const joursArray = (newProduct.planningHebdomadaire?.[prestation]?.jours || '').split(',').map(j => j.trim());
+                                                const isJourSelected = joursArray.includes(jour);
+                                                return (
                                                     <TouchableOpacity
-                                                        key={moment}
+                                                        key={jour}
                                                         style={[
-                                                            styles.pickerButton,
-                                                            newProduct.planningHebdomadaire?.[prestation]?.moment === moment && styles.pickerButtonActive
+                                                            styles.dayButton,
+                                                            isJourSelected && styles.dayButtonActive
                                                         ]}
-                                                        onPress={() => setNewProduct({
-                                                            ...newProduct,
-                                                            planningHebdomadaire: {
-                                                                ...newProduct.planningHebdomadaire,
-                                                                [prestation]: {
-                                                                    ...newProduct.planningHebdomadaire?.[prestation],
-                                                                    moment
+                                                        onPress={() => {
+                                                            const current = (newProduct.planningHebdomadaire?.[prestation]?.jours || '').split(',').map(j => j.trim()).filter(j => j);
+                                                            const updated = isJourSelected
+                                                                ? current.filter(j => j !== jour)
+                                                                : [...current, jour];
+                                                            setNewProduct({
+                                                                ...newProduct,
+                                                                planningHebdomadaire: {
+                                                                    ...newProduct.planningHebdomadaire,
+                                                                    [prestation]: {
+                                                                        ...newProduct.planningHebdomadaire?.[prestation],
+                                                                        jours: updated.join(', ')
+                                                                    }
                                                                 }
-                                                            }
-                                                        })}
+                                                            });
+                                                        }}
                                                     >
                                                         <Text style={[
-                                                            styles.pickerButtonText,
-                                                            newProduct.planningHebdomadaire?.[prestation]?.moment === moment && styles.pickerButtonTextActive
+                                                            styles.dayButtonText,
+                                                            isJourSelected && styles.dayButtonTextActive
                                                         ]}>
-                                                            {moment}
+                                                            {jour}
                                                         </Text>
                                                     </TouchableOpacity>
-                                                ))}
-                                            </View>
+                                                );
+                                            })}
+                                        </View>
+
+                                        {/* Moment de disponibilité */}
+                                        <Text style={styles.fieldHint}>{t('productManagerMobile.momentDeDisponibilite')}</Text>
+                                        <View style={styles.pickerButtons}>
+                                            {[t('productManagerMobile.journee'), 'Nuit', '24h/24'].map((moment) => (
+                                                <TouchableOpacity
+                                                    key={moment}
+                                                    style={[
+                                                        styles.pickerButton,
+                                                        newProduct.planningHebdomadaire?.[prestation]?.moment === moment && styles.pickerButtonActive
+                                                    ]}
+                                                    onPress={() => setNewProduct({
+                                                        ...newProduct,
+                                                        planningHebdomadaire: {
+                                                            ...newProduct.planningHebdomadaire,
+                                                            [prestation]: {
+                                                                ...newProduct.planningHebdomadaire?.[prestation],
+                                                                moment
+                                                            }
+                                                        }
+                                                    })}
+                                                >
+                                                    <Text style={[
+                                                        styles.pickerButtonText,
+                                                        newProduct.planningHebdomadaire?.[prestation]?.moment === moment && styles.pickerButtonTextActive
+                                                    ]}>
+                                                        {moment}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
                                     </View>
                                 )}
                             </View>
@@ -11999,75 +11999,75 @@ return (
 
                                         {/* Jours disponibles */}
                                         <Text style={styles.fieldHint}>{t('productManagerMobile.joursDisponibles')}</Text>
-                                            <View style={styles.weekDaysContainer}>
-                                                {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour) => {
-                                                    const joursArray = (newProduct.planningExamens?.[examen]?.jours || '').split(',').map(j => j.trim());
-                                                    const isJourSelected = joursArray.includes(jour);
-                                                    return (
-                                                        <TouchableOpacity
-                                                            key={jour}
-                                                            style={[
-                                                                styles.dayButton,
-                                                                isJourSelected && styles.dayButtonActive
-                                                            ]}
-                                                            onPress={() => {
-                                                                const current = (newProduct.planningExamens?.[examen]?.jours || '').split(',').map(j => j.trim()).filter(j => j);
-                                                                const updated = isJourSelected
-                                                                    ? current.filter(j => j !== jour)
-                                                                    : [...current, jour];
-                                                                setNewProduct({
-                                                                    ...newProduct,
-                                                                    planningExamens: {
-                                                                        ...newProduct.planningExamens,
-                                                                        [examen]: {
-                                                                            ...newProduct.planningExamens?.[examen],
-                                                                            jours: updated.join(', ')
-                                                                        }
-                                                                    }
-                                                                });
-                                                            }}
-                                                        >
-                                                            <Text style={[
-                                                                styles.dayButtonText,
-                                                                isJourSelected && styles.dayButtonTextActive
-                                                            ]}>
-                                                                {jour}
-                                                            </Text>
-                                                        </TouchableOpacity>
-                                                    );
-                                                })}
-                                            </View>
-
-                                            {/* Moment de disponibilité */}
-                                            <Text style={styles.fieldHint}>{t('productManagerMobile.momentDeDisponibilite')}</Text>
-                                            <View style={styles.pickerButtons}>
-                                                {[t('productManagerMobile.journee'), 'Nuit', '24h/24'].map((moment) => (
+                                        <View style={styles.weekDaysContainer}>
+                                            {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour) => {
+                                                const joursArray = (newProduct.planningExamens?.[examen]?.jours || '').split(',').map(j => j.trim());
+                                                const isJourSelected = joursArray.includes(jour);
+                                                return (
                                                     <TouchableOpacity
-                                                        key={moment}
+                                                        key={jour}
                                                         style={[
-                                                            styles.pickerButton,
-                                                            newProduct.planningExamens?.[examen]?.moment === moment && styles.pickerButtonActive
+                                                            styles.dayButton,
+                                                            isJourSelected && styles.dayButtonActive
                                                         ]}
-                                                        onPress={() => setNewProduct({
-                                                            ...newProduct,
-                                                            planningExamens: {
-                                                                ...newProduct.planningExamens,
-                                                                [examen]: {
-                                                                    ...newProduct.planningExamens?.[examen],
-                                                                    moment
+                                                        onPress={() => {
+                                                            const current = (newProduct.planningExamens?.[examen]?.jours || '').split(',').map(j => j.trim()).filter(j => j);
+                                                            const updated = isJourSelected
+                                                                ? current.filter(j => j !== jour)
+                                                                : [...current, jour];
+                                                            setNewProduct({
+                                                                ...newProduct,
+                                                                planningExamens: {
+                                                                    ...newProduct.planningExamens,
+                                                                    [examen]: {
+                                                                        ...newProduct.planningExamens?.[examen],
+                                                                        jours: updated.join(', ')
+                                                                    }
                                                                 }
-                                                            }
-                                                        })}
+                                                            });
+                                                        }}
                                                     >
                                                         <Text style={[
-                                                            styles.pickerButtonText,
-                                                            newProduct.planningExamens?.[examen]?.moment === moment && styles.pickerButtonTextActive
+                                                            styles.dayButtonText,
+                                                            isJourSelected && styles.dayButtonTextActive
                                                         ]}>
-                                                            {moment}
+                                                            {jour}
                                                         </Text>
                                                     </TouchableOpacity>
-                                                ))}
-                                            </View>
+                                                );
+                                            })}
+                                        </View>
+
+                                        {/* Moment de disponibilité */}
+                                        <Text style={styles.fieldHint}>{t('productManagerMobile.momentDeDisponibilite')}</Text>
+                                        <View style={styles.pickerButtons}>
+                                            {[t('productManagerMobile.journee'), 'Nuit', '24h/24'].map((moment) => (
+                                                <TouchableOpacity
+                                                    key={moment}
+                                                    style={[
+                                                        styles.pickerButton,
+                                                        newProduct.planningExamens?.[examen]?.moment === moment && styles.pickerButtonActive
+                                                    ]}
+                                                    onPress={() => setNewProduct({
+                                                        ...newProduct,
+                                                        planningExamens: {
+                                                            ...newProduct.planningExamens,
+                                                            [examen]: {
+                                                                ...newProduct.planningExamens?.[examen],
+                                                                moment
+                                                            }
+                                                        }
+                                                    })}
+                                                >
+                                                    <Text style={[
+                                                        styles.pickerButtonText,
+                                                        newProduct.planningExamens?.[examen]?.moment === moment && styles.pickerButtonTextActive
+                                                    ]}>
+                                                        {moment}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
                                     </View>
                                 )}
                             </View>
@@ -12505,7 +12505,7 @@ return (
             <SafeIcon name="info" size={14} color={modernColors.primary} />
             <Text style={styles.hintText}>
                 💡 <Text style={styles.hintBold}>{t('productManagerMobile.services')}</Text> Sélectionnez tous les services que vous proposez pour attirer plus de clients
-                </Text>
+            </Text>
         </View>
 
         {/* Section 5: Informations Complémentaires */}
@@ -12685,180 +12685,180 @@ return (
                 productType="cosmetique_parfum"
                 fieldName="marques"
                 onSelect={(value) => setNewProduct({ ...newProduct, marqueCosmetique: value })}
-                placeholder="Ex: Chanel, Dior, Nivea, L'Oréal..."
+                placeholder={t('productManagerMobile.exMarquesCosmetique')}
             />
         </View>
 
         {/* Volume/Poids + Unité */}
         <View style={styles.fieldRow}>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>{t('productManagerMobile.volumePoids')}Text style={styles.required}>*</Text></Text>
-            <NativeInput
-                placeholder="Ex: 50"
-                value={newProduct.volumeCosmetique || ''}
-                onChangeText={(text) => setNewProduct({ ...newProduct, volumeCosmetique: text })}
-                keyboardType="numeric"
-                style={styles.fieldInput}
-            />
+                <Text style={styles.fieldLabel}>{t('productManagerMobile.volumePoids')} <Text style={styles.required}>*</Text></Text>
+                <NativeInput
+                    placeholder="Ex: 50"
+                    value={newProduct.volumeCosmetique || ''}
+                    onChangeText={(text) => setNewProduct({ ...newProduct, volumeCosmetique: text })}
+                    keyboardType="numeric"
+                    style={styles.fieldInput}
+                />
+            </View>
+            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                <SelectModalitySelector
+                    label={t('productManagerMobile.unite')}
+                    value={newProduct.uniteCosmetique || ''}
+                    productType="cosmetique_parfum"
+                    fieldName="unites"
+                    onSelect={(value) => setNewProduct({ ...newProduct, uniteCosmetique: value })}
+                    required
+                    placeholder="Ex: ml, g, L..."
+                />
+            </View>
+        </View >
+
+        {/* Concentration (pour parfums) */}
+        {
+            (newProduct.typeCosmetique?.toLowerCase().includes('parfum') ||
+                newProduct.typeCosmetique?.toLowerCase().includes('eau de toilette') ||
+                newProduct.typeCosmetique?.toLowerCase().includes('cologne')) && (
+                <View style={styles.fieldContainer}>
+                    <SelectModalitySelector
+                        label="Concentration"
+                        value={newProduct.concentrationCosmetique || ''}
+                        productType="cosmetique_parfum"
+                        fieldName="concentrations"
+                        onSelect={(value) => setNewProduct({ ...newProduct, concentrationCosmetique: value })}
+                        placeholder="Ex: EDP 15-20%, EDT 5-15%..."
+                    />
+                </View>
+            )
+        }
+
+        {/* ====== SECTION 2: CARACTÉRISTIQUES ====== */}
+        <View style={styles.sectionHeader}>
+            <SafeIcon name="check-circle" size={20} color={modernColors.primary} />
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
         </View>
-        <View style={[styles.fieldContainer, { flex: 1 }]}>
-            <SelectModalitySelector
-                label={t('productManagerMobile.unite')}
-                value={newProduct.uniteCosmetique || ''}
-                productType="cosmetique_parfum"
-                fieldName="unites"
-                onSelect={(value) => setNewProduct({ ...newProduct, uniteCosmetique: value })}
-                required
-                placeholder="Ex: ml, g, L..."
-            />
-        </View>
-    </View >
 
-        {/* Concentration (pour parfums) */ }
-{
-    (newProduct.typeCosmetique?.toLowerCase().includes('parfum') ||
-        newProduct.typeCosmetique?.toLowerCase().includes('eau de toilette') ||
-        newProduct.typeCosmetique?.toLowerCase().includes('cologne')) && (
-        <View style={styles.fieldContainer}>
-            <SelectModalitySelector
-                label="Concentration"
-                value={newProduct.concentrationCosmetique || ''}
-                productType="cosmetique_parfum"
-                fieldName="concentrations"
-                onSelect={(value) => setNewProduct({ ...newProduct, concentrationCosmetique: value })}
-                placeholder="Ex: EDP 15-20%, EDT 5-15%..."
-            />
-        </View>
-    )
-}
-
-{/* ====== SECTION 2: CARACTÉRISTIQUES ====== */ }
-<View style={styles.sectionHeader}>
-    <SafeIcon name="check-circle" size={20} color={modernColors.primary} />
-    <Text style={styles.sectionTitle}>{t('productManagerMobile.caracteristiques')}</Text>
-</View>
-
-{/* Type de peau + Type de cheveux */ }
-<View style={styles.fieldRow}>
-    <View style={[styles.fieldContainer, { flex: 1 }]}>
-        <SelectModalitySelector
-            label={t('productManagerMobile.typeDePeau')}
-            value={newProduct.typePeau || ''}
-            productType="cosmetique_parfum"
-            fieldName="types_peau"
-            onSelect={(value) => setNewProduct({ ...newProduct, typePeau: value })}
-            placeholder={t('productManagerMobile.exNormaleSecheGrasse')}
-        />
-    </View>
-    <View style={[styles.fieldContainer, { flex: 1 }]}>
-        <SelectModalitySelector
-            label={t('productManagerMobile.typeDeCheveux')}
-            value={newProduct.typeCheveuxCosmetique || ''}
-            productType="cosmetique_parfum"
-            fieldName="types_cheveux"
-            onSelect={(value) => setNewProduct({ ...newProduct, typeCheveuxCosmetique: value })}
-            placeholder={t('productManagerMobile.exCrepusBouclesLisses')}
-        />
-    </View>
-</View>
-
-{/* Teinte + Finition (pour maquillage) */ }
-{
-    (newProduct.typeCosmetique?.toLowerCase().includes('rouge') ||
-        newProduct.typeCosmetique?.toLowerCase().includes('fond de teint') ||
-        newProduct.typeCosmetique?.toLowerCase().includes('mascara') ||
-        newProduct.typeCosmetique?.toLowerCase().includes('vernis') ||
-        newProduct.typeCosmetique?.toLowerCase().includes('maquillage')) && (
+        {/* Type de peau + Type de cheveux */}
         <View style={styles.fieldRow}>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
                 <SelectModalitySelector
-                    label="Teinte"
-                    value={newProduct.teinteCosmetique || ''}
+                    label={t('productManagerMobile.typeDePeau')}
+                    value={newProduct.typePeau || ''}
                     productType="cosmetique_parfum"
-                    fieldName="teintes"
-                    onSelect={(value) => setNewProduct({ ...newProduct, teinteCosmetique: value })}
-                    placeholder="Ex: Rouge, Nude, Caramel..."
+                    fieldName="types_peau"
+                    onSelect={(value) => setNewProduct({ ...newProduct, typePeau: value })}
+                    placeholder={t('productManagerMobile.exNormaleSecheGrasse')}
                 />
             </View>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
                 <SelectModalitySelector
-                    label="Finition"
-                    value={newProduct.finitionCosmetique || ''}
+                    label={t('productManagerMobile.typeDeCheveux')}
+                    value={newProduct.typeCheveuxCosmetique || ''}
                     productType="cosmetique_parfum"
-                    fieldName="finitions"
-                    onSelect={(value) => setNewProduct({ ...newProduct, finitionCosmetique: value })}
-                    placeholder={t('productManagerMobile.exMatBrillantSatine')}
+                    fieldName="types_cheveux"
+                    onSelect={(value) => setNewProduct({ ...newProduct, typeCheveuxCosmetique: value })}
+                    placeholder={t('productManagerMobile.exCrepusBouclesLisses')}
                 />
             </View>
         </View>
-    )
-}
 
-{/* Âge recommandé */ }
-<View style={styles.fieldContainer}>
-    <Text style={styles.fieldLabel}>{t('productManagerMobile.ageRecommandeAnnees')}</Text>
-    <NativeInput
-        placeholder={t('productManagerMobile.ex18LaissezVideSi')}
-        value={newProduct.ageRecommandé || ''}
-        onChangeText={(text) => setNewProduct({ ...newProduct, ageRecommandé: text })}
-        style={styles.fieldInput}
-        keyboardType="numeric"
-    />
-</View>
+        {/* Teinte + Finition (pour maquillage) */}
+        {
+            (newProduct.typeCosmetique?.toLowerCase().includes('rouge') ||
+                newProduct.typeCosmetique?.toLowerCase().includes('fond de teint') ||
+                newProduct.typeCosmetique?.toLowerCase().includes('mascara') ||
+                newProduct.typeCosmetique?.toLowerCase().includes('vernis') ||
+                newProduct.typeCosmetique?.toLowerCase().includes('maquillage')) && (
+                <View style={styles.fieldRow}>
+                    <View style={[styles.fieldContainer, { flex: 1 }]}>
+                        <SelectModalitySelector
+                            label="Teinte"
+                            value={newProduct.teinteCosmetique || ''}
+                            productType="cosmetique_parfum"
+                            fieldName="teintes"
+                            onSelect={(value) => setNewProduct({ ...newProduct, teinteCosmetique: value })}
+                            placeholder="Ex: Rouge, Nude, Caramel..."
+                        />
+                    </View>
+                    <View style={[styles.fieldContainer, { flex: 1 }]}>
+                        <SelectModalitySelector
+                            label="Finition"
+                            value={newProduct.finitionCosmetique || ''}
+                            productType="cosmetique_parfum"
+                            fieldName="finitions"
+                            onSelect={(value) => setNewProduct({ ...newProduct, finitionCosmetique: value })}
+                            placeholder={t('productManagerMobile.exMatBrillantSatine')}
+                        />
+                    </View>
+                </View>
+            )
+        }
 
-{/* ====== SECTION 3: COMPOSITION & ORIGINE ====== */ }
-<View style={styles.sectionHeader}>
-    <SafeIcon name="leaf" size={20} color={modernColors.primary} />
-    <Text style={styles.sectionTitle}>Composition & Origine</Text>
-</View>
+        {/* Âge recommandé */}
+        <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>{t('productManagerMobile.ageRecommandeAnnees')}</Text>
+            <NativeInput
+                placeholder={t('productManagerMobile.ex18LaissezVideSi')}
+                value={newProduct.ageRecommandé || ''}
+                onChangeText={(text) => setNewProduct({ ...newProduct, ageRecommandé: text })}
+                style={styles.fieldInput}
+                keyboardType="numeric"
+            />
+        </View>
 
-{/* Ingrédients principaux */ }
-<View style={styles.fieldContainer}>
-    <Text style={styles.fieldLabel}>{t('productManagerMobile.ingredientsPrincipaux')}</Text>
-    <NativeInput
-        placeholder={t('productManagerMobile.exVitamineEArganAloe')}
-        value={newProduct.ingredientsCosmetique || ''}
-        onChangeText={(text) => setNewProduct({ ...newProduct, ingredientsCosmetique: text })}
-        style={styles.fieldInput}
-        multiline
-    />
-    <Text style={styles.fieldHint}>{t('productManagerMobile.separezParDesVirgules')}</Text>
-</View>
+        {/* ====== SECTION 3: COMPOSITION & ORIGINE ====== */}
+        <View style={styles.sectionHeader}>
+            <SafeIcon name="leaf" size={20} color={modernColors.primary} />
+            <Text style={styles.sectionTitle}>Composition & Origine</Text>
+        </View>
 
-{/* Certifications */ }
-<View style={styles.fieldContainer}>
-    <MultiSelectModalitySelector
-        label="Certifications & Labels"
-        values={newProduct.certificationsCosmetique || []}
-        productType="cosmetique_parfum"
-        fieldName="certifications"
-        onSelect={(values) => setNewProduct({ ...newProduct, certificationsCosmetique: values })}
-        maxSelections={5}
-        placeholder="Ex: Bio, Cruelty-free, Vegan, Halal..."
-    />
-</View>
+        {/* Ingrédients principaux */}
+        <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>{t('productManagerMobile.ingredientsPrincipaux')}</Text>
+            <NativeInput
+                placeholder={t('productManagerMobile.exVitamineEArganAloe')}
+                value={newProduct.ingredientsCosmetique || ''}
+                onChangeText={(text) => setNewProduct({ ...newProduct, ingredientsCosmetique: text })}
+                style={styles.fieldInput}
+                multiline
+            />
+            <Text style={styles.fieldHint}>{t('productManagerMobile.separezParDesVirgules')}</Text>
+        </View>
 
-{/* Origine / Pays */ }
-<View style={styles.fieldContainer}>
-    <SelectModalitySelector
-        label="Origine / Pays de fabrication"
-        value={newProduct.origineCosmetique || ''}
-        productType="cosmetique_parfum"
-        fieldName="origines"
-        onSelect={(value) => setNewProduct({ ...newProduct, origineCosmetique: value })}
-        placeholder={t('productManagerMobile.exFranceCoreeDuSud')}
-    />
-</View>
+        {/* Certifications */}
+        <View style={styles.fieldContainer}>
+            <MultiSelectModalitySelector
+                label="Certifications & Labels"
+                values={newProduct.certificationsCosmetique || []}
+                productType="cosmetique_parfum"
+                fieldName="certifications"
+                onSelect={(values) => setNewProduct({ ...newProduct, certificationsCosmetique: values })}
+                maxSelections={5}
+                placeholder="Ex: Bio, Cruelty-free, Vegan, Halal..."
+            />
+        </View>
 
-{/* Hint box */ }
-<View style={styles.hintBox}>
-    <SafeIcon name="info" size={14} color={modernColors.primary} />
-    <Text style={styles.hintText}>
-        💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.plusVousDetaillezLesCaracteristiquesType')}
-    </Text>
-</View>
-                    </>
-                );
+        {/* Origine / Pays */}
+        <View style={styles.fieldContainer}>
+            <SelectModalitySelector
+                label="Origine / Pays de fabrication"
+                value={newProduct.origineCosmetique || ''}
+                productType="cosmetique_parfum"
+                fieldName="origines"
+                onSelect={(value) => setNewProduct({ ...newProduct, origineCosmetique: value })}
+                placeholder={t('productManagerMobile.exFranceCoreeDuSud')}
+            />
+        </View>
+
+        {/* Hint box */}
+        <View style={styles.hintBox}>
+            <SafeIcon name="info" size={14} color={modernColors.primary} />
+            <Text style={styles.hintText}>
+                💡 <Text style={styles.hintBold}>Conseil :</Text>{t('productManagerMobile.plusVousDetaillezLesCaracteristiquesType')}
+            </Text>
+        </View>
+    </>
+);
 
             case 'bijoux':
 return (
@@ -13585,7 +13585,7 @@ return (
             <SafeIcon name="camera" size={16} color={modernColors.primary} />
             <Text style={styles.hintText}>
                 📸 <Text style={styles.hintBold}>{t('productManagerMobile.astucePhotos')}</Text> Ajoutez 5-10 photos de vos réalisations (robes, boubous, costumes). Les photos de qualité augmentent considérablement les commandes !
-                </Text>
+            </Text>
         </View>
 
         <View style={styles.hintBox}>
@@ -13772,7 +13772,7 @@ return (
         </View>
 
         <SelectModalitySelector
-            label="Condition d'âge"
+            label={t('productManagerMobile.conditionAge')}
             value={newProduct.conditionAge || ''}
             productType="assurance"
             fieldName="conditions_age"
@@ -14960,21 +14960,21 @@ return (
         <View style={styles.fieldRow}>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>{t('productManagerMobile.nomDuFormateur')}</Text>
-                    <NativeInput
-                        placeholder="Ex: Jean-Paul Ngono"
-                        value={newProduct.formateurNom || ''}
-                        onChangeText={(text) => setNewProduct({ ...newProduct, formateurNom: text })}
-                        style={styles.fieldInput}
-                    />
+                <NativeInput
+                    placeholder="Ex: Jean-Paul Ngono"
+                    value={newProduct.formateurNom || ''}
+                    onChangeText={(text) => setNewProduct({ ...newProduct, formateurNom: text })}
+                    style={styles.fieldInput}
+                />
             </View>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>{t('productManagerMobile.horaires')}</Text>
-                    <NativeInput
-                        placeholder="Ex: Lun-Ven 18h-21h"
-                        value={newProduct.horairesFormation || ''}
-                        onChangeText={(text) => setNewProduct({ ...newProduct, horairesFormation: text })}
-                        style={styles.fieldInput}
-                    />
+                <NativeInput
+                    placeholder="Ex: Lun-Ven 18h-21h"
+                    value={newProduct.horairesFormation || ''}
+                    onChangeText={(text) => setNewProduct({ ...newProduct, horairesFormation: text })}
+                    style={styles.fieldInput}
+                />
             </View>
         </View>
 
@@ -16241,19 +16241,19 @@ return (
             <SafeIcon name="camera" size={16} color={modernColors.primary} />
             <Text style={styles.hintText}>
                 📸 <Text style={styles.hintBold}>{t('productManagerMobile.astucePhotos')}</Text> Ajoutez 4-8 photos de vos réalisations (avant/après, jardins tropicaux, palmiers élagués, potagers africains). Les photos augmentent la confiance des clients !
-                </Text>
+            </Text>
         </View>
 
         <View style={styles.hintBox}>
             <SafeIcon name="star" size={16} color="#059669" />
             <Text style={styles.hintText}>
                 🌴 <Text style={styles.hintBold}>{t('productManagerMobile.servicesPopulairesEnAfrique')}</Text>{'\n'}
-                    • Élagage palmiers (royaux, cocotiers, dattiers){'\n'}
-                    • Entretien arbres fruitiers (manguiers, avocatiers, papayers){'\n'}
-                    • Création potagers africains (gombo, ndolé, manioc){'\n'}
-                    • Arrosage automatique (saison sèche){'\n'}
-                    • Espaces verts entreprises/hôtels
-                </Text>
+                • Élagage palmiers (royaux, cocotiers, dattiers){'\n'}
+                • Entretien arbres fruitiers (manguiers, avocatiers, papayers){'\n'}
+                • Création potagers africains (gombo, ndolé, manioc){'\n'}
+                • Arrosage automatique (saison sèche){'\n'}
+                • Espaces verts entreprises/hôtels
+            </Text>
         </View>
     </>
 );
@@ -17015,7 +17015,7 @@ required
 
     {/* Délais d'intervention spécialisés */ }
     < SelectModalitySelector
-label = { t('productManagerMobile.delaisD') }intervention spécialisés"
+label = { t('productManagerMobile.delaisInterventionSpecialises') }
 productType = "mecanicien_moto"
 fieldName = "delais_moto"
 selectedValue = { newProduct.delaisMoto || '' }
@@ -17025,7 +17025,7 @@ required
 
     {/* Prestations d'urgence spécialisées */ }
     < SelectModalitySelector
-label = "Prestations d'urgence spécialisées"
+label = { t('productManagerMobile.prestationsUrgenceSpecialisees') }
 productType = "mecanicien_moto"
 fieldName = "urgence_moto"
 selectedValue = { newProduct.urgenceMoto || '' }
@@ -17037,14 +17037,14 @@ required
     < View style = { styles.sectionHeader } >
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
                             <Text style={styles.sectionTitle}>{t('productManagerMobile.zoneDintervention')}</Text>
-                        </View>
+                        </View >
 
-                        <View style={styles.hintBox}>
-                            <SafeIcon name="info" size={16} color={modernColors.info} />
-                            <Text style={styles.hintText}>
-                                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
-                            </Text>
-                        </View>
+    <View style={styles.hintBox}>
+        <SafeIcon name="info" size={16} color={modernColors.info} />
+        <Text style={styles.hintText}>
+            🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+        </Text>
+    </View>
 
 {/* Zone d'intervention MULTIPLE spécialisée avec système intelligent */ }
 <MultiSelectModalitySelector
@@ -18135,7 +18135,7 @@ return (
         <View style={styles.fieldRow}>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
                 <ProductFieldSelector
-                    label="Niveau d'expérience"
+                    label={t('productManagerMobile.niveauExperience')}
                     fieldName="niveaux_experience"
                     productType="menuiserie"
                     value={newProduct.experienceMenuisier || ''}
@@ -22018,156 +22018,156 @@ return (
                                 <View style={styles.mediaSectionContainer}>
                                     <Text style={styles.sectionTitle}>{t('productManagerMobile.imagesPrincipalesDuProduit')}</Text>
 
-                                        {/* Message descriptif incitatif */}
-                                        <View style={styles.mediaHintContainer}>
-                                            <SafeIcon name="info" size={16} color={modernColors.info} />
-                                            <Text style={styles.mediaHintText}>
-                                                💡 <Text style={styles.boldText}>{t('productManagerMobile.imagesPrincipales')}</Text> : Photos générales du produit (différentes des images spécifiques aux variantes). Montrez votre produit sous tous les angles.
-                                                </Text>
+                                    {/* Message descriptif incitatif */}
+                                    <View style={styles.mediaHintContainer}>
+                                        <SafeIcon name="info" size={16} color={modernColors.info} />
+                                        <Text style={styles.mediaHintText}>
+                                            💡 <Text style={styles.boldText}>{t('productManagerMobile.imagesPrincipales')}</Text> : Photos générales du produit (différentes des images spécifiques aux variantes). Montrez votre produit sous tous les angles.
+                                        </Text>
+                                    </View>
+
+                                    <TouchableOpacity
+                                        style={styles.mediaButton}
+                                        onPress={handlePickImages}
+                                    >
+                                        <SafeIcon name="image" size={20} color={modernColors.primary} />
+                                        <Text style={styles.mediaButtonText}>
+                                            📷 Ajouter des images
+                                        </Text>
+                                    </TouchableOpacity>
+
+                                    {newProduct.images && newProduct.images.length > 0 && (
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaPreviewScroll}>
+                                            {newProduct.images.map((image, index) => (
+                                                <View key={index} style={styles.mediaPreviewItem}>
+                                                    <Image source={{ uri: image }} style={styles.mediaPreviewImage} />
+                                                    <TouchableOpacity
+                                                        style={styles.removeMediaButton}
+                                                        onPress={() => removeImage(index)}
+                                                    >
+                                                        <SafeIcon name="x" size={16} color="#FFFFFF" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            ))}
+                                        </ScrollView>
+                                    )}
+
+                                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>{t('productManagerMobile.videosDuProduit')}</Text>
+
+                                    {/* Message descriptif incitatif pour vidéos */}
+                                    <View style={styles.mediaHintContainer}>
+                                        <SafeIcon name="info" size={16} color={modernColors.info} />
+                                        <Text style={styles.mediaHintText}>
+                                            🎬 Les vidéos augmentent de 80% les chances de vente ! Montrez votre produit en action ou en démonstration.
+                                        </Text>
+                                    </View>
+
+                                    <TouchableOpacity
+                                        style={styles.mediaButton}
+                                        onPress={handlePickVideos}
+                                    >
+                                        <SafeIcon name="video" size={20} color={modernColors.success} />
+                                        <Text style={styles.mediaButtonText}>
+                                            🎥 Ajouter des vidéos
+                                        </Text>
+                                    </TouchableOpacity>
+
+                                    {newProduct.videos && newProduct.videos.length > 0 && (
+                                        <View style={styles.videosList}>
+                                            {newProduct.videos.map((video, index) => (
+                                                <View key={index} style={styles.videoItem}>
+                                                    <SafeIcon name="video" size={20} color={modernColors.success} />
+                                                    <Text style={styles.videoText}>{t('productManagerMobile.video')} {index + 1}</Text>
+                                                    <TouchableOpacity
+                                                        style={styles.removeVideoButton}
+                                                        onPress={() => removeVideo(index)}
+                                                    >
+                                                        <SafeIcon name="trash-2" size={16} color={modernColors.error} />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            ))}
                                         </View>
-
-                                        <TouchableOpacity
-                                            style={styles.mediaButton}
-                                            onPress={handlePickImages}
-                                        >
-                                            <SafeIcon name="image" size={20} color={modernColors.primary} />
-                                            <Text style={styles.mediaButtonText}>
-                                                📷 Ajouter des images
-                                            </Text>
-                                        </TouchableOpacity>
-
-                                        {newProduct.images && newProduct.images.length > 0 && (
-                                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaPreviewScroll}>
-                                                {newProduct.images.map((image, index) => (
-                                                    <View key={index} style={styles.mediaPreviewItem}>
-                                                        <Image source={{ uri: image }} style={styles.mediaPreviewImage} />
-                                                        <TouchableOpacity
-                                                            style={styles.removeMediaButton}
-                                                            onPress={() => removeImage(index)}
-                                                        >
-                                                            <SafeIcon name="x" size={16} color="#FFFFFF" />
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                ))}
-                                            </ScrollView>
-                                        )}
-
-                                        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>{t('productManagerMobile.videosDuProduit')}</Text>
-
-                                        {/* Message descriptif incitatif pour vidéos */}
-                                        <View style={styles.mediaHintContainer}>
-                                            <SafeIcon name="info" size={16} color={modernColors.info} />
-                                            <Text style={styles.mediaHintText}>
-                                                🎬 Les vidéos augmentent de 80% les chances de vente ! Montrez votre produit en action ou en démonstration.
-                                            </Text>
-                                        </View>
-
-                                        <TouchableOpacity
-                                            style={styles.mediaButton}
-                                            onPress={handlePickVideos}
-                                        >
-                                            <SafeIcon name="video" size={20} color={modernColors.success} />
-                                            <Text style={styles.mediaButtonText}>
-                                                🎥 Ajouter des vidéos
-                                            </Text>
-                                        </TouchableOpacity>
-
-                                        {newProduct.videos && newProduct.videos.length > 0 && (
-                                            <View style={styles.videosList}>
-                                                {newProduct.videos.map((video, index) => (
-                                                    <View key={index} style={styles.videoItem}>
-                                                        <SafeIcon name="video" size={20} color={modernColors.success} />
-                                                        <Text style={styles.videoText}>{t('productManagerMobile.video')} {index + 1}</Text>
-                                                        <TouchableOpacity
-                                                            style={styles.removeVideoButton}
-                                                            onPress={() => removeVideo(index)}
-                                                        >
-                                                            <SafeIcon name="trash-2" size={16} color={modernColors.error} />
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        )}
+                                    )}
                                 </View>
 
                                 {/* Section Promotion - APRÈS les médias */}
                                 <View style={styles.promotionSectionContainer}>
                                     <Text style={styles.sectionTitle}>{t('productManagerMobile.promotionOptionnel')}</Text>
 
-                                        <TouchableOpacity
-                                            style={styles.checkboxContainer}
-                                            onPress={() => setNewProduct({ ...newProduct, promotionActive: !newProduct.promotionActive })}
-                                        >
-                                            <View style={[
-                                                styles.checkbox,
-                                                newProduct.promotionActive && styles.checkboxChecked
-                                            ]}>
-                                                {newProduct.promotionActive && (
-                                                    <SafeIcon name="check" size={16} color="#FFFFFF" />
-                                                )}
-                                            </View>
-                                            <Text style={styles.checkboxLabel}>Activer une promotion pour ce produit</Text>
-                                        </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.checkboxContainer}
+                                        onPress={() => setNewProduct({ ...newProduct, promotionActive: !newProduct.promotionActive })}
+                                    >
+                                        <View style={[
+                                            styles.checkbox,
+                                            newProduct.promotionActive && styles.checkboxChecked
+                                        ]}>
+                                            {newProduct.promotionActive && (
+                                                <SafeIcon name="check" size={16} color="#FFFFFF" />
+                                            )}
+                                        </View>
+                                        <Text style={styles.checkboxLabel}>Activer une promotion pour ce produit</Text>
+                                    </TouchableOpacity>
 
-                                        {newProduct.promotionActive && (
-                                            <View style={styles.promotionFields}>
-                                                <View style={styles.fieldContainer}>
-                                                    <Text style={styles.fieldLabel}>{t('productManagerMobile.typeDePromotion')}</Text>
-                                                    <View style={styles.pickerButtons}>
-                                                        {(['reduction', 'offre', 'bon_plan', 'flash'] as const).map((type) => (
-                                                            <TouchableOpacity
-                                                                key={type}
-                                                                style={[
-                                                                    styles.pickerButton,
-                                                                    newProduct.promotionType === type && styles.pickerButtonActive
-                                                                ]}
-                                                                onPress={() => setNewProduct({ ...newProduct, promotionType: type })}
-                                                            >
-                                                                <Text style={[
-                                                                    styles.pickerButtonText,
-                                                                    newProduct.promotionType === type && styles.pickerButtonTextActive
-                                                                ]}>
-                                                                    {type === 'reduction' ? 'Réduction' :
-                                                                        type === 'offre' ? 'Offre' :
-                                                                            type === 'bon_plan' ? 'Bon plan' : 'Flash'}
-                                                                </Text>
-                                                            </TouchableOpacity>
-                                                        ))}
-                                                    </View>
-                                                </View>
-
-                                                <View style={styles.fieldContainer}>
-                                                    <Text style={styles.fieldLabel}>💰 Valeur</Text>
-                                                    <NativeInput
-                                                        placeholder="Ex: -20%, 1+1 gratuit"
-                                                        value={newProduct.promotionValeur || ''}
-                                                        onChangeText={(text) => setNewProduct({ ...newProduct, promotionValeur: text })}
-                                                        style={styles.fieldInput}
-                                                    />
-                                                </View>
-
-                                                <View style={styles.fieldContainer}>
-                                                    <Text style={styles.fieldLabel}>📝 Description</Text>
-                                                    <NativeInput
-                                                        placeholder={t('productManagerMobile.decrivezL')} offre..."
-                                                    value={newProduct.promotionDescription || ''}
-                                                    onChangeText={(text) => setNewProduct({ ...newProduct, promotionDescription: text })}
-                                                    multiline
-                                                    style={[styles.fieldInput, styles.textareaInput]}
-                                                    />
-                                                </View>
-
-                                                <View style={styles.fieldContainer}>
-                                                    <Text style={styles.fieldLabel}>{t('productManagerMobile.dateDeFin')}</Text>
-                                                    <NativeInput
-                                                        placeholder="JJ/MM/AAAA"
-                                                        value={newProduct.promotionDateFin || ''}
-                                                        onChangeText={(text) => setNewProduct({ ...newProduct, promotionDateFin: text })}
-                                                        style={styles.fieldInput}
-                                                    />
+                                    {newProduct.promotionActive && (
+                                        <View style={styles.promotionFields}>
+                                            <View style={styles.fieldContainer}>
+                                                <Text style={styles.fieldLabel}>{t('productManagerMobile.typeDePromotion')}</Text>
+                                                <View style={styles.pickerButtons}>
+                                                    {(['reduction', 'offre', 'bon_plan', 'flash'] as const).map((type) => (
+                                                        <TouchableOpacity
+                                                            key={type}
+                                                            style={[
+                                                                styles.pickerButton,
+                                                                newProduct.promotionType === type && styles.pickerButtonActive
+                                                            ]}
+                                                            onPress={() => setNewProduct({ ...newProduct, promotionType: type })}
+                                                        >
+                                                            <Text style={[
+                                                                styles.pickerButtonText,
+                                                                newProduct.promotionType === type && styles.pickerButtonTextActive
+                                                            ]}>
+                                                                {type === 'reduction' ? 'Réduction' :
+                                                                    type === 'offre' ? 'Offre' :
+                                                                        type === 'bon_plan' ? 'Bon plan' : 'Flash'}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    ))}
                                                 </View>
                                             </View>
-                                        )}
+
+                                            <View style={styles.fieldContainer}>
+                                                <Text style={styles.fieldLabel}>💰 Valeur</Text>
+                                                <NativeInput
+                                                    placeholder="Ex: -20%, 1+1 gratuit"
+                                                    value={newProduct.promotionValeur || ''}
+                                                    onChangeText={(text) => setNewProduct({ ...newProduct, promotionValeur: text })}
+                                                    style={styles.fieldInput}
+                                                />
+                                            </View>
+
+                                            <View style={styles.fieldContainer}>
+                                                <Text style={styles.fieldLabel}>📝 Description</Text>
+                                                <NativeInput
+                                                    placeholder={t('productManagerMobile.decrivezL')} offre..."
+                                                value={newProduct.promotionDescription || ''}
+                                                onChangeText={(text) => setNewProduct({ ...newProduct, promotionDescription: text })}
+                                                multiline
+                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                    />
+                                            </View>
+
+                                            <View style={styles.fieldContainer}>
+                                                <Text style={styles.fieldLabel}>{t('productManagerMobile.dateDeFin')}</Text>
+                                                <NativeInput
+                                                    placeholder="JJ/MM/AAAA"
+                                                    value={newProduct.promotionDateFin || ''}
+                                                    onChangeText={(text) => setNewProduct({ ...newProduct, promotionDateFin: text })}
+                                                    style={styles.fieldInput}
+                                                />
+                                            </View>
+                                        </View>
+                                    )}
                                 </View>
 
                                 {/* ✅ NOUVEAU: Section Lieu de stockage GPS */}

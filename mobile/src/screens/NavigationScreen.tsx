@@ -23,6 +23,7 @@ import { apiGet, apiPost } from '../services/api';
 import { PassiveActivityTracker } from '../services/PassiveActivityTracker';
 import { socialSharing } from '../services/socialSharing';
 import { modernColors } from '../theme/modernTheme';
+import { offlineService } from '../services/offlineService';
 
 const { width, height } = Dimensions.get('window');
 const MAP_HEIGHT = height * 0.35;
@@ -296,6 +297,68 @@ const NavigationScreen: React.FC = () => {
     const scrollViewRef = useRef<ScrollView>(null);
     const searchRoutesRef = useRef<() => void>(() => { });
 
+    // ── Résilience réseau: état offline + cache local + auto-reload ──
+    const [isNetworkOffline, setIsNetworkOffline] = useState(false);
+    const [usingCachedData, setUsingCachedData] = useState(false);
+    const CACHE_KEYS = {
+        routes: 'nav_routes',
+        pois: 'nav_pois',
+        checkpoints: 'nav_checkpoints',
+        activitySummary: 'nav_activity_summary',
+        activityHistory: 'nav_activity_history',
+        aiInsights: 'nav_ai_insights',
+        savedDestinations: 'nav_saved_destinations',
+    };
+    const CACHE_TTL = 30 * 60 * 1000; // 30 minutes pour données navigation
+    const CACHE_TTL_LONG = 2 * 60 * 60 * 1000; // 2h pour stats d'activité
+
+    // Cache helper: sauvegarder en cache
+    const saveToCache = useCallback(async (key: string, data: any, ttl?: number) => {
+        try { await offlineService.setCache(key, data, ttl || CACHE_TTL); } catch (e) { console.warn('[Navigation] Cache save error:', e); }
+    }, []);
+    // Cache helper: charger depuis cache
+    const loadFromCache = useCallback(async <T,>(key: string): Promise<T | null> => {
+        try { return await offlineService.getCache<T>(key); } catch (e) { console.warn('[Navigation] Cache load error:', e); return null; }
+    }, []);
+
+    // Listener NetInfo: détecter offline/online + auto-reload
+    useEffect(() => {
+        const handleOnline = () => {
+            console.log('[Navigation] 🌐 Réseau rétabli — rechargement automatique');
+            setIsNetworkOffline(false);
+            // Auto-reload des données si on avait des données en cache
+            if (usingCachedData) {
+                if (routes.length > 0 && destinationCoords) {
+                    searchRoutesRef.current();
+                }
+                if (user) {
+                    loadSavedDestinations();
+                    loadActivityStats(activityPeriod);
+                }
+                setUsingCachedData(false);
+            }
+        };
+        const handleOffline = () => {
+            console.log('[Navigation] 📵 Réseau perdu — mode cache activé');
+            setIsNetworkOffline(true);
+        };
+
+        // État initial
+        setIsNetworkOffline(!offlineService.isConnected());
+
+        if (typeof offlineService.on === 'function') {
+            offlineService.on('online', handleOnline);
+            offlineService.on('offline', handleOffline);
+            return () => {
+                if (typeof offlineService.off === 'function') {
+                    offlineService.off('online', handleOnline);
+                    offlineService.off('offline', handleOffline);
+                }
+            };
+        }
+        return undefined;
+    }, [usingCachedData, routes.length, destinationCoords, user, activityPeriod]);
+
     // ── Mémos ──
     const groupedPOIs = useMemo(() => {
         const groups: Record<string, PointOfInterest[]> = {};
@@ -349,7 +412,19 @@ const NavigationScreen: React.FC = () => {
     }, []);
 
     // ── API callbacks ──
-    const loadSavedDestinations = useCallback(async () => { try { const r = await apiGet('/api/navigation/destinations') as any; if (r?.data?.destinations) setSavedDestinations(r.data.destinations); } catch { } }, []);
+    const loadSavedDestinations = useCallback(async () => {
+        try {
+            const r = await apiGet('/api/navigation/destinations') as any;
+            if (r?.data?.destinations) {
+                setSavedDestinations(r.data.destinations);
+                saveToCache(CACHE_KEYS.savedDestinations, r.data.destinations, CACHE_TTL_LONG);
+            }
+        } catch {
+            // Fallback cache offline
+            const cached = await loadFromCache<any[]>(CACHE_KEYS.savedDestinations);
+            if (cached) { setSavedDestinations(cached); setUsingCachedData(true); console.log('[Navigation] 📦 Destinations chargées depuis le cache'); }
+        }
+    }, [saveToCache, loadFromCache]);
     useEffect(() => {
         if (user) {
             loadSavedDestinations();
@@ -434,6 +509,8 @@ const NavigationScreen: React.FC = () => {
                     Alert.alert(t('navigation.noRoute'), t('navigation.noRouteFound')); setLoading(false); return;
                 }
                 setRoutes(valid); setSelectedRoute(valid[0]);
+                // Cache les routes pour usage offline
+                saveToCache(CACHE_KEYS.routes, valid, CACHE_TTL);
                 showToast(`🛣️ ${valid.length} itinéraire${valid.length > 1 ? 's' : ''} trouvé${valid.length > 1 ? 's' : ''} !`);
                 // ✅ Auto-scroll vers les résultats après un court délai pour que le state se mette à jour
                 setTimeout(() => { scrollViewRef.current?.scrollTo({ y: 400, animated: true }); }, 300);
@@ -452,7 +529,21 @@ const NavigationScreen: React.FC = () => {
                     { text: `🚶 ${t('navigation.walking')}`, onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
                     { text: 'OK' }
                 ]);
-            } else { Alert.alert(t('message.error'), errMsg || t('navigation.networkError')); }
+            } else {
+                // Fallback cache: charger les routes en cache si erreur réseau
+                const cachedRoutes = await loadFromCache<RouteOption[]>(CACHE_KEYS.routes);
+                if (cachedRoutes && cachedRoutes.length > 0) {
+                    setRoutes(cachedRoutes); setSelectedRoute(cachedRoutes[0]); setUsingCachedData(true);
+                    showToast('📦 Itinéraires chargés depuis le cache (hors ligne)');
+                    // Charger aussi POI/checkpoints depuis le cache
+                    const cachedPois = await loadFromCache<PointOfInterest[]>(CACHE_KEYS.pois);
+                    if (cachedPois) setPointsOfInterest(cachedPois);
+                    const cachedCps = await loadFromCache<any[]>(CACHE_KEYS.checkpoints);
+                    if (cachedCps) setCheckpoints(cachedCps);
+                } else {
+                    Alert.alert(t('message.error'), errMsg || t('navigation.networkError'));
+                }
+            }
         } finally { setLoading(false); }
     }, [destination, destinationCoords, selectedLocation, getCurrentPosition, geocodeDestination, avoidTolls, avoidHighways, avoidFerries, waypoints, travelMode]);
     useEffect(() => { searchRoutesRef.current = searchRoutes; }, [searchRoutes]);
@@ -2390,7 +2481,7 @@ const NavigationScreen: React.FC = () => {
                 <Text style={{ fontSize: 20 }}>📊</Text>
                 <View style={st.flex1}>
                     <Text style={st.healthPreviewTitle}>{t('navigation.statistiquesCoachIa')}</Text>
-                        <Text style={st.healthPreviewSub}>{t('navigation.vo2maxDefisCo2BadgesConseils')}</Text>
+                    <Text style={st.healthPreviewSub}>{t('navigation.vo2maxDefisCo2BadgesConseils')}</Text>
                 </View>
                 <SafeIcon name="ChevronRight" size={20} color={modernColors.textSecondary} />
             </TouchableOpacity>

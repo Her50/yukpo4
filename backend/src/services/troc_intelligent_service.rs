@@ -12,6 +12,14 @@ use sqlx::{PgPool, Row};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+/// Rayon géographique maximal d'une chaîne de troc (en km).
+/// Au-delà de cette distance, une arête est rejetée pour éviter
+/// les chaînes inter-villes impraticables pour un seul coursier.
+const MAX_CHAIN_RADIUS_KM: f64 = 30.0;
+
+/// Distance maximale entre deux nœuds consécutifs (arête) dans une chaîne.
+const MAX_EDGE_DISTANCE_KM: f64 = 20.0;
+
 pub struct TrocIntelligentService {
     pool: Arc<PgPool>,
 }
@@ -333,6 +341,11 @@ impl TrocIntelligentService {
 
                 let dist = Self::compute_distance_between(sender_livre, matched_receiver_livre);
 
+                // ✅ Contrainte géographique DURE: rejeter les arêtes trop longues
+                if dist > MAX_EDGE_DISTANCE_KM {
+                    continue;
+                }
+
                 edges.push(PotentialEdge {
                     sender_id,
                     receiver_id,
@@ -348,10 +361,23 @@ impl TrocIntelligentService {
         });
 
         info!(
-            "[TROC_INTELLIGENT] {} arêtes potentielles, {} users",
+            "[TROC_INTELLIGENT] {} arêtes potentielles après filtre géo (max {:.0} km/arête), {} users",
             edges.len(),
+            MAX_EDGE_DISTANCE_KM,
             livres_par_user.len()
         );
+
+        // Pré-calculer le GPS de l'initiateur (centroïde initial de la chaîne)
+        let initiateur_gps = Self::parse_gps(&livre_offert.gps);
+
+        // Index GPS par user_id pour les contraintes de rayon
+        let mut user_gps_cache: HashMap<i32, Option<(f64, f64)>> = HashMap::new();
+        for l in &tous_livres {
+            user_gps_cache.entry(l.user_id).or_insert_with(|| Self::parse_gps(&l.gps));
+        }
+        if let Some(gps) = initiateur_gps {
+            user_gps_cache.insert(initiateur_id, Some(gps));
+        }
 
         // ---------------------------------------------------------------
         // Contrainte multi-chaîne: identifier les users déjà "non-source"
@@ -373,6 +399,8 @@ impl TrocIntelligentService {
         //   - Un livre ne peut être transféré qu'une seule fois
         //   - Multi-chaîne: un user déjà non-source ailleurs ne peut pas
         //     être non-source (receiver-only) dans cette chaîne aussi
+        //   - ✅ Contrainte rayon: tout nœud doit être à ≤ MAX_CHAIN_RADIUS_KM
+        //     de l'initiateur (ancrage géographique)
         // ---------------------------------------------------------------
         let mut dag_edges: Vec<&PotentialEdge> = Vec::new();
         let mut directed_pairs: HashSet<(i32, i32)> = HashSet::new(); // (sender, receiver) existants
@@ -410,6 +438,42 @@ impl TrocIntelligentService {
                 continue; // Arête déconnectée de la chaîne
             }
 
+            // ✅ Contrainte rayon géographique: tout nouveau nœud doit être
+            // à ≤ MAX_CHAIN_RADIUS_KM de l'initiateur (ancrage).
+            // Cela garantit que toute la chaîne reste dans une zone livrable par un seul coursier.
+            if let Some(init_gps) = initiateur_gps {
+                for &uid in &[edge.sender_id, edge.receiver_id] {
+                    if !chain_users.contains(&uid) {
+                        if let Some(Some((ulat, ulng))) = user_gps_cache.get(&uid) {
+                            let d = Self::haversine_distance(init_gps.0, init_gps.1, *ulat, *ulng);
+                            if d > MAX_CHAIN_RADIUS_KM {
+                                info!(
+                                    "[TROC_INTELLIGENT] Skip arête {}->{}: user {} à {:.1} km > rayon max {:.0} km",
+                                    edge.sender_id, edge.receiver_id, uid, d, MAX_CHAIN_RADIUS_KM
+                                );
+                                continue; // Note: ce continue sort du for, pas du for externe
+                            }
+                        }
+                    }
+                }
+                // Revérifier: si un des users a été rejeté par le rayon, skip l'arête
+                let radius_ok = [edge.sender_id, edge.receiver_id].iter().all(|&uid| {
+                    if chain_users.contains(&uid) {
+                        return true; // Déjà dans la chaîne
+                    }
+                    match user_gps_cache.get(&uid) {
+                        Some(Some((ulat, ulng))) => {
+                            Self::haversine_distance(init_gps.0, init_gps.1, *ulat, *ulng)
+                                <= MAX_CHAIN_RADIUS_KM
+                        }
+                        _ => true, // Pas de GPS → on accepte (distance par défaut 999 filtrée par MAX_EDGE_DISTANCE_KM)
+                    }
+                });
+                if !radius_ok {
+                    continue;
+                }
+            }
+
             // Contrainte multi-chaîne: si le receiver est déjà non-source dans
             // une autre chaîne active ET n'est pas déjà sender dans cette chaîne,
             // on ne peut pas le rendre non-source ici aussi (règle stricte: max 1).
@@ -430,6 +494,80 @@ impl TrocIntelligentService {
             chain_users.insert(edge.receiver_id);
             senders_in_chain.insert(edge.sender_id);
             dag_edges.push(edge);
+        }
+
+        // ---------------------------------------------------------------
+        // ✅ OPTIMISATION: Élaguer le DAG pour ne garder que le sous-graphe
+        // minimal qui satisfait le besoin de l'initiateur.
+        // On fait un parcours inverse (BFS) depuis les nœuds qui reçoivent
+        // le livre demandé par l'initiateur, et on ne garde que les arêtes
+        // sur les chemins utiles. Cela minimise le nombre de nœuds.
+        // ---------------------------------------------------------------
+        if dag_edges.len() > 2 {
+            // Trouver les nœuds "terminaux utiles": ceux qui envoient un livre
+            // correspondant au besoin de l'initiateur (classe_souhaitee de l'initiateur)
+            let _initiateur_besoins: HashSet<(String, String)> =
+                if let Some(init_livres) = livres_par_user.get(&initiateur_id) {
+                    init_livres
+                        .iter()
+                        .filter(|l| !l.classe_souhaitee.is_empty())
+                        .map(|l| (l.classe_souhaitee.clone(), l.matiere.clone()))
+                        .collect()
+                } else {
+                    HashSet::new()
+                };
+
+            // BFS inverse: partir des arêtes qui envoient à l'initiateur,
+            // puis remonter les dépendances
+            let mut essential_edges: HashSet<usize> = HashSet::new();
+            let mut needed_users: HashSet<i32> = HashSet::new();
+            needed_users.insert(initiateur_id);
+
+            // D'abord marquer les arêtes qui livrent directement à l'initiateur
+            for (i, edge) in dag_edges.iter().enumerate() {
+                if edge.receiver_id == initiateur_id {
+                    essential_edges.insert(i);
+                    needed_users.insert(edge.sender_id);
+                }
+            }
+
+            // Ensuite, remonter: pour chaque sender nécessaire qui reçoit aussi
+            // un livre (il a besoin d'un livre pour participer au troc),
+            // marquer les arêtes qui lui envoient un livre
+            let mut changed = true;
+            while changed {
+                changed = false;
+                for (i, edge) in dag_edges.iter().enumerate() {
+                    if !essential_edges.contains(&i) && needed_users.contains(&edge.receiver_id) {
+                        essential_edges.insert(i);
+                        if needed_users.insert(edge.sender_id) {
+                            changed = true;
+                        }
+                    }
+                }
+            }
+
+            // Si l'élagage réduit le nombre d'arêtes, utiliser le sous-graphe minimal
+            if essential_edges.len() >= 2 && essential_edges.len() < dag_edges.len() {
+                let pruned_count = dag_edges.len() - essential_edges.len();
+                dag_edges = dag_edges
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(i, _)| essential_edges.contains(i))
+                    .map(|(_, e)| e)
+                    .collect();
+                // Recalculer chain_users
+                chain_users.clear();
+                chain_users.insert(initiateur_id);
+                for edge in &dag_edges {
+                    chain_users.insert(edge.sender_id);
+                    chain_users.insert(edge.receiver_id);
+                }
+                info!(
+                    "[TROC_INTELLIGENT] ✅ Élagage: {} arêtes supprimées, {} nœuds restants (minimum)",
+                    pruned_count, chain_users.len()
+                );
+            }
         }
 
         if dag_edges.len() < 2 {

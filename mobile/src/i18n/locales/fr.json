@@ -7708,7 +7708,13 @@
         "emergencyNumbersHint": "💡 Les numéros d'urgence peuvent être ajoutés dans la fiche de l'établissement",
         "computerDescriptionHint": "💡 Décrivez l'état général de l'ordinateur, ses performances et tout défaut éventuel",
         "nomDeLarticleDeco": "Nom de l'Article déco",
-        "titreDeLactivite": "Titre de l'activité"
+        "titreDeLactivite": "Titre de l'activité",
+        "fraisLivraisonXaf": "Frais de livraison (XAF)",
+        "exFraisLivraison": "Ex: 5000 (ou Gratuit)",
+        "exMarquesCosmetique": "Ex: Chanel, Dior, Nivea, L'Oréal...",
+        "conditionAge": "Condition d'âge",
+        "prestationsUrgenceSpecialisees": "Prestations d'urgence spécialisées",
+        "delaisInterventionSpecialises": "Délais d'intervention spécialisés"
     },
     "productMediaCarousel": {
         "aucunMediaDisponible": "Aucun média disponible",
@@ -10214,7 +10220,8 @@
         "enregistrerUneAgence": "Enregistrer une Agence",
         "seats": "places",
         "rows": "rangées",
-        "boarded": "embarqué(s)"
+        "boarded": "embarqué(s)",
+        "ticketsVendus": "Tickets vendus ({{count}})"
     },
     "agenceVoyageListScreen": {},
     "agenceVoyageSearchScreen": {
@@ -10345,7 +10352,8 @@
         "voulezvousConfirmerVotreRetourDeA": "Voulez-vous confirmer votre retour de {{request.return_from}} à {{request.return_to}} ?",
         "busTrouve": "Bus trouvé !",
         "confirme": "Confirmé",
-        "annule": "Annulé"
+        "annule": "Annulé",
+        "at": "à"
     },
     "busTicketBookingScreen": {
         "placesReserveesAvecSuccesVousAvez": "{{selectedSeats.length}} place(s) réservée(s) avec succès. Vous avez 30 minutes pour compléter le paiement.",

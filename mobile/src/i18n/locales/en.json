@@ -7658,7 +7658,13 @@
         "emergencyNumbersHint": "💡 Emergency numbers can be added in the establishment profile",
         "computerDescriptionHint": "💡 Describe the overall condition of the computer, its performance and any defects",
         "nomDeLarticleDeco": "Nom de l'Article déco",
-        "titreDeLactivite": "Titre de l'activité"
+        "titreDeLactivite": "Titre de l'activité",
+        "fraisLivraisonXaf": "Delivery fees (XAF)",
+        "exFraisLivraison": "Ex: 5000 (or Free)",
+        "exMarquesCosmetique": "Ex: Chanel, Dior, Nivea, L'Oréal...",
+        "conditionAge": "Age requirement",
+        "prestationsUrgenceSpecialisees": "Specialized emergency services",
+        "delaisInterventionSpecialises": "Specialized intervention delays"
     },
     "productMediaCarousel": {
         "aucunMediaDisponible": "None media disponible",
@@ -10195,7 +10201,8 @@
         "enregistrerUneAgence": "Save a Agince",
         "seats": "seats",
         "rows": "rows",
-        "boarded": "boarded"
+        "boarded": "boarded",
+        "ticketsVendus": "Sold tickets ({{count}})"
     },
     "agenceVoyageListScreen": {},
     "agenceVoyageSearchScreen": {
@@ -10326,7 +10333,8 @@
         "voulezvousConfirmerVotreRetourDeA": "Vorthez-yor confirmer yorr randorr of {{randhatst.randurn_from}} to {{randhatst.randurn_to}} ?",
         "busTrouve": "Bus foad !",
         "confirme": "Confirmed",
-        "annule": "Annulé"
+        "annule": "Annulé",
+        "at": "at"
     },
     "busTicketBookingScreen": {
         "placesReserveesAvecSuccesVousAvez": "{{sandhectedSeats.thingth}} seat(s) réservée(s) with succès. Vors avez 30 minutes for compléter the paiemint.",
