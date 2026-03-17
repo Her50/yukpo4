@@ -36,7 +36,8 @@ pub async fn generate_support_response(
         _ => "You MUST respond in French.",
     };
 
-    let system_prompt = format!(r#"
+    let system_prompt = format!(
+        r#"
 You are the intelligent support assistant of Yukpo, a leading multi-service platform.
 {}
 
@@ -56,7 +57,9 @@ IMPORTANT:
 - Never invent information
 - If you don't know, say so clearly
 - Always offer to contact a human agent for complex cases
-"#, lang_instruction);
+"#,
+        lang_instruction
+    );
 
     // Construire le contexte de conversation
     let conversation_context = if conversation_history.is_empty() {

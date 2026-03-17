@@ -48,7 +48,9 @@ pub async fn send_notification(
 ) -> Result<(), AppError> {
     ::log::info!(
         "[send_notification] → user={} title={} msg={}",
-        user_id, title, message
+        user_id,
+        title,
+        message
     );
     Ok(())
 }

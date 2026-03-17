@@ -4,7 +4,7 @@ use std::sync::Arc;
 use axum::{
     extract::{Path, Query, State},
     response::IntoResponse,
-    Json, Extension,
+    Extension, Json,
 };
 use log::info;
 use serde::Deserialize;
@@ -68,10 +68,15 @@ pub async fn creer_demande_paiement(
     Json(payload): Json<CreerDemandePaiementRequest>,
 ) -> AppResult<impl IntoResponse> {
     let user_uuid = Uuid::from_u128(user.id as u128);
-    info!("[creer_demande_paiement] User: {}, Montant: {}", user.id, payload.montant_total);
+    info!(
+        "[creer_demande_paiement] User: {}, Montant: {}",
+        user.id, payload.montant_total
+    );
 
     if payload.montant_total <= 0.0 {
-        return Err(AppError::BadRequest("Le montant doit être supérieur à 0".to_string()));
+        return Err(AppError::BadRequest(
+            "Le montant doit être supérieur à 0".to_string(),
+        ));
     }
 
     let demande = DemandePaiement {
@@ -87,9 +92,7 @@ pub async fn creer_demande_paiement(
         expires_at: chrono::Utc::now() + chrono::Duration::hours(24),
     };
 
-    let reponse = state.paiement_service
-        .creer_demande_paiement(demande, &state.pg)
-        .await?;
+    let reponse = state.paiement_service.creer_demande_paiement(demande, &state.pg).await?;
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -103,7 +106,8 @@ pub async fn get_transaction_details(
     Path(transaction_id): Path<Uuid>,
 ) -> AppResult<Json<serde_json::Value>> {
     let user_uuid = Uuid::from_u128(user.id as u128);
-    let transaction = state.paiement_service
+    let transaction = state
+        .paiement_service
         .get_transaction_details(transaction_id, user_uuid, &state.pg)
         .await?;
 
@@ -122,7 +126,8 @@ pub async fn get_user_transactions(
     let limit = params.limit.unwrap_or(20);
     let offset = params.offset.unwrap_or(0);
 
-    let transactions = state.paiement_service
+    let transactions = state
+        .paiement_service
         .get_user_transactions(user_uuid, limit, offset, &state.pg)
         .await?;
 
@@ -148,9 +153,7 @@ pub async fn get_solde_wallet(
         return Err(AppError::Forbidden("Accès non autorisé".to_string()));
     }
 
-    let solde = state.paiement_service
-        .get_solde_wallet(target, &state.pg)
-        .await?;
+    let solde = state.paiement_service.get_solde_wallet(target, &state.pg).await?;
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -165,16 +168,17 @@ pub async fn crediter_wallet(
     Json(payload): Json<PaiementCrediterWalletRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
     if payload.montant <= 0.0 {
-        return Err(AppError::BadRequest("Le montant doit être supérieur à 0".to_string()));
+        return Err(AppError::BadRequest(
+            "Le montant doit être supérieur à 0".to_string(),
+        ));
     }
 
-    state.paiement_service
+    state
+        .paiement_service
         .crediter_wallet(payload.user_id, payload.montant, &payload.motif, &state.pg)
         .await?;
 
-    let nouveau_solde = state.paiement_service
-        .get_solde_wallet(payload.user_id, &state.pg)
-        .await?;
+    let nouveau_solde = state.paiement_service.get_solde_wallet(payload.user_id, &state.pg).await?;
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -190,15 +194,21 @@ pub async fn demander_remboursement(
     Json(payload): Json<DemandeRemboursementRequest>,
 ) -> AppResult<impl IntoResponse> {
     let user_uuid = Uuid::from_u128(user.id as u128);
-    info!("[demander_remboursement] User: {}, Transaction: {}", user.id, payload.transaction_id);
+    info!(
+        "[demander_remboursement] User: {}, Transaction: {}",
+        user.id, payload.transaction_id
+    );
 
-    let transaction = state.paiement_service
+    let transaction = state
+        .paiement_service
         .get_transaction_details(payload.transaction_id, user_uuid, &state.pg)
         .await?;
 
     let delai = chrono::Duration::hours(72);
     if chrono::Utc::now() > transaction.created_at + delai {
-        return Err(AppError::BadRequest("Délai de remboursement expiré (72h)".to_string()));
+        return Err(AppError::BadRequest(
+            "Délai de remboursement expiré (72h)".to_string(),
+        ));
     }
 
     sqlx::query(

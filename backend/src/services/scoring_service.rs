@@ -53,9 +53,8 @@ pub async fn compute_score(
     .await
     .map_err(|e| format!("Erreur agrégation promptitude: {}", e))?;
 
-    let avg_response_time: f64 = promptitude_row
-        .get::<Option<f64>, _>("avg_response_time")
-        .unwrap_or(0.0);
+    let avg_response_time: f64 =
+        promptitude_row.get::<Option<f64>, _>("avg_response_time").unwrap_or(0.0);
     let promptitude_score = if avg_response_time > 0.0 {
         1.0 / avg_response_time
     } else {
@@ -117,10 +116,7 @@ pub async fn get_score(
     match row {
         Some(row) => {
             let data: Value = row.get("data");
-            let score = data
-                .get("score")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0);
+            let score = data.get("score").and_then(|v| v.as_f64()).unwrap_or(0.0);
             let timestamp: chrono::DateTime<Utc> = row.get("timestamp");
 
             Ok(ServiceScore {

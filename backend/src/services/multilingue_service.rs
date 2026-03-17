@@ -10,10 +10,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::{
-    core::types::AppError,
-    state::AppState,
-};
+use crate::{core::types::AppError, state::AppState};
 
 // ========================================
 // STRUCTURES SERVICE
@@ -46,7 +43,7 @@ pub struct MessageLocalise {
 
 pub struct MultilingueService {
     cache_traductions: Arc<RwLock<HashMap<(String, String), String>>>, // (langue, cle) -> traduction
-    cache_messages: Arc<RwLock<HashMap<String, MessageLocalise>>>, // template_hash -> message
+    cache_messages: Arc<RwLock<HashMap<String, MessageLocalise>>>,     // template_hash -> message
     langues_supportees: Vec<String>,
     langue_defaut: String,
 }
@@ -57,22 +54,68 @@ impl MultilingueService {
             cache_traductions: Arc::new(RwLock::new(HashMap::new())),
             cache_messages: Arc::new(RwLock::new(HashMap::new())),
             langues_supportees: vec![
-                "af".to_string(), "am".to_string(), "ar".to_string(), "bas".to_string(),
-                "bbj".to_string(), "bci".to_string(), "bet".to_string(), "bm".to_string(),
-                "bn".to_string(), "bum".to_string(), "de".to_string(), "dje".to_string(),
-                "dua".to_string(), "dyu".to_string(), "ee".to_string(), "en".to_string(),
-                "es".to_string(), "ewo".to_string(), "fan".to_string(), "ff".to_string(),
-                "fr".to_string(), "ha".to_string(), "hi".to_string(), "ht".to_string(),
-                "id".to_string(), "ig".to_string(), "it".to_string(), "ja".to_string(),
-                "kbp".to_string(), "kg".to_string(), "ko".to_string(), "ln".to_string(),
-                "lua".to_string(), "mg".to_string(), "mos".to_string(), "ms".to_string(),
-                "nl".to_string(), "pap".to_string(), "pcm".to_string(), "pl".to_string(),
-                "pt".to_string(), "rn".to_string(), "ru".to_string(), "rw".to_string(),
-                "sar".to_string(), "sg".to_string(), "sn".to_string(), "so".to_string(),
-                "srr".to_string(), "st".to_string(), "sw".to_string(), "th".to_string(),
-                "ti".to_string(), "tl".to_string(), "tr".to_string(), "uk".to_string(),
-                "vi".to_string(), "wo".to_string(), "xh".to_string(), "yo".to_string(),
-                "zh".to_string(), "zu".to_string(),
+                "af".to_string(),
+                "am".to_string(),
+                "ar".to_string(),
+                "bas".to_string(),
+                "bbj".to_string(),
+                "bci".to_string(),
+                "bet".to_string(),
+                "bm".to_string(),
+                "bn".to_string(),
+                "bum".to_string(),
+                "de".to_string(),
+                "dje".to_string(),
+                "dua".to_string(),
+                "dyu".to_string(),
+                "ee".to_string(),
+                "en".to_string(),
+                "es".to_string(),
+                "ewo".to_string(),
+                "fan".to_string(),
+                "ff".to_string(),
+                "fr".to_string(),
+                "ha".to_string(),
+                "hi".to_string(),
+                "ht".to_string(),
+                "id".to_string(),
+                "ig".to_string(),
+                "it".to_string(),
+                "ja".to_string(),
+                "kbp".to_string(),
+                "kg".to_string(),
+                "ko".to_string(),
+                "ln".to_string(),
+                "lua".to_string(),
+                "mg".to_string(),
+                "mos".to_string(),
+                "ms".to_string(),
+                "nl".to_string(),
+                "pap".to_string(),
+                "pcm".to_string(),
+                "pl".to_string(),
+                "pt".to_string(),
+                "rn".to_string(),
+                "ru".to_string(),
+                "rw".to_string(),
+                "sar".to_string(),
+                "sg".to_string(),
+                "sn".to_string(),
+                "so".to_string(),
+                "srr".to_string(),
+                "st".to_string(),
+                "sw".to_string(),
+                "th".to_string(),
+                "ti".to_string(),
+                "tl".to_string(),
+                "tr".to_string(),
+                "uk".to_string(),
+                "vi".to_string(),
+                "wo".to_string(),
+                "xh".to_string(),
+                "yo".to_string(),
+                "zh".to_string(),
+                "zu".to_string(),
             ],
             langue_defaut: "fr".to_string(),
         }
@@ -85,12 +128,11 @@ impl MultilingueService {
         pg: &sqlx::PgPool,
     ) -> Result<String, AppError> {
         // Priorité: langue profil > langue appareil > langue_defaut
-        if let Ok(Some(langue)) = sqlx::query_scalar!(
-            "SELECT langue_preferee FROM users WHERE id = $1",
-            user_id
-        )
-        .fetch_one(pg)
-        .await {
+        if let Ok(Some(langue)) =
+            sqlx::query_scalar!("SELECT langue_preferee FROM users WHERE id = $1", user_id)
+                .fetch_one(pg)
+                .await
+        {
             if let Some(langue) = langue {
                 if self.langues_supportees.contains(&langue) {
                     return Ok(langue);
@@ -188,15 +230,23 @@ impl MultilingueService {
             }
         }
 
-        let message = self.traduire(&template.cle, &template.langue, Some(&template.variables), pg).await?;
-        
+        let message = self
+            .traduire(
+                &template.cle,
+                &template.langue,
+                Some(&template.variables),
+                pg,
+            )
+            .await?;
+
         let sujet = if let Ok(Some(sujet)) = sqlx::query_scalar!(
             "SELECT traduction FROM traductions_systeme WHERE cle_traduction = $1 AND langue = $2",
             format!("{}.sujet", template.cle),
             template.langue
         )
         .fetch_optional(pg)
-        .await {
+        .await
+        {
             sujet
         } else {
             None
@@ -238,7 +288,7 @@ impl MultilingueService {
                 )
                 .execute(pg)
                 .await
-                    .map_err(|e| AppError::Internal(format!("Erreur insertion traduction: {}", e)))?;
+                .map_err(|e| AppError::Internal(format!("Erreur insertion traduction: {}", e)))?;
             }
         }
 
@@ -288,15 +338,21 @@ impl MultilingueService {
             contexte: Some("Notification envoyée aux librairies".to_string()),
         });
 
-        traductions.insert("notification.validation_requise".to_string(), TraductionDefaut {
-            texte: "Validation requise pour commande {{reference_commande}}".to_string(),
-            contexte: Some("Rappel validation".to_string()),
-        });
+        traductions.insert(
+            "notification.validation_requise".to_string(),
+            TraductionDefaut {
+                texte: "Validation requise pour commande {{reference_commande}}".to_string(),
+                contexte: Some("Rappel validation".to_string()),
+            },
+        );
 
-        traductions.insert("notification.commande_annulee".to_string(), TraductionDefaut {
-            texte: "Commande {{reference_commande}} annulée".to_string(),
-            contexte: Some("Annulation commande".to_string()),
-        });
+        traductions.insert(
+            "notification.commande_annulee".to_string(),
+            TraductionDefaut {
+                texte: "Commande {{reference_commande}} annulée".to_string(),
+                contexte: Some("Annulation commande".to_string()),
+            },
+        );
 
         // Messages commande
         traductions.insert("commande.en_preparation".to_string(), TraductionDefaut {
@@ -304,31 +360,47 @@ impl MultilingueService {
             contexte: Some("Statut commande".to_string()),
         });
 
-        traductions.insert("commande.en_livraison".to_string(), TraductionDefaut {
-            texte: "Votre commande {{reference_commande}} est en cours de livraison".to_string(),
-            contexte: Some("Statut commande".to_string()),
-        });
+        traductions.insert(
+            "commande.en_livraison".to_string(),
+            TraductionDefaut {
+                texte: "Votre commande {{reference_commande}} est en cours de livraison"
+                    .to_string(),
+                contexte: Some("Statut commande".to_string()),
+            },
+        );
 
-        traductions.insert("commande.livree".to_string(), TraductionDefaut {
-            texte: "Votre commande {{reference_commande}} a été livrée avec succès".to_string(),
-            contexte: Some("Statut commande".to_string()),
-        });
+        traductions.insert(
+            "commande.livree".to_string(),
+            TraductionDefaut {
+                texte: "Votre commande {{reference_commande}} a été livrée avec succès".to_string(),
+                contexte: Some("Statut commande".to_string()),
+            },
+        );
 
         // QR Codes
-        traductions.insert("qr_code.genere".to_string(), TraductionDefaut {
-            texte: "QR code généré pour le paquet {{reference_paquet}}".to_string(),
-            contexte: Some("Génération QR code".to_string()),
-        });
+        traductions.insert(
+            "qr_code.genere".to_string(),
+            TraductionDefaut {
+                texte: "QR code généré pour le paquet {{reference_paquet}}".to_string(),
+                contexte: Some("Génération QR code".to_string()),
+            },
+        );
 
-        traductions.insert("qr_code.scanne".to_string(), TraductionDefaut {
-            texte: "QR code scanné par le coursier".to_string(),
-            contexte: Some("Scan QR code".to_string()),
-        });
+        traductions.insert(
+            "qr_code.scanne".to_string(),
+            TraductionDefaut {
+                texte: "QR code scanné par le coursier".to_string(),
+                contexte: Some("Scan QR code".to_string()),
+            },
+        );
 
-        traductions.insert("qr_code.valide".to_string(), TraductionDefaut {
-            texte: "QR code validé avec succès".to_string(),
-            contexte: Some("Validation QR code".to_string()),
-        });
+        traductions.insert(
+            "qr_code.valide".to_string(),
+            TraductionDefaut {
+                texte: "QR code validé avec succès".to_string(),
+                contexte: Some("Validation QR code".to_string()),
+            },
+        );
 
         // Paiements
         traductions.insert("paiement.succes".to_string(), TraductionDefaut {
@@ -336,37 +408,58 @@ impl MultilingueService {
             contexte: Some("Confirmation paiement".to_string()),
         });
 
-        traductions.insert("paiement.echec".to_string(), TraductionDefaut {
-            texte: "Échec du paiement pour votre commande {{reference_commande}}".to_string(),
-            contexte: Some("Échec paiement".to_string()),
-        });
+        traductions.insert(
+            "paiement.echec".to_string(),
+            TraductionDefaut {
+                texte: "Échec du paiement pour votre commande {{reference_commande}}".to_string(),
+                contexte: Some("Échec paiement".to_string()),
+            },
+        );
 
         // Validation librairie
-        traductions.insert("validation.debut".to_string(), TraductionDefaut {
-            texte: "Validation de la commande {{reference_commande}} commencée".to_string(),
-            contexte: Some("Début validation".to_string()),
-        });
+        traductions.insert(
+            "validation.debut".to_string(),
+            TraductionDefaut {
+                texte: "Validation de la commande {{reference_commande}} commencée".to_string(),
+                contexte: Some("Début validation".to_string()),
+            },
+        );
 
-        traductions.insert("validation.complete".to_string(), TraductionDefaut {
-            texte: "Validation complète terminée pour commande {{reference_commande}}".to_string(),
-            contexte: Some("Validation complète".to_string()),
-        });
+        traductions.insert(
+            "validation.complete".to_string(),
+            TraductionDefaut {
+                texte: "Validation complète terminée pour commande {{reference_commande}}"
+                    .to_string(),
+                contexte: Some("Validation complète".to_string()),
+            },
+        );
 
-        traductions.insert("validation.partielle".to_string(), TraductionDefaut {
-            texte: "Validation partielle: {{nb_livres_valides}}/{{nb_livres_total}} livres validés".to_string(),
-            contexte: Some("Validation partielle".to_string()),
-        });
+        traductions.insert(
+            "validation.partielle".to_string(),
+            TraductionDefaut {
+                texte:
+                    "Validation partielle: {{nb_livres_valides}}/{{nb_livres_total}} livres validés"
+                        .to_string(),
+                contexte: Some("Validation partielle".to_string()),
+            },
+        );
 
         // Livraison
-        traductions.insert("livraison.en_cours".to_string(), TraductionDefaut {
-            texte: "Livraison en cours pour votre commande {{reference_commande}}".to_string(),
-            contexte: Some("Livraison".to_string()),
-        });
+        traductions.insert(
+            "livraison.en_cours".to_string(),
+            TraductionDefaut {
+                texte: "Livraison en cours pour votre commande {{reference_commande}}".to_string(),
+                contexte: Some("Livraison".to_string()),
+            },
+        );
 
-        traductions.insert("livraison.coursier_en_route".to_string(), TraductionDefaut {
-            texte: "Le coursier est en route avec vos livres".to_string(),
-            contexte: Some("Statut coursier".to_string()),
-        });
+        traductions.insert(
+            "livraison.coursier_en_route".to_string(),
+            TraductionDefaut {
+                texte: "Le coursier est en route avec vos livres".to_string(),
+                contexte: Some("Statut coursier".to_string()),
+            },
+        );
 
         // Erreurs
         traductions.insert("erreur.budget_insuffisant".to_string(), TraductionDefaut {
@@ -374,15 +467,21 @@ impl MultilingueService {
             contexte: Some("Erreur budget".to_string()),
         });
 
-        traductions.insert("erreur.livres_indisponibles".to_string(), TraductionDefaut {
-            texte: "Certains livres ne sont plus disponibles".to_string(),
-            contexte: Some("Erreur disponibilité".to_string()),
-        });
+        traductions.insert(
+            "erreur.livres_indisponibles".to_string(),
+            TraductionDefaut {
+                texte: "Certains livres ne sont plus disponibles".to_string(),
+                contexte: Some("Erreur disponibilité".to_string()),
+            },
+        );
 
-        traductions.insert("erreur.qr_expire".to_string(), TraductionDefaut {
-            texte: "QR code expiré. Veuillez en générer un nouveau".to_string(),
-            contexte: Some("Erreur QR code".to_string()),
-        });
+        traductions.insert(
+            "erreur.qr_expire".to_string(),
+            TraductionDefaut {
+                texte: "QR code expiré. Veuillez en générer un nouveau".to_string(),
+                contexte: Some("Erreur QR code".to_string()),
+            },
+        );
 
         traductions
     }
@@ -395,10 +494,15 @@ impl MultilingueService {
             contexte: Some("Notification sent to bookstores".to_string()),
         });
 
-        traductions.insert("commande.en_preparation".to_string(), TraductionDefaut {
-            texte: "Your order {{reference_commande}} is being prepared by our partner bookstores".to_string(),
-            contexte: Some("Order status".to_string()),
-        });
+        traductions.insert(
+            "commande.en_preparation".to_string(),
+            TraductionDefaut {
+                texte:
+                    "Your order {{reference_commande}} is being prepared by our partner bookstores"
+                        .to_string(),
+                contexte: Some("Order status".to_string()),
+            },
+        );
 
         traductions.insert("paiement.succes".to_string(), TraductionDefaut {
             texte: "Payment of {{montant}} {{devise}} successful for your order {{reference_commande}}".to_string(),
@@ -552,7 +656,8 @@ pub async fn envoyer_notification_multilingue(
     donnees_supplementaires: Option<serde_json::Value>,
 ) -> Result<(), AppError> {
     // Détecter langue utilisateur
-    let langue = state.multilingue_service
+    let langue = state
+        .multilingue_service
         .detecter_langue_utilisateur(user_id, &state.pg)
         .await?;
 
@@ -564,9 +669,7 @@ pub async fn envoyer_notification_multilingue(
     };
 
     // Générer message localisé
-    let message_localise = state.multilingue_service
-        .generer_message(&template, &state.pg)
-        .await?;
+    let message_localise = state.multilingue_service.generer_message(&template, &state.pg).await?;
 
     // Envoyer notification push via le service de push
     let titre = message_localise.sujet.unwrap_or_else(|| "YukPo".to_string());
@@ -576,12 +679,16 @@ pub async fn envoyer_notification_multilingue(
         &titre,
         &message_localise.message,
         donnees_supplementaires,
-    ).await {
+    )
+    .await
+    {
         log::warn!("[envoyer_notification_multilingue] Erreur push: {}", e);
     }
 
-    info!("[envoyer_notification_multilingue] Notification {} envoyée à {} en {}", 
-          cle_template, user_id, langue);
+    info!(
+        "[envoyer_notification_multilingue] Notification {} envoyée à {} en {}",
+        cle_template, user_id, langue
+    );
 
     Ok(())
 }
@@ -590,9 +697,7 @@ pub async fn envoyer_notification_multilingue(
 // MIDDLEWARE DÉTECTION LANGUE
 // ========================================
 
-pub async fn middleware_detection_langue(
-    headers: &axum::http::HeaderMap,
-) -> String {
+pub async fn middleware_detection_langue(headers: &axum::http::HeaderMap) -> String {
     // Extraire depuis Accept-Language header
     if let Some(accept_lang) = headers.get("accept-language") {
         if let Ok(lang_str) = accept_lang.to_str() {
@@ -601,9 +706,13 @@ pub async fn middleware_detection_langue(
             for langue in langues {
                 let code = langue.split(';').next().unwrap_or("").trim();
                 let code_principal = code.split('-').next().unwrap_or(code);
-                
+
                 // Vérifier si la langue est supportée
-                if ["fr", "en", "es", "de", "pt", "it", "ar", "zh", "ja", "ko", "ru", "hi"].contains(&code_principal) {
+                if [
+                    "fr", "en", "es", "de", "pt", "it", "ar", "zh", "ja", "ko", "ru", "hi",
+                ]
+                .contains(&code_principal)
+                {
                     return code_principal.to_string();
                 }
             }

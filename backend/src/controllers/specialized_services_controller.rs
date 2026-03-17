@@ -186,9 +186,7 @@ pub async fn list_taxis(
 }
 
 /// ✅ Liste des taxis (version publique - pas d'authentification requise)
-pub async fn list_taxis_public(
-    State(state): State<Arc<AppState>>,
-) -> AppResult<impl IntoResponse> {
+pub async fn list_taxis_public(State(state): State<Arc<AppState>>) -> AppResult<impl IntoResponse> {
     info!("[list_taxis_public] Called");
 
     use sqlx::Row;
@@ -1663,7 +1661,8 @@ pub async fn search_properties(
         rep_builder.push(")");
     }
     if let Some(prix_max) = query.prix_max {
-        let prix_max_dec = rust_decimal::Decimal::from_f64_retain(prix_max).unwrap_or(rust_decimal::Decimal::ZERO);
+        let prix_max_dec =
+            rust_decimal::Decimal::from_f64_retain(prix_max).unwrap_or(rust_decimal::Decimal::ZERO);
         rep_builder.push(" AND COALESCE(rep.prix_location, rep.prix_vente, 999999999) <= ");
         rep_builder.push_bind(prix_max_dec);
     }
@@ -1697,7 +1696,8 @@ pub async fn search_properties(
             continue;
         }
 
-        let photos_val: Option<Vec<String>> = row.try_get::<Option<Vec<String>>, _>("photos").ok().flatten();
+        let photos_val: Option<Vec<String>> =
+            row.try_get::<Option<Vec<String>>, _>("photos").ok().flatten();
 
         properties_json.push(json!({
             "id": rep_id,
@@ -3763,8 +3763,15 @@ pub async fn search_taxis(
 
     let mut taxis_json = Vec::new();
     for row in &taxis {
-        let zone_intervention: Option<Vec<String>> = row.try_get::<Option<Vec<String>>, _>("zone_intervention").ok().flatten();
-        let zone = zone_intervention.as_ref().and_then(|z| if z.is_empty() { None } else { Some(z.join(", ")) });
+        let zone_intervention: Option<Vec<String>> =
+            row.try_get::<Option<Vec<String>>, _>("zone_intervention").ok().flatten();
+        let zone = zone_intervention.as_ref().and_then(|z| {
+            if z.is_empty() {
+                None
+            } else {
+                Some(z.join(", "))
+            }
+        });
         let ville: Option<String> = row.try_get::<Option<String>, _>("ville").ok().flatten();
         taxis_json.push(json!({
             "id": row.try_get::<i32, _>("taxi_id").ok(),
@@ -5883,16 +5890,14 @@ pub async fn book_covoiturage(
 
     let seats = payload.number_of_places.or(payload.seats).unwrap_or(1);
 
-    let prestataire_id: i32 = sqlx::query_scalar(
-        "SELECT user_id FROM services WHERE id = $1",
-    )
-    .bind(covoiturage_id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[book_covoiturage] Erreur récupération prestataire: {}", e);
-        AppError::Internal("Erreur récupération prestataire".to_string())
-    })?;
+    let prestataire_id: i32 = sqlx::query_scalar("SELECT user_id FROM services WHERE id = $1")
+        .bind(covoiturage_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[book_covoiturage] Erreur récupération prestataire: {}", e);
+            AppError::Internal("Erreur récupération prestataire".to_string())
+        })?;
 
     let updated = sqlx::query_scalar::<_, i64>(
         r#"
@@ -5981,16 +5986,14 @@ pub async fn confirm_covoiturage_departure(
     );
 
     // Vérifier que l'utilisateur est le conducteur du trajet
-    let service_owner = sqlx::query_scalar::<_, i32>(
-        "SELECT user_id FROM services WHERE id = $1",
-    )
-    .bind(covoiturage_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[confirm_departure] Erreur: {}", e);
-        AppError::Internal("Erreur vérification conducteur".to_string())
-    })?;
+    let service_owner = sqlx::query_scalar::<_, i32>("SELECT user_id FROM services WHERE id = $1")
+        .bind(covoiturage_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[confirm_departure] Erreur: {}", e);
+            AppError::Internal("Erreur vérification conducteur".to_string())
+        })?;
 
     match service_owner {
         Some(owner_id) if owner_id == user_id => {}
@@ -6162,7 +6165,9 @@ pub async fn submit_covoiturage_review(
     );
 
     if payload.note < 1 || payload.note > 5 {
-        return Err(AppError::BadRequest("La note doit être entre 1 et 5".to_string()));
+        return Err(AppError::BadRequest(
+            "La note doit être entre 1 et 5".to_string(),
+        ));
     }
 
     // Vérifier que l'utilisateur a bien une réservation sur ce trajet
@@ -6196,18 +6201,16 @@ pub async fn submit_covoiturage_review(
 
     let review_id: i32 = if let Some(existing_id) = existing_review {
         // Mettre à jour l'avis existant
-        sqlx::query(
-            "UPDATE product_comments SET rating = $1, content = $2 WHERE id = $3",
-        )
-        .bind(payload.note)
-        .bind(payload.comment.as_deref().unwrap_or(""))
-        .bind(existing_id)
-        .execute(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[submit_covoiturage_review] Erreur update: {}", e);
-            AppError::Internal("Erreur mise à jour avis".to_string())
-        })?;
+        sqlx::query("UPDATE product_comments SET rating = $1, content = $2 WHERE id = $3")
+            .bind(payload.note)
+            .bind(payload.comment.as_deref().unwrap_or(""))
+            .bind(existing_id)
+            .execute(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[submit_covoiturage_review] Erreur update: {}", e);
+                AppError::Internal("Erreur mise à jour avis".to_string())
+            })?;
         existing_id
     } else {
         // Insérer un nouvel avis
@@ -6410,12 +6413,10 @@ pub async fn update_taxi_availability(
     .bind(payload.is_available)
     .bind(taxi_id)
     .bind(user_id)
-    .bind(
-        match (payload.current_lat, payload.current_lng) {
-            (Some(lat), Some(lng)) => Some(format!("{},{}", lat, lng)),
-            _ => None,
-        },
-    )
+    .bind(match (payload.current_lat, payload.current_lng) {
+        (Some(lat), Some(lng)) => Some(format!("{},{}", lat, lng)),
+        _ => None,
+    })
     .execute(&state.pg)
     .await
     .map_err(|e| {
@@ -6424,7 +6425,9 @@ pub async fn update_taxi_availability(
     })?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound("Taxi non trouvé ou non autorisé".to_string()));
+        return Err(AppError::NotFound(
+            "Taxi non trouvé ou non autorisé".to_string(),
+        ));
     }
 
     Ok((

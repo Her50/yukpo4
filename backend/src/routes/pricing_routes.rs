@@ -57,7 +57,9 @@ const MAX_GEOCODE_ALERTS: f64 = 5.0;
 /// Arrondir au multiple de 5 supérieur
 fn round_up_to_5(value: f64) -> i64 {
     let v = value.ceil() as i64;
-    if v <= 0 { return 0; }
+    if v <= 0 {
+        return 0;
+    }
     ((v + 4) / 5) * 5
 }
 
@@ -73,7 +75,8 @@ fn compute_price(real_cost_xaf: f64) -> i64 {
 
 /// Calculer le coût POI réel basé sur le nombre de types Google dans la catégorie
 fn poi_cost(google_types_count: usize) -> f64 {
-    TYPICAL_SEARCH_POINTS * google_types_count as f64 * GOOGLE_NEARBY_COST_XAF + CLOUD_RUN_OVERHEAD_XAF
+    TYPICAL_SEARCH_POINTS * google_types_count as f64 * GOOGLE_NEARBY_COST_XAF
+        + CLOUD_RUN_OVERHEAD_XAF
 }
 
 /// GET /api/pricing/navigation
@@ -81,20 +84,20 @@ fn poi_cost(google_types_count: usize) -> f64 {
 pub async fn get_navigation_pricing(_state: State<Arc<AppState>>) -> Json<serde_json::Value> {
     // ── Coûts réels par catégorie POI ──
     // health: pharmacy + hospital = 2 types
-    let cost_health = poi_cost(2);       // 4×2×21 + 0.5 = 168.5 XAF
-    let cost_food = poi_cost(3);         // 4×3×21 + 0.5 = 252.5 XAF
-    let cost_fuel = poi_cost(1);         // 4×1×21 + 0.5 = 84.5 XAF
-    let cost_finance = poi_cost(1);      // 4×1×21 + 0.5 = 84.5 XAF
-    let cost_auto = poi_cost(3);         // 4×3×21 + 0.5 = 252.5 XAF
-    let cost_religion = poi_cost(2);     // 4×2×21 + 0.5 = 168.5 XAF
-    let cost_accommodation = poi_cost(1);// 4×1×21 + 0.5 = 84.5 XAF
-    let cost_security = poi_cost(1);     // 4×1×21 + 0.5 = 84.5 XAF — mais service public
+    let cost_health = poi_cost(2); // 4×2×21 + 0.5 = 168.5 XAF
+    let cost_food = poi_cost(3); // 4×3×21 + 0.5 = 252.5 XAF
+    let cost_fuel = poi_cost(1); // 4×1×21 + 0.5 = 84.5 XAF
+    let cost_finance = poi_cost(1); // 4×1×21 + 0.5 = 84.5 XAF
+    let cost_auto = poi_cost(3); // 4×3×21 + 0.5 = 252.5 XAF
+    let cost_religion = poi_cost(2); // 4×2×21 + 0.5 = 168.5 XAF
+    let cost_accommodation = poi_cost(1); // 4×1×21 + 0.5 = 84.5 XAF
+    let cost_security = poi_cost(1); // 4×1×21 + 0.5 = 84.5 XAF — mais service public
 
     // ── Coûts réels micro-features ──
     let cost_alerts = MAX_GEOCODE_ALERTS * GOOGLE_GEOCODE_COST_XAF + CLOUD_RUN_OVERHEAD_XAF; // 5×3.3+0.5 = 17 XAF
-    let cost_stats = CLOUD_RUN_OVERHEAD_XAF;           // ~0.5 XAF (SQL only)
+    let cost_stats = CLOUD_RUN_OVERHEAD_XAF; // ~0.5 XAF (SQL only)
     let cost_ai_coach = LLM_CALL_COST_XAF + CLOUD_RUN_OVERHEAD_XAF; // 2.9+0.5 = 3.4 XAF
-    // route_search, checkpoint_report, co2, gamification: coût ~0
+                                                                    // route_search, checkpoint_report, co2, gamification: coût ~0
 
     // ── Prix avec marge 100% ──
     let poi_prices = serde_json::json!({
@@ -187,6 +190,5 @@ pub async fn get_navigation_pricing(_state: State<Arc<AppState>>) -> Json<serde_
 }
 
 pub fn pricing_routes(_state: Arc<AppState>) -> Router<Arc<AppState>> {
-    Router::new()
-        .route("/api/pricing/navigation", get(get_navigation_pricing))
+    Router::new().route("/api/pricing/navigation", get(get_navigation_pricing))
 }

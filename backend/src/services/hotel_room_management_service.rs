@@ -1061,18 +1061,27 @@ impl HotelRoomManagementService {
             AppError::Internal("Erreur récupération date".to_string())
         })?;
 
-        let _reservation_created_at: chrono::DateTime<chrono::Utc> = row.try_get("reservation_created_at").map_err(|e| {
-            log::error!("[cancel_hotel_reservation] Erreur reservation_created_at: {}", e);
-            AppError::Internal("Erreur récupération date création".to_string())
-        })?;
+        let _reservation_created_at: chrono::DateTime<chrono::Utc> =
+            row.try_get("reservation_created_at").map_err(|e| {
+                log::error!(
+                    "[cancel_hotel_reservation] Erreur reservation_created_at: {}",
+                    e
+                );
+                AppError::Internal("Erreur récupération date création".to_string())
+            })?;
 
         let _total: Decimal = row.try_get("montant_total").unwrap_or(Decimal::ZERO);
         let avance: Decimal = row.try_get("montant_avance").unwrap_or(Decimal::ZERO);
-        let current_status: String = row.try_get("status").unwrap_or_else(|_| "pending".to_string());
-        let _payment_status: String = row.try_get("payment_status").unwrap_or_else(|_| "pending".to_string());
+        let current_status: String =
+            row.try_get("status").unwrap_or_else(|_| "pending".to_string());
+        let _payment_status: String =
+            row.try_get("payment_status").unwrap_or_else(|_| "pending".to_string());
 
         // Vérifier que la réservation peut être annulée
-        if matches!(current_status.as_str(), "cancelled" | "checked_out" | "completed") {
+        if matches!(
+            current_status.as_str(),
+            "cancelled" | "checked_out" | "completed"
+        ) {
             return Err(AppError::BadRequest(format!(
                 "Impossible d'annuler une réservation avec le statut: {}",
                 current_status
@@ -1097,7 +1106,8 @@ impl HotelRoomManagementService {
             (1.0, "Annulation après arrivée: Pénalité de 100%")
         };
 
-        let penalty_amount = avance * Decimal::from_f64_retain(penalty_rate).unwrap_or(Decimal::ZERO);
+        let penalty_amount =
+            avance * Decimal::from_f64_retain(penalty_rate).unwrap_or(Decimal::ZERO);
         let refund_amount_calculated = avance.checked_sub(penalty_amount).unwrap_or(Decimal::ZERO);
 
         // Utiliser le montant de remboursement fourni ou celui calculé
@@ -1146,21 +1156,21 @@ impl HotelRoomManagementService {
         // Libérer l'unité si elle était assignée
         let unit_id: Option<i32> = row.try_get("unit_id").ok();
         if let Some(uid) = unit_id {
-            sqlx::query(
-                "UPDATE hotel_meuble_units SET is_available = TRUE WHERE id = $1",
-            )
-            .bind(uid)
-            .execute(pool)
-            .await
-            .map_err(|e| {
-                log::error!("[cancel_hotel_reservation] Erreur libération unité: {}", e);
-                AppError::Internal("Erreur libération unité".to_string())
-            })?;
+            sqlx::query("UPDATE hotel_meuble_units SET is_available = TRUE WHERE id = $1")
+                .bind(uid)
+                .execute(pool)
+                .await
+                .map_err(|e| {
+                    log::error!("[cancel_hotel_reservation] Erreur libération unité: {}", e);
+                    AppError::Internal("Erreur libération unité".to_string())
+                })?;
         }
 
         log::info!(
             "[cancel_hotel_reservation] Réservation {} annulée - Pénalité: {}%, Remboursement: {}",
-            reservation_id, penalty_rate * 100.0, final_refund_amount
+            reservation_id,
+            penalty_rate * 100.0,
+            final_refund_amount
         );
 
         Ok(json!({
@@ -1203,7 +1213,10 @@ impl HotelRoomManagementService {
             .fetch_one(pool)
             .await
             .map_err(|e| {
-                log::error!("[get_cancellation_history] Erreur vérification propriétés: {}", e);
+                log::error!(
+                    "[get_cancellation_history] Erreur vérification propriétés: {}",
+                    e
+                );
                 AppError::Internal("Erreur vérification propriétés".to_string())
             })?;
 
@@ -1248,7 +1261,10 @@ impl HotelRoomManagementService {
             .fetch_all(pool)
             .await
             .map_err(|e| {
-                log::error!("[get_cancellation_history] Erreur récupération historique: {}", e);
+                log::error!(
+                    "[get_cancellation_history] Erreur récupération historique: {}",
+                    e
+                );
                 AppError::Internal("Erreur récupération historique".to_string())
             })?;
 

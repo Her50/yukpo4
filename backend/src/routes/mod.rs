@@ -43,6 +43,7 @@ pub mod ia_routes;
 pub mod image_search_routes;
 pub mod kyc_admin_routes;
 pub mod kyc_webhook_routes;
+pub mod librairie_network_routes; // ✅ NOUVEAU 2026-03-16: Routes réseau de librairies
 pub mod live_ai_routes;
 pub mod live_routes;
 pub mod media_analytics_routes; // ✅ NOUVEAU: Routes pour analytics média (vidéo, etc.)
@@ -57,9 +58,9 @@ pub mod notification_routes; // ✅ Routes de notifications
 pub mod offres_emploi_routes;
 pub mod order_routes;
 pub mod orientation_scolaire_routes;
+pub mod paiement_agrege_routes;
 pub mod partner_validation_routes; // ✅ NOUVEAU: Routes pour validation des partenaires
 pub mod payment_routes;
-pub mod pricing_routes; // ✅ NOUVEAU: Routes tarification dynamique navigation (multi-devises)
 pub mod phone_model_routes; // ✅ Routes pour modèles de smartphones
 pub mod phone_verification_routes; // ✅ NOUVEAU 2026-02-25: Routes pour vérification OTP téléphone
 pub mod places_routes; // ✅ NOUVEAU: Routes pour autocomplete de lieux (Google Maps API)
@@ -67,6 +68,7 @@ pub mod platform_settings_routes; // ✅ NOUVEAU 2026-03-11: Routes admin pour p
 pub mod plugin_routes;
 pub mod popular_products_routes;
 pub mod prestataire_routes;
+pub mod pricing_routes; // ✅ NOUVEAU: Routes tarification dynamique navigation (multi-devises)
 pub mod product_comments_routes; // ✅ NOUVEAU: Routes pour commentaires de produits
 pub mod product_lifecycle_routes; // ✅ Routes de gestion du cycle de vie des produits
 pub mod product_reactions_routes;
@@ -90,11 +92,11 @@ pub mod shopping_routes;
 pub mod signalement_routes; // ✅ NOUVEAU: Routes pour signalements
 pub mod social_features_routes;
 pub mod specialized_services_routes;
-pub mod taxi_realtime_metrics_routes;
 pub mod stock_media_routes;
 pub mod studio_routes; // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
 pub mod supermarket_routes; // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
 pub mod system_health_routes;
+pub mod taxi_realtime_metrics_routes;
 pub mod test_routes; // ✅ Routes pour page de téléchargement APK test
 pub mod token_pack_routes;
 pub mod token_stats_routes; // ✅ NOUVEAU: Routes pour statistiques de consommation de tokens
@@ -108,9 +110,7 @@ pub mod video_routes;
 pub mod weather_routes;
 pub mod webhook_routes;
 pub mod webrtc_routes; // ✅ Routes WebRTC pour appels // ✅ NOUVEAU: Routes pour feature flags
-pub mod whatsapp_routes; // ✅ NOUVEAU 2026-03-06: Routes WhatsApp Business API
-pub mod librairie_network_routes; // ✅ NOUVEAU 2026-03-16: Routes réseau de librairies
-pub mod paiement_agrege_routes; // ✅ NOUVEAU 2026-03-16: Routes paiements agrégés
+pub mod whatsapp_routes; // ✅ NOUVEAU 2026-03-06: Routes WhatsApp Business API // ✅ NOUVEAU 2026-03-16: Routes paiements agrégés
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

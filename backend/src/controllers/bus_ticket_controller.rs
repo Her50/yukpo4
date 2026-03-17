@@ -894,16 +894,10 @@ pub async fn cancel_reservation(
             AppError::Internal(format!("Erreur annulation: {}", e))
         })?;
 
-    let success = result
-        .get("success")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let success = result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
 
     if !success {
-        let error_msg = result
-            .get("error")
-            .and_then(|v| v.as_str())
-            .unwrap_or("Erreur inconnue");
+        let error_msg = result.get("error").and_then(|v| v.as_str()).unwrap_or("Erreur inconnue");
         return Err(AppError::BadRequest(error_msg.to_string()));
     }
 
@@ -920,21 +914,12 @@ pub async fn cancel_reservation(
     let response = CancelReservationResponse {
         success: true,
         reservation_id: reservation_id.clone(),
-        refund_percentage: result
-            .get("refund_percentage")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0),
-        refund_amount: result
-            .get("refund_amount")
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0) as i32,
+        refund_percentage: result.get("refund_percentage").and_then(|v| v.as_f64()).unwrap_or(0.0),
+        refund_amount: result.get("refund_amount").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
         new_balance,
     };
 
-    let message = result
-        .get("message")
-        .and_then(|v| v.as_str())
-        .unwrap_or("Réservation annulée");
+    let message = result.get("message").and_then(|v| v.as_str()).unwrap_or("Réservation annulée");
 
     Ok((
         StatusCode::OK,

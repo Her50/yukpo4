@@ -197,18 +197,10 @@ impl StripePaymentService {
             return Err(format!("Stripe error: {}", error_msg));
         }
 
-        let pi_id = body["id"]
-            .as_str()
-            .ok_or("Missing payment_intent id")?
-            .to_string();
-        let client_secret = body["client_secret"]
-            .as_str()
-            .ok_or("Missing client_secret")?
-            .to_string();
-        let pi_status = body["status"]
-            .as_str()
-            .unwrap_or("requires_payment_method")
-            .to_string();
+        let pi_id = body["id"].as_str().ok_or("Missing payment_intent id")?.to_string();
+        let client_secret =
+            body["client_secret"].as_str().ok_or("Missing client_secret")?.to_string();
+        let pi_status = body["status"].as_str().unwrap_or("requires_payment_method").to_string();
 
         log::info!(
             "[Stripe] ✅ PaymentIntent créé: {} - {} {} - status={}",
@@ -241,10 +233,7 @@ impl StripePaymentService {
             .await
             .map_err(|e| format!("Erreur réseau Stripe: {}", e))?;
 
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Erreur parsing: {}", e))?;
+        let body: Value = response.json().await.map_err(|e| format!("Erreur parsing: {}", e))?;
 
         Ok(json!({
             "id": body["id"],
@@ -283,10 +272,8 @@ impl StripePaymentService {
             .map_err(|e| format!("Erreur réseau Stripe refund: {}", e))?;
 
         let status = response.status();
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Erreur parsing refund: {}", e))?;
+        let body: Value =
+            response.json().await.map_err(|e| format!("Erreur parsing refund: {}", e))?;
 
         if !status.is_success() {
             let error_msg = body
@@ -354,8 +341,7 @@ impl StripePaymentService {
         }
 
         // Parser l'événement
-        serde_json::from_str(payload)
-            .map_err(|e| format!("Erreur parsing webhook event: {}", e))
+        serde_json::from_str(payload).map_err(|e| format!("Erreur parsing webhook event: {}", e))
     }
 
     /// ✅ Crée un Stripe Connect account pour un partenaire (pour les payouts)
@@ -380,10 +366,7 @@ impl StripePaymentService {
             .await
             .map_err(|e| format!("Erreur Stripe Connect: {}", e))?;
 
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Erreur parsing: {}", e))?;
+        let body: Value = response.json().await.map_err(|e| format!("Erreur parsing: {}", e))?;
 
         Ok(body)
     }
@@ -412,10 +395,8 @@ impl StripePaymentService {
             .await
             .map_err(|e| format!("Erreur Stripe Transfer: {}", e))?;
 
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Erreur parsing transfer: {}", e))?;
+        let body: Value =
+            response.json().await.map_err(|e| format!("Erreur parsing transfer: {}", e))?;
 
         log::info!(
             "[Stripe] ✅ Transfer {} cents {} vers {}",

@@ -4,11 +4,7 @@
 use crate::controllers::hotel_financial_controller;
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
-use axum::{
-    middleware,
-    routing::get,
-    Router,
-};
+use axum::{middleware, routing::get, Router};
 use std::sync::Arc;
 
 pub fn hotel_financial_routes(_state: Arc<AppState>) -> Router<Arc<AppState>> {

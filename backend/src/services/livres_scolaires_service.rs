@@ -232,23 +232,57 @@ impl LivresScolairesService {
                         description_etat: row.get::<Option<String>, _>("description_etat"),
                         images_urls,
                         video_url: row.get::<Option<String>, _>("video_url"),
-                        image_recto: row.try_get::<Option<String>, _>("image_recto").unwrap_or(None),
-                        image_verso: row.try_get::<Option<String>, _>("image_verso").unwrap_or(None),
-                        mode_listing: row.try_get::<Option<String>, _>("mode_listing").unwrap_or(None),
-                        prix_detecte: row.try_get::<Option<rust_decimal::Decimal>, _>("prix_detecte").unwrap_or(None),
-                        devise_detectee: row.try_get::<Option<String>, _>("devise_detectee").unwrap_or(None),
-                        valeur_calculee: row.try_get::<Option<rust_decimal::Decimal>, _>("valeur_calculee").unwrap_or(None),
-                        ratio_etat: row.try_get::<Option<rust_decimal::Decimal>, _>("ratio_etat").unwrap_or(None),
-                        etat_classification: row.try_get::<Option<String>, _>("etat_classification").unwrap_or(None),
-                        programme_scolaire_id: row.try_get::<Option<i32>, _>("programme_scolaire_id").unwrap_or(None),
-                        est_au_programme: row.try_get::<Option<bool>, _>("est_au_programme").unwrap_or(None),
-                        programme_match_details: row.try_get::<Option<serde_json::Value>, _>("programme_match_details").unwrap_or(None),
-                        ia_analysis_status: row.try_get::<Option<String>, _>("ia_analysis_status").unwrap_or(None),
-                        ia_analysis_result: row.try_get::<Option<serde_json::Value>, _>("ia_analysis_result").unwrap_or(None),
-                        ia_confidence: row.try_get::<Option<rust_decimal::Decimal>, _>("ia_confidence").unwrap_or(None),
-                        situation_troc: row.try_get::<Option<String>, _>("situation_troc").unwrap_or(None),
-                        offre_matchee: row.try_get::<Option<bool>, _>("offre_matchee").unwrap_or(None),
-                        upload_session_id: row.try_get::<Option<String>, _>("upload_session_id").unwrap_or(None),
+                        image_recto: row
+                            .try_get::<Option<String>, _>("image_recto")
+                            .unwrap_or(None),
+                        image_verso: row
+                            .try_get::<Option<String>, _>("image_verso")
+                            .unwrap_or(None),
+                        mode_listing: row
+                            .try_get::<Option<String>, _>("mode_listing")
+                            .unwrap_or(None),
+                        prix_detecte: row
+                            .try_get::<Option<rust_decimal::Decimal>, _>("prix_detecte")
+                            .unwrap_or(None),
+                        devise_detectee: row
+                            .try_get::<Option<String>, _>("devise_detectee")
+                            .unwrap_or(None),
+                        valeur_calculee: row
+                            .try_get::<Option<rust_decimal::Decimal>, _>("valeur_calculee")
+                            .unwrap_or(None),
+                        ratio_etat: row
+                            .try_get::<Option<rust_decimal::Decimal>, _>("ratio_etat")
+                            .unwrap_or(None),
+                        etat_classification: row
+                            .try_get::<Option<String>, _>("etat_classification")
+                            .unwrap_or(None),
+                        programme_scolaire_id: row
+                            .try_get::<Option<i32>, _>("programme_scolaire_id")
+                            .unwrap_or(None),
+                        est_au_programme: row
+                            .try_get::<Option<bool>, _>("est_au_programme")
+                            .unwrap_or(None),
+                        programme_match_details: row
+                            .try_get::<Option<serde_json::Value>, _>("programme_match_details")
+                            .unwrap_or(None),
+                        ia_analysis_status: row
+                            .try_get::<Option<String>, _>("ia_analysis_status")
+                            .unwrap_or(None),
+                        ia_analysis_result: row
+                            .try_get::<Option<serde_json::Value>, _>("ia_analysis_result")
+                            .unwrap_or(None),
+                        ia_confidence: row
+                            .try_get::<Option<rust_decimal::Decimal>, _>("ia_confidence")
+                            .unwrap_or(None),
+                        situation_troc: row
+                            .try_get::<Option<String>, _>("situation_troc")
+                            .unwrap_or(None),
+                        offre_matchee: row
+                            .try_get::<Option<bool>, _>("offre_matchee")
+                            .unwrap_or(None),
+                        upload_session_id: row
+                            .try_get::<Option<String>, _>("upload_session_id")
+                            .unwrap_or(None),
                         gps: row.get::<Option<String>, _>("gps"),
                         ville: row.get::<Option<String>, _>("ville"),
                         quartier: row.get::<Option<String>, _>("quartier"),
@@ -256,8 +290,12 @@ impl LivresScolairesService {
                         is_active: row.get::<bool, _>("is_active"),
                         created_at: row.get::<DateTime<Utc>, _>("created_at"),
                         updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
-                        disponibilite_debut: row.try_get::<Option<DateTime<Utc>>, _>("disponibilite_debut").unwrap_or(None),
-                        disponibilite_fin: row.try_get::<Option<DateTime<Utc>>, _>("disponibilite_fin").unwrap_or(None),
+                        disponibilite_debut: row
+                            .try_get::<Option<DateTime<Utc>>, _>("disponibilite_debut")
+                            .unwrap_or(None),
+                        disponibilite_fin: row
+                            .try_get::<Option<DateTime<Utc>>, _>("disponibilite_fin")
+                            .unwrap_or(None),
                     },
                     distance_km: row.get::<Option<f64>, _>("distance_km"),
                 }

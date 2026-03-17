@@ -16,15 +16,15 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
-    middlewares::jwt::AuthenticatedUser,
     core::types::{AppError, AppResult},
-    models::librairie_network_model::*,
+    middlewares::jwt::AuthenticatedUser,
     models::librairie_network::{
-        CommandeLivreNeuf, CommandeLivreOccasion,
-        LivreQRReference, DestinationQR, PointPassage, ValidationStatut,
+        CommandeLivreNeuf, CommandeLivreOccasion, DestinationQR, LivreQRReference, PointPassage,
+        ValidationStatut,
     },
+    models::librairie_network_model::*,
     state::AppState,
-    utils::{generate_reference, generate_qr_code, send_notification},
+    utils::{generate_qr_code, generate_reference, send_notification},
 };
 
 pub struct ConfigurationSysteme;
@@ -172,18 +172,21 @@ pub async fn create_commande_mixte(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateCommandeMixteRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[create_commande_mixte] User: {}, Budget: {}", user_id, payload.budget_total);
+    info!(
+        "[create_commande_mixte] User: {}, Budget: {}",
+        user_id, payload.budget_total
+    );
 
     // Validation budget
     if payload.budget_total <= 0.0 {
-        return Err(AppError::BadRequest("Le budget doit être supérieur à 0".to_string()));
+        return Err(AppError::BadRequest(
+            "Le budget doit être supérieur à 0".to_string(),
+        ));
     }
 
     // Calcul total livres neufs
-    let total_neufs: f64 = payload.livres_neufs
-        .iter()
-        .map(|l| l.prix_officiel * l.quantite as f64)
-        .sum();
+    let total_neufs: f64 =
+        payload.livres_neufs.iter().map(|l| l.prix_officiel * l.quantite as f64).sum();
 
     // Récupérer prix livres occasion
     let mut total_occasion = 0.0;
@@ -197,27 +200,32 @@ pub async fn create_commande_mixte(
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
         .ok_or_else(|| AppError::NotFound("Livre d'occasion non trouvé".to_string()))?;
 
-        let prix = livre.valeur_calculee
+        let prix = livre
+            .valeur_calculee
             .and_then(|v| v.parse::<f64>().ok())
             .or_else(|| livre.prix_detecte.and_then(|p| p.parse::<f64>().ok()))
             .unwrap_or(0.0);
-        
+
         total_occasion += prix * livre_req.quantite as f64;
     }
 
     let total_commande = total_neufs + total_occasion;
-    
+
     if total_commande > payload.budget_total {
-        return Err(AppError::BadRequest(
-            format!("Le total des livres ({}) dépasse le budget ({})", total_commande, payload.budget_total)
-        ));
+        return Err(AppError::BadRequest(format!(
+            "Le total des livres ({}) dépasse le budget ({})",
+            total_commande, payload.budget_total
+        )));
     }
 
     // Créer la commande
     let commission_app = total_commande * ConfigurationSysteme::COMMISSION_APP;
     let montant_net_libraires = total_commande - commission_app;
 
-    let mut tx = state.pg.begin().await
+    let mut tx = state
+        .pg
+        .begin()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     let commande = sqlx::query_as!(
@@ -243,7 +251,7 @@ pub async fn create_commande_mixte(
     )
     .fetch_one(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur création commande: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur création commande: {}", e)))?;
 
     // Insérer livres neufs
     for livre_req in payload.livres_neufs {
@@ -271,7 +279,7 @@ pub async fn create_commande_mixte(
         )
         .execute(&mut *tx)
         .await
-            .map_err(|e| AppError::Internal(format!("Erreur insertion livre neuf: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur insertion livre neuf: {}", e)))?;
     }
 
     // Insérer livres occasion
@@ -285,7 +293,8 @@ pub async fn create_commande_mixte(
         .await
             .map_err(|e| AppError::Internal(format!("Erreur récupération livre: {}", e)))?;
 
-        let prix = livre.valeur_calculee
+        let prix = livre
+            .valeur_calculee
             .and_then(|v| v.parse::<f64>().ok())
             .or_else(|| livre.prix_detecte.and_then(|p| p.parse::<f64>().ok()))
             .unwrap_or(0.0);
@@ -311,13 +320,17 @@ pub async fn create_commande_mixte(
         )
         .execute(&mut *tx)
         .await
-            .map_err(|e| AppError::Internal(format!("Erreur insertion livre occasion: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur insertion livre occasion: {}", e)))?;
     }
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
-    info!("[create_commande_mixte] Commande {} créée avec succès", commande.id);
+    info!(
+        "[create_commande_mixte] Commande {} créée avec succès",
+        commande.id
+    );
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -337,7 +350,10 @@ pub async fn update_commande_mixte(
     Path(commande_id): Path<Uuid>,
     Json(payload): Json<UpdateCommandeRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[update_commande_mixte] User: {}, Commande: {}", user_id, commande_id);
+    info!(
+        "[update_commande_mixte] User: {}, Commande: {}",
+        user_id, commande_id
+    );
 
     // Vérifier que la commande appartient à l'utilisateur et est en édition
     let commande = sqlx::query_as!(
@@ -348,10 +364,13 @@ pub async fn update_commande_mixte(
     )
     .fetch_optional(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::NotFound("Commande non trouvée ou non modifiable".to_string()))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Commande non trouvée ou non modifiable".to_string()))?;
 
-    let mut tx = state.pg.begin().await
+    let mut tx = state
+        .pg
+        .begin()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Mettre à jour les champs de la commande
@@ -363,7 +382,7 @@ pub async fn update_commande_mixte(
         )
         .execute(&mut *tx)
         .await
-            .map_err(|e| AppError::Internal(format!("Erreur update budget: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur update budget: {}", e)))?;
     }
 
     if let Some(mode) = payload.mode_livraison {
@@ -374,7 +393,7 @@ pub async fn update_commande_mixte(
         )
         .execute(&mut *tx)
         .await
-            .map_err(|e| AppError::Internal(format!("Erreur update livraison: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur update livraison: {}", e)))?;
     }
 
     // Ajouter livres neufs
@@ -404,7 +423,7 @@ pub async fn update_commande_mixte(
             )
             .execute(&mut *tx)
             .await
-                .map_err(|e| AppError::Internal(format!("Erreur ajout livre neuf: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Erreur ajout livre neuf: {}", e)))?;
         }
     }
 
@@ -418,7 +437,7 @@ pub async fn update_commande_mixte(
             )
             .execute(&mut *tx)
             .await
-                .map_err(|e| AppError::Internal(format!("Erreur suppression livre neuf: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Erreur suppression livre neuf: {}", e)))?;
         }
     }
 
@@ -433,7 +452,8 @@ pub async fn update_commande_mixte(
             .await
                 .map_err(|e| AppError::Internal(format!("Erreur récupération livre: {}", e)))?;
 
-            let prix = livre.valeur_calculee
+            let prix = livre
+                .valeur_calculee
                 .and_then(|v| v.parse::<f64>().ok())
                 .or_else(|| livre.prix_detecte.and_then(|p| p.parse::<f64>().ok()))
                 .unwrap_or(0.0);
@@ -459,7 +479,7 @@ pub async fn update_commande_mixte(
             )
             .execute(&mut *tx)
             .await
-                .map_err(|e| AppError::Internal(format!("Erreur ajout livre occasion: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Erreur ajout livre occasion: {}", e)))?;
         }
     }
 
@@ -473,11 +493,12 @@ pub async fn update_commande_mixte(
             )
             .execute(&mut *tx)
             .await
-                .map_err(|e| AppError::Internal(format!("Erreur suppression livre occasion: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Erreur suppression livre occasion: {}", e)))?;
         }
     }
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
     // Récupérer la commande mise à jour avec détails
@@ -495,9 +516,15 @@ pub async fn valider_budget_commande(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<ValiderBudgetRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[valider_budget_commande] User: {}, Commande: {}", user_id, payload.commande_id);
+    info!(
+        "[valider_budget_commande] User: {}, Commande: {}",
+        user_id, payload.commande_id
+    );
 
-    let mut tx = state.pg.begin().await
+    let mut tx = state
+        .pg
+        .begin()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Vérifier commande et calculer totaux
@@ -509,16 +536,17 @@ pub async fn valider_budget_commande(
     )
     .fetch_optional(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::NotFound("Commande non trouvée ou non valide".to_string()))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Commande non trouvée ou non valide".to_string()))?;
 
     // Calculer totaux actuels
     let totaux = calculer_totaux_commande(&mut *tx, payload.commande_id).await?;
-    
+
     if totaux.total_commande > commande.budget_total {
-        return Err(AppError::BadRequest(
-            format!("Le total des livres ({}) dépasse le budget ({})", totaux.total_commande, commande.budget_total)
-        ));
+        return Err(AppError::BadRequest(format!(
+            "Le total des livres ({}) dépasse le budget ({})",
+            totaux.total_commande, commande.budget_total
+        )));
     }
 
     // Mettre à jour les montants
@@ -540,7 +568,7 @@ pub async fn valider_budget_commande(
     )
     .execute(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur update statut: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur update statut: {}", e)))?;
 
     // Créer transaction agrégée
     let reference_paiement = generate_reference("PAY");
@@ -564,12 +592,16 @@ pub async fn valider_budget_commande(
     )
     .fetch_one(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur création transaction: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur création transaction: {}", e)))?;
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
-    info!("[valider_budget_commande] Budget validé pour commande {}", payload.commande_id);
+    info!(
+        "[valider_budget_commande] Budget validé pour commande {}",
+        payload.commande_id
+    );
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -586,7 +618,10 @@ pub async fn broadcast_commande_librairies(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<BroadcastCommandeRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[broadcast_commande_librairies] User: {}, Commande: {}", user_id, payload.commande_id);
+    info!(
+        "[broadcast_commande_librairies] User: {}, Commande: {}",
+        user_id, payload.commande_id
+    );
 
     // Récupérer commande avec GPS
     let commande = sqlx::query!(
@@ -605,18 +640,22 @@ pub async fn broadcast_commande_librairies(
     )
     .fetch_optional(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::NotFound("Commande non trouvée ou non prête".to_string()))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Commande non trouvée ou non prête".to_string()))?;
 
     let gps_livraison = commande.gps_livraison.as_deref().unwrap_or("");
     if gps_livraison.is_empty() {
-        return Err(AppError::BadRequest("GPS de livraison requis pour diffusion".to_string()));
+        return Err(AppError::BadRequest(
+            "GPS de livraison requis pour diffusion".to_string(),
+        ));
     }
 
     // Parser GPS
     let (lat, lng) = parse_gps(gps_livraison)?;
 
-    let rayon = payload.rayon_recherche_km.unwrap_or(ConfigurationSysteme::RAYON_RECHERCHE_LIBRAIRIE);
+    let rayon = payload
+        .rayon_recherche_km
+        .unwrap_or(ConfigurationSysteme::RAYON_RECHERCHE_LIBRAIRIE);
 
     // Récupérer librairies proches
     let librairies = sqlx::query_as!(
@@ -639,13 +678,18 @@ pub async fn broadcast_commande_librairies(
     )
     .fetch_all(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur recherche librairies: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur recherche librairies: {}", e)))?;
 
     if librairies.is_empty() {
-        return Err(AppError::NotFound("Aucune librairie active trouvée dans votre zone".to_string()));
+        return Err(AppError::NotFound(
+            "Aucune librairie active trouvée dans votre zone".to_string(),
+        ));
     }
 
-    let mut tx = state.pg.begin().await
+    let mut tx = state
+        .pg
+        .begin()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Mettre à jour statut commande
@@ -673,7 +717,7 @@ pub async fn broadcast_commande_librairies(
         )
         .fetch_one(&mut *tx)
         .await
-            .map_err(|e| AppError::Internal(format!("Erreur création validation: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur création validation: {}", e)))?;
 
         // Créer notification
         let message = format!(
@@ -698,12 +742,13 @@ pub async fn broadcast_commande_librairies(
         )
         .fetch_one(&mut *tx)
         .await
-            .map_err(|e| AppError::Internal(format!("Erreur création notification: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur création notification: {}", e)))?;
 
         notifications_created.push((librairie.clone(), validation, notification));
     }
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
     // Envoyer notifications push (async)
@@ -717,13 +762,21 @@ pub async fn broadcast_commande_librairies(
                 "type": "nouvelle_commande",
                 "commande_id": payload.commande_id,
                 "notification_id": notification.id
-            }))
-        ).await {
-            warn!("[broadcast_commande_librairies] Erreur notification {}: {}", librairie.id, e);
+            })),
+        )
+        .await
+        {
+            warn!(
+                "[broadcast_commande_librairies] Erreur notification {}: {}",
+                librairie.id, e
+            );
         }
     }
 
-    info!("[broadcast_commande_librairies] Diffusée à {} librairies", librairies.len());
+    info!(
+        "[broadcast_commande_librairies] Diffusée à {} librairies",
+        librairies.len()
+    );
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -737,10 +790,16 @@ pub async fn broadcast_commande_librairies(
 /// Librairie: Valider des livres dans une commande
 pub async fn valider_livres_commande(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: librairie_user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: librairie_user_id,
+        ..
+    }): Extension<AuthenticatedUser>,
     Json(payload): Json<ValidationLibrairieRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[valider_livres_commande] Librairie: {}, Commande: {}", librairie_user_id, payload.commande_id);
+    info!(
+        "[valider_livres_commande] Librairie: {}, Commande: {}",
+        librairie_user_id, payload.commande_id
+    );
 
     // Vérifier que c'est un librairie
     let librairie = sqlx::query_as!(
@@ -753,7 +812,10 @@ pub async fn valider_livres_commande(
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
         .ok_or_else(|| AppError::Forbidden("Accès réservé aux librairies actives".to_string()))?;
 
-    let mut tx = state.pg.begin().await
+    let mut tx = state
+        .pg
+        .begin()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Vérifier validation existante
@@ -769,12 +831,14 @@ pub async fn valider_livres_commande(
     )
     .fetch_optional(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::NotFound("Validation non trouvée".to_string()))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Validation non trouvée".to_string()))?;
 
     // Vérifier qu'une autre librairie n'a pas déjà pris le verrou
     if validation.verrou_exclusif && validation.statut != ValidationStatut::EnCours {
-        return Err(AppError::Conflict("Une autre librairie est déjà en train de valider cette commande".to_string()));
+        return Err(AppError::Conflict(
+            "Une autre librairie est déjà en train de valider cette commande".to_string(),
+        ));
     }
 
     // Prendre le verrou exclusif
@@ -791,7 +855,7 @@ pub async fn valider_livres_commande(
     )
     .execute(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur prise verrou: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur prise verrou: {}", e)))?;
 
     // Marquer les livres comme validés
     let mut livres_valides_count = 0;
@@ -810,7 +874,7 @@ pub async fn valider_livres_commande(
         )
         .fetch_optional(&mut *tx)
         .await
-            .map_err(|e| AppError::Internal(format!("Erreur validation livre: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur validation livre: {}", e)))?;
 
         if result.is_some() {
             livres_valides_count += 1;
@@ -831,7 +895,7 @@ pub async fn valider_livres_commande(
     )
     .execute(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur marquage indisponibles: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur marquage indisponibles: {}", e)))?;
 
     // Déterminer le statut de validation
     let total_livres_neufs: i64 = sqlx::query_scalar!(
@@ -840,8 +904,8 @@ pub async fn valider_livres_commande(
     )
     .fetch_one(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur comptage: {}", e)))?
-        .unwrap_or(0);
+    .map_err(|e| AppError::Internal(format!("Erreur comptage: {}", e)))?
+    .unwrap_or(0);
 
     let livres_valides_total: i64 = sqlx::query_scalar!(
         "SELECT COUNT(*) FROM commande_livres_neufs WHERE commande_id = $1 AND statut_validation = 'valide'",
@@ -876,7 +940,7 @@ pub async fn valider_livres_commande(
     )
     .execute(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur update validation: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur update validation: {}", e)))?;
 
     // Mettre à jour le statut de la commande
     match statut_validation {
@@ -888,7 +952,7 @@ pub async fn valider_livres_commande(
             .execute(&mut *tx)
             .await
                 .map_err(|e| AppError::Internal(format!("Erreur update commande: {}", e)))?;
-        },
+        }
         ValidationStatut::ValidePartiel => {
             sqlx::query!(
                 "UPDATE commandes_mixtes SET statut = 'validee_partielle', updated_at = NOW() WHERE id = $1",
@@ -910,8 +974,8 @@ pub async fn valider_livres_commande(
             )
             .execute(&mut *tx)
             .await
-                .map_err(|e| AppError::Internal(format!("Erreur libération autres: {}", e)))?;
-        },
+            .map_err(|e| AppError::Internal(format!("Erreur libération autres: {}", e)))?;
+        }
         _ => {
             sqlx::query!(
                 "UPDATE commandes_mixtes SET statut = 'en_validation', updated_at = NOW() WHERE id = $1",
@@ -923,10 +987,14 @@ pub async fn valider_livres_commande(
         }
     }
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
-    info!("[valider_livres_commande] {} livres validés par librairie {}", livres_valides_count, librairie.id);
+    info!(
+        "[valider_livres_commande] {} livres validés par librairie {}",
+        livres_valides_count, librairie.id
+    );
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -946,9 +1014,15 @@ pub async fn finaliser_commande(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<FinaliserCommandeRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[finaliser_commande] User: {}, Commande: {}", user_id, payload.commande_id);
+    info!(
+        "[finaliser_commande] User: {}, Commande: {}",
+        user_id, payload.commande_id
+    );
 
-    let mut tx = state.pg.begin().await
+    let mut tx = state
+        .pg
+        .begin()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Vérifier commande
@@ -968,10 +1042,10 @@ pub async fn finaliser_commande(
 
     // Traiter le paiement
     let reference_paiement = format!("PAY-{}", generate_reference(""));
-    
+
     // TODO: Intégration avec système de paiement agrégé
     // Pour l'instant, on simule un paiement réussi
-    
+
     sqlx::query!(
         r#"
         UPDATE transactions_agregees 
@@ -986,7 +1060,7 @@ pub async fn finaliser_commande(
     )
     .execute(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur update transaction: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur update transaction: {}", e)))?;
 
     // Mettre à jour statut commande
     sqlx::query!(
@@ -995,15 +1069,19 @@ pub async fn finaliser_commande(
     )
     .execute(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur update commande: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur update commande: {}", e)))?;
 
     // Créer la chaîne de livraison unifiée
     let chaine = creer_chaine_livraison(&mut *tx, payload.commande_id).await?;
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
-    info!("[finaliser_commande] Commande {} finalisée, chaîne {} créée", payload.commande_id, chaine.id);
+    info!(
+        "[finaliser_commande] Commande {} finalisée, chaîne {} créée",
+        payload.commande_id, chaine.id
+    );
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -1017,10 +1095,15 @@ pub async fn finaliser_commande(
 /// Générer QR code pour coursier
 pub async fn generer_qr_code_coursier(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: coursier_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: coursier_id, ..
+    }): Extension<AuthenticatedUser>,
     Json(payload): Json<GenerateQRCodeRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[generer_qr_code_coursier] Coursier: {}, Paquet: {}", coursier_id, payload.paquet_id);
+    info!(
+        "[generer_qr_code_coursier] Coursier: {}, Paquet: {}",
+        coursier_id, payload.paquet_id
+    );
 
     // Vérifier que c'est un coursier actif
     // TODO: Vérifier rôle coursier dans la table users
@@ -1040,8 +1123,8 @@ pub async fn generer_qr_code_coursier(
     )
     .fetch_optional(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::NotFound("Paquet non trouvé".to_string()))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Paquet non trouvé".to_string()))?;
 
     // Générer code secret
     let code_secret = format!("QR-{}", generate_reference(""));
@@ -1079,9 +1162,12 @@ pub async fn generer_qr_code_coursier(
     )
     .fetch_one(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur création QR code: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur création QR code: {}", e)))?;
 
-    info!("[generer_qr_code_coursier] QR code {} généré pour paquet {}", qr_code.id, payload.paquet_id);
+    info!(
+        "[generer_qr_code_coursier] QR code {} généré pour paquet {}",
+        qr_code.id, payload.paquet_id
+    );
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -1095,12 +1181,20 @@ pub async fn generer_qr_code_coursier(
 /// Valider QR code par coursier
 pub async fn valider_qr_code_coursier(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: coursier_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: coursier_id, ..
+    }): Extension<AuthenticatedUser>,
     Json(payload): Json<ValidateQRCodeRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[valider_qr_code_coursier] Coursier: {}, Code: {}", coursier_id, payload.code_secret);
+    info!(
+        "[valider_qr_code_coursier] Coursier: {}, Code: {}",
+        coursier_id, payload.code_secret
+    );
 
-    let mut tx = state.pg.begin().await
+    let mut tx = state
+        .pg
+        .begin()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Récupérer QR code
@@ -1116,11 +1210,12 @@ pub async fn valider_qr_code_coursier(
     )
     .fetch_optional(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::NotFound("QR code non trouvé ou déjà utilisé".to_string()))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("QR code non trouvé ou déjà utilisé".to_string()))?;
 
     // Vérifier expiration (24h)
-    let expiration_time = qr_code.timestamp_generation + chrono::Duration::seconds(ConfigurationSysteme::DELAI_EXPIRATION_QR as i64);
+    let expiration_time = qr_code.timestamp_generation
+        + chrono::Duration::seconds(ConfigurationSysteme::DELAI_EXPIRATION_QR as i64);
     if Utc::now() > expiration_time {
         sqlx::query!(
             "UPDATE qr_codes_coursier SET statut = 'expire' WHERE id = $1",
@@ -1128,7 +1223,7 @@ pub async fn valider_qr_code_coursier(
         )
         .execute(&mut *tx)
         .await
-            .map_err(|e| AppError::Internal(format!("Erreur update statut: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur update statut: {}", e)))?;
 
         return Err(AppError::BadRequest("QR code expiré".to_string()));
     }
@@ -1145,7 +1240,7 @@ pub async fn valider_qr_code_coursier(
     )
     .execute(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur update scan: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur update scan: {}", e)))?;
 
     // TODO: Intégrer validation biométrique ou code PIN coursier
 
@@ -1161,9 +1256,10 @@ pub async fn valider_qr_code_coursier(
     )
     .execute(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur update validation: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur update validation: {}", e)))?;
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
     info!("[valider_qr_code_coursier] QR code {} validé", qr_code.id);
@@ -1183,11 +1279,17 @@ pub async fn optimiser_chaine_livraison(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<OptimiserChaineRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[optimiser_chaine_livraison] User: {}, Commande: {}", user_id, payload.commande_id);
+    info!(
+        "[optimiser_chaine_livraison] User: {}, Commande: {}",
+        user_id, payload.commande_id
+    );
 
     // TODO: Vérifier que l'utilisateur est autorisé (coursier ou admin)
 
-    let mut tx = state.pg.begin().await
+    let mut tx = state
+        .pg
+        .begin()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Récupérer chaîne existante
@@ -1198,8 +1300,8 @@ pub async fn optimiser_chaine_livraison(
     )
     .fetch_optional(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::NotFound("Chaîne de livraison non trouvée".to_string()))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Chaîne de livraison non trouvée".to_string()))?;
 
     // Optimiser l'itinéraire (algorithme nearest neighbor TSP)
     let points_optimises = optimiser_itineraire(&mut *tx, payload.commande_id).await?;
@@ -1227,12 +1329,16 @@ pub async fn optimiser_chaine_livraison(
     )
     .execute(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur update chaîne: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur update chaîne: {}", e)))?;
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
-    info!("[optimiser_chaine_livraison] Chaîne {} optimisée", chaine.id);
+    info!(
+        "[optimiser_chaine_livraison] Chaîne {} optimisée",
+        chaine.id
+    );
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -1265,7 +1371,8 @@ pub async fn get_mes_commandes(
         LEFT JOIN commande_livres_neufs cln ON cm.id = cln.commande_id
         LEFT JOIN commande_livres_occasion clo ON cm.id = clo.commande_id
         WHERE cm.user_id = $1
-    ".to_string();
+    "
+    .to_string();
 
     if let Some(statut) = params.statut {
         query.push_str(&format!(" AND cm.statut = '{}'", statut));
@@ -1308,7 +1415,8 @@ pub async fn get_librairies_proches(
                END as distance_km
         FROM librairie_partners lp
         WHERE lp.est_actif = true AND lp.statut = 'actif'
-    ".to_string();
+    "
+    .to_string();
 
     let mut bind_count = 4;
 
@@ -1355,7 +1463,10 @@ pub async fn get_commande_details(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(commande_id): Path<Uuid>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_commande_details] User: {}, Commande: {}", user_id, commande_id);
+    info!(
+        "[get_commande_details] User: {}, Commande: {}",
+        user_id, commande_id
+    );
 
     let details = fetch_commande_details(&state.pg, commande_id).await?;
 
@@ -1385,7 +1496,7 @@ async fn fetch_commande_details(
     )
     .fetch_one(pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
     let livres_neufs = sqlx::query_as!(
         CommandeLivreNeuf,
@@ -1394,7 +1505,7 @@ async fn fetch_commande_details(
     )
     .fetch_all(pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
     let livres_occasion = sqlx::query_as!(
         CommandeLivreOccasion,
@@ -1403,7 +1514,7 @@ async fn fetch_commande_details(
     )
     .fetch_all(pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
     Ok(CommandeDetail {
         commande,
@@ -1453,9 +1564,13 @@ fn parse_gps(gps: &str) -> Result<(f64, f64), AppError> {
         return Err(AppError::BadRequest("Format GPS invalide".to_string()));
     }
 
-    let lat = parts[0].trim().parse::<f64>()
+    let lat = parts[0]
+        .trim()
+        .parse::<f64>()
         .map_err(|_| AppError::BadRequest("Latitude invalide".to_string()))?;
-    let lng = parts[1].trim().parse::<f64>()
+    let lng = parts[1]
+        .trim()
+        .parse::<f64>()
         .map_err(|_| AppError::BadRequest("Longitude invalide".to_string()))?;
 
     Ok((lat, lng))
@@ -1484,7 +1599,7 @@ async fn creer_chaine_livraison(
     )
     .fetch_one(&mut **tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur création chaîne: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur création chaîne: {}", e)))?;
 
     Ok(chaine)
 }
@@ -1517,46 +1632,52 @@ pub async fn register_librairie_publique(
     Json(payload): Json<CreateLibrairieRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let pool = &state.pg;
-    
+
     // Validation des données
     if payload.nom.trim().is_empty() {
         return Err(AppError::BadRequest("Le nom est requis".to_string()));
     }
-    
+
     if payload.email.trim().is_empty() {
         return Err(AppError::BadRequest("L'email est requis".to_string()));
     }
-    
+
     if payload.telephone.trim().is_empty() {
         return Err(AppError::BadRequest("Le téléphone est requis".to_string()));
     }
-    
+
     if payload.gps.is_none() || payload.gps.as_ref().unwrap().trim().is_empty() {
-        return Err(AppError::BadRequest("La localisation GPS est requise".to_string()));
+        return Err(AppError::BadRequest(
+            "La localisation GPS est requise".to_string(),
+        ));
     }
-    
+
     // Vérifier si l'email existe déjà
-    let existing_email: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM librairie_partners WHERE email = $1)"
-    )
-    .bind(&payload.email)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| {
-        log::error!("[register_librairie_publique] Erreur vérification email: {}", e);
-        AppError::Internal("Erreur vérification email".to_string())
-    })?;
-    
+    let existing_email: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM librairie_partners WHERE email = $1)")
+            .bind(&payload.email)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| {
+                log::error!(
+                    "[register_librairie_publique] Erreur vérification email: {}",
+                    e
+                );
+                AppError::Internal("Erreur vérification email".to_string())
+            })?;
+
     if existing_email {
-        return Err(AppError::BadRequest("Cet email est déjà utilisé".to_string()));
+        return Err(AppError::BadRequest(
+            "Cet email est déjà utilisé".to_string(),
+        ));
     }
-    
+
     // Créer le partenaire librairie
     let librairie_id = Uuid::new_v4();
     let commission_app = 5.0; // 5% de commission par défaut
-    
+
     let now = Utc::now();
-    
+
     sqlx::query(
         r#"
         INSERT INTO librairie_partners (
@@ -1567,7 +1688,7 @@ pub async fn register_librairie_publique(
             $1, $2, $3, $4, $5, $6, $7, $8,
             $9, $10, $11, $12, $13, $14
         )
-        "#
+        "#,
     )
     .bind(librairie_id)
     .bind(Uuid::new_v4()) // user_id temporaire
@@ -1586,30 +1707,40 @@ pub async fn register_librairie_publique(
     .execute(pool)
     .await
     .map_err(|e| {
-        log::error!("[register_librairie_publique] Erreur création librairie: {}", e);
+        log::error!(
+            "[register_librairie_publique] Erreur création librairie: {}",
+            e
+        );
         AppError::Internal("Erreur création librairie".to_string())
     })?;
-    
+
     // Envoyer une notification interne aux administrateurs
     let mut variables = HashMap::new();
     variables.insert("librairie_nom".to_string(), payload.nom.clone());
     variables.insert("librairie_email".to_string(), payload.email.clone());
     variables.insert("librairie_ville".to_string(), payload.ville.clone());
     variables.insert("commission_app".to_string(), format!("{}%", commission_app));
-    
-    if let Err(e) = state.multilingue_service.send_notification(
-        "librairie.compte_rejete", // Clé de notification (à adapter)
-        variables,
-        None, // Pas d'utilisateur spécifique pour les admins
-    ).await {
-        log::warn!("[register_librairie_publique] Erreur notification admin: {}", e);
+
+    if let Err(e) = state
+        .multilingue_service
+        .send_notification(
+            "librairie.compte_rejete", // Clé de notification (à adapter)
+            variables,
+            None, // Pas d'utilisateur spécifique pour les admins
+        )
+        .await
+    {
+        log::warn!(
+            "[register_librairie_publique] Erreur notification admin: {}",
+            e
+        );
     }
-    
+
     log::info!(
         "[register_librairie_publique] Librairie {} enregistrée avec succès",
         payload.nom
     );
-    
+
     Ok((
         StatusCode::CREATED,
         Json(serde_json::json!({
@@ -1618,7 +1749,7 @@ pub async fn register_librairie_publique(
             "librairie_id": librairie_id,
             "commission_app": commission_app,
             "statut": "en_attente"
-        }))
+        })),
     ))
 }
 
@@ -1630,15 +1761,17 @@ pub async fn generate_shareable_qrcode(
     Json(payload): Json<GenerateQRCodeRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let pool = &state.pg;
-    
+
     // Validation
     if payload.commande_id.is_none() && payload.delivery_id.is_none() {
-        return Err(AppError::BadRequest("commande_id ou delivery_id est requis".to_string()));
+        return Err(AppError::BadRequest(
+            "commande_id ou delivery_id est requis".to_string(),
+        ));
     }
-    
+
     let qr_id = Uuid::new_v4();
     let now = Utc::now();
-    
+
     // Générer les données du QR code
     let qr_data = if let Some(commande_id) = payload.commande_id {
         format!("LIBRAIRIE_CMD:{}:{}", commande_id, qr_id)
@@ -1647,14 +1780,13 @@ pub async fn generate_shareable_qrcode(
     } else {
         return Err(AppError::BadRequest("ID requis".to_string()));
     };
-    
+
     // Générer le QR code image
-    let qr_code_image = generate_qr_code(&qr_data)
-        .map_err(|e| {
-            log::error!("[generate_shareable_qrcode] Erreur génération QR: {}", e);
-            AppError::Internal("Erreur génération QR code".to_string())
-        })?;
-    
+    let qr_code_image = generate_qr_code(&qr_data).map_err(|e| {
+        log::error!("[generate_shareable_qrcode] Erreur génération QR: {}", e);
+        AppError::Internal("Erreur génération QR code".to_string())
+    })?;
+
     // Sauvegarder en base
     sqlx::query(
         r#"
@@ -1663,7 +1795,7 @@ pub async fn generate_shareable_qrcode(
             statut, date_generation, qr_code_image, partageable, 
             genere_par, valide_jusqua
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        "#
+        "#,
     )
     .bind(qr_id)
     .bind(payload.commande_id)
@@ -1682,24 +1814,33 @@ pub async fn generate_shareable_qrcode(
         log::error!("[generate_shareable_qrcode] Erreur sauvegarde QR: {}", e);
         AppError::Internal("Erreur sauvegarde QR code".to_string())
     })?;
-    
+
     // Envoyer notification au destinataire si spécifié
     if let Some(destinataire_id) = payload.destinataire_id {
         let mut variables = HashMap::new();
-        variables.insert("qr_code_url".to_string(), format!("https://yukpo.app/qr/{}", qr_id));
-        variables.insert("expediteur".to_string(), payload.expediteur_nom.unwrap_or_default());
-        
-        if let Err(e) = state.multilingue_service.send_notification(
-            "livraison.qrcode_partage",
-            variables,
-            Some(destinataire_id),
-        ).await {
+        variables.insert(
+            "qr_code_url".to_string(),
+            format!("https://yukpo.app/qr/{}", qr_id),
+        );
+        variables.insert(
+            "expediteur".to_string(),
+            payload.expediteur_nom.unwrap_or_default(),
+        );
+
+        if let Err(e) = state
+            .multilingue_service
+            .send_notification("livraison.qrcode_partage", variables, Some(destinataire_id))
+            .await
+        {
             log::warn!("[generate_shareable_qrcode] Erreur notification: {}", e);
         }
     }
-    
-    log::info!("[generate_shareable_qrcode] QR partageable généré: {}", qr_id);
-    
+
+    log::info!(
+        "[generate_shareable_qrcode] QR partageable généré: {}",
+        qr_id
+    );
+
     Ok((
         StatusCode::CREATED,
         Json(serde_json::json!({
@@ -1710,7 +1851,7 @@ pub async fn generate_shareable_qrcode(
             "share_url": format!("https://yukpo.app/qr/{}", qr_id),
             "valide_jusqua": payload.valide_jusqua.unwrap_or_else(|| now + chrono::Duration::hours(24)),
             "partageable": true
-        }))
+        })),
     ))
 }
 
@@ -1722,7 +1863,7 @@ pub async fn scan_shareable_qrcode(
     Json(payload): Json<ScanQRCodeRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let pool = &state.pg;
-    
+
     // Récupérer le QR code
     let qr_row = sqlx::query!(
         r#"
@@ -1739,19 +1880,19 @@ pub async fn scan_shareable_qrcode(
         log::error!("[scan_shareable_qrcode] Erreur récupération QR: {}", e);
         AppError::Internal("Erreur récupération QR code".to_string())
     })?;
-    
+
     let qr = qr_row.ok_or_else(|| AppError::NotFound("QR code non trouvé".to_string()))?;
-    
+
     // Vérifier la validité
     let now = Utc::now();
     if qr.valide_jusqua.is_some() && qr.valide_jusqua < Some(now) {
         return Err(AppError::BadRequest("QR code expiré".to_string()));
     }
-    
+
     if qr.statut == "scanne" || qr.date_scan.is_some() {
         return Err(AppError::BadRequest("QR code déjà scanné".to_string()));
     }
-    
+
     // Mettre à jour le statut
     sqlx::query!(
         r#"
@@ -1770,7 +1911,7 @@ pub async fn scan_shareable_qrcode(
         log::error!("[scan_shareable_qrcode] Erreur mise à jour QR: {}", e);
         AppError::Internal("Erreur mise à jour QR code".to_string())
     })?;
-    
+
     // Traiter selon le type de QR code
     let result = if let Some(commande_id) = qr.commande_id {
         // QR pour commande librairie
@@ -1789,7 +1930,7 @@ pub async fn scan_shareable_qrcode(
             log::error!("[scan_shareable_qrcode] Erreur mise à jour commande: {}", e);
             AppError::Internal("Erreur mise à jour commande".to_string())
         })?;
-        
+
         serde_json::json!({
             "type": "commande",
             "commande_id": commande_id,
@@ -1812,7 +1953,7 @@ pub async fn scan_shareable_qrcode(
             log::error!("[scan_shareable_qrcode] Erreur mise à jour delivery: {}", e);
             AppError::Internal("Erreur mise à jour livraison".to_string())
         })?;
-        
+
         serde_json::json!({
             "type": "delivery",
             "delivery_id": delivery_id,
@@ -1821,7 +1962,7 @@ pub async fn scan_shareable_qrcode(
     } else {
         return Err(AppError::BadRequest("Type de QR code invalide".to_string()));
     };
-    
+
     // Envoyer la preuve de livraison
     if let Some(proof_url) = payload.proof_photo_url {
         sqlx::query!(
@@ -1842,9 +1983,13 @@ pub async fn scan_shareable_qrcode(
             AppError::Internal("Erreur sauvegarde preuve".to_string())
         })?;
     }
-    
-    log::info!("[scan_shareable_qrcode] QR {} scanné par {}", qr_id, payload.scan_par);
-    
+
+    log::info!(
+        "[scan_shareable_qrcode] QR {} scanné par {}",
+        qr_id,
+        payload.scan_par
+    );
+
     Ok(Json(serde_json::json!({
         "success": true,
         "message": "QR code validé avec succès",
@@ -1860,7 +2005,7 @@ pub async fn get_qrcode_status(
     Path(qr_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
     let pool = &state.pg;
-    
+
     let qr = sqlx::query!(
         r#"
         SELECT id, commande_id, delivery_id, statut, date_generation, 
@@ -1876,12 +2021,12 @@ pub async fn get_qrcode_status(
         log::error!("[get_qrcode_status] Erreur récupération QR: {}", e);
         AppError::Internal("Erreur récupération QR code".to_string())
     })?;
-    
+
     let qr = qr.ok_or_else(|| AppError::NotFound("QR code non trouvé".to_string()))?;
-    
+
     let now = Utc::now();
     let is_expired = qr.valide_jusqua.is_some() && qr.valide_jusqua < Some(now);
-    
+
     Ok(Json(serde_json::json!({
         "success": true,
         "qr_id": qr.id,

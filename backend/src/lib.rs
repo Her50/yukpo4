@@ -244,7 +244,10 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ NOUVEAU: Routes WebSocket pour signaling WebRTC (appels audio/vidéo)
     let webrtc_manager = crate::websocket::create_webrtc_manager();
     let webrtc_signaling_ws = crate::websocket::create_webrtc_router(webrtc_manager);
-    let taxi_realtime_metrics = crate::routes::taxi_realtime_metrics_routes::create_taxi_realtime_metrics_routes(state.clone());
+    let taxi_realtime_metrics =
+        crate::routes::taxi_realtime_metrics_routes::create_taxi_realtime_metrics_routes(
+            state.clone(),
+        );
 
     // ✅ Routes critiques ajoutées
     let delivery = delivery_routes(state.clone());
@@ -338,8 +341,10 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let followers = followers_routes(state.clone()); // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
 
     // ✅ NOUVEAU 2026-03-16: Routes pour le réseau de librairies
-    let librairie_network = crate::routes::librairie_network_routes::librairie_network_routes(state.clone());
-    let paiement_agrege = crate::routes::paiement_agrege_routes::paiement_agrege_routes(state.clone());
+    let librairie_network =
+        crate::routes::librairie_network_routes::librairie_network_routes(state.clone());
+    let paiement_agrege =
+        crate::routes::paiement_agrege_routes::paiement_agrege_routes(state.clone());
 
     // ✅ NOUVEAU 2026-03-06: Configuration WhatsApp Business
     let whatsapp = whatsapp_routes::create_whatsapp_routes(state.clone());

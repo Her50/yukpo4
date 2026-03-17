@@ -153,9 +153,7 @@ impl AppState {
             env::var("DATABASE_URL").expect("DATABASE_URL doit ?tre d?fini dans .env");
 
         // ✅ 2026-03-16: Initialiser le service d'historisation PostgreSQL (ex-MongoDB)
-        let mongo_history = Arc::new(MongoHistoryService::new(
-            Arc::new(pg.clone()),
-        ));
+        let mongo_history = Arc::new(MongoHistoryService::new(Arc::new(pg.clone())));
 
         // Vérifier si les optimisations IA sont activées
         let optimizations_enabled = env::var("ENABLE_AI_OPTIMIZATIONS")
@@ -585,13 +583,13 @@ impl AppState {
             generative_video: None,
             // ✅ NOUVEAU 2026-03-16: Initialiser le service multilingue
             multilingue_service: Arc::new(
-                crate::services::multilingue_service::MultilingueService::new()
+                crate::services::multilingue_service::MultilingueService::new(),
             ),
             // ✅ NOUVEAU 2026-03-16: Initialiser le service de paiements agrégés
             paiement_service: Arc::new(
-                crate::services::paiement_agrege_service::PaiementAgregeService::new(
-                    Arc::new(pg.clone()),
-                ),
+                crate::services::paiement_agrege_service::PaiementAgregeService::new(Arc::new(
+                    pg.clone(),
+                )),
             ),
         }
     }
@@ -627,9 +625,7 @@ impl AppState {
         ));
 
         // ✅ 2026-03-16: Initialiser le service d'historisation PostgreSQL pour les tests
-        let mongo_history = Arc::new(MongoHistoryService::new(
-            Arc::new(pg.clone()),
-        ));
+        let mongo_history = Arc::new(MongoHistoryService::new(Arc::new(pg.clone())));
 
         // ✅ OPTIMISÉ: DeliveryRepository avec cache Redis pour les tests
         let delivery_repo = Arc::new(
@@ -848,12 +844,12 @@ impl AppState {
             generative_video: None,
             // ✅ NOUVEAU 2026-03-16: Services pour tests
             multilingue_service: Arc::new(
-                crate::services::multilingue_service::MultilingueService::new()
+                crate::services::multilingue_service::MultilingueService::new(),
             ),
             paiement_service: Arc::new(
-                crate::services::paiement_agrege_service::PaiementAgregeService::new(
-                    Arc::new(pg_clone),
-                ),
+                crate::services::paiement_agrege_service::PaiementAgregeService::new(Arc::new(
+                    pg_clone,
+                )),
             ),
         }
     }

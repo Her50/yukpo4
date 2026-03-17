@@ -59,7 +59,7 @@ pub struct WalletTransaction {
     pub balance_before: i64,
     pub balance_after: i64,
     pub metadata: Option<Value>,
-    pub created_at: String, // ISO 8601
+    pub created_at: String,   // ISO 8601
     pub processed_at: String, // ISO 8601
 }
 
@@ -117,24 +117,21 @@ pub async fn defer_ticket(
             AppError::Internal(format!("Erreur report ticket: {}", e))
         })?;
 
-    let success = result
-        .get("success")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let success = result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
 
     if !success {
-        let error_msg = result
-            .get("error")
-            .and_then(|v| v.as_str())
-            .unwrap_or("Erreur inconnue");
+        let error_msg = result.get("error").and_then(|v| v.as_str()).unwrap_or("Erreur inconnue");
         return Err(AppError::BadRequest(error_msg.to_string()));
     }
 
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "data": result,
-        "message": result.get("message").and_then(|v| v.as_str()).unwrap_or("Ticket reporté avec succès")
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": result,
+            "message": result.get("message").and_then(|v| v.as_str()).unwrap_or("Ticket reporté avec succès")
+        })),
+    ))
 }
 
 // ============================================================================
@@ -203,11 +200,8 @@ pub async fn apply_credit(
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
-    let arrival_city = metadata
-        .get("arrival_city")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
+    let arrival_city =
+        metadata.get("arrival_city").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let departure_date = metadata
         .get("departure_date")
         .and_then(|v| v.as_str())
@@ -220,35 +214,26 @@ pub async fn apply_credit(
         .to_string();
 
     // 2. Appliquer le crédit via la fonction SQL
-    let credit_result: Value =
-        sqlx::query_scalar("SELECT apply_ticket_credit($1, $2, $3, $4)")
-            .bind(&payload.credit_id)
-            .bind(user_id)
-            .bind(&new_payment_id)
-            .bind(new_total_price)
-            .fetch_one(&state.pg)
-            .await
-            .map_err(|e| {
-                error!("[apply_credit] Erreur application crédit: {}", e);
-                AppError::Internal(format!("Erreur application crédit: {}", e))
-            })?;
+    let credit_result: Value = sqlx::query_scalar("SELECT apply_ticket_credit($1, $2, $3, $4)")
+        .bind(&payload.credit_id)
+        .bind(user_id)
+        .bind(&new_payment_id)
+        .bind(new_total_price)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[apply_credit] Erreur application crédit: {}", e);
+            AppError::Internal(format!("Erreur application crédit: {}", e))
+        })?;
 
-    let credit_success = credit_result
-        .get("success")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    let credit_success = credit_result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
 
     if !credit_success {
-        let needs_recharge = credit_result
-            .get("needs_recharge")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
+        let needs_recharge =
+            credit_result.get("needs_recharge").and_then(|v| v.as_bool()).unwrap_or(false);
 
         if needs_recharge {
-            let shortfall = credit_result
-                .get("shortfall")
-                .and_then(|v| v.as_i64())
-                .unwrap_or(0);
+            let shortfall = credit_result.get("shortfall").and_then(|v| v.as_i64()).unwrap_or(0);
 
             return Ok((
                 StatusCode::PAYMENT_REQUIRED,
@@ -341,14 +326,9 @@ pub async fn apply_credit(
         AppError::Internal(format!("Erreur confirmation réservations: {}", e))
     })?;
 
-    let supplement = credit_result
-        .get("supplement_paid")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(0) as i32;
-    let refund = credit_result
-        .get("refund_amount")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(0) as i32;
+    let supplement =
+        credit_result.get("supplement_paid").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+    let refund = credit_result.get("refund_amount").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
 
     Ok((
         StatusCode::OK,

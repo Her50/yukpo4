@@ -103,7 +103,10 @@ pub async fn create_librairie_partner(
     Extension(AuthenticatedUser { id: admin_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateLibrairiePartnerRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[create_librairie_partner] Admin: {}, Librairie: {}", admin_id, payload.nom);
+    info!(
+        "[create_librairie_partner] Admin: {}, Librairie: {}",
+        admin_id, payload.nom
+    );
 
     // TODO: Vérifier que c'est un admin
 
@@ -114,10 +117,12 @@ pub async fn create_librairie_partner(
     )
     .fetch_optional(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
 
     if existing.is_some() {
-        return Err(AppError::BadRequest("Cet utilisateur est déjà un partenaire librairie".to_string()));
+        return Err(AppError::BadRequest(
+            "Cet utilisateur est déjà un partenaire librairie".to_string(),
+        ));
     }
 
     // Vérifier que l'email n'est pas déjà utilisé
@@ -127,15 +132,19 @@ pub async fn create_librairie_partner(
     )
     .fetch_optional(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur vérification email: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur vérification email: {}", e)))?;
 
     if email_existing.is_some() {
-        return Err(AppError::BadRequest("Cet email est déjà utilisé par une librairie".to_string()));
+        return Err(AppError::BadRequest(
+            "Cet email est déjà utilisé par une librairie".to_string(),
+        ));
     }
 
     // Valider le format GPS
     if !payload.gps.contains(',') {
-        return Err(AppError::BadRequest("Format GPS invalide. Utilisez: latitude,longitude".to_string()));
+        return Err(AppError::BadRequest(
+            "Format GPS invalide. Utilisez: latitude,longitude".to_string(),
+        ));
     }
 
     // Créer le partenaire librairie
@@ -163,7 +172,7 @@ pub async fn create_librairie_partner(
     )
     .fetch_one(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur création librairie: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur création librairie: {}", e)))?;
 
     // Mettre à jour le rôle de l'utilisateur vers "librairie"
     sqlx::query!(
@@ -172,7 +181,7 @@ pub async fn create_librairie_partner(
     )
     .execute(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur mise à jour rôle: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur mise à jour rôle: {}", e)))?;
 
     // Envoyer notification au nouveau partenaire
     let mut variables = std::collections::HashMap::new();
@@ -187,12 +196,17 @@ pub async fn create_librairie_partner(
         Some(serde_json::json!({
             "type": "librairie_validation",
             "librairie_id": librairie.id
-        }))
-    ).await {
+        })),
+    )
+    .await
+    {
         warn!("[create_librairie_partner] Erreur notification: {}", e);
     }
 
-    info!("[create_librairie_partner] Librairie {} créée", librairie.id);
+    info!(
+        "[create_librairie_partner] Librairie {} créée",
+        librairie.id
+    );
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -258,8 +272,10 @@ pub async fn get_librairies_admin(
         } else {
             query.push_str(" AND");
         }
-        query.push_str(&format!(" (lp.nom ILIKE '%{}%' OR lp.email ILIKE '%{}%' OR lp.ville ILIKE '%{}%')", 
-                              search, search, search));
+        query.push_str(&format!(
+            " (lp.nom ILIKE '%{}%' OR lp.email ILIKE '%{}%' OR lp.ville ILIKE '%{}%')",
+            search, search, search
+        ));
     }
 
     query.push_str(" GROUP BY lp.id, u.nom, u.prenom, u.email ORDER BY lp.created_at DESC");
@@ -290,11 +306,17 @@ pub async fn update_librairie_partner(
     Path(librairie_id): Path<Uuid>,
     Json(payload): Json<UpdateLibrairiePartnerRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[update_librairie_partner] Admin: {}, Librairie: {}", admin_id, librairie_id);
+    info!(
+        "[update_librairie_partner] Admin: {}, Librairie: {}",
+        admin_id, librairie_id
+    );
 
     // TODO: Vérifier que c'est un admin
 
-    let mut tx = state.pg.begin().await
+    let mut tx = state
+        .pg
+        .begin()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Vérifier que la librairie existe
@@ -305,13 +327,19 @@ pub async fn update_librairie_partner(
     )
     .fetch_optional(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::NotFound("Librairie non trouvée".to_string()))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Librairie non trouvée".to_string()))?;
 
     // Mettre à jour les champs
     if let Some(nom) = payload.nom {
-        sqlx::query!("UPDATE librairie_partners SET nom = $1 WHERE id = $2", nom, librairie_id)
-            .execute(&mut *tx).await.map_err(|e| AppError::Internal(format!("Erreur update nom: {}", e)))?;
+        sqlx::query!(
+            "UPDATE librairie_partners SET nom = $1 WHERE id = $2",
+            nom,
+            librairie_id
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur update nom: {}", e)))?;
     }
 
     if let Some(email) = payload.email {
@@ -323,55 +351,104 @@ pub async fn update_librairie_partner(
         )
         .fetch_optional(&mut *tx)
         .await
-            .map_err(|e| AppError::Internal(format!("Erreur vérification email: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur vérification email: {}", e)))?;
 
         if email_existing.is_some() {
-            return Err(AppError::BadRequest("Cet email est déjà utilisé".to_string()));
+            return Err(AppError::BadRequest(
+                "Cet email est déjà utilisé".to_string(),
+            ));
         }
 
-        sqlx::query!("UPDATE librairie_partners SET email = $1 WHERE id = $2", email, librairie_id)
-            .execute(&mut *tx).await.map_err(|e| AppError::Internal(format!("Erreur update email: {}", e)))?;
+        sqlx::query!(
+            "UPDATE librairie_partners SET email = $1 WHERE id = $2",
+            email,
+            librairie_id
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur update email: {}", e)))?;
     }
 
     if let Some(gps) = payload.gps {
         if !gps.contains(',') {
             return Err(AppError::BadRequest("Format GPS invalide".to_string()));
         }
-        sqlx::query!("UPDATE librairie_partners SET gps = $1 WHERE id = $2", gps, librairie_id)
-            .execute(&mut *tx).await.map_err(|e| AppError::Internal(format!("Erreur update gps: {}", e)))?;
+        sqlx::query!(
+            "UPDATE librairie_partners SET gps = $1 WHERE id = $2",
+            gps,
+            librairie_id
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur update gps: {}", e)))?;
     }
 
     if let Some(ville) = payload.ville {
-        sqlx::query!("UPDATE librairie_partners SET ville = $1 WHERE id = $2", ville, librairie_id)
-            .execute(&mut *tx).await.map_err(|e| AppError::Internal(format!("Erreur update ville: {}", e)))?;
+        sqlx::query!(
+            "UPDATE librairie_partners SET ville = $1 WHERE id = $2",
+            ville,
+            librairie_id
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur update ville: {}", e)))?;
     }
 
     if let Some(statut) = payload.statut {
-        sqlx::query!("UPDATE librairie_partners SET statut = $1 WHERE id = $2", statut as LibrairieStatut, librairie_id)
-            .execute(&mut *tx).await.map_err(|e| AppError::Internal(format!("Erreur update statut: {}", e)))?;
+        sqlx::query!(
+            "UPDATE librairie_partners SET statut = $1 WHERE id = $2",
+            statut as LibrairieStatut,
+            librairie_id
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur update statut: {}", e)))?;
 
         // Mettre à jour le rôle utilisateur si nécessaire
         if statut == LibrairieStatut::Actif {
-            sqlx::query!("UPDATE users SET role = 'librairie' WHERE id = $1", librairie.user_id)
-                .execute(&mut *tx).await.map_err(|e| AppError::Internal(format!("Erreur update rôle: {}", e)))?;
+            sqlx::query!(
+                "UPDATE users SET role = 'librairie' WHERE id = $1",
+                librairie.user_id
+            )
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur update rôle: {}", e)))?;
         }
     }
 
     if let Some(est_actif) = payload.est_actif {
-        sqlx::query!("UPDATE librairie_partners SET est_actif = $1 WHERE id = $2", est_actif, librairie_id)
-            .execute(&mut *tx).await.map_err(|e| AppError::Internal(format!("Erreur update actif: {}", e)))?;
+        sqlx::query!(
+            "UPDATE librairie_partners SET est_actif = $1 WHERE id = $2",
+            est_actif,
+            librairie_id
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur update actif: {}", e)))?;
     }
 
     if let Some(commission) = payload.commission_app {
-        sqlx::query!("UPDATE librairie_partners SET commission_app = $1 WHERE id = $2", commission, librairie_id)
-            .execute(&mut *tx).await.map_err(|e| AppError::Internal(format!("Erreur update commission: {}", e)))?;
+        sqlx::query!(
+            "UPDATE librairie_partners SET commission_app = $1 WHERE id = $2",
+            commission,
+            librairie_id
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur update commission: {}", e)))?;
     }
 
     // Mettre à jour le timestamp
-    sqlx::query!("UPDATE librairie_partners SET updated_at = NOW() WHERE id = $1", librairie_id)
-        .execute(&mut *tx).await.map_err(|e| AppError::Internal(format!("Erreur update timestamp: {}", e)))?;
+    sqlx::query!(
+        "UPDATE librairie_partners SET updated_at = NOW() WHERE id = $1",
+        librairie_id
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur update timestamp: {}", e)))?;
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
     // Récupérer la librairie mise à jour
@@ -382,9 +459,12 @@ pub async fn update_librairie_partner(
     )
     .fetch_one(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur récupération: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur récupération: {}", e)))?;
 
-    info!("[update_librairie_partner] Librairie {} mise à jour", librairie_id);
+    info!(
+        "[update_librairie_partner] Librairie {} mise à jour",
+        librairie_id
+    );
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -418,7 +498,7 @@ pub async fn get_statistiques_reseau(
     )
     .fetch_one(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur stats librairies: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur stats librairies: {}", e)))?;
 
     // Statistiques commandes
     let mut commandes_query = "
@@ -430,7 +510,8 @@ pub async fn get_statistiques_reseau(
             AVG(budget_total) as budget_moyen,
             SUM(budget_total) as chiffre_affaires
         FROM commandes_mixtes
-    ".to_string();
+    "
+    .to_string();
 
     if let Some(date_debut) = &params.date_debut {
         commandes_query.push_str(&format!(" WHERE created_at >= '{}'", date_debut));
@@ -457,7 +538,7 @@ pub async fn get_statistiques_reseau(
     )
     .fetch_one(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur stats paiements: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur stats paiements: {}", e)))?;
 
     // Top villes par nombre de librairies
     let top_villes = sqlx::query!(
@@ -472,7 +553,7 @@ pub async fn get_statistiques_reseau(
     )
     .fetch_all(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur top villes: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur top villes: {}", e)))?;
 
     // Évolution des commandes (30 derniers jours)
     let evolution_commandes = sqlx::query!(
@@ -489,7 +570,7 @@ pub async fn get_statistiques_reseau(
     )
     .fetch_all(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur évolution: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur évolution: {}", e)))?;
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -510,12 +591,17 @@ pub async fn valider_librairie_partner(
     Path(librairie_id): Path<Uuid>,
     Json(payload): Json<ValidationLibrairieRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[valider_librairie_partner] Admin: {}, Librairie: {}, Action: {}", 
-          admin_id, librairie_id, payload.action);
+    info!(
+        "[valider_librairie_partner] Admin: {}, Librairie: {}, Action: {}",
+        admin_id, librairie_id, payload.action
+    );
 
     // TODO: Vérifier que c'est un admin
 
-    let mut tx = state.pg.begin().await
+    let mut tx = state
+        .pg
+        .begin()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Récupérer la librairie
@@ -526,8 +612,8 @@ pub async fn valider_librairie_partner(
     )
     .fetch_optional(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::NotFound("Librairie non trouvée".to_string()))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Librairie non trouvée".to_string()))?;
 
     match payload.action.as_str() {
         "valider" => {
@@ -542,7 +628,7 @@ pub async fn valider_librairie_partner(
             )
             .execute(&mut *tx)
             .await
-                .map_err(|e| AppError::Internal(format!("Erreur validation: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Erreur validation: {}", e)))?;
 
             // Mettre à jour le rôle utilisateur
             sqlx::query!(
@@ -551,7 +637,7 @@ pub async fn valider_librairie_partner(
             )
             .execute(&mut *tx)
             .await
-                .map_err(|e| AppError::Internal(format!("Erreur update rôle: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Erreur update rôle: {}", e)))?;
 
             // Envoyer notification de validation
             let mut variables = std::collections::HashMap::new();
@@ -566,13 +652,18 @@ pub async fn valider_librairie_partner(
                     "type": "librairie_validation",
                     "librairie_id": librairie_id,
                     "action": "valide"
-                }))
-            ).await {
+                })),
+            )
+            .await
+            {
                 warn!("[valider_librairie_partner] Erreur notification: {}", e);
             }
 
-            info!("[valider_librairie_partner] Librairie {} validée", librairie_id);
-        },
+            info!(
+                "[valider_librairie_partner] Librairie {} validée",
+                librairie_id
+            );
+        }
         "rejeter" => {
             // Rejeter la librairie
             sqlx::query!(
@@ -585,11 +676,14 @@ pub async fn valider_librairie_partner(
             )
             .execute(&mut *tx)
             .await
-                .map_err(|e| AppError::Internal(format!("Erreur rejet: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Erreur rejet: {}", e)))?;
 
             // Envoyer notification de rejet
             let mut variables = std::collections::HashMap::new();
-            variables.insert("motif".to_string(), payload.motif.clone().unwrap_or_default());
+            variables.insert(
+                "motif".to_string(),
+                payload.motif.clone().unwrap_or_default(),
+            );
 
             if let Err(e) = crate::services::multilingue_service::envoyer_notification_multilingue(
                 &state,
@@ -601,19 +695,27 @@ pub async fn valider_librairie_partner(
                     "librairie_id": librairie_id,
                     "action": "rejete",
                     "motif": payload.motif
-                }))
-            ).await {
+                })),
+            )
+            .await
+            {
                 warn!("[valider_librairie_partner] Erreur notification: {}", e);
             }
 
-            info!("[valider_librairie_partner] Librairie {} rejetée", librairie_id);
-        },
+            info!(
+                "[valider_librairie_partner] Librairie {} rejetée",
+                librairie_id
+            );
+        }
         _ => {
-            return Err(AppError::BadRequest("Action invalide. Utilisez 'valider' ou 'rejeter'".to_string()));
+            return Err(AppError::BadRequest(
+                "Action invalide. Utilisez 'valider' ou 'rejeter'".to_string(),
+            ));
         }
     }
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
     Ok(Json(serde_json::json!({

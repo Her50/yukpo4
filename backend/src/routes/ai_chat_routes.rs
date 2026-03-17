@@ -511,7 +511,8 @@ fn build_system_prompt_for_mode(
     let user_role = ctx.get("user_role").and_then(|v| v.as_str()).unwrap_or("user");
 
     if mode == "chatbot_service" {
-        let service_name = ctx.get("service_name").and_then(|v| v.as_str()).unwrap_or("this service");
+        let service_name =
+            ctx.get("service_name").and_then(|v| v.as_str()).unwrap_or("this service");
         let service_price = ctx.get("service_price").and_then(|v| v.as_str()).unwrap_or("");
         let service_desc = ctx.get("service_description").and_then(|v| v.as_str()).unwrap_or("");
         let products_summary = ctx.get("products_summary").and_then(|v| v.as_str()).unwrap_or("");
@@ -554,7 +555,8 @@ fn build_system_prompt_for_mode(
     }
 
     if category == "pharmacie" {
-        let medications = ctx.get("medications")
+        let medications = ctx
+            .get("medications")
             .and_then(|m| m.as_array())
             .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
             .unwrap_or_default();
@@ -585,11 +587,13 @@ fn build_system_prompt_for_mode(
     };
 
     let screen_info = if !screen.is_empty() {
-        let actions = ctx.get("available_actions")
+        let actions = ctx
+            .get("available_actions")
             .and_then(|v| v.as_array())
             .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
             .unwrap_or_default();
-        let elements = ctx.get("visible_elements")
+        let elements = ctx
+            .get("visible_elements")
             .and_then(|v| v.as_array())
             .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
             .unwrap_or_default();
@@ -604,9 +608,17 @@ fn build_system_prompt_for_mode(
     let service_info = if let Some(sd) = ctx.get("service_data") {
         if !sd.is_null() {
             let s = serde_json::to_string(sd).unwrap_or_default();
-            if s.len() > 5 { format!("\nSERVICE/PRODUCT DATA: {}", &s[..s.len().min(500)]) } else { String::new() }
-        } else { String::new() }
-    } else { String::new() };
+            if s.len() > 5 {
+                format!("\nSERVICE/PRODUCT DATA: {}", &s[..s.len().min(500)])
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        }
+    } else {
+        String::new()
+    };
 
     format!(
         "You are Yukpo Assistant — the intelligent 24/7 in-app guide for the Yukpo mobile application.\n\
@@ -681,15 +693,10 @@ pub async fn chat_ai(
     let user_lang = payload.language.as_deref().unwrap_or("fr");
     let lang_instruction = get_language_instruction(user_lang);
 
-    let system_prompt = build_system_prompt_for_mode(
-        &payload.context,
-        lang_instruction,
-        &payload.r#type,
-    );
+    let system_prompt =
+        build_system_prompt_for_mode(&payload.context, lang_instruction, &payload.r#type);
 
-    let mut messages_vec = vec![
-        serde_json::json!({"role": "system", "content": system_prompt}),
-    ];
+    let mut messages_vec = vec![serde_json::json!({"role": "system", "content": system_prompt})];
 
     if let Some(ctx) = &payload.context {
         if let Some(history) = ctx.get("conversation_history").or(ctx.get("recent_messages")) {
@@ -881,11 +888,8 @@ pub async fn contextual_chat(
     let user_lang = payload.language.as_deref().unwrap_or("fr");
     let lang_instruction = get_language_instruction(user_lang);
 
-    let system_prompt = build_system_prompt_for_mode(
-        &payload.context,
-        lang_instruction,
-        &payload.r#type,
-    );
+    let system_prompt =
+        build_system_prompt_for_mode(&payload.context, lang_instruction, &payload.r#type);
 
     let model = std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".to_string());
 

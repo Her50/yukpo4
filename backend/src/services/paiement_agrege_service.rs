@@ -1,8 +1,8 @@
 // ✅ SERVICE PAIEMENT AGRÉGÉ - Gestion multi-méthodes avec commission
 // Support Wallet, Mobile Money, Carte Bancaire, Virement, Espèces
 
-use std::sync::Arc;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use axum::extract::State;
 use axum::response::IntoResponse;
@@ -40,10 +40,10 @@ pub struct FournisseurPaiement {
 #[sqlx(type_name = "varchar", rename_all = "snake_case")]
 pub enum TypeFournisseur {
     MobileMoney, // Orange Money, MTN Mobile Money, Wave, etc.
-    Banque, // Carte bancaire, virement
-    Wallet, // Wallet interne YukPo
-    Especes, // Paiement à la livraison
-    Crypto, // Bitcoin, USDT, etc.
+    Banque,      // Carte bancaire, virement
+    Wallet,      // Wallet interne YukPo
+    Especes,     // Paiement à la livraison
+    Crypto,      // Bitcoin, USDT, etc.
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -137,7 +137,7 @@ impl PaiementAgregeService {
 
     pub async fn initialiser_fournisseurs(&mut self, pg: &sqlx::PgPool) -> Result<(), AppError> {
         let fournisseurs_db = sqlx::query_as::<_, FournisseurPaiement>(
-            "SELECT * FROM fournisseurs_paiement WHERE est_actif = true"
+            "SELECT * FROM fournisseurs_paiement WHERE est_actif = true",
         )
         .fetch_all(pg)
         .await
@@ -147,7 +147,10 @@ impl PaiementAgregeService {
             self.fournisseurs.insert(fournisseur.code.clone(), fournisseur);
         }
 
-        info!("[PaiementAgregeService] {} fournisseurs initialisés", self.fournisseurs.len());
+        info!(
+            "[PaiementAgregeService] {} fournisseurs initialisés",
+            self.fournisseurs.len()
+        );
         Ok(())
     }
 
@@ -157,8 +160,10 @@ impl PaiementAgregeService {
         demande: DemandePaiement,
         pg: &sqlx::PgPool,
     ) -> Result<ReponsePaiement, AppError> {
-        info!("[creer_demande_paiement] Transaction: {}, Montant: {}, Méthode: {:?}", 
-              demande.transaction_id, demande.montant_total, demande.methode_paiement);
+        info!(
+            "[creer_demande_paiement] Transaction: {}, Montant: {}, Méthode: {:?}",
+            demande.transaction_id, demande.montant_total, demande.methode_paiement
+        );
 
         // Calculer la répartition
         let repartition = self.calculer_repartition(&demande, pg).await?;
@@ -168,15 +173,24 @@ impl PaiementAgregeService {
 
         // Générer la réponse selon la méthode de paiement
         let reponse = match demande.methode_paiement {
-            MethodePaiement::Wallet => self.traiter_paiement_wallet(&demande, &transaction, pg).await?,
-            MethodePaiement::MobileMoney | MethodePaiement::OrangeMoney | MethodePaiement::MTNMobileMoney | MethodePaiement::Wave => {
+            MethodePaiement::Wallet => {
+                self.traiter_paiement_wallet(&demande, &transaction, pg).await?
+            }
+            MethodePaiement::MobileMoney
+            | MethodePaiement::OrangeMoney
+            | MethodePaiement::MTNMobileMoney
+            | MethodePaiement::Wave => {
                 self.traiter_paiement_mobile_money(&demande, &transaction, pg).await?
-            },
+            }
             MethodePaiement::CarteBancaire | MethodePaiement::Stripe | MethodePaiement::PayPal => {
                 self.traiter_paiement_carte(&demande, &transaction, pg).await?
-            },
-            MethodePaiement::VirementBancaire => self.traiter_paiement_virement(&demande, &transaction, pg).await?,
-            MethodePaiement::Especes => self.traiter_paiement_especes(&demande, &transaction, pg).await?,
+            }
+            MethodePaiement::VirementBancaire => {
+                self.traiter_paiement_virement(&demande, &transaction, pg).await?
+            }
+            MethodePaiement::Especes => {
+                self.traiter_paiement_especes(&demande, &transaction, pg).await?
+            }
         };
 
         Ok(reponse)
@@ -230,7 +244,8 @@ impl PaiementAgregeService {
 
             let mut librairie_totals: HashMap<Uuid, (String, f64)> = HashMap::new();
             for livre in livres_neufs {
-                let entry = librairie_totals.entry(livre.librairie_user_id.unwrap_or_default())
+                let entry = librairie_totals
+                    .entry(livre.librairie_user_id.unwrap_or_default())
                     .or_insert((livre.librairie_nom.unwrap_or_default(), 0.0));
                 entry.1 += livre.prix_final * livre.quantite as f64;
             }
@@ -275,12 +290,12 @@ impl PaiementAgregeService {
 
             let mut vendeur_totals: HashMap<Uuid, (String, f64)> = HashMap::new();
             for livre in livres_occasion {
-                let nom_complet = format!("{} {}", 
-                    livre.vendeur_prenom.unwrap_or_default(), 
+                let nom_complet = format!(
+                    "{} {}",
+                    livre.vendeur_prenom.unwrap_or_default(),
                     livre.vendeur_nom.unwrap_or_default()
                 );
-                let entry = vendeur_totals.entry(livre.vendeur_id)
-                    .or_insert((nom_complet, 0.0));
+                let entry = vendeur_totals.entry(livre.vendeur_id).or_insert((nom_complet, 0.0));
                 entry.1 += livre.prix * livre.quantite as f64;
             }
 
@@ -321,7 +336,7 @@ impl PaiementAgregeService {
         let methode_str = format!("{:?}", demande.methode_paiement).to_lowercase();
         let repartition_json = serde_json::to_value(&repartition.beneficiaires)
             .unwrap_or(serde_json::Value::Array(vec![]));
-        
+
         let transaction = sqlx::query_as::<_, TransactionAgregee>(
             r#"
             INSERT INTO transactions_agregees (
@@ -355,20 +370,21 @@ impl PaiementAgregeService {
         transaction: &TransactionAgregee,
         pg: &sqlx::PgPool,
     ) -> Result<ReponsePaiement, AppError> {
-        let solde: f64 = sqlx::query_scalar(
-            "SELECT COALESCE(solde, 0.0) FROM user_wallets WHERE user_id = $1",
-        )
-        .bind(demande.user_id)
-        .fetch_one(pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur vérification solde: {}", e)))?;
+        let solde: f64 =
+            sqlx::query_scalar("SELECT COALESCE(solde, 0.0) FROM user_wallets WHERE user_id = $1")
+                .bind(demande.user_id)
+                .fetch_one(pg)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur vérification solde: {}", e)))?;
 
         if solde < demande.montant_total {
             return Err(AppError::BadRequest("Solde wallet insuffisant".to_string()));
         }
 
         // Débiter le wallet
-        let mut tx = pg.begin().await
+        let mut tx = pg
+            .begin()
+            .await
             .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
         sqlx::query("UPDATE user_wallets SET solde = solde - $1 WHERE user_id = $2")
@@ -391,7 +407,8 @@ impl PaiementAgregeService {
         // Distribuer les fonds aux bénéficiaires
         self.distribuer_fonds(&mut *tx, transaction.id).await?;
 
-        tx.commit().await
+        tx.commit()
+            .await
             .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
         Ok(ReponsePaiement {
@@ -414,8 +431,14 @@ impl PaiementAgregeService {
         transaction: &TransactionAgregee,
         _pg: &sqlx::PgPool,
     ) -> Result<ReponsePaiement, AppError> {
-        let payment_url = format!("https://api.yukpo.com/payment/mobile/{}", transaction.reference_paiement);
-        let qr_code_data = format!("MOBILE_MONEY:{}:{}", transaction.reference_paiement, demande.montant_total);
+        let payment_url = format!(
+            "https://api.yukpo.com/payment/mobile/{}",
+            transaction.reference_paiement
+        );
+        let qr_code_data = format!(
+            "MOBILE_MONEY:{}:{}",
+            transaction.reference_paiement, demande.montant_total
+        );
 
         Ok(ReponsePaiement {
             transaction_id: demande.transaction_id,
@@ -424,7 +447,9 @@ impl PaiementAgregeService {
             provider_transaction_id: Some(format!("MOBILE-{}", Uuid::new_v4())),
             payment_url: Some(payment_url),
             qr_code_data: Some(qr_code_data),
-            instructions: Some("Scannez le QR code avec votre application mobile money".to_string()),
+            instructions: Some(
+                "Scannez le QR code avec votre application mobile money".to_string(),
+            ),
             expires_at: demande.expires_at,
             created_at: Utc::now(),
         })
@@ -438,7 +463,10 @@ impl PaiementAgregeService {
         pg: &sqlx::PgPool,
     ) -> Result<ReponsePaiement, AppError> {
         // TODO: Intégration Stripe, Paystack, etc.
-        let payment_url = format!("https://api.yukpo.com/payment/card/{}", transaction.reference_paiement);
+        let payment_url = format!(
+            "https://api.yukpo.com/payment/card/{}",
+            transaction.reference_paiement
+        );
 
         Ok(ReponsePaiement {
             transaction_id: demande.transaction_id,
@@ -447,7 +475,9 @@ impl PaiementAgregeService {
             provider_transaction_id: Some(format!("CARD-{}", Uuid::new_v4())),
             payment_url: Some(payment_url),
             qr_code_data: None,
-            instructions: Some("Vous allez être redirigé vers la page de paiement sécurisée".to_string()),
+            instructions: Some(
+                "Vous allez être redirigé vers la page de paiement sécurisée".to_string(),
+            ),
             expires_at: demande.expires_at,
             created_at: Utc::now(),
         })
@@ -492,7 +522,9 @@ impl PaiementAgregeService {
             provider_transaction_id: None,
             payment_url: None,
             qr_code_data: None,
-            instructions: Some("Paiement en espèces à la livraison. Préparez la somme exacte.".to_string()),
+            instructions: Some(
+                "Paiement en espèces à la livraison. Préparez la somme exacte.".to_string(),
+            ),
             expires_at: demande.expires_at,
             created_at: Utc::now(),
         })
@@ -517,13 +549,16 @@ impl PaiementAgregeService {
         .map_err(|e| AppError::Internal(format!("Erreur récupération répartition: {}", e)))?;
 
         let beneficiaires: Vec<BeneficiairePaiement> = serde_json::from_value(
-            repartition.details_repartition.unwrap_or(serde_json::Value::Array(vec![]))
-        ).map_err(|e| AppError::Internal(format!("Erreur parsing bénéficiaires: {}", e)))?;
+            repartition.details_repartition.unwrap_or(serde_json::Value::Array(vec![])),
+        )
+        .map_err(|e| AppError::Internal(format!("Erreur parsing bénéficiaires: {}", e)))?;
 
         // Distribuer à chaque bénéficiaire
         for beneficiaire in beneficiaires {
             match beneficiaire.type_beneficiaire {
-                TypeBeneficiaire::Librairie | TypeBeneficiaire::VendeurOccasion | TypeBeneficiaire::Coursier => {
+                TypeBeneficiaire::Librairie
+                | TypeBeneficiaire::VendeurOccasion
+                | TypeBeneficiaire::Coursier => {
                     sqlx::query(
                         r#"INSERT INTO user_wallets (user_id, solde, updated_at)
                         VALUES ($1, $2, NOW())
@@ -536,8 +571,8 @@ impl PaiementAgregeService {
                     .execute(&mut **tx)
                     .await
                     .map_err(|e| AppError::Internal(format!("Erreur crédit wallet: {}", e)))?;
-                },
-                TypeBeneficiaire::Application => {},
+                }
+                TypeBeneficiaire::Application => {}
             }
         }
 
@@ -552,7 +587,9 @@ impl PaiementAgregeService {
         statut: TransactionStatut,
         pg: &sqlx::PgPool,
     ) -> Result<(), AppError> {
-        let mut tx = pg.begin().await
+        let mut tx = pg
+            .begin()
+            .await
             .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
         let statut_str = format!("{:?}", statut).to_lowercase();
@@ -578,11 +615,14 @@ impl PaiementAgregeService {
             self.distribuer_fonds(&mut tx, transaction_id).await?;
         }
 
-        tx.commit().await
+        tx.commit()
+            .await
             .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
-        info!("[confirmer_paiement_externe] Paiement {} confirmé avec statut {:?}", 
-              reference_paiement, statut);
+        info!(
+            "[confirmer_paiement_externe] Paiement {} confirmé avec statut {:?}",
+            reference_paiement, statut
+        );
 
         Ok(())
     }
@@ -627,14 +667,13 @@ impl PaiementAgregeService {
         user_id: Uuid,
         pg: &sqlx::PgPool,
     ) -> Result<f64, AppError> {
-        let solde: f64 = sqlx::query_scalar(
-            "SELECT COALESCE(solde, 0.0) FROM user_wallets WHERE user_id = $1",
-        )
-        .bind(user_id)
-        .fetch_optional(pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .unwrap_or(0.0);
+        let solde: f64 =
+            sqlx::query_scalar("SELECT COALESCE(solde, 0.0) FROM user_wallets WHERE user_id = $1")
+                .bind(user_id)
+                .fetch_optional(pg)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+                .unwrap_or(0.0);
 
         Ok(solde)
     }
@@ -646,7 +685,9 @@ impl PaiementAgregeService {
         motif: &str,
         pg: &sqlx::PgPool,
     ) -> Result<(), AppError> {
-        let mut tx = pg.begin().await
+        let mut tx = pg
+            .begin()
+            .await
             .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
         sqlx::query(
@@ -672,10 +713,14 @@ impl PaiementAgregeService {
         .await
         .map_err(|e| AppError::Internal(format!("Erreur historique wallet: {}", e)))?;
 
-        tx.commit().await
+        tx.commit()
+            .await
             .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
-        info!("[crediter_wallet] {} crédité à user_id: {} ({})", montant, user_id, motif);
+        info!(
+            "[crediter_wallet] {} crédité à user_id: {} ({})",
+            montant, user_id, motif
+        );
         Ok(())
     }
 }
@@ -692,15 +737,18 @@ pub async fn callback_orange_money(
     info!("[callback_orange_money] Callback reçu: {:?}", payload);
 
     // Parser le callback
-    let reference_paiement = payload.get("reference_paiement")
+    let reference_paiement = payload
+        .get("reference_paiement")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::BadRequest("reference_paiement manquant".to_string()))?;
 
-    let provider_transaction_id = payload.get("transaction_id")
+    let provider_transaction_id = payload
+        .get("transaction_id")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::BadRequest("transaction_id manquant".to_string()))?;
 
-    let statut_str = payload.get("statut")
+    let statut_str = payload
+        .get("statut")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::BadRequest("statut manquant".to_string()))?;
 
@@ -712,8 +760,14 @@ pub async fn callback_orange_money(
     };
 
     // Confirmer le paiement
-    state.paiement_service
-        .confirmer_paiement_externe(reference_paiement, provider_transaction_id, statut, &state.pg)
+    state
+        .paiement_service
+        .confirmer_paiement_externe(
+            reference_paiement,
+            provider_transaction_id,
+            statut,
+            &state.pg,
+        )
         .await?;
 
     Ok(Json(serde_json::json!({

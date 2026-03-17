@@ -102,7 +102,10 @@ pub async fn create_fournisseur_paiement(
     Extension(AuthenticatedUser { id: admin_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateFournisseurPaiementRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[create_fournisseur_paiement] Admin: {}, Fournisseur: {}", admin_id, payload.nom);
+    info!(
+        "[create_fournisseur_paiement] Admin: {}, Fournisseur: {}",
+        admin_id, payload.nom
+    );
 
     // TODO: Vérifier que c'est un admin
 
@@ -113,15 +116,19 @@ pub async fn create_fournisseur_paiement(
     )
     .fetch_optional(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur vérification code: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur vérification code: {}", e)))?;
 
     if existing.is_some() {
-        return Err(AppError::BadRequest("Ce code fournisseur existe déjà".to_string()));
+        return Err(AppError::BadRequest(
+            "Ce code fournisseur existe déjà".to_string(),
+        ));
     }
 
     // Valider la configuration
     if !payload.configuration.is_object() {
-        return Err(AppError::BadRequest("La configuration doit être un objet JSON".to_string()));
+        return Err(AppError::BadRequest(
+            "La configuration doit être un objet JSON".to_string(),
+        ));
     }
 
     // Créer le fournisseur
@@ -145,7 +152,7 @@ pub async fn create_fournisseur_paiement(
     )
     .fetch_one(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur création fournisseur: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur création fournisseur: {}", e)))?;
 
     info!("[create_fournisseur_paiement] Fournisseur {} créé (redémarrage requis pour recharger le cache fournisseurs)", fournisseur.id);
 
@@ -185,12 +192,9 @@ pub async fn get_fournisseurs_paiement(
 
     query.push_str(" ORDER BY created_at DESC");
 
-    let fournisseurs = sqlx::query_as!(
-        FournisseurPaiement,
-        &query
-    )
-    .fetch_all(&state.pg)
-    .await
+    let fournisseurs = sqlx::query_as!(FournisseurPaiement, &query)
+        .fetch_all(&state.pg)
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
     Ok(Json(serde_json::json!({
@@ -209,11 +213,17 @@ pub async fn update_fournisseur_paiement(
     Path(fournisseur_id): Path<Uuid>,
     Json(payload): Json<UpdateFournisseurPaiementRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[update_fournisseur_paiement] Admin: {}, Fournisseur: {}", admin_id, fournisseur_id);
+    info!(
+        "[update_fournisseur_paiement] Admin: {}, Fournisseur: {}",
+        admin_id, fournisseur_id
+    );
 
     // TODO: Vérifier que c'est un admin
 
-    let mut tx = state.pg.begin().await
+    let mut tx = state
+        .pg
+        .begin()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Vérifier que le fournisseur existe
@@ -224,35 +234,65 @@ pub async fn update_fournisseur_paiement(
     )
     .fetch_optional(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::NotFound("Fournisseur non trouvé".to_string()))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Fournisseur non trouvé".to_string()))?;
 
     // Mettre à jour les champs
     if let Some(nom) = payload.nom {
-        sqlx::query!("UPDATE fournisseurs_paiement SET nom = $1 WHERE id = $2", nom, fournisseur_id)
-            .execute(&mut *tx).await.map_err(|e| AppError::Internal(format!("Erreur update nom: {}", e)))?;
+        sqlx::query!(
+            "UPDATE fournisseurs_paiement SET nom = $1 WHERE id = $2",
+            nom,
+            fournisseur_id
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur update nom: {}", e)))?;
     }
 
     if let Some(commission) = payload.commission_fournisseur {
-        sqlx::query!("UPDATE fournisseurs_paiement SET commission_fournisseur = $1 WHERE id = $2", commission, fournisseur_id)
-            .execute(&mut *tx).await.map_err(|e| AppError::Internal(format!("Erreur update commission: {}", e)))?;
+        sqlx::query!(
+            "UPDATE fournisseurs_paiement SET commission_fournisseur = $1 WHERE id = $2",
+            commission,
+            fournisseur_id
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur update commission: {}", e)))?;
     }
 
     if let Some(configuration) = payload.configuration {
-        sqlx::query!("UPDATE fournisseurs_paiement SET configuration = $1 WHERE id = $2", configuration, fournisseur_id)
-            .execute(&mut *tx).await.map_err(|e| AppError::Internal(format!("Erreur update configuration: {}", e)))?;
+        sqlx::query!(
+            "UPDATE fournisseurs_paiement SET configuration = $1 WHERE id = $2",
+            configuration,
+            fournisseur_id
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur update configuration: {}", e)))?;
     }
 
     if let Some(est_actif) = payload.est_actif {
-        sqlx::query!("UPDATE fournisseurs_paiement SET est_actif = $1 WHERE id = $2", est_actif, fournisseur_id)
-            .execute(&mut *tx).await.map_err(|e| AppError::Internal(format!("Erreur update actif: {}", e)))?;
+        sqlx::query!(
+            "UPDATE fournisseurs_paiement SET est_actif = $1 WHERE id = $2",
+            est_actif,
+            fournisseur_id
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur update actif: {}", e)))?;
     }
 
     // Mettre à jour le timestamp
-    sqlx::query!("UPDATE fournisseurs_paiement SET updated_at = NOW() WHERE id = $1", fournisseur_id)
-        .execute(&mut *tx).await.map_err(|e| AppError::Internal(format!("Erreur update timestamp: {}", e)))?;
+    sqlx::query!(
+        "UPDATE fournisseurs_paiement SET updated_at = NOW() WHERE id = $1",
+        fournisseur_id
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur update timestamp: {}", e)))?;
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
     // Récupérer le fournisseur mis à jour
@@ -263,9 +303,12 @@ pub async fn update_fournisseur_paiement(
     )
     .fetch_one(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur récupération: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur récupération: {}", e)))?;
 
-    info!("[update_fournisseur_paiement] Fournisseur {} mis à jour", fournisseur_id);
+    info!(
+        "[update_fournisseur_paiement] Fournisseur {} mis à jour",
+        fournisseur_id
+    );
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -295,7 +338,8 @@ pub async fn get_all_transactions(
         LEFT JOIN users u ON ta.user_id = u.id
         LEFT JOIN commandes_mixtes cm ON ta.commande_id = cm.id
         WHERE 1=1
-    ".to_string();
+    "
+    .to_string();
 
     if let Some(statut) = &params.statut {
         query.push_str(&format!(" AND ta.statut = '{:?}'", statut));
@@ -349,7 +393,7 @@ pub async fn get_all_transactions(
     )
     .fetch_one(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur totaux: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur totaux: {}", e)))?;
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -366,12 +410,17 @@ pub async fn traiter_remboursement(
     Extension(AuthenticatedUser { id: admin_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<TraiterRemboursementRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[traiter_remboursement] Admin: {}, Remboursement: {}, Action: {}", 
-          admin_id, payload.remboursement_id, payload.action);
+    info!(
+        "[traiter_remboursement] Admin: {}, Remboursement: {}, Action: {}",
+        admin_id, payload.remboursement_id, payload.action
+    );
 
     // TODO: Vérifier que c'est un admin
 
-    let mut tx = state.pg.begin().await
+    let mut tx = state
+        .pg
+        .begin()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Récupérer la demande de remboursement
@@ -386,19 +435,24 @@ pub async fn traiter_remboursement(
     )
     .fetch_optional(&mut *tx)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::NotFound("Demande de remboursement non trouvée".to_string()))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Demande de remboursement non trouvée".to_string()))?;
 
     if remboursement.statut != "en_attente" {
-        return Err(AppError::BadRequest("Cette demande a déjà été traitée".to_string()));
+        return Err(AppError::BadRequest(
+            "Cette demande a déjà été traitée".to_string(),
+        ));
     }
 
     match payload.action.as_str() {
         "approuver" => {
-            let montant_rembourse = payload.montant_rembourse.unwrap_or(remboursement.montant_total);
+            let montant_rembourse =
+                payload.montant_rembourse.unwrap_or(remboursement.montant_total);
 
             if montant_rembourse > remboursement.montant_total {
-                return Err(AppError::BadRequest("Le montant remboursé ne peut pas dépasser le montant total".to_string()));
+                return Err(AppError::BadRequest(
+                    "Le montant remboursé ne peut pas dépasser le montant total".to_string(),
+                ));
             }
 
             // Mettre à jour le statut de la demande
@@ -418,7 +472,7 @@ pub async fn traiter_remboursement(
             )
             .execute(&mut *tx)
             .await
-                .map_err(|e| AppError::Internal(format!("Erreur update demande: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Erreur update demande: {}", e)))?;
 
             // Rembourser le wallet de l'utilisateur
             sqlx::query!(
@@ -434,7 +488,7 @@ pub async fn traiter_remboursement(
             )
             .execute(&mut *tx)
             .await
-                .map_err(|e| AppError::Internal(format!("Erreur crédit wallet: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Erreur crédit wallet: {}", e)))?;
 
             // Historique du remboursement
             sqlx::query!(
@@ -454,7 +508,10 @@ pub async fn traiter_remboursement(
             // Envoyer notification à l'utilisateur
             let mut variables = std::collections::HashMap::new();
             variables.insert("montant".to_string(), montant_rembourse.to_string());
-            variables.insert("reference_paiement".to_string(), remboursement.reference_paiement.clone());
+            variables.insert(
+                "reference_paiement".to_string(),
+                remboursement.reference_paiement.clone(),
+            );
 
             if let Err(e) = crate::services::multilingue_service::envoyer_notification_multilingue(
                 &state,
@@ -465,13 +522,18 @@ pub async fn traiter_remboursement(
                     "type": "remboursement",
                     "remboursement_id": payload.remboursement_id,
                     "montant": montant_rembourse
-                }))
-            ).await {
+                })),
+            )
+            .await
+            {
                 warn!("[traiter_remboursement] Erreur notification: {}", e);
             }
 
-            info!("[traiter_remboursement] Remboursement {} approuvé de {}", payload.remboursement_id, montant_rembourse);
-        },
+            info!(
+                "[traiter_remboursement] Remboursement {} approuvé de {}",
+                payload.remboursement_id, montant_rembourse
+            );
+        }
         "rejeter" => {
             // Mettre à jour le statut de la demande
             sqlx::query!(
@@ -490,11 +552,14 @@ pub async fn traiter_remboursement(
             )
             .execute(&mut *tx)
             .await
-                .map_err(|e| AppError::Internal(format!("Erreur update demande: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Erreur update demande: {}", e)))?;
 
             // Envoyer notification à l'utilisateur
             let mut variables = std::collections::HashMap::new();
-            variables.insert("motif".to_string(), payload.motif.clone().unwrap_or_default());
+            variables.insert(
+                "motif".to_string(),
+                payload.motif.clone().unwrap_or_default(),
+            );
 
             if let Err(e) = crate::services::multilingue_service::envoyer_notification_multilingue(
                 &state,
@@ -505,19 +570,27 @@ pub async fn traiter_remboursement(
                     "type": "remboursement",
                     "remboursement_id": payload.remboursement_id,
                     "motif": payload.motif
-                }))
-            ).await {
+                })),
+            )
+            .await
+            {
                 warn!("[traiter_remboursement] Erreur notification: {}", e);
             }
 
-            info!("[traiter_remboursement] Remboursement {} rejeté", payload.remboursement_id);
-        },
+            info!(
+                "[traiter_remboursement] Remboursement {} rejeté",
+                payload.remboursement_id
+            );
+        }
         _ => {
-            return Err(AppError::BadRequest("Action invalide. Utilisez 'approuver' ou 'rejeter'".to_string()));
+            return Err(AppError::BadRequest(
+                "Action invalide. Utilisez 'approuver' ou 'rejeter'".to_string(),
+            ));
         }
     }
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
     Ok(Json(serde_json::json!({
@@ -550,7 +623,8 @@ pub async fn get_remboursements(
         LEFT JOIN transactions_agregees ta ON dr.transaction_id = ta.id
         LEFT JOIN users admin ON dr.admin_id = admin.id
         WHERE 1=1
-    ".to_string();
+    "
+    .to_string();
 
     if let Some(statut) = &params.statut {
         query.push_str(&format!(" AND dr.statut = '{}'", statut));
@@ -591,7 +665,7 @@ pub async fn get_remboursements(
     )
     .fetch_one(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur totaux: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur totaux: {}", e)))?;
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -629,7 +703,7 @@ pub async fn get_statistiques_paiements(
     )
     .fetch_all(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur stats méthodes: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur stats méthodes: {}", e)))?;
 
     // Évolution des transactions (30 derniers jours)
     let evolution = sqlx::query!(
@@ -648,7 +722,7 @@ pub async fn get_statistiques_paiements(
     )
     .fetch_all(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur évolution: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur évolution: {}", e)))?;
 
     // Top utilisateurs par volume
     let top_utilisateurs = sqlx::query!(
@@ -667,7 +741,7 @@ pub async fn get_statistiques_paiements(
     )
     .fetch_all(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur top utilisateurs: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur top utilisateurs: {}", e)))?;
 
     Ok(Json(serde_json::json!({
         "success": true,

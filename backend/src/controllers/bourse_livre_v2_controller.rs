@@ -3,7 +3,6 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
-use crate::utils::role_helpers::ensure_admin_role;
 use crate::models::livre_scolaire::{
     calculer_montant_net, calculer_valeur_livre, generer_reference_paquet, BookDeliveryPackage,
     BookDonationRequest, BookUploadSession, CreateDonationRequestPayload,
@@ -11,6 +10,7 @@ use crate::models::livre_scolaire::{
 };
 use crate::services::book_exchange_ai_service::BookExchangeAIService;
 use crate::state::AppState;
+use crate::utils::role_helpers::ensure_admin_role;
 use axum::{
     extract::{Extension, Path, Query, State},
     http::StatusCode,
@@ -258,13 +258,12 @@ pub async fn analyze_recto_verso(
     .ok_or_else(|| AppError::NotFound("Session non trouvée ou terminée".to_string()))?;
 
     // ✅ Limite 20 livres par session
-    let current_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM livres_scolaires WHERE upload_session_id = $1",
-    )
-    .bind(&request.session_id)
-    .fetch_one(&state.pg)
-    .await
-    .unwrap_or(0);
+    let current_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM livres_scolaires WHERE upload_session_id = $1")
+            .bind(&request.session_id)
+            .fetch_one(&state.pg)
+            .await
+            .unwrap_or(0);
 
     if current_count >= 20 {
         return Err(AppError::BadRequest(
@@ -1179,14 +1178,18 @@ pub async fn admin_list_donation_requests(
     // Enrichir avec info livre + demandeur
     let mut enriched = Vec::new();
     for req in &requests {
-        let livre_info: Option<(Option<String>, Option<String>, Option<String>, Option<String>)> =
-            sqlx::query_as(
-                "SELECT titre, matiere, classe_actuelle, ville FROM livres_scolaires WHERE id = $1",
-            )
-            .bind(req.livre_id)
-            .fetch_optional(&state.pg)
-            .await
-            .unwrap_or(None);
+        let livre_info: Option<(
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        )> = sqlx::query_as(
+            "SELECT titre, matiere, classe_actuelle, ville FROM livres_scolaires WHERE id = $1",
+        )
+        .bind(req.livre_id)
+        .fetch_optional(&state.pg)
+        .await
+        .unwrap_or(None);
 
         let demandeur_name: Option<(Option<String>,)> =
             sqlx::query_as("SELECT full_name FROM users WHERE id = $1")
@@ -1252,7 +1255,10 @@ pub async fn admin_approve_donation(
 ) -> AppResult<impl IntoResponse> {
     ensure_admin_role(&user)?;
     let admin_id = user.id;
-    info!("[admin_approve_donation] Admin: {}, Donation: {}", admin_id, donation_id);
+    info!(
+        "[admin_approve_donation] Admin: {}, Donation: {}",
+        admin_id, donation_id
+    );
 
     // Mettre à jour le statut
     let updated = sqlx::query_as::<_, BookDonationRequest>(
@@ -1270,12 +1276,10 @@ pub async fn admin_approve_donation(
     .ok_or_else(|| AppError::NotFound("Demande non trouvée ou déjà traitée".to_string()))?;
 
     // Marquer le livre comme indisponible (attribué au demandeur)
-    let _ = sqlx::query(
-        "UPDATE livres_scolaires SET is_available = false WHERE id = $1",
-    )
-    .bind(updated.livre_id)
-    .execute(&state.pg)
-    .await;
+    let _ = sqlx::query("UPDATE livres_scolaires SET is_available = false WHERE id = $1")
+        .bind(updated.livre_id)
+        .execute(&state.pg)
+        .await;
 
     Ok(Json(json!({
         "success": true,
@@ -1293,7 +1297,10 @@ pub async fn admin_reject_donation(
 ) -> AppResult<impl IntoResponse> {
     ensure_admin_role(&user)?;
     let admin_id = user.id;
-    info!("[admin_reject_donation] Admin: {}, Donation: {}", admin_id, donation_id);
+    info!(
+        "[admin_reject_donation] Admin: {}, Donation: {}",
+        admin_id, donation_id
+    );
 
     let updated = sqlx::query_as::<_, BookDonationRequest>(
         r#"
@@ -1843,12 +1850,13 @@ pub async fn create_book_purchase(
                     "paye"
                 }
                 Err(_) => {
-                    let ref_id = format!("BK-PUR-{}-{}", purchase.id, chrono::Utc::now().timestamp());
+                    let ref_id =
+                        format!("BK-PUR-{}-{}", purchase.id, chrono::Utc::now().timestamp());
                     payment_reference = Some(ref_id.clone());
 
                     let aggregator = crate::services::payment_aggregator::PaymentAggregator::new();
-                    match aggregator.initiate_payment(
-                        crate::services::payment_aggregator::InitPaymentRequest {
+                    match aggregator
+                        .initiate_payment(crate::services::payment_aggregator::InitPaymentRequest {
                             amount: montant_total as i64,
                             currency: "XAF".to_string(),
                             description: format!("Achat livre: {}", livre.titre),
@@ -1867,8 +1875,9 @@ pub async fn create_book_purchase(
                             )),
                             channels: Some(vec!["MOBILE_MONEY".to_string()]),
                             metadata: None,
-                        },
-                    ).await {
+                        })
+                        .await
+                    {
                         Ok(resp) => {
                             payment_redirect_url = Some(resp.payment_url);
                             info!(
@@ -1878,10 +1887,7 @@ pub async fn create_book_purchase(
                             "en_attente_paiement"
                         }
                         Err(e) => {
-                            warn!(
-                                "[create_book_purchase] Erreur initiation paiement: {}",
-                                e
-                            );
+                            warn!("[create_book_purchase] Erreur initiation paiement: {}", e);
                             "en_attente_paiement"
                         }
                     }
@@ -1905,10 +1911,7 @@ pub async fn create_book_purchase(
                     "paye"
                 }
                 Err(e) => {
-                    error!(
-                        "[create_book_purchase] Débit wallet échoué: {}",
-                        e
-                    );
+                    error!("[create_book_purchase] Débit wallet échoué: {}", e);
                     "en_attente"
                 }
             }
@@ -3380,14 +3383,13 @@ pub async fn cancel_book_on_site(
     );
 
     // Vérifier que l'utilisateur est bien le coursier assigné à ce paquet
-    let assigned_courier: Option<i32> = sqlx::query_scalar(
-        "SELECT coursier_id FROM book_delivery_packages WHERE id = $1",
-    )
-    .bind(body.package_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur vérification coursier: {}", e)))?
-    .flatten();
+    let assigned_courier: Option<i32> =
+        sqlx::query_scalar("SELECT coursier_id FROM book_delivery_packages WHERE id = $1")
+            .bind(body.package_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification coursier: {}", e)))?
+            .flatten();
 
     match assigned_courier {
         Some(cid) if cid != coursier_id => {
@@ -3541,15 +3543,18 @@ pub async fn get_smart_suggestions(
         .await
         .unwrap_or_default();
 
-        let matieres: Vec<serde_json::Value> = matieres_rows.iter().map(|r| {
-            json!({
-                "matiere": r.get::<String, _>("matiere"),
-                "count": r.get::<i64, _>("count"),
-                "troc": r.get::<i64, _>("troc_count"),
-                "vente": r.get::<i64, _>("vente_count"),
-                "don": r.get::<i64, _>("don_count"),
+        let matieres: Vec<serde_json::Value> = matieres_rows
+            .iter()
+            .map(|r| {
+                json!({
+                    "matiere": r.get::<String, _>("matiere"),
+                    "count": r.get::<i64, _>("count"),
+                    "troc": r.get::<i64, _>("troc_count"),
+                    "vente": r.get::<i64, _>("vente_count"),
+                    "don": r.get::<i64, _>("don_count"),
+                })
             })
-        }).collect();
+            .collect();
 
         result["matieres_disponibles"] = json!(matieres);
 
@@ -3566,7 +3571,10 @@ pub async fn get_smart_suggestions(
 
     // 2. Livres populaires (top 10) pour classe + matière
     if params.classe.is_some() || params.matiere.is_some() {
-        let mut where_parts = vec!["is_available = true".to_string(), "is_active = true".to_string()];
+        let mut where_parts = vec![
+            "is_available = true".to_string(),
+            "is_active = true".to_string(),
+        ];
         let mut bind_idx = 1u32;
         let mut binds_vec: Vec<String> = Vec::new();
 
@@ -3584,7 +3592,9 @@ pub async fn get_smart_suggestions(
             where_parts.push(format!("(titre ILIKE ${0} OR auteur ILIKE ${0})", bind_idx));
             binds_vec.push(format!("%{}%", q));
             #[allow(unused_assignments)]
-            { bind_idx += 1; }
+            {
+                bind_idx += 1;
+            }
         }
 
         let top_sql = format!(
@@ -3667,13 +3677,12 @@ pub async fn libraire_publish_new_books(
     Json(payload): Json<PublishNewBooksPayload>,
 ) -> AppResult<impl IntoResponse> {
     // Vérifier que l'utilisateur est un partenaire libraire
-    let partner: Option<(Option<String>,)> = sqlx::query_as(
-        "SELECT partner_type::text FROM delivery_partners WHERE user_id = $1",
-    )
-    .bind(user.id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+    let partner: Option<(Option<String>,)> =
+        sqlx::query_as("SELECT partner_type::text FROM delivery_partners WHERE user_id = $1")
+            .bind(user.id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
     let is_libraire = match &partner {
         Some((Some(pt),)) => pt == "libraire",
@@ -3840,10 +3849,7 @@ pub async fn browse_new_books(
         bind_idx += 1;
     }
     if let Some(ref search) = params.search {
-        conditions.push(format!(
-            "(titre ILIKE ${0} OR auteur ILIKE ${0})",
-            bind_idx
-        ));
+        conditions.push(format!("(titre ILIKE ${0} OR auteur ILIKE ${0})", bind_idx));
         binds.push(format!("%{}%", search));
         #[allow(unused_assignments)]
         {
@@ -3923,10 +3929,7 @@ pub async fn browse_new_books(
     });
 
     // Cache 5 min
-    let _ = state
-        .cache_service
-        .set(&cache_key, &result)
-        .await;
+    let _ = state.cache_service.set(&cache_key, &result).await;
 
     Ok(Json(result))
 }
@@ -4101,9 +4104,7 @@ pub async fn generate_package_qr(
     }
 
     let qr_service = crate::services::qr_code_service::QRCodeService::new(state.pg.clone());
-    let qr_info = qr_service
-        .generate_book_package_qr(package_id, &payload.qr_type)
-        .await?;
+    let qr_info = qr_service.generate_book_package_qr(package_id, &payload.qr_type).await?;
 
     Ok(Json(json!({ "success": true, "qr": qr_info })))
 }
@@ -4125,9 +4126,7 @@ pub async fn validate_package_qr(
     );
 
     let qr_service = crate::services::qr_code_service::QRCodeService::new(state.pg.clone());
-    let result = qr_service
-        .validate_book_package_qr(&payload.qr_code, user_id)
-        .await?;
+    let result = qr_service.validate_book_package_qr(&payload.qr_code, user_id).await?;
 
     Ok(Json(json!({ "success": true, "validation": result })))
 }

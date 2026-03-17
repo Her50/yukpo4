@@ -182,7 +182,10 @@ impl FlutterwaveService {
         let response = self
             .client
             .post(&url)
-            .header("Authorization", format!("Bearer {}", self.config.secret_key))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.config.secret_key),
+            )
             .header("Content-Type", "application/json")
             .json(&payload)
             .send()
@@ -190,10 +193,8 @@ impl FlutterwaveService {
             .map_err(|e| format!("Flutterwave network error: {}", e))?;
 
         let status_code = response.status();
-        let resp_text = response
-            .text()
-            .await
-            .map_err(|e| format!("Flutterwave read error: {}", e))?;
+        let resp_text =
+            response.text().await.map_err(|e| format!("Flutterwave read error: {}", e))?;
 
         log::info!(
             "[Flutterwave] Response {}: {}",
@@ -201,28 +202,25 @@ impl FlutterwaveService {
             &resp_text[..resp_text.len().min(500)]
         );
 
-        let resp_json: serde_json::Value = serde_json::from_str(&resp_text)
-            .map_err(|e| format!("Flutterwave parse error: {} - {}", e, &resp_text[..resp_text.len().min(200)]))?;
+        let resp_json: serde_json::Value = serde_json::from_str(&resp_text).map_err(|e| {
+            format!(
+                "Flutterwave parse error: {} - {}",
+                e,
+                &resp_text[..resp_text.len().min(200)]
+            )
+        })?;
 
-        let status = resp_json
-            .get("status")
-            .and_then(|s| s.as_str())
-            .unwrap_or("error");
+        let status = resp_json.get("status").and_then(|s| s.as_str()).unwrap_or("error");
 
         if status != "success" {
-            let message = resp_json
-                .get("message")
-                .and_then(|m| m.as_str())
-                .unwrap_or("Unknown error");
+            let message =
+                resp_json.get("message").and_then(|m| m.as_str()).unwrap_or("Unknown error");
             return Err(format!("Flutterwave error: {}", message));
         }
 
         let data = resp_json.get("data").cloned().unwrap_or(serde_json::json!({}));
 
-        let flw_ref = data
-            .get("flw_ref")
-            .and_then(|r| r.as_str())
-            .map(|s| s.to_string());
+        let flw_ref = data.get("flw_ref").and_then(|r| r.as_str()).map(|s| s.to_string());
 
         let payment_link = data
             .get("link")
@@ -230,11 +228,8 @@ impl FlutterwaveService {
             .and_then(|l| l.as_str())
             .map(|s| s.to_string());
 
-        let charge_status = data
-            .get("status")
-            .and_then(|s| s.as_str())
-            .unwrap_or("pending")
-            .to_string();
+        let charge_status =
+            data.get("status").and_then(|s| s.as_str()).unwrap_or("pending").to_string();
 
         Ok(FlutterwaveResponse {
             success: true,
@@ -283,22 +278,20 @@ impl FlutterwaveService {
         let response = self
             .client
             .post(&url)
-            .header("Authorization", format!("Bearer {}", self.config.secret_key))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.config.secret_key),
+            )
             .header("Content-Type", "application/json")
             .json(&payload)
             .send()
             .await
             .map_err(|e| format!("Flutterwave network error: {}", e))?;
 
-        let resp_json: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Flutterwave parse error: {}", e))?;
+        let resp_json: serde_json::Value =
+            response.json().await.map_err(|e| format!("Flutterwave parse error: {}", e))?;
 
-        let status = resp_json
-            .get("status")
-            .and_then(|s| s.as_str())
-            .unwrap_or("error");
+        let status = resp_json.get("status").and_then(|s| s.as_str()).unwrap_or("error");
 
         if status != "success" {
             let msg = resp_json.get("message").and_then(|m| m.as_str()).unwrap_or("Error");
@@ -329,30 +322,23 @@ impl FlutterwaveService {
         let response = self
             .client
             .get(&url)
-            .header("Authorization", format!("Bearer {}", self.config.secret_key))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.config.secret_key),
+            )
             .send()
             .await
             .map_err(|e| format!("Flutterwave verify error: {}", e))?;
 
-        let resp_json: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Flutterwave parse error: {}", e))?;
+        let resp_json: serde_json::Value =
+            response.json().await.map_err(|e| format!("Flutterwave parse error: {}", e))?;
 
         let data = resp_json.get("data").cloned().unwrap_or(serde_json::json!({}));
 
-        let status = data
-            .get("status")
-            .and_then(|s| s.as_str())
-            .unwrap_or("unknown")
-            .to_string();
+        let status = data.get("status").and_then(|s| s.as_str()).unwrap_or("unknown").to_string();
 
         let flw_ref = data.get("flw_ref").and_then(|r| r.as_str()).map(|s| s.to_string());
-        let tx_ref = data
-            .get("tx_ref")
-            .and_then(|r| r.as_str())
-            .unwrap_or(tx_id)
-            .to_string();
+        let tx_ref = data.get("tx_ref").and_then(|r| r.as_str()).unwrap_or(tx_id).to_string();
 
         Ok(FlutterwaveResponse {
             success: status == "successful",
@@ -387,12 +373,18 @@ impl FlutterwaveService {
             payload["amount"] = serde_json::json!(amt);
         }
 
-        let url = format!("{}/v3/transactions/{}/refund", self.config.base_url, flw_ref);
+        let url = format!(
+            "{}/v3/transactions/{}/refund",
+            self.config.base_url, flw_ref
+        );
 
         let response = self
             .client
             .post(&url)
-            .header("Authorization", format!("Bearer {}", self.config.secret_key))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.config.secret_key),
+            )
             .header("Content-Type", "application/json")
             .json(&payload)
             .send()
@@ -447,7 +439,10 @@ impl FlutterwaveService {
         let response = self
             .client
             .post(&url)
-            .header("Authorization", format!("Bearer {}", self.config.secret_key))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.config.secret_key),
+            )
             .header("Content-Type", "application/json")
             .json(&payload)
             .send()

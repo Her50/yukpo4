@@ -2,19 +2,19 @@
 // Date: 2026-03-17
 
 use crate::core::types::AppError;
-use crate::services::hotel_financial_service::HotelFinancialService;
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::services::hotel_financial_service::HotelFinancialService;
+use crate::state::AppState;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
-    response::{Json, IntoResponse},
+    response::{IntoResponse, Json},
     Extension,
 };
 use chrono::NaiveDate;
 use serde::Deserialize;
-use std::sync::Arc;
-use crate::state::AppState;
 use serde_json::json;
+use std::sync::Arc;
 
 /// GET /api/hotel/financial/dashboard
 /// Tableau de bord financier pour les partenaires
@@ -154,15 +154,15 @@ pub struct FinancialQueryParams {
 
 impl FinancialQueryParams {
     pub fn start_date(&self) -> Option<NaiveDate> {
-        self.start_date.as_ref().and_then(|s| {
-            NaiveDate::parse_from_str(s, "%Y-%m-%d").ok()
-        })
+        self.start_date
+            .as_ref()
+            .and_then(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
     }
 
     pub fn end_date(&self) -> Option<NaiveDate> {
-        self.end_date.as_ref().and_then(|s| {
-            NaiveDate::parse_from_str(s, "%Y-%m-%d").ok()
-        })
+        self.end_date
+            .as_ref()
+            .and_then(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
     }
 }
 
@@ -177,14 +177,14 @@ pub struct TransactionQueryParams {
 
 impl TransactionQueryParams {
     pub fn start_date(&self) -> Option<NaiveDate> {
-        self.start_date.as_ref().and_then(|s| {
-            NaiveDate::parse_from_str(s, "%Y-%m-%d").ok()
-        })
+        self.start_date
+            .as_ref()
+            .and_then(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
     }
 
     pub fn end_date(&self) -> Option<NaiveDate> {
-        self.end_date.as_ref().and_then(|s| {
-            NaiveDate::parse_from_str(s, "%Y-%m-%d").ok()
-        })
+        self.end_date
+            .as_ref()
+            .and_then(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
     }
 }

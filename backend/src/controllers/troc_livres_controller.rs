@@ -31,13 +31,12 @@ pub async fn find_matchings(
     );
 
     // Vérifier que le livre appartient à l'utilisateur authentifié
-    let livre_owner: Option<i32> = sqlx::query_scalar(
-        "SELECT user_id FROM livres_scolaires WHERE id = $1",
-    )
-    .bind(payload.livre_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur vérification livre: {}", e)))?;
+    let livre_owner: Option<i32> =
+        sqlx::query_scalar("SELECT user_id FROM livres_scolaires WHERE id = $1")
+            .bind(payload.livre_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification livre: {}", e)))?;
 
     match livre_owner {
         Some(owner_id) if owner_id != user_id => {
@@ -135,10 +134,7 @@ pub async fn create_troc_chaine(
     );
 
     // Vérifier que l'utilisateur authentifié est participant de la chaîne
-    let is_participant = payload
-        .participants
-        .iter()
-        .any(|p| p.user_id == user_id);
+    let is_participant = payload.participants.iter().any(|p| p.user_id == user_id);
     if !is_participant {
         return Err(AppError::Forbidden(
             "Vous devez être participant de la chaîne pour la créer".to_string(),

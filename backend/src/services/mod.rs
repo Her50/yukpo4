@@ -72,6 +72,7 @@ pub mod exhaustive_combination_generator;
 pub mod file_extractor;
 pub mod flash_sale_cache; // ✅ NOUVEAU: Cache Redis pour Flash Sales
 pub mod flash_sale_queue; // ✅ NOUVEAU: Queue de réservations avec Redis Streams
+pub mod flutterwave_service; // ✅ 2026-03-17: Flutterwave (pan-africain 30+ pays, M-Pesa, Airtel, Vodafone...)
 pub mod fournitures_service;
 pub mod geocoding_service;
 pub mod geographic_matching_service; // ✅ Phase 10 - Service de matching géographique optimisé
@@ -137,12 +138,10 @@ pub mod optimized_media_processor; // ✅ NOUVEAU 2025-01-27: Service optimisé 
 pub mod orchestration_ia;
 pub mod orchestration_ia_optimized;
 pub mod order_preparation_service; // ✅ NOUVEAU : Workflow de préparation des commandes
-pub mod flutterwave_service; // ✅ 2026-03-17: Flutterwave (pan-africain 30+ pays, M-Pesa, Airtel, Vodafone...)
 pub mod payment_aggregator; // ✅ Agrégateur de paiement (CinetPay/NotchPay/Flutterwave) pour Mobile Money + Cartes
 pub mod payment_matching_service; // ✅ Phase 5 - Matching intelligent modes de paiement (MTN/Orange Money)
 pub mod payment_service;
 pub mod paypal_payment_service; // ✅ 2026-03-17: Service PayPal Orders API v2 (paiements internationaux)
-pub mod stripe_payment_service; // ✅ 2026-03-17: Service Stripe (Visa/Mastercard/Amex/Apple Pay/Google Pay)
 pub mod pharmacy_ai_service; // ✅ 2025-01-27: Service IA pharmacies (interactions, conseils)
 pub mod pharmacy_product_service; // ✅ NOUVEAU: Service produits de pharmacie
 pub mod phone_validation_service;
@@ -210,6 +209,7 @@ pub mod specialized_services_optimizer;
 pub mod specialized_services_validation; // ✅ NOUVEAU: Validation stricte pour services spécialisés
 pub mod stock_media_service; // ✅ NOUVEAU Phase 2: Service d'intégration Stock Media (Unsplash, Pexels, Pixabay)
 pub mod story_template_service;
+pub mod stripe_payment_service; // ✅ 2026-03-17: Service Stripe (Visa/Mastercard/Amex/Apple Pay/Google Pay)
 pub mod studio_service;
 pub mod timeline_converter; // ✅ NOUVEAU: Conversion timeline JSON -> ImmersiveTimeline
 pub mod timeline_variant_service; // ✅ NOUVEAU: Service de génération de variantes de timeline
@@ -267,10 +267,12 @@ pub mod export_service; // ✅ NOUVEAU Phase 2.3: Service de gestion des jobs d'
 pub mod fournitures_scolaires_service; // ✅ NOUVEAU 2025-01-28: Service fournitures scolaires
 pub mod generative_video_service; // ✅ NOUVEAU Phase 3.1: Service de génération vidéo IA complète
 pub mod matching_emploi_service; // ✅ NOUVEAU 2025-01-28: Service matching intelligent
+pub mod multilingue_service; // ✅ NOUVEAU 2026-03-16: Service multilingue pour notifications
 pub mod notifications_matching_emploi; // ✅ NOUVEAU 2025-01-28: Notifications push pour nouveaux matchings
 pub mod offres_emploi_service; // ✅ NOUVEAU 2025-01-28: Service offres d'emploi
 pub mod orientation_scolaire_ai_service; // ✅ NOUVEAU: Service IA orientation scolaire
 pub mod orientation_scolaire_service; // ✅ NOUVEAU 2025-01-28: Service orientation scolaire
+pub mod paiement_agrege_service;
 pub mod profils_candidats_service; // ✅ NOUVEAU 2025-01-28: Service profils candidats
 pub mod programmes_scolaires_service; // ✅ NOUVEAU 2025-01-28: Service programmes scolaires
 pub mod realtime_preview_service; // ✅ NOUVEAU 2025-01-27: Service de preview temps réel pour calcul local
@@ -283,6 +285,4 @@ pub mod trending_music_service; // ✅ NOUVEAU 2026-03-05: Service de musique tr
 pub mod video_transcoding_service; // ✅ NOUVEAU 2026-03-05: Service de transcodage vidéo HLS/DASH (TikTok/Shorts)
 pub mod watermark_service; // ✅ NOUVEAU 2025-01-27: Service de watermark Yukpo pour branding vidéo
 pub mod whatsapp_service; // ✅ NOUVEAU 2026-03-06: Service WhatsApp Business avec routing automatique
-pub mod youtube_audio_service; // ✅ NOUVEAU Phase 2.2: Service YouTube Audio Library // ✅ NOUVEAU Phase 3.2 Améliorations: Service de rendu 3D complet
-pub mod multilingue_service; // ✅ NOUVEAU 2026-03-16: Service multilingue pour notifications
-pub mod paiement_agrege_service; // ✅ NOUVEAU 2026-03-16: Service de paiements agrégés
+pub mod youtube_audio_service; // ✅ NOUVEAU Phase 2.2: Service YouTube Audio Library // ✅ NOUVEAU Phase 3.2 Améliorations: Service de rendu 3D complet // ✅ NOUVEAU 2026-03-16: Service de paiements agrégés

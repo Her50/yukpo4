@@ -147,9 +147,7 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
     ));
 
     // ✅ 2026-03-16: MongoHistoryService utilise PostgreSQL maintenant
-    let mongo_history = Arc::new(MongoHistoryService::new(
-        Arc::new(pool.clone()),
-    ));
+    let mongo_history = Arc::new(MongoHistoryService::new(Arc::new(pool.clone())));
 
     let delivery_repo = Arc::new(DeliveryRepository::new(pool.clone()));
     let delivery_ws_manager =

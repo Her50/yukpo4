@@ -308,23 +308,31 @@ pub async fn get_services_stats_batch(
         let interaction_type: Option<String> = row.get("interaction_type");
         let count: i64 = row.get("count");
 
-        let entry = results_map
-            .entry(service_id.to_string())
-            .or_insert_with(|| {
-                json!({
-                    "views": 0, "contacts": 0, "messages": 0,
-                    "shares": 0, "likes": 0,
-                    "average_rating": 0.0, "total_ratings": 0
-                })
-            });
+        let entry = results_map.entry(service_id.to_string()).or_insert_with(|| {
+            json!({
+                "views": 0, "contacts": 0, "messages": 0,
+                "shares": 0, "likes": 0,
+                "average_rating": 0.0, "total_ratings": 0
+            })
+        });
 
         if let Some(obj) = entry.as_object_mut() {
             match interaction_type.as_deref() {
-                Some("view") => { obj.insert("views".to_string(), json!(count)); }
-                Some("contact") => { obj.insert("contacts".to_string(), json!(count)); }
-                Some("message") => { obj.insert("messages".to_string(), json!(count)); }
-                Some("share") => { obj.insert("shares".to_string(), json!(count)); }
-                Some("like") => { obj.insert("likes".to_string(), json!(count)); }
+                Some("view") => {
+                    obj.insert("views".to_string(), json!(count));
+                }
+                Some("contact") => {
+                    obj.insert("contacts".to_string(), json!(count));
+                }
+                Some("message") => {
+                    obj.insert("messages".to_string(), json!(count));
+                }
+                Some("share") => {
+                    obj.insert("shares".to_string(), json!(count));
+                }
+                Some("like") => {
+                    obj.insert("likes".to_string(), json!(count));
+                }
                 _ => {}
             }
         }

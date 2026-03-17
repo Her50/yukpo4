@@ -19,9 +19,8 @@ impl PayPalConfig {
     pub fn from_env() -> Option<Self> {
         let client_id = std::env::var("PAYPAL_CLIENT_ID").ok()?;
         let client_secret = std::env::var("PAYPAL_CLIENT_SECRET").ok()?;
-        let is_sandbox = std::env::var("PAYPAL_SANDBOX")
-            .unwrap_or_else(|_| "true".to_string())
-            == "true";
+        let is_sandbox =
+            std::env::var("PAYPAL_SANDBOX").unwrap_or_else(|_| "true".to_string()) == "true";
         let api_base = if is_sandbox {
             "https://api-m.sandbox.paypal.com".to_string()
         } else {
@@ -42,8 +41,7 @@ impl PayPalConfig {
     }
 
     pub fn is_configured() -> bool {
-        std::env::var("PAYPAL_CLIENT_ID").is_ok()
-            && std::env::var("PAYPAL_CLIENT_SECRET").is_ok()
+        std::env::var("PAYPAL_CLIENT_ID").is_ok() && std::env::var("PAYPAL_CLIENT_SECRET").is_ok()
     }
 }
 
@@ -162,9 +160,7 @@ impl PayPalPaymentService {
             .map_err(|e| format!("Erreur parsing PayPal OAuth: {}", e))?;
 
         if !status.is_success() {
-            let error_msg = body["error_description"]
-                .as_str()
-                .unwrap_or("Erreur OAuth inconnue");
+            let error_msg = body["error_description"].as_str().unwrap_or("Erreur OAuth inconnue");
             return Err(format!("PayPal OAuth error: {}", error_msg));
         }
 
@@ -245,20 +241,12 @@ impl PayPalPaymentService {
             return Err(format!("PayPal error: {}", error_msg));
         }
 
-        let order_id = body["id"]
-            .as_str()
-            .ok_or("Missing order id")?
-            .to_string();
-        let order_status = body["status"]
-            .as_str()
-            .unwrap_or("CREATED")
-            .to_string();
+        let order_id = body["id"].as_str().ok_or("Missing order id")?.to_string();
+        let order_status = body["status"].as_str().unwrap_or("CREATED").to_string();
 
         let approval_url = body["links"]
             .as_array()
-            .and_then(|links| {
-                links.iter().find(|l| l["rel"].as_str() == Some("approve"))
-            })
+            .and_then(|links| links.iter().find(|l| l["rel"].as_str() == Some("approve")))
             .and_then(|l| l["href"].as_str())
             .map(|s| s.to_string());
 
@@ -300,17 +288,12 @@ impl PayPalPaymentService {
             .map_err(|e| format!("Erreur parsing PayPal Capture: {}", e))?;
 
         if !status.is_success() {
-            let error_msg = body["message"]
-                .as_str()
-                .unwrap_or("Erreur capture inconnue");
+            let error_msg = body["message"].as_str().unwrap_or("Erreur capture inconnue");
             log::error!("[PayPal] Erreur capture Order {}: {}", order_id, error_msg);
             return Err(format!("PayPal capture error: {}", error_msg));
         }
 
-        let capture_status = body["status"]
-            .as_str()
-            .unwrap_or("UNKNOWN")
-            .to_string();
+        let capture_status = body["status"].as_str().unwrap_or("UNKNOWN").to_string();
 
         let capture = body["purchase_units"]
             .as_array()
@@ -318,9 +301,7 @@ impl PayPalPaymentService {
             .and_then(|pu| pu["payments"]["captures"].as_array())
             .and_then(|caps| caps.first());
 
-        let capture_id = capture
-            .and_then(|c| c["id"].as_str())
-            .map(|s| s.to_string());
+        let capture_id = capture.and_then(|c| c["id"].as_str()).map(|s| s.to_string());
         let amount = capture
             .and_then(|c| c["amount"]["value"].as_str())
             .and_then(|v| v.parse::<f64>().ok());
@@ -328,12 +309,8 @@ impl PayPalPaymentService {
             .and_then(|c| c["amount"]["currency_code"].as_str())
             .map(|s| s.to_string());
 
-        let payer_email = body["payer"]["email_address"]
-            .as_str()
-            .map(|s| s.to_string());
-        let payer_id = body["payer"]["payer_id"]
-            .as_str()
-            .map(|s| s.to_string());
+        let payer_email = body["payer"]["email_address"].as_str().map(|s| s.to_string());
+        let payer_id = body["payer"]["payer_id"].as_str().map(|s| s.to_string());
 
         log::info!(
             "[PayPal] Order {} capturé: status={}, capture_id={:?}, amount={:?}",
@@ -369,10 +346,7 @@ impl PayPalPaymentService {
             .await
             .map_err(|e| format!("Erreur réseau PayPal Get Order: {}", e))?;
 
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Erreur parsing: {}", e))?;
+        let body: Value = response.json().await.map_err(|e| format!("Erreur parsing: {}", e))?;
 
         Ok(json!({
             "id": body["id"],
@@ -421,15 +395,11 @@ impl PayPalPaymentService {
             .map_err(|e| format!("Erreur réseau PayPal Refund: {}", e))?;
 
         let status = response.status();
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Erreur parsing refund: {}", e))?;
+        let body: Value =
+            response.json().await.map_err(|e| format!("Erreur parsing refund: {}", e))?;
 
         if !status.is_success() {
-            let error_msg = body["message"]
-                .as_str()
-                .unwrap_or("Erreur refund inconnue");
+            let error_msg = body["message"].as_str().unwrap_or("Erreur refund inconnue");
             return Err(format!("PayPal refund error: {}", error_msg));
         }
 
@@ -478,14 +448,9 @@ impl PayPalPaymentService {
             .await
             .map_err(|e| format!("Erreur réseau PayPal verify webhook: {}", e))?;
 
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Erreur parsing: {}", e))?;
+        let body: Value = response.json().await.map_err(|e| format!("Erreur parsing: {}", e))?;
 
-        let verification_status = body["verification_status"]
-            .as_str()
-            .unwrap_or("FAILURE");
+        let verification_status = body["verification_status"].as_str().unwrap_or("FAILURE");
 
         Ok(verification_status == "SUCCESS")
     }
@@ -530,15 +495,11 @@ impl PayPalPaymentService {
             .map_err(|e| format!("Erreur réseau PayPal Payout: {}", e))?;
 
         let status = response.status();
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Erreur parsing payout: {}", e))?;
+        let body: Value =
+            response.json().await.map_err(|e| format!("Erreur parsing payout: {}", e))?;
 
         if !status.is_success() {
-            let error_msg = body["message"]
-                .as_str()
-                .unwrap_or("Erreur payout inconnue");
+            let error_msg = body["message"].as_str().unwrap_or("Erreur payout inconnue");
             return Err(format!("PayPal payout error: {}", error_msg));
         }
 

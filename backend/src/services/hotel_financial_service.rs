@@ -3,10 +3,10 @@
 // Description: Service pour le suivi financier, commissions, revenus, et analyses
 
 use crate::core::types::AppError;
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use serde_json::json;
 use sqlx::{PgPool, Row};
-use chrono::{DateTime, Utc, NaiveDate};
 
 /// Service financier pour les partenaires hôtel/meublé
 pub struct HotelFinancialService;
@@ -36,12 +36,17 @@ impl HotelFinancialService {
         .fetch_one(pool)
         .await
         .map_err(|e| {
-            log::error!("[get_financial_dashboard] Erreur vérification propriétés: {}", e);
+            log::error!(
+                "[get_financial_dashboard] Erreur vérification propriétés: {}",
+                e
+            );
             AppError::Internal("Erreur vérification propriétés".to_string())
         })?;
 
         if !has_properties {
-            return Err(AppError::Forbidden("Aucune propriété hôtel/meublé trouvée".to_string()));
+            return Err(AppError::Forbidden(
+                "Aucune propriété hôtel/meublé trouvée".to_string(),
+            ));
         }
 
         // Revenus totaux (réservations confirmées et payées)
@@ -121,7 +126,10 @@ impl HotelFinancialService {
         .fetch_one(pool)
         .await
         .map_err(|e| {
-            log::error!("[get_financial_dashboard] Erreur comptage réservations: {}", e);
+            log::error!(
+                "[get_financial_dashboard] Erreur comptage réservations: {}",
+                e
+            );
             AppError::Internal("Erreur comptage réservations".to_string())
         })?;
 
@@ -157,7 +165,10 @@ impl HotelFinancialService {
         .fetch_all(pool)
         .await
         .map_err(|e| {
-            log::error!("[get_financial_dashboard] Erreur statuts réservations: {}", e);
+            log::error!(
+                "[get_financial_dashboard] Erreur statuts réservations: {}",
+                e
+            );
             AppError::Internal("Erreur statuts réservations".to_string())
         })?;
 
@@ -405,7 +416,8 @@ impl HotelFinancialService {
             end_date,
             Some(10000), // Limite haute pour export
             Some(0),
-        ).await?;
+        )
+        .await?;
 
         let mut csv = String::new();
         csv.push_str("ID Réservation,Propriété,Client,Date Arrivée,Date Départ,Montant Total,Avance,Statut Paiement,Méthode Paiement,Statut,Type Transaction,Date Création\n");

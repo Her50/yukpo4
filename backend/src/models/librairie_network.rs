@@ -21,9 +21,9 @@ pub struct LibrairiePartner {
     pub quartier: Option<String>,
     pub rayon_service_km: i32, // Rayon de service en km
     pub statut: LibrairieStatut,
-    pub rating: f64, // Note moyenne 0-5
+    pub rating: f64,                 // Note moyenne 0-5
     pub temps_moyen_validation: i32, // Temps moyen validation (minutes)
-    pub commission_app: f64, // Taux commission (5% par défaut)
+    pub commission_app: f64,         // Taux commission (5% par défaut)
     pub est_actif: bool,
     pub horaires_ouverture: Option<String>, // "08:00-18:00"
     pub created_at: DateTime<Utc>,
@@ -55,7 +55,7 @@ pub struct CommandeMixte {
     pub adresse_livraison: Option<String>,
     pub gps_livraison: Option<String>,
     pub notes_client: Option<String>,
-    pub commission_app: f64, // 5% du total
+    pub commission_app: f64,        // 5% du total
     pub montant_net_libraires: f64, // Total - commission
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -64,15 +64,15 @@ pub struct CommandeMixte {
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "varchar", rename_all = "snake_case")]
 pub enum CommandeStatut {
-    Edition, // Client édite sa commande
-    ValidationBudget, // Client valide budget
+    Edition,           // Client édite sa commande
+    ValidationBudget,  // Client valide budget
     EnvoyeeLibrairies, // Envoyée au réseau
-    EnValidation, // Librairie en train de valider
-    ValideePartielle, // Validation partielle
-    ValideeComplete, // Validation complète
-    EnPreparation, // Librairie prépare paquet
-    EnLivraison, // En cours de livraison
-    Livree, // Livrée
+    EnValidation,      // Librairie en train de valider
+    ValideePartielle,  // Validation partielle
+    ValideeComplete,   // Validation complète
+    EnPreparation,     // Librairie prépare paquet
+    EnLivraison,       // En cours de livraison
+    Livree,            // Livrée
     Annulee,
 }
 
@@ -93,7 +93,7 @@ pub struct CommandeLivreNeuf {
     pub matiere: String,
     pub niveau: Option<String>,
     pub prix_officiel: f64, // Prix officiel du programme
-    pub prix_final: f64, // Prix final (ne change pas)
+    pub prix_final: f64,    // Prix final (ne change pas)
     pub quantite: i32,
     pub est_au_programme: bool,
     pub librairie_validateur_id: Option<Uuid>, // Qui a validé ce livre
@@ -121,9 +121,9 @@ pub struct CommandeLivreOccasion {
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "varchar", rename_all = "snake_case")]
 pub enum LivreValidationStatut {
-    EnAttente, // En attente de validation librairie
-    Valide, // Validé par librairie
-    Indisponible, // Librairie n'a pas ce livre
+    EnAttente,         // En attente de validation librairie
+    Valide,            // Validé par librairie
+    Indisponible,      // Librairie n'a pas ce livre
     EnCoursValidation, // Librairie en train de valider
 }
 
@@ -157,11 +157,11 @@ pub struct CommandeValidation {
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "varchar", rename_all = "snake_case")]
 pub enum ValidationStatut {
-    EnCours, // Librairie en train de valider
+    EnCours,       // Librairie en train de valider
     ValidePartiel, // Validation partielle
     ValideComplet, // Validation complète
-    Abandonne, // Librairie a abandonné
-    Expire, // Délai expiré
+    Abandonne,     // Librairie a abandonné
+    Expire,        // Délai expiré
 }
 
 // ========================================
@@ -182,7 +182,7 @@ pub struct PrixOfficielProgramme {
     pub prix_officiel: f64,
     pub devise: String,
     pub source: PrixSource,
-    pub confiance_score: f64, // Score de confiance IA 0-1
+    pub confiance_score: f64,           // Score de confiance IA 0-1
     pub fichier_source: Option<String>, // URL du fichier source
     pub date_extraction: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
@@ -192,9 +192,9 @@ pub struct PrixOfficielProgramme {
 #[sqlx(type_name = "varchar", rename_all = "snake_case")]
 pub enum PrixSource {
     FichierProgramme, // Extrait du fichier programme
-    IAExtraction, // Extrait par IA
-    Manuelle, // Saisie manuelle
-    WebScraping, // Scraping web
+    IAExtraction,     // Extrait par IA
+    Manuelle,         // Saisie manuelle
+    WebScraping,      // Scraping web
 }
 
 // ========================================
@@ -206,25 +206,25 @@ pub struct QRCodeCoursier {
     pub id: Uuid,
     pub paquet_id: Uuid,
     pub coursier_id: Uuid,
-    pub code_secret: String, // Code aléatoire 8 caractères
+    pub code_secret: String,  // Code aléatoire 8 caractères
     pub qr_code_data: String, // Données QR encodées
     pub timestamp_generation: DateTime<Utc>,
     pub timestamp_scan: Option<DateTime<Utc>>,
     pub timestamp_validation: Option<DateTime<Utc>>,
     pub statut: QRCodeStatut,
     pub livres_attendus: Vec<LivreQRReference>, // Livres à récupérer
-    pub destinations: Vec<DestinationQR>, // Points de dépôt
+    pub destinations: Vec<DestinationQR>,       // Points de dépôt
     pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "varchar", rename_all = "snake_case")]
 pub enum QRCodeStatut {
-    Genere, // QR généré
-    Scanne, // Scanné par coursier
+    Genere,            // QR généré
+    Scanne,            // Scanné par coursier
     EnCoursValidation, // Validation en cours
-    Valide, // Validé avec succès
-    Expire, // Expiré (24h)
+    Valide,            // Validé avec succès
+    Expire,            // Expiré (24h)
     Annule,
 }
 
@@ -258,7 +258,7 @@ pub enum ProvenanceLivre {
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "varchar", rename_all = "snake_case")]
 pub enum TypeDestination {
-    Depot, // Point de dépôt
+    Depot,     // Point de dépôt
     Livraison, // Livraison finale
 }
 
@@ -283,11 +283,11 @@ pub struct NotificationLibrairie {
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "varchar", rename_all = "snake_case")]
 pub enum TypeNotification {
-    NouvelleCommande, // Nouvelle commande à valider
-    CommandeAnnulee, // Commande annulée
+    NouvelleCommande,   // Nouvelle commande à valider
+    CommandeAnnulee,    // Commande annulée
     ValidationComplete, // Validation complète requise
-    PartieLibreeree, // Partie de commande libérée
-    RappelValidation, // Rappel validation
+    PartieLibreeree,    // Partie de commande libérée
+    RappelValidation,   // Rappel validation
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
@@ -345,7 +345,7 @@ pub struct TransactionAgregee {
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "varchar", rename_all = "snake_case")]
 pub enum MethodePaiement {
-    Wallet, // Wallet interne
+    Wallet,      // Wallet interne
     MobileMoney, // Orange, MTN, etc.
     CarteBancaire,
     VirementBancaire,
@@ -385,9 +385,9 @@ pub struct ChaineLivraisonUnifiee {
 #[sqlx(type_name = "varchar", rename_all = "snake_case")]
 pub enum ChaineStatut {
     EnConstruction, // Construction de la chaîne
-    Optimisee, // Itinéraire optimisé
-    EnCours, // Livraison en cours
-    Completee, // Livraison terminée
+    Optimisee,      // Itinéraire optimisé
+    EnCours,        // Livraison en cours
+    Completee,      // Livraison terminée
     Annulee,
 }
 
@@ -411,10 +411,10 @@ pub struct PointPassage {
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "varchar", rename_all = "snake_case")]
 pub enum TypePointPassage {
-    Librairie, // Récupération livres neufs
-    UtilisateurVendeur, // Récupération livres occasion
+    Librairie,           // Récupération livres neufs
+    UtilisateurVendeur,  // Récupération livres occasion
     UtilisateurAcheteur, // Dépôt livres achetés
-    PointDepot, // Point de dépôt intermédiaire
+    PointDepot,          // Point de dépôt intermédiaire
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]

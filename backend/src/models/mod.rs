@@ -16,11 +16,14 @@ pub mod hotel_room_management; // ✅ 2026-01-27: Modèles gestion chambres/unit
 pub mod ia_model;
 pub mod input_model;
 pub mod interaction_model;
+pub mod librairie_network; // Modèles avancés réseau librairies
+pub mod librairie_network_model; // ✅ NOUVEAU 2026-03-16: Modèles réseau de librairies
 pub mod live_model;
 pub mod livre_scolaire; // ✅ NOUVEAU 2025-01-28: Livres scolaires
 pub mod offres_emploi_model; // ✅ NOUVEAU 2025-01-28: Offres d'emploi et matching intelligent
 pub mod orientation_ai; // ✅ NOUVEAU 2025-01-27: Orientation scolaire IA (profils, recommandations, comparaisons, analytics)
 pub mod orientation_scolaire; // ✅ NOUVEAU 2025-01-28: Orientation scolaire et établissements
+pub mod paiement_agrege_model;
 pub mod pharmacy_product; // ✅ NOUVEAU: Produits de pharmacie
 pub mod service_embedding;
 pub mod service_log;
@@ -33,7 +36,4 @@ pub mod template_model; // ✅ NOUVEAU: Modèle pour templates vidéo
 pub mod token_pack;
 pub mod troc_livre; // ✅ NOUVEAU 2025-01-28: Troc de livres scolaires
 pub mod user_model;
-pub mod webrtc_model; // ✅ NOUVEAU Phase 3.2: Modèle pour preview AR/VR
-pub mod librairie_network; // Modèles avancés réseau librairies
-pub mod librairie_network_model; // ✅ NOUVEAU 2026-03-16: Modèles réseau de librairies
-pub mod paiement_agrege_model; // ✅ NOUVEAU 2026-03-16: Modèles paiements agrégés
+pub mod webrtc_model; // ✅ NOUVEAU Phase 3.2: Modèle pour preview AR/VR // ✅ NOUVEAU 2026-03-16: Modèles paiements agrégés

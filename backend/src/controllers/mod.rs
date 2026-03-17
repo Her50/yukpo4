@@ -57,6 +57,8 @@ pub mod image_search_controller; // ✅ NOUVEAU: Contrôleur pour recherche par 
 pub mod intelligent_service_controller;
 pub mod inventory_controller;
 pub mod kyc_admin_controller; // ✅ NOUVEAU: Contrôleur admin KYC
+pub mod librairie_admin_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur admin réseau de librairies
+pub mod librairie_network_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur réseau de librairies et QR codes
 pub mod live_ai_controller;
 pub mod live_controller;
 pub mod livres_scolaires_controller; // ✅ NOUVEAU 2025-01-28: Contrôleur livres scolaires
@@ -70,12 +72,15 @@ pub mod mobile_logs_controller; // ✅ NOUVEAU : Contrôleur pour logs mobile
 pub mod notification_controller; // ✅ Contrôleur de notifications
 pub mod offres_emploi_controller; // ✅ NOUVEAU 2025-01-28: Contrôleur offres d'emploi
 pub mod orientation_scolaire_controller; // ✅ NOUVEAU 2025-01-28: Contrôleur orientation scolaire et établissements
+pub mod paiement_admin_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur admin paiements (fournisseurs, remboursements)
+pub mod paiement_agrege_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur paiements agrégés
 pub mod partner_validation_controller;
 pub mod payment_controller;
 pub mod performance_controller; // ✅ NOUVEAU 2025-11-28: Contrôleur pour métriques de performance
 pub mod pharmacy_controller; // ✅ 2025-11-26: Contrôleur pour pharmacies
 pub mod pharmacy_product_controller; // ✅ NOUVEAU: Contrôleur produits de pharmacie
 pub mod phone_model_controller; // ✅ NOUVEAU: Contrôleur pour modèles de smartphones (autocomplete)
+pub mod phone_verification_controller;
 pub mod places_controller; // ✅ NOUVEAU 2025-11-02: Contrôleur pour enrichissement géographique GeoNames
 pub mod popular_products_controller; // ✅ NOUVEAU 2025-11-04: Contrôleur pour produits populaires (analyse concurrence)
 pub mod product_addition_controller; // ✅ NOUVEAU 2025-11-01: Contrôleur pour ajout incrémental de produits
@@ -114,11 +119,6 @@ pub mod vehicle_model_controller; // ✅ NOUVEAU: Contrôleur pour modèles de v
 pub mod video_ml_controller;
 pub mod video_upload_controller; // ✅ NOUVEAU: Contrôleur ML pour recommandations vidéo personnalisées
 pub mod webhook_controller;
-pub mod webrtc_controller; // ✅ NOUVEAU: Contrôleur WebRTC pour appels // ✅ NOUVEAU 2025-11-06: Contrôleur pour debug et vérification des tables // ✅ NOUVEAU 2025-01-29: Contrôleur prix dynamique IA (Leadership 100%)
-pub mod librairie_admin_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur admin réseau de librairies
-pub mod librairie_network_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur réseau de librairies et QR codes
-pub mod paiement_admin_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur admin paiements (fournisseurs, remboursements)
-pub mod paiement_agrege_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur paiements agrégés
-pub mod phone_verification_controller; // ✅ NOUVEAU 2026-03-17: Contrôleur validation téléphone et partage WhatsApp/SMS
+pub mod webrtc_controller; // ✅ NOUVEAU: Contrôleur WebRTC pour appels // ✅ NOUVEAU 2025-11-06: Contrôleur pour debug et vérification des tables // ✅ NOUVEAU 2025-01-29: Contrôleur prix dynamique IA (Leadership 100%) // ✅ NOUVEAU 2026-03-17: Contrôleur validation téléphone et partage WhatsApp/SMS
 
 // pub use service_controller::update_token_debit;

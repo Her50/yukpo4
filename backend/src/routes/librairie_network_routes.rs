@@ -3,7 +3,7 @@
 
 use axum::{
     middleware,
-    routing::{get, post, patch},
+    routing::{get, patch, post},
     Router,
 };
 use std::sync::Arc;
@@ -85,7 +85,6 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/librairie-network/qrcode/share",
             post(crate::controllers::librairie_network_controller::generate_shareable_qrcode),
         )
-
         // ========================================
         // VALIDATION LIBRAIRIE (Compétitive)
         // ========================================
@@ -93,7 +92,6 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/librairie-network/validation/valider",
             post(crate::controllers::librairie_network_controller::valider_livres_commande),
         )
-
         // ========================================
         // QR CODES SÉCURITÉ COURSIER
         // ========================================
@@ -105,7 +103,6 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/librairie-network/qr-codes/valider",
             post(crate::controllers::librairie_network_controller::valider_qr_code_coursier),
         )
-
         // ========================================
         // CHAÎNES LIVRAISON UNIFIÉES
         // ========================================
@@ -113,7 +110,6 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/librairie-network/chaines/optimiser",
             post(crate::controllers::librairie_network_controller::optimiser_chaine_livraison),
         )
-
         // ========================================
         // PAIEMENTS AGRÉGÉS
         // ========================================
@@ -137,7 +133,6 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/librairie-network/wallet/crediter",
             post(crate::controllers::paiement_agrege_controller::crediter_wallet),
         )
-
         // ========================================
         // ADMINISTRATION
         // ========================================
@@ -169,7 +164,6 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/librairie-network/admin/statistiques",
             get(crate::controllers::librairie_admin_controller::get_statistiques_reseau),
         )
-
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
     // ========================================

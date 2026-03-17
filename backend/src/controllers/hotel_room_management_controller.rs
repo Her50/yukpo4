@@ -1108,22 +1108,35 @@ pub async fn get_cancellation_history(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     axum::extract::Query(params): axum::extract::Query<serde_json::Value>,
 ) -> Result<impl IntoResponse, AppError> {
-    let property_id: Option<i32> = params.get("property_id").and_then(|v| v.as_i64()).and_then(|i| i32::try_from(i).ok());
-    let start_date_str: Option<String> = params.get("start_date").and_then(|v| v.as_str()).map(|s| s.to_string());
-    let end_date_str: Option<String> = params.get("end_date").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let property_id: Option<i32> = params
+        .get("property_id")
+        .and_then(|v| v.as_i64())
+        .and_then(|i| i32::try_from(i).ok());
+    let start_date_str: Option<String> =
+        params.get("start_date").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let end_date_str: Option<String> =
+        params.get("end_date").and_then(|v| v.as_str()).map(|s| s.to_string());
 
     let start_date = if let Some(date_str) = start_date_str {
-        Some(chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d").map_err(|_| {
-            AppError::BadRequest("Format de date invalide pour start_date. Utilisez YYYY-MM-DD".to_string())
-        })?)
+        Some(
+            chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d").map_err(|_| {
+                AppError::BadRequest(
+                    "Format de date invalide pour start_date. Utilisez YYYY-MM-DD".to_string(),
+                )
+            })?,
+        )
     } else {
         None
     };
 
     let end_date = if let Some(date_str) = end_date_str {
-        Some(chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d").map_err(|_| {
-            AppError::BadRequest("Format de date invalide pour end_date. Utilisez YYYY-MM-DD".to_string())
-        })?)
+        Some(
+            chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d").map_err(|_| {
+                AppError::BadRequest(
+                    "Format de date invalide pour end_date. Utilisez YYYY-MM-DD".to_string(),
+                )
+            })?,
+        )
     } else {
         None
     };

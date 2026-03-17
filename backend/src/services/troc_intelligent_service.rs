@@ -322,20 +322,21 @@ impl TrocIntelligentService {
                 if livres.is_empty() {
                     return None;
                 }
-                
+
                 let user_id = livres[0].user_id;
                 let classe_actuelle = livres[0].classe_actuelle.clone();
                 let classe_souhaitee = livres[0].classe_souhaitee.clone();
-                
+
                 // Vérifier que tous les livres sont du même utilisateur et même classe
-                if !livres.iter().all(|l| l.user_id == user_id && l.classe_actuelle == classe_actuelle) {
+                if !livres
+                    .iter()
+                    .all(|l| l.user_id == user_id && l.classe_actuelle == classe_actuelle)
+                {
                     return None;
                 }
-                
-                let matieres: HashSet<String> = livres.iter()
-                    .map(|l| l.matiere.clone())
-                    .collect();
-                
+
+                let matieres: HashSet<String> = livres.iter().map(|l| l.matiere.clone()).collect();
+
                 Some(Bundle {
                     livres,
                     matieres,
@@ -344,7 +345,7 @@ impl TrocIntelligentService {
                     user_id,
                 })
             }
-            
+
             fn contient_matiere(&self, matiere: &str) -> bool {
                 self.matieres.contains(matiere)
             }
@@ -356,16 +357,16 @@ impl TrocIntelligentService {
         let mut bundles_par_user: HashMap<(i32, String), Bundle> = HashMap::new();
         for l in &tous_livres {
             let key = (l.user_id, l.classe_actuelle.clone());
-            bundles_par_user.entry(key).or_insert_with(|| {
-                Bundle::new(vec![l]).unwrap()
-            }).livres.push(l);
+            bundles_par_user
+                .entry(key)
+                .or_insert_with(|| Bundle::new(vec![l]).unwrap())
+                .livres
+                .push(l);
         }
 
         // Finaliser les bundles (calculer les matières)
         for bundle in bundles_par_user.values_mut() {
-            bundle.matieres = bundle.livres.iter()
-                .map(|l| l.matiere.clone())
-                .collect();
+            bundle.matieres = bundle.livres.iter().map(|l| l.matiere.clone()).collect();
         }
 
         // Pour chaque paire (sender_bundle, receiver_bundle), vérifier le matching multi-matières
@@ -378,22 +379,24 @@ impl TrocIntelligentService {
                 if sender_id == receiver_id {
                     continue;
                 }
-                
+
                 // Vérifier si les classes correspondent
-                if sender_bundle.classe_actuelle != receiver_bundle.classe_souhaitee 
-                    || receiver_bundle.classe_souhaitee.is_empty() {
+                if sender_bundle.classe_actuelle != receiver_bundle.classe_souhaitee
+                    || receiver_bundle.classe_souhaitee.is_empty()
+                {
                     continue;
                 }
-                
+
                 // ✅ MULTI-MATIÈRE : Le receiver a-t-il besoin d'AU MOINS UNE matière du sender ?
-                let matiere_match = receiver_bundle.livres.iter().any(|rl| {
-                    sender_bundle.contient_matiere(&rl.matiere)
-                });
-                
+                let matiere_match = receiver_bundle
+                    .livres
+                    .iter()
+                    .any(|rl| sender_bundle.contient_matiere(&rl.matiere));
+
                 if !matiere_match {
                     continue;
                 }
-                
+
                 // Trouver la meilleure paire de livres pour le calcul GPS
                 let (best_sender_livre, best_receiver_livre) = {
                     let mut best_pair = (&sender_bundle.livres[0], &receiver_bundle.livres[0]);
@@ -1757,12 +1760,22 @@ impl TrocIntelligentService {
 
         for pkg in packages {
             let entry = waypoints_map.entry(pkg.expediteur_id).or_insert_with(|| {
-                (pkg.expediteur_gps.clone(), pkg.expediteur_adresse.clone(), Vec::new(), Vec::new())
+                (
+                    pkg.expediteur_gps.clone(),
+                    pkg.expediteur_adresse.clone(),
+                    Vec::new(),
+                    Vec::new(),
+                )
             });
             entry.2.push(pkg.id);
 
             let entry = waypoints_map.entry(pkg.destinataire_id).or_insert_with(|| {
-                (pkg.destinataire_gps.clone(), pkg.destinataire_adresse.clone(), Vec::new(), Vec::new())
+                (
+                    pkg.destinataire_gps.clone(),
+                    pkg.destinataire_adresse.clone(),
+                    Vec::new(),
+                    Vec::new(),
+                )
             });
             entry.3.push(pkg.id);
         }
@@ -1791,7 +1804,11 @@ impl TrocIntelligentService {
         let mut ordre = 1;
 
         for (uid, gps, addr, pickups, dropoffs) in &pickup_waypoints {
-            let wp_type = if !dropoffs.is_empty() { "pickup_and_dropoff" } else { "pickup" };
+            let wp_type = if !dropoffs.is_empty() {
+                "pickup_and_dropoff"
+            } else {
+                "pickup"
+            };
             ordered.push(serde_json::json!({
                 "ordre": ordre, "type": wp_type, "user_id": uid,
                 "gps": gps, "adresse": addr,
@@ -1879,11 +1896,10 @@ impl TrocIntelligentService {
         // 3. Désactiver tous les livres impliqués (dans une transaction)
         let livre_ids: Vec<i32> = transfers.iter().map(|t| t.livre_id).collect();
 
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur début transaction finalize: {}", e)))?;
+        let mut tx =
+            self.pool.begin().await.map_err(|e| {
+                AppError::Internal(format!("Erreur début transaction finalize: {}", e))
+            })?;
 
         for lid in &livre_ids {
             sqlx::query("UPDATE livres_scolaires SET is_available = false WHERE id = $1")
@@ -2010,9 +2026,8 @@ impl TrocIntelligentService {
         }
 
         for ((sender_id, receiver_id), _) in &grouped {
-            let coursier_id = existing_couriers
-                .get(receiver_id)
-                .or_else(|| existing_couriers.get(sender_id));
+            let coursier_id =
+                existing_couriers.get(receiver_id).or_else(|| existing_couriers.get(sender_id));
 
             if let Some(&cid) = coursier_id {
                 sqlx::query(
@@ -2080,9 +2095,9 @@ impl TrocIntelligentService {
         .await
         .map_err(|e| AppError::Internal(format!("Erreur MAJ chaîne: {}", e)))?;
 
-        tx.commit()
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur commit transaction finalize: {}", e)))?;
+        tx.commit().await.map_err(|e| {
+            AppError::Internal(format!("Erreur commit transaction finalize: {}", e))
+        })?;
 
         info!(
             "[TROC_INTELLIGENT] ✅ Chaîne {} finalisée: {} paquets, {} waypoints, ref={}",

@@ -719,7 +719,10 @@ pub async fn check_return_requests(
     .await
     {
         Ok(count) => {
-            info!("[check_return_requests] {} utilisateur(s) notifié(s)", count);
+            info!(
+                "[check_return_requests] {} utilisateur(s) notifié(s)",
+                count
+            );
             Ok((
                 StatusCode::OK,
                 Json(json!({

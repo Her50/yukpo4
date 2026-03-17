@@ -20493,11 +20493,11 @@ pub async fn ensure_disbursement_requests_table(pool: &PgPool) -> Result<(), sql
 /// ✅ NOUVEAU 2026-03-16: Crée les tables pour le réseau de librairies
 pub async fn ensure_librairie_network_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🏪 Création des tables réseau de librairies...");
-    
+
     // Exécuter le script de migration complet
     let migration_sql = include_str!("create_librairie_network_tables.sql");
     sqlx::query(migration_sql).execute(pool).await?;
-    
+
     info!("✅ Tables réseau de librairies créées");
     Ok(())
 }
@@ -20505,11 +20505,11 @@ pub async fn ensure_librairie_network_tables(pool: &PgPool) -> Result<(), sqlx::
 /// ✅ NOUVEAU 2026-03-16: Crée les tables manquantes pour paiements agrégés et QR codes
 pub async fn ensure_missing_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("💰 Création des tables manquantes (wallets, paiements, QR codes)...");
-    
+
     // Exécuter le script de migration
     let migration_sql = include_str!("add_missing_tables.sql");
     sqlx::query(migration_sql).execute(pool).await?;
-    
+
     info!("✅ Tables manquantes créées");
     Ok(())
 }
@@ -20517,10 +20517,11 @@ pub async fn ensure_missing_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
 /// ✅ NOUVEAU 2026-03-16: Système escrow, commission app, crédits tickets bus
 pub async fn ensure_bus_ticket_escrow_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🎫 Application du système escrow/crédit pour tickets bus...");
-    
-    let migration_sql = include_str!("../../migrations/00000046_bus_ticket_escrow_credit_system.sql");
+
+    let migration_sql =
+        include_str!("../../migrations/00000046_bus_ticket_escrow_credit_system.sql");
     sqlx::query(migration_sql).execute(pool).await?;
-    
+
     info!("✅ Système escrow/crédit tickets bus appliqué");
     Ok(())
 }

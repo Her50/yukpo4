@@ -673,20 +673,36 @@ async fn get_points_of_interest(
     // Avant: TOUJOURS 14 types = 56+ appels Google par requête (très coûteux)
     // Après: seulement les types demandés = 4-12 appels (économie 70-90%)
     let all_default_types = vec![
-        "pharmacy", "bakery", "gas_station", "supermarket", "restaurant",
-        "atm", "hospital", "parking", "car_wash", "car_repair",
-        "mosque", "church", "lodging", "police",
+        "pharmacy",
+        "bakery",
+        "gas_station",
+        "supermarket",
+        "restaurant",
+        "atm",
+        "hospital",
+        "parking",
+        "car_wash",
+        "car_repair",
+        "mosque",
+        "church",
+        "lodging",
+        "police",
     ];
     let poi_types: Vec<&str> = if let Some(ref types_param) = params.types {
-        let requested: Vec<&str> = types_param.split(',')
+        let requested: Vec<&str> = types_param
+            .split(',')
             .map(|t| t.trim())
             .filter(|t| !t.is_empty() && all_default_types.contains(t))
             .collect();
         if requested.is_empty() {
             all_default_types
         } else {
-            log::info!("[POI] Filtered types from mobile: {:?} ({} types instead of {})",
-                requested, requested.len(), all_default_types.len());
+            log::info!(
+                "[POI] Filtered types from mobile: {:?} ({} types instead of {})",
+                requested,
+                requested.len(),
+                all_default_types.len()
+            );
             requested
         }
     } else {
@@ -3735,11 +3751,17 @@ async fn share_navigation_alerts(
     ));
     html.push_str("<meta property='og:type' content='website'>");
     html.push_str("<meta property='og:site_name' content='Yukpo'>");
-    html.push_str("<meta property='og:image' content='https://yukpomnang.com/icons/alerts-og.png'>");
+    html.push_str(
+        "<meta property='og:image' content='https://yukpomnang.com/icons/alerts-og.png'>",
+    );
     html.push_str("<meta name='twitter:card' content='summary_large_image'>");
     html.push_str("<meta name='twitter:title' content='Yukpo - Alertes Communautaires'>");
-    html.push_str("<meta name='twitter:description' content='Alertes en temps réel pour votre sécurité'>");
-    html.push_str("<meta name='twitter:image' content='https://yukpomnang.com/icons/alerts-og.png'>");
+    html.push_str(
+        "<meta name='twitter:description' content='Alertes en temps réel pour votre sécurité'>",
+    );
+    html.push_str(
+        "<meta name='twitter:image' content='https://yukpomnang.com/icons/alerts-og.png'>",
+    );
     html.push_str("<style>");
     html.push_str("*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(135deg,#DC2626,#EF4444);min-height:100vh;display:flex;align-items:center;justify-content:center;color:#fff;padding:20px}");
     html.push_str(".card{background:rgba(255,255,255,0.08);backdrop-filter:blur(20px);border-radius:24px;padding:32px;max-width:420px;width:100%;border:1px solid rgba(255,255,255,0.1)}");
@@ -3766,7 +3788,10 @@ async fn share_navigation_alerts(
     html.push_str("<div class='feature'><span class='feature-icon'>👥</span><span class='feature-text'>Signalements communautaires</span></div>");
     html.push_str("</div>");
     html.push_str(&format!("<a class='cta' id='openApp' style='background:linear-gradient(135deg,#DC2626,#EF4444)' href='{}'>Voir les alertes 🚨</a>", deep_link));
-    html.push_str(&format!("<a class='cta' style='background:#475569;margin-top:8px' href='{}'>Télécharger Yukpo</a>", store_url));
+    html.push_str(&format!(
+        "<a class='cta' style='background:#475569;margin-top:8px' href='{}'>Télécharger Yukpo</a>",
+        store_url
+    ));
     // Auto-redirect JS
     html.push_str("<script>");
     html.push_str(&format!(

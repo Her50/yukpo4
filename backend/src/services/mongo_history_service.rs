@@ -78,8 +78,15 @@ impl MongoHistoryService {
             "context": context,
         });
 
-        self.insert_event("IAInteraction", user_id, None, Some(interaction_id), &data, None)
-            .await
+        self.insert_event(
+            "IAInteraction",
+            user_id,
+            None,
+            Some(interaction_id),
+            &data,
+            None,
+        )
+        .await
     }
 
     /// Enregistrer un feedback utilisateur
@@ -128,8 +135,15 @@ impl MongoHistoryService {
             "content": content,
         });
 
-        self.insert_event("UserAction", Some(user_id), service_id, None, &data, metadata.as_ref())
-            .await
+        self.insert_event(
+            "UserAction",
+            Some(user_id),
+            service_id,
+            None,
+            &data,
+            metadata.as_ref(),
+        )
+        .await
     }
 
     /// Enregistrer un événement de sécurité
@@ -146,8 +160,7 @@ impl MongoHistoryService {
             "threat_level": threat_level,
         });
 
-        self.insert_event("SecurityEvent", user_id, None, None, &data, None)
-            .await
+        self.insert_event("SecurityEvent", user_id, None, None, &data, None).await
     }
 
     /// Récupérer l'historique des interactions IA d'un utilisateur
@@ -170,7 +183,10 @@ impl MongoHistoryService {
         .fetch_all(self.pg.as_ref())
         .await
         .map_err(|e| {
-            error!("[HistoryService] Erreur récupération historique IA (user_id={}): {}", user_id, e);
+            error!(
+                "[HistoryService] Erreur récupération historique IA (user_id={}): {}",
+                user_id, e
+            );
             format!("Erreur récupération historique IA: {}", e)
         })?;
 
@@ -240,7 +256,10 @@ impl MongoHistoryService {
         .execute(self.pg.as_ref())
         .await
         .map_err(|e| {
-            error!("[HistoryService] Erreur nettoyage historique (days_old={}): {}", days_old, e);
+            error!(
+                "[HistoryService] Erreur nettoyage historique (days_old={}): {}",
+                days_old, e
+            );
             format!("Erreur nettoyage historique: {}", e)
         })?;
 
@@ -324,13 +343,10 @@ impl MongoHistoryService {
     }
 
     pub async fn ping(&self) -> AppResult<()> {
-        sqlx::query("SELECT 1")
-            .execute(self.pg.as_ref())
-            .await
-            .map_err(|e| {
-                error!("[HistoryService] Ping échoué: {}", e);
-                AppError::Internal(format!("HistoryService ping failed: {}", e))
-            })?;
+        sqlx::query("SELECT 1").execute(self.pg.as_ref()).await.map_err(|e| {
+            error!("[HistoryService] Ping échoué: {}", e);
+            AppError::Internal(format!("HistoryService ping failed: {}", e))
+        })?;
         Ok(())
     }
 

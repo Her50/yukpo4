@@ -16,7 +16,9 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use uuid::Uuid;
 
-use super::flutterwave_service::{FlutterwaveService, FlutterwaveChargeRequest, flutterwave_network};
+use super::flutterwave_service::{
+    flutterwave_network, FlutterwaveChargeRequest, FlutterwaveService,
+};
 
 // ============================================================================
 // TYPES PUBLICS
@@ -61,7 +63,7 @@ pub fn select_best_aggregator(country: &str, operator: &str) -> AggregatorProvid
         },
         "ml" | "bf" => AggregatorProvider::CinetPay, // Orange, Moov
         "tg" | "bj" => AggregatorProvider::CinetPay, // MTN, Moov, Tmoney, Flooz
-        "gn" => AggregatorProvider::CinetPay,         // MTN, Orange
+        "gn" => AggregatorProvider::CinetPay,        // MTN, Orange
         "cd" => match op.as_str() {
             "orange" | "mpesa" | "airtel" => AggregatorProvider::CinetPay, // CinetPay couvre la RDC
             _ => AggregatorProvider::Flutterwave,
@@ -101,12 +103,12 @@ pub enum PayChannel {
     OrangeMoney,
     Wave,         // Sénégal, Côte d'Ivoire, Mali, Burkina Faso, Guinée-Bissau, Gambie
     MoovMoney,    // Côte d'Ivoire, Togo, Bénin, Niger, Burkina Faso, Centrafrique, Tchad
-    AirtelMoney,  // 14 pays: Uganda, Kenya, Tanzania, Rwanda, DRC, Niger, Gabon, Congo, Tchad, Madagascar...
-    Mpesa,        // Kenya, Tanzania, DRC, Mozambique, Ghana, Egypte, Lesotho
+    AirtelMoney, // 14 pays: Uganda, Kenya, Tanzania, Rwanda, DRC, Niger, Gabon, Congo, Tchad, Madagascar...
+    Mpesa,       // Kenya, Tanzania, DRC, Mozambique, Ghana, Egypte, Lesotho
     VodafoneCash, // Ghana
-    FreeMoney,    // Sénégal
-    TigoPesa,     // Tanzania (maintenant Airtel)
-    EcoCash,      // Zimbabwe
+    FreeMoney,   // Sénégal
+    TigoPesa,    // Tanzania (maintenant Airtel)
+    EcoCash,     // Zimbabwe
     Visa,
     Mastercard,
     AllMobileMoney,
@@ -475,10 +477,8 @@ impl PaymentAggregator {
         );
 
         // Détecter le pays depuis le numéro de téléphone
-        let country = request.phone_number
-            .as_deref()
-            .map(detect_country_from_phone)
-            .unwrap_or("cm");
+        let country =
+            request.phone_number.as_deref().map(detect_country_from_phone).unwrap_or("cm");
 
         // Déterminer l'opérateur depuis le PayChannel
         let operator = match &request.channel {
@@ -500,16 +500,27 @@ impl PaymentAggregator {
 
         log::info!(
             "[PaymentAggregator] Country={}, Operator={}, Selected={} for {} {} (user {})",
-            country, operator, best, request.amount, request.currency, request.user_id
+            country,
+            operator,
+            best,
+            request.amount,
+            request.currency,
+            request.user_id
         );
 
         match best {
             AggregatorProvider::Flutterwave => {
                 if self.flutterwave.is_configured() {
-                    match self.initiate_flutterwave(&transaction_id, &request, country, operator).await {
+                    match self
+                        .initiate_flutterwave(&transaction_id, &request, country, operator)
+                        .await
+                    {
                         Ok(response) => return Ok(response),
                         Err(e) => {
-                            log::warn!("[PaymentAggregator] Flutterwave failed, trying CinetPay: {}", e);
+                            log::warn!(
+                                "[PaymentAggregator] Flutterwave failed, trying CinetPay: {}",
+                                e
+                            );
                             if self.config.is_cinetpay_configured() {
                                 return self.initiate_cinetpay(&transaction_id, &request).await;
                             }
@@ -533,9 +544,20 @@ impl PaymentAggregator {
                             log::warn!("[PaymentAggregator] CinetPay failed: {}", e);
                             // Fallback: Flutterwave > NotchPay
                             if self.flutterwave.is_configured() {
-                                match self.initiate_flutterwave(&transaction_id, &request, country, operator).await {
+                                match self
+                                    .initiate_flutterwave(
+                                        &transaction_id,
+                                        &request,
+                                        country,
+                                        operator,
+                                    )
+                                    .await
+                                {
                                     Ok(r) => return Ok(r),
-                                    Err(e2) => log::warn!("[PaymentAggregator] Flutterwave fallback also failed: {}", e2),
+                                    Err(e2) => log::warn!(
+                                        "[PaymentAggregator] Flutterwave fallback also failed: {}",
+                                        e2
+                                    ),
                                 }
                             }
                             if self.config.is_notchpay_configured() {
@@ -547,7 +569,9 @@ impl PaymentAggregator {
                 }
                 // CinetPay not configured, try alternatives
                 if self.flutterwave.is_configured() {
-                    return self.initiate_flutterwave(&transaction_id, &request, country, operator).await;
+                    return self
+                        .initiate_flutterwave(&transaction_id, &request, country, operator)
+                        .await;
                 }
                 if self.config.is_notchpay_configured() {
                     return self.initiate_notchpay(&transaction_id, &request).await;
@@ -563,7 +587,14 @@ impl PaymentAggregator {
                                 return self.initiate_cinetpay(&transaction_id, &request).await;
                             }
                             if self.flutterwave.is_configured() {
-                                return self.initiate_flutterwave(&transaction_id, &request, country, operator).await;
+                                return self
+                                    .initiate_flutterwave(
+                                        &transaction_id,
+                                        &request,
+                                        country,
+                                        operator,
+                                    )
+                                    .await;
                             }
                             return Err(e);
                         }
@@ -573,7 +604,9 @@ impl PaymentAggregator {
                     return self.initiate_cinetpay(&transaction_id, &request).await;
                 }
                 if self.flutterwave.is_configured() {
-                    return self.initiate_flutterwave(&transaction_id, &request, country, operator).await;
+                    return self
+                        .initiate_flutterwave(&transaction_id, &request, country, operator)
+                        .await;
                 }
             }
         }
@@ -641,10 +674,17 @@ impl PaymentAggregator {
                 }
                 let body_json: serde_json::Value = match serde_json::from_slice(body) {
                     Ok(v) => v,
-                    Err(_) => return WebhookVerification {
-                        is_valid: false, transaction_id: None, status: None,
-                        amount: None, currency: None, provider_reference: None, raw_data: None,
-                    },
+                    Err(_) => {
+                        return WebhookVerification {
+                            is_valid: false,
+                            transaction_id: None,
+                            status: None,
+                            amount: None,
+                            currency: None,
+                            provider_reference: None,
+                            raw_data: None,
+                        }
+                    }
                 };
                 let data = body_json.get("data").cloned().unwrap_or(serde_json::json!({}));
                 let tx_ref = data.get("tx_ref").and_then(|t| t.as_str()).map(|s| s.to_string());
@@ -698,7 +738,11 @@ impl PaymentAggregator {
     ) -> Result<InitPaymentResponse, String> {
         log::info!(
             "[Flutterwave] Initiation paiement: {} {} pour user {} (country={}, op={})",
-            request.amount, request.currency, request.user_id, country, operator
+            request.amount,
+            request.currency,
+            request.user_id,
+            country,
+            operator
         );
 
         let network = flutterwave_network(operator, country).map(|s| s.to_string());
