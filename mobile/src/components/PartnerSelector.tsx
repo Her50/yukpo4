@@ -161,7 +161,7 @@ const [searchQuery, setSearchQuery] = useState('');
                     </View>
                 ) : (
                     <Text style={styles.placeholder}>
-                        {placeholder || `Sélectionner un partenaire ${partnerType}...`}
+                        {placeholder || t('partnerSelector.selectionnerUnPartenaire', { partnerType: partnerType })}
                     </Text>
                 )}
                 <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} type="lucide" />

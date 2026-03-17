@@ -22,10 +22,34 @@ use std::sync::Arc;
 /// Trouver des matchings (direct + chaînes) pour un livre
 pub async fn find_matchings(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: _user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<FindMatchingsRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[find_matchings] Livre ID: {}", payload.livre_id);
+    info!(
+        "[find_matchings] User ID: {}, Livre ID: {}",
+        user_id, payload.livre_id
+    );
+
+    // Vérifier que le livre appartient à l'utilisateur authentifié
+    let livre_owner: Option<i32> = sqlx::query_scalar(
+        "SELECT user_id FROM livres_scolaires WHERE id = $1",
+    )
+    .bind(payload.livre_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur vérification livre: {}", e)))?;
+
+    match livre_owner {
+        Some(owner_id) if owner_id != user_id => {
+            return Err(AppError::Forbidden(
+                "Vous ne pouvez rechercher des matchings que pour vos propres livres".to_string(),
+            ));
+        }
+        None => {
+            return Err(AppError::NotFound("Livre non trouvé".to_string()));
+        }
+        _ => {}
+    }
 
     let service = Service::new(Arc::new(state.pg.clone()));
 
@@ -70,8 +94,26 @@ pub async fn create_troc_direct(
         user_id, payload.livre_offert_id, payload.livre_souhaite_id
     );
 
+    let participant_id = payload.participant_id;
     let service = Service::new(Arc::new(state.pg.clone()));
     let troc = service.create_troc_direct(user_id, payload).await?;
+
+    tokio::spawn({
+        let pool = state.pg.clone();
+        let troc_id = troc.id;
+        async move {
+            let _ = sqlx::query(
+                r#"INSERT INTO notifications (user_id, type, title, body, data, created_at)
+                   VALUES ($1, 'troc_proposed', 'notification.troc_proposed.title',
+                           'notification.troc_proposed.body',
+                           $2, NOW())"#,
+            )
+            .bind(participant_id)
+            .bind(json!({"troc_id": troc_id, "i18n_key": "troc_proposed"}).to_string())
+            .execute(&pool)
+            .await;
+        }
+    });
 
     Ok((
         StatusCode::CREATED,
@@ -83,13 +125,25 @@ pub async fn create_troc_direct(
 /// Créer un troc en chaîne
 pub async fn create_troc_chaine(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: _user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateTrocChaineRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!(
-        "[create_troc_chaine] Nombre de participants: {}",
+        "[create_troc_chaine] User ID: {}, Nombre de participants: {}",
+        user_id,
         payload.participants.len()
     );
+
+    // Vérifier que l'utilisateur authentifié est participant de la chaîne
+    let is_participant = payload
+        .participants
+        .iter()
+        .any(|p| p.user_id == user_id);
+    if !is_participant {
+        return Err(AppError::Forbidden(
+            "Vous devez être participant de la chaîne pour la créer".to_string(),
+        ));
+    }
 
     let service = Service::new(Arc::new(state.pg.clone()));
     let chaine = service.create_troc_chaine(payload).await?;
@@ -163,6 +217,24 @@ pub async fn accept_troc(
     let service = Service::new(Arc::new(state.pg.clone()));
     let troc = service.accept_troc(troc_id, user_id).await?;
 
+    tokio::spawn({
+        let pool = state.pg.clone();
+        let initiateur_id = troc.initiateur_id;
+        let tid = troc.id;
+        async move {
+            let _ = sqlx::query(
+                r#"INSERT INTO notifications (user_id, type, title, body, data, created_at)
+                   VALUES ($1, 'troc_accepted', 'notification.troc_accepted.title',
+                           'notification.troc_accepted.body',
+                           $2, NOW())"#,
+            )
+            .bind(initiateur_id)
+            .bind(json!({"troc_id": tid, "i18n_key": "troc_accepted"}).to_string())
+            .execute(&pool)
+            .await;
+        }
+    });
+
     Ok(Json(json!({ "success": true, "troc": troc })))
 }
 
@@ -178,6 +250,28 @@ pub async fn refuse_troc(
     let service = Service::new(Arc::new(state.pg.clone()));
     let troc = service.refuse_troc(troc_id, user_id).await?;
 
+    let notify_user_id = if troc.initiateur_id == user_id {
+        troc.participant_id
+    } else {
+        troc.initiateur_id
+    };
+    tokio::spawn({
+        let pool = state.pg.clone();
+        let tid = troc.id;
+        async move {
+            let _ = sqlx::query(
+                r#"INSERT INTO notifications (user_id, type, title, body, data, created_at)
+                   VALUES ($1, 'troc_refused', 'notification.troc_refused.title',
+                           'notification.troc_refused.body',
+                           $2, NOW())"#,
+            )
+            .bind(notify_user_id)
+            .bind(json!({"troc_id": tid, "i18n_key": "troc_refused"}).to_string())
+            .execute(&pool)
+            .await;
+        }
+    });
+
     Ok(Json(json!({ "success": true, "troc": troc })))
 }
 
@@ -192,6 +286,27 @@ pub async fn complete_troc(
 
     let service = Service::new(Arc::new(state.pg.clone()));
     let troc = service.complete_troc(troc_id, user_id).await?;
+
+    tokio::spawn({
+        let pool = state.pg.clone();
+        let initiateur_id = troc.initiateur_id;
+        let participant_id = troc.participant_id;
+        let tid = troc.id;
+        async move {
+            for uid in [initiateur_id, participant_id] {
+                let _ = sqlx::query(
+                    r#"INSERT INTO notifications (user_id, type, title, body, data, created_at)
+                       VALUES ($1, 'troc_completed', 'notification.troc_completed.title',
+                               'notification.troc_completed.body',
+                               $2, NOW())"#,
+                )
+                .bind(uid)
+                .bind(json!({"troc_id": tid, "i18n_key": "troc_completed"}).to_string())
+                .execute(&pool)
+                .await;
+            }
+        }
+    });
 
     Ok(Json(json!({ "success": true, "troc": troc })))
 }
@@ -252,10 +367,13 @@ pub async fn get_troc_details(
 /// Obtenir les détails d'une chaîne de troc
 pub async fn get_chaine_details(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: _user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(chaine_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_chaine_details] Chaine ID: {}", chaine_id);
+    info!(
+        "[get_chaine_details] User ID: {}, Chaine ID: {}",
+        user_id, chaine_id
+    );
 
     let chaine = sqlx::query_as::<_, ChaineTrocLivre>(
         r#"
@@ -267,6 +385,32 @@ pub async fn get_chaine_details(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération chaîne: {}", e)))?
     .ok_or_else(|| AppError::NotFound("Chaîne non trouvée".to_string()))?;
+
+    // Vérifier que l'utilisateur est participant de la chaîne
+    let participants: Vec<serde_json::Value> =
+        serde_json::from_value(chaine.participants.clone()).unwrap_or_default();
+    let is_participant = participants
+        .iter()
+        .any(|p| p.get("user_id").and_then(|v| v.as_i64()) == Some(user_id as i64));
+
+    let is_in_transfers = chaine
+        .transfers
+        .as_ref()
+        .map(|t| {
+            let transfers: Vec<serde_json::Value> =
+                serde_json::from_value(t.clone()).unwrap_or_default();
+            transfers.iter().any(|tr| {
+                tr.get("sender_id").and_then(|v| v.as_i64()) == Some(user_id as i64)
+                    || tr.get("receiver_id").and_then(|v| v.as_i64()) == Some(user_id as i64)
+            })
+        })
+        .unwrap_or(false);
+
+    if !is_participant && !is_in_transfers {
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas participant de cette chaîne".to_string(),
+        ));
+    }
 
     Ok(Json(json!({ "success": true, "chaine": chaine })))
 }

@@ -123,7 +123,7 @@ const MyBusTicketsScreen: React.FC = () => {
 
     const handleViewPDF = async (ticket: BusTicket) => {
         if (!ticket.ticket_pdf_url) {
-            Alert.alert('PDF non disponible', 'Le ticket PDF n\'est pas encore généré');
+            Alert.alert('PDF non disponible', t('myBusTicketsScreen.pdfPasEncoreGenere'));
             return;
         }
 
@@ -147,11 +147,11 @@ const MyBusTicketsScreen: React.FC = () => {
                         dialogTitle: 'Partager le ticket',
                     });
                 } else {
-                    Alert.alert('Partage non disponible', 'La fonctionnalité de partage n\'est pas disponible sur cet appareil');
+                    Alert.alert('Partage non disponible', t('myBusTicketsScreen.partageNonDisponible'));
                 }
             } else {
                 // Partager les informations textuelles
-                const message = `Ticket de voyage\n${ticket.departure_city} → ${ticket.arrival_city}\n${formatDate(ticket.departure_date)} à ${formatTime(ticket.departure_time)}\n${ticket.total_amount} ${ticket.currency}`;
+                const message = t('myBusTicketsScreen.ticketDeVoyagenNAN', { ticket_departure_city: ticket.departure_city, ticket_arrival_city: ticket.arrival_city, formatDate_ticket_departu: formatDate(ticket.departure_date), formatTime_ticket_departu: formatTime(ticket.departure_time), ticket_total_amount: ticket.total_amount, ticket_currency: ticket.currency });
                 await Share.share({ message });
             }
         } catch (error) {
@@ -181,7 +181,7 @@ const MyBusTicketsScreen: React.FC = () => {
                     <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
                         <Text style={styles.statusText}>
                             {status === 'upcoming'
-                                ? 'À venir'
+                                ? t('myBusTicketsScreen.aVenir')
                                 : status === 'past'
                                     ? t('myBusTicketsScreen.passe')
                                     : t('myBusTicketsScreen.annule')}
@@ -326,7 +326,7 @@ const MyBusTicketsScreen: React.FC = () => {
                                 {filterOption === 'all'
                                     ? 'Tous'
                                     : filterOption === 'upcoming'
-                                        ? 'À venir'
+                                        ? t('myBusTicketsScreen.aVenir')
                                         : filterOption === 'past'
                                             ? t('myBusTicketsScreen.passes')
                                             : t('myBusTicketsScreen.annules')}

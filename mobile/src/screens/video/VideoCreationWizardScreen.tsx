@@ -79,7 +79,7 @@ const FALLBACK_STORY_TEMPLATES: StoryTemplateSpec[] = [
         description: t('videoCreationWizard.recitEditorialIdealPourActus'),
         recommendedCategories: [],
         tones: ['inspirational'],
-        ctas: ['Découvrir'],
+        ctas: [t('videoCreationWizardScreen.decouvrir')],
         defaultDurationSeconds: 30,
         suggestedScenes: 3,
     },
@@ -99,7 +99,7 @@ const FALLBACK_STORY_TEMPLATES: StoryTemplateSpec[] = [
         description: 'Renforce la preuve sociale en quelques secondes.',
         recommendedCategories: [],
         tones: ['trust'],
-        ctas: ['Réserver'],
+        ctas: [t('videoCreationWizardScreen.reserver')],
         defaultDurationSeconds: 28,
         suggestedScenes: 3,
     },
@@ -1576,8 +1576,7 @@ const VideoCreationWizardScreen: React.FC = () => {
             if (!response.preview_url) {
                 Alert.alert(
                     t('videoWizard.alert.previewShortNoUrlTitle') ?? t('videoCreationWizard.previsualisationRapide'),
-                    t('videoWizard.alert.previewShortNoUrlMessage') ??
-                    "Impossible de récupérer l'URL de la prévisualisation.",
+                    t('videoWizard.alert.previewShortNoUrlMessaget('videoCreationWizardScreen.impossibleDeRecupererL')URL de la prévisualisation.",
                 );
                 const durationMs = Date.now() - startedAt;
                 trackUxEvent('preview_short_failed', {
@@ -1662,7 +1661,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                     )}
                     <View style={styles.mediaInfoRow}>
                         <Text style={styles.mediaTitle} numberOfLines={1}>
-                            {item.ai_description || `Média #${item.id}`}
+                            {item.ai_description || t('videoCreationWizardScreen.media', { item_id: item.id })}
                         </Text>
                         <Text style={styles.mediaSubTitle}>
                             {isVideo ? t('videoCreationWizardScreen.video') : '📸 Image'}
@@ -2068,7 +2067,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                                 <View style={styles.inlineRow}>
                                                     <Text style={styles.inlineLabel}>
                                                         {t('videoWizard.summary.sceneLabel', {
-                                                            defaultValue: `Scène ${currentSceneIndex + 1}`,
+                                                            defaultValue: t('videoCreationWizardScreen.scene', { currentSceneIndex___1: currentSceneIndex + 1 }),
                                                             index: currentSceneIndex + 1,
                                                         })}
                                                     </Text>
@@ -2167,7 +2166,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                                                         numberOfLines={1}
                                                                     >
                                                                         {item.ai_description ||
-                                                                            `Média #${item.id}`}
+                                                                            t('videoCreationWizardScreen.media', { item_id: item.id })}
                                                                     </Text>
                                                                     <Text
                                                                         style={

@@ -27,6 +27,7 @@ interface ChaussureVariantManagerProps {
 }
 
 const ChaussureVariantManager: React.FC<ChaussureVariantManagerProps> = ({
+    const { t } = useLanguageSafe();
     variants,
     onChange,
     globalDevise = 'XAF',  // ✅ NOUVEAU: Devise globale par défaut
@@ -97,7 +98,7 @@ const ChaussureVariantManager: React.FC<ChaussureVariantManagerProps> = ({
                 handleUpdateVariant(variantId, 'images', [...existingImages, ...newImages]);
             }
         } catch (error) {
-            Alert.alert('Erreur', 'Impossible de sélectionner les images');
+            Alert.alert('Erreur', t('chaussureVariantManager.impossibleDeSelectionnerLesImages'));
         }
     };
 

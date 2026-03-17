@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -15,13 +14,7 @@ import {
 import PaymentMethodPrompt from '../../components/PaymentMethodPrompt';
 import { usePaymentMethodCheck } from '../../hooks/usePaymentMethodCheck';
 import { BookPurchase, bourseLivreV2Api, PurchaseBreakdown } from '../../services/bourseLivreV2Api';
-import { useLanguageSafe } from '../contexts/LanguageContext';
-
-const PAIEMENT_METHODES = [
-  { label: 'Mobile Money', value: 'mobile_money', icon: 'phone-portrait' },
-  { label: t('bookBuyDirect.especes'), value: 'cash', icon: 'cash' },
-  { label: 'Carte', value: 'carte', icon: 'card' },
-];
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface BookBuyDirectScreenProps {
   navigation: any;
@@ -43,11 +36,15 @@ interface BookBuyDirectScreenProps {
 }
 
 export default function BookBuyDirectScreen({ navigation, route }: BookBuyDirectScreenProps) {
-  const { t } = useTranslation();
+  const { t } = useLanguageSafe();
   const { livre } = route.params;
   const prix = livre.valeur_calculee || livre.prix_detecte || 0;
 
-  const { t } = useLanguageSafe();
+  const PAIEMENT_METHODES = [
+    { label: 'Mobile Money', value: 'mobile_money', icon: 'phone-portrait' },
+    { label: t('bourseLivreV2.buyDirect.especes'), value: 'cash', icon: 'cash' },
+    { label: t('bourseLivreV2.buyDirect.carte'), value: 'carte', icon: 'card' },
+  ];
   const [adresseLivraison, setAdresseLivraison] = useState('');
   const [gpsLivraison, setGpsLivraison] = useState('');
   const [modeLivraison, setModeLivraison] = useState('depot_seulement');
@@ -102,13 +99,34 @@ export default function BookBuyDirectScreen({ navigation, route }: BookBuyDirect
       });
       setPurchase(res.purchase);
       setBreakdown(res.breakdown);
-      Alert.alert(
-        t('bourseLivreV2.buyDirect.achatConfirme'),
-        t('bourseLivreV2.buyDirect.commandeCreee', { id: res.purchase.id, total: res.breakdown.montant_total, devise: res.breakdown.devise }),
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+
+      const rawRes = res as any;
+      const payStatus = rawRes.paiement_statut || 'paye';
+
+      if (payStatus === 'en_attente_paiement') {
+        Alert.alert(
+          t('bourseLivreV2.buyDirect.paiementRequis'),
+          t('bourseLivreV2.buyDirect.paiementRequisDesc', {
+            total: res.breakdown.montant_total,
+            devise: res.breakdown.devise,
+          }),
+          [
+            {
+              text: t('bourseLivreV2.buyDirect.payerMaintenant'),
+              onPress: () => navigation.navigate('RechargeTokens' as never),
+            },
+            { text: t('bourseLivreV2.buyDirect.payerPlusTard'), style: 'cancel' },
+          ]
+        );
+      } else {
+        Alert.alert(
+          t('bourseLivreV2.buyDirect.achatConfirme'),
+          t('bourseLivreV2.buyDirect.commandeCreee', { id: res.purchase.id, total: res.breakdown.montant_total, devise: res.breakdown.devise }),
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      }
     } catch (err: any) {
-      Alert.alert('Erreur', err?.message || t('bourseLivreV2.buyDirect.errorAchat'));
+      Alert.alert(t('message.error'), err?.message || t('bourseLivreV2.buyDirect.errorAchat'));
     } finally {
       setLoading(false);
     }
@@ -191,7 +209,7 @@ export default function BookBuyDirectScreen({ navigation, route }: BookBuyDirect
         <View style={styles.priceRow}>
           <Text style={styles.priceLabel}>{t('bourseLivreV2.buyDirect.fraisLivraison')}</Text>
           <Text style={styles.priceValue}>
-            {fraisLivraison != null ? `${Math.round(fraisLivraison).toLocaleString()} XAF` : t('bourseLivreV2.buyDirect.aCalculer', 'À calculer (GPS)')}
+            {fraisLivraison != null ? `${Math.round(fraisLivraison).toLocaleString()} XAF` : t('bourseLivreV2.buyDirect.aCalculer', t('bookBuyDirectScreen.aCalculerGps'))}
           </Text>
         </View>
         <View style={[styles.priceRow, styles.totalRow]}>

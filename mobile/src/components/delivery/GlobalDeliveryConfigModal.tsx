@@ -273,32 +273,32 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
     const handleSave = async () => {
         // Validation
         if (!config?.pickup_address || typeof config.pickup_address !== 'string' || !config.pickup_address.trim()) {
-            Alert.alert('Erreur', 'Veuillez sélectionner ou saisir une adresse de départ');
+            Alert.alert('Erreur', t('globalDeliveryConfigModal.veuillezSelectionnerOuSaisirUneAdresse'));
             return;
         }
 
         if (!config.pickup_latitude || !config.pickup_longitude || config.pickup_latitude === 0 || config.pickup_longitude === 0) {
-            Alert.alert('Erreur', 'Veuillez sélectionner une position GPS précise pour le matching avec les coursiers');
+            Alert.alert('Erreur', t('globalDeliveryConfigModal.veuillezSelectionnerUnePositionGpsPrecise'));
             return;
         }
 
         if (!config.required_vehicle_type_id || config.required_vehicle_type_id === 0) {
-            Alert.alert('Erreur', 'Veuillez sélectionner un type de véhicule');
+            Alert.alert('Erreur', t('globalDeliveryConfigModal.veuillezSelectionnerUnTypeDeVehicule'));
             return;
         }
 
         if (Object.keys(config.pickup_availability_schedule).length === 0) {
-            Alert.alert('Erreur', 'Veuillez définir au moins une plage horaire de départ');
+            Alert.alert('Erreur', t('globalDeliveryConfigModal.veuillezDefinirAuMoinsUnePlage'));
             return;
         }
 
         if (!config.preparation_time_minutes || isNaN(parseInt(config.preparation_time_minutes)) || parseInt(config.preparation_time_minutes) <= 0) {
-            Alert.alert('Erreur', 'Veuillez saisir un temps de préparation valide (en minutes)');
+            Alert.alert('Erreur', t('globalDeliveryConfigModal.veuillezSaisirUnTempsDePreparation'));
             return;
         }
 
         if (validProductsCount === 0) {
-            Alert.alert('Erreur', 'Aucun produit sélectionné');
+            Alert.alert('Erreur', t('globalDeliveryConfigModal.aucunProduitSelectionne'));
             return;
         }
 
@@ -473,7 +473,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                     onPress={() => {
                                         Alert.alert(
                                             'Lieu de stock',
-                                            'Sélectionnez un lieu de stock (optionnel)',
+                                            t('globalDeliveryConfigModal.selectionnezUnLieuDeStockOptionnel'),
                                             [
                                                 { 
                                                     text: t('globalDeliveryConfig.aucunSaisieManuelle'), 
@@ -499,7 +499,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                     <Text style={styles.selectText}>
                                         {config.storage_location_id
                                             ? (storageLocations.find(loc => loc.id === config.storage_location_id)?.name || t('globalDeliveryConfig.lieuSelectionne'))
-                                            : 'Sélectionner un lieu de stock (optionnel)'}
+                                            : t('globalDeliveryConfigModal.selectionnerUnLieuDeStockOptionnel')}
                                     </Text>
                                     <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
                                 </TouchableOpacity>
@@ -559,7 +559,7 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                                     <Text style={styles.selectText}>
                                         {config.required_vehicle_type_id
                                             ? (parcelTypes.find(pt => pt.id === config.required_vehicle_type_id)?.name || t('globalDeliveryConfig.typeSelectionne'))
-                                            : 'Sélectionner un type'}
+                                            : t('globalDeliveryConfigModal.selectionnerUnType')}
                                     </Text>
                                     <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
                                 </TouchableOpacity>

@@ -87,7 +87,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
             }
         } catch (error: any) {
             console.error('[VideoRecorder] Erreur enregistrement:', error);
-            Alert.alert('Erreur', 'Impossible d\'enregistrer la vidéo');
+            Alert.alert('Erreur', 'Impossible d\t('videoRecorder.enregistrerLaVideo'));
             setIsRecording(false);
             if (recordingTimerRef.current) {
                 clearInterval(recordingTimerRef.current);

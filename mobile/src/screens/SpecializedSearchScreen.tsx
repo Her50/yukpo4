@@ -174,7 +174,7 @@ const SpecializedSearchScreen: React.FC = () => {
             });
         } catch (error: any) {
             console.error('[SpecializedSearchScreen] ❌ Erreur recherche:', error);
-            Alert.alert('Erreur', error.message || 'Erreur lors de la recherche spécialisée');
+            Alert.alert('Erreur', error.message || t('specializedSearchScreen.erreurLorsDeLaRechercheSpecialisee'));
         } finally {
             setLoading(false);
         }
@@ -286,7 +286,7 @@ const SpecializedSearchScreen: React.FC = () => {
                         <Text style={styles.gpsButtonText}>
                             {gpsData
                                 ? `${gpsData.lat.toFixed(4)}, ${gpsData.lng.toFixed(4)}`
-                                : 'Sélectionner une position GPS'}
+                                : t('specializedSearchScreen.selectionnerUnePositionGps')}
                         </Text>
                         <SafeIcon name="chevron-right" size={20} color={modernColors.textSecondary} />
                     </TouchableOpacity>

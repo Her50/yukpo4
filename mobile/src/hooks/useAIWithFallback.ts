@@ -3,6 +3,7 @@
 // Niveau 2: Appel /api/ai/chat (endpoint centralisé)
 // Niveau 3: Réponses locales pré-calculées
 import { useCallback, useState } from 'react';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiPost } from '../services/api';
 
 export interface AIFallbackResult<T = any> {
@@ -65,6 +66,7 @@ const PATHOLOGY_DATA: Record<string, { specialites: string[]; examens: string[];
 export const useAIWithFallback = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { language } = useLanguageSafe();
 
     /**
      * Appel IA générique avec fallback 3 niveaux
@@ -95,6 +97,7 @@ export const useAIWithFallback = () => {
                 message: chatPrompt,
                 context: chatContext,
                 fallback: true,
+                language,
             });
             if (chatResult?.success && chatResult?.data) {
                 setLoading(false);
@@ -128,6 +131,7 @@ export const useAIWithFallback = () => {
                     message: question,
                     context: { category: 'pharmacie', medications },
                     type: 'question',
+                    language,
                 });
                 if (response?.success && response?.data?.message) {
                     return { message: response.data.message, suggestions: response.data.suggestions || [] };

@@ -141,7 +141,7 @@ const AutoServicesResultsScreen: React.FC = () => {
         } catch (error: any) {
             console.error('[AutoResults] Erreur:', error);
             if (!append) {
-                Alert.alert('Erreur', 'Impossible de charger les résultats');
+                Alert.alert('Erreur', t('autoServicesResultsScreen.impossibleDeChargerLesResultats'));
             }
         } finally {
             setLoading(false);
@@ -190,9 +190,8 @@ const AutoServicesResultsScreen: React.FC = () => {
         .map(([key, val]) => {
             const labels: Record<string, string> = {
                 q: 'Recherche', marque: 'Marque', type_vehicule: 'Type', carburant: 'Carburant',
-                transmission: 'Transmission', couleur: 'Couleur', etat: 'État',
-                prix_min: 'Prix min', prix_max: 'Prix max', annee_min: 'Depuis', annee_max: "Jusqu'à",
-                km_max: 'Km max', ville: 'Ville', quartier: 'Quartier',
+                transmission: 'Transmission', couleur: 'Couleur', etat: t('autoServicesResultsScreen.etat'),
+                prix_min: 'Prix min', prix_max: 'Prix max', annee_min: 'Depuis', annee_max: "Jusqut('autoServicesResultsScreen.aKmmax')Km max', ville: 'Ville', quartier: 'Quartier',
             };
             return { key, label: labels[key] || key, value: String(val) };
         });
@@ -431,7 +430,7 @@ const AutoServicesResultsScreen: React.FC = () => {
         if (!item.vendeur_whatsapp) return;
         try {
             const phoneNumber = item.vendeur_whatsapp.replace(/\s+/g, '');
-            const message = t('autoServicesResultsScreen.bonjourJeSuisInteresseParVotre', { item_nom: item.nom }) à ${item.prix.toLocaleString('fr-FR')} ${item.devise}` : ''}. Est-il toujours disponible ?`;
+            const message = t('autoServicesResultsScreen.bonjourJeSuisInteresseParVotret('autoServicesResultsScreen.itemnomItemnomAItemprixtolocalestring')fr-FR')} ${item.devise}` : ''}. Est-il toujours disponible ?`;
             const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
             const canOpen = await Linking.canOpenURL(whatsappUrl);
             if (canOpen) {
@@ -447,7 +446,7 @@ const AutoServicesResultsScreen: React.FC = () => {
                     }).catch(() => { });
                 }
             } else {
-                Alert.alert('Erreur', "WhatsApp n'est pas installé sur cet appareil");
+                Alert.alert('Erreur', t('autoServicesResultsScreen.whatsappNestPasInstalleSurCet'));
             }
         } catch (error) {
             console.error('[AutoResults] Erreur WhatsApp:', error);
@@ -474,7 +473,7 @@ const AutoServicesResultsScreen: React.FC = () => {
                     }).catch(() => { });
                 }
             } else {
-                Alert.alert('Erreur', "Impossible d'ouvrir le téléphone");
+                Alert.alert('Erreur', t('autoServicesResultsScreen.impossibleDouvrirLeTelephone'));
             }
         } catch (error) {
             console.error('[AutoResults] Erreur appel:', error);

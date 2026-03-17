@@ -522,7 +522,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                                             style={[styles.searchButtonText, !canSearch() && styles.searchButtonTextDisabled]}
                                             numberOfLines={1}
                                         >
-                                            {canSearch() ? "Rechercher" : "Remplir départ/destination"}
+                                            {canSearch() ? "Rechercher" : t('covoiturageHomeScreen.remplirDepartdestination')}
                                         </Text>
                                     </>
                                 )}

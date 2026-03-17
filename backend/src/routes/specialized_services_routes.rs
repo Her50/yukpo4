@@ -11,7 +11,9 @@ use crate::controllers::blood_donation_matching_controller;
 use crate::controllers::bus_return_trip_controller;
 use crate::controllers::bus_seat_management_controller;
 use crate::controllers::bus_ticket_controller;
+use crate::controllers::bus_ticket_credit_controller;
 use crate::controllers::bus_ticket_payment_controller;
+use crate::controllers::bus_ticket_rating_controller;
 use crate::controllers::bus_ticket_validation_controller;
 use crate::controllers::livres_scolaires_controller;
 use crate::controllers::menu_planning_controller;
@@ -225,6 +227,10 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/immobilier/biens/{id}/upload-virtual-tour",
             post(specialized_services_controller::upload_virtual_tour),
+        )
+        .route(
+            "/api/immobilier/biens/{id}/virtual-tours",
+            get(specialized_services_controller::get_property_virtual_tours),
         );
     // TODO: Implémenter activate_pending_recurring_instances
     // .route(
@@ -295,6 +301,14 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/covoiturages/{id}/verify-driver",
             post(specialized_services_controller::verify_covoiturage_driver),
+        )
+        .route(
+            "/api/covoiturages/{id}/confirm-departure",
+            post(specialized_services_controller::confirm_covoiturage_departure),
+        )
+        .route(
+            "/api/covoiturages/{id}/reviews",
+            post(specialized_services_controller::submit_covoiturage_review),
         )
         // ✅ Routes Immobilier (protégées)
         .route(
@@ -520,6 +534,10 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/bus-tickets/return-request/{request_id}/confirm",
             post(bus_return_trip_controller::confirm_return_trip_request),
         )
+        .route(
+            "/api/bus-tickets/check-return-requests",
+            post(bus_return_trip_controller::check_return_requests),
+        )
         // Routes validation tickets bus (protégées JWT)
         .route(
             "/api/bus-tickets/validate",
@@ -553,6 +571,27 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/bus-tickets/seats/{product_id}/availability",
             get(bus_seat_management_controller::get_seat_availability_with_blocks),
+        )
+        // Routes crédits et report de tickets bus (protégées JWT)
+        .route(
+            "/api/bus-tickets/defer",
+            post(bus_ticket_credit_controller::defer_ticket),
+        )
+        .route(
+            "/api/bus-tickets/apply-credit",
+            post(bus_ticket_credit_controller::apply_credit),
+        )
+        .route(
+            "/api/bus-tickets/credits",
+            get(bus_ticket_credit_controller::get_user_credits),
+        )
+        .route(
+            "/api/bus-tickets/credits/{credit_id}",
+            get(bus_ticket_credit_controller::get_credit_details),
+        )
+        .route(
+            "/api/bus-tickets/wallet/transactions",
+            post(bus_ticket_credit_controller::get_wallet_transactions),
         )
         // Routes Système Intelligent Matching Banque de Sang (protégées JWT)
         .route(
@@ -594,6 +633,15 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/blood-donation/compatibility",
             get(blood_donation_matching_controller::get_all_blood_group_compatibilities),
+        )
+        // ✅ Routes notation tickets bus
+        .route(
+            "/api/bus-tickets/rate",
+            post(bus_ticket_rating_controller::rate_bus_ticket),
+        )
+        .route(
+            "/api/bus-tickets/ratings/stats",
+            get(bus_ticket_rating_controller::get_ticket_rating_stats),
         )
         // ✅ NOUVEAU: Routes horaires d'agence (protégées pour gestion)
         .route(
@@ -726,14 +774,6 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/livres-scolaires/{id}",
             put(livres_scolaires_controller::update_livre_scolaire)
                 .delete(livres_scolaires_controller::delete_livre_scolaire),
-        )
-        .route(
-            "/api/livres-scolaires/{id}/upload-images",
-            post(livres_scolaires_controller::upload_images),
-        )
-        .route(
-            "/api/livres-scolaires/{id}/upload-video",
-            post(livres_scolaires_controller::upload_video),
         )
         .route(
             "/api/livres-scolaires/{id}/availability",

@@ -15,6 +15,7 @@ import Animated, {
 import { modernColors } from '../../theme/modernTheme';
 // ✅ NOUVEAU: Monitoring des re-renders
 import { useRenderMonitor } from '../../hooks/useRenderMonitor';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface RippleButtonProps {
     onPress: () => void;
@@ -47,6 +48,7 @@ export const RippleButton: React.FC<RippleButtonProps> = React.memo(({
     const opacity = useSharedValue(0);
 
     const handlePressIn = () => {
+    const { t } = useLanguageSafe();
         if (disabled) return;
 
         // ✅ AMÉLIORÉ: Animations plus fluides avec Reanimated 3

@@ -8,17 +8,17 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // 7 langues les plus parlées au monde
 export const LANGUAGES = [
   { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧', speakers: '1.5B' },
   { code: 'zh', name: 'Chinese', nativeName: '中文', flag: '🇨🇳', speakers: '1.1B' },
   { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', flag: '🇮🇳', speakers: '600M' },
-  { code: 'es', name: 'Spanish', nativeName: t('languageSelector.espanol'), flag: '🇪🇸', speakers: '560M' },
-  { code: 'fr', name: 'French', nativeName: t('languageSelector.francais'), flag: '🇫🇷', speakers: '280M' },
+  { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸', speakers: '560M' },
+  { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷', speakers: '280M' },
   { code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '🇸🇦', speakers: '274M' },
   { code: 'ru', name: 'Russian', nativeName: 'Русский', flag: '🇷🇺', speakers: '258M' },
 ];
@@ -34,8 +34,8 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   onLanguageChange,
   compact = true,
 }) => {
-      const { t } = useLanguageSafe();
-const [modalVisible, setModalVisible] = useState(false);
+  const { t } = useLanguageSafe();
+  const [modalVisible, setModalVisible] = useState(false);
 
   const currentLanguage = LANGUAGES.find(lang => lang.code === selectedLanguage) || LANGUAGES[4]; // Français par défaut
 
@@ -99,7 +99,7 @@ const [modalVisible, setModalVisible] = useState(false);
                         <View style={styles.languageTextContainer}>
                           <Text style={styles.languageName}>{language.nativeName}</Text>
                           <Text style={styles.languageSubtext}>
-                            {language.name} • {language.speakers} locuteurs
+                            {language.name} • {language.speakers} {t('languageSelector.speakers')}
                           </Text>
                         </View>
                       </View>
@@ -117,7 +117,7 @@ const [modalVisible, setModalVisible] = useState(false);
               <View style={styles.modalFooter}>
                 <SafeIcon name="info" size={16} color={modernColors.textSecondary} />
                 <Text style={styles.footerText}>
-                  La traduction sera disponible prochainement pour toutes les langues
+                  {t('languageSelector.translationAvailableSoon')}
                 </Text>
               </View>
             </View>
@@ -148,7 +148,7 @@ const [modalVisible, setModalVisible] = useState(false);
               <View style={styles.languageTextContainer}>
                 <Text style={styles.languageName}>{language.nativeName}</Text>
                 <Text style={styles.languageSubtext}>
-                  {language.name} • {language.speakers} locuteurs
+                  {language.name} • {language.speakers} {t('languageSelector.speakers')}
                 </Text>
               </View>
             </View>

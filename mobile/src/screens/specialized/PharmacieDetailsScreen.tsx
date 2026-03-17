@@ -505,7 +505,7 @@ const PharmacieDetailsScreen: React.FC = () => {
                                         backgroundColor: interactionResult.severity === 'contraindicated' ? '#FEE2E2' : interactionResult.severity === 'major' ? '#FEF3C7' : interactionResult.severity === 'moderate' ? '#DBEAFE' : '#F0FDF4',
                                     }]}>
                                         <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827' }}>
-                                            {interactionResult.severity === 'contraindicated' ? t('pharmacieDetailsScreen.contreindique') : interactionResult.severity === 'major' ? 'Majeure' : interactionResult.severity === 'moderate' ? 'Modérée' : interactionResult.severity === 'minor' ? 'Mineure' : 'Aucune'}
+                                            {interactionResult.severity === 'contraindicated' ? t('pharmacieDetailsScreen.contreindique') : interactionResult.severity === 'major' ? 'Majeure' : interactionResult.severity === 'moderate' ? t('pharmacieDetailsScreen.moderee') : interactionResult.severity === 'minor' ? 'Mineure' : 'Aucune'}
                                         </Text>
                                     </View>
                                     <Text style={{ fontSize: 13, color: '#374151', lineHeight: 20, marginBottom: 8 }}>{interactionResult.description}</Text>

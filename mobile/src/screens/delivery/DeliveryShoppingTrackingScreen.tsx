@@ -100,7 +100,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
 
             // Toast visuel aussi
             if (currentStatus === 'assigned' || currentStatus === 'accepted') {
-                showSuccess(`Coursier trouvé${courierName ? ` : ${courierName}` : ''} !`);
+                showSuccess(t('deliveryShoppingTrackingScreen.coursierTrouve', { courierName_________couri: courierName ? ` : ${courierName }) : ''} !`);
             } else if (currentStatus === 'delivered' || currentStatus === 'completed') {
                 showSuccess(t('deliveryShoppingTrackingScreen.livraisonTerminee'));
             } else if (currentStatus === 'en_route_delivery') {
@@ -317,7 +317,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                 destination.lat < -90 || destination.lat > 90 ||
                 destination.lng < -180 || destination.lng > 180
             ) {
-                Alert.alert('Erreur', 'Coordonnées GPS invalides');
+                Alert.alert('Erreur', t('deliveryShoppingTrackingScreen.coordonneesGpsInvalides'));
                 return;
             }
 

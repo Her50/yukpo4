@@ -37,12 +37,12 @@ const HospitalAIRecommendationsScreen: React.FC = () => {
 
     const handleGetLocation = () => {
         // TODO: Implémenter la géolocalisation
-        Alert.alert('Info', 'La géolocalisation sera bientôt disponible');
+        Alert.alert('Info', t('hospitalAIRecommendationsScreen.laGeolocalisationSeraBientotDisponible'));
     };
 
     const handleGetRecommendations = async () => {
         if (!symptoms.trim()) {
-            Alert.alert('Erreur', 'Veuillez décrire vos symptômes');
+            Alert.alert('Erreur', t('hospitalAIRecommendationsScreen.veuillezDecrireVosSymptomes'));
             return;
         }
 

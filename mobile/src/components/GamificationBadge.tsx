@@ -12,6 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import gamificationService from '../services/gamificationService';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface GamificationBadgeProps {
     userId?: string;
@@ -24,7 +25,8 @@ export const GamificationBadge: React.FC<GamificationBadgeProps> = ({
     compact = false,
     onPress,
 }) => {
-    const [points, setPoints] = useState(0);
+        const { t } = useLanguageSafe();
+const [points, setPoints] = useState(0);
     const [streak, setStreak] = useState(0);
     const [badges, setBadges] = useState(0);
     const [loading, setLoading] = useState(true);

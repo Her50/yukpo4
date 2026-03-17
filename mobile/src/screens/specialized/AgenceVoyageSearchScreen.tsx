@@ -16,10 +16,10 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface AgenceVoyageSearchFilters {
     ville?: string;
@@ -88,7 +88,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
             const villeArriveeStr = typeof villeArrivee === 'string' ? villeArrivee : (villeArrivee as LocationObject)?.components?.ville || (villeArrivee as LocationObject)?.place_name || '';
 
             if (!villeDepartStr.trim() || !villeArriveeStr.trim()) {
-                Alert.alert('Erreur', 'Veuillez renseigner la ville de départ et d\'arrivée');
+                Alert.alert('Erreur', t('agenceVoyageSearchScreen.veuillezRenseignerLaVilleDeDepart'));
                 return;
             }
 
@@ -302,12 +302,12 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                             {/* Ville d'arrivée - OBLIGATOIRE */}
                             <View style={styles.inputGroup}>
                                 <LocationSelector
-                                    label={t('agenceVoyageSearch.villeD')}arrivée *"
+                                    label={t('agenceVoyageSearch.villeDarrivee')}
                                     value={typeof villeArrivee === 'string' ? (villeArrivee ? { raw: villeArrivee, place_name: villeArrivee } : '') : villeArrivee}
                                     onSelect={(location: LocationObject) => {
                                         setVilleArrivee(location);
                                     }}
-                                    placeholder={t('agenceVoyageSearchScreen.lieuD')}arrivée (ville, quartier, gare...)"
+                                    placeholder={t('agenceVoyageSearchScreen.lieuDarrivee')}
                                     scope="all"
                                     enrichWithBackend={true}
                                     required={true}
@@ -552,10 +552,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                         <Text style={styles.infoTitle}>{t('agenceVoyageSearch.bonASavoir')}</Text>
                     </View>
                     <Text style={styles.infoText}>
-                        • Les agences de voyage proposent des packages complets (transport + hébergement){'\n'}
-                        • Vérifiez les horaires d'ouverture avant de vous déplacer{'\n'}
-                        • Comparez les prix et services entre différentes agences{'\n'}
-                        • Certaines agences proposent des réservations en ligne
+                        {`• Les agences de voyage proposent des packages complets (transport + hébergement)\n• Vérifiez les horaires d'ouverture avant de vous déplacer\n• Comparez les prix et services entre agences\n• Certaines agences proposent des réservations en ligne`}
                     </Text>
                 </View>
             </KeyboardAwareScreen>

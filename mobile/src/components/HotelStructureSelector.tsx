@@ -64,7 +64,7 @@ const [open, setOpen] = useState(false);
     const handleAddCustomHotel = async () => {
         const name = newHotelName.trim();
         if (!name) {
-            Alert.alert('Erreur', 'Veuillez entrer un nom d\'hôtel');
+            Alert.alert('Erreur', 'Veuillez entrer un nom d\t('hotelStructureSelector.hotel'));
             return;
         }
 
@@ -162,7 +162,7 @@ const [open, setOpen] = useState(false);
                                     <SafeIcon name="search" size={40} color={modernColors.textSecondary} />
                                     <Text style={styles.emptyText}>{t('hotelStructureSelector.aucunHotelTrouve')}</Text>
                                     <Text style={styles.emptyHint}>
-                                        {locationEnabled ? "Essayez de désactiver la géolocalisation" : "Essayez un autre terme"}
+                                        {locationEnabled ? t('hotelStructureSelector.essayezDeDesactiverLaGeolocalisation') : "Essayez un autre terme"}
                                     </Text>
                                 </View>
                             )}

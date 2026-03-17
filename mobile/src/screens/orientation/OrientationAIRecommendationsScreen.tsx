@@ -27,7 +27,7 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
 
     const handleGetRecommendations = async () => {
         if (!user) {
-            Alert.alert('Erreur', 'Vous devez être connecté');
+            Alert.alert('Erreur', t('orientationAIRecommendationsScreen.vousDevezEtreConnecte'));
             return;
         }
 
@@ -66,7 +66,7 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[OrientationAIRecommendations] Erreur:', error);
-            Alert.alert('Erreur', 'Impossible d\'obtenir les recommandations. Veuillez réessayer.');
+            Alert.alert('Erreur', 'Impossible d\t('orientationAIRecommendationsScreen.obtenirLesRecommandationsVeuillezReessayer'));
         } finally {
             setLoading(false);
         }
@@ -99,7 +99,7 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
             ) : (
                 <View>
                     <Text style={styles.resultsTitle}>
-                        {recommendations.length} programme{recommendations.length > 1 ? 's' : ''} recommandé{recommendations.length > 1 ? 's' : ''}
+                        {recommendations.length} programme{recommendations.length > 1 ? 's' : 't('orientationAIRecommendationsScreen.recommanderecommendationslength1')s' : ''}
                     </Text>
                     {recommendations.map((rec, index) => (
                         <NativeCard key={index} style={styles.recommendationCard}>

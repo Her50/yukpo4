@@ -1,15 +1,22 @@
 // ✅ Service d'agrégation de paiement — Production-ready
-// Supporte CinetPay (primaire) et NotchPay (fallback)
-// Une seule API pour: MTN MoMo, Orange Money, Visa, Mastercard
+// Supporte CinetPay (primaire CEMAC/UEMOA) + NotchPay (fallback) + Flutterwave (pan-africain)
+//
+// Matrice de couverture réelle:
+//   CinetPay  → CM, CI, SN, ML, BF, TG, BJ, GN, CD (~9 pays, zone franc CFA)
+//   NotchPay  → CM, CI, SN, NG (4 pays, fallback)
+//   Flutterwave → 30+ pays: KE, TZ, UG, RW, GH, ZM, ET + CEMAC/UEMOA (pan-africain)
 //
 // Architecture:
-//   Mobile → Backend → Agrégateur (CinetPay/NotchPay) → MTN/Orange/Visa
+//   Mobile → Backend → select_best_aggregator(country, operator)
+//                     → CinetPay/NotchPay/Flutterwave → Opérateur mobile
 //   Agrégateur → Webhook → Backend → Crédit tokens
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use uuid::Uuid;
+
+use super::flutterwave_service::{FlutterwaveService, FlutterwaveChargeRequest, flutterwave_network};
 
 // ============================================================================
 // TYPES PUBLICS
@@ -19,6 +26,7 @@ use uuid::Uuid;
 pub enum AggregatorProvider {
     CinetPay,
     NotchPay,
+    Flutterwave,
 }
 
 impl std::fmt::Display for AggregatorProvider {
@@ -26,7 +34,64 @@ impl std::fmt::Display for AggregatorProvider {
         match self {
             AggregatorProvider::CinetPay => write!(f, "cinetpay"),
             AggregatorProvider::NotchPay => write!(f, "notchpay"),
+            AggregatorProvider::Flutterwave => write!(f, "flutterwave"),
         }
+    }
+}
+
+/// Détermine le meilleur agrégateur pour un pays et opérateur donné
+/// Basé sur la couverture RÉELLE vérifiée de chaque plateforme
+pub fn select_best_aggregator(country: &str, operator: &str) -> AggregatorProvider {
+    let c = country.to_lowercase();
+    let op = operator.to_lowercase();
+
+    match c.as_str() {
+        // ── Zone CinetPay confirmée (CEMAC/UEMOA) ──
+        "cm" => match op.as_str() {
+            "mtn" | "orange" => AggregatorProvider::CinetPay,
+            _ => AggregatorProvider::CinetPay,
+        },
+        "ci" => match op.as_str() {
+            "mtn" | "orange" | "moov" | "wave" => AggregatorProvider::CinetPay,
+            _ => AggregatorProvider::CinetPay,
+        },
+        "sn" => match op.as_str() {
+            "orange" | "free" | "wave" | "expresso" => AggregatorProvider::CinetPay,
+            _ => AggregatorProvider::CinetPay,
+        },
+        "ml" | "bf" => AggregatorProvider::CinetPay, // Orange, Moov
+        "tg" | "bj" => AggregatorProvider::CinetPay, // MTN, Moov, Tmoney, Flooz
+        "gn" => AggregatorProvider::CinetPay,         // MTN, Orange
+        "cd" => match op.as_str() {
+            "orange" | "mpesa" | "airtel" => AggregatorProvider::CinetPay, // CinetPay couvre la RDC
+            _ => AggregatorProvider::Flutterwave,
+        },
+
+        // ── Zone Flutterwave exclusive (CinetPay absent) ──
+        "ke" => AggregatorProvider::Flutterwave, // M-Pesa Kenya
+        "tz" => AggregatorProvider::Flutterwave, // Vodacom, Airtel, Tigo, Halotel
+        "ug" => AggregatorProvider::Flutterwave, // MTN, Airtel Uganda
+        "rw" => AggregatorProvider::Flutterwave, // MTN, M-Pesa Rwanda
+        "gh" => AggregatorProvider::Flutterwave, // MTN, AirtelTigo, Vodafone Ghana
+        "zm" => AggregatorProvider::Flutterwave, // M-Pesa Zambia
+        "et" => AggregatorProvider::Flutterwave, // Amole Ethiopia
+        "mz" => AggregatorProvider::Flutterwave, // M-Pesa Mozambique
+        "mw" => AggregatorProvider::Flutterwave, // Airtel Malawi
+
+        // ── Zone CEMAC secondaire: Flutterwave en fallback ──
+        "ga" | "cg" | "cf" | "td" | "gq" => AggregatorProvider::Flutterwave,
+
+        // ── Nigeria: Flutterwave (spécialiste) ──
+        "ng" => AggregatorProvider::Flutterwave,
+
+        // ── Afrique australe/autre: Flutterwave ──
+        "za" | "zw" | "ls" | "sz" => AggregatorProvider::Flutterwave,
+
+        // ── Zone UEMOA secondaire: CinetPay d'abord ──
+        "ne" | "gw" | "mr" => AggregatorProvider::CinetPay,
+
+        // ── Défaut: Flutterwave (couverture la plus large) ──
+        _ => AggregatorProvider::Flutterwave,
     }
 }
 
@@ -34,51 +99,71 @@ impl std::fmt::Display for AggregatorProvider {
 pub enum PayChannel {
     MtnMoney,
     OrangeMoney,
+    Wave,         // Sénégal, Côte d'Ivoire, Mali, Burkina Faso, Guinée-Bissau, Gambie
+    MoovMoney,    // Côte d'Ivoire, Togo, Bénin, Niger, Burkina Faso, Centrafrique, Tchad
+    AirtelMoney,  // 14 pays: Uganda, Kenya, Tanzania, Rwanda, DRC, Niger, Gabon, Congo, Tchad, Madagascar...
+    Mpesa,        // Kenya, Tanzania, DRC, Mozambique, Ghana, Egypte, Lesotho
+    VodafoneCash, // Ghana
+    FreeMoney,    // Sénégal
+    TigoPesa,     // Tanzania (maintenant Airtel)
+    EcoCash,      // Zimbabwe
     Visa,
     Mastercard,
     AllMobileMoney,
 }
 
 impl PayChannel {
-    /// Convertir en code CinetPay (country-agnostic, CinetPay détecte via le préfixe téléphone)
+    /// Convertir en code CinetPay
+    /// CinetPay gère la détection automatique via le préfixe téléphone pour la plupart
     pub fn to_cinetpay_channel(&self) -> Option<&str> {
         match self {
             PayChannel::MtnMoney => Some("MTN"),
             PayChannel::OrangeMoney => Some("OM"),
+            PayChannel::Wave => Some("WAVE"),
+            PayChannel::MoovMoney => Some("MOOV"),
+            PayChannel::Mpesa => Some("MPESA"),
+            PayChannel::AirtelMoney => Some("AIRTEL"),
+            PayChannel::FreeMoney => Some("FREEMONEY"),
             PayChannel::Visa | PayChannel::Mastercard => Some("CARD"),
-            PayChannel::AllMobileMoney => None, // Laisser CinetPay afficher tous
+            PayChannel::VodafoneCash | PayChannel::TigoPesa | PayChannel::EcoCash => None,
+            PayChannel::AllMobileMoney => None, // CinetPay affiche tous les canaux disponibles
         }
     }
 
     /// Convertir en code NotchPay pour un pays donné (format: {country}.{operator})
-    /// country_code: code ISO 2 lettres minuscules (ex: "cm", "sn", "ci")
     pub fn to_notchpay_channel_for_country(&self, country_code: &str) -> String {
         let cc = country_code.to_lowercase();
         match self {
             PayChannel::MtnMoney => {
-                // MTN est présent dans: CM, CI, BJ, GH, UG, RW, CG, GN, ZA, NG
-                match cc.as_str() {
-                    "cm" | "ci" | "bj" | "cg" | "gn" | "gh" | "ug" | "rw" | "za" => {
-                        format!("{}.mtn", cc)
-                    }
-                    "ng" => "ng.mtn".to_string(),
-                    _ => format!("{}.mtn", cc), // Tenter quand même
-                }
+                // MTN: CM, CI, BJ, GH, UG, RW, CG, GN, ZA, NG, LR, SS
+                format!("{}.mtn", cc)
             }
             PayChannel::OrangeMoney => {
-                // Orange Money est présent dans: CM, SN, CI, ML, BF, GN, MG, CD, CG
-                match cc.as_str() {
-                    "cm" | "sn" | "ci" | "ml" | "bf" | "gn" | "mg" | "cd" | "cg" => {
-                        format!("{}.orange", cc)
-                    }
-                    _ => format!("{}.orange", cc),
-                }
+                // Orange: CM, SN, CI, ML, BF, GN, MG, CD, CG, NE, TD
+                format!("{}.orange", cc)
             }
+            PayChannel::Wave => {
+                // Wave: SN, CI, ML, BF, GW, GM
+                format!("{}.wave", cc)
+            }
+            PayChannel::MoovMoney => {
+                // Moov: CI, TG, BJ, NE, BF, CF, TD
+                format!("{}.moov", cc)
+            }
+            PayChannel::AirtelMoney => {
+                // Airtel: UG, KE, TZ, RW, CD, NE, GA, CG, TD, MG, MW, ZM, SC
+                format!("{}.airtel", cc)
+            }
+            PayChannel::Mpesa => {
+                // M-Pesa: KE, TZ, CD, MZ, GH, EG, LS
+                format!("{}.mpesa", cc)
+            }
+            PayChannel::VodafoneCash => "gh.vodafone".to_string(),
+            PayChannel::FreeMoney => "sn.free".to_string(),
+            PayChannel::TigoPesa => format!("{}.tigo", cc),
+            PayChannel::EcoCash => "zw.ecocash".to_string(),
             PayChannel::Visa | PayChannel::Mastercard => "card".to_string(),
-            PayChannel::AllMobileMoney => {
-                // Canal mobile générique pour le pays
-                format!("{}.mobile", cc)
-            }
+            PayChannel::AllMobileMoney => format!("{}.mobile", cc),
         }
     }
 
@@ -285,19 +370,19 @@ pub struct WebhookVerification {
 
 #[derive(Debug, Clone)]
 pub struct AggregatorConfig {
-    // CinetPay
+    // CinetPay (zone CEMAC/UEMOA)
     pub cinetpay_api_key: String,
     pub cinetpay_site_id: String,
-    pub cinetpay_secret_key: String, // Pour vérification webhook
+    pub cinetpay_secret_key: String,
     pub cinetpay_base_url: String,
 
-    // NotchPay (fallback)
+    // NotchPay (fallback CEMAC)
     pub notchpay_public_key: String,
-    pub notchpay_secret_key: String, // Aussi pour auth API
+    pub notchpay_secret_key: String,
     pub notchpay_base_url: String,
 
     // Général
-    pub webhook_base_url: String, // Ex: https://api.yukpo.com
+    pub webhook_base_url: String,
     pub primary_provider: AggregatorProvider,
 }
 
@@ -324,10 +409,10 @@ impl AggregatorConfig {
                     "https://yukpo-backend-376093909298.europe-west1.run.app".to_string()
                 }),
 
-            primary_provider: if primary == "notchpay" {
-                AggregatorProvider::NotchPay
-            } else {
-                AggregatorProvider::CinetPay
+            primary_provider: match primary.as_str() {
+                "notchpay" => AggregatorProvider::NotchPay,
+                "flutterwave" => AggregatorProvider::Flutterwave,
+                _ => AggregatorProvider::CinetPay,
             },
         }
     }
@@ -348,6 +433,7 @@ impl AggregatorConfig {
 pub struct PaymentAggregator {
     config: AggregatorConfig,
     client: Client,
+    flutterwave: FlutterwaveService,
 }
 
 impl PaymentAggregator {
@@ -358,7 +444,11 @@ impl PaymentAggregator {
             .build()
             .expect("Failed to create HTTP client");
 
-        Self { config, client }
+        Self {
+            config,
+            client,
+            flutterwave: FlutterwaveService::new(),
+        }
     }
 
     pub fn with_config(config: AggregatorConfig) -> Self {
@@ -367,10 +457,14 @@ impl PaymentAggregator {
             .build()
             .expect("Failed to create HTTP client");
 
-        Self { config, client }
+        Self {
+            config,
+            client,
+            flutterwave: FlutterwaveService::new(),
+        }
     }
 
-    /// Initier un paiement via l'agrégateur configuré
+    /// Initier un paiement via l'agrégateur le plus adapté au pays/opérateur
     pub async fn initiate_payment(
         &self,
         request: InitPaymentRequest,
@@ -380,24 +474,82 @@ impl PaymentAggregator {
             Uuid::new_v4().to_string().replace("-", "")[..16].to_string()
         );
 
-        // Essayer le provider primaire, puis fallback
-        match &self.config.primary_provider {
+        // Détecter le pays depuis le numéro de téléphone
+        let country = request.phone_number
+            .as_deref()
+            .map(detect_country_from_phone)
+            .unwrap_or("cm");
+
+        // Déterminer l'opérateur depuis le PayChannel
+        let operator = match &request.channel {
+            PayChannel::MtnMoney => "mtn",
+            PayChannel::OrangeMoney => "orange",
+            PayChannel::Wave => "wave",
+            PayChannel::MoovMoney => "moov",
+            PayChannel::AirtelMoney => "airtel",
+            PayChannel::Mpesa => "mpesa",
+            PayChannel::VodafoneCash => "vodafone",
+            PayChannel::FreeMoney => "free",
+            PayChannel::TigoPesa => "tigo",
+            PayChannel::EcoCash => "ecocash",
+            _ => "all",
+        };
+
+        // Sélectionner le meilleur agrégateur
+        let best = select_best_aggregator(country, operator);
+
+        log::info!(
+            "[PaymentAggregator] Country={}, Operator={}, Selected={} for {} {} (user {})",
+            country, operator, best, request.amount, request.currency, request.user_id
+        );
+
+        match best {
+            AggregatorProvider::Flutterwave => {
+                if self.flutterwave.is_configured() {
+                    match self.initiate_flutterwave(&transaction_id, &request, country, operator).await {
+                        Ok(response) => return Ok(response),
+                        Err(e) => {
+                            log::warn!("[PaymentAggregator] Flutterwave failed, trying CinetPay: {}", e);
+                            if self.config.is_cinetpay_configured() {
+                                return self.initiate_cinetpay(&transaction_id, &request).await;
+                            }
+                            return Err(e);
+                        }
+                    }
+                }
+                // Fallback to CinetPay/NotchPay
+                if self.config.is_cinetpay_configured() {
+                    return self.initiate_cinetpay(&transaction_id, &request).await;
+                }
+                if self.config.is_notchpay_configured() {
+                    return self.initiate_notchpay(&transaction_id, &request).await;
+                }
+            }
             AggregatorProvider::CinetPay => {
                 if self.config.is_cinetpay_configured() {
                     match self.initiate_cinetpay(&transaction_id, &request).await {
                         Ok(response) => return Ok(response),
                         Err(e) => {
-                            log::warn!(
-                                "[PaymentAggregator] CinetPay failed, trying NotchPay: {}",
-                                e
-                            );
+                            log::warn!("[PaymentAggregator] CinetPay failed: {}", e);
+                            // Fallback: Flutterwave > NotchPay
+                            if self.flutterwave.is_configured() {
+                                match self.initiate_flutterwave(&transaction_id, &request, country, operator).await {
+                                    Ok(r) => return Ok(r),
+                                    Err(e2) => log::warn!("[PaymentAggregator] Flutterwave fallback also failed: {}", e2),
+                                }
+                            }
                             if self.config.is_notchpay_configured() {
                                 return self.initiate_notchpay(&transaction_id, &request).await;
                             }
                             return Err(e);
                         }
                     }
-                } else if self.config.is_notchpay_configured() {
+                }
+                // CinetPay not configured, try alternatives
+                if self.flutterwave.is_configured() {
+                    return self.initiate_flutterwave(&transaction_id, &request, country, operator).await;
+                }
+                if self.config.is_notchpay_configured() {
                     return self.initiate_notchpay(&transaction_id, &request).await;
                 }
             }
@@ -406,23 +558,27 @@ impl PaymentAggregator {
                     match self.initiate_notchpay(&transaction_id, &request).await {
                         Ok(response) => return Ok(response),
                         Err(e) => {
-                            log::warn!(
-                                "[PaymentAggregator] NotchPay failed, trying CinetPay: {}",
-                                e
-                            );
+                            log::warn!("[PaymentAggregator] NotchPay failed: {}", e);
                             if self.config.is_cinetpay_configured() {
                                 return self.initiate_cinetpay(&transaction_id, &request).await;
+                            }
+                            if self.flutterwave.is_configured() {
+                                return self.initiate_flutterwave(&transaction_id, &request, country, operator).await;
                             }
                             return Err(e);
                         }
                     }
-                } else if self.config.is_cinetpay_configured() {
+                }
+                if self.config.is_cinetpay_configured() {
                     return self.initiate_cinetpay(&transaction_id, &request).await;
+                }
+                if self.flutterwave.is_configured() {
+                    return self.initiate_flutterwave(&transaction_id, &request, country, operator).await;
                 }
             }
         }
 
-        Err("Aucun agrégateur de paiement configuré. Configurez CINETPAY_API_KEY ou NOTCHPAY_PUBLIC_KEY.".to_string())
+        Err("Aucun agrégateur de paiement configuré. Configurez CINETPAY_API_KEY, NOTCHPAY_PUBLIC_KEY ou FLUTTERWAVE_SECRET_KEY.".to_string())
     }
 
     /// Vérifier le statut d'un paiement
@@ -439,6 +595,24 @@ impl PaymentAggregator {
             AggregatorProvider::NotchPay => {
                 self.check_notchpay_status(transaction_id, provider_reference).await
             }
+            AggregatorProvider::Flutterwave => {
+                let result = self.flutterwave.verify_transaction(provider_reference).await?;
+                let status = match result.status.as_str() {
+                    "successful" => PaymentAggStatus::Completed,
+                    "failed" => PaymentAggStatus::Failed,
+                    "cancelled" => PaymentAggStatus::Cancelled,
+                    _ => PaymentAggStatus::Processing,
+                };
+                Ok(CheckStatusResponse {
+                    transaction_id: transaction_id.to_string(),
+                    provider_reference: result.flw_ref.unwrap_or_default(),
+                    status,
+                    amount: 0,
+                    currency: String::new(),
+                    payment_method: None,
+                    provider_data: None,
+                })
+            }
         }
     }
 
@@ -452,26 +626,127 @@ impl PaymentAggregator {
         match provider {
             AggregatorProvider::CinetPay => self.verify_cinetpay_webhook(body),
             AggregatorProvider::NotchPay => self.verify_notchpay_webhook(headers, body),
+            AggregatorProvider::Flutterwave => {
+                let secret_hash = headers.get("verif-hash").map(|s| s.as_str());
+                if !self.flutterwave.verify_webhook(secret_hash) {
+                    return WebhookVerification {
+                        is_valid: false,
+                        transaction_id: None,
+                        status: None,
+                        amount: None,
+                        currency: None,
+                        provider_reference: None,
+                        raw_data: None,
+                    };
+                }
+                let body_json: serde_json::Value = match serde_json::from_slice(body) {
+                    Ok(v) => v,
+                    Err(_) => return WebhookVerification {
+                        is_valid: false, transaction_id: None, status: None,
+                        amount: None, currency: None, provider_reference: None, raw_data: None,
+                    },
+                };
+                let data = body_json.get("data").cloned().unwrap_or(serde_json::json!({}));
+                let tx_ref = data.get("tx_ref").and_then(|t| t.as_str()).map(|s| s.to_string());
+                let flw_ref = data.get("flw_ref").and_then(|r| r.as_str()).map(|s| s.to_string());
+                let status_str = data.get("status").and_then(|s| s.as_str()).unwrap_or("");
+                let status = match status_str {
+                    "successful" => Some(PaymentAggStatus::Completed),
+                    "failed" => Some(PaymentAggStatus::Failed),
+                    "cancelled" => Some(PaymentAggStatus::Cancelled),
+                    _ => Some(PaymentAggStatus::Processing),
+                };
+                let amount = data.get("amount").and_then(|a| a.as_f64()).map(|a| a as i64);
+                let currency = data.get("currency").and_then(|c| c.as_str()).map(|s| s.to_string());
+                WebhookVerification {
+                    is_valid: true,
+                    transaction_id: tx_ref,
+                    status,
+                    amount,
+                    currency,
+                    provider_reference: flw_ref,
+                    raw_data: Some(body_json),
+                }
+            }
         }
     }
 
-    /// Retourne le provider actuellement configuré
+    /// Retourne les providers actuellement configurés
     pub fn active_provider(&self) -> Option<AggregatorProvider> {
-        match &self.config.primary_provider {
-            AggregatorProvider::CinetPay if self.config.is_cinetpay_configured() => {
-                Some(AggregatorProvider::CinetPay)
-            }
-            AggregatorProvider::NotchPay if self.config.is_notchpay_configured() => {
-                Some(AggregatorProvider::NotchPay)
-            }
-            _ if self.config.is_cinetpay_configured() => Some(AggregatorProvider::CinetPay),
-            _ if self.config.is_notchpay_configured() => Some(AggregatorProvider::NotchPay),
-            _ => None,
+        if self.config.is_cinetpay_configured() {
+            return Some(AggregatorProvider::CinetPay);
         }
+        if self.flutterwave.is_configured() {
+            return Some(AggregatorProvider::Flutterwave);
+        }
+        if self.config.is_notchpay_configured() {
+            return Some(AggregatorProvider::NotchPay);
+        }
+        None
     }
 
     // ========================================================================
-    // CINETPAY
+    // FLUTTERWAVE (Pan-African: 30+ pays)
+    // ========================================================================
+
+    async fn initiate_flutterwave(
+        &self,
+        transaction_id: &str,
+        request: &InitPaymentRequest,
+        country: &str,
+        operator: &str,
+    ) -> Result<InitPaymentResponse, String> {
+        log::info!(
+            "[Flutterwave] Initiation paiement: {} {} pour user {} (country={}, op={})",
+            request.amount, request.currency, request.user_id, country, operator
+        );
+
+        let network = flutterwave_network(operator, country).map(|s| s.to_string());
+
+        let redirect_url = format!(
+            "{}/api/webhooks/flutterwave/return?txn={}",
+            self.config.webhook_base_url, transaction_id
+        );
+
+        let fw_req = FlutterwaveChargeRequest {
+            tx_ref: transaction_id.to_string(),
+            amount: request.amount as f64,
+            currency: request.currency.clone(),
+            phone_number: request.phone_number.clone(),
+            email: request.customer_email.clone().unwrap_or_else(|| "client@yukpo.com".to_string()),
+            network,
+            country: Some(country.to_uppercase()),
+            customer_name: request.customer_name.clone(),
+            redirect_url: Some(redirect_url),
+            meta: request.metadata.clone(),
+        };
+
+        let result = if request.phone_number.is_some() {
+            self.flutterwave.charge_mobile_money(&fw_req).await?
+        } else {
+            self.flutterwave.create_payment_link(&fw_req).await?
+        };
+
+        Ok(InitPaymentResponse {
+            success: true,
+            transaction_id: transaction_id.to_string(),
+            provider: AggregatorProvider::Flutterwave,
+            provider_reference: result.flw_ref.unwrap_or_default(),
+            payment_url: result.payment_link,
+            payment_token: None,
+            status: match result.status.as_str() {
+                "successful" => PaymentAggStatus::Completed,
+                "pending" => PaymentAggStatus::Pending,
+                _ => PaymentAggStatus::AwaitingConfirmation,
+            },
+            instructions: Some(
+                "Validez le paiement sur votre téléphone ou via la page de paiement.".to_string(),
+            ),
+        })
+    }
+
+    // ========================================================================
+    // CINETPAY (CEMAC/UEMOA: CM, CI, SN, ML, BF, TG, BJ, GN, CD)
     // ========================================================================
 
     async fn initiate_cinetpay(

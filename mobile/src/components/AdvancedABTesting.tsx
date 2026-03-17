@@ -325,7 +325,7 @@ const [expanded, setExpanded] = useState(false);
                                                                     : { ...v, isActive: false }
                                                             );
                                                             onVariantsChange(updated);
-                                                            Alert.alert('Succès', 'Variante gagnante appliquée');
+                                                            Alert.alert(t('advancedABTesting.succes'), t('advancedABTesting.varianteGagnanteAppliquee'));
                                                         },
                                                     },
                                                 ]

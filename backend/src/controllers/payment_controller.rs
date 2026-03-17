@@ -169,26 +169,42 @@ pub async fn initiate_payment(
         ));
     }
 
-    // Logique selon le moyen de paiement — via agrégateur (CinetPay/NotchPay)
+    // Logique selon le moyen de paiement — via agrégateur (CinetPay/NotchPay/Flutterwave)
     let (payment_url, instructions) = match req.payment_method.as_str() {
-        "orange_money" | "mtn_momo" | "visa" | "mastercard" | "mobile_money" => {
+        "orange_money" | "mtn_momo" | "visa" | "mastercard" | "mobile_money"
+        | "wave" | "moov_money" | "airtel_money" | "mpesa" | "vodafone_cash"
+        | "free_money" | "tigo_pesa" | "ecocash" => {
             use crate::services::payment_aggregator::*;
 
             let aggregator = PaymentAggregator::new();
             let channel = match req.payment_method.as_str() {
                 "orange_money" => PayChannel::OrangeMoney,
                 "mtn_momo" => PayChannel::MtnMoney,
+                "wave" => PayChannel::Wave,
+                "moov_money" => PayChannel::MoovMoney,
+                "airtel_money" => PayChannel::AirtelMoney,
+                "mpesa" => PayChannel::Mpesa,
+                "vodafone_cash" => PayChannel::VodafoneCash,
+                "free_money" => PayChannel::FreeMoney,
+                "tigo_pesa" => PayChannel::TigoPesa,
+                "ecocash" => PayChannel::EcoCash,
                 "visa" | "mastercard" => PayChannel::Visa,
                 _ => PayChannel::AllMobileMoney,
             };
 
+            // Détection automatique de la devise selon le pays du numéro de téléphone
+            let detected_country = req.phone_number.as_deref()
+                .map(detect_country_from_phone)
+                .unwrap_or("cm");
+            let auto_currency = currency_for_country(detected_country).to_string();
+
             let agg_request = InitPaymentRequest {
                 user_id,
                 amount: req.amount_xaf,
-                currency: "XAF".to_string(),
+                currency: auto_currency.clone(),
                 channel,
                 phone_number: req.phone_number.clone(),
-                description: format!("Recharge Yukpo {} XAF", req.amount_xaf),
+                description: format!("Recharge Yukpo {} {}", req.amount_xaf, auto_currency),
                 customer_email: None,
                 customer_name: None,
                 metadata: Some(serde_json::json!({"payment_id": &payment_id, "user_id": user_id})),
@@ -223,16 +239,116 @@ pub async fn initiate_payment(
                 }
             }
         }
+        "stripe" | "stripe_card" | "apple_pay" | "google_pay" | "amex" => {
+            use crate::services::stripe_payment_service::*;
+
+            if !StripeConfig::is_configured() {
+                return Err(AppError::BadRequest(
+                    "Stripe non configuré. Contactez le support.".to_string(),
+                ));
+            }
+
+            let stripe_service = StripePaymentService::new()
+                .map_err(|e| AppError::Internal(format!("Erreur init Stripe: {}", e)))?;
+
+            let stripe_currency = StripeCurrency::from_str(&req.currency);
+            let amount_cents = if stripe_currency.is_zero_decimal() {
+                req.amount_xaf
+            } else {
+                req.amount_xaf * 100
+            };
+
+            let mut metadata = std::collections::HashMap::new();
+            metadata.insert("payment_id".to_string(), payment_id.clone());
+            metadata.insert("user_id".to_string(), user_id.to_string());
+            metadata.insert("platform".to_string(), "yukpo".to_string());
+
+            let stripe_request = StripePaymentRequest {
+                amount_cents,
+                currency: stripe_currency,
+                payment_method_types: vec!["card".to_string()],
+                description: format!("Recharge Yukpo {} {}", req.amount_xaf, req.currency),
+                customer_email: None,
+                customer_name: None,
+                metadata,
+            };
+
+            match stripe_service.create_payment_intent(stripe_request).await {
+                Ok(response) => {
+                    let _ = sqlx::query(
+                        "UPDATE payment_attempts SET transaction_id = $1, aggregator_provider = 'stripe', payment_url = $2 WHERE payment_id = $3"
+                    )
+                    .bind(&response.payment_intent_id)
+                    .bind(&response.client_secret)
+                    .bind(&payment_id)
+                    .execute(&state.pg)
+                    .await;
+
+                    (
+                        Some(response.client_secret),
+                        format!(
+                            "Paiement sécurisé via Stripe. Publishable key: {}",
+                            response.publishable_key
+                        ),
+                    )
+                }
+                Err(e) => {
+                    log::error!("[initiate_payment] Erreur Stripe: {}", e);
+                    return Err(AppError::Internal(format!("Erreur Stripe: {}", e)));
+                }
+            }
+        }
         "paypal" => {
-            let payment_url = format!("https://www.paypal.com/checkout?token={}", payment_id);
-            (Some(payment_url), "Redirection vers PayPal".to_string())
+            use crate::services::paypal_payment_service::*;
+
+            if !PayPalConfig::is_configured() {
+                return Err(AppError::BadRequest(
+                    "PayPal non configuré. Contactez le support.".to_string(),
+                ));
+            }
+
+            let paypal_service = PayPalPaymentService::new()
+                .map_err(|e| AppError::Internal(format!("Erreur init PayPal: {}", e)))?;
+
+            let paypal_currency = PayPalCurrency::from_str(&req.currency);
+
+            let paypal_request = PayPalOrderRequest {
+                amount: req.amount_xaf as f64,
+                currency: paypal_currency,
+                description: format!("Recharge Yukpo {} {}", req.amount_xaf, req.currency),
+                reference_id: payment_id.clone(),
+                payer_email: None,
+                custom_id: Some(format!("user_{}", user_id)),
+            };
+
+            match paypal_service.create_order(paypal_request).await {
+                Ok(response) => {
+                    let _ = sqlx::query(
+                        "UPDATE payment_attempts SET transaction_id = $1, aggregator_provider = 'paypal', payment_url = $2 WHERE payment_id = $3"
+                    )
+                    .bind(&response.order_id)
+                    .bind(&response.approval_url)
+                    .bind(&payment_id)
+                    .execute(&state.pg)
+                    .await;
+
+                    (
+                        response.approval_url,
+                        "Redirection vers PayPal pour finaliser le paiement.".to_string(),
+                    )
+                }
+                Err(e) => {
+                    log::error!("[initiate_payment] Erreur PayPal: {}", e);
+                    return Err(AppError::Internal(format!("Erreur PayPal: {}", e)));
+                }
+            }
         }
         "bank_transfer" => {
             (None, "Effectuez un virement bancaire vers le compte Yukpo. Les tokens seront crédités après réception.".to_string())
         }
         _ => {
             return Err(AppError::BadRequest(
-                "Moyen de paiement non supporté. Utilisez: orange_money, mtn_momo, visa, mastercard, paypal, bank_transfer".to_string(),
+                "Moyen de paiement non supporté. Utilisez: orange_money, mtn_momo, visa, mastercard, stripe, paypal, apple_pay, google_pay, bank_transfer".to_string(),
             ));
         }
     };

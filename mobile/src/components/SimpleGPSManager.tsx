@@ -28,7 +28,7 @@ const [isLoading, setIsLoading] = useState(false);
             try {
                 await startTracking();
             } catch (error) {
-                Alert.alert('Erreur GPS', 'Impossible de démarrer le GPS');
+                Alert.alert('Erreur GPS', t('simpleGPSManager.impossibleDeDemarrerLeGps'));
             } finally {
                 setIsLoading(false);
             }
@@ -40,7 +40,7 @@ const [isLoading, setIsLoading] = useState(false);
         try {
             await updateLocation();
         } catch (error) {
-            Alert.alert('Erreur GPS', 'Impossible de récupérer la position');
+            Alert.alert('Erreur GPS', t('simpleGPSManager.impossibleDeRecupererLaPosition'));
         } finally {
             setIsLoading(false);
         }
@@ -68,7 +68,7 @@ const [isLoading, setIsLoading] = useState(false);
                         color="#fff" 
                     />
                     <Text style={styles.buttonText}>
-                        {isLoading ? '...' : isTracking ? t('simpleGPSManager.arreter') : 'Démarrer'}
+                        {isLoading ? '...' : isTracking ? t('simpleGPSManager.arreter') : t('simpleGPSManager.demarrer')}
                     </Text>
                 </TouchableOpacity>
             </View>

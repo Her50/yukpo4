@@ -1,6 +1,5 @@
 /**
- * Écran d'affichage du QR code d'un ticket de bus
- * Permet au passager de présenter son QR code pour validation à l'embarquement
+ * Écran d'affichage du QR code d'un ticket de bus - permet l'embarquement
  */
 
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -15,8 +14,8 @@ import {
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import SafeIcon from '../../components/SafeIcon';
-import { modernColors } from '../../theme/modernTheme';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { modernColors } from '../../theme/modernTheme';
 
 const BusTicketQRScreen: React.FC = () => {
     const navigation = useNavigation();

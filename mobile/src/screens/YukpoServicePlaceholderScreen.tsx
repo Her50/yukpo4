@@ -42,7 +42,7 @@ const YukpoServicePlaceholderScreen: React.FC = () => {
                 'Pharmacie de garde',
                 'Ambulances d\'urgence',
                 t('yukpoServicePlaceholderScreen.suiviMedicalPersonnalise'),
-                'Assurance santé intégrée'
+                t('yukpoServicePlaceholderScreen.assuranceSanteIntegree')
             ]
         },
         {
@@ -53,11 +53,11 @@ const YukpoServicePlaceholderScreen: React.FC = () => {
             description: t('yukpoServicePlaceholder.educationEtFormationPourTous'),
             features: [
                 'Cours particuliers',
-                'Préparation aux examens',
+                t('yukpoServicePlaceholderScreen.preparationAuxExamens'),
                 'Formation professionnelle',
                 'Soutien scolaire',
                 t('yukpoServicePlaceholderScreen.bibliothequeNumerique'),
-                'Orientation académique'
+                t('yukpoServicePlaceholderScreen.orientationAcademique')
             ]
         },
         {
@@ -112,12 +112,12 @@ const YukpoServicePlaceholderScreen: React.FC = () => {
             gradient: ['#06B6D4', '#22D3EE'],
             description: t('yukpoServicePlaceholder.voyageEtTransportAuCameroun'),
             features: [
-                'Réservation de billets',
+                t('yukpoServicePlaceholderScreen.reservationDeBillets'),
                 t('yukpoServicePlaceholderScreen.locationDeVehicules'),
                 'Guides touristiques',
-                'Hébergement',
+                t('yukpoServicePlaceholderScreen.hebergement'),
                 'Assistance voyage',
-                'Plans de voyage personnalisés'
+                t('yukpoServicePlaceholderScreen.plansDeVoyagePersonnalises')
             ]
         }
     ];

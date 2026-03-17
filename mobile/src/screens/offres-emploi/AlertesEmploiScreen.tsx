@@ -37,7 +37,7 @@ interface AlerteEmploi {
 }
 
 const SECTEURS = [
-    'Informatique', 'Commerce', t('alertesEmploiScreen.sante'), 'Éducation', 'Finance',
+    'Informatique', 'Commerce', t('alertesEmploiScreen.sante'), t('alertesEmploiScreen.education'), 'Finance',
     'Marketing', 'Ressources Humaines', t('alertesEmploiScreen.ingenierie'), 'Design', 'Autre',
 ];
 
@@ -83,7 +83,7 @@ const AlertesEmploiScreen: React.FC = () => {
 
     const handleCreate = async () => {
         if (!formTitre && !formSecteur && !formLieu) {
-            Alert.alert('Erreur', 'Veuillez renseigner au moins un critère (titre, secteur ou lieu)');
+            Alert.alert('Erreur', t('alertesEmploiScreen.veuillezRenseignerAuMoinsUnCritere'));
             return;
         }
 
@@ -99,16 +99,16 @@ const AlertesEmploiScreen: React.FC = () => {
 
             const response = await offreEmploiService.createAlerte(alerteData);
             if (response.success) {
-                Alert.alert('Succès', 'Alerte créée ! Vous serez notifié des nouvelles offres correspondantes.');
+                Alert.alert(t('alertesEmploiScreen.succes'), t('alertesEmploiScreen.alerteCreeeVousSerezNotifieDes'));
                 setShowCreateModal(false);
                 resetForm();
                 loadAlertes();
             } else {
-                Alert.alert('Erreur', 'Impossible de créer l\'alerte');
+                Alert.alert('Erreur', t('alertesEmploiScreen.impossibleDeCreerL')alerte');
             }
         } catch (error: any) {
             console.error('[AlertesEmploiScreen] Erreur création:', error);
-            Alert.alert('Erreur', error.message || 'Erreur lors de la création');
+            Alert.alert('Erreur', error.message || t('alertesEmploiScreen.erreurLorsDeLaCreation'));
         } finally {
             setCreating(false);
         }
@@ -191,7 +191,7 @@ const AlertesEmploiScreen: React.FC = () => {
                     <View style={{ flex: 1 }}>
                         <Text style={styles.headerTitle}>{t('alertesEmploi.mesAlertesEmploi')}</Text>
                         <Text style={styles.headerSubtitle}>
-                            {alertes.length} alerte{alertes.length > 1 ? 's' : ''} configurée{alertes.length > 1 ? 's' : ''}
+                            {alertes.length} alerte{alertes.length > 1 ? 's' : 't('alertesEmploiScreen.configureealerteslength1')s' : ''}
                         </Text>
                     </View>
                     <TouchableOpacity

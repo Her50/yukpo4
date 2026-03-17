@@ -72,7 +72,7 @@ const [loading, setLoading] = useState(false);
             });
 
             if (!result || !result.scenes) {
-                throw new Error('Réponse invalide du serveur');
+                throw new Error(t('autoCutPanel.reponseInvalideDuServeur'));
             }
 
             setScenes(result.scenes);
@@ -105,7 +105,7 @@ const [loading, setLoading] = useState(false);
                 }
             }
             
-            Alert.alert('Erreur de découpage', errorMessage, [{ text: 'OK' }]);
+            Alert.alert(t('autoCutPanel.erreurDeDecoupage'), errorMessage, [{ text: 'OK' }]);
         } finally {
             setLoading(false);
         }
@@ -134,7 +134,7 @@ const [loading, setLoading] = useState(false);
             {scenes.length > 0 && (
                 <>
                     <Text style={styles.summary}>
-                        {scenes.length} scène{scenes.length > 1 ? 's' : ''} détectée{scenes.length > 1 ? 's' : ''}
+                        {scenes.length} scène{scenes.length > 1 ? 's' : 't('autoCutPanel.detecteesceneslength1')s' : ''}
                         {highlights.length > 0 && ` • ${highlights.length} highlight${highlights.length > 1 ? 's' : ''}`}
                     </Text>
 
@@ -207,7 +207,7 @@ const [loading, setLoading] = useState(false);
                             }}
                         >
                             <Text style={styles.applyButtonText}>
-                                Utiliser {selectedScenes.size} scène{selectedScenes.size > 1 ? 's' : ''} sélectionnée{selectedScenes.size > 1 ? 's' : ''}
+                                Utiliser {selectedScenes.size} scène{selectedScenes.size > 1 ? 's' : 't('autoCutPanel.selectionneeselectedscenessize1')s' : ''}
                             </Text>
                         </TouchableOpacity>
                     )}

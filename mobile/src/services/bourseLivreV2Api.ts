@@ -194,6 +194,63 @@ export interface DonationRequest {
     created_at: string;
 }
 
+export interface NewBookListing {
+    id: number;
+    titre: string;
+    auteur?: string;
+    editeur?: string;
+    isbn?: string;
+    classe: string;
+    matiere: string;
+    niveau?: string;
+    prix_neuf: number;
+    devise?: string;
+    image?: string;
+    ville?: string;
+    est_au_programme?: boolean;
+    libraire_nom?: string;
+    mode: 'neuf';
+}
+
+export interface PriceComparison {
+    classe: string;
+    matiere?: string;
+    neufs: Array<{
+        titre: string;
+        matiere: string;
+        prix: number;
+        source: 'neuf';
+        editeur?: string;
+        auteur?: string;
+        est_au_programme?: boolean;
+        ville?: string;
+    }>;
+    occasions: Array<{
+        titre: string;
+        matiere: string;
+        prix: number;
+        source: string;
+        etat?: string;
+        etat_classification?: string;
+        auteur?: string;
+        ville?: string;
+    }>;
+    programme_officiel: Array<{
+        titre: string;
+        matiere: string;
+        prix_officiel?: number;
+        source: 'programme';
+        editeur?: string;
+        auteur?: string;
+        est_obligatoire?: boolean;
+    }>;
+    resume: {
+        total_neufs: number;
+        total_occasions: number;
+        total_programme: number;
+    };
+}
+
 export interface NetCalculation {
     valeur_livres_recus: number;
     valeur_livres_donnes: number;
@@ -396,6 +453,64 @@ export const bourseLivreV2Api = {
     },
 
     // ============================
+    // SUGGESTIONS INTELLIGENTES
+    // ============================
+
+    getSmartSuggestions: async (
+        classe?: string,
+        matiere?: string,
+        query?: string,
+    ): Promise<{
+        classes_disponibles: string[];
+        matieres_disponibles?: { matiere: string; count: number; troc: number; vente: number; don: number }[];
+        total_livres_classe?: number;
+        top_livres?: any[];
+    }> => {
+        const params = new URLSearchParams();
+        if (classe) params.append('classe', classe);
+        if (matiere) params.append('matiere', matiere);
+        if (query) params.append('query', query);
+        const response = await apiGet<any>(
+            `/api/bourse-livre/v2/suggestions?${params.toString()}`
+        );
+        const r = response.data as any;
+        return {
+            classes_disponibles: r?.classes_disponibles || [],
+            matieres_disponibles: r?.matieres_disponibles || [],
+            total_livres_classe: r?.total_livres_classe,
+            top_livres: r?.top_livres || [],
+        };
+    },
+
+    // ============================
+    // BROWSE PAR CLASSE (recherche multi-besoins)
+    // ============================
+
+    browseByClass: async (
+        classe?: string,
+        matiere?: string,
+        niveau?: string,
+        modeListing?: string,
+        ville?: string,
+        search?: string,
+        limit?: number,
+    ): Promise<any[]> => {
+        const params = new URLSearchParams();
+        if (classe) params.append('classe', classe);
+        if (matiere) params.append('matiere', matiere);
+        if (niveau) params.append('niveau', niveau);
+        if (modeListing) params.append('mode_listing', modeListing);
+        if (ville) params.append('ville', ville);
+        if (search) params.append('search', search);
+        if (limit) params.append('limit', String(limit));
+        const response = await apiGet<any>(
+            `/api/bourse-livre/v2/browse-by-class?${params.toString()}`
+        );
+        const r = response.data as any;
+        return r?.livres || r?.data || [];
+    },
+
+    // ============================
     // UPLOAD FICHIER PROGRAMME (Admin)
     // ============================
 
@@ -574,6 +689,85 @@ export const bourseLivreV2Api = {
         return r?.package || r;
     },
 
+    // ============================
+    // LIVRES NEUFS — Catalogue & Comparaison
+    // ============================
+
+    browseNewBooks: async (params?: {
+        classe?: string;
+        matiere?: string;
+        niveau?: string;
+        ville?: string;
+        search?: string;
+        limit?: number;
+        offset?: number;
+    }): Promise<{ livres: NewBookListing[]; total: number }> => {
+        const qs = new URLSearchParams();
+        if (params?.classe) qs.append('classe', params.classe);
+        if (params?.matiere) qs.append('matiere', params.matiere);
+        if (params?.niveau) qs.append('niveau', params.niveau);
+        if (params?.ville) qs.append('ville', params.ville);
+        if (params?.search) qs.append('search', params.search);
+        if (params?.limit) qs.append('limit', String(params.limit));
+        if (params?.offset) qs.append('offset', String(params.offset));
+        const response = await apiGet<any>(
+            `/api/bourse-livre/v2/new-books?${qs.toString()}`
+        );
+        const r = response.data as any;
+        return {
+            livres: r?.livres || [],
+            total: r?.total || 0,
+        };
+    },
+
+    comparePrices: async (classe: string, matiere?: string): Promise<PriceComparison> => {
+        const qs = new URLSearchParams({ classe });
+        if (matiere) qs.append('matiere', matiere);
+        const response = await apiGet<any>(
+            `/api/bourse-livre/v2/compare-prices?${qs.toString()}`
+        );
+        const r = response.data as any;
+        return {
+            classe: r?.classe || classe,
+            matiere: r?.matiere,
+            neufs: r?.neufs || [],
+            occasions: r?.occasions || [],
+            programme_officiel: r?.programme_officiel || [],
+            resume: r?.resume || { total_neufs: 0, total_occasions: 0, total_programme: 0 },
+        };
+    },
+
+    librairePublish: async (params: {
+        livres: Array<{
+            programme_scolaire_id?: number;
+            titre: string;
+            auteur?: string;
+            editeur?: string;
+            isbn?: string;
+            classe: string;
+            matiere: string;
+            niveau?: string;
+            prix: number;
+            devise?: string;
+            stock?: number;
+            image_url?: string;
+        }>;
+        gps?: string;
+        ville?: string;
+        quartier?: string;
+    }): Promise<{ published: Array<{ id: number; titre: string }>; errors: any[]; total_published: number }> => {
+        const response = await apiPost<any>(
+            '/api/bourse-livre/v2/libraire/publish',
+            params
+        );
+        const r = response.data as any;
+        return {
+            published: r?.published || [],
+            errors: r?.errors || [],
+            total_published: r?.total_published || 0,
+        };
+    },
+
     getUserBookDashboard: async (): Promise<{
         paquets_a_envoyer: BookDeliveryPackage[];
         paquets_a_recevoir: BookDeliveryPackage[];
@@ -595,5 +789,207 @@ export const bourseLivreV2Api = {
             historique: r?.historique || [],
             stats: r?.stats || { total_envoyes: 0, total_recus: 0, en_cours_envoi: 0, en_cours_reception: 0 },
         };
+    },
+
+    // ============================
+    // CONSTITUTION INTELLIGENTE DES PAQUETS
+    // ============================
+
+    buildIntelligentPackages: async (): Promise<{
+        packages_created: BookDeliveryPackage[];
+        total_created: number;
+    }> => {
+        const response = await apiPost<any>('/api/bourse-livre/v2/packages/build-intelligent', {});
+        const r = response.data as any;
+        return {
+            packages_created: r?.packages_created || [],
+            total_created: r?.total_created || 0,
+        };
+    },
+
+    buildAllPendingPackages: async (): Promise<{
+        total_users: number;
+        total_packages: number;
+        results: Array<{ user_id: number; packages_created: number }>;
+    }> => {
+        const response = await apiPost<any>('/api/bourse-livre/v2/packages/build-all', {});
+        const r = response.data as any;
+        return {
+            total_users: r?.total_users || 0,
+            total_packages: r?.total_packages || 0,
+            results: r?.results || [],
+        };
+    },
+
+    validateNeedFulfillment: async (): Promise<{
+        packages: any[];
+        all_fulfilled: boolean;
+    }> => {
+        const response = await apiGet<any>('/api/bourse-livre/v2/packages/validate-need');
+        const r = response.data as any;
+        return {
+            packages: r?.packages || [],
+            all_fulfilled: r?.all_fulfilled || false,
+        };
+    },
+
+    computeOptimizedRoute: async (packageIds: number[]): Promise<{
+        route: Array<{ ordre: number; gps: string; type: string; user_id: number }>;
+        total_distance_metres: number;
+        eta_minutes: number;
+    }> => {
+        const response = await apiPost<any>('/api/bourse-livre/v2/packages/optimized-route', {
+            package_ids: packageIds,
+        });
+        const r = response.data as any;
+        return {
+            route: r?.route || [],
+            total_distance_metres: r?.total_distance_metres || 0,
+            eta_minutes: r?.eta_minutes || 0,
+        };
+    },
+
+    getAllPackagesForUser: async (): Promise<BookDeliveryPackage[]> => {
+        const response = await apiGet<any>('/api/bourse-livre/v2/packages/user-packages');
+        const r = response.data as any;
+        return r?.packages || [];
+    },
+
+    getPackageDetailForCourier: async (packageId: number): Promise<{
+        package: BookDeliveryPackage;
+        livres_enrichis: any[];
+    }> => {
+        const response = await apiGet<any>(`/api/bourse-livre/v2/packages/${packageId}/detail`);
+        const r = response.data as any;
+        return {
+            package: r?.package,
+            livres_enrichis: r?.livres_enrichis || [],
+        };
+    },
+
+    // ============================
+    // CHAÎNES DE TROC (DAG)
+    // ============================
+
+    createChainFromMatching: async (params: {
+        participants: Array<{ user_id: number; livre_offert_id: number; livre_souhaite_id?: number }>;
+    }): Promise<{ chain_id: number; reference: string }> => {
+        const response = await apiPost<any>('/api/bourse-livre/v2/chains/create', params);
+        const r = response.data as any;
+        return {
+            chain_id: r?.chain_id || r?.chaine?.id || 0,
+            reference: r?.reference || '',
+        };
+    },
+
+    finalizeChain: async (chainId: number): Promise<{
+        packages: BookDeliveryPackage[];
+        total_packages: number;
+    }> => {
+        const response = await apiPost<any>(`/api/bourse-livre/v2/chains/${chainId}/finalize`, {});
+        const r = response.data as any;
+        return {
+            packages: r?.packages || [],
+            total_packages: r?.total_packages || 0,
+        };
+    },
+
+    buildDeliverySchedule: async (chainId: number): Promise<{
+        schedule: Array<{ jour: string; user_id: number; type: string; creneau_debut?: string; creneau_fin?: string }>;
+    }> => {
+        const response = await apiPost<any>(`/api/bourse-livre/v2/chains/${chainId}/schedule`, {});
+        const r = response.data as any;
+        return {
+            schedule: r?.schedule || [],
+        };
+    },
+
+    getChainDetails: async (chainId: number): Promise<any> => {
+        const response = await apiGet<any>(`/api/bourse-livre/v2/chains/${chainId}`);
+        const r = response.data as any;
+        return r?.chaine || r;
+    },
+
+    // ============================
+    // ANNULATION TERRAIN + QR CODES
+    // ============================
+
+    cancelBookOnSite: async (params: {
+        package_id: number;
+        livre_id: number;
+        raison: string;
+    }): Promise<{ credit_amount: number; message: string }> => {
+        const response = await apiPost<any>('/api/bourse-livre/v2/packages/cancel-book', params);
+        const r = response.data as any;
+        return {
+            credit_amount: r?.credit_amount || 0,
+            message: r?.message || '',
+        };
+    },
+
+    generatePackageQR: async (packageId: number, qrType: 'pickup' | 'delivery'): Promise<{
+        qr_code: string;
+        expires_at: string;
+    }> => {
+        const response = await apiPost<any>(`/api/bourse-livre/v2/packages/${packageId}/qr-generate`, {
+            qr_type: qrType,
+        });
+        const r = response.data as any;
+        return r?.qr || { qr_code: '', expires_at: '' };
+    },
+
+    validatePackageQR: async (qrCode: string): Promise<{
+        valid: boolean;
+        package_id?: number;
+        message: string;
+    }> => {
+        const response = await apiPost<any>('/api/bourse-livre/v2/packages/qr-validate', {
+            qr_code: qrCode,
+        });
+        const r = response.data as any;
+        return r?.validation || { valid: false, message: '' };
+    },
+
+    // ============================
+    // ADMIN: GESTION DES DONS
+    // ============================
+
+    adminListDonationRequests: async (): Promise<DonationRequest[]> => {
+        const response = await apiGet<any>('/api/bourse-livre/v2/admin/donations');
+        const r = response.data as any;
+        return r?.donation_requests || [];
+    },
+
+    adminApproveDonation: async (donationId: number, notes?: string): Promise<DonationRequest> => {
+        const response = await apiPost<any>(`/api/bourse-livre/v2/admin/donations/${donationId}/approve`, {
+            notes,
+        });
+        const r = response.data as any;
+        return r?.donation_request || r;
+    },
+
+    adminRejectDonation: async (donationId: number, notes?: string): Promise<DonationRequest> => {
+        const response = await apiPost<any>(`/api/bourse-livre/v2/admin/donations/${donationId}/reject`, {
+            notes,
+        });
+        const r = response.data as any;
+        return r?.donation_request || r;
+    },
+
+    // ============================
+    // CLASSES AVEC PROGRAMMES
+    // ============================
+
+    getClassesWithProgrammes: async (): Promise<Array<{
+        classe: string;
+        niveau: string;
+        total_livres: number;
+        total_troc: number;
+        total_vente: number;
+        total_don: number;
+    }>> => {
+        const response = await apiGet<any>('/api/bourse-livre/v2/classes-programmes');
+        const r = response.data as any;
+        return r?.classes || [];
     },
 };

@@ -49,12 +49,12 @@ const LabAIAnalysisScreen: React.FC = () => {
             if (response.success && response.data) {
                 setExaminationResults((response.data as any).examination);
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de charger les résultats');
+                Alert.alert('Erreur', response.error || t('labAIAnalysisScreen.impossibleDeChargerLesResultats'));
                 navigation.goBack();
             }
         } catch (error: any) {
             console.error('[LabAIAnalysisScreen] Erreur chargement résultats:', error);
-            Alert.alert('Erreur', 'Impossible de charger les résultats');
+            Alert.alert('Erreur', t('labAIAnalysisScreen.impossibleDeChargerLesResultats'));
             navigation.goBack();
         } finally {
             setLoading(false);
@@ -65,7 +65,7 @@ const LabAIAnalysisScreen: React.FC = () => {
         if (!examinationResults) return;
 
         if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour analyser les résultats');
+            Alert.alert('Connexion requise', t('labAIAnalysisScreen.veuillezVousConnecterPourAnalyserLes'));
             navigation.navigate('Login' as never);
             return;
         }
@@ -236,7 +236,7 @@ const LabAIAnalysisScreen: React.FC = () => {
                                     color={analysisResult.is_normal ? modernColors.success : modernColors.warning}
                                 />
                                 <Text style={styles.cardTitle}>
-                                    {analysisResult.is_normal ? 'Résultats normaux' : t('labAIAnalysisScreen.anomaliesDetectees')}
+                                    {analysisResult.is_normal ? t('labAIAnalysisScreen.resultatsNormaux') : t('labAIAnalysisScreen.anomaliesDetectees')}
                                 </Text>
                             </View>
 

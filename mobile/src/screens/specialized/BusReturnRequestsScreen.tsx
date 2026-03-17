@@ -99,7 +99,7 @@ const BusReturnRequestsScreen: React.FC = () => {
 
     const handleConfirmReturn = async (request: ReturnTripRequest) => {
         if (!request.matched_product_id) {
-            Alert.alert('Erreur', 'Aucun bus matché pour cette demande');
+            Alert.alert('Erreur', t('busReturnRequestsScreen.aucunBusMatchePourCetteDemande'));
             return;
         }
 

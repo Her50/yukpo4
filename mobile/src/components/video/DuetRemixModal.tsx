@@ -71,7 +71,7 @@ const [selectedType, setSelectedType] = useState<DuetType | null>(null);
 
         try {
             if (!originalVideo || !selectedType || !user?.token) {
-                throw new Error('Données manquantes');
+                throw new Error(t('duetRemixModal.donneesManquantes'));
             }
 
             // Upload la vidéo vers le backend

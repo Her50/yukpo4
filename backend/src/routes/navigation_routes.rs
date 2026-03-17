@@ -106,6 +106,9 @@ struct PointsOfInterestRequest {
     dest_lng: f64,
     /// JSON-encoded array of {lat,lng} objects representing the route steps
     route_steps: Option<String>,
+    /// Comma-separated list of Google Place types to search (e.g. "pharmacy,hospital")
+    /// If absent, falls back to all default types (backward compatible)
+    types: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -666,23 +669,29 @@ async fn get_points_of_interest(
     let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
         .map_err(|_| AppError::Internal("GOOGLE_MAPS_API_KEY non configurée".to_string()))?;
 
-    // Types de POI à rechercher — élargi pour couvrir les besoins réels des utilisateurs
-    let poi_types = vec![
-        "pharmacy",
-        "bakery",
-        "gas_station",
-        "supermarket",
-        "restaurant",
-        "atm",
-        "hospital",
-        "parking",
-        "car_wash",
-        "car_repair",
-        "mosque",
-        "church",
-        "lodging", // Hôtel
-        "police",
+    // ✅ FIX 2026-03-16: Utiliser les types demandés par le mobile (param 'types')
+    // Avant: TOUJOURS 14 types = 56+ appels Google par requête (très coûteux)
+    // Après: seulement les types demandés = 4-12 appels (économie 70-90%)
+    let all_default_types = vec![
+        "pharmacy", "bakery", "gas_station", "supermarket", "restaurant",
+        "atm", "hospital", "parking", "car_wash", "car_repair",
+        "mosque", "church", "lodging", "police",
     ];
+    let poi_types: Vec<&str> = if let Some(ref types_param) = params.types {
+        let requested: Vec<&str> = types_param.split(',')
+            .map(|t| t.trim())
+            .filter(|t| !t.is_empty() && all_default_types.contains(t))
+            .collect();
+        if requested.is_empty() {
+            all_default_types
+        } else {
+            log::info!("[POI] Filtered types from mobile: {:?} ({} types instead of {})",
+                requested, requested.len(), all_default_types.len());
+            requested
+        }
+    } else {
+        all_default_types
+    };
 
     let mut all_pois = Vec::new();
 
@@ -3568,6 +3577,15 @@ struct ShareRouteQuery {
     origin_name: Option<String>,
 }
 
+/// Page HTML publique pour partager les alertes communautaires
+/// Sert une page avec OG meta tags + deep link pour ouvrir l'app avec les alertes
+#[derive(Deserialize)]
+struct ShareAlertsQuery {
+    lat: Option<f64>,
+    lng: Option<f64>,
+    location: Option<String>,
+}
+
 async fn share_navigation_route(
     Query(params): Query<ShareRouteQuery>,
 ) -> impl axum::response::IntoResponse {
@@ -3669,6 +3687,91 @@ async fn share_navigation_route(
     html.push_str(&format!(
         "var dl='{}',intent='{}',gmaps='{}',store='{}';",
         deep_link, intent_url, gmaps_url, store_url
+    ));
+    html.push_str("var ua=navigator.userAgent||'';");
+    html.push_str("if(/android/i.test(ua)){document.getElementById('openApp').href=intent;setTimeout(function(){window.location=intent;},100);setTimeout(function(){window.location=store;},2500);}");
+    html.push_str("else if(/iphone|ipad|ipod/i.test(ua)){window.location=dl;setTimeout(function(){window.location=store;},1500);}");
+    html.push_str("</script>");
+    html.push_str("</div></body></html>");
+
+    axum::response::Html(html)
+}
+
+/// Page HTML publique pour partager les alertes communautaires
+/// Sert une page avec OG meta tags + deep link pour ouvrir l'app avec les alertes
+async fn share_navigation_alerts(
+    Query(params): Query<ShareAlertsQuery>,
+) -> impl axum::response::IntoResponse {
+    let location = params.location.as_deref().unwrap_or("Position actuelle");
+    let lat = params.lat.unwrap_or(3.8480); // Default: Douala
+    let lng = params.lng.unwrap_or(11.5021);
+
+    let title = "🚨 Alertes Communautaires Yukpo".to_string();
+    let description = format!(
+        "Alertes en temps réel près de {} - Points de contrôle, radars, zones de danger, embouteillages",
+        location
+    );
+
+    let deep_link = format!(
+        "yukpomnang://navigation?tab=alerts&lat={}&lng={}&location={}",
+        lat,
+        lng,
+        urlencoding::encode(location)
+    );
+    let intent_url = format!(
+        "intent://navigation?tab=alerts&lat={}&lng={}&location={}#Intent;scheme=yukpomnang;package=com.yukpomnang.mobile;end",
+        lat, lng, urlencoding::encode(location)
+    );
+    let store_url = "https://play.google.com/store/apps/details?id=com.yukpomnang";
+
+    let mut html = String::new();
+    html.push_str("<!DOCTYPE html><html lang='fr'><head><meta charset='UTF-8'>");
+    html.push_str("<meta name='viewport' content='width=device-width, initial-scale=1.0'>");
+    html.push_str(&format!("<title>{}</title>", title));
+    html.push_str(&format!("<meta property='og:title' content='{}'>", title));
+    html.push_str(&format!(
+        "<meta property='og:description' content='{}'>",
+        description
+    ));
+    html.push_str("<meta property='og:type' content='website'>");
+    html.push_str("<meta property='og:site_name' content='Yukpo'>");
+    html.push_str("<meta property='og:image' content='https://yukpomnang.com/icons/alerts-og.png'>");
+    html.push_str("<meta name='twitter:card' content='summary_large_image'>");
+    html.push_str("<meta name='twitter:title' content='Yukpo - Alertes Communautaires'>");
+    html.push_str("<meta name='twitter:description' content='Alertes en temps réel pour votre sécurité'>");
+    html.push_str("<meta name='twitter:image' content='https://yukpomnang.com/icons/alerts-og.png'>");
+    html.push_str("<style>");
+    html.push_str("*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(135deg,#DC2626,#EF4444);min-height:100vh;display:flex;align-items:center;justify-content:center;color:#fff;padding:20px}");
+    html.push_str(".card{background:rgba(255,255,255,0.08);backdrop-filter:blur(20px);border-radius:24px;padding:32px;max-width:420px;width:100%;border:1px solid rgba(255,255,255,0.1)}");
+    html.push_str(".header{text-align:center;margin-bottom:20px}h1{font-size:24px;font-weight:800;margin-bottom:4px}h2{font-size:14px;color:#FCA5A5;font-weight:400}");
+    html.push_str(".alert-info{background:rgba(255,255,255,0.05);border-radius:16px;padding:16px;margin-bottom:16px;border-left:4px solid #EF4444}");
+    html.push_str(".alert-icon{font-size:48px;text-align:center;margin-bottom:16px}");
+    html.push_str(".alert-features{display:flex;flex-direction:column;gap:8px;margin:16px 0}");
+    html.push_str(".feature{display:flex;align-items:center;gap:8px}.feature-icon{font-size:16px}.feature-text{font-size:14px}");
+    html.push_str(".cta{display:block;text-align:center;color:#fff;text-decoration:none;padding:14px;border-radius:14px;font-weight:700;font-size:16px;margin-top:8px}");
+    html.push_str("</style></head><body><div class='card'>");
+    html.push_str("<div class='alert-icon'>🚨</div>");
+    html.push_str(&format!(
+        "<div class='header'><h1>Alertes Communautaires</h1><h2>{} - Partagé via Yukpo</h2></div>",
+        location
+    ));
+    html.push_str("<div class='alert-info'>");
+    html.push_str("<div style='font-weight:700;margin-bottom:8px'>📡 Alertes en temps réel</div>");
+    html.push_str("<div style='font-size:14px;color:#FCA5A5'>Recevez les alertes de la communauté pour une navigation plus sûre</div>");
+    html.push_str("</div>");
+    html.push_str("<div class='alert-features'>");
+    html.push_str("<div class='feature'><span class='feature-icon'>🚦</span><span class='feature-text'>Points de contrôle et radars</span></div>");
+    html.push_str("<div class='feature'><span class='feature-icon'>⚠️</span><span class='feature-text'>Zones de danger signalées</span></div>");
+    html.push_str("<div class='feature'><span class='feature-icon'>🚗</span><span class='feature-text'>Embouteillages en direct</span></div>");
+    html.push_str("<div class='feature'><span class='feature-icon'>👥</span><span class='feature-text'>Signalements communautaires</span></div>");
+    html.push_str("</div>");
+    html.push_str(&format!("<a class='cta' id='openApp' style='background:linear-gradient(135deg,#DC2626,#EF4444)' href='{}'>Voir les alertes 🚨</a>", deep_link));
+    html.push_str(&format!("<a class='cta' style='background:#475569;margin-top:8px' href='{}'>Télécharger Yukpo</a>", store_url));
+    // Auto-redirect JS
+    html.push_str("<script>");
+    html.push_str(&format!(
+        "var dl='{}',intent='{}',store='{}';",
+        deep_link, intent_url, store_url
     ));
     html.push_str("var ua=navigator.userAgent||'';");
     html.push_str("if(/android/i.test(ua)){document.getElementById('openApp').href=intent;setTimeout(function(){window.location=intent;},100);setTimeout(function(){window.location=store;},2500);}");
@@ -4657,6 +4760,7 @@ pub fn navigation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ✅ NOUVEAU: Pages publiques de partage (pas d'auth, accessible par tous)
         // IMPORTANT: /route doit être AVANT /{user_id} pour éviter que "route" soit capturé comme user_id
         .route("/navigation/share/route", get(share_navigation_route))
+        .route("/navigation/alerts", get(share_navigation_alerts))
         .route(
             "/navigation/share/{user_id}",
             get(share_navigation_performance),

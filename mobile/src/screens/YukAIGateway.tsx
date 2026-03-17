@@ -20,7 +20,7 @@ const [payload, setPayload] = useState("");
       setResult(JSON.stringify(res.data, null, 2));
     } catch (err) {
       console.error(err);
-      setResult("❌ Une erreur est survenue lors de l'appel à l'API.");
+      setResult("❌ Une erreur est survenue lors de lt('yukAIGateway.appelAL')API.");
     } finally {
       setLoading(false);
     }

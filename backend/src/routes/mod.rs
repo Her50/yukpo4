@@ -37,6 +37,7 @@ pub mod gpu_routes; // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
 pub mod health_routes;
 pub mod health_structure_routes;
 pub mod history_routes;
+pub mod hotel_financial_routes; // ✅ 2026-03-17: Routes financières pour partenaires hôtel/meublé
 pub mod hotel_room_management_routes; // ✅ 2026-01-27: Routes gestion chambres/unités hôtels et meublés
 pub mod ia_routes;
 pub mod image_search_routes;
@@ -58,6 +59,7 @@ pub mod order_routes;
 pub mod orientation_scolaire_routes;
 pub mod partner_validation_routes; // ✅ NOUVEAU: Routes pour validation des partenaires
 pub mod payment_routes;
+pub mod pricing_routes; // ✅ NOUVEAU: Routes tarification dynamique navigation (multi-devises)
 pub mod phone_model_routes; // ✅ Routes pour modèles de smartphones
 pub mod phone_verification_routes; // ✅ NOUVEAU 2026-02-25: Routes pour vérification OTP téléphone
 pub mod places_routes; // ✅ NOUVEAU: Routes pour autocomplete de lieux (Google Maps API)
@@ -88,6 +90,7 @@ pub mod shopping_routes;
 pub mod signalement_routes; // ✅ NOUVEAU: Routes pour signalements
 pub mod social_features_routes;
 pub mod specialized_services_routes;
+pub mod taxi_realtime_metrics_routes;
 pub mod stock_media_routes;
 pub mod studio_routes; // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
 pub mod supermarket_routes; // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
@@ -106,6 +109,8 @@ pub mod weather_routes;
 pub mod webhook_routes;
 pub mod webrtc_routes; // ✅ Routes WebRTC pour appels // ✅ NOUVEAU: Routes pour feature flags
 pub mod whatsapp_routes; // ✅ NOUVEAU 2026-03-06: Routes WhatsApp Business API
+pub mod librairie_network_routes; // ✅ NOUVEAU 2026-03-16: Routes réseau de librairies
+pub mod paiement_agrege_routes; // ✅ NOUVEAU 2026-03-16: Routes paiements agrégés
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

@@ -1,10 +1,9 @@
 use crate::services::mongo_history_service::MongoHistoryService;
-use futures::TryStreamExt;
-use mongodb::bson::doc;
 use serde_json::Value;
+use sqlx::Row;
 use std::sync::Arc;
 
-/// Historise une interaction IA (requ?te utilisateur, intention, r?ponse IA)
+/// Historise une interaction IA (requête utilisateur, intention, réponse IA)
 pub async fn sauvegarder_ia_interaction(
     mongo_history: Arc<MongoHistoryService>,
     user_id: Option<i32>,
@@ -35,7 +34,7 @@ pub async fn sauvegarder_ia_interaction(
         .map_err(|e| format!("Erreur sauvegarde interaction IA: {}", e))
 }
 
-/// R?cup?re l'historique des interactions IA d'un utilisateur
+/// Récupère l'historique des interactions IA d'un utilisateur
 pub async fn get_ia_interaction_history(
     mongo_history: Arc<MongoHistoryService>,
     user_id: i32,
@@ -44,7 +43,7 @@ pub async fn get_ia_interaction_history(
     let events = mongo_history
         .get_ia_interaction_history(user_id, limit)
         .await
-        .map_err(|e| format!("Erreur r?cup?ration historique IA: {}", e))?;
+        .map_err(|e| format!("Erreur récupération historique IA: {}", e))?;
 
     let history: Vec<Value> = events
         .into_iter()
@@ -52,7 +51,7 @@ pub async fn get_ia_interaction_history(
             serde_json::json!({
                 "interaction_id": event.interaction_id,
                 "user_id": event.user_id,
-                "timestamp": chrono::DateTime::<chrono::Utc>::from(event.timestamp.to_system_time()),
+                "timestamp": event.timestamp,
                 "intention": event.data.get("intention").and_then(|v| v.as_str()),
                 "user_input": event.data.get("user_input_raw"),
                 "ia_response": event.data.get("ia_response_raw"),
@@ -64,69 +63,68 @@ pub async fn get_ia_interaction_history(
     Ok(history)
 }
 
-/// R?cup?re les statistiques des interactions IA
+/// Récupère les statistiques des interactions IA (PostgreSQL)
 pub async fn get_ia_interaction_stats(
     mongo_history: Arc<MongoHistoryService>,
     user_id: Option<i32>,
     days: Option<i64>,
 ) -> Result<Value, String> {
-    let collection = mongo_history.get_collection("history").await;
+    let pool = mongo_history.pg_pool();
 
-    let mut pipeline = vec![
-        doc! { "$match": { "event_type": "IAInteraction" } },
-        doc! {
-            "$group": {
-                "_id": null,
-                "total_interactions": { "$sum": 1 },
-                "unique_users": { "$addToSet": "$user_id" },
-                "avg_response_time": { "$avg": "$data.response_time" },
-                "intentions": { "$addToSet": "$data.intention" }
-            }
-        },
-    ];
-
-    if let Some(uid) = user_id {
-        pipeline[0] = doc! {
-            "$match": {
-                "event_type": "IAInteraction",
-                "user_id": uid
-            }
-        };
-    }
-
-    if let Some(days) = days {
-        let cutoff_date = mongodb::bson::DateTime::from_system_time(
-            std::time::SystemTime::now()
-                - std::time::Duration::from_secs((days * 24 * 60 * 60) as u64),
-        );
-        let match_stage = pipeline[0].clone();
-        pipeline[0] = doc! {
-            "$match": {
-                "$and": [
-                    match_stage,
-                    { "timestamp": { "$gte": cutoff_date } }
-                ]
-            }
-        };
-    }
-
-    let mut cursor = collection
-        .aggregate(pipeline, None)
-        .await
-        .map_err(|e| format!("Erreur agr?gation stats IA: {}", e))?;
-
-    let mut stats = serde_json::Map::new();
-    if let Some(doc) = cursor
-        .try_next()
-        .await
-        .map_err(|e| format!("Erreur it?ration stats IA: {}", e))?
-    {
-        if let Ok(bson) = mongodb::bson::to_bson(&doc) {
-            if let Ok(json) = serde_json::to_value(bson) {
-                stats = json.as_object().unwrap().clone();
-            }
+    // Build query dynamically based on filters
+    let row = match (user_id, days) {
+        (Some(uid), Some(d)) => {
+            sqlx::query(
+                "SELECT COUNT(*) as total_interactions,
+                        COUNT(DISTINCT user_id) as unique_users
+                 FROM history_events
+                 WHERE event_type = 'IAInteraction'
+                   AND user_id = $1
+                   AND timestamp >= NOW() - ($2 || ' days')::interval",
+            )
+            .bind(uid)
+            .bind(d.to_string())
+            .fetch_one(pool)
+            .await
+        }
+        (Some(uid), None) => {
+            sqlx::query(
+                "SELECT COUNT(*) as total_interactions,
+                        COUNT(DISTINCT user_id) as unique_users
+                 FROM history_events
+                 WHERE event_type = 'IAInteraction' AND user_id = $1",
+            )
+            .bind(uid)
+            .fetch_one(pool)
+            .await
+        }
+        (None, Some(d)) => {
+            sqlx::query(
+                "SELECT COUNT(*) as total_interactions,
+                        COUNT(DISTINCT user_id) as unique_users
+                 FROM history_events
+                 WHERE event_type = 'IAInteraction'
+                   AND timestamp >= NOW() - ($1 || ' days')::interval",
+            )
+            .bind(d.to_string())
+            .fetch_one(pool)
+            .await
+        }
+        (None, None) => {
+            sqlx::query(
+                "SELECT COUNT(*) as total_interactions,
+                        COUNT(DISTINCT user_id) as unique_users
+                 FROM history_events
+                 WHERE event_type = 'IAInteraction'",
+            )
+            .fetch_one(pool)
+            .await
         }
     }
+    .map_err(|e| format!("Erreur agrégation stats IA: {}", e))?;
 
-    Ok(serde_json::Value::Object(stats))
+    Ok(serde_json::json!({
+        "total_interactions": row.get::<i64, _>("total_interactions"),
+        "unique_users": row.get::<i64, _>("unique_users"),
+    }))
 }

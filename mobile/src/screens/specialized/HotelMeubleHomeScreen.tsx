@@ -18,21 +18,11 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { immobilierService, PropertySearchFilters, RealEstateProperty } from '../../services/immobilierService';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
-
-// Standings hôteliers
-const STANDINGS = [
-    { id: 'all', label: 'Tous', icon: 'list' },
-    { id: 'Économique', label: t('hotelMeubleHome.economique'), icon: 'wallet' },
-    { id: 'Standard', label: 'Standard', icon: 'home' },
-    { id: 'Bon standing', label: 'Confort', icon: 'star' },
-    { id: 'Haut standing', label: 'Premium', icon: 'award' },
-    { id: 'Luxe / Prestige', label: 'Luxe', icon: 'gem' },
-];
 
 const HotelMeubleHomeScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -40,13 +30,23 @@ const HotelMeubleHomeScreen: React.FC = () => {
     const { location } = useLocation();
     const { t } = useLanguageSafe();
 
+    // Standings hôteliers (inside component so t() is available)
+    const STANDINGS = [
+        { id: 'all', label: t('hotelMeubleHome.tous'), icon: 'list' },
+        { id: 'Économique', label: t('hotelMeubleHome.economique'), icon: 'wallet' },
+        { id: 'Standard', label: t('hotelMeubleHome.standard'), icon: 'home' },
+        { id: 'Bon standing', label: t('hotelMeubleHome.confort'), icon: 'star' },
+        { id: 'Haut standing', label: t('hotelMeubleHome.premium'), icon: 'award' },
+        { id: 'Luxe / Prestige', label: t('hotelMeubleHome.luxe'), icon: 'gem' },
+    ];
+
     const routeParams = (route.params as any) || {};
     // 'hotel' ou 'meuble' selon la route
     const mode: 'hotel' | 'meuble' = routeParams.mode || routeParams.initialFilter?.type_bien || 'hotel';
 
     const isHotel = mode === 'hotel';
-    const screenTitle = isHotel ? 'Hôtels' : t('hotelMeubleHomeScreen.meubles');
-    const screenSubtitle = isHotel ? 'Trouvez l\'hébergement idéal' : t('hotelMeubleHomeScreen.locationsMeubleesDisponibles');
+    const screenTitle = isHotel ? t('hotelMeubleHomeScreen.hotels') : t('hotelMeubleHomeScreen.meubles');
+    const screenSubtitle = isHotel ? t('hotelMeubleHomeScreen.hebergementIdeal') : t('hotelMeubleHomeScreen.locationsMeubleesDisponibles');
     const gradientColors: [string, string] = isHotel ? ['#1E3A5F', '#2563EB'] : ['#7C3AED', '#A855F7'];
     const accentColor = isHotel ? '#2563EB' : '#8B5CF6';
 
@@ -132,14 +132,14 @@ const HotelMeubleHomeScreen: React.FC = () => {
 
     const formatPrice = (property: RealEstateProperty) => {
         const price = property.prix_location_mensuel || property.prix_vente || 0;
-        if (price === 0) return 'Prix sur demande';
+        if (price === 0) return t('hotelMeubleHome.prixSurDemande');
         if (price >= 1000000) return `${(price / 1000000).toFixed(1)}M ${devise}`;
         if (price >= 1000) return `${Math.round(price / 1000)}K ${devise}`;
         return `${price.toLocaleString()} ${devise}`;
     };
 
     const getPriceLabel = (property: RealEstateProperty) => {
-        if (property.prix_location_mensuel) return '/nuit';
+        if (property.prix_location_mensuel) return `/${t('hotelMeubleHome.nuit')}`;
         if (property.prix_vente) return '';
         return '';
     };
@@ -198,7 +198,7 @@ const HotelMeubleHomeScreen: React.FC = () => {
                     {item.nb_chambres != null && (
                         <View style={s.metaItem}>
                             <SafeIcon name="bed-double" size={13} color="#6B7280" type="lucide" />
-                            <Text style={s.metaText}>{item.nb_chambres} chambre{item.nb_chambres > 1 ? 's' : ''}</Text>
+                            <Text style={s.metaText}>{item.nb_chambres} {item.nb_chambres > 1 ? t('hotelMeubleHome.chambres') : t('hotelMeubleHome.chambre')}</Text>
                         </View>
                     )}
                     {item.standing && (
@@ -256,7 +256,7 @@ const HotelMeubleHomeScreen: React.FC = () => {
                         <Text style={s.headerTitle}>{screenTitle}</Text>
                         {totalResults > 0 && (
                             <Text style={s.headerSubtitle}>
-                                {totalResults} hébergement{totalResults > 1 ? 's' : ''} disponible{totalResults > 1 ? 's' : ''}
+                                {totalResults} {totalResults > 1 ? t('hotelMeubleHome.hebergements') : t('hotelMeubleHome.hebergement')} {t('hotelMeubleHome.disponible').toLowerCase()}{totalResults > 1 ? 's' : ''}
                             </Text>
                         )}
                         {totalResults === 0 && !loading && (
@@ -270,7 +270,7 @@ const HotelMeubleHomeScreen: React.FC = () => {
                     <SafeIcon name="search" size={18} color="#9CA3AF" type="lucide" />
                     <TextInput
                         style={s.searchInput}
-                        placeholder={`Rechercher un ${isHotel ? 'hôtel' : t('hotelMeubleHomeScreen.meuble')}...`}
+                        placeholder={t('hotelMeubleHomeScreen.rechercherUn', { type: isHotel ? t('hotelMeubleHomeScreen.hotel') : t('hotelMeubleHomeScreen.meuble') })}
                         placeholderTextColor="#9CA3AF"
                         value={searchQuery}
                         onChangeText={setSearchQuery}
@@ -301,7 +301,7 @@ const HotelMeubleHomeScreen: React.FC = () => {
                         <SafeIcon name="bed-double" size={14} color="#FFFFFFCC" type="lucide" />
                         <TextInput
                             style={s.quickFilterInput}
-                            placeholder="Chambres"
+                            placeholder={t('hotelDashboard.chambres')}
                             placeholderTextColor="#FFFFFF88"
                             value={nbChambresMin}
                             onChangeText={setNbChambresMin}
@@ -313,7 +313,7 @@ const HotelMeubleHomeScreen: React.FC = () => {
                         <SafeIcon name="banknote" size={14} color="#FFFFFFCC" type="lucide" />
                         <TextInput
                             style={s.quickFilterInput}
-                            placeholder="Budget max"
+                            placeholder={t('hotelMeubleHome.budgetMax')}
                             placeholderTextColor="#FFFFFF88"
                             value={prixMax}
                             onChangeText={setPrixMax}
@@ -391,9 +391,9 @@ const HotelMeubleHomeScreen: React.FC = () => {
                         ListEmptyComponent={
                             <View style={s.emptyContainer}>
                                 <SafeIcon name={isHotel ? 'building' : 'home'} size={64} color="#D1D5DB" type="lucide" />
-                                <Text style={s.emptyTitle}>Aucun {isHotel ? 'hôtel' : t('hotelMeubleHomeScreen.meuble')} trouvé</Text>
+                                <Text style={s.emptyTitle}>{t('hotelMeubleHome.aucunTrouve', { type: isHotel ? t('hotelMeubleHomeScreen.hotel') : t('hotelMeubleHomeScreen.meuble') })}</Text>
                                 <Text style={s.emptySubtext}>
-                                    Essayez de modifier vos critères de recherche ou élargissez la zone
+                                    {t('hotelMeubleHome.essayezModifierCriteres')}
                                 </Text>
                             </View>
                         }

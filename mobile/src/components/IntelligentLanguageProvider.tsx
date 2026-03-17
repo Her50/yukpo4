@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { Text } from 'react-native';
 import { useIntelligentLanguage } from '../hooks/useIntelligentLanguage';
 import { languageDetectionService } from '../services/languageDetectionService';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface IntelligentLanguageContextType {
     // État
@@ -33,7 +34,8 @@ interface IntelligentLanguageProviderProps {
 
 export const IntelligentLanguageProvider: React.FC<IntelligentLanguageProviderProps> = ({ children }) => {
     const intelligentLanguage = useIntelligentLanguage();
-    const [isInitialized, setIsInitialized] = useState(false);
+        const { t } = useLanguageSafe();
+const [isInitialized, setIsInitialized] = useState(false);
 
     // Initialisation automatique
     useEffect(() => {

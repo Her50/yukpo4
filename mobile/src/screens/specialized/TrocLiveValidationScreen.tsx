@@ -52,7 +52,7 @@ const TrocLiveValidationScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[TrocLiveValidationScreen] Erreur:', error);
-            Alert.alert('Erreur', 'Impossible de charger les données du troc');
+            Alert.alert('Erreur', t('trocLiveValidationScreen.impossibleDeChargerLesDonneesDu'));
         } finally {
             setLoading(false);
         }
@@ -126,7 +126,7 @@ const TrocLiveValidationScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[TrocLiveValidationScreen] Erreur upload:', error);
-            Alert.alert('Erreur', error.message || 'Impossible d\'uploader la vidéo');
+            Alert.alert('Erreur', error.message || 'Impossible d\t('trocLiveValidationScreen.uploaderLaVideo'));
             setStep('review');
         } finally {
             setUploading(false);
@@ -262,7 +262,7 @@ const TrocLiveValidationScreen: React.FC = () => {
                     <Text style={styles.requirementsTitle}>⚠️ Important</Text>
                     <Text style={styles.requirementsText}>
                         • La vidéo doit durer entre 30 et 60 secondes{'\n'}
-                        • Assurez-vous d'avoir un bon éclairage{'\n'}
+                        • Assurez-vous dt('trocLiveValidationScreen.avoirUnBonEclairage')\n'}
                         • Montrez clairement tous les détails
                     </Text>
                 </View>

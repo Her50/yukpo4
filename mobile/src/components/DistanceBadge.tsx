@@ -6,6 +6,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface DistanceBadgeProps {
     distance: number; // en km
@@ -18,6 +19,7 @@ export const DistanceBadge: React.FC<DistanceBadgeProps> = ({
 }) => {
     // Formater la distance
     const formatDistance = (km: number): string => {
+    const { t } = useLanguageSafe();
         if (km < 1) {
             return `${Math.round(km * 1000)} m`;
         }

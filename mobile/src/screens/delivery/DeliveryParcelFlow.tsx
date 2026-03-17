@@ -736,7 +736,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                                     t('deliveryParcel.temperature'),
                                                     t('deliveryParcel.temperatureMsg'),
                                                     [
-                                                        { text: t('deliveryParcelFlow.tempere'), onPress: () => setCakeTemperature('tempéré') },
+                                                        { text: t('deliveryParcelFlow.tempere'), onPress: () => setCakeTemperature(t('deliveryParcelFlow.tempere')) },
                                                         { text: 'Froid', onPress: () => setCakeTemperature('froid') },
                                                         { text: 'Chaud', onPress: () => setCakeTemperature('chaud') },
                                                         { text: t('common.cancel'), style: 'cancel' },
@@ -761,7 +761,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                                     [
                                                         { text: 'Standard', onPress: () => setCakeFragility('standard') },
                                                         { text: 'Fragile', onPress: () => setCakeFragility('fragile') },
-                                                        { text: t('deliveryParcelFlow.tresFragile'), onPress: () => setCakeFragility('très fragile') },
+                                                        { text: t('deliveryParcelFlow.tresFragile'), onPress: () => setCakeFragility(t('deliveryParcelFlow.tresFragile')) },
                                                         { text: t('common.cancel'), style: 'cancel' },
                                                     ]
                                                 );

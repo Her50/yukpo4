@@ -86,7 +86,7 @@ const GlobalIAStatsPanel: React.FC<GlobalIAStatsPanelProps> = ({
 
                 <View style={styles.summary}>
                     <Text style={styles.summaryText}>
-                        Votre IA a généré {stats.totalServices != null ? String(stats.totalServices) : '0'} services avec un taux de succès de {stats.successRate != null ? String(stats.successRate) : '0'}%
+                        Votre IA a généré {stats.totalServices != null ? String(stats.totalServices) : '0t('globalIAStatsPanel.servicesAvecUnTauxDeSucces')0'}%
                     </Text>
                 </View>
             </Card.Content>

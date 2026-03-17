@@ -98,7 +98,7 @@ const OffreListScreen: React.FC = () => {
     const formatSalaire = (min?: number, max?: number) => {
         if (!min && !max) return t('offreListScreen.salaireNonRenseigne');
         if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()} XAF`;
-        if (min) return `À partir de ${min.toLocaleString()} XAF`;
+        if (min) return t('offreListScreen.aPartirDeXaf', { min_toLocaleString__: min.toLocaleString() });
         return t('offreListScreen.jusquaXaf', { max?_toLocaleString(): max?.toLocaleString() });
     };
 
@@ -157,7 +157,7 @@ const OffreListScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <Text style={styles.title}>
-                    {total} offre{total > 1 ? 's' : ''} trouvée{total > 1 ? 's' : ''}
+                    {total} offre{total > 1 ? 's' : 't('offreListScreen.trouveetotal1')s' : ''}
                 </Text>
             </View>
 

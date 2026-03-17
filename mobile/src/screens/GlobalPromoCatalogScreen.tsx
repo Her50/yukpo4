@@ -207,7 +207,7 @@ const GlobalPromoCatalogScreen: React.FC = () => {
                     <>
                         <View style={styles.resultsHeader}>
                             <Text style={styles.resultsCount}>
-                                {total} {total === 1 ? 'résultat' : 'résultats'}
+                                {total} {total === 1 ? 'résultat' : t('globalPromoCatalogScreen.resultats')}
                             </Text>
                         </View>
                         {pageData.map((item) => {

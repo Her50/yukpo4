@@ -130,7 +130,7 @@ const [settings, setSettings] = useState<ExportSettings>({
                     {/* Settings */}
                     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                         {renderOptionGroup(
-                            'Résolution',
+                            t('exportSettingsPanel.resolution'),
                             RESOLUTIONS,
                             settings.resolution,
                             (resolution) => setSettings((prev) => ({ ...prev, resolution }))

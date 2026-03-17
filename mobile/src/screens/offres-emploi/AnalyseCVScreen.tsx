@@ -35,7 +35,7 @@ const AnalyseCVScreen: React.FC = () => {
         }
 
         if (!user) {
-            Alert.alert('Erreur', 'Vous devez être connecté');
+            Alert.alert('Erreur', t('analyseCVScreen.vousDevezEtreConnecte'));
             return;
         }
 
@@ -50,7 +50,7 @@ const AnalyseCVScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[AnalyseCV] Erreur:', error);
-            Alert.alert('Erreur', 'Impossible d\'analyser le CV. Veuillez réessayer.');
+            Alert.alert('Erreur', 'Impossible d\t('analyseCVScreen.analyserLeCvVeuillezReessayer'));
         } finally {
             setLoading(false);
         }
@@ -213,7 +213,7 @@ const AnalyseCVScreen: React.FC = () => {
                             title={t('analyseCVScreen.voirSuggestionsFormations')}
                             onPress={() => {
                                 // TODO: Navigation vers suggestions formations
-                                Alert.alert('À venir', 'Fonctionnalité à implémenter');
+                                Alert.alert(t('analyseCVScreen.aVenir'), t('analyseCVScreen.fonctionnaliteAImplementer'));
                             }}
                             variant="secondary"
                             style={styles.actionButton}

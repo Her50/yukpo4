@@ -84,7 +84,7 @@ const ProgrammesScolairesScreen: React.FC = () => {
     const renderProgramme = ({ item }: { item: Programme }) => (
         <View style={styles.card}>
             <Text style={styles.cardTitle}>
-                {item.nom_etablissement || `Établissement #${item.etablissement_id}`}
+                {item.nom_etablissement || t('programmesScolairesScreen.etablissement', { item_etablissement_id: item.etablissement_id })}
             </Text>
             <Text style={styles.cardSubtitle}>📚 Niveau: {item.niveau}</Text>
             <Text style={styles.cardSubtitle}>📅 Année: {item.annee_scolaire}</Text>
@@ -148,7 +148,7 @@ const ProgrammesScolairesScreen: React.FC = () => {
             ) : programmes.length > 0 ? (
                 <>
                     <Text style={styles.resultsCount}>
-                        {total} programme{total > 1 ? 's' : ''} trouvé{total > 1 ? 's' : ''}
+                        {total} programme{total > 1 ? 's' : 't('programmesScolairesScreen.trouvetotal1')s' : ''}
                     </Text>
                     <FlatList
                         data={programmes}

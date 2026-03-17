@@ -54,12 +54,12 @@ const PharmacyAIInteractionsScreen: React.FC = () => {
 
     const handleCheckInteractions = async () => {
         if (medications.length === 0) {
-            Alert.alert('Erreur', 'Veuillez ajouter au moins un médicament');
+            Alert.alert('Erreur', t('pharmacyAIInteractionsScreen.veuillezAjouterAuMoinsUnMedicament'));
             return;
         }
 
         if (!user) {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour vérifier les interactions');
+            Alert.alert('Connexion requise', t('pharmacyAIInteractionsScreen.veuillezVousConnecterPourVerifierLes'));
             navigation.navigate('Login' as never);
             return;
         }
@@ -75,11 +75,11 @@ const PharmacyAIInteractionsScreen: React.FC = () => {
             if (response.success && response.data) {
                 setInteractionResult(response.data.interaction);
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de vérifier les interactions');
+                Alert.alert('Erreur', response.error || t('pharmacyAIInteractionsScreen.impossibleDeVerifierLesInteractions'));
             }
         } catch (error: any) {
             console.error('[PharmacyAIInteractionsScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de vérifier les interactions');
+            Alert.alert('Erreur', error.message || t('pharmacyAIInteractionsScreen.impossibleDeVerifierLesInteractions'));
         } finally {
             setLoading(false);
         }

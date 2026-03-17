@@ -60,7 +60,7 @@ const [loading, setLoading] = useState(false);
             setContextAnalysis(response.context_analysis);
         } catch (error: any) {
             console.error('[AudioSuggestionPanel] Error:', error);
-            Alert.alert('Erreur', 'Impossible de générer les suggestions audio');
+            Alert.alert('Erreur', t('audioSuggestionPanel.impossibleDeGenererLesSuggestionsAudio'));
         } finally {
             setLoading(false);
         }

@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Text } from 'react-native';
 import { CRASH_PREVENTION_CONFIG } from '../config/gpsConfig';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface PerformanceMetrics {
     renderTime: number;
@@ -26,6 +27,7 @@ class PerformanceMonitor {
         const startTime = performance.now();
 
         return () => {
+    const { t } = useLanguageSafe();
             const endTime = performance.now();
             const renderTime = endTime - startTime;
 

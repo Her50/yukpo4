@@ -4,7 +4,6 @@ use crate::models::history_model::{
 };
 use crate::services::mongo_history_service::{HistoryEvent, MongoHistoryService};
 use chrono::{DateTime, Duration, Utc};
-use mongodb::bson::DateTime as BsonDateTime;
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 use sqlx::PgPool;
@@ -211,7 +210,7 @@ pub async fn get_service_consultation_stats(
         .into_iter()
         .filter(|event| {
             if let Some(cutoff_date) = cutoff {
-                bson_ts_to_chrono(&event.timestamp) >= cutoff_date
+                event_timestamp(&event) >= cutoff_date
             } else {
                 true
             }
@@ -229,7 +228,7 @@ pub async fn get_service_consultation_stats(
     let debit_events = filtered_events.iter().filter(|event| debit_applied(&event.data)).count();
     let last_consultation = filtered_events
         .iter()
-        .map(|event| bson_ts_to_chrono(&event.timestamp))
+        .map(|event| event_timestamp(event))
         .max()
         .map(|dt| dt.to_rfc3339());
 
@@ -246,7 +245,7 @@ pub async fn get_service_consultation_stats(
             let token_cost = extract_token_cost(&event.data);
             json!({
                 "event_id": extract_event_id(event).unwrap_or_else(|| build_legacy_event_id(event)),
-                "timestamp": bson_ts_to_chrono(&event.timestamp).to_rfc3339(),
+                "timestamp": event_timestamp(event).to_rfc3339(),
                 "user_id": event.user_id,
                 "debit_applied": debit_applied(&event.data),
                 "token_cost": token_cost,
@@ -282,9 +281,8 @@ pub async fn get_global_consultation_stats(
     Ok(stats)
 }
 
-fn bson_ts_to_chrono(ts: &BsonDateTime) -> DateTime<Utc> {
-    let system_time = ts.to_system_time();
-    DateTime::<Utc>::from(system_time)
+fn event_timestamp(event: &HistoryEvent) -> DateTime<Utc> {
+    event.timestamp.unwrap_or_else(|| Utc::now())
 }
 
 fn extract_token_cost(data: &Value) -> i64 {
@@ -308,7 +306,7 @@ fn extract_event_id(event: &HistoryEvent) -> Option<String> {
 fn build_legacy_event_id(event: &HistoryEvent) -> String {
     format!(
         "legacy-{}-{}-{}",
-        bson_ts_to_chrono(&event.timestamp).timestamp_millis(),
+        event_timestamp(event).timestamp_millis(),
         event.user_id.unwrap_or_default(),
         event.service_id.unwrap_or_default()
     )
@@ -389,7 +387,7 @@ async fn enrich_history_event(
         id: 0,
         user_id: event.user_id.unwrap_or_default(),
         service_id: event.service_id.unwrap_or_default(),
-        timestamp: Some(bson_ts_to_chrono(&event.timestamp)),
+        timestamp: Some(event_timestamp(&event)),
         event_id: Some(event_id),
         debit_applied: Some(debit),
         token_cost: Some(token_cost),

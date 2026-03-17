@@ -9,9 +9,9 @@ import {
     View
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -43,8 +43,8 @@ const CovoiturageMapView: React.FC<CovoiturageMapViewProps> = ({
     radiusKm = 50
 }) => {
     const mapRef = useRef<MapView>(null);
-        const { t } = useLanguageSafe();
-const [selectedTrip, setSelectedTrip] = useState<CovoiturageTrip | null>(null);
+    const { t } = useLanguageSafe();
+    const [selectedTrip, setSelectedTrip] = useState<CovoiturageTrip | null>(null);
     const [mapRegion, setMapRegion] = useState({
         latitude: currentLocation?.latitude || 4.0511, // Douala par défaut
         longitude: currentLocation?.longitude || 9.7679,

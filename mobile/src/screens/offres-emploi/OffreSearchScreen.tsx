@@ -24,7 +24,7 @@ const OffreSearchScreen: React.FC = () => {
     const [remote, setRemote] = useState(false);
 
     const secteurs = [
-        'Informatique', 'Commerce', t('offreSearchScreen.sante'), 'Éducation', 'Finance',
+        'Informatique', 'Commerce', t('offreSearchScreen.sante'), t('offreSearchScreen.education'), 'Finance',
         'Marketing', 'Ressources Humaines', t('offreSearchScreen.ingenierie'), 'Design', 'Autre'
     ];
 

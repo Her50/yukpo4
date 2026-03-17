@@ -70,8 +70,8 @@ const BusTicketDetailsScreen: React.FC = () => {
                 if (ticketData.payment_status === 'completed') {
                     await ticketNotifications.scheduleAllReminders({ ticketId: ticketData.product_id, paymentId: ticketData.payment_id, departureDate: ticketData.departure_date, departureTime: ticketData.departure_time, departureCity: ticketData.departure_city, arrivalCity: ticketData.arrival_city, type: 'reminder_24h' });
                 }
-            } else { Alert.alert('Erreur', 'Impossible de charger les détails du ticket'); navigation.goBack(); }
-        } catch { Alert.alert('Erreur', 'Impossible de charger les détails du ticket'); navigation.goBack(); }
+            } else { Alert.alert('Erreur', t('busTicketDetailsScreen.impossibleDeChargerLesDetailsDu')); navigation.goBack(); }
+        } catch { Alert.alert('Erreur', t('busTicketDetailsScreen.impossibleDeChargerLesDetailsDu')); navigation.goBack(); }
         finally { setLoading(false); }
     };
 
@@ -79,11 +79,11 @@ const BusTicketDetailsScreen: React.FC = () => {
 
     const handleCancel = () => {
         if (!ticket) return;
-        Alert.alert('Annuler la réservation', t('busTicketDetails.etesvousSurDeVouloirAnnuler'), [
+        Alert.alert(t('busTicketDetailsScreen.annulerLaReservation'), t('busTicketDetails.etesvousSurDeVouloirAnnuler'), [
             { text: t('common.no'), style: 'cancel' },
             {
                 text: t('busTicketDetails.ouiAnnuler'), style: 'destructive', onPress: async () => {
-                    try { setCancelling(true); for (const rid of ticket.reservation_ids) await apiPatch(`/api/bus-tickets/reservations/${rid}/cancel`, {}); Alert.alert('Succès', 'Réservation annulée'); navigation.goBack(); }
+                    try { setCancelling(true); for (const rid of ticket.reservation_ids) await apiPatch(`/api/bus-tickets/reservations/${rid}/cancel`, {}); Alert.alert(t('busTicketDetailsScreen.succes'), t('busTicketDetailsScreen.reservationAnnulee')); navigation.goBack(); }
                     catch (e: any) { Alert.alert('Erreur', e.message || 'Impossible d\'annuler'); }
                     finally { setCancelling(false); }
                 }

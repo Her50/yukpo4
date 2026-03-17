@@ -47,7 +47,7 @@ interface SpecializedService {
 
 const GestionServicesSpecialisesScreen: React.FC = () => {
     const navigation = useNavigation();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const [services, setServices] = useState<SpecializedService[]>([]);
     const [loading, setLoading] = useState(true);
     const { t } = useLanguageSafe();
@@ -880,7 +880,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     <Text style={styles.serviceName}>{getServiceName(item)}</Text>
                     <Text style={styles.serviceType}>
                         {item.type === 'pharmacie' ? 'Pharmacie' :
-                            item.type === 'hopital' ? 'Hôpital/Clinique' :
+                            item.type === 'hopital' ? t('gestionServicesSpecialisesScreen.hopitalclinique') :
                                 item.type === 'laboratoire' ? 'Laboratoire' :
                                     item.type === 'agence_voyage' ? 'Agence de Voyage' :
                                         item.type === 'covoiturage' ? 'Covoiturage' :
@@ -952,7 +952,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                             { color: item.is_active ? '#EF4444' : '#10B981' },
                         ]}
                     >
-                        {item.is_active ? 'Désactiver' : 'Activer'}
+                        {item.is_active ? t('gestionServicesSpecialisesScreen.desactiver') : 'Activer'}
                     </Text>
                 </TouchableOpacity>
 
@@ -1105,6 +1105,12 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 style={styles.selectionButton}
                             >
                                 <SafeIcon name="check-square" size={20} color={modernColors.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); }}
+                                style={[styles.dashboardButton, { backgroundColor: '#FEF2F2' }]}
+                            >
+                                <SafeIcon name="log-out" size={20} color="#DC2626" />
                             </TouchableOpacity>
                         </>
                     ) : (
@@ -1303,7 +1309,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                     style={[styles.createButton, { backgroundColor: modernColors.primary }]}
                                     accessibilityRole="button"
                                     accessibilityLabel={buttonLabel}
-                                    accessibilityHint="Ouvre le formulaire de création de service"
+                                    accessibilityHint=t('gestionServicesSpecialisesScreen.ouvreLeFormulaireDeCreationDe')
                                 >
                                     <SafeIcon name="plus" size={18} color="#fff" />
                                     <Text style={styles.createButtonText}>{buttonLabel}</Text>

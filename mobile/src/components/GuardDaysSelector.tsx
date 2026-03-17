@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const DAYS_OF_WEEK = [
     { value: 1, label: 'Lundi', short: 'Lun' },
@@ -26,8 +27,8 @@ const DAYS_OF_WEEK = [
 ];
 
 const MONTHS = [
-    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+    'Janvier', t('guardDaysSelector.fevrier'), 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', t('guardDaysSelector.aout'), 'Septembre', 'Octobre', 'Novembre', t('guardDaysSelector.decembre')
 ];
 
 interface GuardDaysSelectorProps {
@@ -64,7 +65,8 @@ const GuardDaysSelector: React.FC<GuardDaysSelectorProps> = ({
     };
 
     const months = generateMonths();
-    const [selectedDays, setSelectedDays] = useState<Record<string, number[]>>(initialDays);
+        const { t } = useLanguageSafe();
+const [selectedDays, setSelectedDays] = useState<Record<string, number[]>>(initialDays);
 
     const toggleDay = (monthKey: string, dayValue: number) => {
         setSelectedDays(prev => {

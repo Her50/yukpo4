@@ -77,7 +77,7 @@ const [loading, setLoading] = useState(true);
       }
     } catch (err: any) {
       console.error('[PlatformPaymentSettings] Erreur chargement:', err);
-      Alert.alert('Erreur', 'Impossible de charger les paramètres. Vérifiez que vous êtes administrateur.');
+      Alert.alert('Erreur', t('platformPaymentSettingsScreen.impossibleDeChargerLesParametresVerifiez'));
     } finally {
       setLoading(false);
     }
@@ -120,9 +120,9 @@ const [loading, setLoading] = useState(true);
       ]);
 
       if (results.every(Boolean)) {
-        Alert.alert('Sauvegardé', 'Les paramètres de paiement de la plateforme ont été mis à jour.');
+        Alert.alert(t('platformPaymentSettingsScreen.sauvegarde'), t('platformPaymentSettingsScreen.lesParametresDePaiementDeLa'));
       } else {
-        Alert.alert('Erreur partielle', 'Certains paramètres n\'ont pas pu être sauvegardés.');
+        Alert.alert('Erreur partielle', t('platformPaymentSettingsScreen.certainsParametresNt('platformPaymentSettingsScreen.ontPasPuEtreSauvegardes'));
       }
     } finally {
       setSaving(false);

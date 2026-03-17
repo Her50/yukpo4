@@ -134,12 +134,12 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
 
     const handleStartRecording = useCallback(async () => {
         if (!cameraRef.current || !hasPermission) {
-            Alert.alert('Erreur', 'Permissions caméra requises');
+            Alert.alert('Erreur', t('aRVideoEditorVisionCamera.permissionsCameraRequises'));
             return;
         }
 
         if (trackingState !== 'tracking') {
-            Alert.alert('Erreur', 'Veuillez attendre la détection d\'une surface AR');
+            Alert.alert('Erreur', t('aRVideoEditorVisionCamera.veuillezAttendreLaDetectionD')une surface AR');
             return;
         }
 
@@ -168,7 +168,7 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
                 },
                 onRecordingError: (error) => {
                     console.error('[ARVideoEditor] Erreur enregistrement:', error);
-                    Alert.alert('Erreur', 'Impossible d\'enregistrer la vidéo');
+                    Alert.alert('Erreur', 'Impossible d\t('aRVideoEditorVisionCamera.enregistrerLaVideo'));
                     setIsRecording(false);
                     setArMode('preview');
                     if (recordingTimerRef.current) {
@@ -181,7 +181,7 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
             console.log('[ARVideoEditor] Démarrage enregistrement AR...');
         } catch (error) {
             console.error('[ARVideoEditor] Erreur enregistrement:', error);
-            Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement');
+            Alert.alert('Erreur', t('aRVideoEditorVisionCamera.impossibleDeDemarrerL')enregistrement');
             setIsRecording(false);
             setArMode('preview');
         }

@@ -83,6 +83,15 @@ pub fn hotel_room_management_routes(_state: Arc<AppState>) -> Router<Arc<AppStat
             "/api/hotel/properties/{property_id}/ai-insights",
             get(hotel_room_management_controller::get_property_ai_insights),
         )
+        // Annulation et pénalités
+        .route(
+            "/api/hotel/reservations/{reservation_id}/cancel",
+            post(hotel_room_management_controller::cancel_hotel_reservation),
+        )
+        .route(
+            "/api/hotel/cancellations/history",
+            get(hotel_room_management_controller::get_cancellation_history),
+        )
         // Middleware JWT pour toutes les routes
         .layer(middleware::from_fn(jwt_auth))
 }

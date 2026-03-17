@@ -43,7 +43,7 @@ const STEP_LABELS: Record<string, string> = {
     'media_collection': t('videoGenerationProgressModal.collecteDesMedias'),
     'audio_generation': t('videoGenerationProgressModal.generationAudio'),
     'voiceover': t('videoGenerationProgressModal.generationDeLaVoix'),
-    'music_selection': 'Sélection musicale',
+    'music_selection': t('videoGenerationProgressModal.selectionMusicale'),
     'video_rendering': t('videoGenerationProgressModal.renduVideo'),
     'watermark': 'Application du watermark',
     'saving_media': 'Enregistrement',
@@ -196,7 +196,7 @@ const [animatedProgress] = useState(new Animated.Value(0));
                                 <Text style={styles.subtitle}>
                                     {isCompleted ? t('videoGenerationProgressModal.votreVideoEstPrete') :
                                      isFailed ? errorMessage || t('videoGenerationProgress.uneErreurEstSurvenue') :
-                                     `Étape ${currentStep}/${totalSteps}`}
+                                     t('videoGenerationProgressModal.etape', { currentStep: currentStep, totalSteps: totalSteps })}
                                 </Text>
                             </View>
                         </View>

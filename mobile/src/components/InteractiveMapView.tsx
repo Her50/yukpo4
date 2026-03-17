@@ -237,7 +237,7 @@ const [localPolygonPoints, setLocalPolygonPoints] = useState<{ lat: number; lng:
             }}
         >
             {/* ✅ FIX 2026-03-11: Indicateur de chargement NON-BLOQUANT (pas d'overlay opaque) */}
-            {/* L'overlay opaque empêchait MapView de s'initialiser sur certains Android */}
+            {/* Lt('interactiveMapView.overlayOpaqueEmpechaitMapviewDeS')initialiser sur certains Android */}
             {!mapReady && (
                 <View style={styles.loadingBanner}>
                     <ActivityIndicator size="small" color="#FFFFFF" />

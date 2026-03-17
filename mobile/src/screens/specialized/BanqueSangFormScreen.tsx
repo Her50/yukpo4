@@ -35,7 +35,7 @@ type TabType = 'overview' | 'service' | 'stocks';
 const BanqueSangFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const { t } = useLanguageSafe();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
@@ -238,6 +238,10 @@ const BanqueSangFormScreen: React.FC = () => {
                     <View style={[s.quickIcon, { backgroundColor: '#6B728015' }]}><SafeIcon name="settings" size={22} color="#6B7280" /></View>
                     <Text style={s.quickLabel}>{t('banqueSangForm.monService')}</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={s.quickAction} onPress={() => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); }}>
+                    <View style={[s.quickIcon, { backgroundColor: '#DC262615' }]}><SafeIcon name="log-out" size={22} color="#DC2626" /></View>
+                    <Text style={s.quickLabel}>{t('common.sortir')}</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Stock Summary */}
@@ -284,7 +288,7 @@ const BanqueSangFormScreen: React.FC = () => {
             <View style={s.field}>
                 <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
                     <SafeIcon name="map-pin" size={20} color="#DC2626" />
-                    <Text style={s.gpsBtnText}>{selectedGPS ? t('banqueSangFormScreen.gpsSelectionne') : 'Sélectionner sur la carte'}</Text>
+                    <Text style={s.gpsBtnText}>{selectedGPS ? t('banqueSangFormScreen.gpsSelectionne') : t('banqueSangFormScreen.selectionnerSurLaCarte')}</Text>
                     <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                 </TouchableOpacity>
             </View>

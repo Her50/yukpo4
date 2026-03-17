@@ -11,17 +11,18 @@ import {
     Platform,
     RefreshControl,
     ScrollView,
-    Share,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
+import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
+import ShareServiceModal from '../../components/ShareServiceModal';
 import PropertyPhotoGallery from '../../components/specialized/PropertyPhotoGallery';
-import { immobilierService, RealEstateProperty } from '../../services/immobilierService';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { immobilierService, RealEstateProperty } from '../../services/immobilierService';
 
 type RouteParams = { propertyId: number };
 
@@ -37,6 +38,8 @@ const ImmobilierDetailsScreen: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [isFavorite, setIsFavorite] = useState(false);
     const [virtualTours, setVirtualTours] = useState<any[]>([]);
+    // Sharing state
+    const [showShareModal, setShowShareModal] = useState(false);
     // IA: Simulation prêt
     const [showLoanModal, setShowLoanModal] = useState(false);
     const [loanDuration, setLoanDuration] = useState('20');
@@ -62,6 +65,14 @@ const ImmobilierDetailsScreen: React.FC = () => {
             if (response.success && response.data) {
                 setProperty((response as any).data);
                 try { const fav = await immobilierService.getMyFavorites(); if (fav.success && fav.data) setIsFavorite(((fav.data as unknown) as any[]).some((p: any) => p.id === propertyId)); } catch { }
+                // ✅ Load virtual tours
+                try {
+                    const virtualTours = await immobilierService.getPropertyVirtualTours(propertyId);
+                    setVirtualTours(virtualTours || []);
+                } catch (err) {
+                    console.warn('[ImmobilierDetails] Failed to load virtual tours:', err);
+                    setVirtualTours([]);
+                }
             } else { setError(t('immobilierDetails.bienNonTrouve')); }
         } catch (err: any) { setError(err.message || 'Erreur lors du chargement'); }
         finally { setLoading(false); }
@@ -103,7 +114,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
                 const mensualite = montant * (monthlyRate * Math.pow(1 + monthlyRate, nbMonths)) / (Math.pow(1 + monthlyRate, nbMonths) - 1);
                 setLoanResult({ property_price: price, down_payment: Math.round(apport), loan_amount: Math.round(montant), interest_rate: rate, loan_duration_years: duration, monthly_payment: Math.round(mensualite), total_interest: Math.round(mensualite * nbMonths - montant), total_cost: Math.round(mensualite * nbMonths), affordability_analysis: t('immobilierDetailsScreen.calculLocalLeServeurNaPasRepondu') });
             }
-        } catch { Alert.alert('Erreur', 'Impossible de simuler le prêt'); }
+        } catch { Alert.alert('Erreur', t('immobilierDetailsScreen.impossibleDeSimulerLePret')); }
         finally { setLoadingLoan(false); }
     };
 
@@ -113,7 +124,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
             setLoadingEstimate(true);
             const response = await immobilierService.estimatePrice(property.type_bien || 'maison', property.superficie_m2 || 100, property.nb_chambres || 2, property.standing || 'Standard', property.quartier || '', property.ville || 'Douala');
             if (response.success && (response as any).estimate) setPriceEstimate((response as any).estimate);
-            else Alert.alert('IA non disponible', 'L\'estimation IA n\'est pas encore opérationnelle.');
+            else Alert.alert('IA non disponible', t('immobilierDetailsScreen.estPasEncoreOperationnelle'));
         } catch { Alert.alert('Erreur', 'Impossible d\'obtenir l\'estimation IA'); }
         finally { setLoadingEstimate(false); }
     };
@@ -125,7 +136,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
             const budget = property.prix_vente || property.prix_location_mensuel || 50000000;
             const response = await immobilierService.getAIRecommendations(budget * 1.2, property.type_bien, property.nb_chambres, property.quartier, property.ville || 'Douala');
             if (response.success && (response as any).recommendation) setAiRecommendation((response as any).recommendation);
-            else Alert.alert('IA non disponible', 'Les recommandations IA ne sont pas encore opérationnelles.');
+            else Alert.alert('IA non disponible', t('immobilierDetailsScreen.lesRecommandationsIaNeSontPas'));
         } catch { Alert.alert('Erreur', 'Impossible d\'obtenir les recommandations IA'); }
         finally { setLoadingRecommendation(false); }
     };
@@ -135,17 +146,11 @@ const ImmobilierDetailsScreen: React.FC = () => {
         try {
             if (isFavorite) { await immobilierService.removeFromFavorites(property.id); setIsFavorite(false); }
             else { await immobilierService.addToFavorites(property.id); setIsFavorite(true); }
-        } catch (err: any) { Alert.alert('Erreur', err.message || 'Erreur lors de la mise à jour'); }
+        } catch (err: any) { Alert.alert('Erreur', err.message || t('immobilierDetailsScreen.erreurLorsDeLaMiseA')); }
     };
 
-    const handleShare = async () => {
-        if (!property) return;
-        try {
-            await Share.share({
-                message: `${property.titre}${property.prix_vente ? '\nPrix: ' + formatPrice(property.prix_vente) : ''}${property.prix_location_mensuel ? '\nLoyer: ' + formatPrice(property.prix_location_mensuel) + '/mois' : ''}${property.quartier || property.ville ? '\n📍 ' + [property.quartier, property.ville].filter(Boolean).join(', ') : ''}\nVia Yukpo`,
-                title: property.titre,
-            });
-        } catch { }
+    const handleShare = () => {
+        setShowShareModal(true);
     };
 
     const handleTrackView = async () => { if (!property) return; try { await immobilierService.trackPropertyView(property.id, undefined, ['description'], 'details'); } catch { } };
@@ -288,7 +293,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
                 <View style={{ paddingHorizontal: 16, gap: 10, marginBottom: 12 }}>
                     <TouchableOpacity style={st.primaryBtn} onPress={handleBookVisit}>
                         <SafeIcon name={isHotelOrMeuble ? 'bed' : 'calendar'} size={20} color="#fff" />
-                        <Text style={st.primaryBtnText}>{isHotelOrMeuble ? t('immobilierDetailsScreen.reserverUnSejour') : 'Réserver une visite'}</Text>
+                        <Text style={st.primaryBtnText}>{isHotelOrMeuble ? t('immobilierDetailsScreen.reserverUnSejour') : t('immobilierDetailsScreen.reserverUneVisite')}</Text>
                     </TouchableOpacity>
                     {property.prix_vente && (
                         <TouchableOpacity style={[st.primaryBtn, { backgroundColor: '#4F46E5' }]} onPress={handleSimulateLoan}>
@@ -297,6 +302,16 @@ const ImmobilierDetailsScreen: React.FC = () => {
                         </TouchableOpacity>
                     )}
                 </View>
+
+                {/* Comments Section */}
+                <ProductCommentsSection
+                    serviceId={property.service_id}
+                    serviceTitle={property.titre}
+                    onOpenChat={(userId, userName, userAvatar) => {
+                        // TODO: Implement chat navigation
+                        console.log('Open chat with', userId, userName);
+                    }}
+                />
 
                 <View style={{ height: 40 }} />
             </ScrollView>
@@ -338,6 +353,17 @@ const ImmobilierDetailsScreen: React.FC = () => {
                     </ScrollView>
                 </View>
             </Modal>
+
+            {/* Share Modal */}
+            <ShareServiceModal
+                open={showShareModal}
+                onClose={() => setShowShareModal(false)}
+                serviceId={property.service_id.toString()}
+                titre={property.titre}
+                description={property.description}
+                prix={property.prix_vente || property.prix_location_mensuel}
+                devise={getCurrencyIntelligently()}
+            />
         </View>
     );
 };

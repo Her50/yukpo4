@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  yukpomnang-backend:
+    image: gcr.io/your-gcp-project/yukpomnang-backend:latest
+    environment:
+      # Base configuration
+      - REDIS_URL=redis://redis:6379/0
+      - DB_POOL_SIZE=100
+      - CACHE_TTL_SEARCH=600
+      - RATE_LIMIT_IP=200
+      # ✅ NOUVEAU 2026-03-17: Optimisations IA
+      - OPENAI_MODEL=gpt-4o
+      - VISION_MODEL_PRIORITY=10
+      - COST_THRESHOLD_PER_DAY=50
+      - DAILY_USAGE_LIMIT=1000
+      - SEMANTIC_CACHE_ENABLED=true
+      - ENABLE_BATCH_REQUESTS=true
+      # Production settings
+      - LOG_LEVEL=info
+      - METRICS_ENABLED=true
+      - HEALTH_CHECK_ENABLED=true
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+      - postgres
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=yukpo
+      - POSTGRES_USER=yukpo_user
+      - POSTGRES_PASSWORD=yukpo_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

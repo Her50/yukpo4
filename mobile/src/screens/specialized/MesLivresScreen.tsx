@@ -214,7 +214,7 @@ const MesLivresScreen: React.FC = () => {
     const getEtatColor = (etat: string): string => {
         switch (etat) {
             case 'Neuf': return modernColors.success;
-            case 'Très bon': return '#10B981';
+            case t('mesLivresScreen.tresBon'): return '#10B981';
             case 'Bon': return modernColors.warning;
             case 'Acceptable': return modernColors.error;
             default: return modernColors.textSecondary;

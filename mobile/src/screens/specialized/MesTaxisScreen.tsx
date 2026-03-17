@@ -120,11 +120,11 @@ const MesTaxisScreen: React.FC = () => {
                         : t
                 ));
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de mettre à jour la disponibilité');
+                Alert.alert('Erreur', response.error || t('mesTaxisScreen.impossibleDeMettreAJourLa'));
             }
         } catch (error: any) {
             console.error('[MesTaxisScreen] Erreur disponibilité:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de mettre à jour la disponibilité');
+            Alert.alert('Erreur', error.message || t('mesTaxisScreen.impossibleDeMettreAJourLa'));
         } finally {
             setUpdatingAvailability(null);
         }

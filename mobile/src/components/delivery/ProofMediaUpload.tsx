@@ -80,7 +80,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
     const handlePickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la galerie');
+            Alert.alert('Permission requise', 'Veuillez autoriser l\t('proofMediaUpload.accesALaGalerie'));
             return;
         }
 
@@ -99,7 +99,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
     const handleTakePhoto = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la caméra');
+            Alert.alert('Permission requise', 'Veuillez autoriser l\t('proofMediaUpload.accesALaCamera'));
             return;
         }
 
@@ -176,21 +176,21 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.message || 'Impossible d\'uploader le média');
+                throw new Error(error.message || 'Impossible d\t('proofMediaUpload.uploaderLeMedia'));
             }
 
             const result = await response.json();
 
             Alert.alert(
                 t('proofMediaUpload.succes'),
-                `${isImage ? 'Image' : 'Vidéo'} de ${proofType === 'pickup' ? t('proofMediaUpload.recuperation') : 'livraison'} ajoutée avec succès`
+                t('proofMediaUpload.deAjouteeAvecSucces', { isImage____Image____: isImage ? 'Image' : t('proofMediaUpload.video'), proofType______picku: proofType === 'pickup' ? t('proofMediaUpload.recuperation') : 'livraison' })
             );
 
             loadMedia();
             onMediaUpdated?.();
         } catch (error: any) {
             console.error('Erreur upload média:', error);
-            Alert.alert('Erreur', error.message || 'Impossible d\'ajouter le média');
+            Alert.alert('Erreur', error.message || 'Impossible d\t('proofMediaUpload.ajouterLeMedia'));
         } finally {
             setUploading(false);
         }
@@ -208,11 +208,11 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                     onPress: async () => {
                         try {
                             await deliveryApi.deleteProofMedia(deliveryId, mediaId);
-                            Alert.alert('Succès', 'Le média a été supprimé avec succès');
+                            Alert.alert(t('proofMediaUpload.succes'), t('proofMediaUpload.leMediaAEteSupprimeAvec'));
                             loadMedia();
                             onMediaUpdated?.();
                         } catch (error: any) {
-                            Alert.alert('Erreur', error.message || 'Impossible de supprimer le média');
+                            Alert.alert('Erreur', error.message || t('proofMediaUpload.impossibleDeSupprimerLeMedia'));
                         }
                     },
                 },

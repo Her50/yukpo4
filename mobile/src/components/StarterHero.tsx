@@ -3,10 +3,12 @@ import { useNavigation } from '@react-navigation/native';
 import * as React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const StarterHero: React.FC = () => {
   const { user } = useAuth();
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
   const handlePress = () => {
     if (user) {

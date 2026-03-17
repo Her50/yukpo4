@@ -2,9 +2,11 @@
 import { useNavigation } from "@react-navigation/native";
 import * as React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const HeroBanner: React.FC = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
   const handlePress = () => {
     (navigation as any).navigate('Services');

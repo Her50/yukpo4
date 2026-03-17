@@ -10,12 +10,12 @@ import {
     View
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useWalletBalance } from '../../hooks/useWalletBalance';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 import { NativeButton, NativeCard } from '../SafeNativeDesign';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface CovoituragePaymentFlowProps {
     total: number;
@@ -46,7 +46,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
 
     const handlePayment = async () => {
         if (!user) {
-            Alert.alert('Erreur', 'Vous devez être connecté pour payer');
+            Alert.alert('Erreur', t('covoituragePaymentFlow.vousDevezEtreConnectePourPayer'));
             return;
         }
 
@@ -81,7 +81,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                 });
 
                 if (!reservationResponse.success || !reservationResponse.data) {
-                    Alert.alert('Erreur', reservationResponse.error || 'Impossible de créer la réservation');
+                    Alert.alert('Erreur', reservationResponse.error || t('covoituragePaymentFlow.impossibleDeCreerLaReservation'));
                     setProcessing(false);
                     return;
                 }
@@ -90,7 +90,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                 const reservationId = rrd.reservation_id || rrd.reservation?.id;
 
                 if (!reservationId) {
-                    Alert.alert('Erreur', 'Réservation créée mais ID manquant');
+                    Alert.alert('Erreur', t('covoituragePaymentFlow.reservationCreeeMaisIdManquant'));
                     setProcessing(false);
                     return;
                 }
@@ -116,7 +116,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                         reservationId: reservationId
                     } as any);
                 } else {
-                    Alert.alert('Erreur', response.error || 'Paiement échoué');
+                    Alert.alert('Erreur', response.error || t('covoituragePaymentFlow.paiementEchoue'));
                 }
             } else if (selectedMethod === 'stripe') {
                 // Paiement via Stripe (à implémenter avec SDK Stripe)
@@ -210,7 +210,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                             styles.paymentMethodDisabled
                         ]}
                         onPress={() => {
-                            Alert.alert('Bientôt disponible', 'Paiement par carte bancaire disponible prochainement');
+                            Alert.alert(t('covoituragePaymentFlow.bientotDisponible'), 'Paiement par carte bancaire disponible prochainement');
                         }}
                         disabled={true}
                     >
@@ -237,7 +237,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                             styles.paymentMethodDisabled
                         ]}
                         onPress={() => {
-                            Alert.alert('Bientôt disponible', 'Paiement PayPal disponible prochainement');
+                            Alert.alert(t('covoituragePaymentFlow.bientotDisponible'), 'Paiement PayPal disponible prochainement');
                         }}
                         disabled={true}
                     >

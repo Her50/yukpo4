@@ -11,6 +11,7 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import { TimelineClip, TrackType } from '../types/AdvancedTimeline';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -39,6 +40,7 @@ export const ClipComponent: React.FC<ClipComponentProps> = ({
     const clipLeft = clip.startTime * pixelsPerSecond;
 
     const getClipColor = (type: TrackType): string => {
+    const { t } = useLanguageSafe();
         switch (type) {
             case 'video':
                 return modernColors.primary;

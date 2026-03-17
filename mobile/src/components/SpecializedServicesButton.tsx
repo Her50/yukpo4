@@ -77,7 +77,7 @@ export const SpecializedServicesButton: React.FC<SpecializedServicesButtonProps>
             disabled={isNavigating}
             accessibilityLabel={t('specializedServicesButton.accederAuxServicesSpecialises')}
             accessibilityRole="button"
-            accessibilityHint="Ouvre la page des services spécialisés : santé, transport, immobilier, éducation et cuisine"
+            accessibilityHint=t('specializedServicesButton.ouvreLaPageDesServicesSpecialises')
             accessibilityState={{ disabled: isNavigating }}
         >
             <View style={styles.content}>

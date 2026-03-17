@@ -52,7 +52,7 @@ const WhyUsSection: React.FC = () => {
     {
       icon: "🛠️",
       title: t('whyUsSection.creationDeService1clic'),
-      desc: "Créez un service en quelques secondes.",
+      desc: t('whyUsSection.creezUnServiceEnQuelquesSecondes'),
       link: user ? "FormulaireYukpoIntelligent" : "Register",
     },
   ];

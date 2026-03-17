@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import SafeStorage from '../utils/safeStorage';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ComposantFrontend {
   type: string;
@@ -28,7 +29,8 @@ interface GroupeFormProps {
 }
 
 const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
-  const [valeurs, setValeurs] = useState<Record<string, any>>({});
+      const { t } = useLanguageSafe();
+const [valeurs, setValeurs] = useState<Record<string, any>>({});
   const [erreurs, setErreurs] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [champs, setChamps] = useState<ComposantFrontend[]>([]);
@@ -97,10 +99,10 @@ const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
       return "Ce champ est requis.";
     }
     if (champ.min && typeof valeur === "string" && valeur.length < champ.min) {
-      return `Min ${champ.min} caractères`;
+      return t('groupeForm.minCaracteres', { champ_min: champ.min });
     }
     if (champ.max && typeof valeur === "string" && valeur.length > champ.max) {
-      return `Max ${champ.max} caractères`;
+      return t('groupeForm.maxCaracteres', { champ_max: champ.max });
     }
     if (champ.typeDonnee === "email" && valeur && !/^\S+@\S+\.\S+$/.test(valeur)) {
       return "Email invalide.";
@@ -161,7 +163,7 @@ const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
           disabled={loading}
         >
           <Text style={styles.buttonText}>
-            {loading ? "⏳ Vérification..." : groupe.terminé ? "Soumettre" : "Suivant"}
+            {loading ? "⏳ Vérification...t('groupeForm.groupetermine')Soumettre" : "Suivant"}
           </Text>
         </TouchableOpacity>
       </View>

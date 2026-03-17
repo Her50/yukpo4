@@ -332,8 +332,8 @@ const ResultatBesoinScreen: React.FC = () => {
         'dans', 'sur', 'sous', 'avec', 'sans', 'pour', 'par', 'chez',
         'est', 'sont', 'suis', 'es', 'sommes', 'etes',
         'ai', 'as', 'avons', 'avez', 'ont',
-        'être', 'avoir', 'fait', 'faire',
-        'pas', 'ne', 'plus', 'très', 'bien', 'tout', 'tous', 'aussi',
+        t('resultatBesoinScreen.etre'), 'avoir', 'fait', 'faire',
+        'pas', 'ne', 'plus', t('resultatBesoinScreen.tres'), 'bien', 'tout', 'tous', 'aussi',
         'souhaite', 'veux', 'voudrais', 'cherche', 'besoin', 'faut',
     ]);
 

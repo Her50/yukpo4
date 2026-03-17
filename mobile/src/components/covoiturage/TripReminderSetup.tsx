@@ -7,6 +7,7 @@ import { useTripReminders } from '../../hooks/useTripReminders';
 import PushNotificationService from '../../services/pushNotificationService';
 import { NativeButton } from '../SafeNativeDesign';
 import { SafeIcon } from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface TripReminderSetupProps {
     reservationId: number;
@@ -25,7 +26,8 @@ export const TripReminderSetup: React.FC<TripReminderSetupProps> = ({
     departureTime,
     onRemindersScheduled,
 }) => {
-    const [loading, setLoading] = useState(false);
+        const { t } = useLanguageSafe();
+const [loading, setLoading] = useState(false);
     const [scheduled, setScheduled] = useState(false);
     const [permissionsGranted, setPermissionsGranted] = useState(false);
 

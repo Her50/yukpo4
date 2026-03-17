@@ -222,7 +222,7 @@ const CovoiturageListScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <Text style={styles.title}>
-                    {covoiturages.length} trajet{covoiturages.length > 1 ? 's' : ''} trouvé{covoiturages.length > 1 ? 's' : ''}
+                    {covoiturages.length} {t('covoiturageList.resultatsDeRecherche')}
                 </Text>
             </View>
 

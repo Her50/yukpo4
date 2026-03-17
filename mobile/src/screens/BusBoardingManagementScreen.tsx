@@ -1,6 +1,5 @@
 /**
- * Écran de gestion d'embarquement pour les agences de voyage
- * Permet de scanner les QR codes des tickets et de gérer l'embarquement des passagers
+ * Écran de gestion d'embarquement pour les agences de voyage - embarquement des passagers
  */
 
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -82,8 +81,8 @@ const BusBoardingManagementScreen: React.FC = () => {
         try {
             setLoading(true);
             const [summaryRes, passengersRes] = await Promise.all([
-                apiGet(`/api/bus-tickets/${productId}/boarding-summary`),
-                apiGet(`/api/bus-tickets/${productId}/passengers`),
+                apiGet(`/api/bus-tickets/boarding/${productId}/summary`),
+                apiGet(`/api/bus-tickets/boarding/${productId}/passengers`),
             ]);
 
             const sumData = (summaryRes?.data || summaryRes) as any;
@@ -138,7 +137,7 @@ const BusBoardingManagementScreen: React.FC = () => {
             }
 
             // Valider le ticket
-            const response = await apiPost('/api/bus-tickets/validate/qr', {
+            const response = await apiPost('/api/bus-tickets/validate', {
                 qr_code_data: qrJson,
                 product_id: productId,
             });

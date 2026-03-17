@@ -158,7 +158,7 @@ const generateReadableLocation = (lat: number, lng: number): string => {
     if (lat >= 5.0 && lat <= 10.5 && lng >= -8.5 && lng <= -2.5) {
         if (lat >= 5.2 && lat <= 5.4 && lng >= -4.1 && lng <= -3.9) return t('hotelLocationDisplay.abidjanCoteDivoire');
         if (lat >= 7.6 && lat <= 7.8 && lng >= -5.1 && lng <= -4.9) return t('hotelLocationDisplay.yamoussoukroCoteDivoire');
-        return 'Côte d\'Ivoire';
+        return t('hotelLocationDisplay.coteD')Ivoire';
     }
 
     // Sénégal

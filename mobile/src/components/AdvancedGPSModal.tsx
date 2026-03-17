@@ -84,7 +84,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             console.error('Erreur permission GPS:', error);
             // ✅ CORRECTION: Ne pas afficher d'alerte si timeout
             if (error.message !== 'Permission timeout') {
-                Alert.alert('Erreur', 'Impossible d\'accéder à la localisation');
+                Alert.alert('Erreur', 'Impossible d\t('advancedGPSModal.accederALaLocalisation'));
             }
         }
     };
@@ -115,7 +115,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             console.error('Erreur localisation:', error);
             // ✅ CORRECTION: Gestion d'erreur plus douce
             if (error.message === 'GPS timeout') {
-                Alert.alert('GPS lent', 'La localisation prend du temps. Réessayez ou utilisez la recherche d\'adresse.');
+                Alert.alert('GPS lent', t('advancedGPSModal.laLocalisationPrendDuTempsReessayez')adresse.');
             } else {
                 Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle');
             }
@@ -158,7 +158,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                 setSearchResults(geocodeResult);
                 setAddress(searchQuery);
             } else {
-                Alert.alert('Aucun résultat', 'Aucune adresse trouvée pour cette recherche');
+                Alert.alert(t('advancedGPSModal.aucunResultat'), t('advancedGPSModal.aucuneAdresseTrouveePourCetteRecherche'));
             }
         } catch (error) {
             console.error('Erreur recherche adresse:', error);
@@ -180,7 +180,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                 geocodeLocation(newLocation);
                 setSearchQuery('');
             } else {
-                Alert.alert('Erreur', 'Coordonnées invalides. Format: latitude, longitude');
+                Alert.alert('Erreur', t('advancedGPSModal.coordonneesInvalidesFormatLatitudeLongitude'));
             }
         }
     };
@@ -196,7 +196,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             });
             onClose();
         } else {
-            Alert.alert('Erreur', 'Veuillez sélectionner une localisation');
+            Alert.alert('Erreur', t('advancedGPSModal.veuillezSelectionnerUneLocalisation'));
         }
     };
 

@@ -19,8 +19,10 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useWebSocketChat } from '../hooks/useWebSocketChat';
 import { apiGet, apiPost } from '../services/api';
+import { chatbotIntelligentService, ChatbotResponse, IconReference } from '../services/chatbotIntelligentService';
 import { modernColors } from '../theme/modernTheme';
 import NegotiatedPriceModal from './chat/NegotiatedPriceModal';
 import OrderDeliveryModal from './delivery/OrderDeliveryModal';
@@ -30,7 +32,6 @@ import ProductCommentsSection from './ProductCommentsSection';
 import ProductGalleryPickerModal from './ProductGalleryPickerModal';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ChatModalMobileProps {
     visible: boolean;
@@ -65,7 +66,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     initialMessages
 }) => {
     const navigation = useNavigation();
-    const { t } = useLanguageSafe();
+    const { t, language } = useLanguageSafe();
     const [newMessage, setNewMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -110,6 +111,13 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     // États pour les appels internes
     const [showCallModal, setShowCallModal] = useState(false);
     const [callType, setCallType] = useState<'audio' | 'video'>('audio');
+
+    // États pour le panneau chatbot IA inline
+    const [showChatbotPanel, setShowChatbotPanel] = useState(false);
+    const [chatbotMessages, setChatbotMessages] = useState<Array<{ id: string; text: string; isUser: boolean; response?: ChatbotResponse }>>([]);
+    const [chatbotInput, setChatbotInput] = useState('');
+    const [chatbotLoading, setChatbotLoading] = useState(false);
+    const chatbotScrollRef = useRef<ScrollView>(null);
 
     const scrollViewRef = useRef<any>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -265,7 +273,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         try {
                             await apiPost(`/api/conversations/${service.id}/participants/${userId}`, {});
                             loadParticipants();
-                            Alert.alert('Succès', 'Participant retiré de la conversation');
+                            Alert.alert(t('chatModalMobile.succes'), t('chatModalMobile.participantRetireDeLaConversation'));
                         } catch (error) {
                             console.error('[ChatModalMobile] Erreur retrait participant:', error);
                             Alert.alert('Erreur', 'Impossible de retirer ce participant');
@@ -274,6 +282,82 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 }
             ]
         );
+    };
+
+    // Handler pour le chatbot intelligent — panneau inline
+    const handleChatbotQuery = async (query: string) => {
+        if (!query.trim() || chatbotLoading) return;
+
+        // Ajouter le message utilisateur
+        const userMsg = { id: `user_${Date.now()}`, text: query, isUser: true };
+        setChatbotMessages(prev => [...prev, userMsg]);
+        setChatbotInput('');
+        setChatbotLoading(true);
+
+        try {
+            const recentMsgs = messages.slice(-5).map((m: any) => ({
+                isUser: m.isUser ?? (m.from === 'client'),
+                text: m.text || m.content || '',
+            }));
+            const response = await chatbotIntelligentService.generateChatbotResponse(
+                query,
+                service,
+                recentMsgs,
+                language,
+            );
+
+            const botMsg = {
+                id: `bot_${Date.now()}`,
+                text: response.message,
+                isUser: false,
+                response,
+            };
+            setChatbotMessages(prev => [...prev, botMsg]);
+
+            // Auto-scroll
+            setTimeout(() => chatbotScrollRef.current?.scrollToEnd({ animated: true }), 100);
+        } catch (error) {
+            console.error('[ChatModalMobile] Erreur chatbot:', error);
+            setChatbotMessages(prev => [...prev, {
+                id: `err_${Date.now()}`,
+                text: t('intelligentChat.error'),
+                isUser: false,
+            }]);
+        } finally {
+            setChatbotLoading(false);
+        }
+    };
+
+    const openChatbotPanel = () => {
+        if (!showChatbotPanel) {
+            setShowChatbotPanel(true);
+            if (chatbotMessages.length === 0) {
+                const serviceName = service?.nom || service?.name || 'Yukpo';
+                const welcomeText = t('intelligentChat.welcomeChat', { name: serviceName })
+                    || `Je suis votre assistant IA pour "${serviceName}". Comment puis-je vous aider ?`;
+                const defaultQuickReplies = [
+                    t('chatbot.describeService') || 'Présenter ce service',
+                    t('chatbot.seeProducts') || 'Voir les produits',
+                    t('chatbot.negotiatePrice') || 'Négocier le prix',
+                    t('chatbot.chatFeatures') || 'Fonctionnalités du chat',
+                ];
+                setChatbotMessages([{
+                    id: `welcome_${Date.now()}`,
+                    text: welcomeText,
+                    isUser: false,
+                    response: {
+                        message: welcomeText,
+                        icons: [
+                            { icon: 'info', label: t('chatbot.details') || 'Détails', color: '#6366f1' },
+                            { icon: 'message-circle', label: t('chatbot.contact') || 'Contact', color: '#10b981' },
+                        ],
+                        quickReplies: defaultQuickReplies,
+                    },
+                }]);
+            }
+        } else {
+            setShowChatbotPanel(false);
+        }
     };
 
     const handleSendMessage = async () => {
@@ -363,7 +447,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 ]
             );
         } else {
-            Alert.alert('Contact', 'Aucun numéro de téléphone disponible pour ce prestataire');
+            Alert.alert('Contact', t('chatModalMobile.aucunNumeroDeTelephoneDisponiblePour'));
         }
     };
 
@@ -564,7 +648,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         try {
             const permission = await Audio.requestPermissionsAsync();
             if (permission.status !== 'granted') {
-                Alert.alert('Permission requise', 'Permission microphone nécessaire');
+                Alert.alert('Permission requise', t('chatModalMobile.permissionMicrophoneNecessaire'));
                 return;
             }
 
@@ -607,7 +691,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             setRecordingDuration(0);
         } catch (error) {
             console.error('Erreur enregistrement audio:', error);
-            Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement audio');
+            Alert.alert('Erreur', t('chatModalMobile.impossibleDeDemarrerL'));
             setIsRecording(false);
         }
     };
@@ -684,7 +768,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     // Envoyer message avec médias
     const handleSendWithMedia = async () => {
         if (!newMessage.trim() && selectedImages.length === 0 && !selectedAudio && selectedDocuments.length === 0) {
-            Alert.alert('Message vide', 'Écrivez un message ou ajoutez un média');
+            Alert.alert('Message vide', t('chatModalMobile.ecrivezUnMessageOuAjoutezUn'));
             return;
         }
 
@@ -834,7 +918,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             prestataireInfo?.telephone;
 
                                         if (!whatsappNumber) {
-                                            Alert.alert('WhatsApp', 'Numéro WhatsApp non disponible');
+                                            Alert.alert('WhatsApp', t('chatModalMobile.numeroWhatsappNonDisponible'));
                                             return;
                                         }
 
@@ -884,7 +968,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             if (canOpen) {
                                                 await Linking.openURL(whatsappUrl);
                                             } else {
-                                                Alert.alert('WhatsApp', 'WhatsApp n\'est pas installé sur cet appareil');
+                                                Alert.alert('WhatsApp', t('chatModalMobile.estPasInstalleSurCetAppareil'));
                                             }
                                         } catch (error) {
                                             console.error('Erreur ouverture WhatsApp:', error);
@@ -988,8 +1072,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     </View>
                                 ) : (
                                     <>
-                                        {/* ✅ NOUVEAU: Afficher l'image si présente */}
-                                        {message.type === 'image' && message.imageUrl && (
+                                        {/* ✅ NOUVEAU: Afficher lt('chatModalMobile.imageSiPresenteMessagetype')image' && message.imageUrl && (
                                             <Image
                                                 source={{ uri: message.imageUrl }}
                                                 style={styles.messageImage}
@@ -997,8 +1080,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             />
                                         )}
 
-                                        {/* ✅ NOUVEAU: Afficher l'audio si présent */}
-                                        {message.type === 'audio' && message.audioUrl && (
+                                        {/* ✅ NOUVEAU: Afficher lt('chatModalMobile.audioSiPresentMessagetype')audio' && message.audioUrl && (
                                             <View style={styles.audioContainer}>
                                                 <SafeIcon name="mic" size={20} color={message.from === 'client' ? '#FFFFFF' : modernColors.primary} />
                                                 <Text style={[
@@ -1303,7 +1385,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                     }
                                                 }));
                                                 buttons.push({ text: t('common.cancel'), style: 'cancel' });
-                                                Alert.alert('Sélectionner un produit', 'Choisissez le produit à livrer', buttons);
+                                                Alert.alert(t('chatModalMobile.selectionnerUnProduit'), t('chatModalMobile.choisissezLeProduitALivrer'), buttons);
                                             }
                                         } else {
                                             Alert.alert('Erreur', 'Impossible de charger les produits');
@@ -1371,7 +1453,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             );
                         })()}
 
-                        {/* ✅ NOUVEAU: Bouton "Négocier le prix" */}
+                        {/* ✅ NOUVEAU: Bouton t('chatModalMobile.negocierLePrix') */}
                         <TouchableOpacity
                             style={styles.mediaButton}
                             onPress={async () => {
@@ -1432,7 +1514,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         console.log('[ChatModalMobile] Produits avec prix:', productsWithPrice.length, '/', products.length);
 
                                         if (productsWithPrice.length === 0) {
-                                            Alert.alert('Aucun prix', 'Aucun produit n\'a de prix défini pour la négociation');
+                                            Alert.alert('Aucun prix', t('chatModalMobile.aDePrixDefiniPourLa'));
                                             return;
                                         }
 
@@ -1451,7 +1533,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             // Si plusieurs produits, afficher un sélecteur
                                             const productName = (p: any) => p.name || p.titre || (p.titre_service?.valeur) || (typeof p.titre_service === 'string' ? p.titre_service : null) || 'Produit';
                                             Alert.alert(
-                                                'Négocier le prix',
+                                                t('chatModalMobile.negocierLePrix'),
                                                 t('chatModalMobile.choisissezLeProduitPourLequelVous'),
                                                 productsWithPrice.map((product: any, index: number) => {
                                                     const originalPrice = extractNumericPrice(product);
@@ -1517,6 +1599,14 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             <SafeIcon name="smile" size={20} color={modernColors.textSecondary} />
                         </TouchableOpacity>
 
+                        {/* Bouton d'assistance IA — ouvre le panneau chatbot inline */}
+                        <TouchableOpacity
+                            style={[styles.aiButton, showChatbotPanel && styles.aiButtonActive]}
+                            onPress={openChatbotPanel}
+                        >
+                            <SafeIcon name={showChatbotPanel ? 'x' : 'bot'} size={20} color={showChatbotPanel ? modernColors.error : '#6366f1'} />
+                        </TouchableOpacity>
+
                         <TextInput
                             style={styles.textInput}
                             value={newMessage}
@@ -1524,7 +1614,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             onSelectionChange={(event) => {
                                 setCursorPosition(event.nativeEvent.selection.start);
                             }}
-                            placeholder={replyingTo ? "Tapez votre réponse..." : "Tapez votre message... (@ pour mentionner)"}
+                            placeholder={replyingTo ? t('chatModalMobile.tapezVotreReponse') : "Tapez votre message... (@ pour mentionner, 🤖 pour l'aide)"}
                             placeholderTextColor={modernColors.textSecondary}
                             multiline
                             maxLength={500}
@@ -1745,6 +1835,106 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     </View>
                 </View>
             </Modal>
+
+            {/* Panneau chatbot IA inline */}
+            {showChatbotPanel && (
+                <View style={styles.chatbotOverlay}>
+                    <View style={styles.chatbotPanel}>
+                        {/* Header du chatbot */}
+                        <View style={styles.chatbotHeader}>
+                            <View style={styles.chatbotHeaderLeft}>
+                                <View style={styles.chatbotAvatar}>
+                                    <SafeIcon name="cpu" size={16} color="#FFFFFF" />
+                                </View>
+                                <Text style={styles.chatbotTitle}>{t('intelligentChat.title')}</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setShowChatbotPanel(false)} style={styles.chatbotCloseBtn}>
+                                <SafeIcon name="x" size={18} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Messages du chatbot */}
+                        <ScrollView
+                            ref={chatbotScrollRef}
+                            style={styles.chatbotMessages}
+                            contentContainerStyle={styles.chatbotMessagesContent}
+                            onContentSizeChange={() => chatbotScrollRef.current?.scrollToEnd({ animated: true })}
+                        >
+                            {chatbotMessages.map((msg) => (
+                                <View key={msg.id} style={[
+                                    styles.chatbotBubbleRow,
+                                    msg.isUser ? styles.chatbotBubbleRowRight : styles.chatbotBubbleRowLeft,
+                                ]}>
+                                    <View style={[
+                                        styles.chatbotBubble,
+                                        msg.isUser ? styles.chatbotBubbleUser : styles.chatbotBubbleBot,
+                                    ]}>
+                                        <Text style={[
+                                            styles.chatbotBubbleText,
+                                            msg.isUser ? styles.chatbotBubbleTextUser : styles.chatbotBubbleTextBot,
+                                        ]}>{msg.text}</Text>
+                                    </View>
+
+                                    {!msg.isUser && msg.response?.icons && msg.response.icons.length > 0 && (
+                                        <View style={styles.chatbotIconsRow}>
+                                            {msg.response.icons.map((ref: IconReference, idx: number) => (
+                                                <View key={idx} style={[styles.chatbotIconChip, { borderColor: ref.color || modernColors.primary }]}>
+                                                    <SafeIcon name={ref.icon} size={14} color={ref.color || modernColors.primary} />
+                                                    <Text style={[styles.chatbotIconLabel, { color: ref.color || modernColors.primary }]}>{ref.label}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    )}
+
+                                    {/* Quick replies */}
+                                    {!msg.isUser && msg.response?.quickReplies && msg.response.quickReplies.length > 0 && (
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chatbotQuickReplies}>
+                                            {msg.response.quickReplies.map((qr, idx) => (
+                                                <TouchableOpacity
+                                                    key={idx}
+                                                    style={styles.chatbotQuickReplyBtn}
+                                                    onPress={() => handleChatbotQuery(qr)}
+                                                >
+                                                    <Text style={styles.chatbotQuickReplyText}>{qr}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+                                    )}
+                                </View>
+                            ))}
+
+                            {chatbotLoading && (
+                                <View style={[styles.chatbotBubbleRow, styles.chatbotBubbleRowLeft]}>
+                                    <View style={[styles.chatbotBubble, styles.chatbotBubbleBot]}>
+                                        <Text style={styles.chatbotBubbleTextBot}>⏳ {t('intelligentChat.thinking')}</Text>
+                                    </View>
+                                </View>
+                            )}
+                        </ScrollView>
+
+                        {/* Input du chatbot */}
+                        <View style={styles.chatbotInputRow}>
+                            <TextInput
+                                style={styles.chatbotTextInput}
+                                value={chatbotInput}
+                                onChangeText={setChatbotInput}
+                                placeholder={t('intelligentChat.placeholder')}
+                                placeholderTextColor={modernColors.textSecondary}
+                                onSubmitEditing={() => handleChatbotQuery(chatbotInput)}
+                                returnKeyType="send"
+                                editable={!chatbotLoading}
+                            />
+                            <TouchableOpacity
+                                style={[styles.chatbotSendBtn, (!chatbotInput.trim() || chatbotLoading) && styles.chatbotSendBtnDisabled]}
+                                onPress={() => handleChatbotQuery(chatbotInput)}
+                                disabled={!chatbotInput.trim() || chatbotLoading}
+                            >
+                                <SafeIcon name="send" size={16} color="#FFFFFF" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            )}
         </Modal>
     );
 };
@@ -1771,21 +1961,13 @@ const styles = StyleSheet.create({
         paddingLeft: 48, // Aligné avec le nom (après le bouton retour)
         paddingRight: 40, // Espace pour ne pas être caché par les boutons
     },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    backButton: {
-        padding: 8,
-        marginRight: 8,
-    },
     headerInfo: {
         flex: 1,
+        marginLeft: 8,
     },
     prestataireName: {
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 18,
+        fontWeight: '600',
         color: modernColors.text,
     },
     headerMeta: {
@@ -2044,6 +2226,10 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     emojiButton: {
+        padding: 8,
+        borderRadius: 8,
+    },
+    aiButton: {
         padding: 8,
         borderRadius: 8,
     },
@@ -2497,6 +2683,184 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '500',
         color: modernColors.textSecondary,
+    },
+    // Chatbot IA inline panel styles
+    aiButtonActive: {
+        backgroundColor: modernColors.error + '15',
+        borderRadius: 20,
+    },
+    chatbotOverlay: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '55%',
+        backgroundColor: 'transparent',
+        zIndex: 100,
+    },
+    chatbotPanel: {
+        flex: 1,
+        backgroundColor: modernColors.surface,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 20,
+        overflow: 'hidden',
+    },
+    chatbotHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+        backgroundColor: '#6366F1',
+    },
+    chatbotHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    chatbotAvatar: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.25)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    chatbotTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    chatbotCloseBtn: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    chatbotMessages: {
+        flex: 1,
+        backgroundColor: modernColors.background,
+    },
+    chatbotMessagesContent: {
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+    },
+    chatbotBubbleRow: {
+        marginBottom: 8,
+    },
+    chatbotBubbleRowLeft: {
+        alignItems: 'flex-start',
+    },
+    chatbotBubbleRowRight: {
+        alignItems: 'flex-end',
+    },
+    chatbotBubble: {
+        maxWidth: '90%',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 16,
+    },
+    chatbotBubbleUser: {
+        backgroundColor: '#6366F1',
+        borderBottomRightRadius: 4,
+    },
+    chatbotBubbleBot: {
+        backgroundColor: modernColors.surface,
+        borderBottomLeftRadius: 4,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    chatbotBubbleText: {
+        fontSize: 14,
+        lineHeight: 20,
+    },
+    chatbotBubbleTextUser: {
+        color: '#FFFFFF',
+    },
+    chatbotBubbleTextBot: {
+        color: modernColors.text,
+    },
+    chatbotIconsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: 6,
+        paddingLeft: 4,
+    },
+    chatbotIconChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 16,
+        borderWidth: 1.5,
+        backgroundColor: modernColors.surface,
+    },
+    chatbotIconLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    chatbotQuickReplies: {
+        marginTop: 8,
+        paddingLeft: 4,
+    },
+    chatbotQuickReplyBtn: {
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        borderRadius: 16,
+        backgroundColor: '#6366F1' + '15',
+        borderWidth: 1,
+        borderColor: '#6366F1' + '40',
+        marginRight: 8,
+    },
+    chatbotQuickReplyText: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#6366F1',
+    },
+    chatbotInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderTopWidth: 1,
+        borderTopColor: modernColors.border,
+        backgroundColor: modernColors.surface,
+    },
+    chatbotTextInput: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 20,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        fontSize: 14,
+        color: modernColors.text,
+        backgroundColor: modernColors.background,
+        maxHeight: 80,
+    },
+    chatbotSendBtn: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: '#6366F1',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    chatbotSendBtnDisabled: {
+        backgroundColor: modernColors.textSecondary,
+        opacity: 0.4,
     },
 });
 

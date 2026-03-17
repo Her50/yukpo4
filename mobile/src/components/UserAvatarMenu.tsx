@@ -6,8 +6,8 @@ import { SUPPORTED_LANGUAGES } from '../i18n';
 import { apiGet } from '../services/api';
 import { theme } from '../theme/theme';
 import { isAdminUser } from '../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
-import WeatherWidget from './WeatherWidget';
 import SmartLanguageSelector from './SmartLanguageSelector';
+import WeatherWidget from './WeatherWidget';
 
 interface UserAvatarMenuProps {
     onNavigate: (route: string) => void;
@@ -130,10 +130,10 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
             description: 'Vendeurs et prestataires que vous suivez'
         },
         {
-            title: t('userAvatarMenu.monHistorique'),
+            title: t('userAvatarMenu.financialTracking'),
             icon: '📊',
-            route: 'SoldeDetail',
-            description: 'Voir mon historique de transactions'
+            route: 'WalletFinancial',
+            description: t('userAvatarMenu.financialTrackingDesc')
         },
         {
             title: t('userAvatarMenu.devenirCoursierYukpo'),
@@ -330,9 +330,9 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                                 }}
                             >
                                 <Text style={styles.balanceLabel}>{t('userAvatarMenu.solde')}</Text>
-                                    <Text style={styles.balanceAmount}>
-                                        {(balance != null ? balance : 0).toLocaleString('fr-FR')} <Text style={styles.balanceCurrency}>FCFA</Text>
-                                    </Text>
+                                <Text style={styles.balanceAmount}>
+                                    {(balance != null ? balance : 0).toLocaleString('fr-FR')} <Text style={styles.balanceCurrency}>FCFA</Text>
+                                </Text>
                             </TouchableOpacity>
 
                             {/* Météo */}

@@ -69,7 +69,7 @@ const HotelBookingPaymentScreen: React.FC = () => {
 
     const handlePayment = async () => {
         if (!reservationId) {
-            Alert.alert('Erreur', 'ID de réservation manquant');
+            Alert.alert(t('hotelBookingPaymentScreen.erreur'), t('hotelBookingPaymentScreen.idDeReservationManquant'));
             return;
         }
 
@@ -82,11 +82,13 @@ const HotelBookingPaymentScreen: React.FC = () => {
             }
         }
 
-        // Vérifier le solde avant paiement
         if (userBalance < montantAPayer) {
             Alert.alert(
-                'Solde insuffisant',
-                `Votre solde (${userBalance.toLocaleString()} ${devise}) est insuffisant pour ce paiement (${montantAPayer.toLocaleString()} ${devise}). Veuillez recharger votre compte.`,
+                t('hotelBookingPaymentScreen.soldeInsuffisant'),
+                t('hotelBookingPaymentScreen.soldeInsuffisantMessage', {
+                    balance: `${userBalance.toLocaleString()} ${devise}`,
+                    amount: `${montantAPayer.toLocaleString()} ${devise}`,
+                }),
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
@@ -110,9 +112,13 @@ const HotelBookingPaymentScreen: React.FC = () => {
             const resData = (response?.data || response) as any;
             if (resData?.success && resData?.data) {
                 const payResult = resData.data;
+                const confirmMsg = t('hotelBookingPaymentScreen.votrePaiementDe', { amount: formatPrice(payResult.amount_paid) })
+                    + (payResult.new_payment_status === 'fully_paid'
+                        ? t('hotelBookingPaymentScreen.nnvotreReservationEstConfirmee')
+                        : `\n\n${t('hotelBookingPaymentScreen.montantRestant')} ${formatPrice(payResult.remaining_amount)}`);
                 Alert.alert(
                     t('hotelBookingPaymentScreen.paiementReussi'),
-                    `Votre paiement de ${formatPrice(payResult.amount_paid)} a été confirmé.${payResult.new_payment_status === 'fully_paid' ? t('hotelBookingPaymentScreen.nnvotreReservationEstConfirmee') : '\n\nMontant restant: ' + formatPrice(payResult.remaining_amount)}`,
+                    confirmMsg,
                     [
                         {
                             text: t('hotelBookingPaymentScreen.voirMonQrCode'),
@@ -134,11 +140,11 @@ const HotelBookingPaymentScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', resData?.message || 'Le paiement a échoué');
+                Alert.alert(t('hotelBookingPaymentScreen.erreur'), resData?.message || t('hotelBookingPaymentScreen.lePaiementAEchoue'));
             }
         } catch (err: any) {
             console.error('[HotelBookingPaymentScreen] Erreur:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors du paiement');
+            Alert.alert(t('hotelBookingPaymentScreen.erreur'), err.message || t('hotelBookingPaymentScreen.erreurPaiement'));
         } finally {
             setLoading(false);
         }
@@ -150,7 +156,7 @@ const HotelBookingPaymentScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Paiement</Text>
+                <Text style={styles.title}>{t('hotelBookingPaymentScreen.paiement')}</Text>
                 <View style={styles.headerSpacer} />
             </View>
 
@@ -173,7 +179,7 @@ const HotelBookingPaymentScreen: React.FC = () => {
                             onPress={() => (navigation as any).navigate('RechargeTokens')}
                         >
                             <SafeIcon name="wallet" size={16} color="#FFFFFF" />
-                            <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 13 }}>Recharger</Text>
+                            <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 13 }}>{t('hotelBookingPaymentScreen.recharger')}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -206,11 +212,11 @@ const HotelBookingPaymentScreen: React.FC = () => {
                                 styles.paymentTypeTitle,
                                 paymentType === 'advance' && styles.paymentTypeTitleActive,
                             ]}>
-                                Paiement d'avance (30%)
+                                {t('hotelBookingPaymentScreen.paiementAvance')}
                             </Text>
                         </View>
                         <Text style={styles.paymentTypeDescription}>
-                            Payez {formatPrice(montantAvance)} maintenant, le reste à l'arrivée
+                            {t('hotelBookingPaymentScreen.payezMaintenant', { amount: formatPrice(montantAvance) })}
                         </Text>
                         <Text style={styles.paymentTypeAmount}>
                             {formatPrice(montantAvance)}
@@ -235,11 +241,11 @@ const HotelBookingPaymentScreen: React.FC = () => {
                                 styles.paymentTypeTitle,
                                 paymentType === 'full' && styles.paymentTypeTitleActive,
                             ]}>
-                                Paiement complet
+                                {t('hotelBookingPaymentScreen.paiementComplet')}
                             </Text>
                         </View>
                         <Text style={styles.paymentTypeDescription}>
-                            Payez le montant total maintenant
+                            {t('hotelBookingPaymentScreen.payezMontantTotal')}
                         </Text>
                         <Text style={styles.paymentTypeAmount}>
                             {formatPrice(montantTotal)}
@@ -253,9 +259,9 @@ const HotelBookingPaymentScreen: React.FC = () => {
 
                     <View style={styles.paymentMethodsGrid}>
                         {[
-                            { value: 'mobile_money', label: 'Mobile Money', icon: 'smartphone' },
+                            { value: 'mobile_money', label: t('hotelBookingPaymentScreen.mobileMoney'), icon: 'smartphone' },
                             { value: 'card', label: t('hotelBookingPayment.carteBancaire'), icon: 'credit-card' },
-                            { value: 'bank_transfer', label: 'Virement bancaire', icon: 'bank' },
+                            { value: 'bank_transfer', label: t('hotelBookingPaymentScreen.virementBancaire'), icon: 'bank' },
                             { value: 'cash', label: t('hotelBookingPayment.especes'), icon: 'dollar-sign' },
                         ].map((method) => (
                             <TouchableOpacity
@@ -291,7 +297,7 @@ const HotelBookingPaymentScreen: React.FC = () => {
                     {paymentType === 'advance' && (
                         <>
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Paiement maintenant</Text>
+                                <Text style={styles.summaryLabel}>{t('hotelBookingPaymentScreen.paiementMaintenant')}</Text>
                                 <Text style={styles.summaryValue}>{formatPrice(montantAvance)}</Text>
                             </View>
                             <View style={styles.summaryRow}>
@@ -310,7 +316,7 @@ const HotelBookingPaymentScreen: React.FC = () => {
 
                 {/* Bouton payer */}
                 <NativeButton
-                    title={loading ? 'Traitement...' : `Payer ${formatPrice(paymentType === 'advance' ? montantAvance : montantTotal)}`}
+                    title={loading ? t('hotelBookingPaymentScreen.traitement') : t('hotelBookingPaymentScreen.payerMontant', { amount: formatPrice(paymentType === 'advance' ? montantAvance : montantTotal) })}
                     onPress={handlePayment}
                     disabled={loading}
                     variant="primary"

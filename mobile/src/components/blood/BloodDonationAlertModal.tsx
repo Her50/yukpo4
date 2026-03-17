@@ -156,12 +156,12 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
 
     const handleCallBanque = () => {
         // TODO: Récupérer le numéro de téléphone de la banque depuis l'API
-        Alert.alert('Appeler', 'Fonctionnalité à venir');
+        Alert.alert('Appeler', t('bloodDonationAlertModal.fonctionnaliteAVenir'));
     };
 
     const handleNavigateToBanque = () => {
         // TODO: Ouvrir la navigation vers la banque de sang
-        Alert.alert('Navigation', 'Fonctionnalité à venir');
+        Alert.alert('Navigation', t('bloodDonationAlertModal.fonctionnaliteAVenir'));
     };
 
     const getUrgencyColor = () => {

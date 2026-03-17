@@ -21,7 +21,7 @@ interface AdvancedTargetingProps {
 
 const INTERESTS = [
     'Immobilier', 'Automobile', 'Mode', 'Technologie', 'Voyage',
-    'Alimentation', 'Sport', t('advancedTargeting.beaute'), 'Éducation', 'Santé',
+    'Alimentation', 'Sport', t('advancedTargeting.beaute'), t('advancedTargeting.education'), t('advancedTargeting.sante'),
 ];
 
 const BEHAVIORS = [
@@ -72,9 +72,7 @@ const [expanded, setExpanded] = useState(false);
                 </TouchableOpacity>
             </View>
 
-            {/* Tranche d'âge */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>{t('advancedTargeting.age')}</Text>
+            {/* Tranche dt('advancedTargeting.ageViewStylestylessectionTextStylestylessectiontit')advancedTargeting.age')}</Text>
                 <View style={styles.ageRow}>
                     <NativeInput
                         placeholder="Min"

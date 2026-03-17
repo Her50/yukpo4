@@ -88,6 +88,7 @@ pub mod gpu_render_service; // ✅ NOUVEAU Phase 7: Service de rendu GPU optimis
 pub mod gpu_service; // ✅ NOUVEAU: Service de gestion GPU automatisé GCP avec scaling
 pub mod hls_dash_service; // ✅ NOUVEAU: Service HLS/DASH pour qualité adaptative serveur
 pub mod hospital_ai_service; // ✅ 2025-01-27: Service IA hôpitaux (recommandations, triage)
+pub mod hotel_financial_service; // ✅ 2026-03-17: Service financier pour partenaires hôtel/meublé
 pub mod hotel_room_management_service; // ✅ 2026-01-27: Service gestion chambres/unités hôtels et meublés
 pub mod hybrid_image_search_service; // ✅ NOUVEAU: Recherche hybride intelligente
 pub mod ia;
@@ -136,9 +137,12 @@ pub mod optimized_media_processor; // ✅ NOUVEAU 2025-01-27: Service optimisé 
 pub mod orchestration_ia;
 pub mod orchestration_ia_optimized;
 pub mod order_preparation_service; // ✅ NOUVEAU : Workflow de préparation des commandes
-pub mod payment_aggregator; // ✅ Agrégateur de paiement (CinetPay/NotchPay) pour Mobile Money + Cartes
+pub mod flutterwave_service; // ✅ 2026-03-17: Flutterwave (pan-africain 30+ pays, M-Pesa, Airtel, Vodafone...)
+pub mod payment_aggregator; // ✅ Agrégateur de paiement (CinetPay/NotchPay/Flutterwave) pour Mobile Money + Cartes
 pub mod payment_matching_service; // ✅ Phase 5 - Matching intelligent modes de paiement (MTN/Orange Money)
 pub mod payment_service;
+pub mod paypal_payment_service; // ✅ 2026-03-17: Service PayPal Orders API v2 (paiements internationaux)
+pub mod stripe_payment_service; // ✅ 2026-03-17: Service Stripe (Visa/Mastercard/Amex/Apple Pay/Google Pay)
 pub mod pharmacy_ai_service; // ✅ 2025-01-27: Service IA pharmacies (interactions, conseils)
 pub mod pharmacy_product_service; // ✅ NOUVEAU: Service produits de pharmacie
 pub mod phone_validation_service;
@@ -280,3 +284,5 @@ pub mod video_transcoding_service; // ✅ NOUVEAU 2026-03-05: Service de transco
 pub mod watermark_service; // ✅ NOUVEAU 2025-01-27: Service de watermark Yukpo pour branding vidéo
 pub mod whatsapp_service; // ✅ NOUVEAU 2026-03-06: Service WhatsApp Business avec routing automatique
 pub mod youtube_audio_service; // ✅ NOUVEAU Phase 2.2: Service YouTube Audio Library // ✅ NOUVEAU Phase 3.2 Améliorations: Service de rendu 3D complet
+pub mod multilingue_service; // ✅ NOUVEAU 2026-03-16: Service multilingue pour notifications
+pub mod paiement_agrege_service; // ✅ NOUVEAU 2026-03-16: Service de paiements agrégés

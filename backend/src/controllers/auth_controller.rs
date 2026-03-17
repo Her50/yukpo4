@@ -223,6 +223,7 @@ pub async fn register_user(
             "chauffeur",
             "hotel",
             "meuble",
+            "libraire",
         ];
 
         // ✅ CORRIGÉ: Ajouter des logs de debug pour identifier le problème

@@ -144,38 +144,6 @@ pub async fn delete_livre_scolaire(
     ))
 }
 
-/// POST /api/livres-scolaires/:id/upload-images
-/// Upload d'images pour un livre (à implémenter avec le service de médias)
-pub async fn upload_images(
-    State(_state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: _user_id, .. }): Extension<AuthenticatedUser>,
-    Path(_livre_id): Path<i32>,
-) -> AppResult<impl IntoResponse> {
-    // TODO: Implémenter upload d'images avec le service de médias existant
-    Ok((
-        axum::http::StatusCode::NOT_IMPLEMENTED,
-        axum::Json(serde_json::json!({
-            "error": "Upload d'images à implémenter"
-        })),
-    ))
-}
-
-/// POST /api/livres-scolaires/:id/upload-video
-/// Upload de vidéo pour un livre (à implémenter avec le service de médias)
-pub async fn upload_video(
-    State(_state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: _user_id, .. }): Extension<AuthenticatedUser>,
-    Path(_livre_id): Path<i32>,
-) -> AppResult<impl IntoResponse> {
-    // TODO: Implémenter upload de vidéo avec le service de médias existant
-    Ok((
-        axum::http::StatusCode::NOT_IMPLEMENTED,
-        axum::Json(serde_json::json!({
-            "error": "Upload de vidéo à implémenter"
-        })),
-    ))
-}
-
 /// GET /api/livres-scolaires/mes-livres
 /// Obtenir les livres de l'utilisateur connecté
 pub async fn get_mes_livres(

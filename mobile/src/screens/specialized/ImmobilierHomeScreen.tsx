@@ -124,7 +124,7 @@ const ImmobilierHomeScreen: React.FC = () => {
         { value: 'location', label: t('immobilierHome.aLouer') },
         { value: 'les_deux', label: t('immobilierHome.venteEtLocation') },
     ];
-    const standings = ['Économique', 'Standard', 'Bon standing', 'Haut standing', 'Luxe / Prestige'];
+    const standings = [t('immobilierHomeScreen.economique'), 'Standard', 'Bon standing', 'Haut standing', 'Luxe / Prestige'];
 
     const sortOptions: { value: SortOption; label: string; icon: string }[] = [
         { value: 'relevance', label: 'Pertinence', icon: 'star' },
@@ -136,8 +136,8 @@ const ImmobilierHomeScreen: React.FC = () => {
 
     // Quick filters (recherches rapides)
     const quickFilters = [
-        { id: 'vente', label: t('immobilierHome.aVendre'), icon: 'tag', statut: 'À vendre' },
-        { id: 'location', label: t('immobilierHome.aLouer'), icon: 'key', statut: 'À louer (bail)' },
+        { id: 'vente', label: t('immobilierHome.aVendre'), icon: 'tag', statut: t('immobilierHomeScreen.aVendre') },
+        { id: 'location', label: t('immobilierHome.aLouer'), icon: 'key', statut: t('immobilierHomeScreen.aLouerBail') },
         { id: 'proche', label: 'Proche de moi', icon: 'map-pin', distance: 10 },
         { id: 'recent', label: t('immobilierHome.nouveautes'), icon: 'clock' },
     ];
@@ -329,12 +329,12 @@ const ImmobilierHomeScreen: React.FC = () => {
                             const dateStr = tomorrow.toISOString().split('T')[0];
                             const resp = await immobilierService.bookVisit(property.id, dateStr, '10:00', 'en_personne');
                             if ((resp as any).success) {
-                                Alert.alert('Succès', 'Visite réservée ! Vous serez contacté pour confirmation.');
+                                Alert.alert(t('immobilierHomeScreen.succes'), t('immobilierHomeScreen.visiteReserveeVousSerezContactePour'));
                             } else {
-                                Alert.alert('Erreur', 'Impossible de réserver la visite.');
+                                Alert.alert('Erreur', t('immobilierHomeScreen.impossibleDeReserverLaVisite'));
                             }
                         } catch (e) {
-                            Alert.alert('Erreur', 'Service momentanément indisponible.');
+                            Alert.alert('Erreur', t('immobilierHomeScreen.serviceMomentanementIndisponible'));
                         }
                     },
                 },
@@ -463,14 +463,14 @@ const ImmobilierHomeScreen: React.FC = () => {
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>
                                 {filters.type_bien === 'hotel'
-                                    ? 'Hôtels'
+                                    ? t('immobilierHomeScreen.hotels')
                                     : filters.type_bien === 'meuble'
                                         ? t('immobilierHomeScreen.meublesLocationsMeublees')
                                         : 'Immobilier'}
                             </Text>
                             {totalResults > 0 && (
                                 <Text style={styles.headerSubtitle}>
-                                    {totalResults} bien{totalResults > 1 ? 's' : ''} trouvé{totalResults > 1 ? 's' : ''}
+                                    {totalResults} bien{totalResults > 1 ? 's' : 't('immobilierHomeScreen.trouvetotalresults1')s' : ''}
                                 </Text>
                             )}
                         </View>

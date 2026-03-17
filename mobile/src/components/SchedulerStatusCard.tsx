@@ -46,12 +46,9 @@ const [data, setData] = useState<StatusData | null>(null);
 
   return (
     <View style="p-4 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 border rounded shadow">
-      <Text style="text-lg font-semibold mb-2">{t('schedulerStatusCard.statutDeLaPlanificationIa')}</Text>
-
-      <Text>
-        État :{" "}
+      <Text style="text-lg font-semibold mb-2t('schedulerStatusCard.tschedulerstatuscardstatutdelaplanificationiatextT') "}
         <Text style={data.enabled ? "text-green-600" : "text-red-500"}>
-          {data.enabled ? "✅ Activée" : "⛔ Désactivée"}
+          {data.enabled ? t('schedulerStatusCard.activee') : t('schedulerStatusCard.desactivee')}
         </Text>
       </Text>
 

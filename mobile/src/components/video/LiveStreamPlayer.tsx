@@ -114,7 +114,7 @@ const [hlsUrl, setHlsUrl] = useState<string | null>(null);
                 onError={(error) => {
                     console.error('[LiveStreamPlayer] Erreur vidéo:', error);
                     setError(t('liveStreamPlayer.erreurDeLectureVideo'));
-                    onError?.(new Error('Erreur de lecture vidéo'));
+                    onError?.(new Error(t('liveStreamPlayer.erreurDeLectureVideo')));
                 }}
                 onLoad={() => {
                     setLoading(false);

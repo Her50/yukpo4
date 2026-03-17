@@ -153,7 +153,7 @@ const [logs, setLogs] = useState<LogEntry[]>([]);
         ).join('\n\n');
 
         await Clipboard.setStringAsync(logText);
-        Alert.alert('✅ Copié !', `${filteredLogs.length} logs copiés dans le presse-papier`);
+        Alert.alert(t('debugPanel.copie'), t('debugPanel.logsCopiesDansLePressepapier', { filteredLogs_length: filteredLogs.length }));
     };
 
     // Partager les logs
@@ -197,7 +197,7 @@ ${logText}
         }, null, 2);
 
         await Clipboard.setStringAsync(jsonData);
-        Alert.alert('✅ JSON Copié !', 'Format JSON copié dans le presse-papier');
+        Alert.alert(t('debugPanel.jsonCopie'), t('debugPanel.formatJsonCopieDansLePressepapier'));
     };
 
     // Effacer les logs
@@ -338,7 +338,7 @@ ${logText}
                                 key={index}
                                 onLongPress={async () => {
                                     await Clipboard.setStringAsync(log.message);
-                                    Alert.alert('✅ Copié !', 'Ce log a été copié');
+                                    Alert.alert(t('debugPanel.copie'), t('debugPanel.ceLogAEteCopie'));
                                 }}
                                 style={styles.logEntry}
                             >

@@ -3,10 +3,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet } from '../../services/api';
 import { SafeIcon } from '../SafeIcon';
 import { NativeButton, NativeCard } from '../SafeNativeDesign';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface QRCodeDisplayProps {
     reservationId: number;
@@ -17,8 +17,8 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
     reservationId,
     onRefresh,
 }) => {
-        const { t } = useLanguageSafe();
-const [qrCode, setQrCode] = useState<{
+    const { t } = useLanguageSafe();
+    const [qrCode, setQrCode] = useState<{
         qr_code: string;
         qr_code_url: string;
         status: string;

@@ -42,8 +42,8 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     currency = 'XAF',
     onReserve,
 }) => {
-        const { t } = useLanguageSafe();
-const [loading, setLoading] = useState(true);
+    const { t } = useLanguageSafe();
+    const [loading, setLoading] = useState(true);
     const [seatMap, setSeatMap] = useState<any[]>([]);
     const [reservedSeats, setReservedSeats] = useState<string[]>([]);
     const [blockedSeats, setBlockedSeats] = useState<string[]>([]);
@@ -74,11 +74,11 @@ const [loading, setLoading] = useState(true);
                 setReservedSeats(availability.reserved_seats || []);
                 setBlockedSeats(availability.blocked_seats || []);
             } else {
-                Alert.alert('Erreur', resData.error || 'Impossible de charger la disponibilité');
+                Alert.alert('Erreur', resData.error || t('busSeatSelector.impossibleDeChargerLaDisponibilite'));
             }
         } catch (error: any) {
             console.error('Erreur chargement disponibilité:', error);
-            Alert.alert('Erreur', 'Impossible de charger la disponibilité des places');
+            Alert.alert('Erreur', t('busSeatSelector.impossibleDeChargerLaDisponibiliteDes'));
         } finally {
             setLoading(false);
         }
@@ -105,7 +105,7 @@ const [loading, setLoading] = useState(true);
                 'Place non disponible',
                 status === 'reserved'
                     ? t('busSeatSelector.cettePlaceEstDejaReservee')
-                    : 'Cette place n\'est pas disponible (bloquée manuellement)'
+                    : t('busSeatSelector.estPasDisponibleBloqueeManuellement')
             );
             return;
         }
@@ -116,7 +116,7 @@ const [loading, setLoading] = useState(true);
         } else {
             // Sélectionner (si pas de limite atteinte)
             if (selectedSeats.length >= maxSeats) {
-                Alert.alert('Limite atteinte', `Vous ne pouvez sélectionner que ${maxSeats} places maximum`);
+                Alert.alert('Limite atteinte', t('busSeatSelector.vousNePouvezSelectionnerQuePlaces', { maxSeats: maxSeats }));
                 return;
             }
             setSelectedSeats([
@@ -179,7 +179,7 @@ const [loading, setLoading] = useState(true);
 
     const handleReserve = () => {
         if (selectedSeats.length === 0) {
-            Alert.alert('Aucune place sélectionnée', 'Veuillez sélectionner au moins une place');
+            Alert.alert(t('busSeatSelector.aucunePlaceSelectionnee'), t('busSeatSelector.veuillezSelectionnerAuMoinsUnePlace'));
             return;
         }
 
@@ -276,8 +276,7 @@ const [loading, setLoading] = useState(true);
                         {selectedSeats.length > 0 && (
                             <View style={styles.selectionInfo}>
                                 <Text style={styles.selectionTitle}>
-                                    {selectedSeats.length} place{selectedSeats.length > 1 ? 's' : ''} sélectionnée
-                                    {selectedSeats.length > 1 ? 's' : ''}
+                                    {String(selectedSeats.length)} place{selectedSeats.length > 1 ? 's' : ''} {t('busSeatSelector.selectionnee')}
                                 </Text>
                                 <View style={styles.selectedSeatsList}>
                                     {selectedSeats.map((seat) => (

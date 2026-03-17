@@ -139,9 +139,9 @@ const HealthServicesHubScreen: React.FC = () => {
         if (!searchQuery.trim()) return;
         const q = searchQuery.trim().toLowerCase();
         // Routing intelligent basé sur le terme recherché
-        if (q.includes('pharmacie') || q.includes('médicament') || q.includes('medicament') || q.includes('doliprane') || q.includes('paracetamol')) {
+        if (q.includes('pharmacie') || q.includes(t('healthServicesHubScreen.medicament')) || q.includes('medicament') || q.includes('doliprane') || q.includes('paracetamol')) {
             (navigation as any).navigate('PharmacieSearch');
-        } else if (q.includes('urgence') || q.includes('hôpital') || q.includes('hopital') || q.includes('clinique')) {
+        } else if (q.includes('urgence') || q.includes(t('healthServicesHubScreen.hopital')) || q.includes('hopital') || q.includes('clinique')) {
             (navigation as any).navigate('HopitalSearch');
         } else if (q.includes('analyse') || q.includes('laboratoire') || q.includes('labo') || q.includes('radio') || q.includes('scanner')) {
             (navigation as any).navigate('LaboratoireSearch');

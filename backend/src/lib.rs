@@ -63,6 +63,7 @@ use crate::routes::{
     health_routes::health_routes,
     // health_structure_routes::health_structure_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     history_routes::history_routes,
+    hotel_financial_routes::hotel_financial_routes, // ✅ 2026-03-17: Routes financières hôtel/meublé
     hotel_room_management_routes::hotel_room_management_routes, // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
     ia_routes::ia_routes,
     kyc_admin_routes::kyc_admin_routes, // ✅ NOUVEAU 2025-01-29: Routes admin KYC
@@ -243,6 +244,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ NOUVEAU: Routes WebSocket pour signaling WebRTC (appels audio/vidéo)
     let webrtc_manager = crate::websocket::create_webrtc_manager();
     let webrtc_signaling_ws = crate::websocket::create_webrtc_router(webrtc_manager);
+    let taxi_realtime_metrics = crate::routes::taxi_realtime_metrics_routes::create_taxi_realtime_metrics_routes(state.clone());
 
     // ✅ Routes critiques ajoutées
     let delivery = delivery_routes(state.clone());
@@ -329,10 +331,15 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let feature_flags = feature_flags_routes(state.clone()); // ✅ NOUVEAU: Routes pour feature flags (résout 404 mobile)
     let gpu = crate::routes::gpu_routes::gpu_routes(state.clone()); // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
     let hotel_management = hotel_room_management_routes(state.clone()); // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
+    let hotel_financial = hotel_financial_routes(state.clone()); // ✅ 2026-03-17: Routes financières hôtel/meublé
     let assurance = assurance_routes(state.clone()); // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
     let auto_search = auto_search_routes(state.clone()); // ✅ NOUVEAU 2026-03-07: Routes recherche automobile intelligente
     let supermarket = supermarket_routes(state.clone()); // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
     let followers = followers_routes(state.clone()); // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
+
+    // ✅ NOUVEAU 2026-03-16: Routes pour le réseau de librairies
+    let librairie_network = crate::routes::librairie_network_routes::librairie_network_routes(state.clone());
+    let paiement_agrege = crate::routes::paiement_agrege_routes::paiement_agrege_routes(state.clone());
 
     // ✅ NOUVEAU 2026-03-06: Configuration WhatsApp Business
     let whatsapp = whatsapp_routes::create_whatsapp_routes(state.clone());
@@ -379,7 +386,8 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(websocket)
         .merge(chat_websocket.with_state(state.clone()))
         .merge(flash_sale_websocket.with_state(state.clone()))
-        .merge(webrtc_signaling_ws.with_state(state.clone())) // ✅ NOUVEAU: WebSocket signaling WebRTC
+        .merge(webrtc_signaling_ws.with_state(state.clone()))
+        .merge(taxi_realtime_metrics)
         // ✅ Routes critiques ajoutées
         .merge(delivery)
         .merge(delivery_public)
@@ -425,10 +433,13 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(feature_flags) // ✅ NOUVEAU: Routes pour feature flags (résout 404 mobile)
         .merge(gpu) // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
         .merge(hotel_management) // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
+        .merge(hotel_financial) // ✅ 2026-03-17: Routes financières hôtel/meublé
         .merge(assurance) // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
         .merge(auto_search) // ✅ NOUVEAU 2026-03-07: Routes recherche automobile intelligente
         .merge(supermarket) // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
         .merge(followers) // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
+        .merge(librairie_network) // ✅ NOUVEAU 2026-03-16: Routes réseau de librairies
+        .merge(paiement_agrege) // ✅ NOUVEAU 2026-03-16: Routes paiements agrégés
         .merge(whatsapp) // ✅ NOUVEAU 2026-03-06: Routes WhatsApp Business API
         .merge(test_routes) // ✅ NOUVEAU: Routes pour page de téléchargement APK test
         .merge(mobile_logs)

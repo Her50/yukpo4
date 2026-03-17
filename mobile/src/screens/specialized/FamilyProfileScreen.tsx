@@ -18,7 +18,7 @@ import { modernColors } from '../../theme/modernTheme';
 
 const PREFERENCE_OPTIONS = [
     t('familyProfileScreen.vegetarien'),
-    'Végan',
+    t('familyProfileScreen.vegan'),
     'Halal',
     'Cacher',
     'Sans gluten',
@@ -32,20 +32,20 @@ const CUISINE_STYLES = [
     'Italienne',
     'Asiatique',
     t('familyProfileScreen.mediterraneenne'),
-    'Américaine',
+    t('familyProfileScreen.americaine'),
     'Mexicaine',
     'Indienne',
     'Locale traditionnelle',
 ];
 
-const COOKING_LEVELS = ['débutant', t('familyProfileScreen.intermediaire'), t('familyProfileScreen.avance')];
+const COOKING_LEVELS = [t('familyProfileScreen.debutant'), t('familyProfileScreen.intermediaire'), t('familyProfileScreen.avance')];
 
 const ALLERGY_OPTIONS = [
     'Arachides',
     'Lactose',
     'Gluten',
     'Fruits de mer',
-    'Œufs',
+    t('familyProfileScreen.ufs'),
     'Soja',
     'Noix',
     'Poisson',

@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface CovoiturageResultCardProps {
     covoiturage: {
@@ -28,6 +29,7 @@ interface CovoiturageResultCardProps {
 
 const CovoiturageResultCard: React.FC<CovoiturageResultCardProps> = ({ covoiturage, onPress }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
     const handlePress = () => {
         if (onPress) {

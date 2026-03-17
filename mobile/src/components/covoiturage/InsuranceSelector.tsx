@@ -3,8 +3,8 @@
 
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { SafeIcon } from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface InsuranceSelectorProps {
     onSelect: (coverageType: 'basic' | 'premium' | 'full') => void;
@@ -15,6 +15,7 @@ export const InsuranceSelector: React.FC<InsuranceSelectorProps> = ({
     onSelect,
     selected,
 }) => {
+    const { t } = useLanguageSafe();
     const options = [
         {
             type: 'basic' as const,

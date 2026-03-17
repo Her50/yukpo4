@@ -70,7 +70,7 @@ interface Reservation {
 const HotelDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const { t } = useLanguageSafe();
 
     const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -162,7 +162,7 @@ const HotelDashboardScreen: React.FC = () => {
         pendingReservations: reservations.filter(r => r.reservation_status === 'confirmed' && !r.checked_in_at).length,
         checkedIn: reservations.filter(r => r.checked_in_at && !r.checked_out_at).length,
         totalRevenue: reservations.reduce((sum, r) => sum + (r.prix_total || 0), 0),
-        pendingPayments: reservations.filter(r => r.payment_status !== 'paid').length,
+        pendingPayments: reservations.filter(r => r.payment_status !== 'paid' && r.payment_status !== 'fully_paid').length,
     };
 
     // ✅ Check-in
@@ -307,8 +307,10 @@ const HotelDashboardScreen: React.FC = () => {
     // ✅ Get payment status badge
     const getPaymentBadge = (status: string) => {
         switch (status) {
-            case 'paid': return { label: t('hotelDashboard.paye'), color: '#10B981', bg: '#10B98115' };
-            case 'partial': return { label: t('hotelDashboard.avancePayee'), color: '#F59E0B', bg: '#F59E0B15' };
+            case 'paid':
+            case 'fully_paid': return { label: t('hotelDashboard.paye'), color: '#10B981', bg: '#10B98115' };
+            case 'partial':
+            case 'advance_paid': return { label: t('hotelDashboard.avancePayee'), color: '#F59E0B', bg: '#F59E0B15' };
             case 'pending': return { label: t('hotelDashboard.enAttente'), color: '#EF4444', bg: '#EF444415' };
             default: return { label: status, color: '#6B7280', bg: '#6B728015' };
         }
@@ -347,12 +349,12 @@ const HotelDashboardScreen: React.FC = () => {
                 <View style={[styles.statCard, { borderLeftColor: '#8B5CF6' }]}>
                     <SafeIcon name="banknote" size={22} color="#8B5CF6" />
                     <Text style={styles.statValue}>{formatPrice(stats.totalRevenue)}</Text>
-                    <Text style={styles.statLabel}>Revenus</Text>
+                    <Text style={styles.statLabel}>{t('hotelDashboard.revenus')}</Text>
                 </View>
             </View>
 
             {/* Quick Actions */}
-            <Text style={styles.sectionTitle}>Actions rapides</Text>
+            <Text style={styles.sectionTitle}>{t('hotelDashboard.actionsRapides')}</Text>
             <View style={styles.quickActionsRow}>
                 <TouchableOpacity style={styles.quickAction} onPress={handleAddProperty}>
                     <View style={[styles.quickActionIcon, { backgroundColor: '#3B82F615' }]}>
@@ -370,19 +372,34 @@ const HotelDashboardScreen: React.FC = () => {
                     <View style={[styles.quickActionIcon, { backgroundColor: '#8B5CF615' }]}>
                         <SafeIcon name="scan" size={22} color="#8B5CF6" />
                     </View>
-                    <Text style={styles.quickActionLabel}>Scanner QR</Text>
+                    <Text style={styles.quickActionLabel}>{t('hotelDashboard.scannerQr')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.quickAction} onPress={() => setActiveTab('ai')}>
                     <View style={[styles.quickActionIcon, { backgroundColor: '#F59E0B15' }]}>
                         <SafeIcon name="sparkles" size={22} color="#F59E0B" />
                     </View>
-                    <Text style={styles.quickActionLabel}>IA Insights</Text>
+                    <Text style={styles.quickActionLabel}>{t('hotelDashboard.iaInsights')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('WalletFinancial')}>
                     <View style={[styles.quickActionIcon, { backgroundColor: '#10B98115' }]}>
                         <SafeIcon name="wallet" size={22} color="#10B981" />
                     </View>
-                    <Text style={styles.quickActionLabel}>Portefeuille</Text>
+                    <Text style={styles.quickActionLabel}>{t('hotelDashboard.portefeuille')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickAction} onPress={() => {
+                    Alert.alert(
+                        t('common.deconnexion'),
+                        t('common.confirmDeconnexion'),
+                        [
+                            { text: t('common.cancel'), style: 'cancel' },
+                            { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }
+                        ]
+                    );
+                }}>
+                    <View style={[styles.quickActionIcon, { backgroundColor: '#DC262615' }]}>
+                        <SafeIcon name="log-out" size={22} color="#DC2626" />
+                    </View>
+                    <Text style={styles.quickActionLabel}>{t('common.sortir')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -390,7 +407,7 @@ const HotelDashboardScreen: React.FC = () => {
             {stats.pendingReservations > 0 && (
                 <>
                     <Text style={styles.sectionTitle}>
-                        Arrivées en attente ({stats.pendingReservations})
+                        {t('hotelDashboard.arriveesEnAttente')} ({stats.pendingReservations})
                     </Text>
                     {reservations
                         .filter(r => r.reservation_status === 'confirmed' && !r.checked_in_at)
@@ -412,7 +429,7 @@ const HotelDashboardScreen: React.FC = () => {
             {stats.checkedIn > 0 && (
                 <>
                     <Text style={styles.sectionTitle}>
-                        Clients en séjour ({stats.checkedIn})
+                        {t('hotelDashboard.clientsEnSejour')} ({stats.checkedIn})
                     </Text>
                     {reservations
                         .filter(r => r.checked_in_at && !r.checked_out_at)
@@ -427,7 +444,7 @@ const HotelDashboardScreen: React.FC = () => {
                         <SafeIcon name="building" size={48} color={modernColors.textSecondary} />
                         <Text style={styles.emptyTitle}>{t('hotelDashboard.bienvenueSurVotreDashboard')}</Text>
                         <Text style={styles.emptyText}>
-                            Commencez par ajouter votre premier bien hôtelier pour gérer vos réservations, check-in/out et tarification IA.
+                            {t('hotelDashboard.ajouterPremierBien')}
                         </Text>
                         <NativeButton
                             title={t('hotelDashboard.ajouterUnBien')}
@@ -467,9 +484,9 @@ const HotelDashboardScreen: React.FC = () => {
                     <View style={styles.detailRow}>
                         <SafeIcon name="users" size={14} color={modernColors.textSecondary} />
                         <Text style={styles.detailText}>
-                            {reservation.nombre_adultes} adulte{reservation.nombre_adultes > 1 ? 's' : ''}
-                            {reservation.nombre_enfants ? ` + ${reservation.nombre_enfants} enfant(s)` : ''}
-                            {' · '}{reservation.nombre_chambres} chambre{reservation.nombre_chambres > 1 ? 's' : ''}
+                            {reservation.nombre_adultes} {t('hotelDashboard.adultes').toLowerCase()}
+                            {reservation.nombre_enfants ? ` + ${reservation.nombre_enfants} ${t('hotelDashboard.enfants').toLowerCase()}` : ''}
+                            {' · '}{reservation.nombre_chambres} {t('hotelDashboard.chambres').toLowerCase()}
                         </Text>
                     </View>
                     <View style={styles.detailRow}>
@@ -488,7 +505,7 @@ const HotelDashboardScreen: React.FC = () => {
                             onPress={() => handleCheckIn(reservation)}
                         >
                             <SafeIcon name="log-in" size={16} color="#fff" />
-                            <Text style={styles.actionBtnText}>Check-in</Text>
+                            <Text style={styles.actionBtnText}>{t('hotelDashboard.checkIn')}</Text>
                         </TouchableOpacity>
                     )}
                     {reservation.checked_in_at && !reservation.checked_out_at && (
@@ -497,7 +514,7 @@ const HotelDashboardScreen: React.FC = () => {
                             onPress={() => handleCheckOut(reservation)}
                         >
                             <SafeIcon name="log-out" size={16} color="#fff" />
-                            <Text style={styles.actionBtnText}>Check-out</Text>
+                            <Text style={styles.actionBtnText}>{t('hotelDashboard.checkOut')}</Text>
                         </TouchableOpacity>
                     )}
                     <TouchableOpacity
@@ -507,7 +524,7 @@ const HotelDashboardScreen: React.FC = () => {
                         <SafeIcon name="qr-code" size={16} color="#fff" />
                         <Text style={styles.actionBtnText}>QR</Text>
                     </TouchableOpacity>
-                    {reservation.payment_status !== 'paid' && (
+                    {reservation.payment_status !== 'paid' && reservation.payment_status !== 'fully_paid' && (
                         <TouchableOpacity
                             style={[styles.actionBtn, { backgroundColor: '#3B82F6' }]}
                             onPress={() => (navigation as any).navigate('HotelBookingPayment', {
@@ -517,7 +534,7 @@ const HotelDashboardScreen: React.FC = () => {
                             })}
                         >
                             <SafeIcon name="credit-card" size={16} color="#fff" />
-                            <Text style={styles.actionBtnText}>Payer</Text>
+                            <Text style={styles.actionBtnText}>{t('hotelDashboard.payer')}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -537,7 +554,7 @@ const HotelDashboardScreen: React.FC = () => {
                         <SafeIcon name="calendar" size={48} color={modernColors.textSecondary} />
                         <Text style={styles.emptyTitle}>{t('hotelDashboard.aucuneReservation')}</Text>
                         <Text style={styles.emptyText}>
-                            Les réservations de vos clients apparaîtront ici. Vous pouvez aussi créer des réservations manuelles.
+                            {t('hotelDashboard.reservationsApparaitront')}
                         </Text>
                         <NativeButton
                             title={t('hotelDashboard.nouvelleReservation')}
@@ -571,7 +588,7 @@ const HotelDashboardScreen: React.FC = () => {
                             <Text style={[styles.propertyTypeText, {
                                 color: item.type_bien === 'hotel' ? '#3B82F6' : '#8B5CF6'
                             }]}>
-                                {item.type_bien === 'hotel' ? 'Hôtel' : t('hotelDashboardScreen.meuble')}
+                                {item.type_bien === 'hotel' ? t('hotelDashboardScreen.hotel') : t('hotelDashboardScreen.meuble')}
                             </Text>
                         </View>
                         <View style={[styles.availBadge, {
@@ -585,7 +602,7 @@ const HotelDashboardScreen: React.FC = () => {
                                 color: item.is_available_now ? '#10B981' : '#EF4444',
                                 fontWeight: '600',
                             }}>
-                                {item.is_available_now ? 'Disponible' : 'Complet'}
+                                {item.is_available_now ? t('hotelDashboard.disponible') : t('hotelDashboard.complet')}
                             </Text>
                         </View>
                     </View>
@@ -600,7 +617,7 @@ const HotelDashboardScreen: React.FC = () => {
                     {item.nb_chambres && (
                         <View style={styles.detailRow}>
                             <SafeIcon name="bed-double" size={14} color={modernColors.textSecondary} />
-                            <Text style={styles.detailText}>{item.nb_chambres} chambre{item.nb_chambres > 1 ? 's' : ''}</Text>
+                            <Text style={styles.detailText}>{item.nb_chambres} {t('hotelDashboard.chambres').toLowerCase()}</Text>
                         </View>
                     )}
                     {(item.prix_location_mensuel || item.prix_vente) && (
@@ -608,7 +625,7 @@ const HotelDashboardScreen: React.FC = () => {
                             <SafeIcon name="banknote" size={14} color={modernColors.textSecondary} />
                             <Text style={styles.detailText}>
                                 {item.prix_location_mensuel
-                                    ? `${formatPrice(item.prix_location_mensuel)}/nuit`
+                                    ? `${formatPrice(item.prix_location_mensuel)}/${t('hotelMeubleHome.nuit')}`
                                     : formatPrice(item.prix_vente || 0)}
                             </Text>
                         </View>
@@ -631,7 +648,7 @@ const HotelDashboardScreen: React.FC = () => {
                             onPress={() => handleLoadAIInsights(item.id)}
                         >
                             <SafeIcon name="sparkles" size={16} color="#fff" />
-                            <Text style={styles.actionBtnText}>IA Tarifs</Text>
+                            <Text style={styles.actionBtnText}>{t('hotelDashboard.iaTarifs')}</Text>
                         </TouchableOpacity>
                     </View>
                 </NativeCard>
@@ -643,7 +660,7 @@ const HotelDashboardScreen: React.FC = () => {
                         <SafeIcon name="building" size={48} color={modernColors.textSecondary} />
                         <Text style={styles.emptyTitle}>{t('hotelDashboard.aucunBienEnregistre')}</Text>
                         <Text style={styles.emptyText}>
-                            Ajoutez votre premier bien hôtelier ou meublé pour commencer à gérer vos réservations.
+                            {t('hotelDashboard.ajouterPremierBienMeuble')}
                         </Text>
                         <NativeButton
                             title={t('hotelDashboard.ajouterUnBien')}
@@ -664,10 +681,10 @@ const HotelDashboardScreen: React.FC = () => {
             <NativeCard style={styles.aiCard}>
                 <View style={styles.aiHeader}>
                     <SafeIcon name="sparkles" size={24} color="#F59E0B" />
-                    <Text style={styles.aiTitle}>Intelligence Artificielle</Text>
+                    <Text style={styles.aiTitle}>{t('hotelDashboard.intelligenceArtificielle')}</Text>
                 </View>
                 <Text style={styles.aiDescription}>
-                    Obtenez des insights IA sur vos propriétés : suggestions de tarifs, prévisions de remplissage et optimisations.
+                    {t('hotelDashboard.insightsIaDescription')}
                 </Text>
 
                 {properties.length === 0 ? (
@@ -692,13 +709,13 @@ const HotelDashboardScreen: React.FC = () => {
             {loadingAI && (
                 <View style={styles.aiLoadingContainer}>
                     <ActivityIndicator size="large" color="#F59E0B" />
-                    <Text style={styles.aiLoadingText}>Analyse IA en cours...</Text>
+                    <Text style={styles.aiLoadingText}>{t('hotelDashboard.analyseIaEnCours')}</Text>
                 </View>
             )}
 
             {aiInsights && !loadingAI && (
                 <NativeCard style={styles.aiResultCard}>
-                    <Text style={styles.aiResultTitle}>Insights IA</Text>
+                    <Text style={styles.aiResultTitle}>{t('hotelDashboard.insightsIa')}</Text>
                     {aiInsights.pricing_suggestion && (
                         <View style={styles.insightBlock}>
                             <SafeIcon name="trending-up" size={18} color="#10B981" />
@@ -729,7 +746,7 @@ const HotelDashboardScreen: React.FC = () => {
                         <View style={styles.insightBlock}>
                             <SafeIcon name="lightbulb" size={18} color="#F59E0B" />
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.insightLabel}>Recommandations</Text>
+                                <Text style={styles.insightLabel}>{t('hotelDashboard.recommandations')}</Text>
                                 <Text style={styles.insightValue}>
                                     {Array.isArray(aiInsights.recommendations)
                                         ? aiInsights.recommendations.join('\n')
@@ -801,7 +818,7 @@ const HotelDashboardScreen: React.FC = () => {
                             keyboardType="phone-pad"
                         />
 
-                        <Text style={styles.inputLabel}>Email</Text>
+                        <Text style={styles.inputLabel}>{t('hotelDashboard.email')}</Text>
                         <TextInput
                             style={styles.input}
                             value={newReservation.email_client}
@@ -833,7 +850,7 @@ const HotelDashboardScreen: React.FC = () => {
 
                         <View style={styles.rowInputs}>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.inputLabel}>Adultes</Text>
+                                <Text style={styles.inputLabel}>{t('hotelDashboard.adultes')}</Text>
                                 <TextInput
                                     style={styles.input}
                                     value={newReservation.nombre_adultes}
@@ -842,7 +859,7 @@ const HotelDashboardScreen: React.FC = () => {
                                 />
                             </View>
                             <View style={{ flex: 1, marginLeft: 8 }}>
-                                <Text style={styles.inputLabel}>Enfants</Text>
+                                <Text style={styles.inputLabel}>{t('hotelDashboard.enfants')}</Text>
                                 <TextInput
                                     style={styles.input}
                                     value={newReservation.nombre_enfants}
@@ -851,7 +868,7 @@ const HotelDashboardScreen: React.FC = () => {
                                 />
                             </View>
                             <View style={{ flex: 1, marginLeft: 8 }}>
-                                <Text style={styles.inputLabel}>Chambres</Text>
+                                <Text style={styles.inputLabel}>{t('hotelDashboard.chambres')}</Text>
                                 <TextInput
                                     style={styles.input}
                                     value={newReservation.nombre_chambres}
@@ -861,7 +878,7 @@ const HotelDashboardScreen: React.FC = () => {
                             </View>
                         </View>
 
-                        <Text style={styles.inputLabel}>Prix par nuit ({devise})</Text>
+                        <Text style={styles.inputLabel}>{t('hotelDashboard.prixParNuit', { devise })}</Text>
                         <TextInput
                             style={styles.input}
                             value={newReservation.prix_nuitee}
@@ -870,7 +887,7 @@ const HotelDashboardScreen: React.FC = () => {
                             keyboardType="numeric"
                         />
 
-                        <Text style={styles.inputLabel}>Notes</Text>
+                        <Text style={styles.inputLabel}>{t('hotelDashboard.notes')}</Text>
                         <TextInput
                             style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
                             value={newReservation.notes}
@@ -901,7 +918,7 @@ const HotelDashboardScreen: React.FC = () => {
         );
     }
 
-    const partnerLabel = user?.partner_type === 'meuble' ? t('hotelDashboardScreen.meuble') : 'Hôtel';
+    const partnerLabel = user?.partner_type === 'meuble' ? t('hotelDashboardScreen.meuble') : t('hotelDashboardScreen.hotel');
 
     return (
         <View style={styles.container}>
@@ -915,9 +932,9 @@ const HotelDashboardScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={24} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.headerTitle}>Dashboard {partnerLabel}</Text>
+                        <Text style={styles.headerTitle}>{t('hotelDashboard.dashboard', { partnerLabel })}</Text>
                         <Text style={styles.headerSubtitle}>
-                            {stats.totalProperties} bien{stats.totalProperties > 1 ? 's' : ''} · {stats.checkedIn} en séjour
+                            {stats.totalProperties} {t('hotelDashboard.biens')} · {stats.checkedIn} {t('hotelDashboard.enSejour').toLowerCase()}
                         </Text>
                     </View>
                     <TouchableOpacity onPress={handleScanQR} style={styles.scanButton}>

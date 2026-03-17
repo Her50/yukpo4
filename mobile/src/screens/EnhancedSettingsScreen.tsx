@@ -185,7 +185,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                         phone: profileData.phone,
                     });
 
-                    Alert.alert('Succès', 'Profil mis à jour avec succès');
+                    Alert.alert(t('enhancedSettingsScreen.succes'), t('enhancedSettingsScreen.profilMisAJourAvecSucces'));
                     setCurrentScreen('main');
                 } else {
                     throw new Error(response?.message || t('enhancedSettings.erreurLorsDeLaSauvegarde'));
@@ -193,12 +193,12 @@ const EnhancedSettingsScreen: React.FC = () => {
             } else {
                 // Pour les autres sections, simuler une sauvegarde
                 await new Promise(resolve => setTimeout(resolve, 1000));
-                Alert.alert('Succès', 'Paramètres sauvegardés avec succès');
+                Alert.alert(t('enhancedSettingsScreen.succes'), t('enhancedSettingsScreen.parametresSauvegardesAvecSucces'));
                 setCurrentScreen('main');
             }
         } catch (error) {
             console.error('[EnhancedSettingsScreen] Erreur sauvegarde:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de sauvegarder les paramètres');
+            Alert.alert('Erreur', error.message || t('enhancedSettingsScreen.impossibleDeSauvegarderLesParametres'));
         } finally {
             setLoading(false);
         }
@@ -573,7 +573,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                                             appearance.language === lang && styles.radioOptionTextActive,
                                         ]}
                                     >
-                                        {lang === 'fr' ? t('enhancedSettingsScreen.francais') : lang === 'en' ? 'English' : 'Español'}
+                                        {lang === 'fr' ? t('enhancedSettingsScreen.francais') : lang === 'en' ? 'English' : t('enhancedSettingsScreen.espanol')}
                                     </Text>
                                 </TouchableOpacity>
                             ))}

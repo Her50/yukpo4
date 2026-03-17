@@ -119,7 +119,7 @@ const RegisterScreen: React.FC = () => {
         googleResponse.error?.message?.includes('Custom URI scheme') ||
         googleResponse.error?.message?.includes('invalid_request')) {
         errorMessage = t('registerScreen.configurationOauthManquanteLeSchemaUriPersonnalise') +
-          'URI utilisée: ' + (googleRequest?.redirectUri || t('register.nonDefinie')) + '\n\n' +
+          t('registerScreen.uriUtilisee') + (googleRequest?.redirectUri || t('register.nonDefinie')) + '\n\n' +
           'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
       } else if (googleResponse.error?.code === 'access_denied') {
         errorMessage = t('registerScreen.connexionGoogleAnnulee');
@@ -168,7 +168,7 @@ const RegisterScreen: React.FC = () => {
           setRegistrationSuccess(true);
           toaster.success(t('auth.welcomeOAuth'));
         } else {
-          throw new Error('Token non reçu du serveur');
+          throw new Error(t('registerScreen.tokenNonRecuDuServeur'));
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -410,7 +410,7 @@ const RegisterScreen: React.FC = () => {
         />
         <OAuthButton
           provider="facebook"
-          onPress={() => Alert.alert('OAuth', 'Fonctionnalité Facebook à implémenter')}
+          onPress={() => Alert.alert('OAuth', t('registerScreen.fonctionnaliteFacebookAImplementer'))}
         />
       </View>
 

@@ -1,7 +1,6 @@
 /**
  * Composant global pour gérer les push notifications
- * - Enregistre le token au démarrage si l'utilisateur est connecté
- * - Gère les notifications d'appels entrants
+ * - Enregistre le token au démarrage si lt('pushNotificationManager.utilisateurEstConnecteGereLesNotifications')appels entrants
  * - Affiche les notifications en foreground
  */
 import { useNavigation } from '@react-navigation/native';

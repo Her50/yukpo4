@@ -3,6 +3,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::utils::role_helpers::ensure_admin_role;
 use crate::models::livre_scolaire::{
     calculer_montant_net, calculer_valeur_livre, generer_reference_paquet, BookDeliveryPackage,
     BookDonationRequest, BookUploadSession, CreateDonationRequestPayload,
@@ -256,6 +257,21 @@ pub async fn analyze_recto_verso(
     .map_err(|e| AppError::Internal(format!("Erreur vérification session: {}", e)))?
     .ok_or_else(|| AppError::NotFound("Session non trouvée ou terminée".to_string()))?;
 
+    // ✅ Limite 20 livres par session
+    let current_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM livres_scolaires WHERE upload_session_id = $1",
+    )
+    .bind(&request.session_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    if current_count >= 20 {
+        return Err(AppError::BadRequest(
+            "Limite atteinte : maximum 20 livres par session d'upload.".to_string(),
+        ));
+    }
+
     // Extraire base64 des images
     let recto_b64 = extract_base64(&request.image_recto);
     let verso_b64 = extract_base64(&request.image_verso);
@@ -312,7 +328,6 @@ pub async fn analyze_recto_verso(
         _ => "Bon",
     };
 
-    // ✅ Upload images vers S3-CDN au lieu de stocker base64 brut en PostgreSQL
     let upload_id = Uuid::new_v4().to_string();
     let recto_url = upload_book_image_to_cdn(
         &state.media_storage,
@@ -320,39 +335,25 @@ pub async fn analyze_recto_verso(
         &format!("livres/{}/recto_{}.jpg", user_id, upload_id),
     )
     .await
-    .unwrap_or_else(|e| {
-        error!(
-            "[analyze_recto_verso] Erreur upload recto CDN: {}, fallback base64",
-            e
-        );
-        request.image_recto.clone()
-    });
+    .map_err(|e| {
+        error!("[analyze_recto_verso] Erreur upload recto CDN: {}", e);
+        AppError::Internal(format!("Erreur upload image recto: {}", e))
+    })?;
     let verso_url = upload_book_image_to_cdn(
         &state.media_storage,
         &request.image_verso,
         &format!("livres/{}/verso_{}.jpg", user_id, upload_id),
     )
     .await
-    .unwrap_or_else(|e| {
-        error!(
-            "[analyze_recto_verso] Erreur upload verso CDN: {}, fallback base64",
-            e
-        );
-        request.image_verso.clone()
-    });
+    .map_err(|e| {
+        error!("[analyze_recto_verso] Erreur upload verso CDN: {}", e);
+        AppError::Internal(format!("Erreur upload image verso: {}", e))
+    })?;
 
     info!(
         "[analyze_recto_verso] Images uploadées CDN: recto={}, verso={}",
-        if recto_url.starts_with("http") {
-            "CDN"
-        } else {
-            "base64-fallback"
-        },
-        if verso_url.starts_with("http") {
-            "CDN"
-        } else {
-            "base64-fallback"
-        }
+        &recto_url[..recto_url.len().min(80)],
+        &verso_url[..verso_url.len().min(80)]
     );
 
     // Créer le livre dans la base
@@ -492,9 +493,11 @@ pub async fn analyze_recto_verso(
 /// POST /api/bourse-livre/v2/admin/programmes
 pub async fn create_programme_scolaire(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateProgrammeScolaireRequest>,
 ) -> AppResult<impl IntoResponse> {
+    ensure_admin_role(&user)?;
+    let user_id = user.id;
     info!(
         "[create_programme_scolaire] Admin ID: {}, Titre: {}",
         user_id, payload.titre_livre
@@ -595,7 +598,7 @@ pub async fn get_programmes_scolaires(
     let programmes = match query.fetch_all(&state.pg).await {
         Ok(p) => p,
         Err(e) => {
-            warn!(
+            log::warn!(
                 "[get_programmes_scolaires] DB error (table may not exist yet): {}",
                 e
             );
@@ -1150,6 +1153,170 @@ pub async fn get_my_donation_requests(
 }
 
 // ============================================================================
+// ADMIN DONS — Gestion des demandes de don
+// ============================================================================
+
+/// GET /api/bourse-livre/v2/admin/donations
+/// Liste toutes les demandes de don (admin uniquement)
+pub async fn admin_list_donation_requests(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    ensure_admin_role(&user)?;
+    let requests = sqlx::query_as::<_, BookDonationRequest>(
+        r#"
+        SELECT bdr.* FROM book_donation_requests bdr
+        ORDER BY
+            CASE bdr.statut WHEN 'en_attente' THEN 0 WHEN 'approuve' THEN 1 ELSE 2 END,
+            bdr.created_at DESC
+        LIMIT 200
+        "#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur admin donations: {}", e)))?;
+
+    // Enrichir avec info livre + demandeur
+    let mut enriched = Vec::new();
+    for req in &requests {
+        let livre_info: Option<(Option<String>, Option<String>, Option<String>, Option<String>)> =
+            sqlx::query_as(
+                "SELECT titre, matiere, classe_actuelle, ville FROM livres_scolaires WHERE id = $1",
+            )
+            .bind(req.livre_id)
+            .fetch_optional(&state.pg)
+            .await
+            .unwrap_or(None);
+
+        let demandeur_name: Option<(Option<String>,)> =
+            sqlx::query_as("SELECT full_name FROM users WHERE id = $1")
+                .bind(req.demandeur_id)
+                .fetch_optional(&state.pg)
+                .await
+                .unwrap_or(None);
+
+        let donneur_name: Option<(Option<String>,)> = {
+            let owner_id: Option<(Option<i32>,)> =
+                sqlx::query_as("SELECT user_id FROM livres_scolaires WHERE id = $1")
+                    .bind(req.livre_id)
+                    .fetch_optional(&state.pg)
+                    .await
+                    .unwrap_or(None);
+            if let Some((Some(uid),)) = owner_id {
+                sqlx::query_as("SELECT full_name FROM users WHERE id = $1")
+                    .bind(uid)
+                    .fetch_optional(&state.pg)
+                    .await
+                    .unwrap_or(None)
+            } else {
+                None
+            }
+        };
+
+        enriched.push(json!({
+            "id": req.id,
+            "demandeur_id": req.demandeur_id,
+            "demandeur_nom": demandeur_name.and_then(|n| n.0).unwrap_or_default(),
+            "livre_id": req.livre_id,
+            "livre_titre": livre_info.as_ref().and_then(|l| l.0.as_deref()).unwrap_or("?"),
+            "livre_matiere": livre_info.as_ref().and_then(|l| l.1.as_deref()).unwrap_or("?"),
+            "livre_classe": livre_info.as_ref().and_then(|l| l.2.as_deref()).unwrap_or("?"),
+            "livre_ville": livre_info.as_ref().and_then(|l| l.3.as_deref()).unwrap_or("?"),
+            "donneur_nom": donneur_name.and_then(|n| n.0).unwrap_or_default(),
+            "motif": req.motif,
+            "justificatif_url": req.justificatif_url,
+            "statut": req.statut,
+            "created_at": req.created_at,
+        }));
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "donation_requests": enriched,
+        "total": enriched.len()
+    })))
+}
+
+/// POST /api/bourse-livre/v2/admin/donations/:id/approve
+/// Approuver une demande de don
+#[derive(Debug, Deserialize)]
+pub struct ApproveDonationPayload {
+    pub note_admin: Option<String>,
+}
+
+pub async fn admin_approve_donation(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(donation_id): Path<i32>,
+    Json(payload): Json<ApproveDonationPayload>,
+) -> AppResult<impl IntoResponse> {
+    ensure_admin_role(&user)?;
+    let admin_id = user.id;
+    info!("[admin_approve_donation] Admin: {}, Donation: {}", admin_id, donation_id);
+
+    // Mettre à jour le statut
+    let updated = sqlx::query_as::<_, BookDonationRequest>(
+        r#"
+        UPDATE book_donation_requests
+        SET statut = 'approuve', updated_at = NOW()
+        WHERE id = $1 AND statut = 'en_attente'
+        RETURNING *
+        "#,
+    )
+    .bind(donation_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur approbation don: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Demande non trouvée ou déjà traitée".to_string()))?;
+
+    // Marquer le livre comme indisponible (attribué au demandeur)
+    let _ = sqlx::query(
+        "UPDATE livres_scolaires SET is_available = false WHERE id = $1",
+    )
+    .bind(updated.livre_id)
+    .execute(&state.pg)
+    .await;
+
+    Ok(Json(json!({
+        "success": true,
+        "message": "Don approuvé avec succès",
+        "donation_request": updated
+    })))
+}
+
+/// POST /api/bourse-livre/v2/admin/donations/:id/reject
+pub async fn admin_reject_donation(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(donation_id): Path<i32>,
+    Json(payload): Json<ApproveDonationPayload>,
+) -> AppResult<impl IntoResponse> {
+    ensure_admin_role(&user)?;
+    let admin_id = user.id;
+    info!("[admin_reject_donation] Admin: {}, Donation: {}", admin_id, donation_id);
+
+    let updated = sqlx::query_as::<_, BookDonationRequest>(
+        r#"
+        UPDATE book_donation_requests
+        SET statut = 'refuse', updated_at = NOW()
+        WHERE id = $1 AND statut = 'en_attente'
+        RETURNING *
+        "#,
+    )
+    .bind(donation_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur rejet don: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Demande non trouvée ou déjà traitée".to_string()))?;
+
+    Ok(Json(json!({
+        "success": true,
+        "message": "Demande de don refusée",
+        "donation_request": updated
+    })))
+}
+
+// ============================================================================
 // CALCUL NET POUR ÉCHANGE
 // ============================================================================
 
@@ -1221,9 +1388,11 @@ pub async fn calculate_net_amount(
 /// Upload un fichier PDF/Excel/Image de programme scolaire + extraction IA
 pub async fn upload_programme_file(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: admin_id, .. }): Extension<AuthenticatedUser>,
+    Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<crate::models::livre_scolaire::UploadProgrammeFileRequest>,
 ) -> AppResult<impl IntoResponse> {
+    ensure_admin_role(&user)?;
+    let admin_id = user.id;
     info!(
         "[upload_programme_file] Admin ID: {}, Fichier: {}, Période: {}",
         admin_id, payload.fichier_nom, payload.periode_academique
@@ -1526,7 +1695,7 @@ pub async fn create_book_purchase(
 
     // Vérifier que le livre est en mode vente
     let mode = livre.mode_listing.as_deref().unwrap_or("troc");
-    if mode != "vente" && mode != "troc" {
+    if mode != "vente" && mode != "troc" && mode != "neuf" {
         return Err(AppError::BadRequest(
             "Ce livre n'est pas disponible à l'achat. Mode actuel: ".to_string() + mode,
         ));
@@ -1645,38 +1814,116 @@ pub async fn create_book_purchase(
         purchase.id, montant_total as i64
     );
 
-    // ✅ Débiter le wallet de l'acheteur
-    let paiement_statut = match debit_book_wallet(
-        &state.pg,
-        acheteur_id,
-        montant_total,
-        &format!("Achat livre #{} - {}", purchase.id, livre.titre),
-    )
-    .await
-    {
-        Ok(_) => {
+    let paiement_methode_str = payload.paiement_methode.as_deref().unwrap_or("wallet");
+    let mut payment_redirect_url: Option<String> = None;
+    let mut payment_reference: Option<String> = None;
+
+    let paiement_statut = match paiement_methode_str {
+        "cash" => {
             info!(
-                "[create_book_purchase] ✅ Wallet débité {} XAF pour achat #{}",
-                montant_total as i64, purchase.id
+                "[create_book_purchase] Paiement espèces pour achat #{}, collecte à la livraison",
+                purchase.id
             );
-            "paye"
+            "en_attente_livraison"
         }
-        Err(e) => {
-            error!(
-                "[create_book_purchase] ⚠️ Débit wallet échoué: {}. Achat en attente de paiement.",
-                e
-            );
-            "en_attente"
+        "mobile_money" => {
+            match debit_book_wallet(
+                &state.pg,
+                acheteur_id,
+                montant_total,
+                &format!("Achat livre #{} - {}", purchase.id, livre.titre),
+            )
+            .await
+            {
+                Ok(_) => {
+                    info!(
+                        "[create_book_purchase] Wallet débité {} XAF pour achat #{}",
+                        montant_total as i64, purchase.id
+                    );
+                    "paye"
+                }
+                Err(_) => {
+                    let ref_id = format!("BK-PUR-{}-{}", purchase.id, chrono::Utc::now().timestamp());
+                    payment_reference = Some(ref_id.clone());
+
+                    let aggregator = crate::services::payment_aggregator::PaymentAggregator::new();
+                    match aggregator.initiate_payment(
+                        crate::services::payment_aggregator::InitPaymentRequest {
+                            amount: montant_total as i64,
+                            currency: "XAF".to_string(),
+                            description: format!("Achat livre: {}", livre.titre),
+                            transaction_id: ref_id.clone(),
+                            customer_name: None,
+                            customer_email: None,
+                            customer_phone: None,
+                            return_url: Some(format!(
+                                "yukpo://book-purchase/{}?status=success",
+                                purchase.id
+                            )),
+                            notify_url: Some(format!(
+                                "{}/api/webhooks/book-purchase/{}",
+                                std::env::var("API_BASE_URL").unwrap_or_default(),
+                                purchase.id
+                            )),
+                            channels: Some(vec!["MOBILE_MONEY".to_string()]),
+                            metadata: None,
+                        },
+                    ).await {
+                        Ok(resp) => {
+                            payment_redirect_url = Some(resp.payment_url);
+                            info!(
+                                "[create_book_purchase] Paiement Mobile Money initié pour achat #{}",
+                                purchase.id
+                            );
+                            "en_attente_paiement"
+                        }
+                        Err(e) => {
+                            warn!(
+                                "[create_book_purchase] Erreur initiation paiement: {}",
+                                e
+                            );
+                            "en_attente_paiement"
+                        }
+                    }
+                }
+            }
+        }
+        _ => {
+            match debit_book_wallet(
+                &state.pg,
+                acheteur_id,
+                montant_total,
+                &format!("Achat livre #{} - {}", purchase.id, livre.titre),
+            )
+            .await
+            {
+                Ok(_) => {
+                    info!(
+                        "[create_book_purchase] Wallet débité {} XAF pour achat #{}",
+                        montant_total as i64, purchase.id
+                    );
+                    "paye"
+                }
+                Err(e) => {
+                    error!(
+                        "[create_book_purchase] Débit wallet échoué: {}",
+                        e
+                    );
+                    "en_attente"
+                }
+            }
         }
     };
 
-    // Mettre à jour le statut de paiement
-    sqlx::query("UPDATE book_purchases SET paiement_statut = $1 WHERE id = $2")
-        .bind(paiement_statut)
-        .bind(purchase.id)
-        .execute(&state.pg)
-        .await
-        .ok();
+    sqlx::query(
+        "UPDATE book_purchases SET paiement_statut = $1, paiement_reference = $2 WHERE id = $3",
+    )
+    .bind(paiement_statut)
+    .bind(&payment_reference)
+    .bind(purchase.id)
+    .execute(&state.pg)
+    .await
+    .ok();
 
     // ✅ Enregistrer la commission dans book_exchange_commissions
     if let Err(e) = record_book_commission(
@@ -1704,6 +1951,8 @@ pub async fn create_book_purchase(
             "success": true,
             "purchase": purchase,
             "paiement_statut": paiement_statut,
+            "payment_redirect_url": payment_redirect_url,
+            "payment_reference": payment_reference,
             "breakdown": {
                 "prix_livre": prix_achat,
                 "commission_app": commission,
@@ -2938,26 +3187,14 @@ pub async fn build_intelligent_packages(
 /// (Admin) Constituer les paquets pour TOUS les utilisateurs ayant des trocs non-packagés.
 pub async fn build_all_pending_packages(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(user): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
+    ensure_admin_role(&user)?;
+    let user_id = user.id;
     info!(
         "[build_all_pending_packages] Constitution batch déclenchée par user {}",
         user_id
     );
-
-    // Vérifier que l'utilisateur est admin
-    let is_admin: bool =
-        sqlx::query_scalar("SELECT COALESCE(role = 'admin', false) FROM users WHERE id = $1")
-            .bind(user_id)
-            .fetch_one(&state.pg)
-            .await
-            .unwrap_or(false);
-
-    if !is_admin {
-        return Err(AppError::Forbidden(
-            "Seul un administrateur peut déclencher la constitution batch".to_string(),
-        ));
-    }
 
     let troc_service = crate::services::troc_intelligent_service::TrocIntelligentService::new(
         Arc::new(state.pg.clone()),
@@ -3142,6 +3379,30 @@ pub async fn cancel_book_on_site(
         coursier_id, body.livre_id, body.package_id
     );
 
+    // Vérifier que l'utilisateur est bien le coursier assigné à ce paquet
+    let assigned_courier: Option<i32> = sqlx::query_scalar(
+        "SELECT coursier_id FROM book_delivery_packages WHERE id = $1",
+    )
+    .bind(body.package_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur vérification coursier: {}", e)))?
+    .flatten();
+
+    match assigned_courier {
+        Some(cid) if cid != coursier_id => {
+            return Err(AppError::Forbidden(
+                "Vous n'êtes pas le coursier assigné à ce paquet".to_string(),
+            ));
+        }
+        None => {
+            return Err(AppError::Forbidden(
+                "Aucun coursier n'est assigné à ce paquet".to_string(),
+            ));
+        }
+        _ => {}
+    }
+
     let svc = crate::services::troc_intelligent_service::TrocIntelligentService::new(Arc::new(
         state.pg.clone(),
     ));
@@ -3237,4 +3498,641 @@ async fn mark_commissions_paid(
         .map_err(|e| AppError::Internal(format!("MAJ commission: {}", e)))?;
     }
     Ok(())
+}
+
+// ============================================================================
+// SUGGESTIONS INTELLIGENTES — Autocomplete multi-critères
+// ============================================================================
+
+/// GET /api/bourse-livre/v2/suggestions?classe=6ème
+/// Retourne les matières disponibles, le nombre de livres, et les livres populaires pour une classe
+#[derive(Debug, Deserialize)]
+pub struct SuggestionsQuery {
+    pub classe: Option<String>,
+    pub matiere: Option<String>,
+    pub query: Option<String>, // texte libre (titre/auteur)
+}
+
+pub async fn get_smart_suggestions(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<SuggestionsQuery>,
+) -> AppResult<impl IntoResponse> {
+    use sqlx::Row;
+
+    let mut result = json!({ "success": true });
+
+    // 1. Matières disponibles avec comptage pour la classe sélectionnée
+    if let Some(ref classe) = params.classe {
+        let matieres_rows = sqlx::query(
+            r#"
+            SELECT matiere, COUNT(*) as count,
+                   COUNT(*) FILTER (WHERE mode_listing = 'troc') as troc_count,
+                   COUNT(*) FILTER (WHERE mode_listing = 'vente') as vente_count,
+                   COUNT(*) FILTER (WHERE mode_listing = 'don') as don_count
+            FROM livres_scolaires
+            WHERE classe_actuelle = $1 AND is_available = true AND is_active = true
+                  AND matiere IS NOT NULL AND matiere != ''
+            GROUP BY matiere
+            ORDER BY count DESC
+            "#,
+        )
+        .bind(classe)
+        .fetch_all(&state.pg)
+        .await
+        .unwrap_or_default();
+
+        let matieres: Vec<serde_json::Value> = matieres_rows.iter().map(|r| {
+            json!({
+                "matiere": r.get::<String, _>("matiere"),
+                "count": r.get::<i64, _>("count"),
+                "troc": r.get::<i64, _>("troc_count"),
+                "vente": r.get::<i64, _>("vente_count"),
+                "don": r.get::<i64, _>("don_count"),
+            })
+        }).collect();
+
+        result["matieres_disponibles"] = json!(matieres);
+
+        // Total livres pour cette classe
+        let total: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM livres_scolaires WHERE classe_actuelle = $1 AND is_available = true AND is_active = true",
+        )
+        .bind(classe)
+        .fetch_one(&state.pg)
+        .await
+        .unwrap_or(0);
+        result["total_livres_classe"] = json!(total);
+    }
+
+    // 2. Livres populaires (top 10) pour classe + matière
+    if params.classe.is_some() || params.matiere.is_some() {
+        let mut where_parts = vec!["is_available = true".to_string(), "is_active = true".to_string()];
+        let mut bind_idx = 1u32;
+        let mut binds_vec: Vec<String> = Vec::new();
+
+        if let Some(ref classe) = params.classe {
+            where_parts.push(format!("classe_actuelle = ${}", bind_idx));
+            binds_vec.push(classe.clone());
+            bind_idx += 1;
+        }
+        if let Some(ref matiere) = params.matiere {
+            where_parts.push(format!("matiere = ${}", bind_idx));
+            binds_vec.push(matiere.clone());
+            bind_idx += 1;
+        }
+        if let Some(ref q) = params.query {
+            where_parts.push(format!("(titre ILIKE ${0} OR auteur ILIKE ${0})", bind_idx));
+            binds_vec.push(format!("%{}%", q));
+            #[allow(unused_assignments)]
+            { bind_idx += 1; }
+        }
+
+        let top_sql = format!(
+            "SELECT id, titre, auteur, matiere, classe_actuelle, etat_livre, mode_listing, valeur_calculee, est_au_programme \
+             FROM livres_scolaires WHERE {} ORDER BY est_au_programme DESC NULLS LAST, valeur_calculee ASC NULLS LAST LIMIT 10",
+            where_parts.join(" AND ")
+        );
+
+        let mut top_query = sqlx::query(&top_sql);
+        for b in &binds_vec {
+            top_query = top_query.bind(b);
+        }
+
+        let top_rows = top_query.fetch_all(&state.pg).await.unwrap_or_default();
+
+        let top_livres: Vec<serde_json::Value> = top_rows.iter().map(|r| {
+            json!({
+                "id": r.get::<i32, _>("id"),
+                "titre": r.get::<String, _>("titre"),
+                "auteur": r.try_get::<String, _>("auteur").ok(),
+                "matiere": r.get::<String, _>("matiere"),
+                "classe_actuelle": r.get::<String, _>("classe_actuelle"),
+                "etat_livre": r.get::<String, _>("etat_livre"),
+                "mode_listing": r.try_get::<String, _>("mode_listing").ok(),
+                "valeur_calculee": r.try_get::<rust_decimal::Decimal, _>("valeur_calculee").ok(),
+                "est_au_programme": r.try_get::<bool, _>("est_au_programme").ok(),
+            })
+        }).collect();
+
+        result["top_livres"] = json!(top_livres);
+    }
+
+    // 3. Classes disponibles globalement
+    let classes: Vec<String> = sqlx::query_scalar(
+        "SELECT DISTINCT classe_actuelle FROM livres_scolaires WHERE is_available = true AND is_active = true AND classe_actuelle != '' ORDER BY classe_actuelle",
+    )
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    result["classes_disponibles"] = json!(classes);
+
+    Ok(Json(result))
+}
+
+// ============================================================================
+// LIVRES NEUFS — Catalogue partenaires libraires
+// ============================================================================
+
+/// Payload pour publier des livres neufs (libraire uniquement)
+#[derive(Debug, Deserialize)]
+pub struct PublishNewBooksPayload {
+    pub livres: Vec<NewBookEntry>,
+    pub gps: Option<String>,
+    pub ville: Option<String>,
+    pub quartier: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NewBookEntry {
+    pub programme_scolaire_id: Option<i32>,
+    pub titre: String,
+    pub auteur: Option<String>,
+    pub editeur: Option<String>,
+    pub isbn: Option<String>,
+    pub classe: String,
+    pub matiere: String,
+    pub niveau: Option<String>,
+    pub prix: f64,
+    pub devise: Option<String>,
+    pub stock: Option<i32>,
+    pub image_url: Option<String>,
+}
+
+/// POST /api/bourse-livre/v2/libraire/publish
+/// Permet à un partenaire libraire de publier des livres neufs en lot
+pub async fn libraire_publish_new_books(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<PublishNewBooksPayload>,
+) -> AppResult<impl IntoResponse> {
+    // Vérifier que l'utilisateur est un partenaire libraire
+    let partner: Option<(Option<String>,)> = sqlx::query_as(
+        "SELECT partner_type::text FROM delivery_partners WHERE user_id = $1",
+    )
+    .bind(user.id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+
+    let is_libraire = match &partner {
+        Some((Some(pt),)) => pt == "libraire",
+        _ => false,
+    };
+
+    // Admins can also publish
+    let is_admin = crate::utils::role_helpers::is_admin_role(&user.role);
+
+    if !is_libraire && !is_admin {
+        return Err(AppError::Forbidden(
+            "Seuls les partenaires libraires ou administrateurs peuvent publier des livres neufs"
+                .into(),
+        ));
+    }
+
+    if payload.livres.is_empty() {
+        return Err(AppError::BadRequest("Aucun livre à publier".into()));
+    }
+
+    info!(
+        "[libraire_publish] User: {}, {} livres à publier",
+        user.id,
+        payload.livres.len()
+    );
+
+    let mut published = Vec::new();
+    let mut errors = Vec::new();
+
+    for entry in &payload.livres {
+        if entry.prix <= 0.0 {
+            errors.push(json!({ "titre": entry.titre, "error": "Prix invalide" }));
+            continue;
+        }
+
+        let result = sqlx::query_scalar::<_, i32>(
+            r#"
+            INSERT INTO livres_scolaires (
+                user_id, titre, auteur, editeur, isbn,
+                classe_actuelle, classe_souhaitee, matiere, niveau,
+                etat_livre, etat_classification, mode_listing,
+                prix_detecte, devise_detectee, valeur_calculee, ratio_etat,
+                est_au_programme, programme_scolaire_id,
+                image_recto, gps, ville, quartier,
+                is_available, is_active,
+                ia_analysis_status, situation_troc
+            )
+            VALUES (
+                $1, $2, $3, $4, $5,
+                $6, $6, $7, $8,
+                'Neuf', 'bon', 'neuf',
+                $9, $10, $9, 1.0,
+                $11, $12,
+                $13, $14, $15, $16,
+                true, true,
+                'done', 'offre'
+            )
+            RETURNING id
+            "#,
+        )
+        .bind(user.id)
+        .bind(&entry.titre)
+        .bind(&entry.auteur)
+        .bind(&entry.editeur)
+        .bind(&entry.isbn)
+        .bind(&entry.classe)
+        .bind(&entry.matiere)
+        .bind(&entry.niveau)
+        .bind(entry.prix)
+        .bind(entry.devise.as_deref().unwrap_or("XAF"))
+        .bind(entry.programme_scolaire_id.is_some())
+        .bind(entry.programme_scolaire_id)
+        .bind(&entry.image_url)
+        .bind(&payload.gps)
+        .bind(&payload.ville)
+        .bind(&payload.quartier)
+        .fetch_one(&state.pg)
+        .await;
+
+        match result {
+            Ok(id) => published.push(json!({ "id": id, "titre": entry.titre })),
+            Err(e) => {
+                error!("[libraire_publish] Erreur INSERT '{}': {}", entry.titre, e);
+                errors.push(json!({ "titre": entry.titre, "error": e.to_string() }));
+            }
+        }
+    }
+
+    info!(
+        "[libraire_publish] ✅ {} publiés, {} erreurs",
+        published.len(),
+        errors.len()
+    );
+
+    Ok(Json(json!({
+        "success": true,
+        "published": published,
+        "errors": errors,
+        "total_published": published.len(),
+        "total_errors": errors.len()
+    })))
+}
+
+/// GET /api/bourse-livre/v2/new-books
+/// Catalogue des livres neufs — accessible publiquement
+#[derive(Debug, Deserialize)]
+pub struct NewBooksQuery {
+    pub classe: Option<String>,
+    pub matiere: Option<String>,
+    pub niveau: Option<String>,
+    pub ville: Option<String>,
+    pub search: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+pub async fn browse_new_books(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<NewBooksQuery>,
+) -> AppResult<impl IntoResponse> {
+    let limit = params.limit.unwrap_or(50).min(100);
+    let offset = params.offset.unwrap_or(0);
+
+    let cache_key = format!(
+        "bourse_livre:new:{}:{}:{}:{}:{}:{}",
+        params.classe.as_deref().unwrap_or("all"),
+        params.matiere.as_deref().unwrap_or("all"),
+        params.niveau.as_deref().unwrap_or("all"),
+        params.ville.as_deref().unwrap_or("all"),
+        limit,
+        offset
+    );
+
+    if let Ok(Some(cached)) = state.cache_service.get::<serde_json::Value>(&cache_key).await {
+        return Ok(Json(cached));
+    }
+
+    let mut conditions = vec![
+        "is_available = true".to_string(),
+        "is_active = true".to_string(),
+        "mode_listing = 'neuf'".to_string(),
+    ];
+    let mut bind_idx = 1u32;
+    let mut binds: Vec<String> = Vec::new();
+
+    if let Some(ref classe) = params.classe {
+        conditions.push(format!("classe_actuelle = ${}", bind_idx));
+        binds.push(classe.clone());
+        bind_idx += 1;
+    }
+    if let Some(ref matiere) = params.matiere {
+        conditions.push(format!("matiere = ${}", bind_idx));
+        binds.push(matiere.clone());
+        bind_idx += 1;
+    }
+    if let Some(ref niveau) = params.niveau {
+        conditions.push(format!("niveau = ${}", bind_idx));
+        binds.push(niveau.clone());
+        bind_idx += 1;
+    }
+    if let Some(ref ville) = params.ville {
+        conditions.push(format!("ville ILIKE ${}", bind_idx));
+        binds.push(format!("%{}%", ville));
+        bind_idx += 1;
+    }
+    if let Some(ref search) = params.search {
+        conditions.push(format!(
+            "(titre ILIKE ${0} OR auteur ILIKE ${0})",
+            bind_idx
+        ));
+        binds.push(format!("%{}%", search));
+        #[allow(unused_assignments)]
+        {
+            bind_idx += 1;
+        }
+    }
+
+    let where_clause = conditions.join(" AND ");
+
+    let sql = format!(
+        r#"SELECT ls.id, ls.titre, ls.auteur, ls.editeur, ls.isbn,
+           ls.classe_actuelle, ls.matiere, ls.niveau,
+           ls.prix_detecte as prix_neuf, ls.devise_detectee,
+           ls.image_recto, ls.ville, ls.gps,
+           ls.est_au_programme, ls.programme_scolaire_id,
+           ls.created_at, ls.user_id,
+           u.full_name as libraire_nom
+           FROM livres_scolaires ls
+           LEFT JOIN users u ON u.id = ls.user_id
+           WHERE {}
+           ORDER BY ls.est_au_programme DESC NULLS LAST, ls.created_at DESC
+           LIMIT {} OFFSET {}"#,
+        where_clause, limit, offset
+    );
+
+    let mut query = sqlx::query(&sql);
+    for b in &binds {
+        query = query.bind(b);
+    }
+
+    let rows = query
+        .fetch_all(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+
+    let livres: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            use sqlx::Row;
+            json!({
+                "id": r.try_get::<i32, _>("id").ok(),
+                "titre": r.try_get::<String, _>("titre").ok(),
+                "auteur": r.try_get::<String, _>("auteur").ok(),
+                "editeur": r.try_get::<String, _>("editeur").ok(),
+                "isbn": r.try_get::<String, _>("isbn").ok(),
+                "classe": r.try_get::<String, _>("classe_actuelle").ok(),
+                "matiere": r.try_get::<String, _>("matiere").ok(),
+                "niveau": r.try_get::<String, _>("niveau").ok(),
+                "prix_neuf": r.try_get::<rust_decimal::Decimal, _>("prix_neuf").ok(),
+                "devise": r.try_get::<String, _>("devise_detectee").ok(),
+                "image": r.try_get::<String, _>("image_recto").ok(),
+                "ville": r.try_get::<String, _>("ville").ok(),
+                "est_au_programme": r.try_get::<bool, _>("est_au_programme").ok(),
+                "libraire_nom": r.try_get::<String, _>("libraire_nom").ok(),
+                "mode": "neuf",
+            })
+        })
+        .collect();
+
+    // Compter le total
+    let count_sql = format!(
+        "SELECT COUNT(*) FROM livres_scolaires WHERE {}",
+        where_clause
+    );
+    let mut count_q = sqlx::query_scalar::<_, i64>(&count_sql);
+    for b in &binds {
+        count_q = count_q.bind(b);
+    }
+    let total = count_q.fetch_one(&state.pg).await.unwrap_or(0);
+
+    let result = json!({
+        "success": true,
+        "livres": livres,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    });
+
+    // Cache 5 min
+    let _ = state
+        .cache_service
+        .set(&cache_key, &result)
+        .await;
+
+    Ok(Json(result))
+}
+
+/// GET /api/bourse-livre/v2/compare-prices
+/// Compare prix neufs vs occasion pour une classe/matière donnée
+#[derive(Debug, Deserialize)]
+pub struct ComparePricesQuery {
+    pub classe: String,
+    pub matiere: Option<String>,
+}
+
+pub async fn compare_prices(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<ComparePricesQuery>,
+) -> AppResult<impl IntoResponse> {
+    // Prix neufs (mode_listing = 'neuf')
+    let neufs_sql = if params.matiere.is_some() {
+        r#"SELECT titre, matiere, prix_detecte as prix, 'neuf' as source,
+           editeur, auteur, est_au_programme, ville
+           FROM livres_scolaires
+           WHERE classe_actuelle = $1 AND matiere = $2
+           AND mode_listing = 'neuf' AND is_available = true AND is_active = true
+           ORDER BY est_au_programme DESC NULLS LAST, prix_detecte ASC
+           LIMIT 20"#
+    } else {
+        r#"SELECT titre, matiere, prix_detecte as prix, 'neuf' as source,
+           editeur, auteur, est_au_programme, ville
+           FROM livres_scolaires
+           WHERE classe_actuelle = $1
+           AND mode_listing = 'neuf' AND is_available = true AND is_active = true
+           ORDER BY est_au_programme DESC NULLS LAST, prix_detecte ASC
+           LIMIT 20"#
+    };
+
+    let mut q_neufs = sqlx::query(neufs_sql).bind(&params.classe);
+    if let Some(ref mat) = params.matiere {
+        q_neufs = q_neufs.bind(mat);
+    }
+    let neufs_rows = q_neufs.fetch_all(&state.pg).await.unwrap_or_default();
+
+    // Prix occasion (mode_listing IN ('vente', 'troc'))
+    let occasion_sql = if params.matiere.is_some() {
+        r#"SELECT titre, matiere, valeur_calculee as prix, mode_listing as source,
+           etat_classification, etat_livre, auteur, ville
+           FROM livres_scolaires
+           WHERE classe_actuelle = $1 AND matiere = $2
+           AND mode_listing IN ('vente', 'troc') AND is_available = true AND is_active = true
+           ORDER BY valeur_calculee ASC
+           LIMIT 20"#
+    } else {
+        r#"SELECT titre, matiere, valeur_calculee as prix, mode_listing as source,
+           etat_classification, etat_livre, auteur, ville
+           FROM livres_scolaires
+           WHERE classe_actuelle = $1
+           AND mode_listing IN ('vente', 'troc') AND is_available = true AND is_active = true
+           ORDER BY valeur_calculee ASC
+           LIMIT 20"#
+    };
+
+    let mut q_occ = sqlx::query(occasion_sql).bind(&params.classe);
+    if let Some(ref mat) = params.matiere {
+        q_occ = q_occ.bind(mat);
+    }
+    let occasion_rows = q_occ.fetch_all(&state.pg).await.unwrap_or_default();
+
+    // Prix programme officiel
+    let prog_sql = if params.matiere.is_some() {
+        r#"SELECT titre_livre as titre, matiere, prix_officiel as prix, 'programme' as source,
+           editeur_livre as editeur, auteur_livre as auteur, est_obligatoire
+           FROM programmes_scolaires
+           WHERE classe = $1 AND matiere = $2 AND is_active = true
+           ORDER BY est_obligatoire DESC, titre_livre ASC"#
+    } else {
+        r#"SELECT titre_livre as titre, matiere, prix_officiel as prix, 'programme' as source,
+           editeur_livre as editeur, auteur_livre as auteur, est_obligatoire
+           FROM programmes_scolaires
+           WHERE classe = $1 AND is_active = true
+           ORDER BY est_obligatoire DESC, titre_livre ASC"#
+    };
+
+    let mut q_prog = sqlx::query(prog_sql).bind(&params.classe);
+    if let Some(ref mat) = params.matiere {
+        q_prog = q_prog.bind(mat);
+    }
+    let prog_rows = q_prog.fetch_all(&state.pg).await.unwrap_or_default();
+
+    use sqlx::Row;
+
+    let neufs: Vec<serde_json::Value> = neufs_rows
+        .iter()
+        .map(|r| {
+            json!({
+                "titre": r.try_get::<String, _>("titre").ok(),
+                "matiere": r.try_get::<String, _>("matiere").ok(),
+                "prix": r.try_get::<rust_decimal::Decimal, _>("prix").ok(),
+                "source": "neuf",
+                "editeur": r.try_get::<String, _>("editeur").ok(),
+                "auteur": r.try_get::<String, _>("auteur").ok(),
+                "est_au_programme": r.try_get::<bool, _>("est_au_programme").ok(),
+                "ville": r.try_get::<String, _>("ville").ok(),
+            })
+        })
+        .collect();
+
+    let occasions: Vec<serde_json::Value> = occasion_rows
+        .iter()
+        .map(|r| {
+            json!({
+                "titre": r.try_get::<String, _>("titre").ok(),
+                "matiere": r.try_get::<String, _>("matiere").ok(),
+                "prix": r.try_get::<rust_decimal::Decimal, _>("prix").ok(),
+                "source": r.try_get::<String, _>("source").ok(),
+                "etat": r.try_get::<String, _>("etat_livre").ok(),
+                "etat_classification": r.try_get::<String, _>("etat_classification").ok(),
+                "auteur": r.try_get::<String, _>("auteur").ok(),
+                "ville": r.try_get::<String, _>("ville").ok(),
+            })
+        })
+        .collect();
+
+    let programme: Vec<serde_json::Value> = prog_rows
+        .iter()
+        .map(|r| {
+            json!({
+                "titre": r.try_get::<String, _>("titre").ok(),
+                "matiere": r.try_get::<String, _>("matiere").ok(),
+                "prix_officiel": r.try_get::<rust_decimal::Decimal, _>("prix").ok(),
+                "source": "programme",
+                "editeur": r.try_get::<String, _>("editeur").ok(),
+                "auteur": r.try_get::<String, _>("auteur").ok(),
+                "est_obligatoire": r.try_get::<bool, _>("est_obligatoire").ok(),
+            })
+        })
+        .collect();
+
+    Ok(Json(json!({
+        "success": true,
+        "classe": params.classe,
+        "matiere": params.matiere,
+        "neufs": neufs,
+        "occasions": occasions,
+        "programme_officiel": programme,
+        "resume": {
+            "total_neufs": neufs.len(),
+            "total_occasions": occasions.len(),
+            "total_programme": programme.len(),
+        }
+    })))
+}
+
+// ============================================================================
+// QR CODES POUR LIVRAISON DE LIVRES
+// ============================================================================
+
+/// POST /api/bourse-livre/v2/packages/:id/qr-generate
+pub async fn generate_package_qr(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(package_id): Path<i32>,
+    Json(payload): Json<GenerateQRRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[generate_package_qr] User: {}, Package: {}, Type: {}",
+        user_id, package_id, payload.qr_type
+    );
+
+    if payload.qr_type != "pickup" && payload.qr_type != "delivery" {
+        return Err(AppError::BadRequest(
+            "qr_type must be 'pickup' or 'delivery'".to_string(),
+        ));
+    }
+
+    let qr_service = crate::services::qr_code_service::QRCodeService::new(state.pg.clone());
+    let qr_info = qr_service
+        .generate_book_package_qr(package_id, &payload.qr_type)
+        .await?;
+
+    Ok(Json(json!({ "success": true, "qr": qr_info })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GenerateQRRequest {
+    pub qr_type: String,
+}
+
+/// POST /api/bourse-livre/v2/packages/qr-validate
+pub async fn validate_package_qr(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<ValidateQRRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[validate_package_qr] User: {}, QR: {}",
+        user_id, payload.qr_code
+    );
+
+    let qr_service = crate::services::qr_code_service::QRCodeService::new(state.pg.clone());
+    let result = qr_service
+        .validate_book_package_qr(&payload.qr_code, user_id)
+        .await?;
+
+    Ok(Json(json!({ "success": true, "validation": result })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ValidateQRRequest {
+    pub qr_code: String,
 }

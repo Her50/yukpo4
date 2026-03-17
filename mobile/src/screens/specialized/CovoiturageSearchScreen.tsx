@@ -128,7 +128,7 @@ const CovoiturageSearchScreen: React.FC = () => {
             const quartierDestinationStr = typeof quartierDestination === 'string' ? quartierDestination : (quartierDestination as LocationObject)?.components?.quartier || (quartierDestination as LocationObject)?.place_name || '';
 
             if (!villeDepartStr.trim() && !quartierDepartStr.trim()) {
-                Alert.alert('Erreur', 'Veuillez renseigner au moins la ville ou le quartier de départ');
+                Alert.alert('Erreur', t('covoiturageSearchScreen.veuillezRenseignerAuMoinsLaVille'));
                 return;
             }
             if (!villeDestinationStr.trim() && !quartierDestinationStr.trim()) {
@@ -190,7 +190,7 @@ const CovoiturageSearchScreen: React.FC = () => {
             action: () => {
                 hapticPress();
                 if (!location) {
-                    Alert.alert('GPS requis', 'Activez votre GPS pour utiliser cette fonctionnalité');
+                    Alert.alert('GPS requis', t('covoiturageSearchScreen.activezVotreGpsPourUtiliserCette'));
                     return;
                 }
                 setSearchNearby(true);
@@ -339,7 +339,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                         hapticPress();
                                         setSearchNearby(value);
                                         if (value && !location) {
-                                            Alert.alert('GPS requis', 'Activez votre GPS pour utiliser cette fonctionnalité');
+                                            Alert.alert('GPS requis', t('covoiturageSearchScreen.activezVotreGpsPourUtiliserCette'));
                                         }
                                     }}
                                     trackColor={{ false: '#D1D5DB', true: '#10B981' }}
@@ -444,7 +444,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                                             onSelect={(location: LocationObject) => {
                                                 setVilleDestination(location);
                                             }}
-                                            placeholder={t('covoiturageSearchScreen.lieuD')}arrivée (ville, quartier, établissement...)"
+                                            placeholder={t('covoiturageSearchScreen.lieuD')}
                                             scope="all"
                                             enrichWithBackend={true}
                                             required={true}
@@ -746,10 +746,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                             <Text style={styles.infoTitle}>{t('covoiturageSearch.bonASavoir')}</Text>
                         </View>
                         <Text style={styles.infoText}>
-                            • Le covoiturage permet de partager les frais de transport{'\n'}
-                            • Vérifiez les avis et le profil du conducteur avant de réserver{'\n'}
-                            • La recherche intelligente utilise l'IA pour trouver le meilleur match{'\n'}
-                            • Les trajets à proximité sont mis à jour en temps réel
+                            {`• ${t('covoiturageSearch.bonASavoir')}\n• ${t('covoiturageSearchScreen.verifiezLesAvisEtLeProfil')}\n• ${t('covoiturageSearchScreen.activezVotreGpsPourUtiliserCette')}`}
                         </Text>
                     </View>
                 </KeyboardAwareScreen>

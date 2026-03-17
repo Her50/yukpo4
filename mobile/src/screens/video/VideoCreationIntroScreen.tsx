@@ -216,7 +216,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                         t('videoIntro.slowLoadingMsg'),
                         [{ text: 'OK' }]
                     );
-                } else if (errorMessage.includes('réseau') || errorMessage.includes('connexion') || errorMessage.includes('Network')) {
+                } else if (errorMessage.includes(t('videoCreationIntroScreen.reseau')) || errorMessage.includes('connexion') || errorMessage.includes('Network')) {
                     Alert.alert(
                         t('videoIntro.connectionProblem'),
                         t('videoIntro.connectionProblemMsg'),
@@ -568,7 +568,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                     style={styles.helpButton}
                     onPress={handleShowTutorial}
                     accessibilityLabel="Afficher l'aide"
-                    accessibilityHint="Ouvre le tutoriel de création vidéo"
+                    accessibilityHint=t('videoCreationIntroScreen.ouvreLeTutorielDeCreationVideo')
                 >
                     <SafeIcon name="help-circle" size={24} color={modernColors.primary} />
                 </TouchableOpacity>

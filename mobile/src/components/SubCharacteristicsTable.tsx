@@ -1,8 +1,6 @@
 /**
  * Composant SubCharacteristicsTable
- * Affiche les sous-caractéristiques d'un produit sous forme de tableau éditable
- * Deux colonnes : Label (nom de la caractéristique) et Valeur
- * Permet d'ajouter, modifier et supprimer des lignes
+ * Affiche les sous-caractéristiques dt('subCharacteristicsTable.unProduitSousFormeDeTableau')ajouter, modifier et supprimer des lignes
  */
 
 import React, { useEffect, useRef, useState } from 'react';

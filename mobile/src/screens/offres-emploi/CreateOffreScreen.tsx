@@ -62,7 +62,7 @@ const CreateOffreScreen: React.FC = () => {
 
     const typesContrat = ['CDI', 'CDD', 'Stage', 'Freelance', 'Temps partiel', 'Alternance'];
     const secteurs = [
-        'Informatique', 'Commerce', t('createOffreScreen.sante'), 'Éducation', 'Finance',
+        'Informatique', 'Commerce', t('createOffreScreen.sante'), t('createOffreScreen.education'), 'Finance',
         'Marketing', 'Ressources Humaines', t('createOffreScreen.ingenierie'), 'Design', 'Autre'
     ];
 
@@ -815,10 +815,10 @@ const AIModal: React.FC<AIModalProps> = ({
                                 • "Je cherche un développeur React Native avec 3 ans d'expérience, CDI à Douala, salaire 200k-300k XAF"
                             </Text>
                             <Text style={aiModalStyles.exampleText}>
-                                • "Stage en marketing digital, 6 mois, Yaoundé, télétravail possible"
+                                • t('createOffreScreen.stageEnMarketingDigital6Mois')
                             </Text>
                             <Text style={aiModalStyles.exampleText}>
-                                • "Recherche comptable Bac+3, CDD 12 mois, Douala, compétences en Sage et Excel"
+                                • t('createOffreScreen.rechercheComptableBac3Cdd12Mois')
                             </Text>
                         </View>
 

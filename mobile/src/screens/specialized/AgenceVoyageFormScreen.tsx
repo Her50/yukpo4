@@ -26,6 +26,7 @@ import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import ServiceTeamManager from '../../components/ServiceTeamManager';
 import WeekDaysSelector from '../../components/WeekDaysSelector';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
 import { useFormValidation } from '../../hooks/useFormValidation';
@@ -50,8 +51,11 @@ const SERVICES_OPTIONS = ['Billetterie bus', 'Billetterie avion', 'Organisation 
 const AgenceVoyageFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const { t } = useLanguageSafe();
+    const getDayLabel = (value: number) => ({ 1: t('agenceVoyageForm.jourLundi'), 2: t('agenceVoyageForm.jourMardi'), 3: t('agenceVoyageForm.jourMercredi'), 4: t('agenceVoyageForm.jourJeudi'), 5: t('agenceVoyageForm.jourVendredi'), 6: t('agenceVoyageForm.jourSamedi'), 7: t('agenceVoyageForm.jourDimanche') }[value] || '');
+    const getDayShort = (value: number) => ({ 1: t('agenceVoyageForm.jourLun'), 2: t('agenceVoyageForm.jourMar'), 3: t('agenceVoyageForm.jourMer'), 4: t('agenceVoyageForm.jourJeu'), 5: t('agenceVoyageForm.jourVen'), 6: t('agenceVoyageForm.jourSam'), 7: t('agenceVoyageForm.jourDim') }[value] || '');
+    const servicesLabel = (svc: string) => ({ 'Billetterie bus': t('agenceVoyageForm.billetterieBus'), 'Billetterie avion': t('agenceVoyageForm.billetterieAvion'), 'Organisation voyages': t('agenceVoyageForm.organisationVoyages'), 'Visa': t('agenceVoyageForm.visaService') }[svc] || svc);
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
@@ -112,7 +116,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
         setLoadingAI(true);
         try {
             const resp = await apiPost('/api/ai/chat', {
-                message: `En tant qu'expert en gestion d'agences de voyage, analyse mon agence "${formData.nom_agence}" avec ${selectedDestinations.length} destinations, ${schedules.length} horaires et ${selectedCompagnies.length} compagnies. Destinations: ${selectedDestinations.map((d: any) => d.place_name || d.raw || d).join(', ')}. Services: ${selectedServices.join(', ')}. Donne-moi 3 recommandations concrètes et courtes pour augmenter mon chiffre d'affaires et améliorer la satisfaction client.`,
+                message: `En tant qu'expert en gestion d'agences de voyage, analyse mon agence "${formData.nom_agence}" avec ${selectedDestinations.length} destinations, ${schedules.length} horaires et ${selectedCompagnies.length} compagnies. Destinations: ${selectedDestinations.map((d: any) => d.place_name || d.raw || d).join(', ')}. Services: ${selectedServices.join(', ')}. Donne-moi 3 recommandations concrètes et courtes pour améliorer mon chiffre d'affaires et améliorer la satisfaction client.`,
                 context: 'travel_agency_partner_dashboard',
             });
             const d = (resp?.data || resp) as any;
@@ -234,7 +238,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
 
     const loadBoardingSummary = async (productId: string) => {
         try {
-            const resp = await apiGet(`/api/bus-tickets/${productId}/boarding-summary`);
+            const resp = await apiGet(`/api/bus-tickets/boarding/${productId}/summary`);
             const d = (resp?.data || resp) as any;
             if (d.success) setBoardingSummary(d.summary);
         } catch (e) { console.log('[AgenceVoyage] Boarding:', e); }
@@ -242,7 +246,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
 
     const loadPassengers = async (productId: string) => {
         try {
-            const resp = await apiGet(`/api/bus-tickets/${productId}/passengers`);
+            const resp = await apiGet(`/api/bus-tickets/boarding/${productId}/passengers`);
             const d = (resp?.data || resp) as any;
             setPassengersList(Array.isArray(d?.passengers) ? d.passengers : []);
         } catch (e) { console.log('[AgenceVoyage] Passengers:', e); }
@@ -265,8 +269,8 @@ const AgenceVoyageFormScreen: React.FC = () => {
         const seatsPerRow = model.seatsPerRow || 4;
         const firstRowSeats = model.firstRowSeats || 2;
         let seatNumber = 1;
-        for (let col = 1; col <= firstRowSeats; col++) { seatMap.push({ row: 1, col, seat_id: `1-${col}`, seat_number: seatNumber++, type: 'standard', available: true }); }
-        for (let row = 2; row <= rows; row++) { for (let col = 1; col <= seatsPerRow; col++) { if (seatNumber <= model.total_seats) { seatMap.push({ row, col, seat_id: `${row}-${col}`, seat_number: seatNumber++, type: 'standard', available: true }); } } }
+        for (let col = 1; col <= firstRowSeats; col++) { seatMap.push({ row: 1, col, seat_id: `1 - ${col}`, seat_number: seatNumber++, type: 'standard', available: true }); }
+        for (let row = 2; row <= rows; row++) { for (let col = 1; col <= seatsPerRow; col++) { if (seatNumber <= model.total_seats) { seatMap.push({ row, col, seat_id: `${row} - ${col}`, seat_number: seatNumber++, type: 'standard', available: true }); } } }
         return seatMap;
     };
 
@@ -276,7 +280,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
             setLoading(true);
             const seatMap = generateSeatMap(model);
             const busConfig = { rows: model.rows || Math.ceil(model.total_seats / 4), seatsPerRow: model.seatsPerRow || 4, firstRowSeats: model.firstRowSeats || 2, classe: model.classe };
-            const resp = await apiPost('/api/bus-tickets/products', {
+            const resp = await apiPost('/api/bus-tickets/create-product', {
                 service_id: serviceId, name: model.nom_modele, type: 'ticket_voyage',
                 total_seats: model.total_seats, bus_configuration: busConfig, seat_map: seatMap,
                 price_cents: model.prix_base ? model.prix_base * 100 : null, currency: formData.devise || 'XAF',
@@ -284,7 +288,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
             const d = (resp?.data || resp) as any;
             if (d.success && d.id) {
                 if (agencyData?.id) {
-                    await apiPost('/api/bus-tickets/products/link-agency', {
+                    await apiPost('/api/bus-tickets/link', {
                         agency_id: agencyData.id, product_id: d.id, nom_modele: model.nom_modele,
                         classe: model.classe, equipements: model.equipements,
                     });
@@ -329,7 +333,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
             const payload = {
                 service_id: finalServiceId, nom_agence: nom, adresse: formData.adresse || null,
                 quartier: typeof formData.quartier === 'string' ? formData.quartier : (formData.quartier?.raw || formData.quartier?.place_name || null),
-                gps: selectedGPS || (location ? `${location.coords.latitude},${location.coords.longitude}` : null),
+                gps: selectedGPS || (location ? `${location.coords.latitude}, ${location.coords.longitude}` : null),
                 services_voyage: selectedServices.length > 0 ? selectedServices : null,
                 compagnies_bus: selectedCompagnies.filter(c => c.type === 'bus').map(c => c.name),
                 destinations: selectedDestinations.map(d => d.raw || d.place_name || '').filter(Boolean),
@@ -357,10 +361,10 @@ const AgenceVoyageFormScreen: React.FC = () => {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
             <View style={s.statsGrid}>
                 {[
-                    { label: 'Destinations', value: selectedDestinations.length, icon: 'map-pin', color: '#2563EB' },
-                    { label: 'Compagnies', value: selectedCompagnies.length, icon: 'bus', color: '#F59E0B' },
+                    { label: t('agenceVoyageForm.destinations'), value: selectedDestinations.length, icon: 'map-pin', color: '#2563EB' },
+                    { label: t('agenceVoyageForm.compagnies'), value: selectedCompagnies.length, icon: 'bus', color: '#F59E0B' },
                     { label: t('agenceVoyageForm.horaires'), value: schedules.length, icon: 'clock', color: '#10B981' },
-                    { label: 'Tickets', value: agencyTickets.length, icon: 'ticket', color: '#EF4444' },
+                    { label: t('agenceVoyageForm.ticketsLabel'), value: agencyTickets.length, icon: 'ticket', color: '#EF4444' },
                 ].map((st, i) => (
                     <View key={i} style={[s.statCard, { borderLeftColor: st.color }]}>
                         <SafeIcon name={st.icon as any} size={18} color={st.color} />
@@ -376,7 +380,8 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     { label: t('agenceVoyageForm.ajouterHoraire'), icon: 'plus-circle', color: '#2563EB', onPress: () => { setEditingSchedule(null); setScheduleForm({ departure_city: '', arrival_city: '', departure_times: [], day_of_week: null, notes: '' }); setShowScheduleModal(true); } },
                     { label: t('agenceVoyageForm.monService'), icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
                     { label: t('agenceVoyageForm.modelesBus'), icon: 'truck', color: '#8B5CF6', onPress: () => setActiveTab('bus') },
-                    { label: 'IA Conseils', icon: 'sparkles', color: '#7C3AED', onPress: handleAISuggest },
+                    { label: t('agenceVoyageForm.iaConseils'), icon: 'sparkles', color: '#7C3AED', onPress: handleAISuggest },
+                    { label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon as any} size={22} color={a.color} /></View>
@@ -388,7 +393,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
             {/* Info */}
             <View style={s.infoCard}><SafeIcon name="clock" size={16} color="#6B7280" /><Text style={s.infoText}>{formData.heures_ouverture} — {formData.heures_fermeture}</Text></View>
             {formData.jours_ouverture.length > 0 && (
-                <View style={s.infoCard}><SafeIcon name="calendar" size={16} color="#2563EB" /><Text style={s.infoText}>{formData.jours_ouverture.map(d => DAYS_OF_WEEK.find(w => w.value === d)?.short || '').join(', ')}</Text></View>
+                <View style={s.infoCard}><SafeIcon name="calendar" size={16} color="#2563EB" /><Text style={s.infoText}>{formData.jours_ouverture.map(d => getDayShort(d)).join(', ')}</Text></View>
             )}
             {formData.peut_emettre_tickets_bus && <View style={s.infoCard}><SafeIcon name="ticket" size={16} color="#10B981" /><Text style={s.infoText}>{t('agenceVoyageForm.emissionDeTicketsBusActivee')}</Text></View>}
 
@@ -396,14 +401,14 @@ const AgenceVoyageFormScreen: React.FC = () => {
             {loadingAI && (
                 <View style={[s.infoCard, { backgroundColor: '#FAF5FF', borderLeftColor: '#7C3AED', flexDirection: 'column', alignItems: 'center', paddingVertical: 16 }]}>
                     <ActivityIndicator size="small" color="#7C3AED" />
-                    <Text style={[s.infoText, { color: '#7C3AED', marginTop: 8 }]}>Analyse IA en cours...</Text>
+                    <Text style={[s.infoText, { color: '#7C3AED', marginTop: 8 }]}>{t('agenceVoyageForm.analyseIaEnCours')}</Text>
                 </View>
             )}
             {aiSuggestion && !loadingAI && (
                 <View style={[s.infoCard, { backgroundColor: '#FAF5FF', borderLeftColor: '#7C3AED', flexDirection: 'column', alignItems: 'flex-start' }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                         <SafeIcon name="sparkles" size={16} color="#7C3AED" />
-                        <Text style={{ fontWeight: '700', color: '#5B21B6', fontSize: 14 }}>Recommandations IA</Text>
+                        <Text style={{ fontWeight: '700', color: '#5B21B6', fontSize: 14 }}>{t('agenceVoyageForm.recommandationsIa')}</Text>
                     </View>
                     <Text style={{ fontSize: 13, color: '#374151', lineHeight: 20 }}>{aiSuggestion}</Text>
                     <TouchableOpacity onPress={handleAISuggest} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
@@ -416,14 +421,14 @@ const AgenceVoyageFormScreen: React.FC = () => {
             {/* Recent Schedules */}
             {schedules.length > 0 && (
                 <>
-                    <View style={s.sectionRow}><Text style={s.sectionTitle}>{t('agenceVoyageForm.horairesRecents')}</Text><TouchableOpacity onPress={() => setActiveTab('schedules')}><Text style={s.seeAll}>Tout voir</Text></TouchableOpacity></View>
+                    <View style={s.sectionRow}><Text style={s.sectionTitle}>{t('agenceVoyageForm.horairesRecents')}</Text><TouchableOpacity onPress={() => setActiveTab('schedules')}><Text style={s.seeAll}>{t('agenceVoyageForm.toutVoir')}</Text></TouchableOpacity></View>
                     {schedules.slice(0, 3).map((sch: any, i: number) => (
                         <View key={i} style={s.scheduleCard}>
                             <View style={{ flex: 1 }}>
                                 <Text style={s.scheduleRoute}>{sch.departure_city} → {sch.arrival_city}</Text>
                                 <Text style={s.scheduleTimes}>{(sch.departure_times || []).join(' · ')}</Text>
                             </View>
-                            {sch.day_of_week && <View style={s.dayBadge}><Text style={s.dayBadgeText}>{DAYS_OF_WEEK.find(d => d.value === sch.day_of_week)?.short || ''}</Text></View>}
+                            {sch.day_of_week && <View style={s.dayBadge}><Text style={s.dayBadgeText}>{getDayShort(sch.day_of_week)}</Text></View>}
                         </View>
                     ))}
                 </>
@@ -434,26 +439,26 @@ const AgenceVoyageFormScreen: React.FC = () => {
     // ─── RENDER: Service Form ────────────────────────────────────────────
     const renderServiceForm = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
-            {user?.role !== 'partenaire' && <View style={s.field}><NativeInput label="Nom *" value={formData.nom_agence} onChangeText={t => setFormData({ ...formData, nom_agence: t })} placeholder={t('agenceVoyageForm.exAgenceVoyagesExpress')} /></View>}
+            {user?.role !== 'partenaire' && <View style={s.field}><NativeInput label={t('agenceVoyageForm.nom')} value={formData.nom_agence} onChangeText={t => setFormData({ ...formData, nom_agence: t })} placeholder={t('agenceVoyageForm.exAgenceVoyagesExpress')} /></View>}
             <View style={s.field}>
                 <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
                     <SafeIcon name="map-pin" size={20} color="#2563EB" />
-                    <Text style={s.gpsBtnText}>{selectedGPS ? t('agenceVoyageFormScreen.gpsSelectionne') : 'Position GPS'}</Text>
+                    <Text style={s.gpsBtnText}>{selectedGPS ? t('agenceVoyageFormScreen.gpsSelectionne') : t('agenceVoyageForm.positionGps')}</Text>
                     <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                 </TouchableOpacity>
             </View>
-            {user?.role !== 'partenaire' && <View style={s.field}><NativeInput label="Adresse" value={formData.adresse} onChangeText={t => setFormData({ ...formData, adresse: t })} placeholder={t('agenceVoyageForm.adresseComplete')} /></View>}
+            {user?.role !== 'partenaire' && <View style={s.field}><NativeInput label={t('agenceVoyageForm.adresse')} value={formData.adresse} onChangeText={t => setFormData({ ...formData, adresse: t })} placeholder={t('agenceVoyageForm.adresseComplete')} /></View>}
             <View style={s.field}><LocationSelector label={t('agenceVoyageForm.quartier')} value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, quartier: loc })} placeholder={t('agenceVoyageForm.rechercher')} scope="all" enrichWithBackend /></View>
 
             <Text style={s.label}>{t('agenceVoyageForm.servicesProposes')}</Text>
             <View style={s.chips}>{SERVICES_OPTIONS.map(svc => {
                 const on = selectedServices.includes(svc);
-                return <TouchableOpacity key={svc} style={[s.chip, on && s.chipOn]} onPress={() => setSelectedServices(on ? selectedServices.filter(x => x !== svc) : [...selectedServices, svc])}><Text style={[s.chipText, on && s.chipTextOn]}>{svc}</Text></TouchableOpacity>;
+                return <TouchableOpacity key={svc} style={[s.chip, on && s.chipOn]} onPress={() => setSelectedServices(on ? selectedServices.filter(x => x !== svc) : [...selectedServices, svc])}><Text style={[s.chipText, on && s.chipTextOn]}>{servicesLabel(svc)}</Text></TouchableOpacity>;
             })}</View>
 
-            <View style={s.field}><CompanySelector label="Compagnies de bus" selected={selectedCompagnies} onSelectionChange={setSelectedCompagnies} /></View>
+            <View style={s.field}><CompanySelector label={t('agenceVoyageForm.compagniesDeBus')} selected={selectedCompagnies} onSelectionChange={setSelectedCompagnies} /></View>
             <View style={s.field}>
-                <Text style={s.label}>Destinations</Text>
+                <Text style={s.label}>{t('agenceVoyageForm.destinations')}</Text>
                 {selectedDestinations.map((d, i) => (
                     <View key={i} style={s.destItem}>
                         <Text style={s.destText}>{d.raw || d.place_name}</Text>
@@ -464,13 +469,13 @@ const AgenceVoyageFormScreen: React.FC = () => {
             </View>
 
             <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={[s.field, { flex: 1 }]}><NativeInput label="Ouverture" value={formData.heures_ouverture} onChangeText={t => setFormData({ ...formData, heures_ouverture: t })} placeholder="08:00" /></View>
-                <View style={[s.field, { flex: 1 }]}><NativeInput label="Fermeture" value={formData.heures_fermeture} onChangeText={t => setFormData({ ...formData, heures_fermeture: t })} placeholder="18:00" /></View>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label={t('agenceVoyageForm.ouverture')} value={formData.heures_ouverture} onChangeText={t => setFormData({ ...formData, heures_ouverture: t })} placeholder="08:00" /></View>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label={t('agenceVoyageForm.fermeture')} value={formData.heures_fermeture} onChangeText={t => setFormData({ ...formData, heures_fermeture: t })} placeholder="18:00" /></View>
             </View>
 
             <TouchableOpacity style={s.gpsBtn} onPress={() => setShowWeekDaysModal(true)}>
                 <SafeIcon name="calendar" size={20} color="#2563EB" />
-                <Text style={s.gpsBtnText}>{formData.jours_ouverture.length > 0 ? formData.jours_ouverture.map(d => DAYS_OF_WEEK.find(w => w.value === d)?.short || '').join(', ') : 'Sélectionner jours'}</Text>
+                <Text style={s.gpsBtnText}>{formData.jours_ouverture.length > 0 ? formData.jours_ouverture.map(d => getDayShort(d)).join(', ') : t('agenceVoyageFormScreen.selectionnerJours')}</Text>
                 <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
             </TouchableOpacity>
 
@@ -483,10 +488,10 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     <View style={s.field}><NativeInput label={t('agenceVoyageForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="Email" value={formData.email} onChangeText={t => setFormData({ ...formData, email: t })} placeholder="agence@example.com" keyboardType="email-address" autoCapitalize="none" /></View>
-                    <View style={s.field}><NativeInput label="Site web" value={formData.site_web} onChangeText={t => setFormData({ ...formData, site_web: t })} placeholder="https://..." autoCapitalize="none" /></View>
+                    <View style={s.field}><NativeInput label={t('agenceVoyageForm.siteWeb')} value={formData.site_web} onChangeText={t => setFormData({ ...formData, site_web: t })} placeholder="https://..." autoCapitalize="none" /></View>
                 </>
             )}
-            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? t('agenceVoyageFormScreen.mettreAJour') : 'Enregistrer l\'Agence')} onPress={handleSubmit} disabled={loading || !formData.nom_agence.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
+            <NativeButton title={loading ? t('agenceVoyageForm.enregistrement') : (isDashboardMode ? t('agenceVoyageFormScreen.mettreAJour') : t('agenceVoyageForm.enregistrerAgence'))} onPress={handleSubmit} disabled={loading || !formData.nom_agence.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
         </ScrollView>
     );
 
@@ -508,7 +513,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                             <View style={{ flex: 1 }}>
                                 <Text style={s.scheduleRoute}>{sch.departure_city} → {sch.arrival_city}</Text>
                                 <Text style={s.scheduleTimes}>{(sch.departure_times || []).join(' · ')}</Text>
-                                {sch.day_of_week && <Text style={s.scheduleDay}>{DAYS_OF_WEEK.find(d => d.value === sch.day_of_week)?.label || ''}</Text>}
+                                {sch.day_of_week && <Text style={s.scheduleDay}>{getDayLabel(sch.day_of_week)}</Text>}
                                 {sch.notes && <Text style={s.scheduleNotes}>{sch.notes}</Text>}
                             </View>
                             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -549,11 +554,11 @@ const AgenceVoyageFormScreen: React.FC = () => {
         <Modal visible={showScheduleModal} animationType="slide" transparent onRequestClose={() => setShowScheduleModal(false)}>
             <View style={s.modalOverlay}><View style={s.modalContent}>
                 <View style={s.modalHeader}>
-                    <Text style={s.modalTitle}>{editingSchedule ? 'Modifier' : 'Nouvel horaire'}</Text>
+                    <Text style={s.modalTitle}>{editingSchedule ? t('agenceVoyageForm.modifier') : t('agenceVoyageForm.nouvelHoraire')}</Text>
                     <TouchableOpacity onPress={() => setShowScheduleModal(false)}><SafeIcon name="x" size={24} color="#6B7280" /></TouchableOpacity>
                 </View>
                 <ScrollView style={{ padding: 16, maxHeight: 450 }}>
-                    <View style={s.field}><NativeInput label={t('agenceVoyageForm.villeDepart')} value={scheduleForm.departure_city} onChangeText={t => setScheduleForm({ ...scheduleForm, departure_city: t })} placeholder="Ex: Douala" /></View>
+                    <View style={s.field}><NativeInput label={t('agenceVoyageForm.villeDepart')} value={scheduleForm.departure_city} onChangeText={t => setScheduleForm({ ...scheduleForm, departure_city: t })} placeholder={t('agenceVoyageForm.exDouala')} /></View>
                     <View style={s.field}><NativeInput label={t('agenceVoyageForm.villeArrivee')} value={scheduleForm.arrival_city} onChangeText={t => setScheduleForm({ ...scheduleForm, arrival_city: t })} placeholder={t('agenceVoyageForm.exYaounde')} /></View>
                     <Text style={s.label}>{t('agenceVoyageForm.horairesDeDepart')}</Text>
                     {scheduleForm.departure_times.map((t, i) => (
@@ -571,11 +576,11 @@ const AgenceVoyageFormScreen: React.FC = () => {
                             <Text style={[s.dayBtnText, scheduleForm.day_of_week === d.value && s.dayBtnTextOn]}>{d.short}</Text>
                         </TouchableOpacity>
                     ))}</View>
-                    <View style={[s.field, { marginTop: 16 }]}><NativeInput label="Notes" value={scheduleForm.notes} onChangeText={t => setScheduleForm({ ...scheduleForm, notes: t })} placeholder="Notes..." multiline /></View>
+                    <View style={[s.field, { marginTop: 16 }]}><NativeInput label={t('agenceVoyageForm.notesLabel')} value={scheduleForm.notes} onChangeText={t => setScheduleForm({ ...scheduleForm, notes: t })} placeholder={t('agenceVoyageForm.notesPlaceholder')} multiline /></View>
                 </ScrollView>
                 <View style={s.modalFooter}>
                     <NativeButton title={t('agenceVoyageFormScreen.annuler')} onPress={() => setShowScheduleModal(false)} variant="secondary" style={{ flex: 1 }} />
-                    <NativeButton title={editingSchedule ? 'Modifier' : t('agenceVoyageFormScreen.creer')} onPress={handleSaveSchedule} variant="primary" style={{ flex: 1 }} disabled={loading || !scheduleForm.departure_city.trim() || !scheduleForm.arrival_city.trim() || scheduleForm.departure_times.length === 0} />
+                    <NativeButton title={editingSchedule ? t('agenceVoyageForm.modifier') : t('agenceVoyageFormScreen.creer')} onPress={handleSaveSchedule} variant="primary" style={{ flex: 1 }} disabled={loading || !scheduleForm.departure_city.trim() || !scheduleForm.arrival_city.trim() || scheduleForm.departure_times.length === 0} />
                 </View>
             </View></View>
         </Modal>
@@ -595,7 +600,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     (navigation as any).navigate('BusTicketQRScanner', {
                         onValidate: async (qrData: any) => {
                             try {
-                                const resp = await apiPost('/api/bus-tickets/validate/qr', { qr_code_data: qrData, product_id: selectedBusProduct });
+                                const resp = await apiPost('/api/bus-tickets/validate', { qr_code_data: qrData, product_id: selectedBusProduct });
                                 const d = (resp?.data || resp) as any;
                                 if (d.success) { Alert.alert(t('agenceVoyage.ticketValidated'), t('agenceVoyage.ticketValidatedMsg', { name: d.passenger_name || 'OK', seat: d.seat_number || '?' })); }
                                 else { Alert.alert(t('message.error'), d.error || t('agenceVoyage.ticketInvalid')); }
@@ -603,7 +608,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                         }
                     });
                 }}>
-                    <SafeIcon name="scan" size={16} color="#fff" /><Text style={s.addBtnText}>Scanner QR</Text>
+                    <SafeIcon name="scan" size={16} color="#fff" /><Text style={s.addBtnText}>{t('agenceVoyageForm.scannerQr')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -622,7 +627,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                         </View>
                         <View style={{ flex: 1, minWidth: '45%', alignItems: 'center', padding: 8, backgroundColor: '#FEE2E2', borderRadius: 8 }}>
                             <Text style={{ fontSize: 20, fontWeight: '700', color: '#EF4444' }}>{boardingSummary.no_show_passengers}</Text>
-                            <Text style={{ fontSize: 11, color: '#6B7280' }}>Absents</Text>
+                            <Text style={{ fontSize: 11, color: '#6B7280' }}>{t('agenceVoyageForm.absents')}</Text>
                         </View>
                         <View style={{ flex: 1, minWidth: '45%', alignItems: 'center', padding: 8, backgroundColor: '#EFF6FF', borderRadius: 8 }}>
                             <Text style={{ fontSize: 20, fontWeight: '700', color: '#2563EB' }}>{Math.round(boardingSummary.completion_percentage || 0)}%</Text>
@@ -635,12 +640,12 @@ const AgenceVoyageFormScreen: React.FC = () => {
             {/* Passengers List */}
             {passengersList.length > 0 && (
                 <View style={{ marginBottom: 16 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>Passagers ({passengersList.length})</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>{t('agenceVoyageForm.passagers', { count: passengersList.length })}</Text>
                     {passengersList.map((p: any, i: number) => (
                         <View key={i} style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#fff', borderRadius: 10, marginBottom: 6, borderLeftWidth: 3, borderLeftColor: p.is_validated ? '#10B981' : '#F59E0B' }}>
                             <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>{p.passenger_name || `Passager #${p.seat_number}`}</Text>
-                                <Text style={{ fontSize: 12, color: '#6B7280' }}>Place {p.seat_number} · {p.display_status === 'boarded' ? t('agenceVoyageFormScreen.embarque') : p.display_status === 'no_show' ? '✗ Absent' : '⏳ En attente'}</Text>
+                                <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>{p.passenger_name || `Passager #${p.seat_number} `}</Text>
+                                <Text style={{ fontSize: 12, color: '#6B7280' }}>Place {p.seat_number} · {p.display_status === 'boarded' ? t('agenceVoyageFormScreen.embarque') : p.display_status === 'no_show' ? t('agenceVoyageForm.absent') : t('agenceVoyageForm.enAttenteStatus')}</Text>
                             </View>
                             {!p.is_validated && (
                                 <TouchableOpacity style={{ backgroundColor: '#10B981', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 }}
@@ -669,13 +674,13 @@ const AgenceVoyageFormScreen: React.FC = () => {
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>{ticket.departure_city} → {ticket.arrival_city}</Text>
-                                    <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{ticket.customer_name || 'Client'} · {ticket.number_of_tickets} place(s)</Text>
+                                    <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{ticket.customer_name || t('agenceVoyageForm.client')} · {t('agenceVoyageForm.placesCount', { count: ticket.number_of_tickets })}</Text>
                                     <Text style={{ fontSize: 12, color: '#6B7280' }}>{ticket.departure_date} {ticket.departure_time}</Text>
                                 </View>
                                 <View style={{ alignItems: 'flex-end' }}>
                                     <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }}>{(ticket.total_amount || 0).toLocaleString()} {ticket.currency || 'XAF'}</Text>
                                     <View style={{ backgroundColor: ticket.payment_status === 'completed' ? '#D1FAE5' : '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 4 }}>
-                                        <Text style={{ fontSize: 10, color: ticket.payment_status === 'completed' ? '#059669' : '#D97706', fontWeight: '600' }}>{ticket.payment_status === 'completed' ? t('agenceVoyageFormScreen.paye') : 'En cours'}</Text>
+                                        <Text style={{ fontSize: 10, color: ticket.payment_status === 'completed' ? '#059669' : '#D97706', fontWeight: '600' }}>{ticket.payment_status === 'completed' ? t('agenceVoyageFormScreen.paye') : t('agenceVoyageForm.enCours')}</Text>
                                     </View>
                                     {ticket.boarded_count !== undefined && (
                                         <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{ticket.boarded_count}/{ticket.number_of_tickets} {t('agenceVoyageFormScreen.boarded')}</Text>
@@ -692,10 +697,10 @@ const AgenceVoyageFormScreen: React.FC = () => {
     if (isDashboardMode || (user?.role === 'partenaire' && serviceId)) {
         const tabs: { key: TabType; label: string; icon: string }[] = [
             { key: 'overview', label: t('agenceVoyageForm.accueil'), icon: 'layout-dashboard' },
-            { key: 'service', label: 'Service', icon: 'settings' },
+            { key: 'service', label: t('agenceVoyageForm.serviceTab'), icon: 'settings' },
             { key: 'schedules', label: t('agenceVoyageForm.horaires'), icon: 'clock' },
-            { key: 'bus', label: 'Bus', icon: 'bus' },
-            { key: 'tickets', label: 'Tickets', icon: 'ticket' },
+            { key: 'bus', label: t('agenceVoyageForm.busTab'), icon: 'bus' },
+            { key: 'tickets', label: t('agenceVoyageForm.ticketsTab'), icon: 'ticket' },
             { key: 'team', label: t('agenceVoyageForm.equipe'), icon: 'users' },
         ];
 
@@ -706,7 +711,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
                         <View style={{ flex: 1 }}>
                             <Text style={s.dashTitle}>{agencyData?.nom_agence || formData.nom_agence || t('agenceVoyageForm.monAgence')}</Text>
-                            <Text style={s.dashSub}>{selectedDestinations.length} destination{selectedDestinations.length > 1 ? 's' : ''} · {schedules.length} horaire{schedules.length > 1 ? 's' : ''}</Text>
+                            <Text style={s.dashSub}>{t('agenceVoyageForm.destinationsEtHoraires', { destinations: selectedDestinations.length, dPlural: selectedDestinations.length > 1 ? 's' : '', schedules: schedules.length, sPlural: schedules.length > 1 ? 's' : '' })}</Text>
                         </View>
                     </View>
                     <View style={s.tabsRow}>{tabs.map(t => (
@@ -724,7 +729,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     {activeTab === 'tickets' && renderTicketsTab()}
                     {activeTab === 'team' && <ServiceTeamManager serviceId={serviceId?.toString()} onClose={() => setActiveTab('overview')} />}
                 </View>
-                <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={(c: string) => { setSelectedGPS(c); setShowGPSModal(false); }} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation" />
+                <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={(c: string) => { setSelectedGPS(c); setShowGPSModal(false); }} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title={t('agenceVoyageForm.localisation')} />
                 {renderScheduleModal()}
                 {showWeekDaysModal && <WeekDaysSelector visible={showWeekDaysModal} initialDays={formData.jours_ouverture} onSave={(days: number[]) => { setFormData({ ...formData, jours_ouverture: days }); setShowWeekDaysModal(false); }} onClose={() => setShowWeekDaysModal(false)} />}
                 {showBusModelForm && <BusModelForm visible={showBusModelForm} initialModel={editingModelIndex !== null ? busModels[editingModelIndex] : undefined} onSave={(model: BusModel) => { if (editingModelIndex !== null) { const u = [...busModels]; u[editingModelIndex] = model; setBusModels(u); } else { setBusModels([...busModels, model]); handleCreateBusProduct(model); } setShowBusModelForm(false); }} onClose={() => setShowBusModelForm(false)} />}
@@ -740,7 +745,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                 <Text style={s.createTitle}>{t('agenceVoyageFormScreen.enregistrerUneAgence')}</Text>
             </LinearGradient>
             {renderServiceForm()}
-            <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={(c: string) => { setSelectedGPS(c); setShowGPSModal(false); }} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation" />
+            <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={(c: string) => { setSelectedGPS(c); setShowGPSModal(false); }} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title={t('agenceVoyageForm.localisation')} />
             {showWeekDaysModal && <WeekDaysSelector visible={showWeekDaysModal} initialDays={formData.jours_ouverture} onSave={(days: number[]) => { setFormData({ ...formData, jours_ouverture: days }); setShowWeekDaysModal(false); }} onClose={() => setShowWeekDaysModal(false)} />}
         </View>
     );

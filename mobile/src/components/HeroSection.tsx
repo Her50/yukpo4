@@ -1,6 +1,7 @@
 // @ts-check
 import * as React from "react";
 import { StyleSheet, Text, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const HeroSection: React.FC = () => {
   return (

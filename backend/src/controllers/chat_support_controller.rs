@@ -308,6 +308,7 @@ async fn generate_ai_support_response(
         user_message,
         &conversation_history,
         topic.as_deref(),
+        None, // TODO: pass user's language from request headers or user profile
     )
     .await
     .map_err(|e| {

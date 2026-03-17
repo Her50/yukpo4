@@ -1,5 +1,4 @@
-// ✅ NOUVEAU: Écran de réservation hôtel/meublé côté UTILISATEUR
-// Permet à un client de demander une réservation de séjour (dates, chambres, invités)
+// Écran de réservation hôtel/meublé côté UTILISATEUR
 
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -119,7 +118,7 @@ const HotelBookingScreen: React.FC = () => {
                     t('hotelBooking.reservationSentMsg', { name: propertyName }),
                     [
                         ...(reservationId && prixTotal > 0 ? [{
-                            text: 'Payer maintenant',
+                            text: t('hotelBookingScreen.payerMaintenant'),
                             onPress: () => (navigation as any).navigate('HotelBookingPayment', {
                                 reservationId,
                                 montantTotal: prixTotal,
@@ -168,16 +167,14 @@ const HotelBookingScreen: React.FC = () => {
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                 >
-                    {/* Info badge */}
                     <View style={s.infoBadge}>
                         <SafeIcon name="info" size={16} color="#4F46E5" />
                         <Text style={s.infoBadgeText}>
-                            {typeBien === 'meuble' ? t('hotelBookingScreen.locationMeublee') : 'Hôtel'} · {ville || 'Cameroun'}
-                            {prixNuitee > 0 ? ` · ${formatPrice(prixNuitee)}/nuit` : ''}
+                            {typeBien === 'meuble' ? t('hotelBookingScreen.locationMeublee') : t('hotelBookingScreen.hotel')} · {ville || 'Cameroun'}
+                            {prixNuitee > 0 ? ` · ${formatPrice(prixNuitee)}/${t('hotelMeubleHome.nuit')}` : ''}
                         </Text>
                     </View>
 
-                    {/* Dates */}
                     <Text style={s.sectionTitle}>{t('hotelBooking.datesDuSejour')}</Text>
                     <View style={s.row}>
                         <View style={{ flex: 1 }}>
@@ -202,14 +199,13 @@ const HotelBookingScreen: React.FC = () => {
                         </View>
                     </View>
                     {nbNuits > 0 && (
-                        <Text style={s.hint}>{nbNuits} nuit{nbNuits > 1 ? 's' : ''}</Text>
+                        <Text style={s.hint}>{nbNuits} {nbNuits > 1 ? t('hotelBookingScreen.nuits') : t('hotelBookingScreen.nuit')}</Text>
                     )}
 
-                    {/* Occupants */}
-                    <Text style={s.sectionTitle}>Occupants</Text>
+                    <Text style={s.sectionTitle}>{t('hotelBookingScreen.occupants')}</Text>
                     <View style={s.row}>
                         <View style={{ flex: 1 }}>
-                            <Text style={s.label}>Adultes</Text>
+                            <Text style={s.label}>{t('hotelBookingScreen.adultes')}</Text>
                             <View style={s.stepper}>
                                 <TouchableOpacity style={s.stepBtn}
                                     onPress={() => setNombreAdultes(String(Math.max(1, (parseInt(nombreAdultes) || 1) - 1)))}>
@@ -223,7 +219,7 @@ const HotelBookingScreen: React.FC = () => {
                             </View>
                         </View>
                         <View style={{ flex: 1, marginLeft: 10 }}>
-                            <Text style={s.label}>Enfants</Text>
+                            <Text style={s.label}>{t('hotelBookingScreen.enfants')}</Text>
                             <View style={s.stepper}>
                                 <TouchableOpacity style={s.stepBtn}
                                     onPress={() => setNombreEnfants(String(Math.max(0, (parseInt(nombreEnfants) || 0) - 1)))}>
@@ -237,7 +233,7 @@ const HotelBookingScreen: React.FC = () => {
                             </View>
                         </View>
                         <View style={{ flex: 1, marginLeft: 10 }}>
-                            <Text style={s.label}>Chambres</Text>
+                            <Text style={s.label}>{t('hotelBookingScreen.chambres')}</Text>
                             <View style={s.stepper}>
                                 <TouchableOpacity style={s.stepBtn}
                                     onPress={() => setNombreChambres(String(Math.max(1, (parseInt(nombreChambres) || 1) - 1)))}>
@@ -252,7 +248,6 @@ const HotelBookingScreen: React.FC = () => {
                         </View>
                     </View>
 
-                    {/* Contact */}
                     <Text style={s.sectionTitle}>{t('hotelBooking.vosCoordonnees')}</Text>
                     <Text style={s.label}>{t('hotelBooking.nomComplet')}</Text>
                     <TextInput style={s.input} value={nomClient} onChangeText={setNomClient}
@@ -262,7 +257,7 @@ const HotelBookingScreen: React.FC = () => {
                     <TextInput style={s.input} value={telephoneClient} onChangeText={setTelephoneClient}
                         placeholder="+237 6XX XXX XXX" placeholderTextColor="#9CA3AF" keyboardType="phone-pad" />
 
-                    <Text style={s.label}>Email</Text>
+                    <Text style={s.label}>{t('hotelDashboard.email')}</Text>
                     <TextInput style={s.input} value={emailClient} onChangeText={setEmailClient}
                         placeholder="votre@email.com" placeholderTextColor="#9CA3AF" keyboardType="email-address" />
 
@@ -271,12 +266,13 @@ const HotelBookingScreen: React.FC = () => {
                         value={notes} onChangeText={setNotes}
                         placeholder={t('hotelBooking.exChambreCalmeLitBebe')} placeholderTextColor="#9CA3AF" multiline />
 
-                    {/* Price Summary */}
                     {prixNuitee > 0 && nbNuits > 0 && (
                         <View style={s.priceCard}>
-                            <Text style={s.priceTitle}>Estimation du prix</Text>
+                            <Text style={s.priceTitle}>{t('hotelBookingScreen.estimationPrix')}</Text>
                             <View style={s.priceRow}>
-                                <Text style={s.priceLabel}>{formatPrice(prixNuitee)} × {nbNuits} nuit{nbNuits > 1 ? 's' : ''} × {nbChambresNum} chambre{nbChambresNum > 1 ? 's' : ''}</Text>
+                                <Text style={s.priceLabel}>
+                                    {formatPrice(prixNuitee)} × {nbNuits} {nbNuits > 1 ? t('hotelBookingScreen.nuits') : t('hotelBookingScreen.nuit')} × {nbChambresNum} {nbChambresNum > 1 ? t('hotelMeubleHome.chambres') : t('hotelBookingScreen.chambre')}
+                                </Text>
                             </View>
                             <View style={[s.priceRow, s.priceTotalRow]}>
                                 <Text style={s.priceTotalLabel}>{t('hotelBooking.totalEstime')}</Text>
@@ -286,9 +282,8 @@ const HotelBookingScreen: React.FC = () => {
                         </View>
                     )}
 
-                    {/* Submit */}
                     <NativeButton
-                        title={loading ? 'Envoi en cours...' : t('hotelBookingScreen.envoyerLaDemandeDeReservation')}
+                        title={loading ? t('hotelBookingScreen.envoiEnCours') : t('hotelBookingScreen.envoyerLaDemandeDeReservation')}
                         onPress={handleSubmit}
                         disabled={loading}
                         variant="primary"

@@ -305,41 +305,110 @@ impl TrocIntelligentService {
             receiver_id: i32,
             livre: LivreScolaire,
             distance_km: f64,
+            matieres_bundle: Vec<String>, // ✅ MULTI-MATIÈRE : toutes les matières du lot
+        }
+
+        // Structure pour représenter un lot de matières (multi-matière)
+        struct Bundle<'a> {
+            livres: Vec<&'a LivreScolaire>,
+            matieres: HashSet<String>,
+            classe_actuelle: String,
+            classe_souhaitee: String,
+            user_id: i32,
+        }
+
+        impl Bundle<'_> {
+            fn new(livres: Vec<&LivreScolaire>) -> Option<Self> {
+                if livres.is_empty() {
+                    return None;
+                }
+                
+                let user_id = livres[0].user_id;
+                let classe_actuelle = livres[0].classe_actuelle.clone();
+                let classe_souhaitee = livres[0].classe_souhaitee.clone();
+                
+                // Vérifier que tous les livres sont du même utilisateur et même classe
+                if !livres.iter().all(|l| l.user_id == user_id && l.classe_actuelle == classe_actuelle) {
+                    return None;
+                }
+                
+                let matieres: HashSet<String> = livres.iter()
+                    .map(|l| l.matiere.clone())
+                    .collect();
+                
+                Some(Bundle {
+                    livres,
+                    matieres,
+                    classe_actuelle,
+                    classe_souhaitee,
+                    user_id,
+                })
+            }
+            
+            fn contient_matiere(&self, matiere: &str) -> bool {
+                self.matieres.contains(matiere)
+            }
         }
 
         let mut edges: Vec<PotentialEdge> = Vec::new();
 
-        // Pour chaque paire (sender_book, receiver_user_need), vérifier le matching
-        // Le "besoin" d'un utilisateur = classe_souhaitee de ses livres
-        // Un livre de sender correspond si sender.classe_actuelle == receiver.classe_souhaitee
-        // ET sender.matiere == receiver.matiere (livre correspondant à la même matière)
-        for sender_livre in &tous_livres {
-            let sender_id = sender_livre.user_id;
-            for (&receiver_id, receiver_livres) in &livres_par_user {
+        // ✅ MULTI-MATIÈRE : Regrouper les livres par utilisateur et classe en bundles
+        let mut bundles_par_user: HashMap<(i32, String), Bundle> = HashMap::new();
+        for l in &tous_livres {
+            let key = (l.user_id, l.classe_actuelle.clone());
+            bundles_par_user.entry(key).or_insert_with(|| {
+                Bundle::new(vec![l]).unwrap()
+            }).livres.push(l);
+        }
+
+        // Finaliser les bundles (calculer les matières)
+        for bundle in bundles_par_user.values_mut() {
+            bundle.matieres = bundle.livres.iter()
+                .map(|l| l.matiere.clone())
+                .collect();
+        }
+
+        // Pour chaque paire (sender_bundle, receiver_bundle), vérifier le matching multi-matières
+        // Le matching existe si : sender.classe_actuelle == receiver.classe_souhaitee
+        // ET sender.bundle contient AU MOINS UNE matière que receiver.bundle demande
+        for (sender_key, sender_bundle) in &bundles_par_user {
+            let (sender_id, _) = sender_key;
+            for (receiver_key, receiver_bundle) in &bundles_par_user {
+                let (receiver_id, _) = receiver_key;
                 if sender_id == receiver_id {
                     continue;
                 }
-                // Le receiver a-t-il besoin d'un livre de cette classe/matière ?
-                // Note: les livres de Terminale ont classe_souhaitee="" → ne matchent jamais
-                // comme demande (ils sont vendeurs/source-only dans la chaîne)
-                let receiver_needs = receiver_livres.iter().any(|rl| {
-                    !rl.classe_souhaitee.is_empty()
-                        && rl.classe_souhaitee == sender_livre.classe_actuelle
-                        && rl.matiere == sender_livre.matiere
-                });
-                if !receiver_needs {
+                
+                // Vérifier si les classes correspondent
+                if sender_bundle.classe_actuelle != receiver_bundle.classe_souhaitee 
+                    || receiver_bundle.classe_souhaitee.is_empty() {
                     continue;
                 }
-                // Trouver le livre du receiver qui matche (pour le calcul GPS précis)
-                let matched_receiver_livre = receiver_livres
-                    .iter()
-                    .find(|rl| {
-                        rl.classe_souhaitee == sender_livre.classe_actuelle
-                            && rl.matiere == sender_livre.matiere
-                    })
-                    .unwrap_or(&receiver_livres[0]);
+                
+                // ✅ MULTI-MATIÈRE : Le receiver a-t-il besoin d'AU MOINS UNE matière du sender ?
+                let matiere_match = receiver_bundle.livres.iter().any(|rl| {
+                    sender_bundle.contient_matiere(&rl.matiere)
+                });
+                
+                if !matiere_match {
+                    continue;
+                }
+                
+                // Trouver la meilleure paire de livres pour le calcul GPS
+                let (best_sender_livre, best_receiver_livre) = {
+                    let mut best_pair = (&sender_bundle.livres[0], &receiver_bundle.livres[0]);
+                    for sl in &sender_bundle.livres {
+                        for rl in &receiver_bundle.livres {
+                            if sl.matiere == rl.matiere {
+                                best_pair = (sl, rl);
+                                break;
+                            }
+                        }
+                    }
+                    best_pair
+                };
 
-                let dist = Self::compute_distance_between(sender_livre, matched_receiver_livre);
+                let dist = Self::compute_distance_between(best_sender_livre, best_receiver_livre);
 
                 // ✅ Contrainte géographique DURE: rejeter les arêtes trop longues
                 if dist > MAX_EDGE_DISTANCE_KM {
@@ -347,10 +416,11 @@ impl TrocIntelligentService {
                 }
 
                 edges.push(PotentialEdge {
-                    sender_id,
-                    receiver_id,
-                    livre: sender_livre.clone(),
+                    sender_id: *sender_id,
+                    receiver_id: *receiver_id,
+                    livre: best_sender_livre.clone().clone(),
                     distance_km: dist,
+                    matieres_bundle: sender_bundle.matieres.iter().cloned().collect(),
                 });
             }
         }
@@ -984,14 +1054,21 @@ impl TrocIntelligentService {
             troc_id, user_id
         );
 
-        // Récupérer le troc
-        let troc =
-            sqlx::query_as::<_, TrocLivre>("SELECT * FROM troc_livres_scolaires WHERE id = $1")
-                .bind(troc_id)
-                .fetch_optional(&*self.pool)
-                .await
-                .map_err(|e| AppError::Internal(format!("Erreur récupération troc: {}", e)))?
-                .ok_or_else(|| AppError::NotFound("Troc non trouvé".to_string()))?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur début transaction: {}", e)))?;
+
+        // Récupérer le troc avec verrou FOR UPDATE pour éviter les race conditions
+        let troc = sqlx::query_as::<_, TrocLivre>(
+            "SELECT * FROM troc_livres_scolaires WHERE id = $1 FOR UPDATE",
+        )
+        .bind(troc_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur récupération troc: {}", e)))?
+        .ok_or_else(|| AppError::NotFound("Troc non trouvé".to_string()))?;
 
         // Vérifier que l'utilisateur est le participant
         if troc.participant_id != user_id {
@@ -999,6 +1076,57 @@ impl TrocIntelligentService {
                 "Vous n'êtes pas le participant de ce troc".to_string(),
             ));
         }
+
+        // Vérifier que le troc est en attente
+        if troc.statut != "en_attente" {
+            return Err(AppError::BadRequest(format!(
+                "Ce troc ne peut pas être accepté (statut actuel: '{}')",
+                troc.statut
+            )));
+        }
+
+        // Vérifier que les livres sont toujours disponibles
+        let livres_disponibles: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*) FROM livres_scolaires
+            WHERE id IN ($1, $2) AND is_available = true AND is_active = true
+            "#,
+        )
+        .bind(troc.livre_offert_id)
+        .bind(troc.livre_souhaite_id)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(0);
+
+        if livres_disponibles < 2 {
+            // Refuser automatiquement ce troc car un livre n'est plus disponible
+            sqlx::query("UPDATE troc_livres_scolaires SET statut = 'annule' WHERE id = $1")
+                .bind(troc_id)
+                .execute(&mut *tx)
+                .await
+                .ok();
+            tx.commit().await.ok();
+            return Err(AppError::BadRequest(
+                "Un des livres n'est plus disponible. Le troc a été annulé.".to_string(),
+            ));
+        }
+
+        // Annuler tous les autres trocs en attente impliquant ces mêmes livres
+        sqlx::query(
+            r#"
+            UPDATE troc_livres_scolaires
+            SET statut = 'annule'
+            WHERE id != $1
+            AND statut = 'en_attente'
+            AND (livre_offert_id IN ($2, $3) OR livre_souhaite_id IN ($2, $3))
+            "#,
+        )
+        .bind(troc_id)
+        .bind(troc.livre_offert_id)
+        .bind(troc.livre_souhaite_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur annulation trocs concurrents: {}", e)))?;
 
         // Mettre à jour le statut
         let troc_accepte = sqlx::query_as::<_, TrocLivre>(
@@ -1010,9 +1138,13 @@ impl TrocIntelligentService {
             "#,
         )
         .bind(troc_id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur acceptation troc: {}", e)))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur commit acceptation: {}", e)))?;
 
         info!("[TROC_INTELLIGENT] ✅ Troc accepté: id={}", troc_id);
         Ok(troc_accepte)
@@ -1046,7 +1178,7 @@ impl TrocIntelligentService {
         Ok(troc)
     }
 
-    /// Finaliser un troc (échange complété)
+    /// Finaliser un troc (échange complété) — atomique via transaction SQL
     pub async fn complete_troc(&self, troc_id: i32, user_id: i32) -> AppResult<TrocLivre> {
         info!(
             "[TROC_INTELLIGENT] Finalisation troc: id={}, user_id={}",
@@ -1062,7 +1194,6 @@ impl TrocIntelligentService {
                 .map_err(|e| AppError::Internal(format!("Erreur récupération troc: {}", e)))?
                 .ok_or_else(|| AppError::NotFound("Troc non trouvé".to_string()))?;
 
-        // ✅ FIX: Vérifier que l'utilisateur est impliqué dans le troc
         if troc.initiateur_id != user_id && troc.participant_id != user_id {
             return Err(AppError::Forbidden(
                 "Vous n'êtes pas impliqué dans ce troc".to_string(),
@@ -1075,7 +1206,13 @@ impl TrocIntelligentService {
             ));
         }
 
-        // Mettre à jour le statut et désactiver les livres
+        // Transaction atomique : statut + désactivation livres
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur début transaction: {}", e)))?;
+
         let troc_complete = sqlx::query_as::<_, TrocLivre>(
             r#"
             UPDATE troc_livres_scolaires
@@ -1085,21 +1222,20 @@ impl TrocIntelligentService {
             "#,
         )
         .bind(troc_id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur finalisation troc: {}", e)))?;
 
-        // Désactiver les livres échangés
         sqlx::query("UPDATE livres_scolaires SET is_available = false WHERE id = $1 OR id = $2")
             .bind(troc_complete.livre_offert_id)
             .bind(troc_complete.livre_souhaite_id)
-            .execute(&*self.pool)
+            .execute(&mut *tx)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur désactivation livres: {}", e)))?;
 
-        // NOTE: Les paquets de livraison ne sont PAS créés ici.
-        // Ils sont constitués intelligemment via build_intelligent_packages()
-        // qui regroupe par couple (expéditeur → destinataire) et optimise par GPS.
+        tx.commit()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur commit transaction: {}", e)))?;
 
         info!("[TROC_INTELLIGENT] ✅ Troc complété: id={}", troc_id);
         Ok(troc_complete)
@@ -1605,6 +1741,77 @@ impl TrocIntelligentService {
         *waypoints = ordered;
     }
 
+    /// Version in-memory de compute_optimized_route (pour usage dans une transaction)
+    fn compute_optimized_route_from_packages(
+        &self,
+        packages: &[BookDeliveryPackage],
+    ) -> Vec<serde_json::Value> {
+        if packages.is_empty() {
+            return vec![];
+        }
+
+        let mut waypoints_map: std::collections::HashMap<
+            i32,
+            (Option<String>, Option<String>, Vec<i32>, Vec<i32>),
+        > = std::collections::HashMap::new();
+
+        for pkg in packages {
+            let entry = waypoints_map.entry(pkg.expediteur_id).or_insert_with(|| {
+                (pkg.expediteur_gps.clone(), pkg.expediteur_adresse.clone(), Vec::new(), Vec::new())
+            });
+            entry.2.push(pkg.id);
+
+            let entry = waypoints_map.entry(pkg.destinataire_id).or_insert_with(|| {
+                (pkg.destinataire_gps.clone(), pkg.destinataire_adresse.clone(), Vec::new(), Vec::new())
+            });
+            entry.3.push(pkg.id);
+        }
+
+        let waypoints: Vec<(i32, Option<String>, Option<String>, Vec<i32>, Vec<i32>)> =
+            waypoints_map
+                .into_iter()
+                .map(|(uid, (gps, addr, pickups, dropoffs))| (uid, gps, addr, pickups, dropoffs))
+                .collect();
+
+        let mut pickup_waypoints: Vec<_> = waypoints
+            .iter()
+            .filter(|(_, _, _, pickups, _)| !pickups.is_empty())
+            .cloned()
+            .collect();
+        let mut dropoff_only_waypoints: Vec<_> = waypoints
+            .iter()
+            .filter(|(_, _, _, pickups, dropoffs)| pickups.is_empty() && !dropoffs.is_empty())
+            .cloned()
+            .collect();
+
+        Self::sort_by_nearest_neighbor(&mut pickup_waypoints);
+        Self::sort_by_nearest_neighbor(&mut dropoff_only_waypoints);
+
+        let mut ordered = Vec::new();
+        let mut ordre = 1;
+
+        for (uid, gps, addr, pickups, dropoffs) in &pickup_waypoints {
+            let wp_type = if !dropoffs.is_empty() { "pickup_and_dropoff" } else { "pickup" };
+            ordered.push(serde_json::json!({
+                "ordre": ordre, "type": wp_type, "user_id": uid,
+                "gps": gps, "adresse": addr,
+                "pickup_package_ids": pickups, "dropoff_package_ids": dropoffs,
+            }));
+            ordre += 1;
+        }
+
+        for (uid, gps, addr, pickups, dropoffs) in &dropoff_only_waypoints {
+            ordered.push(serde_json::json!({
+                "ordre": ordre, "type": "dropoff", "user_id": uid,
+                "gps": gps, "adresse": addr,
+                "pickup_package_ids": pickups, "dropoff_package_ids": dropoffs,
+            }));
+            ordre += 1;
+        }
+
+        ordered
+    }
+
     /// Pour un destinataire donné, retourne tous les paquets à livrer (de tous expéditeurs)
     /// afin que le coursier les prenne tous en un seul passage.
     pub async fn get_all_packages_for_user(&self, user_id: i32) -> AppResult<Vec<i32>> {
@@ -1669,12 +1876,19 @@ impl TrocIntelligentService {
             ));
         }
 
-        // 3. Désactiver tous les livres impliqués
+        // 3. Désactiver tous les livres impliqués (dans une transaction)
         let livre_ids: Vec<i32> = transfers.iter().map(|t| t.livre_id).collect();
+
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur début transaction finalize: {}", e)))?;
+
         for lid in &livre_ids {
             sqlx::query("UPDATE livres_scolaires SET is_available = false WHERE id = $1")
                 .bind(lid)
-                .execute(&*self.pool)
+                .execute(&mut *tx)
                 .await
                 .map_err(|e| {
                     AppError::Internal(format!("Erreur désactivation livre {}: {}", lid, e))
@@ -1702,7 +1916,6 @@ impl TrocIntelligentService {
             let nombre_livres = group.len() as i32;
             let reference = format!("CH{}-{}-{}-{}", chaine_id, sender_id, receiver_id, ts);
 
-            // Récupérer GPS via les livres
             let mut sender_gps: Option<String> = None;
             let mut sender_addr: Option<String> = None;
             let mut receiver_gps: Option<String> = None;
@@ -1714,7 +1927,7 @@ impl TrocIntelligentService {
                     "SELECT * FROM livres_scolaires WHERE id = $1",
                 )
                 .bind(t.livre_id)
-                .fetch_optional(&*self.pool)
+                .fetch_optional(&mut *tx)
                 .await
                 {
                     if sender_gps.is_none() {
@@ -1731,19 +1944,17 @@ impl TrocIntelligentService {
                 }
             }
 
-            // GPS du receiver
             if let Ok(Some(rl)) = sqlx::query_as::<_, LivreScolaire>(
                 "SELECT * FROM livres_scolaires WHERE user_id = $1 AND gps IS NOT NULL ORDER BY created_at DESC LIMIT 1",
             )
             .bind(receiver_id)
-            .fetch_optional(&*self.pool)
+            .fetch_optional(&mut *tx)
             .await
             {
                 receiver_gps = rl.gps.clone();
                 receiver_addr = rl.ville.clone().or_else(|| rl.quartier.clone());
             }
 
-            // Insérer le paquet
             let pkg_id: i32 = sqlx::query_scalar(
                 r#"
                 INSERT INTO book_delivery_packages (
@@ -1766,7 +1977,7 @@ impl TrocIntelligentService {
             .bind(nombre_livres)
             .bind(rust_decimal::Decimal::from_f64_retain(valeur_totale).unwrap_or_default())
             .bind(rust_decimal::Decimal::from_f64_retain(commission).unwrap_or_default())
-            .fetch_one(&*self.pool)
+            .fetch_one(&mut *tx)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur création paquet: {}", e)))?;
 
@@ -1778,46 +1989,65 @@ impl TrocIntelligentService {
             );
         }
 
-        // 4b. Contrainte coursier unique: si un participant a déjà un coursier
-        // assigné dans une autre chaîne, assigner le même coursier aux nouveaux paquets.
-        // Cela évite que plusieurs coursiers visitent le même domicile.
-        let existing_couriers = self.get_assigned_couriers_for_users().await?;
-        for &pkg_id in &package_ids_created {
-            // Récupérer destinataire_id et expediteur_id du paquet
-            if let Ok(Some(row)) = sqlx::query(
-                "SELECT destinataire_id, expediteur_id FROM book_delivery_packages WHERE id = $1",
-            )
-            .bind(pkg_id)
-            .fetch_optional(&*self.pool)
-            .await
-            {
-                let dest_id: i32 = Row::get(&row, "destinataire_id");
-                let exp_id: i32 = Row::get(&row, "expediteur_id");
+        // 4b. Contrainte coursier unique (dans la transaction)
+        let existing_courier_rows = sqlx::query(
+            r#"
+            SELECT DISTINCT destinataire_id, coursier_id
+            FROM book_delivery_packages
+            WHERE coursier_id IS NOT NULL
+            AND statut IN ('constitue', 'en_route', 'a_constituer')
+            "#,
+        )
+        .fetch_all(&mut *tx)
+        .await
+        .unwrap_or_default();
 
-                // Chercher un coursier déjà assigné pour ce destinataire ou expéditeur
-                let coursier_id =
-                    existing_couriers.get(&dest_id).or_else(|| existing_couriers.get(&exp_id));
+        let mut existing_couriers: HashMap<i32, i32> = HashMap::new();
+        for row in &existing_courier_rows {
+            let dest_id: i32 = Row::get(row, "destinataire_id");
+            let cour_id: i32 = Row::get(row, "coursier_id");
+            existing_couriers.insert(dest_id, cour_id);
+        }
 
-                if let Some(&cid) = coursier_id {
-                    sqlx::query(
-                        "UPDATE book_delivery_packages SET coursier_id = $2 WHERE id = $1 AND coursier_id IS NULL",
-                    )
-                    .bind(pkg_id)
-                    .bind(cid)
-                    .execute(&*self.pool)
-                    .await
-                    .ok(); // Non-bloquant: si la colonne n'existe pas encore, on continue
+        for ((sender_id, receiver_id), _) in &grouped {
+            let coursier_id = existing_couriers
+                .get(receiver_id)
+                .or_else(|| existing_couriers.get(sender_id));
 
-                    info!(
-                        "[TROC_INTELLIGENT] Paquet {} → coursier {} (réutilisé, même participant)",
-                        pkg_id, cid
-                    );
-                }
+            if let Some(&cid) = coursier_id {
+                sqlx::query(
+                    r#"UPDATE book_delivery_packages
+                    SET coursier_id = $2
+                    WHERE expediteur_id = $3 AND destinataire_id = $4
+                    AND coursier_id IS NULL AND statut = 'constitue'"#,
+                )
+                .bind(cid)
+                .bind(cid)
+                .bind(sender_id)
+                .bind(receiver_id)
+                .execute(&mut *tx)
+                .await
+                .ok();
+
+                info!(
+                    "[TROC_INTELLIGENT] Paquets {}→{} → coursier {} (réutilisé)",
+                    sender_id, receiver_id, cid
+                );
             }
         }
 
-        // 5. Calculer la route optimisée via les paquets créés
-        let route = self.compute_optimized_route(&package_ids_created).await?;
+        // 5. Calculer la route optimisée (via les paquets dans la transaction)
+        let route = {
+            let pkgs = sqlx::query_as::<_, BookDeliveryPackage>(
+                "SELECT * FROM book_delivery_packages WHERE id = ANY($1)",
+            )
+            .bind(&package_ids_created)
+            .fetch_all(&mut *tx)
+            .await
+            .unwrap_or_default();
+
+            self.compute_optimized_route_from_packages(&pkgs)
+        };
 
         // 6. Mettre à jour la chaîne
         let ref_str = format!("CHAIN-{}-{}", chaine_id, ts);
@@ -1846,9 +2076,13 @@ impl TrocIntelligentService {
         .bind(vendeurs_count)
         .bind(serde_json::json!(package_ids_created))
         .bind(serde_json::json!(route))
-        .execute(&*self.pool)
+        .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur MAJ chaîne: {}", e)))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur commit transaction finalize: {}", e)))?;
 
         info!(
             "[TROC_INTELLIGENT] ✅ Chaîne {} finalisée: {} paquets, {} waypoints, ref={}",

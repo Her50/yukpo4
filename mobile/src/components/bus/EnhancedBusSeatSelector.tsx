@@ -15,10 +15,10 @@ import {
 } from 'react-native';
 import { GestureHandlerRootView, PinchGestureHandler } from 'react-native-gesture-handler';
 import Reanimated, { useAnimatedGestureHandler, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface SelectedSeat {
     seat_id: string;
@@ -56,8 +56,8 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
     currency = 'XAF',
     onReserve,
 }) => {
-        const { t } = useLanguageSafe();
-const [loading, setLoading] = useState(true);
+    const { t } = useLanguageSafe();
+    const [loading, setLoading] = useState(true);
     const [seatMap, setSeatMap] = useState<any[]>([]);
     const [reservedSeats, setReservedSeats] = useState<string[]>([]);
     const [blockedSeats, setBlockedSeats] = useState<string[]>([]);
@@ -107,11 +107,11 @@ const [loading, setLoading] = useState(true);
                 // Générer recommandations intelligentes
                 generateRecommendations(availability.seat_map || [], availability.reserved_seats || []);
             } else {
-                Alert.alert('Erreur', resData.error || 'Impossible de charger la disponibilité');
+                Alert.alert('Erreur', resData.error || t('enhancedBusSeatSelector.impossibleDeChargerLaDisponibilite'));
             }
         } catch (error: any) {
             console.error('Erreur chargement disponibilité:', error);
-            Alert.alert('Erreur', 'Impossible de charger la disponibilité des places');
+            Alert.alert('Erreur', t('enhancedBusSeatSelector.impossibleDeChargerLaDisponibiliteDes'));
         } finally {
             setLoading(false);
         }
@@ -172,7 +172,7 @@ const [loading, setLoading] = useState(true);
                 'Place non disponible',
                 status === 'reserved'
                     ? t('enhancedBusSeatSelector.cettePlaceEstDejaReservee')
-                    : 'Cette place n\'est pas disponible (bloquée manuellement)'
+                    : t('enhancedBusSeatSelector.estPasDisponibleBloqueeManuellement')
             );
             return;
         }
@@ -181,7 +181,7 @@ const [loading, setLoading] = useState(true);
             setSelectedSeats(selectedSeats.filter((s) => s.seat_id !== seat.seat_id));
         } else {
             if (selectedSeats.length >= maxSeats) {
-                Alert.alert('Limite atteinte', `Vous ne pouvez sélectionner que ${maxSeats} places maximum`);
+                Alert.alert('Limite atteinte', t('enhancedBusSeatSelector.vousNePouvezSelectionnerQuePlaces', { maxSeats: maxSeats }));
                 return;
             }
             setSelectedSeats([
@@ -277,7 +277,7 @@ const [loading, setLoading] = useState(true);
 
     const handleReserve = () => {
         if (selectedSeats.length === 0) {
-            Alert.alert('Aucune place sélectionnée', 'Veuillez sélectionner au moins une place');
+            Alert.alert(t('enhancedBusSeatSelector.aucunePlaceSelectionnee'), t('enhancedBusSeatSelector.veuillezSelectionnerAuMoinsUnePlace'));
             return;
         }
         onReserve(selectedSeats, totalPrice);
@@ -420,7 +420,7 @@ const [loading, setLoading] = useState(true);
                         {selectedSeats.length > 0 && (
                             <View style={styles.selectionInfo}>
                                 <Text style={styles.selectionTitle}>
-                                    {String(selectedSeats.length)} place{selectedSeats.length > 1 ? 's' : ''} sélectionnée{selectedSeats.length > 1 ? 's' : ''}
+                                    {String(selectedSeats.length)} place{selectedSeats.length > 1 ? 's' : ''} {t('enhancedBusSeatSelector.selectionnee')}
                                 </Text>
                                 <View style={styles.selectedSeatsList}>
                                     {selectedSeats.map((seat) => (

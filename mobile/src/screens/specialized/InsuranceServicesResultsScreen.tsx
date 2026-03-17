@@ -82,7 +82,7 @@ const InsuranceServicesResultsScreen: React.FC = () => {
             setResults(mapped);
         } catch (error: any) {
             console.error('[InsuranceServicesResults] Erreur:', error);
-            Alert.alert('Erreur', 'Impossible de charger les résultats');
+            Alert.alert('Erreur', t('insuranceServicesResultsScreen.impossibleDeChargerLesResultats'));
         } finally {
             setLoading(false);
             setRefreshing(false);

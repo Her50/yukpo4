@@ -109,16 +109,16 @@ const LaboratoireSearchScreen: React.FC = () => {
 
     const typesEtablissement = ['Laboratoire', 'Centre d\'imagerie', 'Les deux'];
     const prestationsAnalyses = [
-        'Biologie', 'Hématologie', 'Biochimie', 'Microbiologie',
-        'Sérologie', 'Immunologie', 'Radiologie', 'Échographie'
+        'Biologie', t('laboratoireSearchScreen.hematologie'), 'Biochimie', 'Microbiologie',
+        t('laboratoireSearchScreen.serologie'), 'Immunologie', 'Radiologie', t('laboratoireSearchScreen.echographie')
     ];
     // ✅ NOUVEAU: Types d'examens détaillés
     const typesExamens = [
         'Analyse de sang', 'Analyse d\'urine', 'Analyse de selles',
-        'Bilan lipidique', t('laboratoireSearchScreen.bilanHepatique'), 'Bilan rénal',
-        t('laboratoireSearchScreen.glycemie'), 'Hémogramme', 'Coagulation',
-        'Hormones', 'Vitamines', 'Sérologie',
-        'Radiographie', 'Échographie', 'IRM', 'Scanner',
+        'Bilan lipidique', t('laboratoireSearchScreen.bilanHepatique'), t('laboratoireSearchScreen.bilanRenal'),
+        t('laboratoireSearchScreen.glycemie'), t('laboratoireSearchScreen.hemogramme'), 'Coagulation',
+        'Hormones', 'Vitamines', t('laboratoireSearchScreen.serologie'),
+        'Radiographie', t('laboratoireSearchScreen.echographie'), 'IRM', 'Scanner',
         'Mammographie', t('laboratoireSearchScreen.densitometrieOsseuse')
     ];
 
@@ -250,10 +250,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                 <View style={styles.searchFormCard}>
                     <Text style={styles.sectionTitle}>{t('laboratoireSearch.rechercheDexamens')}</Text>
                     <Text style={styles.sectionDescription}>
-                        Recherchez un type d'examen médical spécifique
-                    </Text>
-
-                    {/* Type d'examen recherché (PRIORITAIRE) */}
+                        Recherchez un type dt('laboratoireSearchScreen.examenMedicalSpecifiqueTextTypeD')examen recherché (PRIORITAIRE) */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
                             <SafeIcon name="microscope" size={14} color={modernColors.primary} type="lucide" />{t('laboratoireSearchScreen.typeDexamenRecherche')}
@@ -520,10 +517,8 @@ const LaboratoireSearchScreen: React.FC = () => {
                         <Text style={styles.infoTitle}>{t('laboratoireSearch.bonASavoir')}</Text>
                     </View>
                     <Text style={styles.infoText}>
-                        • Certains laboratoires proposent la consultation des résultats en ligne{'\n'}
-                        • Vérifiez les horaires d'ouverture avant de vous déplacer{'\n'}
-                        • La prise de rendez-vous en ligne permet d'éviter les files d'attente{'\n'}
-                        • Les résultats peuvent être disponibles sous 24-48h selon le type d'analyse
+                        • Certains laboratoires proposent la consultation des résultats en ligne{'\nt('laboratoireSearchScreen.verifiezLesHorairesDt('laboratoireSearchScreen.ouvertureAvantDeVousDeplacer')\n'}
+                        • La prise de rendez-vous en ligne permet dt('laboratoireSearchScreen.eviterLesFilesD')attente{'\nt('laboratoireSearchScreen.lesResultatsPeuventEtreDisponiblesSous')analyse
                     </Text>
                 </View>
             </KeyboardAwareScreen>

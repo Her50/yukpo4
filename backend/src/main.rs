@@ -4,7 +4,6 @@ use std::error::Error;
 use std::{env, fs, net::SocketAddr, path::Path, sync::Arc};
 
 use dotenvy::dotenv;
-use mongodb::Client as MongoClient;
 use redis::Client as RedisClient;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions, PgSslMode};
 use tokio::sync::Mutex;
@@ -55,21 +54,12 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Vérifier les variables critiques AVANT toute autre opération
     let db_url_ok = std::env::var("DATABASE_URL").is_ok();
-    let mongo_url_ok = std::env::var("MONGODB_URL").is_ok();
     let redis_url_ok = std::env::var("REDIS_URL").is_ok();
     let jwt_secret_ok = std::env::var("JWT_SECRET").is_ok();
 
     eprintln!(
         "[MAIN] DATABASE_URL: {}",
         if db_url_ok {
-            "✅ Présente"
-        } else {
-            "❌ MANQUANTE"
-        }
-    );
-    eprintln!(
-        "[MAIN] MONGODB_URL: {}",
-        if mongo_url_ok {
             "✅ Présente"
         } else {
             "❌ MANQUANTE"
@@ -2195,48 +2185,8 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ NOUVEAU 2025-11-27: Démarrer le monitoring de santé du pool
     yukpomnang_backend::utils::db_monitor::start_db_health_monitor(pg_pool.clone()).await;
 
-    eprintln!("[MAIN] 🔌 Début de la connexion à MongoDB...");
-    let mongo_url =
-        env::var("MONGODB_URL").unwrap_or_else(|_| "mongodb://localhost:27017".to_string());
-    eprintln!(
-        "[MAIN] MONGODB_URL: {}...",
-        mongo_url.chars().take(50).collect::<String>()
-    );
-    log::info!("🔌 Connexion à MongoDB...");
-    let is_cloud_run = env::var("CLOUD_RUN").unwrap_or_default() == "true";
-    let mongo_client = if is_cloud_run {
-        // Pour Cloud Run: créer le client sans attendre la connexion (démarrage rapide)
-        eprintln!("[MAIN] 🚀 Cloud Run: Création client MongoDB sans connexion bloquante");
-        log::info!("🚀 Cloud Run: Création client MongoDB sans connexion bloquante");
-        match MongoClient::with_uri_str(&mongo_url).await {
-            Ok(client) => {
-                eprintln!("[MAIN] ✅ Client MongoDB créé avec succès");
-                log::info!("✅ Client MongoDB initialisé");
-                client
-            }
-            Err(e) => {
-                eprintln!(
-                    "[MAIN] ⚠️ WARNING Cloud Run: Impossible de créer le client MongoDB: {}",
-                    e
-                );
-                log::warn!("⚠️ Cloud Run: Impossible de créer le client MongoDB: {} - Utilisation d'un client factice", e);
-                // Créer un client factice pour Cloud Run
-                MongoClient::with_uri_str("mongodb://localhost:27017")
-                    .await
-                    .unwrap_or_else(|_| panic!("Impossible de créer un client MongoDB factice"))
-            }
-        }
-    } else {
-        // Pour autres environnements: connexion bloquante
-        MongoClient::with_uri_str(&mongo_url).await.map_err(|e| {
-            eprintln!(
-                "[MAIN] ❌ ERREUR CRITIQUE: Impossible de créer le client MongoDB: {}",
-                e
-            );
-            log::error!("❌ Impossible de créer le client MongoDB: {}", e);
-            e
-        })?
-    };
+    // ✅ 2026-03-16: MongoDB supprimé, tout est dans PostgreSQL (table history_events)
+    log::info!("✅ MongoDB supprimé - Historisation via PostgreSQL (history_events)");
 
     // Configuration Redis avec test de connexion
     let mut redis_url =
@@ -2581,7 +2531,6 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     let app_state = Arc::new(AppState::new(
         pg_pool.clone(),
         pg_read_pool, // ✅ NOUVEAU 2025-12-02: Read replica pour scaling horizontal
-        mongo_client,
         app_ia,
         ia_stats,
         redis_client,
@@ -2859,30 +2808,7 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         .await;
     }
 
-    // ✅ OPTIMISÉ Cloud Run: Index MongoDB en arrière-plan
-    if is_cloud_run {
-        let mongo_for_indexes = app_state.mongo_history.clone();
-        tokio::spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-            match yukpomnang_backend::migrations::auto_migrate::ensure_mongodb_indexes(
-                mongo_for_indexes,
-            )
-            .await
-            {
-                Ok(_) => log::info!("✅ Index MongoDB créés avec succès"),
-                Err(e) => log::warn!("⚠️ Erreur création index MongoDB (non bloquant): {}", e),
-            }
-        });
-    } else {
-        match yukpomnang_backend::migrations::auto_migrate::ensure_mongodb_indexes(
-            app_state.mongo_history.clone(),
-        )
-        .await
-        {
-            Ok(_) => log::info!("✅ Index MongoDB créés avec succès"),
-            Err(e) => log::warn!("⚠️ Erreur création index MongoDB (non bloquant): {}", e),
-        }
-    }
+    // ✅ 2026-03-16: Index MongoDB supprimés - index PostgreSQL créés via ensure_history_events_table
 
     social_distribution_service::start_distribution_worker(app_state.clone());
 
@@ -3049,6 +2975,10 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ Monitor des timeouts de validation de commandes
     std::mem::drop(tokio::spawn(
         tasks::order_timeout_monitor::start_order_timeout_monitor(app_state.clone()),
+    ));
+    // Expiration automatique des trocs en attente (72h TTL)
+    std::mem::drop(tokio::spawn(
+        tasks::troc_expiration_monitor::start_troc_expiration_monitor(app_state.clone()),
     ));
 
     // ✅ NOUVEAU 2026-02-14: Démarrer le monitoring GPU si configuré

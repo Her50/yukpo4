@@ -372,7 +372,7 @@ const BayamSelamResultsScreen: React.FC = () => {
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>{t('bayamSelamResults.resultatsBayamselam')}</Text>
                             <Text style={styles.headerSubtitle}>
-                                {products.length} produit{products.length > 1 ? 's' : ''} trouvé{products.length > 1 ? 's' : ''}
+                                {products.length} produit{products.length > 1 ? 's' : 't('bayamSelamResultsScreen.trouveproductslength1')s' : ''}
                             </Text>
                         </View>
                         <TouchableOpacity

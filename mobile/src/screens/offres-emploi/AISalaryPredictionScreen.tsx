@@ -33,7 +33,7 @@ const AISalaryPredictionScreen: React.FC = () => {
     const [competences, setCompetences] = useState('');
 
     const niveauxEtude = ['Bac', 'Bac+2', 'Bac+3', 'Bac+4', 'Bac+5', 'Doctorat'];
-    const secteurs = ['Informatique', 'Finance', 'Marketing', 'Ressources Humaines', 'Commerce', t('aISalaryPredictionScreen.sante'), 'Éducation', 'Autre'];
+    const secteurs = ['Informatique', 'Finance', 'Marketing', 'Ressources Humaines', 'Commerce', t('aISalaryPredictionScreen.sante'), t('aISalaryPredictionScreen.education'), 'Autre'];
 
     const handlePredict = async () => {
         if (!titrePoste.trim()) {
@@ -59,7 +59,7 @@ const AISalaryPredictionScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[AISalaryPrediction] Erreur:', error);
-            Alert.alert('Erreur', 'Impossible de prédire le salaire. Veuillez réessayer.');
+            Alert.alert('Erreur', t('aISalaryPredictionScreen.impossibleDePredireLeSalaireVeuillez'));
         } finally {
             setLoading(false);
         }

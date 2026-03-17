@@ -120,13 +120,13 @@ const [activeTab, setActiveTab] = useState<'interactions' | 'dosage' | 'budget' 
     // Vérifier interactions médicamenteuses
     const checkInteractions = async () => {
         if (medications.length < 2) {
-            Alert.alert('Erreur', 'Veuillez ajouter au moins 2 médicaments pour vérifier les interactions');
+            Alert.alert('Erreur', t('pharmacyAIFeatures.veuillezAjouterAuMoins2Medicaments'));
             return;
         }
 
         const medNames = medications.map(m => m.name.trim()).filter(Boolean);
         if (medNames.length < 2) {
-            Alert.alert('Erreur', 'Veuillez renseigner les noms des médicaments');
+            Alert.alert('Erreur', t('pharmacyAIFeatures.veuillezRenseignerLesNomsDesMedicaments'));
             return;
         }
 
@@ -140,7 +140,7 @@ const [activeTab, setActiveTab] = useState<'interactions' | 'dosage' | 'budget' 
             if (response?.success && response?.data) {
                 setInteractionResult(response.data as any);
             } else {
-                Alert.alert('Erreur', response?.message || 'Impossible de vérifier les interactions');
+                Alert.alert('Erreur', response?.message || t('pharmacyAIFeatures.impossibleDeVerifierLesInteractions'));
             }
         } catch (error: any) {
             console.error('[PharmacyAIFeatures] Erreur vérification interactions:', error);
@@ -153,7 +153,7 @@ const [activeTab, setActiveTab] = useState<'interactions' | 'dosage' | 'budget' 
     // Suggérer dosage
     const suggestDosage = async () => {
         if (!dosageMedication.trim()) {
-            Alert.alert('Erreur', 'Veuillez renseigner le nom du médicament');
+            Alert.alert('Erreur', t('pharmacyAIFeatures.veuillezRenseignerLeNomDuMedicament'));
             return;
         }
 
@@ -169,7 +169,7 @@ const [activeTab, setActiveTab] = useState<'interactions' | 'dosage' | 'budget' 
             if (response?.success && response?.data) {
                 setDosageResult(response.data as any);
             } else {
-                Alert.alert('Erreur', response?.message || 'Impossible de suggérer le dosage');
+                Alert.alert('Erreur', response?.message || t('pharmacyAIFeatures.impossibleDeSuggererLeDosage'));
             }
         } catch (error: any) {
             console.error('[PharmacyAIFeatures] Erreur suggestion dosage:', error);
@@ -226,7 +226,7 @@ const [activeTab, setActiveTab] = useState<'interactions' | 'dosage' | 'budget' 
             if (response?.success && response?.data) {
                 setProductResults(Array.isArray(response.data) ? response.data : (response.data as any).products || []);
             } else {
-                Alert.alert('Erreur', response?.message || 'Aucun produit trouvé');
+                Alert.alert('Erreur', response?.message || t('pharmacyAIFeatures.aucunProduitTrouve'));
                 setProductResults([]);
             }
         } catch (error: any) {

@@ -209,7 +209,7 @@ const HistoriqueProduitsConsultesScreen: React.FC = () => {
       await SafeStorage.removeItem(STORAGE_KEY);
       setViewedProducts([]);
       setProductsData([]);
-      Alert.alert('Succès', 'Historique effacé');
+      Alert.alert(t('historiqueProduitsConsultesScreen.succes'), t('historiqueProduitsConsultesScreen.historiqueEfface'));
     } catch (error) {
       console.error('[HistoriqueProduitsConsultesScreen] Erreur effacement historique:', error);
       Alert.alert('Erreur', 'Impossible d\'effacer l\'historique');

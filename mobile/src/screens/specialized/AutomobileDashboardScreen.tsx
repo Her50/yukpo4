@@ -47,7 +47,7 @@ const TYPES_VEHICULE = [
 const AutomobileDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
     const { t } = useLanguageSafe();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
 
     const [activeTab, setActiveTab] = useState<TabType>('overview');
     const [loading, setLoading] = useState(true);
@@ -114,6 +114,7 @@ const AutomobileDashboardScreen: React.FC = () => {
                     { label: t('automobileDashboard.recherche'), icon: 'search', color: '#3B82F6', onPress: () => (navigation as any).navigate('AutoServicesSearch') },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#8B5CF6', onPress: () => setActiveTab('analytics') },
                     { label: 'Portefeuille', icon: 'wallet', color: '#10B981', onPress: () => (navigation as any).navigate('WalletFinancial') },
+                    { label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>
@@ -169,7 +170,7 @@ const AutomobileDashboardScreen: React.FC = () => {
     const renderVehicles = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-            <NativeButton title={t('automobileDashboard.ajouterUnVehicule')} onPress={() => Alert.alert('Info', 'Utilisez le formulaire intelligent pour ajouter un véhicule.')} variant="primary" style={{ marginBottom: 16 }} />
+            <NativeButton title={t('automobileDashboard.ajouterUnVehicule')} onPress={() => Alert.alert('Info', t('automobileDashboardScreen.utilisezLeFormulaireIntelligentPourAjouter'))} variant="primary" style={{ marginBottom: 16 }} />
             {vehicles.length === 0 ? (
                 <View style={s.emptyState}>
                     <SafeIcon name="car" size={48} color="#9CA3AF" />

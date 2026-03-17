@@ -109,7 +109,7 @@ const CreateServiceScreen: React.FC = () => {
     const handleSubmit = async () => {
         // Validation des champs obligatoires
         if (!formData.titre_service || !formData.description || !formData.category || !formData.whatsapp) {
-            Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires (titre, description, catégorie, WhatsApp)');
+            Alert.alert('Erreur', t('createServiceScreen_New.veuillezRemplirTousLesChampsObligatoires'));
             return;
         }
 
@@ -152,13 +152,13 @@ const CreateServiceScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', response.message || 'Impossible de créer le service');
+                Alert.alert('Erreur', response.message || t('createServiceScreen_New.impossibleDeCreerLeService'));
             }
 
             setLoading(false);
         } catch (error) {
             console.error('Erreur lors de la création du service:', error);
-            Alert.alert('Erreur', 'Une erreur est survenue lors de la création du service');
+            Alert.alert('Erreur', t('createServiceScreen_New.uneErreurEstSurvenueLorsDe'));
             setLoading(false);
         }
     };

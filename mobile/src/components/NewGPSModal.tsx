@@ -57,7 +57,7 @@ const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number 
             if (status !== 'granted') {
                 Alert.alert(
                     t('newGPSModal.permissionRefusee'),
-                    'Nous avons besoin de votre permission pour accéder à votre position'
+                    t('newGPSModal.nousAvonsBesoinDeVotrePermission')
                 );
                 setLoading(false);
                 return;
@@ -134,7 +134,7 @@ const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number 
                 });
                 setAddress(searchQuery);
             } else {
-                Alert.alert('Aucun résultat', 'Aucune position trouvée pour cette adresse');
+                Alert.alert(t('newGPSModal.aucunResultat'), t('newGPSModal.aucunePositionTrouveePourCetteAdresse'));
             }
             setLoading(false);
         } catch (error) {
@@ -175,7 +175,7 @@ const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number 
     // Confirmer la sélection
     const handleConfirm = () => {
         if (!selectedCoords) {
-            Alert.alert('Erreur', 'Veuillez sélectionner une position sur la carte');
+            Alert.alert('Erreur', t('newGPSModal.veuillezSelectionnerUnePositionSurLa'));
             return;
         }
 

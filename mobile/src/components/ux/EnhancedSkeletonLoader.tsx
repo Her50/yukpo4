@@ -12,6 +12,7 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -24,6 +25,7 @@ const SkeletonItem: React.FC<{ variant: string }> = React.memo(({ variant }) => 
     const opacity = useSharedValue(0.3);
 
     React.useEffect(() => {
+    const { t } = useLanguageSafe();
         if (typeof withRepeat === 'function' && typeof withTiming === 'function' && opacity) {
             try {
                 opacity.value = withRepeat(

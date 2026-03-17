@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -16,8 +17,8 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet } from '../../services/api';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { apiGet } from '../../services/api';
 
 type TabType = 'overview' | 'programs' | 'students' | 'analytics';
 
@@ -32,8 +33,8 @@ interface Program {
 
 const OrientationPartnerDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { user, logout } = useAuth();
     const { t } = useLanguageSafe();
-    const { user } = useAuth();
 
     const [activeTab, setActiveTab] = useState<TabType>('overview');
     const [loading, setLoading] = useState(true);
@@ -101,6 +102,18 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
                     { label: 'IA Recommandations', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('OrientationAIRecommendations') },
                     { label: 'Programmes', icon: 'book-open', color: '#F59E0B', onPress: () => (navigation as any).navigate('ProgrammesList') },
                     { label: 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
+                    {
+                        label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => {
+                            Alert.alert(
+                                t('common.deconnexion'),
+                                t('common.confirmDeconnexion'),
+                                [
+                                    { text: t('common.cancel'), style: 'cancel' },
+                                    { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }
+                                ]
+                            );
+                        }
+                    },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>

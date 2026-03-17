@@ -1,6 +1,5 @@
 /**
- * Composant d'appels vidéo/audio WebRTC
- * IMPORTANT: Nécessite l'installation de react-native-webrtc
+ * Composant dt('webRTCCallModal.appelsVideoaudioWebrtcImportantNecessiteL')installation de react-native-webrtc
  * Voir WEBRTC_SETUP.md pour les instructions d'installation
  */
 import { Audio } from 'expo-av'; // ✅ Pour la sonnerie d'appel
@@ -82,7 +81,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
                 }
             } catch (error) {
                 console.error('[WebRTC] Erreur critique initialisation:', error);
-                Alert.alert('Erreur', 'Impossible d\'initialiser l\'appel. Veuillez réessayer.');
+                Alert.alert('Erreur', 'Impossible d\'initialiser l\t('webRTCCallModal.appelVeuillezReessayer'));
                 onClose();
             }
         }
@@ -210,7 +209,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
             });
 
             const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Timeout obtention caméra/micro')), 15000)
+                setTimeout(() => reject(new Error(t('webRTCCallModal.timeoutObtentionCameramicro'))), 15000)
             );
 
             const stream = await Promise.race([streamPromise, timeoutPromise]) as MediaStream;
@@ -325,7 +324,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
             if (event.code !== 1000 && callState === 'active') {
                 // Seulement si l'appel était en cours (connexion active)
                 console.warn('[WebRTC] Connexion fermée pendant un appel actif');
-                Alert.alert('Appel interrompu', 'La connexion a été perdue');
+                Alert.alert('Appel interrompu', t('webRTCCallModal.laConnexionAEtePerdue'));
                 endCall();
             } else if (event.code !== 1000 && callState === 'connecting') {
                 // Connexion a échoué au démarrage - mode fallback silencieux
@@ -378,7 +377,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
                 break;
 
             case 'call-rejected':
-                Alert.alert('Appel refusé', `${recipientName} a refusé l'appel`);
+                Alert.alert(t('webRTCCallModal.appelRefuse'), t('webRTCCallModal.aRefuseLappel', { recipientName: recipientName }));
                 onClose();
                 break;
 

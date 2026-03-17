@@ -2,8 +2,7 @@
  * CourierVerificationCodeScreen
  * 
  * Écran côté COURSIER : affiche le code PIN et le QR code
- * que le coursier doit montrer au prestataire à l'arrivée au point de pickup.
- * Le prestataire scanne le QR ou saisit le PIN pour vérifier l'identité du coursier.
+ * que le coursier doit montrer au prestataire à lt('courierVerificationCodeScreen.arriveeAuPointDePickupLe')identité du coursier.
  */
 
 import React, { useCallback, useEffect, useState } from 'react';

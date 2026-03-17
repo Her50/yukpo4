@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface AudioMessageWaveformProps {
     audioUrl: string;
@@ -28,7 +29,8 @@ const AudioMessageWaveform: React.FC<AudioMessageWaveformProps> = ({
     duration = 0,
     isFromClient = false,
 }) => {
-    const [isPlaying, setIsPlaying] = useState(false);
+        const { t } = useLanguageSafe();
+const [isPlaying, setIsPlaying] = useState(false);
     const [currentPosition, setCurrentPosition] = useState(0);
     const [sound, setSound] = useState<Audio.Sound | null>(null);
     const [waveformData, setWaveformData] = useState<number[]>([]);

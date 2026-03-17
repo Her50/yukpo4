@@ -106,7 +106,7 @@ const TaxiIntelligentSearchScreen: React.FC = () => {
                     >
                         <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
                         <Text style={styles.gpsText}>
-                            {lat && lng ? `${lat.toFixed(4)}, ${lng.toFixed(4)}` : 'Sélectionner position'}
+                            {lat && lng ? `${lat.toFixed(4)}, ${lng.toFixed(4)}` : t('taxiIntelligentSearchScreen.selectionnerPosition')}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -122,7 +122,7 @@ const TaxiIntelligentSearchScreen: React.FC = () => {
                         <Text style={styles.gpsText}>
                             {destinationLat && destinationLng
                                 ? `${destinationLat.toFixed(4)}, ${destinationLng.toFixed(4)}`
-                                : 'Sélectionner destination'}
+                                : t('taxiIntelligentSearchScreen.selectionnerDestination')}
                         </Text>
                     </TouchableOpacity>
                 </View>

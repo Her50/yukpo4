@@ -64,9 +64,9 @@ const [logs, setLogs] = useState<any[]>([]);
             });
 
             if (shareResult.action === Share.sharedAction) {
-                Alert.alert('Succès', 'Logs exportés et partagés avec succès !');
+                Alert.alert(t('crashRecoveryScreen.succes'), t('crashRecoveryScreen.logsExportesEtPartagesAvecSucces'));
             } else {
-                Alert.alert('Succès', 'Logs copiés dans le presse-papier !');
+                Alert.alert(t('crashRecoveryScreen.succes'), t('crashRecoveryScreen.logsCopiesDansLePressepapier'));
             }
         } catch (err) {
             Alert.alert('Erreur', 'Impossible d\'exporter les logs: ' + err.message);
@@ -79,7 +79,7 @@ const [logs, setLogs] = useState<any[]>([]);
         try {
             const exportData = await logger.exportLogs();
             await Clipboard.setString(exportData);
-            Alert.alert('Succès', 'Logs copiés dans le presse-papier ! Vous pouvez maintenant les coller ici.');
+            Alert.alert(t('crashRecoveryScreen.succes'), t('crashRecoveryScreen.logsCopiesDansLePressepapierVous'));
         } catch (err) {
             Alert.alert('Erreur', 'Impossible de copier les logs: ' + err.message);
         }
@@ -97,7 +97,7 @@ const [logs, setLogs] = useState<any[]>([]);
                     onPress: async () => {
                         await logger.clearLogs();
                         loadLogs();
-                        Alert.alert('Succès', 'Logs effacés');
+                        Alert.alert(t('crashRecoveryScreen.succes'), t('crashRecoveryScreen.logsEffaces'));
                     }
                 }
             ]

@@ -34,28 +34,28 @@ import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
 const STORAGE_KEY = '@immobilier_form';
 
-const TYPES_BIEN = [
-    { key: 'maison', label: t('immobilierForm.maison'), icon: 'home' },
-    { key: 'appartement', label: 'Appartement', icon: 'building' },
-    { key: 'terrain', label: 'Terrain', icon: 'map' },
-    { key: 'bureau', label: 'Bureau', icon: 'briefcase' },
-    { key: 'local_commercial', label: 'Local commercial', icon: 'store' },
-    { key: 'hotel', label: t('immobilierForm.hotel'), icon: 'building' },
-    { key: 'meuble', label: t('immobilierForm.meubleLocationMeublee'), icon: 'home' },
-];
-const STATUTS = [
-    { key: 'vente', label: 'Vente', icon: 'tag' },
-    { key: 'location', label: 'Location', icon: 'key' },
-    { key: 'les_deux', label: t('immobilierForm.lesDeux'), icon: 'layers' },
-];
-const STANDINGS = ['économique', 'moyen', 'haut_de_gamme', 'luxe'];
-const ETATS = ['neuf', 'bon_etat', t('immobilierFormScreen.arenover'), t('immobilierFormScreen.renove')];
-
 const ImmobilierFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const { t } = useLanguageSafe();
+
+    const TYPES_BIEN = [
+        { key: 'maison', label: t('immobilierForm.maison'), icon: 'home' },
+        { key: 'appartement', label: t('immobilierForm.appartement'), icon: 'building' },
+        { key: 'terrain', label: t('immobilierForm.terrain'), icon: 'map' },
+        { key: 'bureau', label: t('immobilierForm.bureau'), icon: 'briefcase' },
+        { key: 'local_commercial', label: t('immobilierForm.localCommercial'), icon: 'store' },
+        { key: 'hotel', label: t('immobilierForm.hotel'), icon: 'building' },
+        { key: 'meuble', label: t('immobilierForm.meubleLocationMeublee'), icon: 'home' },
+    ];
+    const STATUTS = [
+        { key: 'vente', label: t('immobilierForm.vente'), icon: 'tag' },
+        { key: 'location', label: t('immobilierForm.location'), icon: 'key' },
+        { key: 'les_deux', label: t('immobilierForm.lesDeux'), icon: 'layers' },
+    ];
+    const STANDINGS = [t('immobilierFormScreen.economique'), t('immobilierFormScreen.moyen'), t('immobilierFormScreen.hautDeGamme'), t('immobilierFormScreen.luxe')];
+    const ETATS = [t('immobilierFormScreen.neuf'), t('immobilierFormScreen.bonEtat'), t('immobilierFormScreen.arenover'), t('immobilierFormScreen.renove')];
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const propertyId = (route.params as any)?.propertyId as number | undefined;
@@ -277,7 +277,7 @@ const ImmobilierFormScreen: React.FC = () => {
                     </View>
                     <TouchableOpacity style={st.gpsBtn} onPress={() => setShowGPSModal(true)}>
                         <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                        <Text style={st.gpsBtnText}>{selectedGPS ? t('immobilierFormScreen.gpsSelectionne') : 'Sélectionner sur la carte'}</Text>
+                        <Text style={st.gpsBtnText}>{selectedGPS ? t('immobilierFormScreen.gpsSelectionne') : t('immobilierFormScreen.selectionnerSurLaCarte')}</Text>
                         <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                     </TouchableOpacity>
                 </View>
@@ -351,6 +351,60 @@ const ImmobilierFormScreen: React.FC = () => {
                     <MediaUploader media={media} onMediaChange={setMedia} maxImages={10} maxVideos={3} allowVideos label={t('immobilierForm.ajoutezDesPhotosEtVideos')} />
                 </View>
 
+                {/* Section: Visite virtuelle 360° */}
+                {mode === 'edit' && propertyId && (
+                    <View style={st.section}>
+                        <View style={st.sectionHdr}>
+                            <SafeIcon name="video" size={18} color="#7C3AED" />
+                            <Text style={st.sectionTitle}>{t('immobilierForm.visiteVirtuelle360') || 'Visite virtuelle 360°'}</Text>
+                        </View>
+                        <Text style={st.hint}>
+                            {t('immobilierForm.visiteVirtuelleDescription') || 'Ajoutez une visite virtuelle 360° ou un modèle 3D pour attirer plus de clients.'}
+                        </Text>
+                        <TouchableOpacity
+                            style={st.virtualTourBtn}
+                            onPress={async () => {
+                                try {
+                                    const result = await require('expo-image-picker').launchImageLibraryAsync({
+                                        mediaTypes: ['videos'],
+                                        allowsEditing: false,
+                                        quality: 1,
+                                    });
+                                    if (!result.canceled && result.assets?.[0]) {
+                                        const asset = result.assets[0];
+                                        Alert.alert(
+                                            t('immobilierForm.uploadEnCours') || 'Upload en cours',
+                                            t('immobilierForm.uploadVisiteVirtuelle') || 'Upload de la visite virtuelle...'
+                                        );
+                                        const resp = await immobilierService.uploadVirtualTour(propertyId, {
+                                            uri: asset.uri,
+                                            type: asset.mimeType || 'video/mp4',
+                                            name: asset.fileName || `virtual_tour_${Date.now()}.mp4`,
+                                        });
+                                        const data = (resp?.data || resp) as any;
+                                        if (data?.success) {
+                                            Alert.alert(
+                                                t('message.success'),
+                                                t('immobilierForm.visiteVirtuelleAjoutee') || 'Visite virtuelle ajoutée avec succès !'
+                                            );
+                                        } else {
+                                            Alert.alert(t('message.error'), data?.message || t('immobilierForm.erreurUpload') || 'Erreur lors de l\'upload');
+                                        }
+                                    }
+                                } catch (e: any) {
+                                    console.error('[ImmobilierForm] Virtual tour upload:', e);
+                                    Alert.alert(t('message.error'), e.message || t('immobilierForm.erreurUpload') || 'Erreur lors de l\'upload');
+                                }
+                            }}
+                        >
+                            <SafeIcon name="upload" size={20} color="#7C3AED" />
+                            <Text style={st.virtualTourBtnText}>
+                                {t('immobilierForm.ajouterVisiteVirtuelle') || 'Ajouter une visite virtuelle 360°'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
                 {/* Submit */}
                 <View style={{ paddingHorizontal: 16 }}>
                     <NativeButton
@@ -359,6 +413,17 @@ const ImmobilierFormScreen: React.FC = () => {
                         disabled={loading || !formData.titre.trim() || !serviceId || (!formData.ville && !selectedGPS)}
                         variant="primary" size="large" style={{ marginTop: 8 }}
                     />
+                </View>
+
+                {/* Sortir */}
+                <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+                    <TouchableOpacity
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA' }}
+                        onPress={() => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); }}
+                    >
+                        <SafeIcon name="log-out" size={20} color="#DC2626" />
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#DC2626' }}>{t('common.sortir')}</Text>
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
 
@@ -433,7 +498,24 @@ const st = StyleSheet.create({
     },
     characteristicInput: {
         flex: 1,
-        marginBottom: 0 // ✅ Enlever le margin car déjà dans la carte
+        marginBottom: 0,
+    },
+    virtualTourBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        marginTop: 12,
+        paddingVertical: 14,
+        borderRadius: 12,
+        backgroundColor: '#F5F3FF',
+        borderWidth: 1,
+        borderColor: '#DDD6FE',
+    },
+    virtualTourBtnText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#7C3AED',
     },
 });
 

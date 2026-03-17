@@ -35,7 +35,7 @@ import { hapticPress } from '../../utils/hapticFeedback';
 const STORAGE_KEY = '@livre_scolaire_form';
 
 const niveaux = ['Primaire', t('livreScolaireFormScreen.college'), t('livreScolaireFormScreen.lycee')];
-const etats = ['Neuf', 'Très bon', 'Bon', 'Acceptable'];
+const etats = ['Neuf', t('livreScolaireFormScreen.tresBon'), 'Bon', 'Acceptable'];
 
 const LivreScolaireFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -617,9 +617,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                         </View>
                     </View>
 
-                    {/* Description de l'état */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('livreScolaireForm.descriptionDeLetat')}</Text>
+                    {/* Description de lt('livreScolaireFormScreen.etatViewStylestylesinputgroupTextStylestyleslabelt')livreScolaireForm.descriptionDeLetat')}</Text>
                         <NativeInput
                             value={formData.description_etat}
                             onChangeText={(text) => setFormData({ ...formData, description_etat: text })}
@@ -748,7 +746,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                         >
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
                             <Text style={styles.gpsButtonText}>
-                                {selectedGPS ? t('livreScolaireFormScreen.localisationSelectionnee') : 'Sélectionner sur la carte'}
+                                {selectedGPS ? t('livreScolaireFormScreen.localisationSelectionnee') : t('livreScolaireFormScreen.selectionnerSurLaCarte')}
                             </Text>
                             <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
                         </TouchableOpacity>
@@ -775,7 +773,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                 currentLocation={selectedGPS as any}
             />
 
-            {/* ✅ NOUVEAU: Modal d'affichage des résultats de l'analyse IA */}
+            {/* ✅ NOUVEAU: Modal dt('livreScolaireFormScreen.affichageDesResultatsDeL')analyse IA */}
             <Modal
                 visible={showIAAnalysisModal}
                 transparent

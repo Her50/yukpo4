@@ -109,7 +109,7 @@ const CreateServiceScreen: React.FC = () => {
   const handleSubmit = async () => {
     // Validation des champs obligatoires
     if (!formData.titre_service || !formData.description || !formData.category || !formData.whatsapp) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires (titre, description, catégorie, WhatsApp)');
+      Alert.alert('Erreur', t('createServiceScreen.veuillezRemplirTousLesChampsObligatoires'));
       return;
     }
 

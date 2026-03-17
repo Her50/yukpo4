@@ -183,7 +183,7 @@ const [services, setServices] = useState<InteractedService[]>([]);
                         : service
                 )
             );
-            Alert.alert('Favori', 'Service mis à jour dans vos favoris');
+            Alert.alert('Favori', t('serviceHistoryModal.serviceMisAJourDansVos'));
         } catch (error) {
             console.error('Erreur toggle favori:', error);
         }

@@ -73,7 +73,7 @@ const BanqueSangDetailsScreen: React.FC = () => {
             setLoading(true);
             const response = await apiGet(`/api/banques-sang/${params.banqueId}`);
             if (response.success && response.data) setBanque(response.data as BanqueSangDetails);
-            else { Alert.alert('Erreur', 'Impossible de charger les détails'); navigation.goBack(); }
+            else { Alert.alert('Erreur', t('banqueSangDetailsScreen.impossibleDeChargerLesDetails')); navigation.goBack(); }
         } catch (error: any) { Alert.alert('Erreur', error.message || 'Impossible de charger'); navigation.goBack(); }
         finally { setLoading(false); }
     };

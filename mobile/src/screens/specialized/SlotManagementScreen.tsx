@@ -48,7 +48,7 @@ const CONSULTATION_TYPES_HOPITAL = [
     t('slotManagementScreen.consultationSpecialisee'),
     'Urgences',
     'Suivi',
-    'Pédiatrie',
+    t('slotManagementScreen.pediatrie'),
     t('slotManagementScreen.maternite'),
     'Chirurgie',
     'Radiologie',
@@ -252,7 +252,7 @@ const SlotManagementScreen: React.FC<SlotManagementScreenProps> = ({ route, navi
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.headerTitle}>{t('slotManagement.gestionDesCreneaux')}</Text>
-                    <Text style={styles.headerSubtitle}>{serviceName || (serviceType === 'hopital' ? 'Hôpital' : 'Laboratoire')}</Text>
+                    <Text style={styles.headerSubtitle}>{serviceName || (serviceType === 'hopital' ? t('slotManagementScreen.hopital') : 'Laboratoire')}</Text>
                 </View>
             </View>
 

@@ -71,7 +71,7 @@ const [query, setQuery] = useState(prefillQuery || '');
             return s.text.includes('pharmacie');
         }
         if (specializedType === 'hopital' || specializedType === 'laboratoire') {
-            return s.text.includes('médecin') || s.text.includes('urgences');
+            return s.text.includes(t('specializedSearchAutocomplete.medecin')) || s.text.includes('urgences');
         }
         return true;
     });

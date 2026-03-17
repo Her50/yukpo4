@@ -317,7 +317,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                         {searchQuery.trim() && (
                             <View style={styles.searchResultsInfo}>
                                 <Text style={styles.searchResultsText}>
-                                    {filteredOptions.length} résultat{filteredOptions.length > 1 ? 's' : ''} trouvé{filteredOptions.length > 1 ? 's' : ''}
+                                    {filteredOptions.length} résultat{filteredOptions.length > 1 ? 's' : 't('enhancedModalitySelector.trouvefilteredoptionslength1')s' : ''}
                                 </Text>
                                 {/* ✅ NOUVEAU : Proposer d'ajouter si pas de correspondance exacte */}
                                 {!hasExactMatch && searchQuery.trim().length > 2 && (

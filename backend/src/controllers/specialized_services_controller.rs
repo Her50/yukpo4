@@ -44,14 +44,60 @@ pub async fn list_laboratories(
     Ok((StatusCode::OK, Json(json!([]))))
 }
 
-/// ✅ Liste des agences de voyage (stub pour éviter erreur 405)
+/// Liste des agences de voyage (protégée)
 pub async fn list_travel_agencies(
-    State(_state): State<Arc<AppState>>,
-    Extension(_user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[list_travel_agencies] Called");
-    // TODO: Implémenter la vraie liste
-    Ok((StatusCode::OK, Json(json!([]))))
+    info!("[list_travel_agencies] user_id={}", user.id);
+
+    let agencies = sqlx::query(
+        r#"SELECT s.id as service_id, a.id as agency_id, a.nom_agence, a.ville, a.quartier,
+                  a.adresse, a.telephone, a.whatsapp, a.email, a.site_web,
+                  a.services_voyage, a.compagnies_bus, a.destinations,
+                  a.heures_ouverture, a.heures_fermeture, a.jours_ouverture,
+                  a.peut_emettre_tickets_bus, a.compagnies_affiliees,
+                  a.gps, a.is_active, a.created_at
+           FROM services s
+           INNER JOIN agences_voyage a ON a.service_id = s.id
+           WHERE s.is_active = TRUE
+           ORDER BY a.created_at DESC
+           LIMIT 50"#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[list_travel_agencies] Erreur: {}", e);
+        AppError::Internal("Erreur récupération agences".to_string())
+    })?;
+
+    let mut agencies_json = Vec::new();
+    for row in agencies {
+        agencies_json.push(json!({
+            "id": row.try_get::<i32, _>("service_id").ok(),
+            "agency_id": row.try_get::<i32, _>("agency_id").ok(),
+            "nom_agence": row.try_get::<Option<String>, _>("nom_agence").ok().flatten(),
+            "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
+            "quartier": row.try_get::<Option<String>, _>("quartier").ok().flatten(),
+            "adresse": row.try_get::<Option<String>, _>("adresse").ok().flatten(),
+            "telephone": row.try_get::<Option<String>, _>("telephone").ok().flatten(),
+            "whatsapp": row.try_get::<Option<String>, _>("whatsapp").ok().flatten(),
+            "email": row.try_get::<Option<String>, _>("email").ok().flatten(),
+            "site_web": row.try_get::<Option<String>, _>("site_web").ok().flatten(),
+            "gps": row.try_get::<Option<String>, _>("gps").ok().flatten(),
+            "peut_emettre_tickets_bus": row.try_get::<Option<bool>, _>("peut_emettre_tickets_bus").ok().flatten(),
+            "is_active": row.try_get::<Option<bool>, _>("is_active").ok().flatten(),
+        }));
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": agencies_json,
+            "total": agencies_json.len()
+        })),
+    ))
 }
 
 /// ✅ Liste des covoiturages (stub pour éviter erreur 405) - Version protégée
@@ -66,11 +112,67 @@ pub async fn list_covoiturages(
 
 /// ✅ Liste des covoiturages (version publique - pas d'authentification requise)
 pub async fn list_covoiturages_public(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
 ) -> AppResult<impl IntoResponse> {
     info!("[list_covoiturages_public] Called");
-    // TODO: Implémenter la vraie liste
-    Ok((StatusCode::OK, Json(json!([]))))
+
+    let rows = sqlx::query(
+        r#"SELECT c.id as covoiturage_id, c.service_id, c.user_id as driver_id,
+                  c.depart, c.destination, c.gps_depart, c.gps_destination,
+                  c.date_depart, c.heure_depart, c.type_vehicule, c.marque_modele,
+                  c.nombre_places, c.places_disponibles, c.prix_par_place, c.devise,
+                  c.bagages_autorises, c.animaux_autorises, c.fumeur_autorise, c.climatisation,
+                  c.statut, c.is_recurring, c.recurrence_type, c.created_at,
+                  u.name as driver_name
+           FROM covoiturages c
+           JOIN services s ON s.id = c.service_id
+           LEFT JOIN users u ON u.id = c.user_id
+           WHERE c.is_active = TRUE AND c.statut = 'ouvert' AND c.date_depart >= CURRENT_DATE
+           ORDER BY c.date_depart ASC, c.heure_depart ASC
+           LIMIT 50"#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[list_covoiturages_public] Erreur: {}", e);
+        AppError::Internal("Erreur récupération covoiturages".to_string())
+    })?;
+
+    let mut trips = Vec::new();
+    for row in &rows {
+        trips.push(json!({
+            "id": row.try_get::<i32, _>("covoiturage_id").ok(),
+            "service_id": row.try_get::<i32, _>("service_id").ok(),
+            "depart": row.try_get::<Option<String>, _>("depart").ok().flatten(),
+            "destination": row.try_get::<Option<String>, _>("destination").ok().flatten(),
+            "gps_depart": row.try_get::<Option<String>, _>("gps_depart").ok().flatten(),
+            "gps_destination": row.try_get::<Option<String>, _>("gps_destination").ok().flatten(),
+            "date_depart": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("date_depart").ok().flatten().map(|d| d.to_rfc3339()),
+            "heure_depart": row.try_get::<Option<chrono::NaiveTime>, _>("heure_depart").ok().flatten().map(|t| t.format("%H:%M").to_string()),
+            "type_vehicule": row.try_get::<Option<String>, _>("type_vehicule").ok().flatten(),
+            "marque_modele": row.try_get::<Option<String>, _>("marque_modele").ok().flatten(),
+            "nombre_places": row.try_get::<Option<i32>, _>("nombre_places").ok().flatten(),
+            "places_disponibles": row.try_get::<Option<i32>, _>("places_disponibles").ok().flatten(),
+            "prix_par_place": row.try_get::<Option<i32>, _>("prix_par_place").ok().flatten(),
+            "devise": row.try_get::<Option<String>, _>("devise").ok().flatten(),
+            "climatisation": row.try_get::<Option<bool>, _>("climatisation").ok().flatten(),
+            "bagages_autorises": row.try_get::<Option<bool>, _>("bagages_autorises").ok().flatten(),
+            "animaux_autorises": row.try_get::<Option<bool>, _>("animaux_autorises").ok().flatten(),
+            "fumeur_autorise": row.try_get::<Option<bool>, _>("fumeur_autorise").ok().flatten(),
+            "statut": row.try_get::<Option<String>, _>("statut").ok().flatten(),
+            "is_recurring": row.try_get::<Option<bool>, _>("is_recurring").ok().flatten(),
+            "driver_name": row.try_get::<Option<String>, _>("driver_name").ok().flatten(),
+        }));
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": trips,
+            "total": trips.len()
+        })),
+    ))
 }
 
 /// ✅ Liste des taxis (stub pour éviter erreur 405) - Version protégée
@@ -85,11 +187,98 @@ pub async fn list_taxis(
 
 /// ✅ Liste des taxis (version publique - pas d'authentification requise)
 pub async fn list_taxis_public(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
 ) -> AppResult<impl IntoResponse> {
     info!("[list_taxis_public] Called");
-    // TODO: Implémenter la vraie liste
-    Ok((StatusCode::OK, Json(json!([]))))
+
+    use sqlx::Row;
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            t.id as taxi_id,
+            s.id as service_id,
+            t.user_id,
+            t.nom_chauffeur,
+            t.telephone,
+            t.whatsapp,
+            t.type_vehicule,
+            t.marque_modele,
+            t.immatriculation,
+            t.couleur,
+            t.annee,
+            t.is_available_now,
+            t.zone_intervention,
+            t.gps_actuel,
+            t.tarif_base,
+            t.tarif_par_km,
+            t.devise,
+            t.paiement_cash,
+            t.paiement_mobile_money,
+            t.paiement_carte,
+            t.climatisation,
+            t.wifi,
+            t.is_on_duty,
+            s.category,
+            s.specialized_type,
+            s.gps as service_gps,
+            u.nom_complet as prestataire_nom,
+            u.photo_profil as prestataire_photo
+        FROM taxis_ville t
+        INNER JOIN services s ON s.id = t.service_id
+        LEFT JOIN users u ON u.id = t.user_id
+        WHERE s.is_active = true AND t.is_available_now = true
+        ORDER BY t.updated_at DESC
+        LIMIT 50
+        "#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[list_taxis_public] Erreur: {}", e);
+        AppError::Internal("Erreur liste taxis".to_string())
+    })?;
+
+    let taxis_json: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|row| {
+            json!({
+                "taxi_id": row.try_get::<i32, _>("taxi_id").ok(),
+                "service_id": row.try_get::<i32, _>("service_id").ok(),
+                "user_id": row.try_get::<i32, _>("user_id").ok(),
+                "nom_chauffeur": row.try_get::<Option<String>, _>("nom_chauffeur").ok().flatten(),
+                "telephone": row.try_get::<Option<String>, _>("telephone").ok().flatten(),
+                "whatsapp": row.try_get::<Option<String>, _>("whatsapp").ok().flatten(),
+                "type_vehicule": row.try_get::<Option<String>, _>("type_vehicule").ok().flatten(),
+                "marque_modele": row.try_get::<Option<String>, _>("marque_modele").ok().flatten(),
+                "immatriculation": row.try_get::<Option<String>, _>("immatriculation").ok().flatten(),
+                "couleur": row.try_get::<Option<String>, _>("couleur").ok().flatten(),
+                "annee": row.try_get::<Option<i32>, _>("annee").ok().flatten(),
+                "is_available_now": row.try_get::<Option<bool>, _>("is_available_now").ok().flatten(),
+                "zone_intervention": row.try_get::<Option<Vec<String>>, _>("zone_intervention").ok().flatten(),
+                "gps_actuel": row.try_get::<Option<String>, _>("gps_actuel").ok().flatten(),
+                "tarif_base": row.try_get::<Option<i32>, _>("tarif_base").ok().flatten(),
+                "tarif_par_km": row.try_get::<Option<i32>, _>("tarif_par_km").ok().flatten(),
+                "devise": row.try_get::<Option<String>, _>("devise").ok().flatten(),
+                "paiement_cash": row.try_get::<Option<bool>, _>("paiement_cash").ok().flatten(),
+                "paiement_mobile_money": row.try_get::<Option<bool>, _>("paiement_mobile_money").ok().flatten(),
+                "paiement_carte": row.try_get::<Option<bool>, _>("paiement_carte").ok().flatten(),
+                "climatisation": row.try_get::<Option<bool>, _>("climatisation").ok().flatten(),
+                "wifi": row.try_get::<Option<bool>, _>("wifi").ok().flatten(),
+                "is_on_duty": row.try_get::<Option<bool>, _>("is_on_duty").ok().flatten(),
+                "prestataire_nom": row.try_get::<Option<String>, _>("prestataire_nom").ok().flatten(),
+                "prestataire_photo": row.try_get::<Option<String>, _>("prestataire_photo").ok().flatten(),
+            })
+        })
+        .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": taxis_json,
+            "total": taxis_json.len()
+        })),
+    ))
 }
 
 // ============================================================================
@@ -1306,12 +1495,13 @@ pub async fn search_properties(
     }
 
     if let Some(type_bien) = &query.type_bien {
-        query_builder.push(" AND (p.product_data->>'type_bien' = ");
-        query_builder.push_bind(type_bien);
-        query_builder.push(" OR s.data->'type_bien'->>'valeur' = ");
-        query_builder.push_bind(type_bien);
-        query_builder.push(" OR s.data->>'type_bien' = ");
-        query_builder.push_bind(type_bien);
+        let type_bien_lower = type_bien.to_lowercase();
+        query_builder.push(" AND (LOWER(p.product_data->>'type_bien') = ");
+        query_builder.push_bind(type_bien_lower.clone());
+        query_builder.push(" OR LOWER(s.data->'type_bien'->>'valeur') = ");
+        query_builder.push_bind(type_bien_lower.clone());
+        query_builder.push(" OR LOWER(s.data->>'type_bien') = ");
+        query_builder.push_bind(type_bien_lower);
         query_builder.push(")");
     }
     if let Some(statut) = &query.statut {
@@ -1388,13 +1578,12 @@ pub async fn search_properties(
     query_builder.push_bind(offset);
 
     let properties = query_builder.build().fetch_all(&state.pg).await.map_err(|e| {
-        error!("[search_properties] Erreur: {}", e);
+        error!("[search_properties] Erreur service_products: {}", e);
         AppError::Internal("Erreur recherche biens".to_string())
     })?;
 
     let mut properties_json = Vec::new();
     for row in properties {
-        // Extraire photos depuis JSONB
         let photos_value: Option<serde_json::Value> =
             row.try_get::<Option<serde_json::Value>, _>("photos").ok().flatten();
         let photos_array: Option<Vec<String>> = photos_value.and_then(|v| {
@@ -1431,11 +1620,118 @@ pub async fn search_properties(
         }));
     }
 
+    // Also search real_estate_properties (created via ImmobilierForm)
+    let mut rep_builder = sqlx::QueryBuilder::new(
+        r#"
+        SELECT
+            rep.id,
+            rep.service_id,
+            rep.titre,
+            rep.description,
+            rep.type_bien,
+            rep.statut,
+            rep.adresse,
+            rep.quartier,
+            rep.ville,
+            rep.gps,
+            rep.superficie_m2,
+            rep.nb_chambres,
+            rep.nb_salles_bain,
+            rep.standing,
+            rep.prix_vente,
+            rep.prix_location AS prix_location_mensuel,
+            rep.photos,
+            COALESCE(rep.is_available, TRUE) AS is_available_now,
+            rep.created_at
+        FROM real_estate_properties rep
+        WHERE 1=1
+        "#,
+    );
+
+    if let Some(type_bien) = &query.type_bien {
+        rep_builder.push(" AND LOWER(rep.type_bien) = LOWER(");
+        rep_builder.push_bind(type_bien);
+        rep_builder.push(")");
+    }
+    if let Some(ville) = &query.ville {
+        rep_builder.push(" AND rep.ville ILIKE ");
+        rep_builder.push_bind(format!("%{}%", ville));
+    }
+    if let Some(standing) = &query.standing {
+        rep_builder.push(" AND LOWER(rep.standing) = LOWER(");
+        rep_builder.push_bind(standing);
+        rep_builder.push(")");
+    }
+    if let Some(prix_max) = query.prix_max {
+        let prix_max_dec = rust_decimal::Decimal::from_f64_retain(prix_max).unwrap_or(rust_decimal::Decimal::ZERO);
+        rep_builder.push(" AND COALESCE(rep.prix_location, rep.prix_vente, 999999999) <= ");
+        rep_builder.push_bind(prix_max_dec);
+    }
+    if let Some(nb_chambres) = query.nb_chambres_min {
+        rep_builder.push(" AND COALESCE(rep.nb_chambres, 0) >= ");
+        rep_builder.push_bind(nb_chambres);
+    }
+    if let Some(query_text) = &query.query {
+        if !query_text.trim().is_empty() {
+            rep_builder.push(" AND (rep.titre ILIKE ");
+            rep_builder.push_bind(format!("%{}%", query_text));
+            rep_builder.push(" OR rep.description ILIKE ");
+            rep_builder.push_bind(format!("%{}%", query_text));
+            rep_builder.push(")");
+        }
+    }
+
+    rep_builder.push(" ORDER BY rep.created_at DESC LIMIT ");
+    rep_builder.push_bind(limit);
+
+    let rep_rows = rep_builder.build().fetch_all(&state.pg).await.unwrap_or_default();
+
+    let existing_ids: std::collections::HashSet<i32> = properties_json
+        .iter()
+        .filter_map(|p| p.get("id").and_then(|v| v.as_i64()).map(|v| v as i32))
+        .collect();
+
+    for row in rep_rows {
+        let rep_id: i32 = row.try_get("id").unwrap_or(0);
+        if existing_ids.contains(&rep_id) {
+            continue;
+        }
+
+        let photos_val: Option<Vec<String>> = row.try_get::<Option<Vec<String>>, _>("photos").ok().flatten();
+
+        properties_json.push(json!({
+            "id": rep_id,
+            "service_id": row.try_get::<Option<i32>, _>("service_id").ok().flatten(),
+            "titre": row.try_get::<Option<String>, _>("titre").ok().flatten().unwrap_or_default(),
+            "description": row.try_get::<Option<String>, _>("description").ok().flatten(),
+            "type_bien": row.try_get::<Option<String>, _>("type_bien").ok().flatten().unwrap_or_default(),
+            "statut": row.try_get::<Option<String>, _>("statut").ok().flatten().unwrap_or_default(),
+            "quartier": row.try_get::<Option<String>, _>("quartier").ok().flatten(),
+            "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
+            "gps": row.try_get::<Option<String>, _>("gps").ok().flatten(),
+            "superficie_m2": row.try_get::<Option<rust_decimal::Decimal>, _>("superficie_m2").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
+            "nb_chambres": row.try_get::<Option<i32>, _>("nb_chambres").ok().flatten(),
+            "nb_salles_bain": row.try_get::<Option<i32>, _>("nb_salles_bain").ok().flatten(),
+            "standing": row.try_get::<Option<String>, _>("standing").ok().flatten(),
+            "prix_vente": row.try_get::<Option<rust_decimal::Decimal>, _>("prix_vente").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
+            "prix_location_mensuel": row.try_get::<Option<rust_decimal::Decimal>, _>("prix_location_mensuel").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
+            "photos": photos_val,
+            "is_available_now": row.try_get::<Option<bool>, _>("is_available_now").ok().flatten().unwrap_or(true),
+        }));
+    }
+
+    let total = properties_json.len() as i64;
+    let total_pages = (total + limit - 1) / limit;
+
     Ok((
         StatusCode::OK,
         Json(json!({
             "success": true,
-            "data": properties_json
+            "data": properties_json,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": total_pages
         })),
     ))
 }
@@ -1470,8 +1766,39 @@ pub async fn get_property_details(
     }
 
     let row = property.unwrap();
+    let property_id = row.try_get::<i32, _>("id").unwrap_or(0);
+
+    // Récupérer les visites virtuelles associées
+    let virtual_tours_rows = sqlx::query(
+        r#"
+        SELECT id, tour_type, media_url, thumbnail_url, duration_seconds, description, is_primary, created_at
+        FROM property_virtual_tours
+        WHERE property_id = $1
+        ORDER BY is_primary DESC, created_at DESC
+        "#,
+    )
+    .bind(property_id)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let virtual_tours: Vec<serde_json::Value> = virtual_tours_rows
+        .iter()
+        .map(|vt| {
+            json!({
+                "id": vt.try_get::<i32, _>("id").unwrap_or(0),
+                "tour_type": vt.try_get::<Option<String>, _>("tour_type").ok().flatten(),
+                "media_url": vt.try_get::<Option<String>, _>("media_url").ok().flatten(),
+                "thumbnail_url": vt.try_get::<Option<String>, _>("thumbnail_url").ok().flatten(),
+                "duration_seconds": vt.try_get::<Option<i32>, _>("duration_seconds").ok().flatten(),
+                "description": vt.try_get::<Option<String>, _>("description").ok().flatten(),
+                "is_primary": vt.try_get::<Option<bool>, _>("is_primary").ok().flatten().unwrap_or(false),
+            })
+        })
+        .collect();
+
     let property_json = json!({
-        "id": row.try_get::<i32, _>("id").unwrap_or(0),
+        "id": property_id,
         "service_id": row.try_get::<i32, _>("service_id").unwrap_or(0),
         "titre": row.try_get::<String, _>("titre").unwrap_or_default(),
         "description": row.try_get::<Option<String>, _>("description").ok().flatten(),
@@ -1489,6 +1816,9 @@ pub async fn get_property_details(
         "prix_vente": row.try_get::<Option<rust_decimal::Decimal>, _>("prix_vente").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
         "prix_location_mensuel": row.try_get::<Option<rust_decimal::Decimal>, _>("prix_location_mensuel").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
         "photos": row.try_get::<Option<Vec<String>>, _>("photos").ok().flatten(),
+        "videos": row.try_get::<Option<Vec<String>>, _>("videos").ok().flatten(),
+        "virtual_tours": virtual_tours,
+        "has_virtual_tour": !virtual_tours_rows.is_empty(),
     });
 
     Ok((
@@ -2744,6 +3074,54 @@ pub async fn upload_virtual_tour(
     ))
 }
 
+/// GET /api/immobilier/biens/{id}/virtual-tours
+/// Liste toutes les visites virtuelles d'un bien immobilier
+pub async fn get_property_virtual_tours(
+    State(state): State<Arc<AppState>>,
+    Path(property_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    let tours = sqlx::query(
+        r#"
+        SELECT id, property_id, tour_type, media_url, thumbnail_url,
+               duration_seconds, description, is_primary, created_at
+        FROM property_virtual_tours
+        WHERE property_id = $1
+        ORDER BY is_primary DESC, created_at DESC
+        "#,
+    )
+    .bind(property_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_property_virtual_tours] Erreur: {}", e);
+        AppError::Internal("Erreur récupération visites virtuelles".to_string())
+    })?;
+
+    let mut result = Vec::new();
+    for row in tours {
+        result.push(json!({
+            "id": row.try_get::<i32, _>("id").unwrap_or(0),
+            "property_id": row.try_get::<i32, _>("property_id").unwrap_or(0),
+            "tour_type": row.try_get::<Option<String>, _>("tour_type").ok().flatten(),
+            "media_url": row.try_get::<Option<String>, _>("media_url").ok().flatten(),
+            "thumbnail_url": row.try_get::<Option<String>, _>("thumbnail_url").ok().flatten(),
+            "duration_seconds": row.try_get::<Option<i32>, _>("duration_seconds").ok().flatten(),
+            "description": row.try_get::<Option<String>, _>("description").ok().flatten(),
+            "is_primary": row.try_get::<Option<bool>, _>("is_primary").ok().flatten().unwrap_or(false),
+            "created_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("created_at").ok().flatten().map(|d| d.to_rfc3339()),
+        }));
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": result,
+            "total": result.len()
+        })),
+    ))
+}
+
 // ============================================================================
 // TERRAINS
 // ============================================================================
@@ -3350,9 +3728,17 @@ pub async fn search_taxis(
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = (params.page.unwrap_or(1) - 1) * limit;
 
-    // ✅ CORRIGÉ: Filtrer uniquement les taxis publiés (is_active = true) - utiliser taxis_ville
     let mut query = QueryBuilder::new(
-        "SELECT s.*, t.* FROM services s INNER JOIN taxis_ville t ON t.service_id = s.id WHERE s.is_active = true",
+        r#"SELECT t.id AS taxi_id, t.service_id, t.user_id, t.nom_chauffeur, t.telephone,
+                  t.whatsapp, t.type_vehicule, t.marque_modele, t.immatriculation, t.couleur,
+                  t.annee, t.is_available_now, t.zone_intervention, t.gps_actuel,
+                  t.tarif_base, t.tarif_par_km, t.devise, t.paiement_cash,
+                  t.paiement_mobile_money, t.paiement_carte, t.climatisation, t.wifi,
+                  t.is_on_duty, t.created_at AS taxi_created_at,
+                  s.nom AS service_nom, s.ville, s.quartier, s.gps AS service_gps
+           FROM taxis_ville t
+           INNER JOIN services s ON s.id = t.service_id
+           WHERE s.is_active = true AND t.is_active = true"#,
     );
 
     if let Some(ref ville) = params.ville {
@@ -3364,7 +3750,7 @@ pub async fn search_taxis(
         query.push_bind(quartier);
     }
 
-    query.push(" ORDER BY s.created_at DESC LIMIT ");
+    query.push(" ORDER BY t.is_available_now DESC, t.created_at DESC LIMIT ");
     query.push_bind(limit);
     query.push(" OFFSET ");
     query.push_bind(offset);
@@ -3376,10 +3762,36 @@ pub async fn search_taxis(
     })?;
 
     let mut taxis_json = Vec::new();
-    for row in taxis {
+    for row in &taxis {
+        let zone_intervention: Option<Vec<String>> = row.try_get::<Option<Vec<String>>, _>("zone_intervention").ok().flatten();
+        let zone = zone_intervention.as_ref().and_then(|z| if z.is_empty() { None } else { Some(z.join(", ")) });
+        let ville: Option<String> = row.try_get::<Option<String>, _>("ville").ok().flatten();
         taxis_json.push(json!({
-            "id": row.try_get::<i32, _>("id").ok(),
-            "nom": row.try_get::<Option<String>, _>("nom").ok().flatten(),
+            "id": row.try_get::<i32, _>("taxi_id").ok(),
+            "service_id": row.try_get::<i32, _>("service_id").ok(),
+            "user_id": row.try_get::<i32, _>("user_id").ok(),
+            "zone": zone.or(ville),
+            "nom_chauffeur": row.try_get::<Option<String>, _>("nom_chauffeur").ok().flatten(),
+            "telephone": row.try_get::<Option<String>, _>("telephone").ok().flatten(),
+            "whatsapp": row.try_get::<Option<String>, _>("whatsapp").ok().flatten(),
+            "type_vehicule": row.try_get::<Option<String>, _>("type_vehicule").ok().flatten(),
+            "marque_modele": row.try_get::<Option<String>, _>("marque_modele").ok().flatten(),
+            "immatriculation": row.try_get::<Option<String>, _>("immatriculation").ok().flatten(),
+            "couleur": row.try_get::<Option<String>, _>("couleur").ok().flatten(),
+            "annee": row.try_get::<Option<i32>, _>("annee").ok().flatten(),
+            "is_available_now": row.try_get::<Option<bool>, _>("is_available_now").ok().flatten(),
+            "zone_intervention": row.try_get::<Option<Vec<String>>, _>("zone_intervention").ok().flatten(),
+            "gps_actuel": row.try_get::<Option<String>, _>("gps_actuel").ok().flatten(),
+            "tarif_base": row.try_get::<Option<i32>, _>("tarif_base").ok().flatten(),
+            "tarif_par_km": row.try_get::<Option<i32>, _>("tarif_par_km").ok().flatten(),
+            "devise": row.try_get::<Option<String>, _>("devise").ok().flatten(),
+            "paiement_cash": row.try_get::<Option<bool>, _>("paiement_cash").ok().flatten(),
+            "paiement_mobile_money": row.try_get::<Option<bool>, _>("paiement_mobile_money").ok().flatten(),
+            "paiement_carte": row.try_get::<Option<bool>, _>("paiement_carte").ok().flatten(),
+            "climatisation": row.try_get::<Option<bool>, _>("climatisation").ok().flatten(),
+            "wifi": row.try_get::<Option<bool>, _>("wifi").ok().flatten(),
+            "is_on_duty": row.try_get::<Option<bool>, _>("is_on_duty").ok().flatten(),
+            "nom": row.try_get::<Option<String>, _>("service_nom").ok().flatten(),
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
             "quartier": row.try_get::<Option<String>, _>("quartier").ok().flatten(),
         }));
@@ -3403,7 +3815,18 @@ pub async fn get_taxi_details(
     info!("[get_taxi_details] taxi_id={}", taxi_id);
 
     let taxi = sqlx::query(
-        "SELECT s.*, t.* FROM services s INNER JOIN taxis_ville t ON t.service_id = s.id WHERE s.id = $1 AND s.is_active = true",
+        r#"SELECT t.id AS taxi_id, t.service_id, t.user_id, t.nom_chauffeur, t.telephone,
+                  t.whatsapp, t.type_vehicule, t.marque_modele, t.immatriculation, t.couleur,
+                  t.annee, t.is_available_now, t.zone_intervention, t.gps_actuel,
+                  t.tarif_base, t.tarif_par_km, t.devise, t.paiement_cash,
+                  t.paiement_mobile_money, t.paiement_carte, t.climatisation, t.wifi,
+                  t.is_on_duty, t.created_at AS taxi_created_at, t.updated_at AS taxi_updated_at,
+                  s.nom AS service_nom, s.ville, s.quartier, s.gps AS service_gps,
+                  u.name AS owner_name
+           FROM taxis_ville t
+           INNER JOIN services s ON s.id = t.service_id
+           LEFT JOIN users u ON u.id = t.user_id
+           WHERE t.id = $1 AND s.is_active = true AND t.is_active = true"#,
     )
     .bind(taxi_id)
     .fetch_optional(&state.pg)
@@ -3414,10 +3837,37 @@ pub async fn get_taxi_details(
     })?;
 
     if let Some(row) = taxi {
+        use sqlx::Row;
         let taxi_json = json!({
-            "id": row.try_get::<i32, _>("id").ok(),
-            "nom": row.try_get::<Option<String>, _>("nom").ok().flatten(),
+            "id": row.try_get::<i32, _>("taxi_id").ok(),
+            "service_id": row.try_get::<i32, _>("service_id").ok(),
+            "user_id": row.try_get::<i32, _>("user_id").ok(),
+            "nom_chauffeur": row.try_get::<Option<String>, _>("nom_chauffeur").ok().flatten(),
+            "telephone": row.try_get::<Option<String>, _>("telephone").ok().flatten(),
+            "whatsapp": row.try_get::<Option<String>, _>("whatsapp").ok().flatten(),
+            "type_vehicule": row.try_get::<Option<String>, _>("type_vehicule").ok().flatten(),
+            "marque_modele": row.try_get::<Option<String>, _>("marque_modele").ok().flatten(),
+            "immatriculation": row.try_get::<Option<String>, _>("immatriculation").ok().flatten(),
+            "couleur": row.try_get::<Option<String>, _>("couleur").ok().flatten(),
+            "annee": row.try_get::<Option<i32>, _>("annee").ok().flatten(),
+            "is_available_now": row.try_get::<Option<bool>, _>("is_available_now").ok().flatten(),
+            "zone_intervention": row.try_get::<Option<Vec<String>>, _>("zone_intervention").ok().flatten(),
+            "gps_actuel": row.try_get::<Option<String>, _>("gps_actuel").ok().flatten(),
+            "tarif_base": row.try_get::<Option<i32>, _>("tarif_base").ok().flatten(),
+            "tarif_par_km": row.try_get::<Option<i32>, _>("tarif_par_km").ok().flatten(),
+            "devise": row.try_get::<Option<String>, _>("devise").ok().flatten(),
+            "paiement_cash": row.try_get::<Option<bool>, _>("paiement_cash").ok().flatten(),
+            "paiement_mobile_money": row.try_get::<Option<bool>, _>("paiement_mobile_money").ok().flatten(),
+            "paiement_carte": row.try_get::<Option<bool>, _>("paiement_carte").ok().flatten(),
+            "climatisation": row.try_get::<Option<bool>, _>("climatisation").ok().flatten(),
+            "wifi": row.try_get::<Option<bool>, _>("wifi").ok().flatten(),
+            "is_on_duty": row.try_get::<Option<bool>, _>("is_on_duty").ok().flatten(),
+            "nom": row.try_get::<Option<String>, _>("service_nom").ok().flatten(),
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
+            "quartier": row.try_get::<Option<String>, _>("quartier").ok().flatten(),
+            "owner_name": row.try_get::<Option<String>, _>("owner_name").ok().flatten(),
+            "created_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("taxi_created_at").ok().flatten().map(|d| d.to_rfc3339()),
+            "updated_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("taxi_updated_at").ok().flatten().map(|d| d.to_rfc3339()),
         });
         Ok((
             StatusCode::OK,
@@ -3450,9 +3900,18 @@ pub async fn search_covoiturages(
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = (params.page.unwrap_or(1) - 1) * limit;
 
-    // ✅ CORRIGÉ: Filtrer uniquement les trajets publiés (is_active = true) et futurs
     let mut query = QueryBuilder::new(
-        "SELECT s.*, c.* FROM services s INNER JOIN covoiturages c ON c.service_id = s.id WHERE s.is_active = true AND c.date_depart >= CURRENT_DATE"
+        r#"SELECT c.id as covoiturage_id, c.service_id, c.user_id as driver_id,
+                  c.depart, c.destination, c.gps_depart, c.gps_destination,
+                  c.date_depart, c.heure_depart, c.type_vehicule, c.marque_modele,
+                  c.nombre_places, c.places_disponibles, c.prix_par_place, c.devise,
+                  c.bagages_autorises, c.animaux_autorises, c.fumeur_autorise, c.climatisation,
+                  c.statut, c.is_recurring, c.recurrence_type, c.created_at,
+                  u.name as driver_name
+           FROM covoiturages c
+           JOIN services s ON s.id = c.service_id
+           LEFT JOIN users u ON u.id = c.user_id
+           WHERE c.is_active = TRUE AND c.statut = 'ouvert' AND c.date_depart >= CURRENT_DATE"#,
     );
 
     if let Some(ref depart) = params.depart {
@@ -3476,11 +3935,26 @@ pub async fn search_covoiturages(
     })?;
 
     let mut covoiturages_json = Vec::new();
-    for row in covoiturages {
+    for row in &covoiturages {
         covoiturages_json.push(json!({
-            "id": row.try_get::<i32, _>("id").ok(),
+            "id": row.try_get::<i32, _>("covoiturage_id").ok(),
+            "service_id": row.try_get::<i32, _>("service_id").ok(),
             "depart": row.try_get::<Option<String>, _>("depart").ok().flatten(),
             "destination": row.try_get::<Option<String>, _>("destination").ok().flatten(),
+            "gps_depart": row.try_get::<Option<String>, _>("gps_depart").ok().flatten(),
+            "date_depart": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("date_depart").ok().flatten().map(|d| d.to_rfc3339()),
+            "heure_depart": row.try_get::<Option<chrono::NaiveTime>, _>("heure_depart").ok().flatten().map(|t| t.format("%H:%M").to_string()),
+            "type_vehicule": row.try_get::<Option<String>, _>("type_vehicule").ok().flatten(),
+            "marque_modele": row.try_get::<Option<String>, _>("marque_modele").ok().flatten(),
+            "nombre_places": row.try_get::<Option<i32>, _>("nombre_places").ok().flatten(),
+            "places_disponibles": row.try_get::<Option<i32>, _>("places_disponibles").ok().flatten(),
+            "prix_par_place": row.try_get::<Option<i32>, _>("prix_par_place").ok().flatten(),
+            "devise": row.try_get::<Option<String>, _>("devise").ok().flatten(),
+            "climatisation": row.try_get::<Option<bool>, _>("climatisation").ok().flatten(),
+            "bagages_autorises": row.try_get::<Option<bool>, _>("bagages_autorises").ok().flatten(),
+            "animaux_autorises": row.try_get::<Option<bool>, _>("animaux_autorises").ok().flatten(),
+            "statut": row.try_get::<Option<String>, _>("statut").ok().flatten(),
+            "driver_name": row.try_get::<Option<String>, _>("driver_name").ok().flatten(),
         }));
     }
 
@@ -3535,21 +4009,54 @@ pub async fn get_covoiturage_details(
         covoiturage_id
     );
 
-    // ✅ CORRIGÉ: Filtrer uniquement les trajets publiés
-    let covoiturage = sqlx::query("SELECT s.*, c.* FROM services s INNER JOIN covoiturages c ON c.service_id = s.id WHERE s.id = $1 AND s.is_active = true")
-        .bind(covoiturage_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[get_covoiturage_details] Erreur: {}", e);
-            AppError::Internal("Erreur récupération covoiturage".to_string())
-        })?;
+    let covoiturage = sqlx::query(
+        r#"SELECT c.id as covoiturage_id, c.service_id, c.user_id as driver_id,
+                  c.depart, c.destination, c.gps_depart, c.gps_destination,
+                  c.date_depart, c.heure_depart, c.date_arrivee_estimee,
+                  c.type_vehicule, c.marque_modele,
+                  c.nombre_places, c.places_disponibles, c.prix_par_place, c.devise,
+                  c.bagages_autorises, c.animaux_autorises, c.fumeur_autorise, c.climatisation,
+                  c.statut, c.is_active, c.is_recurring, c.recurrence_type,
+                  c.recurrence_days, c.recurrence_end_date, c.created_at,
+                  u.name as driver_name, u.avatar_url as driver_avatar
+           FROM covoiturages c
+           JOIN services s ON s.id = c.service_id
+           LEFT JOIN users u ON u.id = c.user_id
+           WHERE c.service_id = $1 OR c.id = $1"#,
+    )
+    .bind(covoiturage_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_covoiturage_details] Erreur: {}", e);
+        AppError::Internal("Erreur récupération covoiturage".to_string())
+    })?;
 
     if let Some(row) = covoiturage {
         let covoiturage_json = json!({
-            "id": row.try_get::<i32, _>("id").ok(),
+            "id": row.try_get::<i32, _>("covoiturage_id").ok(),
+            "service_id": row.try_get::<i32, _>("service_id").ok(),
+            "driver_id": row.try_get::<i32, _>("driver_id").ok(),
             "depart": row.try_get::<Option<String>, _>("depart").ok().flatten(),
             "destination": row.try_get::<Option<String>, _>("destination").ok().flatten(),
+            "gps_depart": row.try_get::<Option<String>, _>("gps_depart").ok().flatten(),
+            "gps_destination": row.try_get::<Option<String>, _>("gps_destination").ok().flatten(),
+            "date_depart": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("date_depart").ok().flatten().map(|d| d.to_rfc3339()),
+            "heure_depart": row.try_get::<Option<chrono::NaiveTime>, _>("heure_depart").ok().flatten().map(|t| t.format("%H:%M").to_string()),
+            "type_vehicule": row.try_get::<Option<String>, _>("type_vehicule").ok().flatten(),
+            "marque_modele": row.try_get::<Option<String>, _>("marque_modele").ok().flatten(),
+            "nombre_places": row.try_get::<Option<i32>, _>("nombre_places").ok().flatten(),
+            "places_disponibles": row.try_get::<Option<i32>, _>("places_disponibles").ok().flatten(),
+            "prix_par_place": row.try_get::<Option<i32>, _>("prix_par_place").ok().flatten(),
+            "devise": row.try_get::<Option<String>, _>("devise").ok().flatten(),
+            "climatisation": row.try_get::<Option<bool>, _>("climatisation").ok().flatten(),
+            "bagages_autorises": row.try_get::<Option<bool>, _>("bagages_autorises").ok().flatten(),
+            "animaux_autorises": row.try_get::<Option<bool>, _>("animaux_autorises").ok().flatten(),
+            "fumeur_autorise": row.try_get::<Option<bool>, _>("fumeur_autorise").ok().flatten(),
+            "statut": row.try_get::<Option<String>, _>("statut").ok().flatten(),
+            "is_recurring": row.try_get::<Option<bool>, _>("is_recurring").ok().flatten(),
+            "driver_name": row.try_get::<Option<String>, _>("driver_name").ok().flatten(),
+            "driver_avatar": row.try_get::<Option<String>, _>("driver_avatar").ok().flatten(),
         });
         Ok((
             StatusCode::OK,
@@ -3757,21 +4264,30 @@ pub async fn get_laboratory_details(
 /// Recherche d'agences de voyage (publique)
 pub async fn search_travel_agencies(
     State(state): State<Arc<AppState>>,
-    Query(params): Query<SearchHospitalsQuery>, // Réutilise la même structure
+    Query(params): Query<SearchHospitalsQuery>,
 ) -> AppResult<impl IntoResponse> {
     info!("[search_travel_agencies] Recherche: {:?}", params);
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = (params.page.unwrap_or(1) - 1) * limit;
 
-    let mut query = QueryBuilder::new("SELECT s.*, a.* FROM services s INNER JOIN agences_voyage a ON a.service_id = s.id WHERE 1=1");
+    let mut query = QueryBuilder::new(
+        r#"SELECT s.id as service_id, a.id as agency_id, a.nom_agence, a.ville, a.quartier,
+                  a.adresse, a.telephone, a.whatsapp, a.gps,
+                  a.services_voyage, a.destinations, a.peut_emettre_tickets_bus,
+                  a.heures_ouverture, a.heures_fermeture, a.jours_ouverture,
+                  a.is_active, a.created_at
+           FROM services s
+           INNER JOIN agences_voyage a ON a.service_id = s.id
+           WHERE s.is_active = TRUE"#,
+    );
 
     if let Some(ref ville) = params.ville {
-        query.push(" AND s.ville = ");
-        query.push_bind(ville);
+        query.push(" AND a.ville ILIKE ");
+        query.push_bind(format!("%{}%", ville));
     }
 
-    query.push(" ORDER BY s.created_at DESC LIMIT ");
+    query.push(" ORDER BY a.created_at DESC LIMIT ");
     query.push_bind(limit);
     query.push(" OFFSET ");
     query.push_bind(offset);
@@ -3782,11 +4298,18 @@ pub async fn search_travel_agencies(
     })?;
 
     let mut agencies_json = Vec::new();
-    for row in agencies {
+    for row in &agencies {
         agencies_json.push(json!({
-            "id": row.try_get::<i32, _>("id").ok(),
-            "nom": row.try_get::<Option<String>, _>("nom").ok().flatten(),
+            "id": row.try_get::<i32, _>("service_id").ok(),
+            "agency_id": row.try_get::<i32, _>("agency_id").ok(),
+            "nom_agence": row.try_get::<Option<String>, _>("nom_agence").ok().flatten(),
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
+            "quartier": row.try_get::<Option<String>, _>("quartier").ok().flatten(),
+            "adresse": row.try_get::<Option<String>, _>("adresse").ok().flatten(),
+            "telephone": row.try_get::<Option<String>, _>("telephone").ok().flatten(),
+            "whatsapp": row.try_get::<Option<String>, _>("whatsapp").ok().flatten(),
+            "gps": row.try_get::<Option<String>, _>("gps").ok().flatten(),
+            "peut_emettre_tickets_bus": row.try_get::<Option<bool>, _>("peut_emettre_tickets_bus").ok().flatten(),
         }));
     }
 
@@ -3807,20 +4330,40 @@ pub async fn get_travel_agency_details(
 ) -> AppResult<impl IntoResponse> {
     info!("[get_travel_agency_details] agency_id={}", agency_id);
 
-    let agency = sqlx::query("SELECT s.*, a.* FROM services s INNER JOIN agences_voyage a ON a.service_id = s.id WHERE s.id = $1")
-        .bind(agency_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[get_travel_agency_details] Erreur: {}", e);
-            AppError::Internal("Erreur récupération agence".to_string())
-        })?;
+    let agency = sqlx::query(
+        r#"SELECT s.id as service_id, a.id as agency_id, a.nom_agence, a.ville, a.quartier,
+                  a.adresse, a.telephone, a.whatsapp, a.email, a.site_web,
+                  a.services_voyage, a.compagnies_bus, a.destinations,
+                  a.heures_ouverture, a.heures_fermeture, a.jours_ouverture,
+                  a.peut_emettre_tickets_bus, a.compagnies_affiliees,
+                  a.gps, a.is_active, a.created_at
+           FROM services s
+           INNER JOIN agences_voyage a ON a.service_id = s.id
+           WHERE s.id = $1"#,
+    )
+    .bind(agency_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_travel_agency_details] Erreur: {}", e);
+        AppError::Internal("Erreur récupération agence".to_string())
+    })?;
 
     if let Some(row) = agency {
         let agency_json = json!({
-            "id": row.try_get::<i32, _>("id").ok(),
-            "nom": row.try_get::<Option<String>, _>("nom").ok().flatten(),
+            "id": row.try_get::<i32, _>("service_id").ok(),
+            "agency_id": row.try_get::<i32, _>("agency_id").ok(),
+            "nom_agence": row.try_get::<Option<String>, _>("nom_agence").ok().flatten(),
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
+            "quartier": row.try_get::<Option<String>, _>("quartier").ok().flatten(),
+            "adresse": row.try_get::<Option<String>, _>("adresse").ok().flatten(),
+            "telephone": row.try_get::<Option<String>, _>("telephone").ok().flatten(),
+            "whatsapp": row.try_get::<Option<String>, _>("whatsapp").ok().flatten(),
+            "email": row.try_get::<Option<String>, _>("email").ok().flatten(),
+            "site_web": row.try_get::<Option<String>, _>("site_web").ok().flatten(),
+            "gps": row.try_get::<Option<String>, _>("gps").ok().flatten(),
+            "peut_emettre_tickets_bus": row.try_get::<Option<bool>, _>("peut_emettre_tickets_bus").ok().flatten(),
+            "is_active": row.try_get::<Option<bool>, _>("is_active").ok().flatten(),
         });
         Ok((
             StatusCode::OK,
@@ -5321,7 +5864,9 @@ Réponds en JSON strict:
 #[derive(Debug, Deserialize)]
 pub struct BookCovoiturageRequest {
     pub seats: Option<i32>,
+    pub number_of_places: Option<i32>,
     pub pickup_point: Option<String>,
+    pub passenger_names: Option<Vec<String>>,
     pub notes: Option<String>,
 }
 
@@ -5336,22 +5881,66 @@ pub async fn book_covoiturage(
         covoiturage_id, user_id
     );
 
-    let seats = payload.seats.unwrap_or(1);
+    let seats = payload.number_of_places.or(payload.seats).unwrap_or(1);
+
+    let prestataire_id: i32 = sqlx::query_scalar(
+        "SELECT user_id FROM services WHERE id = $1",
+    )
+    .bind(covoiturage_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[book_covoiturage] Erreur récupération prestataire: {}", e);
+        AppError::Internal("Erreur récupération prestataire".to_string())
+    })?;
+
+    let updated = sqlx::query_scalar::<_, i64>(
+        r#"
+        UPDATE covoiturages
+        SET places_disponibles = places_disponibles - $1,
+            updated_at = NOW()
+        WHERE service_id = $2
+          AND places_disponibles >= $1
+          AND statut = 'ouvert'
+        RETURNING id::bigint
+        "#,
+    )
+    .bind(seats)
+    .bind(covoiturage_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[book_covoiturage] Erreur update places: {}", e);
+        AppError::Internal("Erreur mise à jour places".to_string())
+    })?;
+
+    if updated.is_none() {
+        return Err(AppError::BadRequest(
+            "Places insuffisantes ou trajet non disponible".to_string(),
+        ));
+    }
+
+    let passenger_names_str = payload
+        .passenger_names
+        .as_ref()
+        .map(|names| names.join(", "))
+        .unwrap_or_default();
 
     let reservation_id = sqlx::query_scalar::<_, i32>(
         r#"
         INSERT INTO specialized_reservations
-            (user_id, service_id, service_type, notes, status, created_at)
-        VALUES ($1, $2, 'covoiturage', $3, 'pending', NOW())
+            (user_id, service_id, service_type, prestataire_id, reservation_type, notes, status, created_at, updated_at)
+        VALUES ($1, $2, 'covoiturage', $3, 'place', $4, 'confirmed', NOW(), NOW())
         RETURNING id
         "#,
     )
     .bind(user_id)
     .bind(covoiturage_id)
+    .bind(prestataire_id)
     .bind(format!(
-        "Places: {}, Point: {}, Notes: {}",
+        "Places: {}, Passagers: {}, Notes: {}",
         seats,
-        payload.pickup_point.as_deref().unwrap_or(""),
+        passenger_names_str,
         payload.notes.as_deref().unwrap_or("")
     ))
     .fetch_one(&state.pg)
@@ -5366,7 +5955,288 @@ pub async fn book_covoiturage(
         Json(json!({
             "success": true,
             "reservation_id": reservation_id,
+            "reservation": { "id": reservation_id },
+            "seats_booked": seats,
             "message": "Réservation de covoiturage créée"
+        })),
+    ))
+}
+
+/// Confirmer le départ d'un covoiturage (par le conducteur)
+/// Déclenche le paiement automatique au conducteur
+#[derive(Debug, Deserialize)]
+pub struct ConfirmDepartureRequest {
+    pub confirmation_code: Option<String>,
+}
+
+pub async fn confirm_covoiturage_departure(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(covoiturage_id): Path<i32>,
+    Json(_payload): Json<ConfirmDepartureRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[confirm_covoiturage_departure] covoiturage_id={}, user_id={}",
+        covoiturage_id, user_id
+    );
+
+    // Vérifier que l'utilisateur est le conducteur du trajet
+    let service_owner = sqlx::query_scalar::<_, i32>(
+        "SELECT user_id FROM services WHERE id = $1",
+    )
+    .bind(covoiturage_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[confirm_departure] Erreur: {}", e);
+        AppError::Internal("Erreur vérification conducteur".to_string())
+    })?;
+
+    match service_owner {
+        Some(owner_id) if owner_id == user_id => {}
+        _ => {
+            return Err(AppError::Forbidden(
+                "Seul le conducteur peut confirmer le départ".to_string(),
+            ));
+        }
+    }
+
+    sqlx::query(
+        "UPDATE covoiturages SET statut = 'en_cours', updated_at = NOW() WHERE service_id = $1",
+    )
+    .bind(covoiturage_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[confirm_departure] Erreur update statut: {}", e);
+        AppError::Internal("Erreur mise à jour statut".to_string())
+    })?;
+
+    // Récupérer toutes les réservations confirmées pour ce trajet
+    let reservations = sqlx::query(
+        r#"
+        SELECT id, user_id, notes
+        FROM specialized_reservations
+        WHERE service_id = $1 AND service_type = 'covoiturage' AND status = 'confirmed'
+        "#,
+    )
+    .bind(covoiturage_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[confirm_departure] Erreur fetch reservations: {}", e);
+        AppError::Internal("Erreur chargement réservations".to_string())
+    })?;
+
+    let prix_par_place: f64 = sqlx::query_scalar::<_, Option<f64>>(
+        "SELECT prix_par_place::float8 FROM covoiturages WHERE service_id = $1",
+    )
+    .bind(covoiturage_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(None)
+    .unwrap_or(0.0);
+
+    let commission_rate = 0.10;
+    let mut total_payout: f64 = 0.0;
+    let mut reservation_count = 0;
+
+    for row in &reservations {
+        let notes: String = row.try_get::<String, _>("notes").unwrap_or_default();
+        // Extraire nombre de places depuis les notes "Places: X, ..."
+        let seats: i32 = notes
+            .split(',')
+            .next()
+            .and_then(|s| s.replace("Places:", "").trim().parse::<i32>().ok())
+            .unwrap_or(1);
+
+        let subtotal = seats as f64 * prix_par_place;
+        let commission = subtotal * commission_rate;
+        total_payout += subtotal - commission;
+        reservation_count += 1;
+
+        // Mettre à jour le statut de chaque réservation → 'departed'
+        let res_id: i32 = row.try_get("id").unwrap_or(0);
+        let _ = sqlx::query(
+            "UPDATE specialized_reservations SET status = 'departed', updated_at = NOW() WHERE id = $1",
+        )
+        .bind(res_id)
+        .execute(&state.pg)
+        .await;
+    }
+
+    // Créer la transaction de reversement au conducteur
+    if total_payout > 0.0 {
+        let payout_cents = (total_payout * 100.0).round() as i64;
+
+        // Lire le solde actuel du conducteur (ou créer le wallet)
+        let _ = sqlx::query(
+            r#"
+            INSERT INTO user_wallets (user_id, balance_cents, currency, created_at, updated_at)
+            VALUES ($1, 0, 'XAF', NOW(), NOW())
+            ON CONFLICT (user_id, currency) DO NOTHING
+            "#,
+        )
+        .bind(user_id)
+        .execute(&state.pg)
+        .await;
+
+        let balance_before: i64 = sqlx::query_scalar::<_, i64>(
+            "SELECT balance_cents FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'",
+        )
+        .bind(user_id)
+        .fetch_one(&state.pg)
+        .await
+        .unwrap_or(0);
+
+        let balance_after = balance_before + payout_cents;
+
+        // Créditer le wallet du conducteur
+        let _ = sqlx::query(
+            r#"
+            UPDATE user_wallets
+            SET balance_cents = balance_cents + $1, updated_at = NOW()
+            WHERE user_id = $2 AND currency = 'XAF'
+            "#,
+        )
+        .bind(payout_cents)
+        .bind(user_id)
+        .execute(&state.pg)
+        .await;
+
+        // Enregistrer la transaction
+        let _ = sqlx::query(
+            r#"
+            INSERT INTO wallet_transactions
+                (user_id, transaction_type, amount_cents, balance_before_cents, balance_after_cents,
+                 currency, reference_type, reference_id, description, created_at)
+            VALUES ($1, 'payout', $2, $3, $4, 'XAF', 'covoiturage', $5, $6, NOW())
+            "#,
+        )
+        .bind(user_id)
+        .bind(payout_cents)
+        .bind(balance_before)
+        .bind(balance_after)
+        .bind(covoiturage_id.to_string())
+        .bind(format!(
+            "Reversement covoiturage #{} - {} réservation(s)",
+            covoiturage_id, reservation_count
+        ))
+        .execute(&state.pg)
+        .await;
+    }
+
+    info!(
+        "[confirm_departure] Départ confirmé: {} réservations, payout={:.0} FCFA",
+        reservation_count, total_payout
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "message": "Départ confirmé, reversement effectué",
+            "reservations_count": reservation_count,
+            "total_payout": total_payout,
+            "commission_rate": commission_rate
+        })),
+    ))
+}
+
+/// Soumettre un avis sur un conducteur de covoiturage
+#[derive(Debug, Deserialize)]
+pub struct SubmitCovoiturageReviewRequest {
+    pub note: i32,
+    pub comment: Option<String>,
+}
+
+pub async fn submit_covoiturage_review(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(covoiturage_id): Path<i32>,
+    Json(payload): Json<SubmitCovoiturageReviewRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[submit_covoiturage_review] covoiturage_id={}, user_id={}, note={}",
+        covoiturage_id, user_id, payload.note
+    );
+
+    if payload.note < 1 || payload.note > 5 {
+        return Err(AppError::BadRequest("La note doit être entre 1 et 5".to_string()));
+    }
+
+    // Vérifier que l'utilisateur a bien une réservation sur ce trajet
+    let has_reservation = sqlx::query_scalar::<_, i64>(
+        r#"
+        SELECT COUNT(*) FROM specialized_reservations
+        WHERE service_id = $1 AND user_id = $2 AND service_type = 'covoiturage'
+        "#,
+    )
+    .bind(covoiturage_id)
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    if has_reservation == 0 {
+        return Err(AppError::Forbidden(
+            "Vous devez avoir réservé ce trajet pour laisser un avis".to_string(),
+        ));
+    }
+
+    // Vérifier si l'utilisateur a déjà laissé un avis sur ce trajet
+    let existing_review = sqlx::query_scalar::<_, i32>(
+        "SELECT id FROM product_comments WHERE service_id = $1 AND user_id = $2 AND parent_comment_id IS NULL LIMIT 1",
+    )
+    .bind(covoiturage_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .unwrap_or(None);
+
+    let review_id: i32 = if let Some(existing_id) = existing_review {
+        // Mettre à jour l'avis existant
+        sqlx::query(
+            "UPDATE product_comments SET rating = $1, content = $2 WHERE id = $3",
+        )
+        .bind(payload.note)
+        .bind(payload.comment.as_deref().unwrap_or(""))
+        .bind(existing_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[submit_covoiturage_review] Erreur update: {}", e);
+            AppError::Internal("Erreur mise à jour avis".to_string())
+        })?;
+        existing_id
+    } else {
+        // Insérer un nouvel avis
+        sqlx::query_scalar::<_, i32>(
+            r#"
+            INSERT INTO product_comments
+                (service_id, user_id, rating, content, created_at)
+            VALUES ($1, $2, $3, $4, NOW())
+            RETURNING id
+            "#,
+        )
+        .bind(covoiturage_id)
+        .bind(user_id)
+        .bind(payload.note)
+        .bind(payload.comment.as_deref().unwrap_or(""))
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[submit_covoiturage_review] Erreur insert: {}", e);
+            AppError::Internal("Erreur création avis".to_string())
+        })?
+    };
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "review_id": review_id,
+            "message": "Avis soumis avec succès"
         })),
     ))
 }
@@ -5380,12 +6250,17 @@ pub async fn get_my_trips(
 
     let rows = sqlx::query(
         r#"
-        SELECT sr.*, s.data->>'depart' as depart, s.data->>'destination' as destination,
-               s.data->>'date_depart' as date_depart
+        SELECT sr.id as reservation_id, sr.service_id, sr.status as reservation_status,
+               sr.notes, sr.created_at as reserved_at,
+               c.depart, c.destination, c.date_depart, c.heure_depart,
+               c.prix_par_place, c.devise, c.type_vehicule, c.marque_modele,
+               c.statut as trip_status,
+               u.name as driver_name
         FROM specialized_reservations sr
-        JOIN services s ON s.id = sr.service_id
+        JOIN covoiturages c ON c.service_id = sr.service_id
+        LEFT JOIN users u ON u.id = c.user_id
         WHERE sr.user_id = $1 AND sr.service_type = 'covoiturage'
-        ORDER BY sr.created_at DESC
+        ORDER BY c.date_depart DESC
         LIMIT 50
         "#,
     )
@@ -5401,12 +6276,18 @@ pub async fn get_my_trips(
         .iter()
         .map(|row| {
             json!({
-                "id": row.try_get::<i32, _>("id").unwrap_or(0),
+                "id": row.try_get::<i32, _>("reservation_id").unwrap_or(0),
                 "service_id": row.try_get::<i32, _>("service_id").unwrap_or(0),
                 "depart": row.try_get::<Option<String>, _>("depart").ok().flatten(),
                 "destination": row.try_get::<Option<String>, _>("destination").ok().flatten(),
-                "date_depart": row.try_get::<Option<String>, _>("date_depart").ok().flatten(),
-                "status": row.try_get::<String, _>("status").unwrap_or_default(),
+                "date_depart": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("date_depart").ok().flatten().map(|d| d.to_rfc3339()),
+                "heure_depart": row.try_get::<Option<chrono::NaiveTime>, _>("heure_depart").ok().flatten().map(|t| t.format("%H:%M").to_string()),
+                "prix_par_place": row.try_get::<Option<i32>, _>("prix_par_place").ok().flatten(),
+                "devise": row.try_get::<Option<String>, _>("devise").ok().flatten(),
+                "type_vehicule": row.try_get::<Option<String>, _>("type_vehicule").ok().flatten(),
+                "status": row.try_get::<String, _>("reservation_status").unwrap_or_default(),
+                "trip_status": row.try_get::<Option<String>, _>("trip_status").ok().flatten(),
+                "driver_name": row.try_get::<Option<String>, _>("driver_name").ok().flatten(),
             })
         })
         .collect();
@@ -5517,22 +6398,24 @@ pub async fn update_taxi_availability(
         taxi_id, user_id, payload.is_available
     );
 
-    // Mettre à jour le service
-    sqlx::query(
+    let result = sqlx::query(
         r#"
-        UPDATE services
-        SET data = jsonb_set(
-            COALESCE(data, '{}'),
-            '{is_available}',
-            $1::jsonb
-        ),
-        updated_at = NOW()
+        UPDATE taxis_ville
+        SET is_available_now = $1,
+            gps_actuel = COALESCE($4, gps_actuel),
+            updated_at = NOW()
         WHERE id = $2 AND user_id = $3
         "#,
     )
-    .bind(json!(payload.is_available))
+    .bind(payload.is_available)
     .bind(taxi_id)
     .bind(user_id)
+    .bind(
+        match (payload.current_lat, payload.current_lng) {
+            (Some(lat), Some(lng)) => Some(format!("{},{}", lat, lng)),
+            _ => None,
+        },
+    )
     .execute(&state.pg)
     .await
     .map_err(|e| {
@@ -5540,11 +6423,16 @@ pub async fn update_taxi_availability(
         AppError::Internal("Erreur mise à jour disponibilité".to_string())
     })?;
 
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Taxi non trouvé ou non autorisé".to_string()));
+    }
+
     Ok((
         StatusCode::OK,
         Json(json!({
             "success": true,
-            "message": "Disponibilité mise à jour"
+            "message": "Disponibilité mise à jour",
+            "is_available_now": payload.is_available
         })),
     ))
 }

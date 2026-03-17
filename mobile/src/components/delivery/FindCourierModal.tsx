@@ -194,7 +194,7 @@ const [loading, setLoading] = useState(false);
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la localisation pour définir votre adresse de livraison');
+                Alert.alert('Permission requise', 'Veuillez autoriser l\t('findCourierModal.accesALaLocalisationPourDefinir'));
                 return;
             }
 
@@ -253,12 +253,12 @@ const [loading, setLoading] = useState(false);
     // ✅ RÉÉCRIT COMPLÈTEMENT: Créer directement la livraison avec matching intelligent automatique
     const handleCreateDelivery = async () => {
         if (!pickupLocation || !deliveryLocation) {
-            Alert.alert('Erreur', 'Veuillez définir le point de livraison');
+            Alert.alert('Erreur', t('findCourierModal.veuillezDefinirLePointDeLivraison'));
             return;
         }
 
         if (!service?.id && !service?.service_id) {
-            Alert.alert('Erreur', 'Service non trouvé');
+            Alert.alert('Erreur', t('findCourierModal.serviceNonTrouve'));
             return;
         }
 
@@ -472,7 +472,7 @@ const [loading, setLoading] = useState(false);
                                             color={modernColors.primary}
                                         />
                                         <Text style={styles.transportInfoLabel}>
-                                            {transportType === 'bike' ? 'Vélo' :
+                                            {transportType === 'bike' ? t('findCourierModal.velo') :
                                                 transportType === 'motorcycle' ? 'Moto' :
                                                     transportType === 'car' ? 'Voiture' :
                                                         transportType === 'pickup' ? 'Pick-up' :

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface ConfirmationField {
     label: string;
@@ -45,8 +46,9 @@ const FormConfirmationModal: React.FC<FormConfirmationModalProps> = ({
     loading = false,
 }) => {
     const formatValue = (field: ConfirmationField): string => {
+    const { t } = useLanguageSafe();
         if (field.value === null || field.value === undefined || field.value === '') {
-            return 'Non renseigné';
+            return t('formConfirmationModal.nonRenseigne');
         }
 
         switch (field.type) {

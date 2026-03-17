@@ -15,6 +15,7 @@ import {
     View,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import {
@@ -24,10 +25,9 @@ import {
     ServiceTeamMember,
     ServiceTeamRole
 } from '../types/serviceTeam';
-import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
 import UserMentionPicker from './UserMentionPicker';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ServiceTeamManagerProps {
     serviceId?: string; // Si null, gestion globale
@@ -43,8 +43,8 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
     onMemberRemoved
 }) => {
     const { user } = useAuth();
-        const { t } = useLanguageSafe();
-const [members, setMembers] = useState<ServiceTeamMember[]>([]);
+    const { t } = useLanguageSafe();
+    const [members, setMembers] = useState<ServiceTeamMember[]>([]);
     const [invitations, setInvitations] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showInviteModal, setShowInviteModal] = useState(false);
@@ -172,7 +172,7 @@ const [members, setMembers] = useState<ServiceTeamMember[]>([]);
             // ✅ PROTECTION: En cas d'erreur, initialiser avec des tableaux vides
             setMembers([]);
             setInvitations([]);
-            Alert.alert('Erreur', 'Impossible de charger les données de l\'équipe');
+            Alert.alert('Erreur', t('serviceTeamManager.impossibleDeChargerLesDonneesDeLEquipe'));
         } finally {
             setLoading(false);
         }
@@ -198,7 +198,7 @@ const [members, setMembers] = useState<ServiceTeamMember[]>([]);
             });
 
             if (response.success) {
-                Alert.alert('Succès', 'Invitation envoyée avec succès');
+                Alert.alert(t('serviceTeamManager.succes'), t('serviceTeamManager.invitationEnvoyeeAvecSucces'));
                 setShowInviteModal(false);
                 setInviteEmail('');
                 setInviteRole(null);
@@ -227,7 +227,7 @@ const [members, setMembers] = useState<ServiceTeamMember[]>([]);
                             if (response.success) {
                                 setMembers(members.filter(m => m.id !== memberId));
                                 onMemberRemoved?.(memberId);
-                                Alert.alert('Succès', 'Membre retiré de l\'équipe');
+                                Alert.alert(t('serviceTeamManager.succes'), t('serviceTeamManager.membreRetireDeLEquipe'));
                             }
                         } catch (error) {
                             console.error('Erreur suppression membre:', error);
@@ -255,7 +255,7 @@ const [members, setMembers] = useState<ServiceTeamMember[]>([]);
                 // ✅ PROTECTION CRITIQUE: Vérifier que members est un tableau avant map()
                 if (!Array.isArray(members)) {
                     console.error('[ServiceTeamManager] members n\'est pas un tableau:', members);
-                    Alert.alert('Erreur', 'Impossible de mettre à jour le rôle : données invalides');
+                    Alert.alert('Erreur', t('serviceTeamManager.impossibleDeMettreAJourLe'));
                     return;
                 }
 
@@ -270,11 +270,11 @@ const [members, setMembers] = useState<ServiceTeamMember[]>([]);
                         ? { ...m, role: newRole, permissions: validPerms }
                         : m;
                 }));
-                Alert.alert('Succès', 'Rôle mis à jour avec succès');
+                Alert.alert(t('serviceTeamManager.succes'), t('serviceTeamManager.roleMisAJourAvecSucces'));
             }
         } catch (error) {
             console.error('Erreur mise à jour rôle:', error);
-            Alert.alert('Erreur', 'Impossible de mettre à jour le rôle');
+            Alert.alert('Erreur', t('serviceTeamManager.impossibleDeMettreAJourLe'));
         }
     };
 
@@ -544,7 +544,7 @@ const [members, setMembers] = useState<ServiceTeamMember[]>([]);
                     </View>
 
                     <NativeButton
-                        title={t('serviceTeamManager.envoyerL')}invitation"
+                        title={t('serviceTeamManager.envoyerLInvitation')}
                         onPress={handleInviteUser}
                         variant="primary"
                         style={styles.confirmButton}
@@ -571,7 +571,7 @@ const [members, setMembers] = useState<ServiceTeamMember[]>([]);
                         <SafeIcon name="arrow-left" size={24} color="#fff" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>
-                        {serviceId ? 'Équipe du service' : t('serviceTeamManager.monEquipe')}
+                        {serviceId ? t('serviceTeamManager.equipeDuService') : t('serviceTeamManager.monEquipe')}
                     </Text>
                     <TouchableOpacity
                         style={styles.inviteButton}
@@ -627,7 +627,7 @@ const [members, setMembers] = useState<ServiceTeamMember[]>([]);
                                         <Text style={styles.invitationRole}>{invitation?.role?.name || t('serviceTeamManager.roleInconnu')}</Text>
                                         <Text style={styles.invitationDate}>
                                             {invitation?.invitedAt
-                                                ? t('serviceTeamManager.inviteLe', { new Date(invitation_invitedAt)_toLocaleDateString(): new Date(invitation.invitedAt).toLocaleDateString() })
+                                                ? `${t('serviceTeamManager.inviteLe')} ${new Date(invitation.invitedAt).toLocaleDateString()}`
                                                 : 'Date inconnue'}
                                         </Text>
                                     </View>

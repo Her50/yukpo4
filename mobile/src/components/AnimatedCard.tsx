@@ -14,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 // ✅ CORRIGÉ: Utiliser cleanChildren pour éviter les erreurs de rendu
 import { cleanChildren } from '../utils/safeChildren';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AnimatedCardProps {
     children: React.ReactNode;
@@ -40,6 +41,7 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = React.memo(
         const scale = useSharedValue(0.9);
 
         useEffect(() => {
+    const { t } = useLanguageSafe();
             // Animation d'entrée avec délai basé sur l'index
             const animationDelay = index * 100 + delay;
 

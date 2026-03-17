@@ -4,8 +4,7 @@
  * Fonctionnalités :
  * - Détecte automatiquement le pays via GPS
  * - Affiche les langues locales pertinentes (max 10) + langues officielles
- * - Badge "Local" pour les langues régionales, "Officiel" pour les langues officielles
- * - Section "Toutes les langues" pour accéder à l'ensemble des langues supportées
+ * - Badge "Localt('smartLanguageSelector.pourLesLanguesRegionalest('smartLanguageSelector.officielPourLesLanguesOfficiellesSection')ensemble des langues supportées
  * - Mode compact (bouton drapeau) ou mode full (modal)
  */
 import React, { useCallback, useEffect, useState } from 'react';
@@ -21,8 +20,8 @@ import {
     View,
 } from 'react-native';
 
-import { SUPPORTED_LANGUAGES } from '../i18n';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { SUPPORTED_LANGUAGES } from '../i18n';
 import {
     detectGeoLanguageContext,
     GeoLanguage,
@@ -144,10 +143,10 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
                         {/* Header */}
                         <View style={styles.header}>
                             <View style={styles.handleBar} />
-                            <Text style={styles.title}>{t('language.title') !== 'language.title' ? t('language.title') : 'Choisir la langue'}</Text>
+                            <Text style={styles.title}>{t('smartLanguageSelector.chooseLanguage')}</Text>
                             {showCountryHint && countryCode ? (
                                 <Text style={styles.countryHint}>
-                                    📍 {t('language.detectedCountry') !== 'language.detectedCountry' ? t('language.detectedCountry') : 'Pays détecté'}: {countryCode}
+                                    📍 {t('smartLanguageSelector.detectedCountry')}: {countryCode}
                                 </Text>
                             ) : null}
                         </View>
@@ -156,7 +155,7 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
                             <View style={styles.loadingContainer}>
                                 <ActivityIndicator size="large" color="#3B82F6" />
                                 <Text style={styles.loadingText}>
-                                    {t('language.detecting') !== 'language.detecting' ? t('language.detecting') : 'Détection de votre position...'}
+                                    {t('smartLanguageSelector.detectingPosition')}
                                 </Text>
                             </View>
                         ) : showAllLanguages ? (
@@ -166,7 +165,7 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
                                     style={styles.backButton}
                                     onPress={() => setShowAllLanguages(false)}
                                 >
-                                    <Text style={styles.backButtonText}>← {t('language.suggestedLanguages') !== 'language.suggestedLanguages' ? t('language.suggestedLanguages') : 'Langues suggérées'}</Text>
+                                    <Text style={styles.backButtonText}>← {t('smartLanguageSelector.suggestedLanguages')}</Text>
                                 </TouchableOpacity>
                                 <FlatList
                                     data={allLanguages}
@@ -182,7 +181,7 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
                                 {suggestedLanguages.length > 0 && (
                                     <View style={styles.section}>
                                         <Text style={styles.sectionTitle}>
-                                            🌍 {t('language.suggestedForYou') !== 'language.suggestedForYou' ? t('language.suggestedForYou') : 'Suggérées pour vous'}
+                                            🌍 {t('smartLanguageSelector.suggestedForYou')}
                                         </Text>
                                         {suggestedLanguages.map(lang => (
                                             <React.Fragment key={lang.code}>
@@ -198,7 +197,7 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
                                     onPress={() => setShowAllLanguages(true)}
                                 >
                                     <Text style={styles.showAllText}>
-                                        🌐 {t('language.allLanguages') !== 'language.allLanguages' ? t('language.allLanguages') : 'Toutes les langues'} ({SUPPORTED_LANGUAGES.length})
+                                        🌐 {t('smartLanguageSelector.allLanguages')} ({SUPPORTED_LANGUAGES.length})
                                     </Text>
                                     <Text style={styles.showAllChevron}>→</Text>
                                 </TouchableOpacity>
@@ -227,12 +226,12 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
                         </Text>
                         {showBadges && lang.isOfficial && (
                             <View style={styles.badgeOfficial}>
-                                <Text style={styles.badgeText}>Officiel</Text>
+                                <Text style={styles.badgeText}>{t('smartLanguageSelector.official')}</Text>
                             </View>
                         )}
                         {showBadges && lang.isLocal && (
                             <View style={styles.badgeLocal}>
-                                <Text style={styles.badgeText}>Local</Text>
+                                <Text style={styles.badgeText}>{t('smartLanguageSelector.local')}</Text>
                             </View>
                         )}
                     </View>

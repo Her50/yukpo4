@@ -107,7 +107,6 @@ http-body = "1.0.1"
 sqlx = { version = "0.8", features = ["postgres", "sqlite", "runtime-tokio-rustls", "uuid", "chrono", "rust_decimal", "bigdecimal"] }
 rust_decimal = "1.33"
 bigdecimal = { version = "0.4", features = ["serde"] }
-mongodb = { version = "2.8", features = ["tokio-runtime"] }
 redis = { version = "0.26", features = ["tokio-native-tls-comp", "aio", "cluster"] }
 deadpool-redis = "0.15"
 

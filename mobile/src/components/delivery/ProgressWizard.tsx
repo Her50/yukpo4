@@ -7,6 +7,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import { SafeIcon } from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Step {
     id: string;
@@ -24,6 +25,7 @@ const ProgressWizard: React.FC<ProgressWizardProps> = ({ steps, currentStep, sty
     const progressAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
+    const { t } = useLanguageSafe();
         try {
             const progress = currentStep / (steps.length - 1);
             // ✅ CORRIGÉ: Utiliser Easing importé directement depuis react-native

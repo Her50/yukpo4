@@ -60,7 +60,7 @@ const DeclarationSinistreScreen: React.FC = () => {
 
     const handleSubmit = async () => {
         if (!policy) {
-            Alert.alert('Erreur', 'Aucune police sélectionnée.');
+            Alert.alert('Erreur', t('declarationSinistreScreen.aucunePoliceSelectionnee'));
             return;
         }
         if (!canSubmit) {
@@ -91,7 +91,7 @@ const DeclarationSinistreScreen: React.FC = () => {
                     [{ text: 'OK', onPress: () => navigation.goBack() }]
                 );
             } else {
-                Alert.alert('Erreur', 'Impossible de soumettre la déclaration. Veuillez réessayer.');
+                Alert.alert('Erreur', t('declarationSinistreScreen.impossibleDeSoumettreLaDeclarationVeuillez'));
             }
         } catch (e) {
             Alert.alert('Erreur', 'Une erreur est survenue lors de la soumission.');
@@ -234,7 +234,7 @@ const DeclarationSinistreScreen: React.FC = () => {
                                 <Text style={[s.stepDotText, step >= n && { color: '#fff' }]}>{n}</Text>
                             </View>
                             <Text style={[s.stepName, step >= n && { color: '#fff' }]}>
-                                {n === 1 ? 'Type' : n === 2 ? 'Détails' : 'Montants'}
+                                {n === 1 ? 'Type' : n === 2 ? t('declarationSinistreScreen.details') : 'Montants'}
                             </Text>
                         </View>
                     ))}

@@ -1171,7 +1171,7 @@ const MesProduitsScreen: React.FC = () => {
 
             const result = await Share.share({
                 message: shareMessage,
-                title: `Découvrez: ${product.nom}`,
+                title: t('mesProduitsScreen.decouvrez', { product_nom: product.nom }),
                 url: smartLink, // ✅ Utiliser le lien intelligent HTTPS qui sera intercepté par l'app si disponible
             });
 
@@ -1982,8 +1982,8 @@ const MesProduitsScreen: React.FC = () => {
                 const prixFormatted = minPrice.toLocaleString('fr-FR');
                 const variantCurrency = modalites[0]?.devise || modalites[0]?.currency || productCurrency || 'XAF';
                 priceValue = variantCurrency && variantCurrency.trim()
-                    ? `À partir de ${prixFormatted} ${variantCurrency.trim()}`
-                    : `À partir de ${prixFormatted}`;
+                    ? t('mesProduitsScreen.aPartirDe', { prixFormatted: prixFormatted, variantCurrency_trim__: variantCurrency.trim() })
+                    : t('mesProduitsScreen.aPartirDe', { prixFormatted: prixFormatted });
             }
         }
 
@@ -2323,7 +2323,7 @@ const MesProduitsScreen: React.FC = () => {
                     const firstProduct = filteredProducts.find(p => p.is_active) || filteredProducts[0];
                     handleOpenDeliveryConfig(firstProduct);
                 } else {
-                    Alert.alert('Aucun produit', 'Vous devez d\'abord créer un produit pour configurer la livraison.');
+                    Alert.alert('Aucun produit', 'Vous devez d\t('mesProduitsScreen.abordCreerUnProduitPourConfigurer'));
                 }
             },
         },

@@ -92,7 +92,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
             }
         } catch (error: any) {
             console.error('[DeliveryProofVideoRecorder] Erreur enregistrement:', error);
-            Alert.alert('Erreur', 'Impossible d\'enregistrer la vidéo');
+            Alert.alert('Erreur', 'Impossible d\t('deliveryProofVideoRecorder.enregistrerLaVideo'));
             setIsRecording(false);
             if (recordingTimerRef.current) {
                 clearInterval(recordingTimerRef.current);
@@ -136,8 +136,8 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
                 title: t('deliveryProofVideoRecorder.preuveDeRecuperation'),
                 subtitle: t('deliveryProofVideoRecorder.montrezLeColisAvantLaRecuperation'),
                 tips: [
-                    'Montrez l\'état du colis',
-                    'Vérifiez l\'adresse de destination',
+                    'Montrez l\t('deliveryProofVideoRecorder.etatDuColis'),
+                    t('deliveryProofVideoRecorder.verifiezL')adresse de destination',
                     t('deliveryProofVideoRecorder.confirmezLidentiteDuDestinataireSiPresent')
                 ]
             };
@@ -147,7 +147,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
                 subtitle: t('deliveryProofVideoRecorder.montrezLeColisASonEmplacement'),
                 tips: [
                     t('deliveryProofVideoRecorder.montrezOuLeColisAEte'),
-                    'Vérifiez que le colis est intact',
+                    t('deliveryProofVideoRecorder.verifiezQueLeColisEstIntact'),
                     'Confirmez l\'adresse de livraison'
                 ]
             };

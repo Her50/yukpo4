@@ -118,7 +118,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
         }
 
         if (price >= originalPrice) {
-            Alert.alert('Erreur', 'Le prix négocié doit être inférieur au prix original');
+            Alert.alert('Erreur', t('negotiatedPriceModal.lePrixNegocieDoitEtreInferieur'));
             return;
         }
 
@@ -167,7 +167,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
             }
         } catch (error: any) {
             console.error('[NegotiatedPriceModal] ❌ Erreur création offre:', error?.message || error);
-            Alert.alert('Erreur', `Erreur lors de la création de l'offre.\n\nDétail : ${error?.message || 'Erreur inconnue'}`);
+            Alert.alert('Erreur', t('negotiatedPriceModal.erreurLorsDeLaCreationDe', { error__message_____E: error?.message || 'Erreur inconnue' }));
         } finally {
             setLoading(false);
         }
@@ -199,7 +199,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
             }
         } catch (error: any) {
             console.error('[NegotiatedPriceModal] ❌ Erreur acceptation offre:', error?.message || error);
-            Alert.alert('Erreur', `Erreur lors de l'acceptation de l'offre.\n\nDétail : ${error?.message || 'Erreur inconnue'}`);
+            Alert.alert('Erreur', t('negotiatedPriceModal.erreurLorsDeLacceptationDeLoffrenndetail', { error__message_____E: error?.message || 'Erreur inconnue' }));
         } finally {
             setLoading(false);
         }
@@ -213,7 +213,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
             const response = await apiPost(`/api/negotiated-prices/${pendingOffer.id}/reject`, {});
 
             if (response.success) {
-                Alert.alert('Offre rejetée', 'L\'offre a été rejetée');
+                Alert.alert(t('negotiatedPriceModal.offreRejetee'), 'L\t('negotiatedPriceModal.offreAEteRejetee'));
                 setPendingOffer(null);
                 onClose();
             } else {
@@ -223,7 +223,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
             }
         } catch (error: any) {
             console.error('[NegotiatedPriceModal] ❌ Erreur rejet offre:', error?.message || error);
-            Alert.alert('Erreur', `Erreur lors du rejet de l'offre.\n\nDétail : ${error?.message || 'Erreur inconnue'}`);
+            Alert.alert('Erreur', t('negotiatedPriceModal.erreurLorsDuRejetDeLoffrenndetail', { error__message_____E: error?.message || 'Erreur inconnue' }));
         } finally {
             setLoading(false);
         }
@@ -292,7 +292,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
                                                                 try {
                                                                     await apiPost(`/api/negotiated-prices/${pendingOffer.id}/cancel`, {});
                                                                     setPendingOffer(null);
-                                                                    Alert.alert('Succès', 'Proposition annulée');
+                                                                    Alert.alert(t('negotiatedPriceModal.succes'), t('negotiatedPriceModal.propositionAnnulee'));
                                                                 } catch (error) {
                                                                     console.error('Erreur annulation:', error);
                                                                     Alert.alert('Erreur', 'Impossible d\'annuler la proposition');

@@ -48,7 +48,7 @@ const [resolving, setResolving] = useState(false);
             onClose();
         } catch (error) {
             console.error('[ConflictResolutionModal] Erreur résolution:', error);
-            Alert.alert('Erreur', 'Impossible de résoudre le conflit');
+            Alert.alert('Erreur', t('conflictResolutionModal.impossibleDeResoudreLeConflit'));
         } finally {
             setResolving(false);
         }

@@ -217,6 +217,87 @@ class NotificationSoundService {
     }
 
     // ══════════════════════════════════════════════════════════════════════
+    // ── MESSAGE DE BIENVENUE (première ouverture après installation) ─────
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Retourne le message de bienvenue dans la langue de l'utilisateur.
+     * Messages pré-traduits pour garantir la qualité TTS.
+     */
+    private getWelcomeMessage(lang: string): string {
+        const messages: Record<string, string> = {
+            fr: 'Bienvenue sur Yukpo ! Votre assistant intelligent pour tous vos besoins. Nous sommes ravis de vous accueillir.',
+            en: 'Welcome to Yukpo! Your smart assistant for all your needs. We are delighted to have you.',
+            de: 'Willkommen bei Yukpo! Ihr intelligenter Assistent für alle Ihre Bedürfnisse. Wir freuen uns, Sie zu begrüßen.',
+            es: '¡Bienvenido a Yukpo! Tu asistente inteligente para todas tus necesidades. Estamos encantados de recibirte.',
+            pt: 'Bem-vindo ao Yukpo! Seu assistente inteligente para todas as suas necessidades. Estamos felizes em recebê-lo.',
+            it: 'Benvenuto su Yukpo! Il tuo assistente intelligente per tutte le tue esigenze. Siamo felici di accoglierti.',
+            nl: 'Welkom bij Yukpo! Uw slimme assistent voor al uw behoeften. Wij zijn blij u te verwelkomen.',
+            pl: 'Witamy w Yukpo! Twój inteligentny asystent na każdą potrzebę. Cieszymy się, że jesteś z nami.',
+            uk: 'Ласкаво просимо до Yukpo! Ваш розумний помічник для всіх потреб. Ми раді вітати вас.',
+            tr: 'Yukpo\'ya hoş geldiniz! Tüm ihtiyaçlarınız için akıllı asistanınız. Sizi ağırlamaktan mutluluk duyuyoruz.',
+            ru: 'Добро пожаловать в Yukpo! Ваш умный помощник для всех ваших нужд. Мы рады приветствовать вас.',
+            zh: '欢迎来到Yukpo！您的智能助手，满足您的一切需求。我们很高兴欢迎您。',
+            ja: 'Yukpoへようこそ！あらゆるニーズに応えるスマートアシスタントです。ようこそお越しくださいました。',
+            ko: 'Yukpo에 오신 것을 환영합니다! 모든 필요를 위한 스마트 어시스턴트입니다. 환영합니다.',
+            hi: 'Yukpo में आपका स्वागत है! आपकी सभी जरूरतों के लिए स्मार्ट सहायक। हमें आपका स्वागत करते हुए खुशी हो रही है।',
+            ar: 'مرحبا بك في يوكبو! مساعدك الذكي لجميع احتياجاتك. يسعدنا استقبالك.',
+            sw: 'Karibu kwenye Yukpo! Msaidizi wako mahiri kwa mahitaji yako yote. Tunafuraha kukukaribisha.',
+            ha: 'Barka da zuwa Yukpo! Mai taimakon ka mai wayo don duk bukatunka. Muna farin cikin maraba da kai.',
+            yo: 'Ẹ káàbọ̀ sí Yukpo! Olùrànlọ́wọ́ ọlọ́gbọ́n rẹ fún gbogbo àìní rẹ. A dúpẹ́ pé o wà.',
+            ig: 'Nnọọ na Yukpo! Onye inyeaka gị mara ihe maka mkpa gị niile. Anyị nwere obi ụtọ ịnabata gị.',
+            am: 'ወደ Yukpo እንኳን ደህና መጡ! ለሁሉም ፍላጎቶችዎ ዘመናዊ ረዳትዎ። እርስዎን በመቀበላችን ደስተኞች ነን።',
+            zu: 'Siyakwamukela ku-Yukpo! Umsizi wakho ohlakaniphile kuzo zonke izidingo zakho.',
+            wo: 'Dalal jàmm ci Yukpo! Sa ndimbal bu xaraal ngir sa soxla yépp. Bég nanu la yor.',
+            ln: 'Boyei malamu na Yukpo! Mosungi na yo ya mayele mpo na bamposa na yo nyonso.',
+            ff: 'Bisimilla e Yukpo! Ballo maa keewuɗo ngam haajuuji maa fof. Min ceyii jaɓɓaade ma.',
+            rw: 'Murakaza neza kuri Yukpo! Umufasha wawe w\'ubwenge ku byo ukeneye byose.',
+            sn: 'Titambire kuYukpo! Mubatsiri wako akangwara kune zvese zvaunoda.',
+            so: 'Ku soo dhawoow Yukpo! Kaaliyahaaga caqliga leh ee loogu talagalay dhamaan baahidaada.',
+            mg: 'Tongasoa eto amin\'ny Yukpo! Ny mpanampy maranitra ho an\'ny filànao rehetra.',
+            ht: 'Byenveni sou Yukpo! Asistan entelijan ou pou tout bezwen ou yo. Nou kontan resevwa ou.',
+            ewo: 'Mbolo a Yukpo! Mod a yëm a biyëdë bise bise boe.',
+            dua: 'Mbolo na Yukpo! Muna ndutu na bwam na niè nyèsè.',
+            bas: 'Sango a Yukpo! Mut a gwé mbok ni biniigà nyuu bisoŋ.',
+            bm: 'I ni ce Yukpo kɔnɔ! I ka dɛmɛbaga hakilitigi.',
+            pcm: 'Welcome to Yukpo! Your smart helper for all your needs. We dey happy to see you.',
+        };
+        return messages[lang] || messages['fr'];
+    }
+
+    /**
+     * Joue la notification de bienvenue unique au premier lancement.
+     * Son de bienvenue + message TTS dans la langue de l'utilisateur.
+     */
+    async playWelcomeMessage(): Promise<void> {
+        try {
+            await this.initialize();
+
+            console.log('[NotificationSoundService] 🎉 Lecture message de bienvenue');
+
+            // 1. Jouer un son de bienvenue (réutilise le son 'ready' comme chime)
+            await this.playSound('ready').catch(() => { });
+
+            // 2. Attendre que le son finisse, puis parler le message de bienvenue
+            const lang = i18n.language || 'fr';
+            const message = this.getWelcomeMessage(lang);
+            const ttsLang = this.getTTSLanguage();
+
+            setTimeout(() => {
+                Speech.speak(message, {
+                    language: ttsLang,
+                    pitch: 1.05,
+                    rate: 0.85,
+                    onError: (e) => console.warn('[NotificationSoundService] TTS bienvenue erreur:', e),
+                    onDone: () => console.log('[NotificationSoundService] ✅ Message de bienvenue terminé'),
+                });
+            }, 1200);
+        } catch (error) {
+            console.error('[NotificationSoundService] ❌ Erreur message bienvenue:', error);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
     // ── NOTIFICATIONS CONTEXTUELLES VOCALES (Speech/TTS) ────────────────
     // ══════════════════════════════════════════════════════════════════════
 

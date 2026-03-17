@@ -80,13 +80,13 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
             });
 
             if (response.success) {
-                Alert.alert('Succès', 'Audience lookalike créée avec succès');
+                Alert.alert(t('customAudienceManager.succes'), t('customAudienceManager.audienceLookalikeCreeeAvecSucces'));
                 setShowCreateForm(false);
                 setCreateType(null);
                 setNewAudienceName('');
                 loadAudiences();
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de créer l\'audience');
+                Alert.alert('Erreur', response.error || t('customAudienceManager.impossibleDeCreerL')audience');
             }
         } catch (error) {
             console.error('[CustomAudienceManager] Erreur création lookalike:', error);
@@ -113,7 +113,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
                 if ((result as any).type === 'success') {
                     // Lire le fichier CSV et extraire les données
                     // TODO: Implémenter la lecture du CSV
-                    Alert.alert('Info', 'Import CSV à implémenter');
+                    Alert.alert('Info', t('customAudienceManager.importCsvAImplementer'));
                 }
             } catch (error) {
                 console.error('[CustomAudienceManager] Erreur import CSV:', error);
@@ -122,7 +122,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
         }
 
         if (!customData.trim()) {
-            Alert.alert('Erreur', 'Veuillez entrer des données');
+            Alert.alert('Erreur', t('customAudienceManager.veuillezEntrerDesDonnees'));
             return;
         }
 
@@ -133,7 +133,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
             .filter(item => item.length > 0);
 
         if (items.length === 0) {
-            Alert.alert('Erreur', 'Aucune donnée valide trouvée');
+            Alert.alert('Erreur', t('customAudienceManager.aucuneDonneeValideTrouvee'));
             return;
         }
 
@@ -147,14 +147,14 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
             });
 
             if (response.success) {
-                Alert.alert('Succès', `Audience créée avec ${items.length} contacts`);
+                Alert.alert(t('customAudienceManager.succes'), t('customAudienceManager.audienceCreeeAvecContacts', { items_length: items.length }));
                 setShowCreateForm(false);
                 setCreateType(null);
                 setNewAudienceName('');
                 setCustomData('');
                 loadAudiences();
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de créer l\'audience');
+                Alert.alert('Erreur', response.error || t('customAudienceManager.impossibleDeCreerL')audience');
             }
         } catch (error) {
             console.error('[CustomAudienceManager] Erreur création custom:', error);
@@ -359,7 +359,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
                                                 copyToCacheDirectory: true,
                                             });
                                             if ((result as any).type === 'success') {
-                                                Alert.alert('Info', `Fichier sélectionné: ${(result as any).name}`);
+                                                Alert.alert('Info', t('customAudienceManager.fichierSelectionne', { _result_as_any__name: (result as any).name }));
                                                 // TODO: Lire et parser le CSV
                                             }
                                         } catch (error) {

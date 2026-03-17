@@ -4,7 +4,7 @@
  * Exemple d'utilisation dans ProductManagerMobile:
  * 
  * <IntelligentProductField
- *   label="Modèle du véhicule"
+ *   label=t('intelligentProductField.modeleDuVehicule')
  *   fieldKey="modele"
  *   value={formData.modele}
  *   onValueChange={(value) => setFormData({...formData, modele: value})}

@@ -70,7 +70,7 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
                     onPress: async () => {
                         try {
                             await bourseLivreV2Api.courierAcceptPackage(pkg.id);
-                            Alert.alert('Paquet accepté !', 'Rendez-vous au point de récupération.');
+                            Alert.alert(t('bookCourierSubDashboard.paquetAccepte'), t('bookCourierSubDashboard.rendezvousAuPointDeRecuperation'));
                             loadData();
                             onRefresh?.();
                         } catch (e: any) {
@@ -88,7 +88,7 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
             loadData();
             onRefresh?.();
         } catch (e: any) {
-            Alert.alert('Erreur', e?.message || 'Impossible de mettre à jour le statut');
+            Alert.alert('Erreur', e?.message || t('bookCourierSubDashboard.impossibleDeMettreAJourLe'));
         }
     };
 

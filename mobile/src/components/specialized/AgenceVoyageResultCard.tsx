@@ -103,11 +103,11 @@ const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({
                     totalPrice,
                 });
             } else {
-                Alert.alert('Erreur', reservationResponse.error || 'Impossible de créer les réservations');
+                Alert.alert('Erreur', reservationResponse.error || t('agenceVoyageResultCard.impossibleDeCreerLesReservations'));
             }
         } catch (error: any) {
             console.error('Erreur création réservations:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue lors de la réservation');
+            Alert.alert('Erreur', error.message || t('agenceVoyageResultCard.uneErreurEstSurvenueLorsDe'));
         } finally {
             setShowSeatSelector(false);
             setSelectedTicket(null);

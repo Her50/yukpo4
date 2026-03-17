@@ -295,6 +295,13 @@ const ProfileScreen: React.FC = () => {
       description: t('profile.rechargeTokensDesc')
     },
     {
+      title: t('profile.financialTracking'),
+      icon: 'trending-up',
+      color: '#8B5CF6',
+      route: 'WalletFinancial',
+      description: t('profile.financialTrackingDesc')
+    },
+    {
       title: '🎥 ' + t('profile.startLive'),
       icon: 'radio',
       color: '#DC2626',
@@ -350,7 +357,7 @@ const ProfileScreen: React.FC = () => {
       title: t('profile.myHistory'),
       icon: 'history',
       color: '#F59E0B',
-      route: 'History',
+      route: 'SoldeDetail',
       description: t('profile.myHistoryDesc')
     },
     {
@@ -372,8 +379,7 @@ const ProfileScreen: React.FC = () => {
       title: t('profile.changePassword'),
       icon: 'key',
       color: '#6366F1',
-      route: 'Settings',
-      params: { initialSection: 'security', showPasswordModal: true },
+      route: 'ChangePassword',
       description: t('profile.changePasswordDesc')
     },
     {

@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ProductBadgesProps {
     product: any;
@@ -49,7 +50,7 @@ export const ProductBadges: React.FC<ProductBadgesProps> = ({ product, service }
     if (stock > 0 && stock <= 5) {
         badges.push({
             type: 'low_stock',
-            label: stock === 1 ? 'DERNIER' : 'Bientôt épuisé',
+            label: stock === 1 ? 'DERNIER' : t('productBadges.bientotEpuise'),
             icon: 'alert-circle',
             color: '#F59E0B',
             gradient: ['#F59E0B', '#D97706'],

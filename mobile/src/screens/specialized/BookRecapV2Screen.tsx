@@ -36,7 +36,7 @@ interface BookEntry {
 }
 
 const MODE_OPTIONS = [
-    { key: 'troc', label: 'Troc', icon: 'repeat', color: '#3b82f6', desc: 'Échanger contre un autre livre' },
+    { key: 'troc', label: 'Troc', icon: 'repeat', color: '#3b82f6', desc: t('bookRecapV2Screen.echangerContreUnAutreLivre') },
     { key: 'vente', label: 'Vente', icon: 'dollar-sign', color: '#22c55e', desc: t('bookRecapV2Screen.vendreAuPrixCalcule') },
     { key: 'don', label: 'Don', icon: 'heart', color: '#ef4444', desc: 'Donner gratuitement' },
 ];
@@ -150,7 +150,7 @@ const BookRecapV2Screen: React.FC = () => {
 
         const validBooks = initialBooks.filter(b => !b.is_rejected);
         if (validBooks.length === 0) {
-            Alert.alert('Aucun livre valide', 'Tous les livres ont été rejetés.');
+            Alert.alert('Aucun livre valide', t('bookRecapV2Screen.tousLesLivresOntEteRejetes'));
             return;
         }
 
@@ -171,7 +171,7 @@ const BookRecapV2Screen: React.FC = () => {
             navigation.navigate('LivreScolaireSearch');
         } catch (error: any) {
             console.error('[BookRecapV2] Erreur finalisation:', error);
-            Alert.alert('Erreur', 'Impossible de finaliser la session. Réessayez.');
+            Alert.alert('Erreur', t('bookRecapV2Screen.impossibleDeFinaliserLaSessionReessayez'));
         } finally {
             setFinalizing(false);
         }

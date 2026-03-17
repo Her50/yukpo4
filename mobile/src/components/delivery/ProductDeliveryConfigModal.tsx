@@ -245,13 +245,13 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     });
 
                     const selectedName = availableProducts.find(p => p.index === selectedProductIndex)?.name || 'produit';
-                    Alert.alert('Configuration copiée', `La configuration de "${selectedName}" a été chargée. Vous pouvez modifier les champs avant d'enregistrer.`);
+                    Alert.alert(t('productDeliveryConfigModal.configurationCopiee'), t('productDeliveryConfigModal.laConfigurationDeAEteChargee', { selectedName: selectedName }));
                 } else {
-                    Alert.alert('Erreur', 'Impossible de charger la configuration du produit sélectionné.');
+                    Alert.alert('Erreur', t('productDeliveryConfigModal.impossibleDeChargerLaConfigurationDu'));
                 }
             } catch (error) {
                 console.error('[ProductDeliveryConfigModal] Erreur chargement config réutilisée:', error);
-                Alert.alert('Erreur', 'Impossible de charger la configuration du produit sélectionné.');
+                Alert.alert('Erreur', t('productDeliveryConfigModal.impossibleDeChargerLaConfigurationDu'));
             } finally {
                 setLoading(false);
             }
@@ -778,7 +778,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         );
 
         if (validAddresses.length === 0) {
-            Alert.alert('Erreur', 'Au moins une adresse de récupération du produit avec coordonnées GPS valides est obligatoire');
+            Alert.alert('Erreur', t('productDeliveryConfigModal.auMoinsUneAdresseDeRecuperation'));
             return;
         }
 
@@ -787,7 +787,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
         const vehicleTypeId = typeof config.required_vehicle_type_id === 'number' ? config.required_vehicle_type_id : 0;
         if (!vehicleTypeId) {
-            Alert.alert('Erreur', 'Le type de véhicule est obligatoire');
+            Alert.alert('Erreur', t('productDeliveryConfigModal.leTypeDeVehiculeEstObligatoire'));
             return;
         }
 
@@ -797,7 +797,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             : '0';
         const preparationTime = preparationTimeStr ? parseInt(preparationTimeStr, 10) : 0;
         if (isNaN(preparationTime) || preparationTime < 0) {
-            Alert.alert('Erreur', 'Le temps de préparation doit être un nombre positif ou nul (0 = instantané)');
+            Alert.alert('Erreur', t('productDeliveryConfigModal.leTempsDePreparationDoitEtre'));
             return;
         }
 
@@ -805,7 +805,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         try {
             schedule = JSON.parse(config?.pickup_availability_schedule || '{}');
             if (Object.keys(schedule).length === 0) {
-                Alert.alert('Erreur', 'Veuillez définir au moins une plage horaire de récupération');
+                Alert.alert('Erreur', t('productDeliveryConfigModal.veuillezDefinirAuMoinsUnePlage'));
                 return;
             }
         } catch {
@@ -817,7 +817,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         try {
             // ✅ CORRIGÉ: Validation approfondie des coordonnées GPS
             if (primaryAddress.latitude === 0 && primaryAddress.longitude === 0) {
-                Alert.alert('Erreur', 'Les coordonnées GPS de la première adresse de récupération sont invalides. Veuillez sélectionner une adresse avec des coordonnées valides.');
+                Alert.alert('Erreur', t('productDeliveryConfigModal.lesCoordonneesGpsDeLaPremiere'));
                 setLoading(false);
                 return;
             }
@@ -825,7 +825,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             // ✅ Validation que les coordonnées sont dans des plages valides
             if (primaryAddress.latitude < -90 || primaryAddress.latitude > 90 ||
                 primaryAddress.longitude < -180 || primaryAddress.longitude > 180) {
-                Alert.alert('Erreur', 'Les coordonnées GPS sont hors limites. Veuillez sélectionner une adresse valide.');
+                Alert.alert('Erreur', t('productDeliveryConfigModal.lesCoordonneesGpsSontHorsLimites'));
                 setLoading(false);
                 return;
             }
@@ -845,7 +845,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             // ✅ VALIDATION FINALE: Vérifier que tous les champs requis sont présents et valides
             const vehicleTypeId = config && typeof config.required_vehicle_type_id === 'number' ? config.required_vehicle_type_id : 0;
             if (vehicleTypeId <= 0) {
-                Alert.alert('Erreur', 'Le type de véhicule est obligatoire et doit être sélectionné');
+                Alert.alert('Erreur', t('productDeliveryConfigModal.leTypeDeVehiculeEstObligatoire'));
                 setLoading(false);
                 return;
             }
@@ -862,7 +862,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 }
             }
             if (!finalSchedule || typeof finalSchedule !== 'object' || Array.isArray(finalSchedule) || Object.keys(finalSchedule).length === 0) {
-                Alert.alert('Erreur', 'Veuillez définir au moins une plage horaire de récupération valide');
+                Alert.alert('Erreur', t('productDeliveryConfigModal.veuillezDefinirAuMoinsUnePlage'));
                 setLoading(false);
                 return;
             }
@@ -943,11 +943,11 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     if (onSuccess) {
                         onSuccess();
                     } else {
-                        Alert.alert('Succès', `Configuration appliquée à ${successCount} produit(s) avec succès`);
+                        Alert.alert(t('productDeliveryConfigModal.succes'), t('productDeliveryConfigModal.configurationAppliqueeAProduitsAvecSucces', { successCount: successCount }));
                         onClose();
                     }
                 } else {
-                    Alert.alert('Partiellement réussi', `${successCount} produit(s) configuré(s), ${errorCount} erreur(s)`);
+                    Alert.alert(t('productDeliveryConfigModal.partiellementReussi'), t('productDeliveryConfigModal.produitsConfiguresErreurs', { successCount: successCount, errorCount: errorCount }));
                 }
             } else {
                 // ✅ LOGS DÉTAILLÉS: Capturer toutes les informations pour diagnostic
@@ -995,7 +995,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             if (onSuccess) {
                                 onSuccess();
                             } else {
-                                Alert.alert('Succès', 'Configuration de livraison sauvegardée avec succès');
+                                Alert.alert(t('productDeliveryConfigModal.succes'), t('productDeliveryConfigModal.configurationDeLivraisonSauvegardeeAvecSucces'));
                                 onClose();
                             }
                             return; // Sortir de la fonction si succès
@@ -1010,7 +1010,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             });
 
                             // Si l'erreur indique que le produit n'existe pas, retry
-                            if (errorMsg.includes(t('productDeliveryConfigModal.nonTrouve')) || errorMsg.includes('not found') || errorMsg.includes('Produit') || errorMsg.includes('synchronisé')) {
+                            if (errorMsg.includes(t('productDeliveryConfigModal.nonTrouve')) || errorMsg.includes('not found') || errorMsg.includes('Produit') || errorMsg.includes(t('productDeliveryConfigModal.synchronise'))) {
                                 if (retryCount < maxRetries) {
                                     const delay = retryDelays[retryCount] || 2000;
                                     console.log(`[SAUVEGARDE_CONFIG_LIVRAISON] ⏳ Produit non trouvé, retry ${retryCount + 1}/${maxRetries} dans ${delay}ms...`);
@@ -1041,7 +1041,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         });
 
                         // Si l'erreur indique que le produit n'existe pas, retry
-                        if (errorMsg.includes(t('productDeliveryConfigModal.nonTrouve')) || errorMsg.includes('not found') || errorMsg.includes('Produit') || errorMsg.includes('synchronisé')) {
+                        if (errorMsg.includes(t('productDeliveryConfigModal.nonTrouve')) || errorMsg.includes('not found') || errorMsg.includes('Produit') || errorMsg.includes(t('productDeliveryConfigModal.synchronise'))) {
                             if (retryCount < maxRetries) {
                                 const delay = retryDelays[retryCount] || 2000;
                                 console.log(`[SAUVEGARDE_CONFIG_LIVRAISON] ⏳ Produit non trouvé (exception), retry ${retryCount + 1}/${maxRetries} dans ${delay}ms...`);
@@ -1160,13 +1160,13 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                                     onPress: () => setSelectedProductIndex(p.index)
                                                 }));
                                                 options.push({ text: t('common.cancel'), style: 'cancel' });
-                                                Alert.alert('Sélectionner un produit', '', options);
+                                                Alert.alert(t('productDeliveryConfigModal.selectionnerUnProduit'), '', options);
                                             }}
                                         >
                                             <Text style={[styles.selectText, !selectedProductIndex && styles.selectPlaceholder]}>
                                                 {selectedProductIndex !== null
                                                     ? availableProducts.find(p => p.index === selectedProductIndex)?.name || t('productDeliveryConfig.selectionner')
-                                                    : 'Sélectionner un produit...'}
+                                                    : t('productDeliveryConfigModal.selectionnerUnProduit')}
                                             </Text>
                                             <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
                                         </TouchableOpacity>
@@ -1265,7 +1265,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                 onPress={() => {
                                     Alert.alert(
                                         'Lieu de stock',
-                                        'Sélectionnez un lieu de stock (optionnel)',
+                                        t('productDeliveryConfigModal.selectionnezUnLieuDeStockOptionnel'),
                                         [
                                             {
                                                 text: t('productDeliveryConfig.aucunSaisieManuelle'),
@@ -1288,7 +1288,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                 <Text style={styles.selectText}>
                                     {config.storage_location_id
                                         ? (storageLocations.find(loc => loc.id === config.storage_location_id)?.name || t('productDeliveryConfig.lieuSelectionne'))
-                                        : 'Sélectionner un lieu de stock (optionnel)'}
+                                        : t('productDeliveryConfigModal.selectionnerUnLieuDeStockOptionnel')}
                                 </Text>
                                 <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
                             </TouchableOpacity>
@@ -1305,7 +1305,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             <Text style={[styles.selectText, !config.required_vehicle_type_id && styles.selectPlaceholder]}>
                                 {(() => {
                                     if (!config.required_vehicle_type_id) {
-                                        return 'Sélectionner...';
+                                        return t('productDeliveryConfigModal.selectionner');
                                     }
                                     // Convertir l'ID en VehicleType
                                     const vehicleType = getVehicleTypeFromId(config.required_vehicle_type_id);
@@ -1315,7 +1315,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                             return `${vehicle.icon} ${vehicle.label}`;
                                         }
                                     }
-                                    return 'Sélectionner...';
+                                    return t('productDeliveryConfigModal.selectionner');
                                 })()}
                             </Text>
                             <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />

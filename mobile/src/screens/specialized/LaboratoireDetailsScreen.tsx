@@ -120,7 +120,7 @@ const LaboratoireDetailsScreen: React.FC = () => {
         if (!user) { Alert.alert(t('labDetails.loginRequired'), t('labDetails.pleaseLogin')); navigation.navigate('Login' as never); return; }
         try {
             setBooking(true);
-            const response = await apiPost(`/api/laboratoires/${params.laboratoryId}/book`, { notes: 'Réservation depuis l\'application mobile' });
+            const response = await apiPost(`/api/laboratoires/${params.laboratoryId}/book`, { notes: t('laboratoireDetailsScreen.reservationDepuisL')application mobile' });
             if (response.success) Alert.alert(t('labDetails.bookingCreated'), t('labDetails.bookingCreatedMsg'), [{ text: 'OK', onPress: () => navigation.goBack() }]);
             else Alert.alert(t('message.error'), response.error || t('labDetails.cannotBook'));
         } catch (error: any) { Alert.alert(t('message.error'), error.message || t('labDetails.cannotBook')); }
@@ -371,7 +371,7 @@ const LaboratoireDetailsScreen: React.FC = () => {
                 <View style={st.section}>
                     <TouchableOpacity style={[st.fullBtn, { backgroundColor: '#F0FDFA', borderLeftColor: '#0D9488', borderLeftWidth: 3 }]} onPress={handleBook} disabled={booking || !isOpen}>
                         <SafeIcon name="calendar" size={18} color="#0D9488" />
-                        <Text style={[st.fullBtnText, { color: '#0F766E' }]}>{booking ? 'Réservation...' : 'Réserver un rendez-vous'}</Text>
+                        <Text style={[st.fullBtnText, { color: '#0F766E' }]}>{booking ? t('laboratoireDetailsScreen.reservation') : t('laboratoireDetailsScreen.reserverUnRendezvous')}</Text>
                         <SafeIcon name="chevron-right" size={18} color="#5EEAD4" />
                     </TouchableOpacity>
                     <TouchableOpacity style={st.fullBtn} onPress={() => {

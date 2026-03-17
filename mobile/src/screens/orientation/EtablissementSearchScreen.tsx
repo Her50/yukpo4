@@ -335,7 +335,7 @@ const EtablissementSearchScreen: React.FC = () => {
                 ) : etablissements.length > 0 ? (
                     <View style={styles.resultsSection}>
                         <Text style={styles.resultsCount}>
-                            {total} établissement{total > 1 ? 's' : ''} trouvé{total > 1 ? 's' : ''}
+                            {total} établissement{total > 1 ? 's' : 't('etablissementSearchScreen.trouvetotal1')s' : ''}
                         </Text>
                         {etablissements.map((item) => renderEtablissement({ item }))}
                     </View>

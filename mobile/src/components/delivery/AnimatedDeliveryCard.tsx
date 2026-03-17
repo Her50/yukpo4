@@ -7,6 +7,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, TouchableOpacity } from 'react-native';
 import { DeliverySummary } from '../../types/delivery';
 import ActiveDeliveryCard from './ActiveDeliveryCard';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface AnimatedDeliveryCardProps {
     delivery: DeliverySummary;
@@ -25,6 +26,7 @@ const AnimatedDeliveryCard: React.FC<AnimatedDeliveryCardProps> = React.memo(({
     const pressAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
+    const { t } = useLanguageSafe();
         // Animation d'entrée avec délai selon l'index
         try {
             // ✅ CORRIGÉ: Utiliser Easing importé directement depuis react-native

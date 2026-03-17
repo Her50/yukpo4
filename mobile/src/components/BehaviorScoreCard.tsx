@@ -18,7 +18,7 @@ const BehaviorScoreCard: React.FC<BehaviorScoreCardProps> = ({ score, suspicious
       <Text style={{color: '#333'}}>
         Statut :{" "}
         <Text style={{color: suspicious ? '#dc2626' : '#16a34a', fontWeight: '600'}}>
-          {suspicious ? "Comportement suspect détecté" : "Comportement normal"}
+          {suspicious ? t('behaviorScoreCard.comportementSuspectDetecte') : "Comportement normal"}
         </Text>
       </Text>
     </View>

@@ -124,7 +124,7 @@ const ConcoursEntreeScreen: React.FC = () => {
                     )}
                 </View>
                 <Text style={styles.cardSubtitle}>
-                    📍 {item.nom_etablissement || `Établissement #${item.etablissement_id}`}
+                    📍 {item.nom_etablissement || t('concoursEntreeScreen.etablissement', { item_etablissement_id: item.etablissement_id })}
                 </Text>
                 <Text style={styles.cardSubtitle}>
                     📅 Concours: {new Date(item.date_concours).toLocaleDateString('fr-FR')}

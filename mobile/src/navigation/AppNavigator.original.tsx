@@ -185,9 +185,11 @@ import LivreScolaireListScreen from '../screens/specialized/LivreScolaireListScr
 import LivreScolaireSearchScreen from '../screens/specialized/LivreScolaireSearchScreen';
 import MesLivresScreen from '../screens/specialized/MesLivresScreen';
 // ✅ V2 2026-03-15: Écrans Bourse du Livre V2
+import AdminDonationsScreen from '../screens/specialized/AdminDonationsScreen';
 import BookPackagesScreen from '../screens/specialized/BookPackagesScreen';
 import BookRecapV2Screen from '../screens/specialized/BookRecapV2Screen';
 import BookUploadV2Screen from '../screens/specialized/BookUploadV2Screen';
+import MesBesoinsLivresScreen from '../screens/specialized/MesBesoinsLivresScreen';
 // ✅ NOUVEAU 2025-01-28: Écrans Orientation scolaire
 import ConcoursEntreeScreen from '../screens/orientation/ConcoursEntreeScreen';
 import ConferencesLivesScreen from '../screens/orientation/ConferencesLivesScreen';
@@ -387,6 +389,8 @@ const MesTrocsScreenWithSafeArea = withNavigatorSafeArea(MesTrocsScreen);
 const BookUploadV2ScreenWithSafeArea = withNavigatorSafeArea(BookUploadV2Screen);
 const BookRecapV2ScreenWithSafeArea = withNavigatorSafeArea(BookRecapV2Screen);
 const BookPackagesScreenWithSafeArea = withNavigatorSafeArea(BookPackagesScreen);
+const MesBesoinsLivresScreenWithSafeArea = withNavigatorSafeArea(MesBesoinsLivresScreen);
+const AdminDonationsScreenWithSafeArea = withNavigatorSafeArea(AdminDonationsScreen);
 // ✅ NOUVEAU: Immobilier
 const HotelMeubleHomeScreenWithSafeArea = withNavigatorSafeArea(HotelMeubleHomeScreen);
 const ImmobilierSearchScreenWithSafeArea = withNavigatorSafeArea(ImmobilierSearchScreen);
@@ -1324,6 +1328,22 @@ const SecondaryStack = () => {
         options={{
           ...defaultScreenOptions,
           title: 'Paquets livres',
+        }}
+      />
+      <Stack.Screen
+        name="MesBesoinsLivres"
+        component={MesBesoinsLivresScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Mes Besoins en Livres',
+        }}
+      />
+      <Stack.Screen
+        name="AdminDonations"
+        component={AdminDonationsScreenWithSafeArea}
+        options={{
+          ...defaultScreenOptions,
+          title: 'Gestion des Dons',
         }}
       />
       {/* ✅ NOUVEAU 2025-01-28: Orientation scolaire */}

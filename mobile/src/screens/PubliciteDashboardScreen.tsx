@@ -501,7 +501,7 @@ const PubliciteDashboardScreen: React.FC = () => {
                                         />
                                         <Text style={styles.infoText}>
                                             {pub.zone_geographique === 'local' ? 'Local' :
-                                                pub.zone_geographique === 'regional' ? 'Régional' : 'International'}
+                                                pub.zone_geographique === 'regional' ? t('publiciteDashboardScreen.regional') : 'International'}
                                         </Text>
                                     </View>
                                 </View>

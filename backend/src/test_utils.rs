@@ -22,8 +22,6 @@ use crate::{
 #[cfg(test)]
 use log::error;
 #[cfg(test)]
-use mongodb::Client as MongoClient;
-#[cfg(test)]
 use redis::Client as RedisClient;
 #[cfg(test)]
 use sqlx::{postgres::PgPoolOptions, PgPool, Row};
@@ -131,16 +129,6 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
 
     let user_id: i32 = user_row.get::<i32, _>("id");
 
-    let mongo_uri = std::env::var("TEST_MONGODB_URL")
-        .unwrap_or_else(|_| "mongodb://localhost:27017".to_string());
-    let mongo_client = match MongoClient::with_uri_str(&mongo_uri).await {
-        Ok(client) => client,
-        Err(err) => {
-            eprintln!("[tests] ❌ Impossible de créer le client MongoDB ({mongo_uri}): {err:?}");
-            return None;
-        }
-    };
-
     let redis_uri =
         std::env::var("TEST_REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
     let redis_client = match RedisClient::open(redis_uri.clone()) {
@@ -158,9 +146,9 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
         pool.clone(),
     ));
 
+    // ✅ 2026-03-16: MongoHistoryService utilise PostgreSQL maintenant
     let mongo_history = Arc::new(MongoHistoryService::new(
-        Arc::new(mongo_client.clone()),
-        "yukpo_history_test".to_string(),
+        Arc::new(pool.clone()),
     ));
 
     let delivery_repo = Arc::new(DeliveryRepository::new(pool.clone()));
@@ -190,7 +178,6 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
     let state = Arc::new(AppState {
         pg: pool.clone(),
         pg_read: None,
-        mongo: mongo_client,
         mongo_history,
         ia: app_ia,
         ia_stats,

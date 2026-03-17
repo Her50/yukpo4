@@ -38,7 +38,7 @@ const OrientationAICompareProgramsScreen: React.FC = () => {
         }
 
         if (!user) {
-            Alert.alert('Erreur', 'Vous devez être connecté');
+            Alert.alert('Erreur', t('orientationAICompareProgramsScreen.vousDevezEtreConnecte'));
             return;
         }
 
@@ -73,7 +73,7 @@ const OrientationAICompareProgramsScreen: React.FC = () => {
             setComparison(response);
         } catch (error: any) {
             console.error('[OrientationAIComparePrograms] Erreur:', error);
-            Alert.alert('Erreur', 'Impossible de comparer les programmes. Veuillez réessayer.');
+            Alert.alert('Erreur', t('orientationAICompareProgramsScreen.impossibleDeComparerLesProgrammesVeuillez'));
         } finally {
             setLoading(false);
         }

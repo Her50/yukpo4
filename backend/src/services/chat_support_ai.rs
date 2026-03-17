@@ -13,33 +13,50 @@ pub async fn generate_support_response(
     user_message: &str,
     conversation_history: &[String],
     topic: Option<&str>,
+    language: Option<&str>,
 ) -> AppResult<String> {
     info!(
         "[ChatSupportAI] Génération réponse pour message: {}",
         user_message
     );
 
-    // Construire le prompt système spécialisé pour le support
-    let system_prompt = r#"
-Tu es l'assistant support intelligent de Yukpo, la meilleure plateforme de réservation de tickets de bus en Afrique.
+    // ✅ i18n: Adapter la langue de réponse
+    let lang = language.unwrap_or("fr");
+    let lang_instruction = match lang {
+        "en" => "You MUST respond in English.",
+        "es" => "You MUST respond in Spanish.",
+        "de" => "You MUST respond in German.",
+        "pt" => "You MUST respond in Portuguese.",
+        "ar" => "You MUST respond in Arabic.",
+        "zh" => "You MUST respond in Chinese.",
+        "hi" => "You MUST respond in Hindi.",
+        "ja" => "You MUST respond in Japanese.",
+        "ru" => "You MUST respond in Russian.",
+        "sw" => "You MUST respond in Swahili.",
+        _ => "You MUST respond in French.",
+    };
 
-TON RÔLE :
-- Répondre de manière utile, concise et professionnelle en français
-- Aider les utilisateurs avec leurs questions sur les réservations, paiements, tickets, etc.
-- Proposer des solutions concrètes
-- Si tu ne peux pas résoudre le problème, proposer de transférer à un agent humain
+    let system_prompt = format!(r#"
+You are the intelligent support assistant of Yukpo, a leading multi-service platform.
+{}
 
-TON STYLE :
-- Professionnel mais amical
-- Concis (maximum 3-4 phrases)
-- Utilise des emojis avec modération (✅ ❌ ⚠️ 💡)
-- Propose toujours des actions concrètes
+YOUR ROLE:
+- Respond in a helpful, concise and professional manner
+- Help users with their questions about reservations, payments, tickets, etc.
+- Propose concrete solutions
+- If you cannot resolve the problem, offer to transfer to a human agent
 
-IMPORTANT :
-- Ne jamais inventer d'informations
-- Si tu ne sais pas, dis-le clairement
-- Propose toujours de contacter un agent humain pour les cas complexes
-"#;
+YOUR STYLE:
+- Professional but friendly
+- Concise (maximum 3-4 sentences)
+- Use emojis sparingly (✅ ❌ ⚠️ 💡)
+- Always propose concrete actions
+
+IMPORTANT:
+- Never invent information
+- If you don't know, say so clearly
+- Always offer to contact a human agent for complex cases
+"#, lang_instruction);
 
     // Construire le contexte de conversation
     let conversation_context = if conversation_history.is_empty() {
@@ -66,7 +83,7 @@ IMPORTANT :
 
     // Construire le prompt final
     let user_prompt = format!(
-        "{}\n\n{}\n\nGénère une réponse utile et concise pour l'utilisateur.",
+        "{}\n\n{}\n\nGenerate a helpful and concise response for the user.",
         system_prompt, full_context
     );
 

@@ -8,6 +8,7 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import { NativeCard } from '../SafeNativeDesign';
 import { SafeIcon } from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface RouteOptimizationIndicatorProps {
     distance: number; // en km
@@ -27,6 +28,7 @@ const RouteOptimizationIndicator: React.FC<RouteOptimizationIndicatorProps> = ({
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
+    const { t } = useLanguageSafe();
         if (isOptimized) {
             const pulse = Animated.loop(
                 Animated.sequence([
@@ -68,7 +70,7 @@ const RouteOptimizationIndicator: React.FC<RouteOptimizationIndicatorProps> = ({
                 </Animated.View>
                 <View style={styles.info}>
                     <Text style={styles.label}>
-                        {isOptimized ? 'Route optimisée' : 'Route standard'}
+                        {isOptimized ? t('routeOptimizationIndicator.routeOptimisee') : 'Route standard'}
                     </Text>
                     <View style={styles.stats}>
                         <View style={styles.stat}>

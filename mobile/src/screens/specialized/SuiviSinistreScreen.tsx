@@ -223,7 +223,7 @@ const SuiviSinistreScreen: React.FC = () => {
                                 {/* Expand indicator */}
                                 <View style={s.expandIndicator}>
                                     <SafeIcon name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color="#9CA3AF" />
-                                    <Text style={s.expandText}>{expanded ? 'Réduire' : t('suiviSinistreScreen.voirLesDetails')}</Text>
+                                    <Text style={s.expandText}>{expanded ? t('suiviSinistreScreen.reduire') : t('suiviSinistreScreen.voirLesDetails')}</Text>
                                 </View>
                             </TouchableOpacity>
                         );

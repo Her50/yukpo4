@@ -44,7 +44,7 @@ const SOUS_CATEGORIES: Record<string, string[]> = {
     auto: ['Tous risques', 'Tiers collision', t('assuranceDashboardScreen.responsabiliteCivile'), 'Vol/Incendie'],
     sante: ['Hospitalisation', 'Ambulatoire', t('assuranceDashboardScreen.maternite'), 'Dentaire', 'Optique'],
     habitation: ['Multirisque', 'Incendie', 'Vol', t('assuranceDashboardScreen.degatsDesEaux')],
-    vie: [t('assuranceDashboardScreen.deces'), 'Épargne', 'Retraite', 'Mixte'],
+    vie: [t('assuranceDashboardScreen.deces'), t('assuranceDashboardScreen.epargne'), 'Retraite', 'Mixte'],
     voyage: ['Annulation', 'Rapatriement', 'Bagages', 'Multi-garanties'],
     entreprise: ['RC Pro', 'Multirisque', t('assuranceDashboardScreen.hommeCle'), 'Flotte auto'],
 };
@@ -76,7 +76,7 @@ const POLICY_STATUS_LABELS: Record<string, { label: string; color: string; bg: s
 const AssuranceDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const { t } = useLanguageSafe();
     const serviceId = (route.params as any)?.serviceId || (route.params as any)?.service_id || 0;
 
@@ -300,6 +300,18 @@ const AssuranceDashboardScreen: React.FC = () => {
                     { label: 'Sinistres', icon: 'alert-triangle', color: '#F59E0B', onPress: () => setActiveTab('claims') },
                     { label: 'Devis IA', icon: 'cpu', color: '#7C3AED', onPress: () => (navigation as any).navigate('InsuranceQuoteRequest') },
                     { label: 'Portefeuille', icon: 'wallet', color: '#10B981', onPress: () => (navigation as any).navigate('WalletFinancial') },
+                    {
+                        label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => {
+                            Alert.alert(
+                                t('common.deconnexion'),
+                                t('common.confirmDeconnexion'),
+                                [
+                                    { text: t('common.cancel'), style: 'cancel' },
+                                    { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }
+                                ]
+                            );
+                        }
+                    },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>
@@ -446,7 +458,7 @@ const AssuranceDashboardScreen: React.FC = () => {
                                 <TouchableOpacity style={s.policyActionBtn} onPress={() => {
                                     Alert.alert(t('assuranceDashboard.terminate'), t('assuranceDashboard.confirmTerminate'), [
                                         { text: t('common.no') },
-                                        { text: t('common.yes'), style: 'destructive', onPress: async () => { await assuranceService.updatePolicyStatus(p.id, 'resiliee', 'Résiliation par l\'assureur'); loadData(); } },
+                                        { text: t('common.yes'), style: 'destructive', onPress: async () => { await assuranceService.updatePolicyStatus(p.id, 'resiliee', t('assuranceDashboardScreen.resiliationParLassureur')); loadData(); } },
                                     ]);
                                 }}>
                                     <Text style={[s.policyActionText, { color: '#DC2626' }]}>{t('assuranceDashboard.resilier')}</Text>

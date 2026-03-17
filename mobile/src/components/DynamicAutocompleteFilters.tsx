@@ -1,7 +1,7 @@
 /**
  * DynamicAutocompleteFilters
  * Système de filtres intelligent basé sur les caractéristiques autocomplete des produits
- * S'adapte dynamiquement aux données disponibles au lieu d'utiliser categoryConfig
+ * St('dynamicAutocompleteFilters.adapteDynamiquementAuxDonneesDisponiblesAu')utiliser categoryConfig
  */
 
 import React, { useEffect, useState } from 'react';

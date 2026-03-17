@@ -3,7 +3,7 @@
  * sync-locales.js — Synchronise toutes les clés de traduction
  * 
  * Détecte les clés présentes dans fr.json et en.json mais absentes des autres locales,
- * et les ajoute automatiquement (valeur EN par défaut).
+ * et les ajoute automatiquement (valeur FR par défaut, fallback EN).
  * 
  * Usage: node mobile/src/i18n/sync-locales.js
  */
@@ -50,8 +50,8 @@ function main() {
     const frKeys = flattenKeys(frData);
     const enKeys = flattenKeys(enData);
 
-    // Merge all reference keys (EN values take priority as default for other locales)
-    const allRefKeys = { ...frKeys, ...enKeys };
+    // Merge all reference keys (FR values take priority as default for other locales)
+    const allRefKeys = { ...enKeys, ...frKeys };
 
     // Get all locale files
     const localeFiles = fs.readdirSync(LOCALES_DIR)
@@ -73,8 +73,8 @@ function main() {
 
         for (const [key, value] of Object.entries(allRefKeys)) {
             if (!(key in localeKeys)) {
-                // Use EN value as default, fallback to FR
-                const defaultValue = enKeys[key] || frKeys[key] || value;
+                // Use FR value as default, fallback to EN
+                const defaultValue = frKeys[key] || enKeys[key] || value;
                 setNestedKey(localeData, key, defaultValue);
                 addedCount++;
             }

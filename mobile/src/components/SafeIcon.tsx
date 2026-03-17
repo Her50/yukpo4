@@ -7,6 +7,7 @@ import * as LucideIconsImport from 'lucide-react-native';
 
 // Import sécurisé d'Ionicons avec gestion d'erreur
 import { safeRequire } from '../utils/errorHandler';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const IoniconModule = safeRequire(
     () => require('@expo/vector-icons/Ionicons'),
@@ -449,6 +450,7 @@ const iconToEmoji: { [key: string]: string } = {
 
 // Fonction pour convertir kebab-case en PascalCase (ex: message-circle -> MessageCircle)
 const toPascalCase = (str: string): string => {
+    const { t } = useLanguageSafe();
     return str
         .split('-')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())

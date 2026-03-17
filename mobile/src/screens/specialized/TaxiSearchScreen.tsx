@@ -74,7 +74,7 @@ const TaxiSearchScreen: React.FC = () => {
         const quartierStr = typeof lieu === 'string' ? '' : (lieu as LocationObject)?.components?.quartier || '';
 
         if (!lieuStr.trim() && !zone.trim() && !gpsData) {
-            Alert.alert('Erreur', 'Veuillez renseigner un lieu, une zone ou sélectionner un point GPS');
+            Alert.alert(t('message.error'), t('taxiSearchScreen.veuillezRenseignerUnLieuUneZone'));
             return;
         }
 
@@ -96,13 +96,13 @@ const TaxiSearchScreen: React.FC = () => {
         navigation.navigate('TaxiList' as never, { filters } as never);
     };
 
-    const typesVehicules = ['Berline', 'SUV', 'Van', 'Moto', 'Vélo'];
+    const typesVehicules = ['Berline', 'SUV', 'Van', 'Moto', t('taxiSearchScreen.velo')];
 
     // Recherches rapides spécifiques taxi
     const quickSearches = [
         {
             id: 'proche',
-            title: 'Plus proche',
+            title: t('taxiSearch.plusProche'),
             icon: 'map-pin',
             description: t('taxiSearch.taxisAProximite'),
             action: () => {
@@ -115,7 +115,7 @@ const TaxiSearchScreen: React.FC = () => {
             id: 'disponible',
             title: t('taxiSearchScreen.disponible'),
             icon: 'check-circle',
-            description: 'Taxis libres',
+            description: t('taxiSearch.taxisLibres'),
             action: () => {
                 hapticPress();
                 setAvailableOnly(true);
@@ -124,9 +124,9 @@ const TaxiSearchScreen: React.FC = () => {
         },
         {
             id: 'intelligent',
-            title: 'Intelligent',
+            title: t('taxiSearch.intelligent'),
             icon: 'sparkles',
-            description: 'Matching IA',
+            description: t('taxiSearch.matchingIa'),
             action: () => {
                 hapticPress();
                 (navigation as any).navigate('TaxiIntelligentSearch');
@@ -157,7 +157,7 @@ const TaxiSearchScreen: React.FC = () => {
                         </View>
                         <Text style={styles.headerTitle}>{t('taxiSearch.rechercherUnTaxi')}</Text>
                         <Text style={styles.headerSubtitle}>
-                            Trouvez rapidement un taxi disponible près de chez vous
+                            {t('taxiSearch.headerSubtitle')}
                         </Text>
                     </View>
                 </View>
@@ -187,7 +187,7 @@ const TaxiSearchScreen: React.FC = () => {
                             <View style={styles.aiFeaturesBannerText}>
                                 <Text style={styles.aiFeaturesBannerTitle}>{t('taxiSearch.fonctionnalitesIa')}</Text>
                                 <Text style={styles.aiFeaturesBannerSubtitle}>
-                                    Prédiction demande, prix dynamique, optimisation routes
+                                    {t('taxiSearch.infoAIA')}
                                 </Text>
                             </View>
                             <SafeIcon name="chevron-right" size={20} color="#FFFFFF" type="lucide" />
@@ -197,7 +197,7 @@ const TaxiSearchScreen: React.FC = () => {
 
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
-                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
+                    <Text style={styles.sectionTitle}>{t('taxiSearch.recherchesRapides')}</Text>
                     <View style={styles.quickSearchesGrid}>
                         {quickSearches.map((search) => (
                             <TouchableOpacity
@@ -253,7 +253,7 @@ const TaxiSearchScreen: React.FC = () => {
                         >
                             <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
                             <Text style={styles.quickSearchButtonText}>
-                                {loading ? 'Recherche...' : 'Rechercher'}
+                                {loading ? t('taxiSearchScreen.recherche') : t('taxiSearchScreen.rechercher')}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -261,7 +261,7 @@ const TaxiSearchScreen: React.FC = () => {
                     {/* GPS */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="map-pin" size={14} color={modernColors.primary} type="lucide" /> Position GPS
+                            <SafeIcon name="map-pin" size={14} color={modernColors.primary} type="lucide" /> {t('taxiSearchScreen.positionGps')}
                         </Text>
                         <TouchableOpacity
                             style={styles.gpsButton}
@@ -272,7 +272,7 @@ const TaxiSearchScreen: React.FC = () => {
                         >
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} type="lucide" />
                             <Text style={styles.gpsButtonText} numberOfLines={1}>
-                                {gpsString || 'Utiliser ma position GPS'}
+                                {gpsString || t('taxiSearchScreen.utiliserMaPositionGps')}
                             </Text>
                             <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
                         </TouchableOpacity>
@@ -281,7 +281,7 @@ const TaxiSearchScreen: React.FC = () => {
                     {/* Distance max */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="maximize-2" size={14} color={modernColors.primary} type="lucide" /> Distance maximale
+                            <SafeIcon name="maximize-2" size={14} color={modernColors.primary} type="lucide" /> {t('taxiSearchScreen.distanceMaximale')}
                         </Text>
                         <View style={styles.distanceCard}>
                             <TouchableOpacity
@@ -323,7 +323,7 @@ const TaxiSearchScreen: React.FC = () => {
                                 }}
                             >
                                 <Text style={[styles.chipText, !typeVehicule && styles.chipTextActive]}>
-                                    Tous
+                                    {t('taxiSearchScreen.tous')}
                                 </Text>
                             </TouchableOpacity>
                             {typesVehicules.map((type) => (
@@ -411,10 +411,8 @@ const TaxiSearchScreen: React.FC = () => {
                         <Text style={styles.infoTitle}>{t('taxiSearch.bonASavoir')}</Text>
                     </View>
                     <Text style={styles.infoText}>
-                        • La recherche intelligente utilise l'IA pour trouver le meilleur taxi selon vos préférences{'\n'}
-                        • Les taxis disponibles sont mis à jour en temps réel{'\n'}
-                        • Vous pouvez réserver directement depuis l'application{'\n'}
-                        • Les tarifs sont estimés selon la distance et le type de véhicule
+                        {t('taxiSearchScreen.infoRecherche')}{'\n'}
+                        {t('taxiSearchScreen.infoTarifs')}
                     </Text>
                 </View>
             </KeyboardAwareScreen>

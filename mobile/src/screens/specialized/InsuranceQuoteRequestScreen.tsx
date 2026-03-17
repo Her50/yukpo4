@@ -20,7 +20,7 @@ import { hapticPress } from '../../utils/hapticFeedback';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const TYPES_ASSURANCE = ['Auto', t('insuranceQuoteRequestScreen.sante'), 'Habitation', 'Vie', 'Voyage', 'Professionnelle', t('insuranceQuoteRequestScreen.responsabiliteCivile')];
-const SITUATIONS_FAMILIALES = ['Célibataire', 'Marié(e)', 'Divorcé(e)', 'Veuf/Veuve', 'Union libre'];
+const SITUATIONS_FAMILIALES = [t('insuranceQuoteRequestScreen.celibataire'), t('insuranceQuoteRequestScreen.mariee'), t('insuranceQuoteRequestScreen.divorcee'), 'Veuf/Veuve', 'Union libre'];
 
 const InsuranceQuoteRequestScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -45,7 +45,7 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
 
     const handleGenerateQuote = async () => {
         if (!typeAssurance) {
-            Alert.alert('Attention', 'Veuillez sélectionner un type d\'assurance');
+            Alert.alert('Attention', t('insuranceQuoteRequestScreen.veuillezSelectionnerUnTypeD')assurance');
             return;
         }
 
@@ -72,11 +72,11 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
                 setQuote(result);
                 setShowResults(true);
             } else {
-                Alert.alert('Erreur', 'Impossible de générer le devis. Veuillez réessayer.');
+                Alert.alert('Erreur', t('insuranceQuoteRequestScreen.impossibleDeGenererLeDevisVeuillez'));
             }
         } catch (error) {
             console.error('[InsuranceQuoteRequest] Erreur:', error);
-            Alert.alert('Erreur', 'Une erreur est survenue lors de la génération du devis');
+            Alert.alert('Erreur', t('insuranceQuoteRequestScreen.uneErreurEstSurvenueLorsDe'));
         } finally {
             setLoading(false);
         }

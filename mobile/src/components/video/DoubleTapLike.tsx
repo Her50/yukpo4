@@ -13,6 +13,7 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface DoubleTapLikeProps {
     visible: boolean;
@@ -28,6 +29,7 @@ export const DoubleTapLike: React.FC<DoubleTapLikeProps> = ({
     const rotation = useSharedValue(0);
 
     useEffect(() => {
+    const { t } = useLanguageSafe();
         if (visible && typeof withSequence === 'function' && typeof withTiming === 'function' && typeof withSpring === 'function' && scale && opacity && rotation) {
             try {
                 // Animation d'apparition avec rebond

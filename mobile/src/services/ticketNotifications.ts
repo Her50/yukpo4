@@ -6,6 +6,7 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import i18n from 'i18next';
 import SafeStorage from '../utils/safeStorage';
 import { analytics } from './analytics';
 
@@ -138,8 +139,8 @@ class TicketNotificationService {
 
             const identifier = await Notifications.scheduleNotificationAsync({
                 content: {
-                    title: 'Rappel : Votre voyage demain',
-                    body: `${data.departureCity} → ${data.arrivalCity} demain à ${data.departureTime}`,
+                    title: i18n.t('ticketNotifications.reminder24hTitle'),
+                    body: i18n.t('ticketNotifications.reminder24hBody', { from: data.departureCity, to: data.arrivalCity, time: data.departureTime }),
                     data: { ...data, type: 'reminder_24h' },
                     sound: true,
                     priority: Notifications.AndroidNotificationPriority.HIGH,
@@ -173,8 +174,8 @@ class TicketNotificationService {
 
             const identifier = await Notifications.scheduleNotificationAsync({
                 content: {
-                    title: '⏰ Départ dans 2 heures !',
-                    body: `N'oubliez pas votre voyage ${data.departureCity} → ${data.arrivalCity} à ${data.departureTime}`,
+                    title: i18n.t('ticketNotifications.reminder2hTitle'),
+                    body: i18n.t('ticketNotifications.reminder2hBody', { from: data.departureCity, to: data.arrivalCity, time: data.departureTime }),
                     data: { ...data, type: 'reminder_2h' },
                     sound: true,
                     priority: Notifications.AndroidNotificationPriority.HIGH,
@@ -197,8 +198,8 @@ class TicketNotificationService {
         try {
             await Notifications.scheduleNotificationAsync({
                 content: {
-                    title: '✅ Réservation confirmée',
-                    body: `Votre ticket ${data.departureCity} → ${data.arrivalCity} est confirmé`,
+                    title: i18n.t('ticketNotifications.confirmationTitle'),
+                    body: i18n.t('ticketNotifications.confirmationBody', { from: data.departureCity, to: data.arrivalCity }),
                     data: { ...data, type: 'confirmation' },
                     sound: true,
                 },
@@ -221,8 +222,8 @@ class TicketNotificationService {
         try {
             await Notifications.scheduleNotificationAsync({
                 content: {
-                    title: '⚠️ Retard annoncé',
-                    body: `Votre bus ${data.departureCity} → ${data.arrivalCity} a ${delayMinutes} minutes de retard`,
+                    title: i18n.t('ticketNotifications.delayTitle'),
+                    body: i18n.t('ticketNotifications.delayBody', { from: data.departureCity, to: data.arrivalCity, minutes: delayMinutes }),
                     data: { ...data, type: 'delay', delayMinutes },
                     sound: true,
                     priority: Notifications.AndroidNotificationPriority.HIGH,

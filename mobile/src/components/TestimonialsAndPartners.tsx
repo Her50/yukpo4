@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { Text, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const TestimonialsAndPartners = () => (
   <section style="py-16 bg-gray-50 text-center">
@@ -9,11 +10,11 @@ const TestimonialsAndPartners = () => (
       {[
         {
           name: "Fatoumata, Dakar",
-          message: "Yukpo a transformé la façon dont je trouve mes prestataires ! C’est rapide et intelligent.",
+          message: t('testimonialsAndPartners.yukpoATransformeLaFaconDont'),
         },
         {
-          name: "Jean-Pierre, Yaoundé",
-          message: "Un outil puissant qui m’a aidé à générer des leads en quelques minutes seulement.",
+          name: t('testimonialsAndPartners.jeanpierreYaounde'),
+          message: t('testimonialsAndPartners.unOutilPuissantQuiMaAide'),
         },
         {
           name: "Sofia, Abidjan",

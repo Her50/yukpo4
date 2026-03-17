@@ -96,7 +96,7 @@ const TaxiListScreen: React.FC = () => {
                 }
                 setHasMore(newTaxis.length === 20);
             } else {
-                Alert.alert('Erreur', 'Impossible de charger les taxis');
+                Alert.alert(t('message.error'), t('taxiListScreen.impossibleDeChargerLesTaxis'));
             }
         } catch (error: any) {
             console.error('[TaxiListScreen] Erreur:', error);
@@ -130,7 +130,7 @@ const TaxiListScreen: React.FC = () => {
                     </View>
                     <View style={[styles.statusBadge, item.is_available_now && styles.statusBadgeAvailable]}>
                         <Text style={[styles.statusText, item.is_available_now && styles.statusTextAvailable]}>
-                            {item.is_available_now ? 'Disponible' : t('taxiListScreen.occupe')}
+                            {item.is_available_now ? t('taxiListScreen.disponible') : t('taxiListScreen.occupe')}
                         </Text>
                     </View>
                 </View>
@@ -183,7 +183,7 @@ const TaxiListScreen: React.FC = () => {
                     <SafeIcon name="taxi" size={64} color="#D1D5DB" />
                     <Text style={styles.emptyText}>{t('taxiList.aucunTaxiTrouve')}</Text>
                     <Text style={styles.emptySubtext}>
-                        Essayez de modifier vos critères de recherche
+                        {t('taxiListScreen.essayezDeModifierVosCriteres')}
                     </Text>
                 </View>
             </View>
@@ -200,7 +200,7 @@ const TaxiListScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <Text style={styles.title}>
-                    {taxis.length} taxi{taxis.length > 1 ? 's' : ''} trouvé{taxis.length > 1 ? 's' : ''}
+                    {taxis.length} {t('taxiList.resultatsDeRecherche')}
                 </Text>
             </View>
 

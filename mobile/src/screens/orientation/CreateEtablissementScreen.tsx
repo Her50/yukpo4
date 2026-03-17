@@ -260,14 +260,12 @@ const CreateEtablissementScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <Text style={styles.title}>
-                    {etablissementId ? 'Modifier l\'établissement' : t('createEtablissementScreen.creerUnEtablissement')}
+                    {etablissementId ? 'Modifier l\t('createEtablissementScreen.etablissement') : t('createEtablissementScreen.creerUnEtablissement')}
                 </Text>
             </View>
 
             <NativeCard style={styles.card}>
-                {/* Type d'établissement */}
-                <View style={styles.field}>
-                    <Text style={styles.label}>{t('createEtablissement.typeDetablissement')}</Text>
+                {/* Type dt('createEtablissementScreen.etablissementViewStylestylesfieldTextStylestylesla')createEtablissement.typeDetablissement')}</Text>
                     <View style={styles.chipContainer}>
                         {typesEtablissement.map((type) => (
                             <TouchableOpacity

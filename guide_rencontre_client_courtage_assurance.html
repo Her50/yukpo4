@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide de Rencontre Client - Courtage Assurance Douala</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3B82F6 0%, #7C3AED 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border-left: 5px solid #3B82F6;
+        }
+
+        .section h2 {
+            color: #3B82F6;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h3 {
+            color: #7C3AED;
+            font-size: 1.4em;
+            margin: 25px 0 15px 0;
+            padding-left: 15px;
+            border-left: 3px solid #7C3AED;
+        }
+
+        .icon {
+            font-size: 1.5em;
+        }
+
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        ul li {
+            padding: 12px 0;
+            padding-left: 30px;
+            position: relative;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        ul li:last-child {
+            border-bottom: none;
+        }
+
+        ul li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #3B82F6;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            border: 2px solid #ffc107;
+        }
+
+        .warning h2 {
+            color: #856404;
+        }
+
+        .warning ul li:before {
+            content: "⚠";
+            color: #ffc107;
+        }
+
+        .success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            border: 2px solid #28a745;
+        }
+
+        .success h2 {
+            color: #155724;
+        }
+
+        .success ul li:before {
+            content: "🎯";
+        }
+
+        .info-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .info-box strong {
+            color: #3B82F6;
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .checklist {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 10px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .checklist-item input[type="checkbox"] {
+            margin-right: 15px;
+            margin-top: 5px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .footer {
+            background: #2d3748;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .footer p {
+            margin: 10px 0;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+            }
+            .section {
+                page-break-inside: avoid;
+            }
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .quote {
+            font-style: italic;
+            color: #666;
+            padding: 15px;
+            border-left: 4px solid #7C3AED;
+            margin: 20px 0;
+            background: #f3f4f6;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Guide Stratégique de Rencontre Client</h1>
+            <p>Courtage Assurance - Douala, Cameroun</p>
+            <p style="font-size: 0.9em; margin-top: 10px;">Accompagnement DG Cabinet de Courtage</p>
+        </div>
+
+        <div class="content">
+            <!-- Contexte -->
+            <div class="section">
+                <h2><span class="icon">🎯</span> Contexte de la Mission</h2>
+                <div class="info-box">
+                    <strong>Objectif Principal:</strong>
+                    <p>Accompagner le DG d'un cabinet de courtage chez un gros client pour évaluer son potentiel et établir une relation de confiance permettant de lui confier ses affaires d'assurance via ce courtier.</p>
+                </div>
+                <div class="info-box">
+                    <strong>Localisation:</strong>
+                    <p>Douala, Cameroun - Centre économique du pays</p>
+                </div>
+                <div class="info-box">
+                    <strong>Résultat Attendu:</strong>
+                    <p>Ressortir avec des <span class="highlight">bonnes résolutions et perspectives concrètes</span> de collaboration</p>
+                </div>
+            </div>
+
+            <!-- Préparation Avant la Rencontre -->
+            <div class="section">
+                <h2><span class="icon">📚</span> Préparation Avant la Rencontre</h2>
+                
+                <h3>Recherches Préalables sur le Client</h3>
+                <ul>
+                    <li><strong>Secteur d'activité:</strong> Identifier le domaine (import-export, BTP, industrie, services, etc.)</li>
+                    <li><strong>Taille de l'entreprise:</strong> Chiffre d'affaires estimé, nombre d'employés, sites/filiales</li>
+                    <li><strong>Historique assurance:</strong> Compagnies actuelles, sinistres connus, renouvellements à venir</li>
+                    <li><strong>Besoins spécifiques:</strong> Flotte automobile, marchandises, responsabilité civile, assurance groupe employés</li>
+                    <li><strong>Décideurs clés:</strong> Qui sont-ils? Leurs profils et préférences</li>
+                    <li><strong>Concurrence:</strong> Autres courtiers en relation avec ce client</li>
+                </ul>
+
+                <h3>Documents à Préparer</h3>
+                <div class="checklist">
+                    <div class="checklist-item">
+                        <input type="checkbox" id="doc1">
+                        <label for="doc1">Plaquette de présentation du cabinet de courtage (réalisations, références)</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="doc2">
+                        <label for="doc2">Exemples de solutions d'assurance adaptées au secteur du client</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="doc3">
+                        <label for="doc3">Études de cas similaires (success stories)</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="doc4">
+                        <label for="doc4">Grille d'analyse des besoins (questionnaire structuré)</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="doc5">
+                        <label for="doc5">Cartes de visite professionnelles</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="doc6">
+                        <label for="doc6">Proposition de valeur claire et différenciante</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Points Clés à Aborder -->
+            <div class="section success">
+                <h2><span class="icon">🎯</span> Points Clés à Insister Pendant la Rencontre</h2>
+
+                <h3>1. Écoute Active et Diagnostic des Besoins</h3>
+                <ul>
+                    <li><strong>Poser des questions ouvertes:</strong> "Quels sont vos principaux défis en matière de gestion des risques?"</li>
+                    <li><strong>Identifier les points de douleur:</strong> Sinistres récents, primes élevées, couvertures inadaptées</li>
+                    <li><strong>Comprendre les priorités:</strong> Coût vs couverture, rapidité de règlement, service client</li>
+                    <li><strong>Évaluer la satisfaction actuelle:</strong> Relation avec courtier/assureur actuel</li>
+                </ul>
+
+                <h3>2. Démonstration de Valeur Ajoutée</h3>
+                <ul>
+                    <li><strong>Expertise sectorielle:</strong> Montrer la connaissance approfondie de son secteur d'activité</li>
+                    <li><strong>Réseau d'assureurs:</strong> Accès à plusieurs compagnies pour comparer et négocier</li>
+                    <li><strong>Accompagnement personnalisé:</strong> Gestion proactive des renouvellements et sinistres</li>
+                    <li><strong>Optimisation des coûts:</strong> Exemples concrets d'économies réalisées pour clients similaires</li>
+                    <li><strong>Innovation:</strong> Solutions digitales, reporting, tableaux de bord</li>
+                </ul>
+
+                <h3>3. Établissement de la Confiance</h3>
+                <ul>
+                    <li><strong>Références vérifiables:</strong> Citer des clients prestigieux (avec autorisation)</li>
+                    <li><strong>Transparence:</strong> Expliquer clairement le modèle de rémunération du courtier</li>
+                    <li><strong>Engagement qualité:</strong> Processus de suivi, délais de réponse garantis</li>
+                    <li><strong>Conformité réglementaire:</strong> Agrément CIMA, respect des normes camerounaises</li>
+                </ul>
+
+                <h3>4. Analyse du Potentiel Commercial</h3>
+                <ul>
+                    <li><strong>Volume de primes estimé:</strong> Évaluer le portefeuille global du client</li>
+                    <li><strong>Besoins non couverts:</strong> Identifier les gaps dans la protection actuelle</li>
+                    <li><strong>Projets futurs:</strong> Expansion, nouveaux investissements nécessitant assurance</li>
+                    <li><strong>Budget disponible:</strong> Capacité d'investissement en protection</li>
+                </ul>
+
+                <h3>5. Proposition Concrète et Différenciante</h3>
+                <ul>
+                    <li><strong>Audit gratuit:</strong> Proposer une revue complète de son portefeuille actuel</li>
+                    <li><strong>Comparatif marché:</strong> S'engager à présenter 3-4 offres compétitives</li>
+                    <li><strong>Service dédié:</strong> Gestionnaire de compte attitré</li>
+                    <li><strong>Outils digitaux:</strong> Plateforme de suivi en ligne, alertes automatiques</li>
+                </ul>
+            </div>
+
+            <!-- Pièges à Éviter -->
+            <div class="section warning">
+                <h2><span class="icon">⚠️</span> Pièges à Éviter Absolument</h2>
+
+                <h3>1. Erreurs de Communication</h3>
+                <ul>
+                    <li><strong>Parler trop:</strong> Éviter le monologue commercial - écouter 70%, parler 30%</li>
+                    <li><strong>Jargon technique excessif:</strong> Adapter le langage au niveau du client</li>
+                    <li><strong>Critiquer la concurrence:</strong> Ne jamais dénigrer les courtiers/assureurs actuels</li>
+                    <li><strong>Promesses irréalistes:</strong> Ne pas garantir ce qui ne peut être tenu</li>
+                    <li><strong>Précipitation:</strong> Ne pas forcer une décision immédiate</li>
+                </ul>
+
+                <h3>2. Erreurs Stratégiques</h3>
+                <ul>
+                    <li><strong>Manque de préparation:</strong> Arriver sans connaissance du client = échec assuré</li>
+                    <li><strong>Approche générique:</strong> Utiliser un discours standard sans personnalisation</li>
+                    <li><strong>Négliger la hiérarchie:</strong> Ignorer les protocoles et rapports de pouvoir</li>
+                    <li><strong>Oublier le suivi:</strong> Ne pas définir les prochaines étapes concrètes</li>
+                    <li><strong>Sous-estimer le temps:</strong> Vouloir tout conclure en une seule rencontre</li>
+                </ul>
+
+                <h3>3. Erreurs Culturelles (Contexte Camerounais)</h3>
+                <ul>
+                    <li><strong>Manque de courtoisie:</strong> Les salutations et formules de politesse sont essentielles</li>
+                    <li><strong>Impatience visible:</strong> Les affaires se font dans la durée et la relation</li>
+                    <li><strong>Arrogance:</strong> L'humilité et le respect sont des valeurs clés</li>
+                    <li><strong>Ignorer le contexte local:</strong> Comprendre les spécificités du marché camerounais</li>
+                    <li><strong>Négliger les codes vestimentaires:</strong> Tenue professionnelle impeccable requise</li>
+                </ul>
+
+                <h3>4. Erreurs Commerciales</h3>
+                <ul>
+                    <li><strong>Parler prix trop tôt:</strong> Établir d'abord la valeur avant de discuter tarifs</li>
+                    <li><strong>Accepter des conditions défavorables:</strong> Pour "gagner" le client à tout prix</li>
+                    <li><strong>Négliger les objections:</strong> Les traiter superficiellement au lieu de les comprendre</li>
+                    <li><strong>Oublier les décideurs invisibles:</strong> Il y a souvent des influenceurs non présents</li>
+                </ul>
+            </div>
+
+            <!-- Déroulement Optimal -->
+            <div class="section">
+                <h2><span class="icon">🗓️</span> Déroulement Optimal de la Rencontre</h2>
+
+                <h3>Phase 1: Ouverture (10-15 min)</h3>
+                <ul>
+                    <li>Salutations chaleureuses et présentation formelle</li>
+                    <li>Remerciements pour le temps accordé</li>
+                    <li>Rappel de l'objectif de la rencontre</li>
+                    <li>Établissement d'un climat de confiance (small talk approprié)</li>
+                </ul>
+
+                <h3>Phase 2: Découverte (30-40 min)</h3>
+                <ul>
+                    <li>Questions sur l'entreprise et son activité</li>
+                    <li>Compréhension des enjeux et défis actuels</li>
+                    <li>Analyse de la situation assurantielle actuelle</li>
+                    <li>Identification des besoins exprimés et latents</li>
+                </ul>
+
+                <h3>Phase 3: Présentation (20-30 min)</h3>
+                <ul>
+                    <li>Présentation du cabinet de courtage (brève et ciblée)</li>
+                    <li>Mise en avant de l'expertise sectorielle</li>
+                    <li>Exemples de réalisations pertinentes</li>
+                    <li>Proposition de valeur personnalisée</li>
+                </ul>
+
+                <h3>Phase 4: Échange et Objections (15-20 min)</h3>
+                <ul>
+                    <li>Réponse aux questions et préoccupations</li>
+                    <li>Traitement des objections avec empathie</li>
+                    <li>Clarification des points d'incompréhension</li>
+                    <li>Ajustement de la proposition si nécessaire</li>
+                </ul>
+
+                <h3>Phase 5: Engagement et Prochaines Étapes (10-15 min)</h3>
+                <ul>
+                    <li>Proposition d'actions concrètes (audit, étude comparative)</li>
+                    <li>Définition d'un calendrier de suivi</li>
+                    <li>Accord sur les modalités de collaboration</li>
+                    <li>Remerciements et confirmation des engagements mutuels</li>
+                </ul>
+            </div>
+
+            <!-- Objectifs de Sortie -->
+            <div class="section success">
+                <h2><span class="icon">🏆</span> Objectifs de Sortie - Résolutions et Perspectives</h2>
+
+                <h3>Résultats Minimum à Obtenir</h3>
+                <ul>
+                    <li><strong>Autorisation d'audit:</strong> Accord pour analyser le portefeuille actuel</li>
+                    <li><strong>Accès aux documents:</strong> Polices actuelles, historique sinistres, factures</li>
+                    <li><strong>Prochaine rencontre planifiée:</strong> Date et heure confirmées</li>
+                    <li><strong>Contact direct:</strong> Coordonnées du décideur principal</li>
+                </ul>
+
+                <h3>Résultats Optimaux à Viser</h3>
+                <ul>
+                    <li><strong>Mandat d'étude:</strong> Accord écrit pour présenter des offres alternatives</li>
+                    <li><strong>Engagement de principe:</strong> Intention de transférer au moins une branche d'assurance</li>
+                    <li><strong>Recommandation:</strong> Introduction auprès d'autres décideurs ou filiales</li>
+                    <li><strong>Timeline définie:</strong> Calendrier de transition avec jalons clairs</li>
+                </ul>
+
+                <h3>Indicateurs de Succès de la Rencontre</h3>
+                <ul>
+                    <li>Le client a exprimé des insatisfactions avec sa situation actuelle</li>
+                    <li>Le client a posé des questions sur vos services et méthodologie</li>
+                    <li>Le client a partagé des informations confidentielles (signe de confiance)</li>
+                    <li>Le client a accepté une ou plusieurs propositions d'action</li>
+                    <li>Le climat était positif et la relation personnelle établie</li>
+                </ul>
+            </div>
+
+            <!-- Suivi Post-Rencontre -->
+            <div class="section">
+                <h2><span class="icon">📧</span> Suivi Post-Rencontre (Crucial!)</h2>
+
+                <h3>Dans les 24 heures</h3>
+                <ul>
+                    <li>Email de remerciement personnalisé au client</li>
+                    <li>Récapitulatif des points discutés et engagements pris</li>
+                    <li>Envoi des documents promis</li>
+                    <li>Confirmation de la prochaine étape</li>
+                </ul>
+
+                <h3>Dans la semaine</h3>
+                <ul>
+                    <li>Début de l'audit ou étude comparative si accordé</li>
+                    <li>Appel de courtoisie pour maintenir le contact</li>
+                    <li>Partage d'informations pertinentes (article, étude de marché)</li>
+                </ul>
+
+                <h3>Suivi régulier</h3>
+                <ul>
+                    <li>Points d'étape selon le calendrier convenu</li>
+                    <li>Présentation des résultats d'analyse</li>
+                    <li>Ajustements basés sur les retours du client</li>
+                    <li>Maintien de la relation même si pas de décision immédiate</li>
+                </ul>
+            </div>
+
+            <!-- Checklist Finale -->
+            <div class="section">
+                <h2><span class="icon">✅</span> Checklist Finale de Préparation</h2>
+                
+                <div class="checklist">
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check1">
+                        <label for="check1"><strong>Recherche client complétée:</strong> Secteur, taille, besoins identifiés</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check2">
+                        <label for="check2"><strong>Documents préparés:</strong> Plaquette, études de cas, grille d'analyse</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check3">
+                        <label for="check3"><strong>Tenue professionnelle:</strong> Costume/tailleur impeccable</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check4">
+                        <label for="check4"><strong>Ponctualité assurée:</strong> Prévoir marge pour embouteillages Douala</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check5">
+                        <label for="check5"><strong>Questions préparées:</strong> Liste de questions ouvertes pertinentes</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check6">
+                        <label for="check6"><strong>Proposition de valeur claire:</strong> Différenciation vs concurrence</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check7">
+                        <label for="check7"><strong>Objectifs définis:</strong> Résultats minimum et optimaux identifiés</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check8">
+                        <label for="check8"><strong>Plan de suivi:</strong> Actions post-rencontre planifiées</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check9">
+                        <label for="check9"><strong>Coordination DG:</strong> Rôles clarifiés avec le DG du cabinet</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check10">
+                        <label for="check10"><strong>Matériel technique:</strong> Ordinateur/tablette chargé, connexion internet</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Citations Motivantes -->
+            <div class="section">
+                <h2><span class="icon">💡</span> Principes Clés à Retenir</h2>
+                
+                <div class="quote">
+                    "Dans le courtage d'assurance, on ne vend pas des polices, on vend de la tranquillité d'esprit et de la protection. La confiance est la monnaie d'échange."
+                </div>
+
+                <div class="quote">
+                    "Un gros client ne cherche pas le courtier le moins cher, mais celui qui comprend le mieux ses enjeux et apporte les meilleures solutions."
+                </div>
+
+                <div class="quote">
+                    "Au Cameroun, les affaires se font d'abord entre personnes, puis entre entreprises. Investissez dans la relation avant tout."
+                </div>
+
+                <div class="quote">
+                    "Poser les bonnes questions vaut mieux que donner les bonnes réponses. L'écoute active est votre meilleure arme commerciale."
+                </div>
+            </div>
+
+            <!-- Spécificités Marché Camerounais -->
+            <div class="section">
+                <h2><span class="icon">🇨🇲</span> Spécificités du Marché Camerounais de l'Assurance</h2>
+
+                <h3>Contexte Réglementaire</h3>
+                <ul>
+                    <li><strong>CIMA (Conférence Interafricaine des Marchés d'Assurances):</strong> Cadre réglementaire commun CEMAC</li>
+                    <li><strong>Agrément obligatoire:</strong> Vérifier que le courtier est agréé</li>
+                    <li><strong>Assurances obligatoires:</strong> RC Auto, Assurance Construction (décennale), etc.</li>
+                </ul>
+
+                <h3>Acteurs Principaux</h3>
+                <ul>
+                    <li>Compagnies d'assurance locales et internationales présentes à Douala</li>
+                    <li>Courtiers établis (concurrence à connaître)</li>
+                    <li>Agents généraux et intermédiaires</li>
+                </ul>
+
+                <h3>Enjeux Spécifiques</h3>
+                <ul>
+                    <li><strong>Sinistralité élevée:</strong> Routes, vols, incendies - arguments pour bonne couverture</li>
+                    <li><strong>Délais de règlement:</strong> Point sensible - mettre en avant la réactivité</li>
+                    <li><strong>Personnalisation:</strong> Les grandes entreprises veulent du sur-mesure</li>
+                    <li><strong>Relation personnelle:</strong> Le facteur humain prime sur le digital</li>
+                </ul>
+            </div>
+
+        </div>
+
+        <div class="footer">
+            <p><strong>📞 Contacts Utiles</strong></p>
+            <p>En cas de besoin de support additionnel, n'hésitez pas à consulter:</p>
+            <p>• Chambre de Commerce de Douala</p>
+            <p>• Association Professionnelle des Courtiers d'Assurance du Cameroun</p>
+            <p>• Réseau professionnel local</p>
+            <p style="margin-top: 20px; font-size: 0.9em; opacity: 0.8;">
+                Document généré pour accompagnement professionnel - Courtage Assurance Douala<br>
+                © 2026 - Tous droits réservés
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Sauvegarde de l'état des checkboxes dans le localStorage
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            // Charger l'état sauvegardé
+            const saved = localStorage.getItem(checkbox.id);
+            if (saved === 'true') {
+                checkbox.checked = true;
+            }
+
+            // Sauvegarder lors du changement
+            checkbox.addEventListener('change', function() {
+                localStorage.setItem(this.id, this.checked);
+            });
+        });
+
+        // Fonction d'impression
+        function printGuide() {
+            window.print();
+        }
+
+        // Ajouter un bouton d'impression (optionnel)
+        window.addEventListener('load', function() {
+            const header = document.querySelector('.header');
+            const printBtn = document.createElement('button');
+            printBtn.textContent = '🖨️ Imprimer ce guide';
+            printBtn.style.cssText = 'margin-top: 20px; padding: 12px 24px; background: white; color: #3B82F6; border: 2px solid white; border-radius: 8px; font-size: 1em; cursor: pointer; font-weight: bold;';
+            printBtn.onclick = printGuide;
+            header.appendChild(printBtn);
+        });
+    </script>
+</body>
+</html>

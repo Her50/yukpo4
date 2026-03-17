@@ -3,6 +3,7 @@
 import { ROUTES } from '@/routes/AppRoutesRegistry';
 import React from 'react';
 import { Text, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface CardServiceProps {
   icon: string;
@@ -20,13 +21,7 @@ const CardService: React.FC<CardServiceProps> = ({ icon, title, description }) =
     <View style="mt-6 flex flex-wrap gap-4 justify-center">
       <a
         href={ROUTES.SERVICES}
-        style="px-4 py-2 bg-primary text-white rounded hover:bg-opacity-90 transition"
-      >
-        découvrir d'autres services
-      </a>
-      <a
-        href={ROUTES.PLANS}
-        style="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500 transition"
+        style="px-4 py-2 bg-primary text-white rounded hover:bg-opacity-90 transitiont('cardService.decouvrirDautresServicesAAHrefroutesplans')px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500 transition"
       >
         Voir les formules
       </a>

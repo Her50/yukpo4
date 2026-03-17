@@ -58,7 +58,7 @@ const RecipeSearchScreen: React.FC = () => {
             console.log('[RecipeSearch] Début génération recette:', queryToUse);
 
             const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('La génération de la recette prend trop de temps. Veuillez réessayer.')), 95000);
+                setTimeout(() => reject(new Error(t('recipeSearchScreen.laGenerationDeLaRecettePrend'))), 95000);
             });
 
             const responsePromise = menuPlanningService.generateRecipe(queryToUse);
@@ -98,7 +98,7 @@ const RecipeSearchScreen: React.FC = () => {
                     setLoading(false);
                 }, 200);
             } else {
-                Alert.alert('Erreur', 'Impossible d\'extraire la recette de la réponse. Veuillez réessayer.');
+                Alert.alert('Erreur', 'Impossible d\t('recipeSearchScreen.extraireLaRecetteDeLaReponse'));
                 setLoading(false);
             }
         } catch (error: any) {
@@ -365,7 +365,7 @@ const RecipeSearchScreen: React.FC = () => {
                                         });
 
                                         await shareRecipePDF(pdfUri, generatedRecipe.recipe_name);
-                                        Alert.alert('Succès', 'Recette partagée avec succès !');
+                                        Alert.alert(t('recipeSearchScreen.succes'), t('recipeSearchScreen.recettePartageeAvecSucces'));
                                     } catch (error: any) {
                                         console.error('[RecipeSearch] Erreur partage recette PDF:', error);
                                         Alert.alert('Erreur', error.message || 'Impossible de partager la recette en PDF');

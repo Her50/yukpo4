@@ -1,4 +1,4 @@
-// ✅ Service QR code pour réservations covoiturage
+// ✅ Service QR code pour réservations covoiturage + livraison livres
 // Date: 2025-01-29
 
 use crate::core::types::{AppError, AppResult};
@@ -231,6 +231,193 @@ impl QRCodeService {
 
         Ok(qr)
     }
+
+    // ========================================================================
+    // QR CODES POUR LIVRAISON DE LIVRES (Bourse du Livre)
+    // ========================================================================
+
+    /// Génère un QR code pour un paquet de livres (pickup par le coursier)
+    pub async fn generate_book_package_qr(
+        &self,
+        package_id: i32,
+        qr_type: &str, // "pickup" ou "delivery"
+    ) -> AppResult<BookPackageQRInfo> {
+        info!(
+            "[QRCodeService] Génération QR code {} pour paquet livre: {}",
+            qr_type, package_id
+        );
+
+        let qr_code = format!(
+            "BK-{}-{}-{}-{}",
+            qr_type.to_uppercase(),
+            package_id,
+            chrono::Utc::now().timestamp(),
+            Uuid::new_v4().to_string().chars().take(8).collect::<String>()
+        );
+
+        let expires_at = chrono::Utc::now() + chrono::Duration::hours(48);
+
+        let qr_code_url = format!(
+            "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={}",
+            qr_code
+        );
+
+        sqlx::query(
+            r#"
+            INSERT INTO book_package_qr_codes (
+                package_id, qr_code, qr_code_url, qr_type, status, expires_at
+            )
+            VALUES ($1, $2, $3, $4, 'pending', $5)
+            "#,
+        )
+        .bind(package_id)
+        .bind(&qr_code)
+        .bind(&qr_code_url)
+        .bind(qr_type)
+        .bind(expires_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            error!("[QRCodeService] Erreur création QR paquet livre: {}", e);
+            AppError::Internal(format!("Erreur création QR paquet livre: {}", e))
+        })?;
+
+        info!("[QRCodeService] ✅ QR paquet livre généré: {}", qr_code);
+
+        Ok(BookPackageQRInfo {
+            package_id,
+            qr_code,
+            qr_code_url,
+            qr_type: qr_type.to_string(),
+            status: "pending".to_string(),
+            expires_at,
+        })
+    }
+
+    /// Valide un QR code de paquet de livres (scan par le coursier ou le destinataire)
+    pub async fn validate_book_package_qr(
+        &self,
+        qr_code: &str,
+        scanner_user_id: i32,
+    ) -> AppResult<BookPackageQRValidation> {
+        info!(
+            "[QRCodeService] Validation QR paquet livre: {} par user {}",
+            qr_code, scanner_user_id
+        );
+
+        let row = sqlx::query(
+            r#"
+            SELECT bq.package_id, bq.qr_type, bq.status, bq.expires_at,
+                   bp.coursier_id, bp.expediteur_id, bp.destinataire_id
+            FROM book_package_qr_codes bq
+            JOIN book_delivery_packages bp ON bp.id = bq.package_id
+            WHERE bq.qr_code = $1
+            "#,
+        )
+        .bind(qr_code)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur lecture QR paquet: {}", e)))?
+        .ok_or_else(|| AppError::NotFound("QR code non trouvé".to_string()))?;
+
+        let package_id: i32 = row.get("package_id");
+        let qr_type: String = row.get("qr_type");
+        let status: String = row.get("status");
+        let expires_at: chrono::DateTime<chrono::Utc> = row.get("expires_at");
+        let coursier_id: Option<i32> = row.get("coursier_id");
+        let expediteur_id: i32 = row.get("expediteur_id");
+        let destinataire_id: i32 = row.get("destinataire_id");
+
+        if expires_at < chrono::Utc::now() {
+            return Err(AppError::BadRequest("QR code expiré".to_string()));
+        }
+
+        if status != "pending" {
+            return Err(AppError::BadRequest(format!(
+                "QR code déjà utilisé (statut: {})",
+                status
+            )));
+        }
+
+        // Vérifier les permissions selon le type de QR
+        let authorized = match qr_type.as_str() {
+            "pickup" => {
+                // Le coursier scanne chez l'expéditeur
+                coursier_id == Some(scanner_user_id) || expediteur_id == scanner_user_id
+            }
+            "delivery" => {
+                // Le destinataire scanne pour confirmer réception
+                destinataire_id == scanner_user_id || coursier_id == Some(scanner_user_id)
+            }
+            _ => false,
+        };
+
+        if !authorized {
+            return Err(AppError::Forbidden(
+                "Vous n'êtes pas autorisé à scanner ce QR code".to_string(),
+            ));
+        }
+
+        // Valider le QR code
+        sqlx::query(
+            r#"
+            UPDATE book_package_qr_codes
+            SET status = 'validated', validated_at = NOW(), validated_by = $1
+            WHERE qr_code = $2
+            "#,
+        )
+        .bind(scanner_user_id)
+        .bind(qr_code)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur validation QR: {}", e)))?;
+
+        // Mettre à jour le statut du paquet selon le type
+        let new_package_status = match qr_type.as_str() {
+            "pickup" => "en_route",
+            "delivery" => "livre",
+            _ => "en_route",
+        };
+
+        sqlx::query(
+            "UPDATE book_delivery_packages SET statut = $1, updated_at = NOW() WHERE id = $2",
+        )
+        .bind(new_package_status)
+        .bind(package_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur MAJ paquet: {}", e)))?;
+
+        info!(
+            "[QRCodeService] ✅ QR paquet livre validé: {} → paquet {} en statut '{}'",
+            qr_code, package_id, new_package_status
+        );
+
+        Ok(BookPackageQRValidation {
+            package_id,
+            qr_type,
+            validated: true,
+            new_package_status: new_package_status.to_string(),
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct BookPackageQRInfo {
+    pub package_id: i32,
+    pub qr_code: String,
+    pub qr_code_url: String,
+    pub qr_type: String,
+    pub status: String,
+    pub expires_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BookPackageQRValidation {
+    pub package_id: i32,
+    pub qr_type: String,
+    pub validated: bool,
+    pub new_package_status: String,
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]

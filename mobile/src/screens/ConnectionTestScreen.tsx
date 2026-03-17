@@ -52,7 +52,7 @@ const [testResults, setTestResults] = useState<any[]>([]);
         const data = await response.json();
         addResult('Auth Endpoint Test', true, '✅ Endpoint auth accessible', data);
       } else if (response.status === 401) {
-        addResult('Auth Endpoint Test', true, '✅ Endpoint accessible (401 = non authentifié)', null);
+        addResult('Auth Endpoint Test', true, t('connectionTestScreen.endpointAccessible401NonAuthentifie'), null);
       } else {
         addResult('Auth Endpoint Test', false, `❌ HTTP ${response.status}`, null);
       }
@@ -79,7 +79,7 @@ const [testResults, setTestResults] = useState<any[]>([]);
       if (response.status === 401 || response.status === 400) {
         addResult('Login Endpoint Test', true, '✅ Endpoint fonctionne (erreur normale)', data);
       } else if (response.ok) {
-        addResult('Login Endpoint Test', true, '✅ Login réussi', data);
+        addResult('Login Endpoint Test', true, t('connectionTestScreen.loginReussi'), data);
       } else {
         addResult('Login Endpoint Test', false, `❌ HTTP ${response.status}`, data);
       }

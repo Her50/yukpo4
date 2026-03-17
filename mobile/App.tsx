@@ -30,8 +30,18 @@ import { ThemeProvider } from './src/contexts/ThemeContext';
 import { WebSocketProvider } from './src/contexts/WebSocketContext';
 
 // ✅ CORRECTION CRASH: africanLocations chargé en lazy loading pour éviter surcharge mémoire au démarrage
+import { useWelcomeNotification } from './src/hooks/useWelcomeNotification';
 import AppNavigator from './src/navigation/AppNavigator.optimized';
 import { theme } from './src/theme/theme';
+
+/**
+ * Composant invisible qui déclenche la notification de bienvenue au premier lancement.
+ * Doit être monté à l'intérieur de LanguageProvider pour avoir accès à la langue.
+ */
+function WelcomeNotifier() {
+  useWelcomeNotification();
+  return null;
+}
 
 /**
  * Application Yukpomnang - VERSION OPTIMISÉE AVEC LINKING
@@ -122,6 +132,7 @@ export default function App() {
               <PaperProvider theme={theme}>
                 <ToasterProvider>
                   <LanguageProvider>
+                    <WelcomeNotifier />
                     <LocationProvider>
                       <AuthProvider>
                         <RemoteLoggingInitializer />

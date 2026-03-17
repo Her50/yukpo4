@@ -38,7 +38,7 @@ const ServiceFormDynamic: React.FC = () => {
 
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      Alert.alert('Succès', t('serviceFormDynamic.serviceCreeAvecSucces'), [
+      Alert.alert(t('serviceFormDynamic.succes'), t('serviceFormDynamic.serviceCreeAvecSucces'), [
         {
           text: 'OK',
           onPress: () => navigation.goBack(),
@@ -46,7 +46,7 @@ const ServiceFormDynamic: React.FC = () => {
       ]);
     } catch (error) {
       console.error('Erreur création service:', error);
-      Alert.alert('Erreur', 'Impossible de créer le service');
+      Alert.alert('Erreur', t('serviceFormDynamic.impossibleDeCreerLeService'));
     } finally {
       setLoading(false);
     }

@@ -57,11 +57,11 @@ const ImmobilierBookingScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', 'Impossible de réserver la visite');
+                Alert.alert('Erreur', t('immobilierBookingScreen.impossibleDeReserverLaVisite'));
             }
         } catch (err: any) {
             console.error('[ImmobilierBookingScreen] Erreur:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de la réservation');
+            Alert.alert('Erreur', err.message || t('immobilierBookingScreen.erreurLorsDeLaReservation'));
         } finally {
             setLoading(false);
         }

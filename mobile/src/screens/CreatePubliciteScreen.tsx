@@ -973,7 +973,7 @@ const CreatePubliciteScreen: React.FC = () => {
                     showHandle={false}
                     density="compact"
                     backIcon="back"
-                    title={mode === 'edit' ? 'Modifier une Publicité' : mode === 'relance' ? 'Relancer une Publicité' : t('publicite.create')}
+                    title={mode === 'edit' ? t('createPubliciteScreen.modifierUnePublicite') : mode === 'relance' ? t('createPubliciteScreen.relancerUnePublicite') : t('publicite.create')}
                     subtitle="Boostez vos produits"
                 />
             </LinearGradient>

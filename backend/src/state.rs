@@ -2,7 +2,6 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use dotenvy::dotenv;
-use mongodb::Client as MongoClient;
 use sqlx::PgPool;
 use std::env;
 
@@ -41,9 +40,7 @@ pub struct AppState {
     pub pg: PgPool,
     /// ✅ NOUVEAU 2025-12-02: Connexion PostgreSQL read replica (pour lectures/scaling horizontal)
     pub pg_read: Option<PgPool>,
-    /// Connexion MongoDB
-    pub mongo: MongoClient,
-    /// Service d'historisation MongoDB
+    /// Service d'historisation (PostgreSQL, ex-MongoDB)
     pub mongo_history: Arc<MongoHistoryService>,
     /// Moteur IA (pr?dictions, fallback, cache)
     pub ia: Arc<AppIA>,
@@ -135,6 +132,10 @@ pub struct AppState {
     /// ✅ NOUVEAU 2026-03-05: Service de génération vidéo IA (Runway/Sora/Pika)
     pub generative_video:
         Option<Arc<crate::services::generative_video_service::GenerativeVideoService>>,
+    /// ✅ NOUVEAU 2026-03-16: Service multilingue pour notifications
+    pub multilingue_service: Arc<crate::services::multilingue_service::MultilingueService>,
+    /// ✅ NOUVEAU 2026-03-16: Service de paiements agrégés
+    pub paiement_service: Arc<crate::services::paiement_agrege_service::PaiementAgregeService>,
 }
 
 impl AppState {
@@ -142,7 +143,6 @@ impl AppState {
     pub fn new(
         pg: PgPool,
         pg_read: Option<PgPool>, // ✅ NOUVEAU 2025-12-02: Read replica optionnel
-        mongo: MongoClient,
         ia: Arc<AppIA>,
         ia_stats: Arc<Mutex<IAStats>>,
         redis_client: redis::Client,
@@ -152,17 +152,12 @@ impl AppState {
         let database_url =
             env::var("DATABASE_URL").expect("DATABASE_URL doit ?tre d?fini dans .env");
 
-        // Initialiser le service d'historisation MongoDB
+        // ✅ 2026-03-16: Initialiser le service d'historisation PostgreSQL (ex-MongoDB)
         let mongo_history = Arc::new(MongoHistoryService::new(
-            Arc::new(mongo.clone()),
-            "yukpo_history".to_string(),
+            Arc::new(pg.clone()),
         ));
 
-        // ✅ NOUVEAU 2025-12-30: Créer les index MongoDB pour optimiser les requêtes stats/reviews
-        // ✅ 2025-12-30: Les index MongoDB seront créés dans main.rs après l'initialisation complète
-        // (on ne peut pas utiliser await dans une fonction non-async)
-
-        // V?rifier si les optimisations IA sont activ?es
+        // Vérifier si les optimisations IA sont activées
         let optimizations_enabled = env::var("ENABLE_AI_OPTIMIZATIONS")
             .unwrap_or_else(|_| "false".to_string())
             .parse::<bool>()
@@ -457,7 +452,6 @@ impl AppState {
         AppState {
             pg,
             pg_read, // ✅ NOUVEAU 2025-12-02: Read replica pour scaling horizontal
-            mongo,
             mongo_history,
             ia,
             ia_stats,
@@ -589,6 +583,16 @@ impl AppState {
             trending_music: None,
             // ✅ NOUVEAU 2026-03-05: Service de génération vidéo IA (Runway/Sora/Pika)
             generative_video: None,
+            // ✅ NOUVEAU 2026-03-16: Initialiser le service multilingue
+            multilingue_service: Arc::new(
+                crate::services::multilingue_service::MultilingueService::new()
+            ),
+            // ✅ NOUVEAU 2026-03-16: Initialiser le service de paiements agrégés
+            paiement_service: Arc::new(
+                crate::services::paiement_agrege_service::PaiementAgregeService::new(
+                    Arc::new(pg.clone()),
+                ),
+            ),
         }
     }
 
@@ -597,7 +601,6 @@ impl AppState {
         use crate::controllers::ia_status_controller::IAStats;
         use crate::services::app_ia::AppIA;
         use dotenvy::dotenv;
-        use mongodb::Client as MongoClient;
         use redis::Client as RedisClient;
         use sqlx::postgres::PgPoolOptions;
         use std::env;
@@ -613,11 +616,6 @@ impl AppState {
             .connect(&database_url)
             .await
             .expect("Failed to connect to test Postgres");
-        let mongo_url =
-            env::var("MONGODB_URL").unwrap_or_else(|_| "mongodb://localhost:27017".to_string());
-        let mongo = MongoClient::with_uri_str(&mongo_url)
-            .await
-            .expect("Failed to connect to test MongoDB");
         let redis_url = env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
         let redis_client =
             RedisClient::open(redis_url).expect("Failed to create test Redis client");
@@ -628,10 +626,9 @@ impl AppState {
             pg.clone(),
         ));
 
-        // Initialiser le service d'historisation MongoDB pour les tests
+        // ✅ 2026-03-16: Initialiser le service d'historisation PostgreSQL pour les tests
         let mongo_history = Arc::new(MongoHistoryService::new(
-            Arc::new(mongo.clone()),
-            "yukpo_history_test".to_string(),
+            Arc::new(pg.clone()),
         ));
 
         // ✅ OPTIMISÉ: DeliveryRepository avec cache Redis pour les tests
@@ -737,7 +734,6 @@ impl AppState {
         AppState {
             pg,
             pg_read: None, // ✅ NOUVEAU 2025-12-02: Read replica optionnel pour tests
-            mongo,
             mongo_history,
             ia: app_ia,
             ia_stats,
@@ -838,10 +834,10 @@ impl AppState {
                     redis_client.clone(),
                 )),
             )),
-            spotify_service: None, // Pas de Spotify pour les tests
+            spotify_service: None,
             youtube_audio_service: Some(Arc::new(YouTubeAudioService::new(None))),
             products_service: Arc::new(crate::services::products_service::ProductsService::new(
-                Arc::new(pg_clone),
+                Arc::new(pg_clone.clone()),
             )),
             // ✅ NOUVEAU 2026-02-14: Service GPU désactivé pour les tests
             gpu_service: None,
@@ -850,6 +846,15 @@ impl AppState {
             video_transcoding: None,
             trending_music: None,
             generative_video: None,
+            // ✅ NOUVEAU 2026-03-16: Services pour tests
+            multilingue_service: Arc::new(
+                crate::services::multilingue_service::MultilingueService::new()
+            ),
+            paiement_service: Arc::new(
+                crate::services::paiement_agrege_service::PaiementAgregeService::new(
+                    Arc::new(pg_clone),
+                ),
+            ),
         }
     }
 }

@@ -25,6 +25,7 @@ import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import ServiceTeamManager from '../../components/ServiceTeamManager';
 import SimplePrestationSelector from '../../components/SimplePrestationSelector';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
 import { useFormValidation } from '../../hooks/useFormValidation';
@@ -57,14 +58,14 @@ interface PharmacyAnalytics {
     avg_order_value: string | null;
 }
 
-const SERVICES_OPTIONS = ['Garde', 'Délivrance', 'Conseil', 'Vaccination', 'Pansements', t('pharmacieFormScreen.livraisonADomicile'), t('pharmacieFormScreen.preparationDeMedicaments')];
-const UNITE_OPTIONS = [t('pharmacieFormScreen.unite'), 'boîte', 'flacon', 'plaquette', 'tube', 'sachet', 'ampoule', t('pharmacieFormScreen.comprime')];
-const CATEGORIE_OPTIONS = ['Médicament', 'Parapharmacie', t('pharmacieFormScreen.accessoireMedical'), t('pharmacieFormScreen.hygiene'), 'Nutrition', 'Autre'];
+const SERVICES_OPTIONS = ['Garde', t('pharmacieFormScreen.delivrance'), 'Conseil', 'Vaccination', 'Pansements', t('pharmacieFormScreen.livraisonADomicile'), t('pharmacieFormScreen.preparationDeMedicaments')];
+const UNITE_OPTIONS = [t('pharmacieFormScreen.unite'), t('pharmacieFormScreen.boite'), 'flacon', 'plaquette', 'tube', 'sachet', 'ampoule', t('pharmacieFormScreen.comprime')];
+const CATEGORIE_OPTIONS = [t('pharmacieFormScreen.medicament'), 'Parapharmacie', t('pharmacieFormScreen.accessoireMedical'), t('pharmacieFormScreen.hygiene'), 'Nutrition', 'Autre'];
 
 const PharmacieFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const { t } = useLanguageSafe();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
@@ -444,6 +445,7 @@ const PharmacieFormScreen: React.FC = () => {
                     { label: t('pharmacieForm.ajouterProduit'), icon: 'plus-circle', color: '#3B82F6', onPress: () => { setActiveTab('products'); setTimeout(() => openProductModal(), 200); } },
                     { label: 'IA Interactions', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('PharmacyAIInteractions', { serviceId }) },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('PharmacyAnalytics', { serviceId }) },
+                    { label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>
@@ -524,7 +526,7 @@ const PharmacieFormScreen: React.FC = () => {
                 <Text style={s.label}>{t('pharmacieForm.localisationGps')}</Text>
                     <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
                         <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                        <Text style={s.gpsBtnText}>{selectedGPS ? t('pharmacieFormScreen.localisationSelectionnee') : 'Sélectionner sur la carte'}</Text>
+                        <Text style={s.gpsBtnText}>{selectedGPS ? t('pharmacieFormScreen.localisationSelectionnee') : t('pharmacieFormScreen.selectionnerSurLaCarte')}</Text>
                         <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
                     </TouchableOpacity>
             </View>

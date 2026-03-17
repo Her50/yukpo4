@@ -1259,9 +1259,7 @@ const MesServicesScreen: React.FC = () => {
               >
                 <SafeIcon name="zap" size={20} color="#fff" type="lucide" />
               </TouchableOpacity>
-              {/* ✅ NOUVEAU: Configuration de livraison dans l'en-tête */}
-              <TouchableOpacity
-                style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(16, 185, 129, 0.2)' }]}
+              {/* ✅ NOUVEAU: Configuration de livraison dans lt('mesServicesScreen.enteteTouchableopacityStyledynamicstylesheaderbutt')rgba(16, 185, 129, 0.2)' }]}
                 onPress={() => {
                   const productsList = prepareProductsForSelector();
                   if (productsList.length === 0) {
@@ -1286,7 +1284,7 @@ const MesServicesScreen: React.FC = () => {
                       setSelectedItems(new Set());
                     }
                   }}
-                  accessibilityLabel={bulkMode ? "Désactiver sélection multiple" : "Activer sélection multiple"}
+                  accessibilityLabel={bulkMode ? t('mesServicesScreen.desactiverSelectionMultiple') : t('mesServicesScreen.activerSelectionMultiple')}
                   accessibilityRole="button"
                 >
                   <SafeIcon name={bulkMode ? "check-square" : "square"} size={18} color="#fff" />

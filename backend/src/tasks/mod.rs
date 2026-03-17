@@ -28,6 +28,7 @@ pub mod search_cache_refresh; // ✅ NOUVEAU 2025-12-02: Rafraîchissement autom
 pub mod service_deactivation;
 pub mod service_status_checker; // ✅ Tâche de désactivation des publicités expirées
 pub mod stats_recalculation; // ✅ NOUVEAU : Recalcul périodique des statistiques
+pub mod troc_expiration_monitor; // Expiration automatique des trocs en attente (72h TTL)
 pub mod video_weekly_report; // ✅ NOUVEAU 2025-01-29: Tâche cron pour trajets récurrents
 
 // ajoute ici d'autres modules de tâches, par ex.

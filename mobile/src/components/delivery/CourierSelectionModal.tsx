@@ -76,14 +76,14 @@ const [loading, setLoading] = useState(false);
 
     const handleAssign = async () => {
         if (!selectedCourierId) {
-            Alert.alert('Erreur', 'Veuillez sélectionner un coursier');
+            Alert.alert('Erreur', t('courierSelectionModal.veuillezSelectionnerUnCoursier'));
             return;
         }
 
         setLoading(true);
         try {
             await deliveryApi.assignCourier(deliveryId, selectedCourierId);
-            Alert.alert('✅ Coursier assigné', 'Le coursier a été assigné avec succès à cette livraison');
+            Alert.alert(t('courierSelectionModal.coursierAssigne'), t('courierSelectionModal.leCoursierAEteAssigneAvec'));
             onSuccess?.();
             onClose();
         } catch (error: any) {

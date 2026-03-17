@@ -7,6 +7,7 @@ import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacit
 import gamificationService from '../services/gamificationService';
 import { modernColors } from '../theme/modernTheme';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface LeaderboardModalProps {
     visible: boolean;
@@ -19,7 +20,8 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
     onClose,
     userId,
 }) => {
-    const [leaderboard, setLeaderboard] = useState<Array<{
+        const { t } = useLanguageSafe();
+const [leaderboard, setLeaderboard] = useState<Array<{
         userId: string;
         username: string;
         avatar?: string;

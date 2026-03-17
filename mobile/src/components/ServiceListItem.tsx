@@ -5,6 +5,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ServiceListItemProps {
     service: {
@@ -24,7 +25,7 @@ interface ServiceListItemProps {
 const ServiceListItem: React.FC<ServiceListItemProps> = ({ service, onPress, onEdit }) => {
     const typeLabels: Record<string, string> = {
         pharmacie: 'Pharmacie',
-        hopital: 'Hôpital',
+        hopital: t('serviceListItem.hopital'),
         laboratoire: 'Laboratoire',
         banque_sang: 'Banque de Sang',
         agence_voyage: 'Agence',

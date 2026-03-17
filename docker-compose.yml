@@ -46,6 +46,14 @@ services:
       - LIVEKIT_WS_URL=${LIVEKIT_WS_URL:-ws://localhost:7880}
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
+
+      # ✅ NOUVEAU 2026-03-17: Optimisations IA
+      - OPENAI_MODEL=gpt-4o
+      - VISION_MODEL_PRIORITY=10
+      - COST_THRESHOLD_PER_DAY=50
+      - DAILY_USAGE_LIMIT=1000
+      - SEMANTIC_CACHE_ENABLED=true
+      - ENABLE_BATCH_REQUESTS=true
       
       # SRS Streaming (optionnel)
       - SRS_RTMP_URL=${SRS_RTMP_URL:-rtmp://localhost:1935/live}

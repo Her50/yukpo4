@@ -50,7 +50,7 @@ const [rating, setRating] = useState(0);
 
     const handleSubmit = async () => {
         if (rating === 0) {
-            Alert.alert('Note requise', 'Veuillez sélectionner une note');
+            Alert.alert('Note requise', t('ticketRating.veuillezSelectionnerUneNote'));
             return;
         }
 
@@ -72,7 +72,7 @@ const [rating, setRating] = useState(0);
                     categories_count: selectedCategories.length,
                 });
 
-                Alert.alert('Merci !', 'Votre avis a été enregistré');
+                Alert.alert('Merci !', t('ticketRating.votreAvisAEteEnregistre'));
                 setRating(0);
                 setComment('');
                 setSelectedCategories([]);

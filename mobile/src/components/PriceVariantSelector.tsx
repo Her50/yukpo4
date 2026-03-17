@@ -115,19 +115,19 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
         }
 
         if (!tempModality.prix || tempModality.prix <= 0) {
-            Alert.alert('Erreur', 'Le prix doit être supérieur à 0');
+            Alert.alert('Erreur', t('priceVariantSelector.lePrixDoitEtreSuperieurA'));
             return;
         }
 
         if (!tempModality.devise) {
-            Alert.alert('Erreur', 'Veuillez sélectionner une devise');
+            Alert.alert('Erreur', t('priceVariantSelector.veuillezSelectionnerUneDevise'));
             return;
         }
 
         // S'assurer que prix est un nombre (jamais string)
         const prix = typeof tempModality.prix === 'string' ? parseFloat(tempModality.prix) : tempModality.prix;
         if (isNaN(prix) || prix <= 0) {
-            Alert.alert('Erreur', 'Le prix doit être un nombre valide');
+            Alert.alert('Erreur', t('priceVariantSelector.lePrixDoitEtreUnNombre'));
             return;
         }
 
@@ -211,7 +211,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
             {modalites.length > 0 ? (
                 <View style={styles.modalitiesList}>
                     <Text style={styles.modalitiesCount}>
-                        {modalites.length} variante{modalites.length > 1 ? 's' : ''} définie{modalites.length > 1 ? 's' : ''}
+                        {modalites.length} variante{modalites.length > 1 ? 's' : 't('priceVariantSelector.definiemodaliteslength1')s' : ''}
                     </Text>
                     {modalites.map((modality, index) => (
                         <View key={index} style={styles.modalityItem}>
@@ -423,7 +423,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                                             try {
                                                 const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
                                                 if (!permissionResult.granted) {
-                                                    Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès à la galerie');
+                                                    Alert.alert(t('priceVariantSelector.permissionRefusee'), 'Vous devez autoriser l\t('priceVariantSelector.accesALaGalerie'));
                                                     return;
                                                 }
 
@@ -442,7 +442,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                                                 }
                                             } catch (error) {
                                                 console.error('Erreur sélection image:', error);
-                                                Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
+                                                Alert.alert('Erreur', t('priceVariantSelector.impossibleDeSelectionnerL')image');
                                             }
                                         }}
                                     >

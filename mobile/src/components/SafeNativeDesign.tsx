@@ -1,12 +1,13 @@
 /**
  * ✅ WRAPPER SÉCURISÉ pour les composants NativeDesign
  * Garantit que les composants sont toujours des fonctions React valides
- * avec fallback automatique en cas d'échec d'import
+ * avec fallback automatique en cas dt('safeNativeDesign.echecD')import
  */
 
 import React from 'react';
 import { TextInput as RNTextInput, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // ✅ Import avec gestion d'erreur
 let NativeDesignModule: any;

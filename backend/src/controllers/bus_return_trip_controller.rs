@@ -683,3 +683,57 @@ pub async fn confirm_return_trip_request(
         })),
     ))
 }
+
+// ============================================================================
+// VÉRIFICATION DEMANDES DE RETOUR
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckReturnRequestsPayload {
+    pub bus_id: String,
+    pub departure_city: String,
+    pub arrival_city: String,
+    pub departure_date: String,
+    pub departure_time: String,
+}
+
+/// Vérifier et notifier les utilisateurs en attente d'un bus retour
+pub async fn check_return_requests(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<CheckReturnRequestsPayload>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[check_return_requests] bus_id={}, {} → {}",
+        payload.bus_id, payload.departure_city, payload.arrival_city
+    );
+
+    match crate::services::push_notification_service::check_and_notify_return_requests(
+        &state.pg,
+        &payload.bus_id,
+        &payload.departure_city,
+        &payload.arrival_city,
+        &payload.departure_date,
+        &payload.departure_time,
+    )
+    .await
+    {
+        Ok(count) => {
+            info!("[check_return_requests] {} utilisateur(s) notifié(s)", count);
+            Ok((
+                StatusCode::OK,
+                Json(json!({
+                    "success": true,
+                    "message": format!("{} utilisateur(s) notifié(s)", count),
+                    "notified_count": count
+                })),
+            ))
+        }
+        Err(e) => {
+            error!("[check_return_requests] Erreur: {:?}", e);
+            Err(AppError::Internal(
+                "Erreur vérification demandes retour".to_string(),
+            ))
+        }
+    }
+}

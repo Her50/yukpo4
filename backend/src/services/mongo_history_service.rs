@@ -1,17 +1,13 @@
 use crate::core::types::{AppError, AppResult};
 use chrono::Utc;
-use futures::TryStreamExt;
 use log::error;
-use mongodb::{
-    bson::{doc, DateTime},
-    Client as MongoClient, Collection,
-};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sqlx::PgPool;
 use std::sync::Arc;
 
-/// ??? Types d'?v?nements historis?s
-#[derive(Debug, Serialize, Deserialize)]
+/// Types d'événements historisés
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum HistoryEventType {
     IAInteraction,
     UserAction,
@@ -22,33 +18,50 @@ pub enum HistoryEventType {
     SecurityEvent,
 }
 
-/// ?? Structure pour un ?v?nement d'historisation
-#[derive(Debug, Serialize, Deserialize)]
+impl HistoryEventType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            HistoryEventType::IAInteraction => "IAInteraction",
+            HistoryEventType::UserAction => "UserAction",
+            HistoryEventType::Feedback => "Feedback",
+            HistoryEventType::ServiceCreation => "ServiceCreation",
+            HistoryEventType::ServiceUpdate => "ServiceUpdate",
+            HistoryEventType::Error => "Error",
+            HistoryEventType::SecurityEvent => "SecurityEvent",
+        }
+    }
+}
+
+/// Structure pour un événement d'historisation
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HistoryEvent {
     pub event_type: HistoryEventType,
     pub user_id: Option<i32>,
     pub service_id: Option<i32>,
     pub interaction_id: Option<String>,
-    pub timestamp: DateTime,
+    #[serde(with = "chrono::serde::ts_milliseconds_option", default)]
+    pub timestamp: Option<chrono::DateTime<Utc>>,
     pub data: Value,
     pub metadata: Option<Value>,
 }
 
-/// ??? Service d'historisation MongoDB
+/// ✅ 2026-03-16: Service d'historisation PostgreSQL (ex-MongoDB)
+/// Toutes les données sont stockées dans la table history_events (PostgreSQL JSONB)
 pub struct MongoHistoryService {
-    client: Arc<MongoClient>,
-    database_name: String,
+    pg: Arc<PgPool>,
 }
 
 impl MongoHistoryService {
-    pub fn new(client: Arc<MongoClient>, database_name: String) -> Self {
-        Self {
-            client,
-            database_name,
-        }
+    pub fn new(pg: Arc<PgPool>) -> Self {
+        Self { pg }
     }
 
-    /// ?? Enregistrer un ?v?nement d'interaction IA
+    /// Obtenir une référence au pool PostgreSQL (pour les services qui font des requêtes directes)
+    pub fn pg_pool(&self) -> &PgPool {
+        &self.pg
+    }
+
+    /// Enregistrer un événement d'interaction IA
     pub async fn log_ia_interaction(
         &self,
         user_id: Option<i32>,
@@ -58,25 +71,18 @@ impl MongoHistoryService {
         model_used: &str,
         context: Option<Value>,
     ) -> AppResult<()> {
-        let event = HistoryEvent {
-            event_type: HistoryEventType::IAInteraction,
-            user_id,
-            service_id: None,
-            interaction_id: Some(interaction_id.to_string()),
-            timestamp: DateTime::now(),
-            data: serde_json::json!({
-                "prompt": prompt,
-                "response": response,
-                "model_used": model_used,
-                "context": context,
-            }),
-            metadata: None,
-        };
+        let data = serde_json::json!({
+            "prompt": prompt,
+            "response": response,
+            "model_used": model_used,
+            "context": context,
+        });
 
-        self.insert_event(event).await
+        self.insert_event("IAInteraction", user_id, None, Some(interaction_id), &data, None)
+            .await
     }
 
-    /// ? Enregistrer un feedback utilisateur
+    /// Enregistrer un feedback utilisateur
     pub async fn log_feedback(
         &self,
         user_id: i32,
@@ -88,27 +94,27 @@ impl MongoHistoryService {
         feedback_text: Option<&str>,
         context: Option<Value>,
     ) -> AppResult<()> {
-        let event = HistoryEvent {
-            event_type: HistoryEventType::Feedback,
-            user_id: Some(user_id),
-            service_id: None,
-            interaction_id: Some(interaction_id.to_string()),
-            timestamp: DateTime::now(),
-            data: serde_json::json!({
-                "prompt": prompt,
-                "response": response,
-                "model_used": model_used,
-                "rating": rating,
-                "feedback_text": feedback_text,
-                "context": context,
-            }),
-            metadata: None,
-        };
+        let data = serde_json::json!({
+            "prompt": prompt,
+            "response": response,
+            "model_used": model_used,
+            "rating": rating,
+            "feedback_text": feedback_text,
+            "context": context,
+        });
 
-        self.insert_event(event).await
+        self.insert_event(
+            "Feedback",
+            Some(user_id),
+            None,
+            Some(interaction_id),
+            &data,
+            None,
+        )
+        .await
     }
 
-    /// ?? Enregistrer une interaction utilisateur
+    /// Enregistrer une interaction utilisateur
     pub async fn log_user_interaction(
         &self,
         user_id: i32,
@@ -117,23 +123,16 @@ impl MongoHistoryService {
         content: &str,
         metadata: Option<Value>,
     ) -> AppResult<()> {
-        let event = HistoryEvent {
-            event_type: HistoryEventType::UserAction,
-            user_id: Some(user_id),
-            service_id,
-            interaction_id: None,
-            timestamp: DateTime::now(),
-            data: serde_json::json!({
-                "interaction_type": interaction_type,
-                "content": content,
-            }),
-            metadata,
-        };
+        let data = serde_json::json!({
+            "interaction_type": interaction_type,
+            "content": content,
+        });
 
-        self.insert_event(event).await
+        self.insert_event("UserAction", Some(user_id), service_id, None, &data, metadata.as_ref())
+            .await
     }
 
-    /// ??? Enregistrer un ?v?nement de s?curit?
+    /// Enregistrer un événement de sécurité
     pub async fn log_security_event(
         &self,
         user_id: Option<i32>,
@@ -141,196 +140,144 @@ impl MongoHistoryService {
         details: Value,
         threat_level: &str,
     ) -> AppResult<()> {
-        let event = HistoryEvent {
-            event_type: HistoryEventType::SecurityEvent,
-            user_id,
-            service_id: None,
-            interaction_id: None,
-            timestamp: DateTime::now(),
-            data: serde_json::json!({
-                "security_event_type": event_type,
-                "details": details,
-                "threat_level": threat_level,
-            }),
-            metadata: None,
-        };
+        let data = serde_json::json!({
+            "security_event_type": event_type,
+            "details": details,
+            "threat_level": threat_level,
+        });
 
-        self.insert_event(event).await
+        self.insert_event("SecurityEvent", user_id, None, None, &data, None)
+            .await
     }
 
-    /// ?? R?cup?rer l'historique des interactions IA d'un utilisateur
+    /// Récupérer l'historique des interactions IA d'un utilisateur
     pub async fn get_ia_interaction_history(
         &self,
         user_id: i32,
         limit: Option<i64>,
     ) -> AppResult<Vec<HistoryEvent>> {
-        let collection = self.get_collection("history").await;
+        let effective_limit = limit.unwrap_or(100);
 
-        let filter = doc! {
-            "event_type": "IAInteraction",
-            "user_id": user_id,
-        };
-
-        let mut cursor = collection.find(filter, None).await.map_err(|e| {
-            error!(
-                "[MongoHistory] Erreur récupération historique IA (user_id={}): {}",
-                user_id, e
-            );
+        let rows = sqlx::query_as::<_, HistoryEventRow>(
+            "SELECT event_type, user_id, service_id, interaction_id, timestamp, data, metadata
+             FROM history_events
+             WHERE event_type = 'IAInteraction' AND user_id = $1
+             ORDER BY timestamp DESC
+             LIMIT $2",
+        )
+        .bind(user_id)
+        .bind(effective_limit)
+        .fetch_all(self.pg.as_ref())
+        .await
+        .map_err(|e| {
+            error!("[HistoryService] Erreur récupération historique IA (user_id={}): {}", user_id, e);
             format!("Erreur récupération historique IA: {}", e)
         })?;
 
-        let mut events = Vec::new();
-        while let Some(doc) = cursor.try_next().await.map_err(|e| {
-            error!(
-                "[MongoHistory] Erreur itération historique IA (user_id={}): {}",
-                user_id, e
-            );
-            format!("Erreur itération historique: {}", e)
-        })? {
-            if let Ok(event) = mongodb::bson::from_document::<HistoryEvent>(doc) {
-                events.push(event);
-            }
-        }
-
-        // Trier par timestamp d?croissant et limiter
-        events.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
-        if let Some(limit) = limit {
-            events.truncate(limit as usize);
-        }
-
-        Ok(events)
+        Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 
-    /// ?? R?cup?rer les statistiques de feedback
+    /// Récupérer les statistiques de feedback
     pub async fn get_feedback_stats(&self, model_used: Option<&str>) -> AppResult<Value> {
-        let collection = self.get_collection("history").await;
-
-        let mut pipeline = vec![
-            doc! { "$match": { "event_type": "Feedback" } },
-            doc! {
-                "$group": {
-                    "_id": "$data.model_used",
-                    "total_feedback": { "$sum": 1 },
-                    "avg_rating": { "$avg": "$data.rating" },
-                    "positive_feedback": {
-                        "$sum": { "$cond": [{ "$gte": ["$data.rating", 4] }, 1, 0] }
-                    },
-                    "negative_feedback": {
-                        "$sum": { "$cond": [{ "$lte": ["$data.rating", 2] }, 1, 0] }
-                    }
-                }
-            },
-        ];
-
-        if let Some(model) = model_used {
-            pipeline[0] = doc! {
-                "$match": {
-                    "event_type": "Feedback",
-                    "data.model_used": model
-                }
-            };
+        let rows = if let Some(model) = model_used {
+            sqlx::query_as::<_, FeedbackStatRow>(
+                "SELECT data->>'model_used' as model,
+                        COUNT(*) as total_feedback,
+                        AVG((data->>'rating')::float) as avg_rating,
+                        SUM(CASE WHEN (data->>'rating')::int >= 4 THEN 1 ELSE 0 END) as positive_feedback,
+                        SUM(CASE WHEN (data->>'rating')::int <= 2 THEN 1 ELSE 0 END) as negative_feedback
+                 FROM history_events
+                 WHERE event_type = 'Feedback' AND data->>'model_used' = $1
+                 GROUP BY data->>'model_used'",
+            )
+            .bind(model)
+            .fetch_all(self.pg.as_ref())
+            .await
+        } else {
+            sqlx::query_as::<_, FeedbackStatRow>(
+                "SELECT data->>'model_used' as model,
+                        COUNT(*) as total_feedback,
+                        AVG((data->>'rating')::float) as avg_rating,
+                        SUM(CASE WHEN (data->>'rating')::int >= 4 THEN 1 ELSE 0 END) as positive_feedback,
+                        SUM(CASE WHEN (data->>'rating')::int <= 2 THEN 1 ELSE 0 END) as negative_feedback
+                 FROM history_events
+                 WHERE event_type = 'Feedback'
+                 GROUP BY data->>'model_used'",
+            )
+            .fetch_all(self.pg.as_ref())
+            .await
         }
-
-        let mut cursor = collection.aggregate(pipeline, None).await.map_err(|e| {
-            error!("[MongoHistory] Erreur agrégation feedback: {}", e);
+        .map_err(|e| {
+            error!("[HistoryService] Erreur agrégation feedback: {}", e);
             format!("Erreur agrégation feedback: {}", e)
         })?;
 
         let mut stats = serde_json::Map::new();
-        while let Some(doc) = cursor.try_next().await.map_err(|e| {
-            error!("[MongoHistory] Erreur itération stats feedback: {}", e);
-            format!("Erreur itération stats: {}", e)
-        })? {
-            if let Ok(bson) = mongodb::bson::to_bson(&doc) {
-                if let Ok(json) = serde_json::to_value(bson) {
-                    if let Some(model) = json["_id"].as_str() {
-                        stats.insert(model.to_string(), json);
-                    }
-                }
+        for row in rows {
+            if let Some(model) = &row.model {
+                stats.insert(
+                    model.clone(),
+                    serde_json::json!({
+                        "_id": model,
+                        "total_feedback": row.total_feedback,
+                        "avg_rating": row.avg_rating,
+                        "positive_feedback": row.positive_feedback,
+                        "negative_feedback": row.negative_feedback,
+                    }),
+                );
             }
         }
 
         Ok(serde_json::Value::Object(stats))
     }
 
-    /// ?? Nettoyer les anciens ?v?nements
+    /// Nettoyer les anciens événements
     pub async fn cleanup_old_events(&self, days_old: i64) -> AppResult<u64> {
-        let collection = self.get_collection("history").await;
-
-        let cutoff_date = DateTime::from_system_time(
-            std::time::SystemTime::now()
-                - std::time::Duration::from_secs((days_old * 24 * 60 * 60) as u64),
-        );
-
-        let filter = doc! {
-            "timestamp": { "$lt": cutoff_date }
-        };
-
-        let result = collection.delete_many(filter, None).await.map_err(|e| {
-            error!(
-                "[MongoHistory] Erreur nettoyage historique (days_old={}): {}",
-                days_old, e
-            );
+        let result = sqlx::query(
+            "DELETE FROM history_events WHERE timestamp < NOW() - ($1 || ' days')::interval",
+        )
+        .bind(days_old.to_string())
+        .execute(self.pg.as_ref())
+        .await
+        .map_err(|e| {
+            error!("[HistoryService] Erreur nettoyage historique (days_old={}): {}", days_old, e);
             format!("Erreur nettoyage historique: {}", e)
         })?;
 
-        Ok(result.deleted_count)
+        Ok(result.rows_affected())
     }
 
-    /// ✅ NOUVEAU 2025-12-30: Créer les index MongoDB pour optimiser les requêtes
-    /// Index critiques pour get_service_stats et get_reviews
+    /// Les index sont créés par ensure_history_events_table dans auto_migrate.rs
     pub async fn ensure_indexes(&self) -> AppResult<()> {
-        use mongodb::{options::IndexOptions, IndexModel};
-
-        let collection = self.get_collection("history").await;
-
-        // Index sur service_id (critique pour get_service_stats et get_reviews)
-        let service_id_index = IndexModel::builder()
-            .keys(doc! { "service_id": 1 })
-            .options(IndexOptions::builder().name(Some("idx_service_id".to_string())).build())
-            .build();
-
-        // Index composé pour les requêtes d'agrégation (service_id + event_type + interaction_type)
-        let composite_index = IndexModel::builder()
-            .keys(doc! {
-                "service_id": 1,
-                "event_type": 1,
-                "data.interaction_type": 1
-            })
-            .options(
-                IndexOptions::builder()
-                    .name(Some("idx_service_event_interaction".to_string()))
-                    .build(),
-            )
-            .build();
-
-        // Index sur timestamp pour tri et nettoyage
-        let timestamp_index = IndexModel::builder()
-            .keys(doc! { "timestamp": -1 })
-            .options(IndexOptions::builder().name(Some("idx_timestamp".to_string())).build())
-            .build();
-
-        // Créer les index (ignore les erreurs si déjà existants)
-        let _ = collection.create_index(service_id_index, None).await;
-        let _ = collection.create_index(composite_index, None).await;
-        let _ = collection.create_index(timestamp_index, None).await;
-
         Ok(())
     }
 
-    /// ?? Ins?rer un ?v?nement dans la collection
-    async fn insert_event(&self, event: HistoryEvent) -> AppResult<()> {
-        let collection = self.get_collection("history").await;
-
-        let doc = mongodb::bson::to_document(&event).map_err(|e| {
-            error!("[MongoHistory] Erreur sérialisation événement: {}", e);
-            format!("Erreur sérialisation événement: {}", e)
-        })?;
-
-        collection.insert_one(doc, None).await.map_err(|e| {
+    /// Insérer un événement dans la table history_events
+    async fn insert_event(
+        &self,
+        event_type: &str,
+        user_id: Option<i32>,
+        service_id: Option<i32>,
+        interaction_id: Option<&str>,
+        data: &Value,
+        metadata: Option<&Value>,
+    ) -> AppResult<()> {
+        sqlx::query(
+            "INSERT INTO history_events (event_type, user_id, service_id, interaction_id, timestamp, data, metadata)
+             VALUES ($1, $2, $3, $4, NOW(), $5, $6)",
+        )
+        .bind(event_type)
+        .bind(user_id)
+        .bind(service_id)
+        .bind(interaction_id)
+        .bind(data)
+        .bind(metadata)
+        .execute(self.pg.as_ref())
+        .await
+        .map_err(|e| {
             error!(
-                "[MongoHistory] Erreur insertion historique (user_id={:?}, service_id={:?}): {}",
-                event.user_id, event.service_id, e
+                "[HistoryService] Erreur insertion historique (event_type={}, user_id={:?}, service_id={:?}): {}",
+                event_type, user_id, service_id, e
             );
             format!("Erreur insertion historique: {}", e)
         })?;
@@ -338,17 +285,7 @@ impl MongoHistoryService {
         Ok(())
     }
 
-    /// ??? Obtenir la collection history
-    pub async fn get_collection(
-        &self,
-        collection_name: &str,
-    ) -> Collection<mongodb::bson::Document> {
-        self.client
-            .database(&self.database_name)
-            .collection::<mongodb::bson::Document>(collection_name)
-    }
-
-    /// ?? Enregistrer une consultation de service
+    /// Enregistrer une consultation de service
     pub async fn log_service_consultation(
         &self,
         user_id: i32,
@@ -375,194 +312,196 @@ impl MongoHistoryService {
         let mut metadata_value = Value::Object(metadata_map);
         sanitize_metadata_value(&mut metadata_value, 512);
 
-        let event = HistoryEvent {
-            event_type: HistoryEventType::UserAction,
-            user_id: Some(user_id),
-            service_id: Some(service_id),
-            interaction_id: None,
-            timestamp: DateTime::now(),
-            data: consultation_data,
-            metadata: Some(metadata_value),
-        };
-
-        self.insert_event(event).await
+        self.insert_event(
+            "UserAction",
+            Some(user_id),
+            Some(service_id),
+            None,
+            &consultation_data,
+            Some(&metadata_value),
+        )
+        .await
     }
 
     pub async fn ping(&self) -> AppResult<()> {
-        let database = self.client.database(&self.database_name);
-        database.run_command(doc! { "ping": 1 }, None).await.map_err(|e| {
-            error!("[MongoHistory] Ping échoué: {}", e);
-            AppError::Internal(format!("MongoDB ping failed: {}", e))
-        })?;
+        sqlx::query("SELECT 1")
+            .execute(self.pg.as_ref())
+            .await
+            .map_err(|e| {
+                error!("[HistoryService] Ping échoué: {}", e);
+                AppError::Internal(format!("HistoryService ping failed: {}", e))
+            })?;
         Ok(())
     }
 
-    /// ?? R?cup?rer les consultations d'un utilisateur
+    /// Récupérer les consultations d'un utilisateur
     pub async fn get_service_consultations(
         &self,
         user_id: i32,
         limit: Option<i64>,
     ) -> AppResult<Vec<HistoryEvent>> {
-        let collection = self.get_collection("history").await;
+        let effective_limit = limit.unwrap_or(5);
 
-        let filter = doc! {
-            "event_type": "UserAction",
-            "user_id": user_id,
-            "metadata.action_type": "service_consultation",
-        };
-
-        let mut cursor = collection.find(filter, None).await.map_err(|e| {
+        let rows = sqlx::query_as::<_, HistoryEventRow>(
+            "SELECT event_type, user_id, service_id, interaction_id, timestamp, data, metadata
+             FROM history_events
+             WHERE event_type = 'UserAction' AND user_id = $1 AND metadata->>'action_type' = 'service_consultation'
+             ORDER BY timestamp DESC
+             LIMIT $2",
+        )
+        .bind(user_id)
+        .bind(effective_limit)
+        .fetch_all(self.pg.as_ref())
+        .await
+        .map_err(|e| {
             error!(
-                "[MongoHistory] Erreur récupération consultations utilisateur (user_id={}): {}",
+                "[HistoryService] Erreur récupération consultations utilisateur (user_id={}): {}",
                 user_id, e
             );
             format!("Erreur récupération consultations: {}", e)
         })?;
 
-        let mut events = Vec::new();
-        while let Some(doc) = cursor.try_next().await.map_err(|e| {
-            error!(
-                "[MongoHistory] Erreur itération consultations utilisateur (user_id={}): {}",
-                user_id, e
-            );
-            format!("Erreur itération consultations: {}", e)
-        })? {
-            if let Ok(event) = mongodb::bson::from_document::<HistoryEvent>(doc) {
-                events.push(event);
-            }
-        }
-
-        // Trier par timestamp d?croissant et limiter
-        events.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
-        if let Some(limit) = limit {
-            events.truncate(limit as usize);
-        }
-
-        Ok(events)
+        Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 
-    /// ?? R?cup?rer les consultations d'un service sp?cifique
+    /// Récupérer les consultations d'un service spécifique
     pub async fn get_service_consultations_by_service(
         &self,
         service_id: i32,
         limit: Option<i64>,
     ) -> AppResult<Vec<HistoryEvent>> {
-        let collection = self.get_collection("history").await;
+        let effective_limit = limit.unwrap_or(100);
 
-        let filter = doc! {
-            "event_type": "UserAction",
-            "service_id": service_id,
-            "metadata.action_type": "service_consultation",
-        };
-
-        let mut cursor = collection.find(filter, None).await.map_err(|e| {
+        let rows = sqlx::query_as::<_, HistoryEventRow>(
+            "SELECT event_type, user_id, service_id, interaction_id, timestamp, data, metadata
+             FROM history_events
+             WHERE event_type = 'UserAction' AND service_id = $1 AND metadata->>'action_type' = 'service_consultation'
+             ORDER BY timestamp DESC
+             LIMIT $2",
+        )
+        .bind(service_id)
+        .bind(effective_limit)
+        .fetch_all(self.pg.as_ref())
+        .await
+        .map_err(|e| {
             error!(
-                "[MongoHistory] Erreur récupération consultations service (service_id={}): {}",
+                "[HistoryService] Erreur récupération consultations service (service_id={}): {}",
                 service_id, e
             );
             format!("Erreur récupération consultations service: {}", e)
         })?;
 
-        let mut events = Vec::new();
-        while let Some(doc) = cursor.try_next().await.map_err(|e| {
-            error!(
-                "[MongoHistory] Erreur itération consultations service (service_id={}): {}",
-                service_id, e
-            );
-            format!("Erreur itération consultations service: {}", e)
-        })? {
-            if let Ok(event) = mongodb::bson::from_document::<HistoryEvent>(doc) {
-                events.push(event);
-            }
-        }
-
-        // Trier par timestamp d?croissant et limiter
-        events.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
-        if let Some(limit) = limit {
-            events.truncate(limit as usize);
-        }
-
-        Ok(events)
+        Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 
-    /// ?? R?cup?rer les statistiques globales de consultations
+    /// Récupérer les statistiques globales de consultations
     pub async fn get_global_consultation_stats(&self, days: Option<i64>) -> AppResult<Value> {
-        let collection = self.get_collection("history").await;
-
-        let mut pipeline = vec![
-            doc! {
-                "$match": {
-                    "event_type": "UserAction",
-                    "metadata.action_type": "service_consultation"
-                }
-            },
-            doc! {
-                "$group": {
-                    "_id": null,
-                    "total_consultations": { "$sum": 1 },
-                    "unique_users": { "$addToSet": "$user_id" },
-                    "unique_services": { "$addToSet": "$service_id" },
-                    "total_debits": {
-                        "$sum": {
-                            "$cond": [
-                                { "$eq": ["$data.debit_applied", true] },
-                                "$data.token_cost",
-                                0
-                            ]
-                        }
-                    }
-                }
-            },
-            doc! {
-                "$project": {
-                    "_id": 0,
-                    "total_consultations": 1,
-                    "unique_users": { "$size": "$unique_users" },
-                    "unique_services": { "$size": "$unique_services" },
-                    "total_debits": 1
-                }
-            },
-        ];
-
-        if let Some(days) = days {
-            let cutoff_date = DateTime::from_system_time(
-                std::time::SystemTime::now()
-                    - std::time::Duration::from_secs((days * 24 * 60 * 60) as u64),
-            );
-            pipeline[0] = doc! {
-                "$match": {
-                    "event_type": "UserAction",
-                    "metadata.action_type": "service_consultation",
-                    "timestamp": { "$gte": cutoff_date }
-                }
-            };
+        let row = if let Some(days) = days {
+            sqlx::query_as::<_, GlobalConsultationStatRow>(
+                "SELECT
+                    COUNT(*) as total_consultations,
+                    COUNT(DISTINCT user_id) as unique_users,
+                    COUNT(DISTINCT service_id) as unique_services,
+                    COALESCE(SUM(CASE WHEN (data->>'debit_applied')::boolean = true THEN (data->>'token_cost')::float ELSE 0 END), 0) as total_debits
+                 FROM history_events
+                 WHERE event_type = 'UserAction'
+                   AND metadata->>'action_type' = 'service_consultation'
+                   AND timestamp >= NOW() - ($1 || ' days')::interval",
+            )
+            .bind(days.to_string())
+            .fetch_optional(self.pg.as_ref())
+            .await
+        } else {
+            sqlx::query_as::<_, GlobalConsultationStatRow>(
+                "SELECT
+                    COUNT(*) as total_consultations,
+                    COUNT(DISTINCT user_id) as unique_users,
+                    COUNT(DISTINCT service_id) as unique_services,
+                    COALESCE(SUM(CASE WHEN (data->>'debit_applied')::boolean = true THEN (data->>'token_cost')::float ELSE 0 END), 0) as total_debits
+                 FROM history_events
+                 WHERE event_type = 'UserAction'
+                   AND metadata->>'action_type' = 'service_consultation'",
+            )
+            .fetch_optional(self.pg.as_ref())
+            .await
         }
-
-        let mut cursor = collection.aggregate(pipeline, None).await.map_err(|e| {
+        .map_err(|e| {
             error!(
-                "[MongoHistory] Erreur agrégation stats globales (days={:?}): {}",
+                "[HistoryService] Erreur agrégation stats globales (days={:?}): {}",
                 days, e
             );
             format!("Erreur agrégation stats globales: {}", e)
         })?;
 
-        let mut stats = serde_json::Map::new();
-        if let Some(doc) = cursor.try_next().await.map_err(|e| {
-            error!(
-                "[MongoHistory] Erreur itération stats globales (days={:?}): {}",
-                days, e
-            );
-            format!("Erreur itération stats globales: {}", e)
-        })? {
-            if let Ok(bson) = mongodb::bson::to_bson(&doc) {
-                if let Ok(json) = serde_json::to_value(bson) {
-                    stats = json.as_object().unwrap().clone();
-                }
-            }
+        if let Some(row) = row {
+            Ok(serde_json::json!({
+                "total_consultations": row.total_consultations,
+                "unique_users": row.unique_users,
+                "unique_services": row.unique_services,
+                "total_debits": row.total_debits,
+            }))
+        } else {
+            Ok(serde_json::json!({
+                "total_consultations": 0,
+                "unique_users": 0,
+                "unique_services": 0,
+                "total_debits": 0,
+            }))
         }
-
-        Ok(serde_json::Value::Object(stats))
     }
+}
+
+// ---- Row types for sqlx ----
+
+#[derive(sqlx::FromRow)]
+struct HistoryEventRow {
+    event_type: String,
+    user_id: Option<i32>,
+    service_id: Option<i32>,
+    interaction_id: Option<String>,
+    timestamp: chrono::DateTime<Utc>,
+    data: Value,
+    metadata: Option<Value>,
+}
+
+impl From<HistoryEventRow> for HistoryEvent {
+    fn from(row: HistoryEventRow) -> Self {
+        let event_type = match row.event_type.as_str() {
+            "IAInteraction" => HistoryEventType::IAInteraction,
+            "Feedback" => HistoryEventType::Feedback,
+            "ServiceCreation" => HistoryEventType::ServiceCreation,
+            "ServiceUpdate" => HistoryEventType::ServiceUpdate,
+            "Error" => HistoryEventType::Error,
+            "SecurityEvent" => HistoryEventType::SecurityEvent,
+            _ => HistoryEventType::UserAction,
+        };
+        HistoryEvent {
+            event_type,
+            user_id: row.user_id,
+            service_id: row.service_id,
+            interaction_id: row.interaction_id,
+            timestamp: Some(row.timestamp),
+            data: row.data,
+            metadata: row.metadata,
+        }
+    }
+}
+
+#[derive(sqlx::FromRow)]
+struct FeedbackStatRow {
+    model: Option<String>,
+    total_feedback: i64,
+    avg_rating: Option<f64>,
+    positive_feedback: i64,
+    negative_feedback: i64,
+}
+
+#[derive(sqlx::FromRow)]
+struct GlobalConsultationStatRow {
+    total_consultations: i64,
+    unique_users: i64,
+    unique_services: i64,
+    total_debits: f64,
 }
 
 fn sanitize_metadata_value(value: &mut Value, max_len: usize) {

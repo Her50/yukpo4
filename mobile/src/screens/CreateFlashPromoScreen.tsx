@@ -238,7 +238,7 @@ const CreateFlashPromoScreen: React.FC = () => {
       navigation.goBack();
     } else {
       const failedCount = responses.filter(r => !r.success).length;
-      toaster.error(`${failedCount} promotion${failedCount > 1 ? 's' : ''} n'a${failedCount > 1 ? 'ont' : ''} pas pu être créée${failedCount > 1 ? 's' : ''}`);
+      toaster.error(t('createFlashPromoScreen.promotionNaPasPuEtreCreee', { failedCount: failedCount, failedCount___1____s_____: failedCount > 1 ? 's' : '', failedCount___1____ont___: failedCount > 1 ? 'ont' : '', failedCount___1____s_____: failedCount > 1 ? 's' : '' }));
     }
   } catch (error: any) {
     console.error('[CreateFlashPromo] Erreur:', error);

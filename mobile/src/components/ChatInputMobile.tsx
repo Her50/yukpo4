@@ -328,7 +328,7 @@ const [text, setText] = useState('');
     const requestPermissions = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission requise', 'Nous avons besoin de la permission pour accéder à vos photos');
+            Alert.alert('Permission requise', t('chatInputMobile.nousAvonsBesoinDeLaPermission'));
             return false;
         }
         return true;
@@ -338,7 +338,7 @@ const [text, setText] = useState('');
     const takePhoto = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission requise', 'Nous avons besoin de la permission pour utiliser la caméra');
+            Alert.alert('Permission requise', t('chatInputMobile.nousAvonsBesoinDeLaPermission'));
             return;
         }
 
@@ -428,7 +428,7 @@ const [text, setText] = useState('');
                 }
             } catch (error) {
                 console.error('Erreur upload images:', error);
-                Alert.alert('Erreur', 'Échec de l\'upload des images');
+                Alert.alert('Erreur', t('chatInputMobile.echecDeL')upload des images');
             } finally {
                 setIsUploading(false);
                 setUploadProgress('');
@@ -697,7 +697,7 @@ const [text, setText] = useState('');
                     }
                 } catch (fsError) {
                     console.error('[ChatInput] ❌ Erreur conversion audio en base64:', fsError);
-                    Alert.alert('Erreur', 'Impossible de traiter l\'audio enregistré.');
+                    Alert.alert('Erreur', 'Impossible de traiter l\t('chatInputMobile.audioEnregistre'));
                     setAudioBase64(null);
                 }
                 console.log('✅ Audio enregistré avec succès:', uri);
@@ -711,7 +711,7 @@ const [text, setText] = useState('');
             setRecording(null);
         } catch (error) {
             console.error('[ChatInput] ❌ Erreur arrêt enregistrement:', error);
-            Alert.alert('Erreur', 'Erreur lors de l\'arrêt de l\'enregistrement');
+            Alert.alert('Erreur', 'Erreur lors de l\t('chatInputMobile.arretDeL')enregistrement');
             setRecording(null);
             setIsRecording(false);
         }
@@ -830,7 +830,7 @@ const [text, setText] = useState('');
 
             if (!hasContent) {
                 console.warn('[ChatInputMobile] ⚠️ Pas de contenu, abandon de la soumission');
-                Alert.alert('Erreur', 'Veuillez saisir du texte ou ajouter des médias');
+                Alert.alert('Erreur', t('chatInputMobile.veuillezSaisirDuTexteOuAjouter'));
                 return;
             }
 
@@ -883,7 +883,7 @@ const [text, setText] = useState('');
 
             if (!vector || vector.length === 0) {
                 console.error('[ChatInputMobile] ❌ ERREUR: Vecteur vide ou invalide pour la suggestion:', suggestion);
-                Alert.alert('Erreur', 'Cette suggestion ne contient pas de données valides. Veuillez en sélectionner une autre.');
+                Alert.alert('Erreur', t('chatInputMobile.cetteSuggestionNeContientPasDe'));
                 return;
             }
 
@@ -909,7 +909,7 @@ const [text, setText] = useState('');
                 stack: error?.stack,
                 suggestion: suggestion
             });
-            Alert.alert('Erreur', `Une erreur est survenue lors de la sélection de la suggestion: ${error?.message || 'Erreur inconnue'}`);
+            Alert.alert('Erreur', t('chatInputMobile.uneErreurEstSurvenueLorsDe', { error__message_____E: error?.message || 'Erreur inconnue' }));
         }
     };
 
@@ -1106,8 +1106,8 @@ const [text, setText] = useState('');
                         autoFocus={false} // ✅ CORRIGÉ: Ne pas auto-focus pour éviter les problèmes de clavier
                         keyboardType="default"
                         returnKeyType="default"
-                        accessibilityLabel={isCreateService ? "Zone de saisie pour créer un service" : "Zone de saisie pour rechercher un service"}
-                        accessibilityHint={isCreateService ? "Tapez votre description ou ajoutez des médias pour créer un service" : "Tapez votre recherche ou ajoutez des médias pour trouver un service"}
+                        accessibilityLabel={isCreateService ? t('chatInputMobile.zoneDeSaisiePourCreerUn') : "Zone de saisie pour rechercher un service"}
+                        accessibilityHint={isCreateService ? t('chatInputMobile.tapezVotreDescriptionOuAjoutezDes') : t('chatInputMobile.tapezVotreRechercheOuAjoutezDes')}
                     />
                     {/* ✅ NOUVEAU: Bouton d'envoi compact à droite pour mode recherche */}
                     {isSearchMode && showSendButton && (
@@ -1135,7 +1135,7 @@ const [text, setText] = useState('');
                             style={[styles.actionButton, audioUri && styles.actionButtonActive]}
                             onPress={toggleRecording}
                             disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer avec loading
-                            accessibilityLabel="Enregistrer un message audio"
+                            accessibilityLabel={t('chatInputMobile.enregistrerUnMessageAudio')}
                             accessibilityRole="button"
                             accessibilityHint="Appuyez pour commencer l'enregistrement audio"
                         >
@@ -1165,9 +1165,9 @@ const [text, setText] = useState('');
                     <TouchableOpacity
                         style={[styles.actionButton, gpsData && styles.actionButtonActive]}
                         onPress={() => setShowGPSModal(true)}
-                        accessibilityLabel={gpsData ? "Localisation GPS sélectionnée" : "Sélectionner une localisation GPS"}
+                        accessibilityLabel={gpsData ? "Localisation GPS sélectionnée" : t('chatInputMobile.selectionnerUneLocalisationGps')}
                         accessibilityRole="button"
-                        accessibilityHint="Appuyez pour ouvrir la carte et sélectionner une localisation"
+                        accessibilityHint=t('chatInputMobile.appuyezPourOuvrirLaCarteEt')
                     >
                         <Text style={[styles.gpsIcon, gpsData && styles.gpsIconActive]}>
                             {gpsString.includes('|') ? '🎯' : '📍'}
@@ -1197,7 +1197,7 @@ const [text, setText] = useState('');
                         disabled={loading}
                         accessibilityLabel={t('chatInputMobile.selectionnerUneImage')}
                         accessibilityRole="button"
-                        accessibilityHint="Ouvre la galerie pour sélectionner une image"
+                        accessibilityHint=t('chatInputMobile.ouvreLaGaleriePourSelectionnerUne')
                     >
                         <Text style={styles.actionIcon}>🖼️</Text>
                         <Text style={styles.actionButtonText}>Image</Text>
@@ -1210,7 +1210,7 @@ const [text, setText] = useState('');
                         disabled={loading}
                         accessibilityLabel={t('chatInputMobile.selectionnerUnFichier')}
                         accessibilityRole="button"
-                        accessibilityHint="Ouvre le sélecteur de fichiers pour choisir un document"
+                        accessibilityHint=t('chatInputMobile.ouvreLeSelecteurDeFichiersPour')
                     >
                         <Text style={styles.actionIcon}>📄</Text>
                         <Text style={styles.actionButtonText}>Fichier</Text>
@@ -1234,7 +1234,7 @@ const [text, setText] = useState('');
                         </Text>
                         <TouchableOpacity
                             onPress={() => setShowSuggestions(false)}
-                            accessibilityLabel="Fermer les suggestions"
+                            accessibilityLabel={t('chatInputMobile.fermerLesSuggestions')}
                             accessibilityRole="button"
                         >
                             <Text style={styles.closeSuggestions}>✕</Text>
@@ -1266,7 +1266,7 @@ const [text, setText] = useState('');
                                         style={dynamicStyles.suggestionItem}
                                         accessibilityLabel={`Suggestion ${index + 1}: ${fullText.substring(0, 50)}`}
                                         accessibilityRole="button"
-                                        accessibilityHint="Appuyez deux fois pour sélectionner cette suggestion"
+                                        accessibilityHint=t('chatInputMobile.appuyezDeuxFoisPourSelectionnerCette')
                                     >
                                         <View style={styles.suggestionHeaderRow}>
                                             <Text style={styles.suggestionTitle}>Proposition {index + 1}</Text>
@@ -1329,7 +1329,7 @@ const [text, setText] = useState('');
                         style={[styles.submitButtonBottom, loading && styles.sendButtonDisabled]}
                         onPress={() => handleSubmit()}
                         disabled={loading} // ✅ CORRIGÉ 2026-01-22: Désactiver pendant le chargement
-                        accessibilityLabel={loading ? "Envoi en cours" : (isCreateService ? "Créer un service" : "Rechercher")}
+                        accessibilityLabel={loading ? "Envoi en cours" : (isCreateService ? t('chatInputMobile.creerUnService') : "Rechercher")}
                         accessibilityRole="button"
                         accessibilityState={{ disabled: loading || (!text.trim() && images.length === 0 && videos.length === 0 && audioUri === null && documents.length === 0 && excelFiles.length === 0) }}
                     >

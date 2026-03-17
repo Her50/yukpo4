@@ -42,12 +42,12 @@ const TYPES_ETABLISSEMENT = [
 ];
 
 const PRESTATIONS_OPTIONS = [
-    'Urgences', t('hopitalFormScreen.consultationGenerale'), 'Chirurgie générale', 'Chirurgie cardiaque',
-    t('hopitalFormScreen.chirurgieOrthopedique'), 'Maternité', 'Pédiatrie', 'Cardiologie', 'Radiologie',
-    t('hopitalFormScreen.imagerieMedicale'), 'Urologie', 'Cancérologie', 'Oncologie', 'Dentisterie',
+    'Urgences', t('hopitalFormScreen.consultationGenerale'), t('hopitalFormScreen.chirurgieGenerale'), 'Chirurgie cardiaque',
+    t('hopitalFormScreen.chirurgieOrthopedique'), t('hopitalFormScreen.maternite'), t('hopitalFormScreen.pediatrie'), 'Cardiologie', 'Radiologie',
+    t('hopitalFormScreen.imagerieMedicale'), 'Urologie', t('hopitalFormScreen.cancerologie'), 'Oncologie', 'Dentisterie',
     'Ophtalmologie', 'ORL', 'Dermatologie', 'Neurologie', 'Psychiatrie', t('hopitalFormScreen.gynecologie'),
-    'Médecine interne', t('hopitalFormScreen.anesthesie'), 'Réanimation', 'Laboratoire d\'analyses',
-    'Pharmacie', t('hopitalFormScreen.kinesitherapie'), 'Physiothérapie',
+    t('hopitalFormScreen.medecineInterne'), t('hopitalFormScreen.anesthesie'), t('hopitalFormScreen.reanimation'), 'Laboratoire d\'analyses',
+    'Pharmacie', t('hopitalFormScreen.kinesitherapie'), t('hopitalFormScreen.physiotherapie'),
 ];
 
 interface HospitalAnalytics {
@@ -60,7 +60,7 @@ interface HospitalAnalytics {
 const HopitalFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const { location } = useLocation();
     const { t } = useLanguageSafe();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
@@ -211,7 +211,7 @@ const HopitalFormScreen: React.FC = () => {
             try {
                 const resp = await servicesApi.createService({ titre_service: formData.nom, description: formData.type_etablissement, category: 'sante' });
                 if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) { finalServiceId = (resp.data as any).id; setServiceId(finalServiceId); }
-            } catch (e) { Alert.alert('Erreur', 'Impossible de créer le service'); setLoading(false); return; }
+            } catch (e) { Alert.alert('Erreur', t('hopitalFormScreen.impossibleDeCreerLeService')); setLoading(false); return; }
         }
         if (!finalServiceId) { Alert.alert('Erreur', 'Service ID manquant'); setLoading(false); return; }
         try {
@@ -229,7 +229,7 @@ const HopitalFormScreen: React.FC = () => {
             const resp = await apiPost('/api/hopitaux', payload);
             if (resp.success) {
                 await clearSavedFormData(STORAGE_KEY);
-                Alert.alert('Succès', 'Établissement enregistré !', [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); handleRefresh(); } }]);
+                Alert.alert(t('hopitalFormScreen.succes'), t('hopitalFormScreen.etablissementEnregistre'), [{ text: 'OK', onPress: () => { setIsDashboardMode(true); setActiveTab('overview'); handleRefresh(); } }]);
             } else { Alert.alert('Erreur', (resp as any).error || 'Impossible d\'enregistrer'); }
         } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur'); } finally { setLoading(false); }
     };
@@ -264,6 +264,7 @@ const HopitalFormScreen: React.FC = () => {
                     { label: 'IA Triage', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('HospitalAIRecommendations', { serviceId }) },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('HospitalAnalytics', { serviceId }) },
                     { label: t('hopitalForm.monService'), icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
+                    { label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon as any} size={22} color={a.color} /></View>
@@ -336,7 +337,7 @@ const HopitalFormScreen: React.FC = () => {
             <View style={s.field}>
                 <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
                     <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                    <Text style={s.gpsBtnText}>{selectedGPS ? t('hopitalFormScreen.gpsSelectionne') : 'Sélectionner sur la carte'}</Text>
+                    <Text style={s.gpsBtnText}>{selectedGPS ? t('hopitalFormScreen.gpsSelectionne') : t('hopitalFormScreen.selectionnerSurLaCarte')}</Text>
                     <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                 </TouchableOpacity>
             </View>

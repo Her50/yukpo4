@@ -1,6 +1,5 @@
 /**
- * Gestionnaire d'appels entrants
- * Écoute les notifications d'appel WebSocket et affiche le modal WebRTC
+ * Gestionnaire dt('incomingCallManager.appelsEntrantsEcouteLesNotificationsD')appel WebSocket et affiche le modal WebRTC
  */
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';

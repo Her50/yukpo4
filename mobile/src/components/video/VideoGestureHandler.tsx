@@ -14,6 +14,7 @@ import Animated, {
     withSpring,
 } from 'react-native-reanimated';
 import { triggerHaptic } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 50; // Minimum distance pour déclencher swipe
@@ -48,6 +49,7 @@ export const VideoGestureHandler: React.FC<VideoGestureHandlerProps> = ({
     // Handler pour swipe vertical (navigation vidéos)
     const panGestureHandler = useAnimatedGestureHandler({
         onStart: (_, ctx: any) => {
+    const { t } = useLanguageSafe();
             ctx.startY = translateY.value;
             ctx.startX = translateX.value;
         },

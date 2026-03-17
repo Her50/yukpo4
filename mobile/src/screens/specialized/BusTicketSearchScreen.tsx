@@ -79,7 +79,7 @@ const BusTicketSearchScreen: React.FC = () => {
 
     const handleSearch = async () => {
         if (!departureCity.trim() || !arrivalCity.trim()) {
-            Alert.alert('Erreur', 'Veuillez renseigner la ville de départ et d\'arrivée');
+            Alert.alert('Erreur', t('busTicketSearchScreen.veuillezRenseignerLaVilleDeDepartt('busTicketSearchScreen.arrivee'));
             return;
         }
 
@@ -137,7 +137,7 @@ const BusTicketSearchScreen: React.FC = () => {
 
                 setResults(sortedResults);
                 if (sortedResults.length === 0) {
-                    Alert.alert('Aucun résultat', 'Aucun trajet trouvé pour cette recherche');
+                    Alert.alert(t('busTicketSearchScreen.aucunResultat'), t('busTicketSearchScreen.aucunTrajetTrouvePourCetteRecherche'));
                 }
             } else {
                 Alert.alert('Erreur', 'Impossible de rechercher les tickets');
@@ -536,9 +536,7 @@ const BusTicketSearchScreen: React.FC = () => {
                             <Text style={styles.infoTitle}>{t('busTicketSearch.bonASavoir')}</Text>
                         </View>
                         <Text style={styles.infoText}>
-                            • Réservez vos tickets à l'avance pour garantir votre place{'\n'}
-                            • Les prix peuvent varier selon la période et la disponibilité{'\n'}
-                            • Vérifiez les horaires de départ avant de réserver{'\n'}
+                            • Réservez vos tickets à l'avance pour garantir votre place{'\nt('busTicketSearchScreen.lesPrixPeuventVarierSelonLa')\nt('busTicketSearchScreen.verifiezLesHorairesDeDepartAvant')\n'}
                             • L'option aller-retour permet d'économiser sur les trajets réguliers
                         </Text>
                     </View>

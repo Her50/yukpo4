@@ -125,7 +125,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                 handleUpdateVariant(variantId, 'image', imageUri);
             }
         } catch (error) {
-            Alert.alert('Erreur', 'Impossible de sélectionner une image');
+            Alert.alert('Erreur', t('productVariantManager.impossibleDeSelectionnerUneImage'));
         }
     };
 

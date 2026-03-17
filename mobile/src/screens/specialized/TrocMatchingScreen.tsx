@@ -179,7 +179,7 @@ const TrocMatchingScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <Text style={styles.title}>
-                    {totalMatches} matching{totalMatches > 1 ? 's' : ''} trouvé{totalMatches > 1 ? 's' : ''}
+                    {t('trocMatching.matchingsFound', { count: totalMatches })}
                 </Text>
             </View>
 
@@ -189,7 +189,7 @@ const TrocMatchingScreen: React.FC = () => {
                         <SafeIcon name="search-x" size={64} color={modernColors.textSecondary} />
                         <Text style={styles.emptyText}>{t('trocMatching.aucunMatchingTrouve')}</Text>
                         <Text style={styles.emptySubtext}>
-                            Aucun livre ne correspond à vos critères pour le moment.
+                            {t('trocMatching.noMatchingDescription')}
                         </Text>
                     </View>
                 ) : (
@@ -198,7 +198,7 @@ const TrocMatchingScreen: React.FC = () => {
                         {directMatches.length > 0 && (
                             <View style={styles.section}>
                                 <Text style={styles.sectionTitle}>
-                                    🔄 Troc Direct ({directMatches.length})
+                                    {t('trocMatching.trocDirect', { count: directMatches.length })}
                                 </Text>
                                 {directMatches.map((match, index) => (
                                     <NativeCard key={index} style={styles.matchCard}>
@@ -225,7 +225,7 @@ const TrocMatchingScreen: React.FC = () => {
                                                 </Text>
                                             )}
                                             <Text style={styles.metaText}>
-                                                👤 {match.livre_souhaite?.user_id ? 'Utilisateur' : 'Participant'}
+                                                {match.livre_souhaite?.user_id ? t('trocMatching.user') : t('trocMatching.participant')}
                                             </Text>
                                         </View>
                                         <NativeButton
@@ -244,17 +244,17 @@ const TrocMatchingScreen: React.FC = () => {
                         {chainMatches.length > 0 && (
                             <View style={styles.section}>
                                 <Text style={styles.sectionTitle}>
-                                    🔗 Chaînes de Troc ({chainMatches.length})
+                                    {t('trocMatching.chainTroc', { count: chainMatches.length })}
                                 </Text>
                                 {chainMatches.map((chaine, index) => (
                                     <NativeCard key={index} style={styles.matchCard}>
                                         <View style={styles.matchHeader}>
                                             <View style={styles.matchInfo}>
                                                 <Text style={styles.matchTitle}>
-                                                    Chaîne de {chaine.nombre_participants} personnes
+                                                    {t('trocMatching.chainOf', { count: chaine.nombre_participants })}
                                                 </Text>
                                                 <Text style={styles.matchSubtitle}>
-                                                    Distance totale: {chaine.distance_totale_km.toFixed(1)} km
+                                                    {t('trocMatching.totalDistance', { distance: chaine.distance_totale_km.toFixed(1) })}
                                                 </Text>
                                             </View>
                                             <View style={styles.scoreContainer}>
@@ -274,7 +274,7 @@ const TrocMatchingScreen: React.FC = () => {
                                             ))}
                                             {chaine.nombre_participants > 3 && (
                                                 <Text style={styles.chainMore}>
-                                                    +{chaine.nombre_participants - 3} autres
+                                                    {t('trocMatching.moreParticipants', { count: chaine.nombre_participants - 3 })}
                                                 </Text>
                                             )}
                                         </View>

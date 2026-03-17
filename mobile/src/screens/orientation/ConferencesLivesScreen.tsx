@@ -94,7 +94,7 @@ const ConferencesLivesScreen: React.FC = () => {
 
     const handleJoinConference = async (conferenceId: number) => {
         if (!user) {
-            Alert.alert('Connexion requise', 'Vous devez être connecté pour rejoindre une conférence');
+            Alert.alert('Connexion requise', t('conferencesLivesScreen.vousDevezEtreConnectePourRejoindre'));
             return;
         }
 
@@ -111,7 +111,7 @@ const ConferencesLivesScreen: React.FC = () => {
             }
         } catch (error) {
             console.error('[ConferencesLives] Erreur join:', error);
-            Alert.alert('Erreur', 'Impossible de rejoindre la conférence');
+            Alert.alert('Erreur', t('conferencesLivesScreen.impossibleDeRejoindreLaConference'));
         }
     };
 
@@ -146,7 +146,7 @@ const ConferencesLivesScreen: React.FC = () => {
                     )}
                 </View>
                 <Text style={styles.cardSubtitle}>
-                    📍 {item.nom_etablissement || `Établissement #${item.etablissement_id}`}
+                    📍 {item.nom_etablissement || t('conferencesLivesScreen.etablissement', { item_etablissement_id: item.etablissement_id })}
                 </Text>
                 <Text style={styles.cardSubtitle}>
                     📅 {new Date(item.date_debut).toLocaleString('fr-FR')}
@@ -195,7 +195,7 @@ const ConferencesLivesScreen: React.FC = () => {
             ) : conferences.length > 0 ? (
                 <>
                     <Text style={styles.resultsCount}>
-                        {total} conférence{total > 1 ? 's' : ''} trouvée{total > 1 ? 's' : ''}
+                        {total} conférence{total > 1 ? 's' : 't('conferencesLivesScreen.trouveetotal1')s' : ''}
                     </Text>
                     <FlatList
                         data={conferences}

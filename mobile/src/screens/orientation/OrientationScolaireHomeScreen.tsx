@@ -278,7 +278,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                 if (q.includes('concours') || q.includes('admission')) {
                     return t('orientationScolaireHomeScreen.lesPrincipauxConcoursAuCamerounEnam');
                 }
-                if (q.includes(t('orientationScolaireHomeScreen.universite')) || q.includes('faculté')) {
+                if (q.includes(t('orientationScolaireHomeScreen.universite')) || q.includes(t('orientationScolaireHomeScreen.faculte'))) {
                     return t('orientationScolaireHomeScreen.leCamerounCompte8UniversitesD')\u00c9tat (Yaoundé I & II, Douala, Dschang, Buea, Bamenda, Maroua, Ngaoundéré) et de nombreuses universités privées. Choisissez en fonction de la filière souhaitée.';
                 }
                 return t('orientationScolaireHomeScreen.pourDesConseilsPersonnalisesEnOrientationScolaire');
@@ -363,7 +363,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                             <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder={`Rechercher ${activeTab === 'etablissements' ? t('orientationScolaireHomeScreen.unEtablissement') : activeTab === 'programmes' ? 'un programme' : activeTab === 'concours' ? 'un concours' : activeTab === 'conferences' ? 'une conférence' : 'des fournitures'}...`}
+                                placeholder={`Rechercher ${activeTab === 'etablissements' ? t('orientationScolaireHomeScreen.unEtablissement') : activeTab === 'programmes' ? 'un programme' : activeTab === 'concours' ? 'un concours' : activeTab === 'conferences' ? t('orientationScolaireHomeScreen.uneConference') : 'des fournitures'}...`}
                                 placeholderTextColor="#9CA3AF"
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}

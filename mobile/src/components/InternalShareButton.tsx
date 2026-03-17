@@ -77,7 +77,7 @@ const [showPicker, setShowPicker] = useState(false);
       });
 
       if (response.success) {
-        Alert.alert('Envoyé !', `${payload.title} partagé avec ${user.nom_complet || 'l\'utilisateur'}`);
+        Alert.alert(t('internalShareButton.envoye'), t('internalShareButton.partageAvec', { payload_title: payload.title, user_nom_complet____: user.nom_complet || 'l\'utilisateur' }));
         onShareSuccess?.();
       } else {
         Alert.alert('Erreur', (response as any).error || t('internalShareButton.echecDuPartage'));

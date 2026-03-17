@@ -4,6 +4,7 @@ import React, { Component, useEffect, useState } from 'react';
 import BloodDonationAlertManager from './BloodDonationAlertManager';
 import GPSTrackingManager from './GPSTrackingManager';
 import PushNotificationManager from './PushNotificationManager';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // ✅ ErrorBoundary spécifique pour les Managers
 class ManagerErrorBoundary extends Component<
@@ -36,11 +37,11 @@ class ManagerErrorBoundary extends Component<
 
 /**
  * Charge les managers lourds de manière différée :
- * - Attend 2 secondes après le montage de l'écran principal
- * - Ou se charge quand l'utilisateur interagit avec une feature qui en a besoin
+ * - Attend 2 secondes après le montage de lt('lazyManagers.ecranPrincipalOuSeChargeQuand')utilisateur interagit avec une feature qui en a besoin
  */
 const LazyManagers: React.FC = () => {
-  const [loadManagers, setLoadManagers] = useState(false);
+      const { t } = useLanguageSafe();
+const [loadManagers, setLoadManagers] = useState(false);
 
   useEffect(() => {
     // Charger après 5 secondes (l'utilisateur a bien vu l'écran et interagi)

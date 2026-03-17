@@ -64,12 +64,12 @@ const [selectedType, setSelectedType] = useState<string | null>(null);
 
     const handleSubmit = async () => {
         if (!selectedType) {
-            Alert.alert('Erreur', 'Veuillez sélectionner un type de signalement');
+            Alert.alert('Erreur', t('signalementModal.veuillezSelectionnerUnTypeDeSignalement'));
             return;
         }
 
         if (selectedMotifs.length === 0 && !motifLibre.trim()) {
-            Alert.alert('Erreur', 'Veuillez préciser au moins un motif de signalement');
+            Alert.alert('Erreur', t('signalementModal.veuillezPreciserAuMoinsUnMotif'));
             return;
         }
 

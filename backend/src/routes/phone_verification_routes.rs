@@ -478,5 +478,21 @@ pub fn phone_verification_routes(state: Arc<AppState>) -> Router<Arc<AppState>> 
             "/api/phone/verify-otp",
             post(verify_otp_authenticated).layer(middleware::from_fn(jwt_auth)),
         )
+        // ✅ NOUVEAUX: Endpoints pour statut téléphone et partage intelligent
+        .route(
+            "/api/users/:user_id/phone-status",
+            axum::routing::get(crate::controllers::phone_verification_controller::get_phone_status)
+                .layer(middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/users/request-phone-verification",
+            axum::routing::post(crate::controllers::phone_verification_controller::request_phone_verification)
+                .layer(middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/users/verify-phone-code",
+            axum::routing::post(crate::controllers::phone_verification_controller::verify_phone_code)
+                .layer(middleware::from_fn(jwt_auth)),
+        )
         .with_state(state)
 }

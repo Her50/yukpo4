@@ -12,7 +12,7 @@ interface SimpleErrorScreenProps {
 }
 
 const SimpleErrorScreen: React.FC<SimpleErrorScreenProps> = ({
-  message = "Cette fonctionnalité n'est pas encore disponible",
+  message = t('simpleErrorScreen.cetteFonctionnaliteNestPasEncoreDisponible'),
   onRetry
 }) => {
   const navigation = useNavigation();

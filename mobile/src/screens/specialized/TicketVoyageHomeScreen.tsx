@@ -18,12 +18,12 @@ import {
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { BusTicketSearchFilters, BusTicketSearchResult, busTicketService } from '../../services/busTicketService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'time_asc' | 'time_desc' | 'date_asc';
 
@@ -230,7 +230,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
     const handleBookTicket = (ticket: BusTicketSearchResult) => {
         hapticPress();
         if (ticket.available_seats <= 0) {
-            Alert.alert('Complet', 'Ce bus est complet. Veuillez choisir un autre départ.');
+            Alert.alert('Complet', t('ticketVoyageHomeScreen.ceBusEstCompletVeuillezChoisir'));
             return;
         }
         (navigation as any).navigate('BusTicketBooking', {
@@ -449,7 +449,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                         }, 150);
                                     }
                                 }}
-                                placeholder={t('ticketVoyageHome.villeD')}arrivée..."
+                                placeholder={t('ticketVoyageHome.villeDarrivee')}
                                 scope="all"
                                 enrichWithBackend={true}
                             />
@@ -494,7 +494,7 @@ const TicketVoyageHomeScreen: React.FC = () => {
                                 <>
                                     <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
                                     <Text style={styles.searchButtonText}>
-                                        {canSearch() ? "Rechercher" : "Remplir départ/arrivée"}
+                                        {canSearch() ? "Rechercher" : t('ticketVoyageHomeScreen.remplirDepartarrivee')}
                                     </Text>
                                 </>
                             )}
@@ -655,6 +655,7 @@ interface TicketCardProps {
 }
 
 const TicketCard: React.FC<TicketCardProps> = ({ ticket, onPress, onBook, formatPrice, formatDate }) => {
+    const { t } = useLanguageSafe();
     const availabilityPercent = ticket.total_seats
         ? (ticket.available_seats / ticket.total_seats) * 100
         : 0;
@@ -778,6 +779,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
     onSearch,
     detectedCurrency = 'XAF', // ✅ Valeur par défaut pour éviter les erreurs
 }) => {
+    const { t } = useLanguageSafe();
     const applyFilters = () => {
         const newFilters: BusTicketSearchFilters = {
             ...filters,
@@ -845,7 +847,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
                         <View style={styles.filterSection}>
                             <Text style={styles.filterSectionTitle}>{t('ticketVoyageHome.lieuDarrivee')}</Text>
                             <LocationSelector
-                                label={t('ticketVoyageHomeScreen.lieuD')}arrivée"
+                                label={t('ticketVoyageHome.lieuDarrivee')}
                                 value={typeof arrivalCity === 'string' ? (arrivalCity ? { raw: arrivalCity, place_name: arrivalCity } : '') : arrivalCity}
                                 onSelect={(location: LocationObject) => setArrivalCity(location)}
                                 placeholder={t('ticketVoyageHome.rechercherUnLieuVilleQuartier')}

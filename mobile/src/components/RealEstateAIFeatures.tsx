@@ -162,7 +162,7 @@ const [activeTab, setActiveTab] = useState<'recommendations' | 'estimate' | 'com
     const compareProperties = async () => {
         const ids = propertyIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
         if (ids.length < 2) {
-            Alert.alert('Erreur', 'Veuillez entrer au moins 2 IDs de biens séparés par des virgules');
+            Alert.alert('Erreur', t('realEstateAIFeatures.veuillezEntrerAuMoins2Ids'));
             return;
         }
 
@@ -188,7 +188,7 @@ const [activeTab, setActiveTab] = useState<'recommendations' | 'estimate' | 'com
     // Créer alerte
     const createAlert = async () => {
         if (!alertCriteria.trim() || !alertPriceMax.trim()) {
-            Alert.alert('Erreur', 'Veuillez renseigner les critères et le prix maximum');
+            Alert.alert('Erreur', t('realEstateAIFeatures.veuillezRenseignerLesCriteresEtLe'));
             return;
         }
 
@@ -200,10 +200,10 @@ const [activeTab, setActiveTab] = useState<'recommendations' | 'estimate' | 'com
             });
 
             if (response?.success) {
-                Alert.alert('Succès', 'Alerte créée avec succès');
+                Alert.alert(t('realEstateAIFeatures.succes'), t('realEstateAIFeatures.alerteCreeeAvecSucces'));
                 loadAlerts();
             } else {
-                Alert.alert('Erreur', response?.message || 'Impossible de créer l\'alerte');
+                Alert.alert('Erreur', response?.message || t('realEstateAIFeatures.impossibleDeCreerL')alerte');
             }
         } catch (error: any) {
             console.error('[RealEstateAIFeatures] Erreur création alerte:', error);

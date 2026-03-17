@@ -34,3 +34,6 @@ pub mod token_pack;
 pub mod troc_livre; // ✅ NOUVEAU 2025-01-28: Troc de livres scolaires
 pub mod user_model;
 pub mod webrtc_model; // ✅ NOUVEAU Phase 3.2: Modèle pour preview AR/VR
+pub mod librairie_network; // Modèles avancés réseau librairies
+pub mod librairie_network_model; // ✅ NOUVEAU 2026-03-16: Modèles réseau de librairies
+pub mod paiement_agrege_model; // ✅ NOUVEAU 2026-03-16: Modèles paiements agrégés

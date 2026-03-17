@@ -1,6 +1,7 @@
 import React from 'react';
 import EnhancedModalitySelector from './EnhancedModalitySelector';
 import MultiSelectModalitySelector from './MultiSelectModalitySelector';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ProductFieldSelectorProps {
     label: string;
@@ -50,6 +51,7 @@ const ProductFieldSelector: React.FC<ProductFieldSelectorProps> = ({
 
     // ✅ Détection automatique si le champ doit être multi-select
     const shouldBeMultiSelect = () => {
+    const { t } = useLanguageSafe();
         // Si explicitement défini, respecter la valeur
         if (multiSelect) return true;
 
@@ -91,7 +93,7 @@ const ProductFieldSelector: React.FC<ProductFieldSelectorProps> = ({
                     onSelect(values);
                 }}
                 required={required}
-                placeholder={placeholder || `Sélectionner ${label.toLowerCase()}...`}
+                placeholder={placeholder || t('productFieldSelector.selectionner', { label_toLowerCase__: label.toLowerCase() })}
                 maxSelections={maxSelections}
                 customOptions={customOptions} // ✅ NOUVEAU
             />
@@ -109,7 +111,7 @@ const ProductFieldSelector: React.FC<ProductFieldSelectorProps> = ({
                 onSelect(val);
             }}
             required={required}
-            placeholder={placeholder || `Sélectionner ${label.toLowerCase()}...`}
+            placeholder={placeholder || t('productFieldSelector.selectionner', { label_toLowerCase__: label.toLowerCase() })}
             customOptions={customOptions} // ✅ NOUVEAU
         />
     );

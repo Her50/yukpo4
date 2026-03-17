@@ -99,7 +99,7 @@ const ProductDetailScreen: React.FC = () => {
             // Charger le service
             const serviceResponse = await apiGet(`/api/services/${finalServiceId}`);
             if (!serviceResponse.success || !serviceResponse.data) {
-                throw new Error('Service non trouvé');
+                throw new Error(t('productDetailScreen.serviceNonTrouve'));
             }
             const loadedService = serviceResponse.data;
             setService(loadedService);
@@ -136,7 +136,7 @@ const ProductDetailScreen: React.FC = () => {
             }
 
             if (!foundProduct) {
-                throw new Error('Produit non trouvé dans ce service');
+                throw new Error(t('productDetailScreen.produitNonTrouveDansCeService'));
             }
 
             // ✅ CORRIGÉ 2026-02-10: Enrichir le produit avec le service parent
@@ -311,7 +311,7 @@ const ProductDetailScreen: React.FC = () => {
                                 }
                             } catch (error) {
                                 console.error('[ProductDetailScreen] ❌ Erreur navigation vers VideoCreationIntro:', error);
-                                Alert.alert('Erreur', 'Impossible d\'ouvrir la création de vidéo.');
+                                Alert.alert('Erreur', 'Impossible d\t('productDetailScreen.ouvrirLaCreationDeVideo'));
                             }
                         }}
                         variant="primary"

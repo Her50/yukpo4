@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -61,7 +62,7 @@ const EMPLOYER_PARTNER_TYPES = ['offre_emploi', 'offreemploi', 'recruteur', 'emp
 const OffresEmploiHubScreen: React.FC = () => {
     const navigation = useNavigation();
     const { t } = useLanguageSafe();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -215,6 +216,16 @@ const OffresEmploiHubScreen: React.FC = () => {
                                 <Text style={s.actionLabel} numberOfLines={1}>{action.label}</Text>
                             </TouchableOpacity>
                         ))}
+                        <TouchableOpacity
+                            style={s.actionItem}
+                            onPress={() => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); }}
+                            activeOpacity={0.7}
+                        >
+                            <View style={[s.actionIcon, { backgroundColor: '#DC262615' }]}>
+                                <SafeIcon name="log-out" size={22} color="#DC2626" type="lucide" />
+                            </View>
+                            <Text style={s.actionLabel} numberOfLines={1}>{t('common.sortir')}</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
 

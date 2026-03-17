@@ -63,7 +63,7 @@ const UserRoleManagementScreen: React.FC = () => {
     useEffect(() => {
         // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
         if (!user || !isAdminUser(user)) {
-            Alert.alert('Accès refusé', t('userRoleManagement.cettePageEstReserveeAux'), [
+            Alert.alert(t('userRoleManagementScreen.accesRefuse'), t('userRoleManagement.cettePageEstReserveeAux'), [
                 { text: 'OK', onPress: () => navigation.goBack() },
             ]);
             return;
@@ -114,7 +114,7 @@ const UserRoleManagementScreen: React.FC = () => {
             });
 
             if (response.success !== false) {
-                Alert.alert('✅ Succès', `Rôle mis à jour avec succès : ${newRole}`, [
+                Alert.alert(t('userRoleManagementScreen.succes'), t('userRoleManagementScreen.roleMisAJourAvecSucces', { newRole: newRole }), [
                     {
                         text: 'OK',
                         onPress: () => {
@@ -130,7 +130,7 @@ const UserRoleManagementScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[UserRoleManagementScreen] Erreur mise à jour rôle:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de mettre à jour le rôle');
+            Alert.alert('Erreur', error.message || t('userRoleManagementScreen.impossibleDeMettreAJourLe'));
         } finally {
             setUpdating(false);
         }

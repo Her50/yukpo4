@@ -1,6 +1,6 @@
 // ✅ Phase 1.1: Écran de réservation dédié avec paiement intégré
-import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -76,6 +76,14 @@ const CovoiturageBookingScreen: React.FC = () => {
         refreshBalance();
     }, []);
 
+    useFocusEffect(
+        useCallback(() => {
+            refreshBalance();
+        }, [])
+    );
+
+    const COMMISSION_RATE = 0.10;
+
     const loadCovoiturageDetails = async () => {
         try {
             setLoading(true);
@@ -96,9 +104,17 @@ const CovoiturageBookingScreen: React.FC = () => {
         }
     };
 
-    const calculateTotal = () => {
+    const calculateSubtotal = () => {
         if (!covoiturage) return 0;
         return numberOfPlaces * covoiturage.prix_par_place;
+    };
+
+    const calculateCommission = () => {
+        return Math.ceil(calculateSubtotal() * COMMISSION_RATE);
+    };
+
+    const calculateTotal = () => {
+        return calculateSubtotal() + calculateCommission();
     };
 
     const handleProceedToPayment = () => {
@@ -337,38 +353,6 @@ const CovoiturageBookingScreen: React.FC = () => {
                     )}
                 </NativeCard>
 
-                {/* Assurance passager */}
-                <NativeCard style={styles.card}>
-                    <View style={styles.detailRow}>
-                        <Text style={styles.cardTitle}>Assurance passager</Text>
-                        <TouchableOpacity
-                            onPress={() => setShowInsuranceSelector(!showInsuranceSelector)}
-                            style={styles.toggleButton}
-                        >
-                            <Text style={styles.toggleText}>
-                                {selectedInsurance ? 'Modifier' : 'Ajouter'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                    {selectedInsurance && (
-                        <View style={styles.insuranceSelected}>
-                            <SafeIcon name="shield-check" size={20} color="#10B981" />
-                            <Text style={styles.insuranceText}>
-                                Assurance {selectedInsurance} sélectionnée
-                            </Text>
-                        </View>
-                    )}
-                    {showInsuranceSelector && (
-                        <InsuranceSelector
-                            onSelect={(type) => {
-                                setSelectedInsurance(type);
-                                setShowInsuranceSelector(false);
-                            }}
-                            selected={selectedInsurance || undefined}
-                        />
-                    )}
-                </NativeCard>
-
                 {/* Détails réservation */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.cardTitle}>{t('covoiturageBooking.detailsDeLaReservation')}</Text>
@@ -405,6 +389,18 @@ const CovoiturageBookingScreen: React.FC = () => {
                             <Text style={styles.priceLabel}>{t('covoiturageBooking.nombreDePlaces')}</Text>
                             <Text style={styles.priceValue}>{numberOfPlaces}</Text>
                         </View>
+                        <View style={styles.priceRow}>
+                            <Text style={styles.priceLabel}>{t('covoiturageBooking.sousTotalLabel') || 'Sous-total'}</Text>
+                            <Text style={styles.priceValue}>
+                                {calculateSubtotal().toLocaleString('fr-FR')} {covoiturage.devise}
+                            </Text>
+                        </View>
+                        <View style={styles.priceRow}>
+                            <Text style={styles.priceLabel}>{t('covoiturageBooking.commissionLabel') || 'Commission Yukpo (10%)'}</Text>
+                            <Text style={styles.priceValue}>
+                                {calculateCommission().toLocaleString('fr-FR')} {covoiturage.devise}
+                            </Text>
+                        </View>
                         <View style={[styles.priceRow, styles.totalRow]}>
                             <Text style={styles.totalLabel}>Total:</Text>
                             <Text style={styles.totalValue}>
@@ -417,13 +413,13 @@ const CovoiturageBookingScreen: React.FC = () => {
                 {/* Assurance passager */}
                 <NativeCard style={styles.card}>
                     <View style={styles.detailRow}>
-                        <Text style={styles.cardTitle}>Assurance passager</Text>
+                        <Text style={styles.cardTitle}>{t('covoiturageBooking.assurancePassager') || 'Assurance passager'}</Text>
                         <TouchableOpacity
                             onPress={() => setShowInsuranceSelector(!showInsuranceSelector)}
                             style={styles.toggleButton}
                         >
                             <Text style={styles.toggleText}>
-                                {selectedInsurance ? 'Modifier' : 'Ajouter'}
+                                {selectedInsurance ? t('common.modifier') || 'Modifier' : t('common.ajouter') || 'Ajouter'}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -431,7 +427,7 @@ const CovoiturageBookingScreen: React.FC = () => {
                         <View style={styles.insuranceSelected}>
                             <SafeIcon name="shield-check" size={20} color="#10B981" />
                             <Text style={styles.insuranceText}>
-                                Assurance {selectedInsurance} sélectionnée
+                                {t('covoiturageBooking.assuranceSelectionnee', { type: selectedInsurance }) || `Assurance ${selectedInsurance} sélectionnée`}
                             </Text>
                         </View>
                     )}
@@ -459,7 +455,7 @@ const CovoiturageBookingScreen: React.FC = () => {
                     </View>
                     {balance < total && (
                         <Text style={styles.insufficientBalance}>
-                            Solde insuffisant. Rechargez votre wallet.
+                            {t('covoiturageBooking.soldeInsuffisantMsg') || 'Solde insuffisant. Rechargez votre wallet.'}
                         </Text>
                     )}
                 </NativeCard>

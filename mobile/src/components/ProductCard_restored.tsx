@@ -45,7 +45,7 @@ const REACTIONS = [
   { type: 'like', emoji: t('productCardRestored.i'), label: 'J\'aime' },
   { type: 'wow', emoji: t('productCardRestored.y'), label: 'Impressionnant' },
   { type: 'interested', emoji: '­ƒÄ»', label: 'Int├®ressant' },
-  { type: 'thinking', emoji: '­ƒñö', label: t('productCard_restored.cRflchir') },
+  { type: 'thinking', emoji: t('productCard_restored.no'), label: t('productCard_restored.cRflchir') },
   { type: 'disappointed', emoji: t('productCardRestored.yo'), label: 'D├®├ºu' },
 ];
 
@@ -72,7 +72,7 @@ const getCountryFlag = (country?: string): string => {
     'USA': t('productCardRestored.cc'),
   };
 
-  if (!country) return '­ƒîì';
+  if (!country) return t('productCard_restored.ii');
 
   for (const [key, flag] of Object.entries(countryMap)) {
     if (country.toLowerCase().includes(key.toLowerCase())) {
@@ -80,7 +80,7 @@ const getCountryFlag = (country?: string): string => {
     }
   }
 
-  return '­ƒîì';
+  return t('productCard_restored.ii');
 };
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -174,7 +174,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         ? `${process.env.EXPO_PUBLIC_SHARE_URL}/service/${product.service_id || service?.id}`
         : `https://yukpomnang.com/service/${product.service_id || service?.id}`;
 
-      const shareMessage = `­ƒøì´©Å ${productName}\n\n${productDesc ? `${productDesc}\n\n` : ''}${price ? `­ƒÆ░ Prix: ${price}\n` : ''}${location ? `­ƒôì ${location}\n\nt('productCardRestored.nouVoirCeProduitn', { shareUrl: shareUrl });
+      const shareMessage = `­ƒøì´©Å ${productName}\n\n${productDesc ? `${productDesc}\n\n` : ''}${price ? t('productCard_restored.prixN', { price: price }) : 't('productCard_restored.locationOiLocationnnt')productCardRestored.nouVoirCeProduitn', { shareUrl: shareUrl });
 
       const result = await Share.share({
         message: shareMessage,
@@ -696,7 +696,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 <View style={styles.footerItem}>
                   <SafeIcon name="map-pin" size={12} color="#9CA3AF" />
                   <Text style={styles.footerText}>
-                    {distanceKm < 1 ? 'Tr├¿s proche' : distanceKm < 5 ? '├Ç proximit├®' : `${distanceKm.toFixed(0)}km`}
+                    {distanceKm < 1 ? 'Tr├¿s proche' : distanceKm < 5 ? t('productCard_restored.cProximit') : `${distanceKm.toFixed(0)}km`}
                   </Text>
                 </View>
               )}

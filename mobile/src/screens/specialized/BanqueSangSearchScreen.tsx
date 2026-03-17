@@ -208,7 +208,7 @@ const BanqueSangSearchScreen: React.FC = () => {
     // Fonction unifiée qui combine recherche classique et matching intelligent
     const handleUnifiedSearch = async () => {
         if (!gpsData) {
-            Alert.alert('Erreur', 'Veuillez sélectionner une localisation GPS');
+            Alert.alert('Erreur', t('banqueSangSearchScreen.veuillezSelectionnerUneLocalisationGps'));
             return;
         }
 
@@ -287,7 +287,7 @@ const BanqueSangSearchScreen: React.FC = () => {
 
     const saveBloodGroup = async (group: string) => {
         if (!user) {
-            Alert.alert('Erreur', 'Vous devez être connecté pour enregistrer votre groupe sanguin');
+            Alert.alert('Erreur', t('banqueSangSearchScreen.vousDevezEtreConnectePourEnregistrer'));
             return;
         }
         try {
@@ -299,7 +299,7 @@ const BanqueSangSearchScreen: React.FC = () => {
             if (response?.success) {
                 setUserBloodGroup(group);
                 loadCompatibility(group);
-                Alert.alert('Succès', 'Votre groupe sanguin a été enregistré');
+                Alert.alert(t('banqueSangSearchScreen.succes'), t('banqueSangSearchScreen.votreGroupeSanguinAEteEnregistre'));
             } else {
                 Alert.alert('Erreur', response?.message || 'Impossible d\'enregistrer le groupe sanguin');
             }
@@ -474,8 +474,7 @@ const BanqueSangSearchScreen: React.FC = () => {
                     </View>
                     <Text style={styles.infoText}>
                         • Les banques de sang acceptent les dons volontaires{'\n'}
-                        • En cas dt('banqueSangSearchScreen.urgenceContactezDirectementLeTelephoneDurgence')\n'}
-                        • Vérifiez les stocks disponibles avant de vous déplacer{'\n'}
+                        • En cas dt('banqueSangSearchScreen.urgenceContactezDirectementLeTelephoneDurgence')\nt('banqueSangSearchScreen.verifiezLesStocksDisponiblesAvantDe')\n'}
                         • Les groupes sanguins compatibles sont automatiquement suggérés
                     </Text>
                 </View>

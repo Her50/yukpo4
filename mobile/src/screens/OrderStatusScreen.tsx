@@ -174,9 +174,7 @@ const OrderStatusScreen: React.FC = () => {
                 <TouchableOpacity
                     onPress={() => navigation.goBack()}
                     style={styles.backButton}
-                    accessibilityLabel="Retour"
-                    accessibilityRole="button"
-                    accessibilityHint="Retourne à l'écran précédent"
+                    accessibilityLabel={t('orderStatusScreen.retourt('orderStatusScreen.accessibilityrolebuttonAccessibilityhintretourneAL')écran précédent"
                 >
                     <SafeIcon name="arrow-back" size={24} color={modernColors.text} />
                 </TouchableOpacity>
@@ -279,7 +277,7 @@ const OrderStatusScreen: React.FC = () => {
                                                 try {
                                                     await orderService.validateOrder(order.id, {});
                                                     loadOrder();
-                                                    Alert.alert('Succès', 'Commande validée');
+                                                    Alert.alert(t('orderStatusScreen.succes'), t('orderStatusScreen.commandeValidee'));
                                                 } catch (err: any) {
                                                     Alert.alert('Erreur', err.message);
                                                 }

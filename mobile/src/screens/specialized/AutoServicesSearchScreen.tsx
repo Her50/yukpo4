@@ -425,7 +425,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                                     <NativeInput
                                         value={anneeMax}
                                         onChangeText={setAnneeMax}
-                                        placeholder={dynamicFilters.annee_range.max ? t('autoServicesSearchScreen.jusqua', { dynamicFilters_annee_range_max: dynamicFilters.annee_range.max }) : "Jusqu'à"}
+                                        placeholder={dynamicFilters.annee_range.max ? t('autoServicesSearchScreen.jusqua', { dynamicFilters_annee_range_max: dynamicFilters.annee_range.max }) : t('autoServicesSearchScreen.jusqua')}
                                         keyboardType="numeric"
                                     />
                                 </View>

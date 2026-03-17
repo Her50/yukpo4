@@ -10,16 +10,17 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import BookSmartAutocomplete from '../../components/BookSmartAutocomplete';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface SearchFilters {
     classe_actuelle?: string;
@@ -71,7 +72,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
 
     const handleSearch = () => {
         if (!classeActuelle.trim() && !classeSouhaitee.trim() && !matiere.trim()) {
-            Alert.alert('Erreur', 'Veuillez renseigner au moins une classe ou une matière');
+            Alert.alert('Erreur', t('livreScolaireSearchScreen.veuillezRenseignerAuMoinsUneClasse'));
             return;
         }
 
@@ -95,7 +96,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
     };
 
     const niveaux = ['Primaire', t('livreScolaireSearchScreen.college'), t('livreScolaireSearchScreen.lycee')];
-    const etats = ['Neuf', 'Très bon', 'Bon', 'Acceptable'];
+    const etats = ['Neuf', t('livreScolaireSearchScreen.tresBon'), 'Bon', 'Acceptable'];
     const matieres = [t('livreScolaireSearchScreen.mathematiques'), t('livreScolaireSearchScreen.francais'), 'Anglais', 'SVT', 'Physique-Chimie', t('livreScolaireSearchScreen.histoiregeo'), 'Philosophie'];
 
     // ✅ NOUVEAU: État pour fonctionnalités avancées
@@ -270,20 +271,19 @@ const LivreScolaireSearchScreen: React.FC = () => {
                     </View>
                 </View>
 
-                {/* Formulaire de recherche */}
+                {/* Suggestions intelligentes */}
                 <View style={styles.searchFormCard}>
                     <Text style={styles.sectionTitle}>{t('livreScolaireSearch.informationsDuLivre')}</Text>
-                    {/* Classe actuelle */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            <SafeIcon name="graduation-cap" size={14} color={modernColors.primary} type="lucide" /> Classe actuelle *
-                        </Text>
-                        <NativeInput
-                            value={classeActuelle}
-                            onChangeText={setClasseActuelle}
-                            placeholder={t('livreScolaireSearch.ex6eme5emeTerminale')}
-                        />
-                    </View>
+                    <BookSmartAutocomplete
+                        selectedClasse={classeActuelle}
+                        selectedMatiere={matiere}
+                        onClasseChange={(c) => { setClasseActuelle(c); }}
+                        onMatiereChange={(m) => { setMatiere(m); }}
+                        onBookSelect={(livre) => {
+                            hapticPress();
+                            (navigation as any).navigate('LivreScolaireDetails', { livreId: livre.id });
+                        }}
+                    />
 
                     {/* Classe souhaitée */}
                     <View style={styles.inputGroup}>
@@ -295,57 +295,6 @@ const LivreScolaireSearchScreen: React.FC = () => {
                             onChangeText={setClasseSouhaitee}
                             placeholder={t('livreScolaireSearch.ex5eme4eme1ere')}
                         />
-                    </View>
-
-                    {/* Matière */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            <SafeIcon name="book" size={14} color={modernColors.primary} type="lucide" />{t('livreScolaireSearchScreen.matiere')}
-                        </Text>
-                        <NativeInput
-                            value={matiere}
-                            onChangeText={setMatiere}
-                            placeholder={t('livreScolaireSearch.exMathematiquesFrancais')}
-                        />
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
-                            {matieres.map((m) => (
-                                <TouchableOpacity
-                                    key={m}
-                                    style={[styles.chip, matiere === m && styles.chipActive]}
-                                    onPress={() => {
-                                        hapticPress();
-                                        setMatiere(matiere === m ? '' : m);
-                                    }}
-                                >
-                                    <Text style={[styles.chipText, matiere === m && styles.chipTextActive]}>
-                                        {m}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
-
-                    {/* Niveau */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            <SafeIcon name="layers" size={14} color={modernColors.primary} type="lucide" /> Niveau
-                        </Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
-                            {niveaux.map((n) => (
-                                <TouchableOpacity
-                                    key={n}
-                                    style={[styles.chip, niveau === n && styles.chipActive]}
-                                    onPress={() => {
-                                        hapticPress();
-                                        setNiveau(niveau === n ? '' : n);
-                                    }}
-                                >
-                                    <Text style={[styles.chipText, niveau === n && styles.chipTextActive]}>
-                                        {n}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
                     </View>
 
                     {/* État du livre */}
@@ -510,7 +459,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
                     </View>
                     <Text style={styles.infoText}>
                         • Vous pouvez échanger vos livres scolaires avec d'autres utilisateurs{'\n'}
-                        • La recherche par GPS permet de trouver des livres à proximité{'\n'}
+                        • La recherche par GPS permet de trouver des livres près de chez vous{'\n'}
                         • Vérifiez l'état du livre avant de finaliser l'échange{'\n'}
                         • Les livres neufs sont généralement plus chers mais en meilleur état
                     </Text>

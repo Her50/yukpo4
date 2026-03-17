@@ -15,9 +15,9 @@ import {
 import QRCodeScanner from '../../components/QRCodeScanner';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { trackQRScan } from '../../services/analytics';
 import { apiPost } from '../../services/api';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ValidationResult {
     success: boolean;
@@ -43,7 +43,7 @@ const BusTicketQRScannerScreen: React.FC = () => {
         setLoading(true);
         setScannerVisible(false);
         try {
-            const response = await apiPost('/api/bus-tickets/validate/qr', {
+            const response = await apiPost('/api/bus-tickets/validate', {
                 qr_code_data: qrData,
             });
             const d = (response?.data || response) as any;

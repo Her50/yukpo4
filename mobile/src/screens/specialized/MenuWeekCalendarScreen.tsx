@@ -439,7 +439,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                     ]
                 );
             } else {
-                throw new Error('Erreur lors de la création de la commande');
+                throw new Error(t('menuWeekCalendarScreen.erreurLorsDeLaCreationDe'));
             }
         } catch (error: any) {
             console.error('[MenuWeekCalendar] Erreur création commande:', error);
@@ -1707,8 +1707,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                 <Text style={styles.modalTitle}>{t('menuWeekCalendar.listeDeCoursesGeneree')}</Text>
                                 {/* ✅ NOUVEAU: Afficher la date du marché si disponible */}
                                 {selectedMarket && (
-                                    <Text style={[styles.modalSubtitle, { marginTop: 4, fontSize: 12, color: '#6B7280' }]}>
-                                        📍 Marché : {selectedMarket.name} • {new Date().toLocaleDateString('fr-FR', {
+                                    <Text style={[styles.modalSubtitle, { marginTop: 4, fontSize: 12, color: '#6B7280t('menuWeekCalendarScreen.marcheSelectedmarketnameNewDatetolocaledatestring')fr-FR', {
                                             day: 'numeric',
                                             month: 'long',
                                             year: 'numeric',
@@ -2030,8 +2029,7 @@ const MenuWeekCalendarScreen: React.FC<MenuWeekCalendarScreenProps> = () => {
                                 <Text style={styles.label}>
                                     Sélectionner un marché <Text style={styles.required}>*</Text>
                                 </Text>
-                                <Text style={[styles.helpText, { marginBottom: 12, fontSize: 12, color: '#6B7280' }]}>
-                                    Le coursier le plus proche de ce marché sera automatiquement assigné, même s'il fait déjà des courses pour un autre utilisateur.
+                                <Text style={[styles.helpText, { marginBottom: 12, fontSize: 12, color: '#6B7280t('menuWeekCalendarScreen.leCoursierLePlusProcheDe')il fait déjà des courses pour un autre utilisateur.
                                 </Text>
                                 <LocationSelector
                                     value={selectedMarket ? {

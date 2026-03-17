@@ -4,9 +4,11 @@ import * as React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card, Title } from 'react-native-paper';
 import { SafeNativeView } from '../components/SafeNativeView';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const StartScreen = () => {
   const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
   return (
     <SafeNativeView style={styles.container}>

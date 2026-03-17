@@ -18,9 +18,9 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet } from '../../services/api';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type TabType = 'overview' | 'menu' | 'orders' | 'analytics';
 
@@ -54,7 +54,7 @@ const CATEGORIES_PLAT = [
 const RestaurantDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
     const { t } = useLanguageSafe();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
 
     const [activeTab, setActiveTab] = useState<TabType>('overview');
     const [loading, setLoading] = useState(true);
@@ -147,6 +147,18 @@ const RestaurantDashboardScreen: React.FC = () => {
                     { label: 'Planifier menu', icon: 'calendar', color: '#8B5CF6', onPress: () => (navigation as any).navigate('MenuPlanningHub') },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => setActiveTab('analytics') },
                     { label: 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
+                    {
+                        label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => {
+                            Alert.alert(
+                                t('common.deconnexion'),
+                                t('common.confirmDeconnexion'),
+                                [
+                                    { text: t('common.cancel'), style: 'cancel' },
+                                    { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }
+                                ]
+                            );
+                        }
+                    },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>

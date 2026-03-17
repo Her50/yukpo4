@@ -773,7 +773,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     const handleSubmit = async () => {
         // ✅ CORRIGÉ: Vérifier serviceId avant de soumettre
         if (!serviceId || typeof serviceId !== 'number' || serviceId <= 0) {
-            Alert.alert('Erreur', 'Service invalide. Impossible de créer la commande.');
+            Alert.alert('Erreur', t('orderDeliveryModal.serviceInvalideImpossibleDeCreerLa'));
             return;
         }
 
@@ -783,19 +783,19 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
         }
 
         if (selectedProducts.length === 0) {
-            Alert.alert('Produit requis', 'Veuillez sélectionner au moins un produit');
+            Alert.alert('Produit requis', t('orderDeliveryModal.veuillezSelectionnerAuMoinsUnProduit'));
             return;
         }
 
         // ✅ NOUVEAU 2026-01-23: Vérifier qu'une variation est sélectionnée si le produit en a
         if (productVariants && productVariants.length > 0 && selectedVariantIdx < 0) {
-            Alert.alert('Variation requise', 'Veuillez sélectionner une variation de prix pour ce produit');
+            Alert.alert('Variation requise', t('orderDeliveryModal.veuillezSelectionnerUneVariationDePrix'));
             return;
         }
 
         // ✅ NOUVEAU 2026-01-23: Vérifier que la quantité est valide
         if (quantity < 1) {
-            Alert.alert('Quantité invalide', 'La quantité doit être au moins égale à 1');
+            Alert.alert(t('orderDeliveryModal.quantiteInvalide'), t('orderDeliveryModal.laQuantiteDoitEtreAuMoins'));
             return;
         }
 
@@ -919,7 +919,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
                 if (response.success) {
                     // ✅ FIX 2026-03-03: Toast + son au lieu de Alert bloquant
-                    showToast('✅ Commande créée ! Recherche de coursier en cours...');
+                    showToast(t('orderDeliveryModal.commandeCreeeRechercheDeCoursierEn'));
                     notificationSoundService.playSound('order').catch(console.error);
 
                     // Laisser le toast s'afficher 1.5s avant de naviguer vers le suivi
@@ -930,7 +930,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                         onClose();
                     }, 1500);
                 } else {
-                    Alert.alert('Erreur', response.error || 'Impossible de créer la commande');
+                    Alert.alert('Erreur', response.error || t('orderDeliveryModal.impossibleDeCreerLaCommande'));
                 }
             }
         } catch (error: any) {
@@ -1223,10 +1223,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>{t('orderDelivery.adresseDeLivraison')}</Text>
-                        </View>
-
-                        {/* ✅ NOUVEAU : Sélecteur d'adresse sauvegardée */}
+                            <Text style={styles.sectionTitle}>{t('orderDelivery.adresseDeLivraisont('orderDeliveryModal.textViewNouveauSelecteurD')adresse sauvegardée */}
                         <SavedAddressSelector
                             addressType="dropoff"
                             value={dropoffLocation ? {

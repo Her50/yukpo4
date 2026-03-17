@@ -7,6 +7,7 @@ import {
     ActivityIndicator,
     Image,
     PanResponder,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,

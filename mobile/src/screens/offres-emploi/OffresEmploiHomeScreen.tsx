@@ -159,7 +159,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                 `Estimation salaire${source}`,
                 `Poste: ${offre.titre_poste}\n\n` +
                 `Fourchette: ${(est.salaire_estime_min || 0).toLocaleString()} - ${(est.salaire_estime_max || 0).toLocaleString()} FCFA/mois\n` +
-                `Médian: ${(est.salaire_estime_median || 0).toLocaleString()} FCFA/mois\n\n` +
+                t('offresEmploiHomeScreen.medianFcfamoisnn', { _est_salaire_estime_media: (est.salaire_estime_median || 0).toLocaleString() }) +
                 `${est.comparaison_marche || ''}`,
                 [{ text: 'OK' }]
             );
@@ -191,7 +191,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
         const currency = devise || 'FCFA';
         if (!min && !max) return t('offresEmploiHomeScreen.salaireNonSpecifie');
         if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()} ${currency}`;
-        if (min) return `À partir de ${min.toLocaleString()} ${currency}`;
+        if (min) return t('offresEmploiHomeScreen.aPartirDe', { min_toLocaleString__: min.toLocaleString(), currency: currency });
         return t('offresEmploiHomeScreen.jusqua', { max?_toLocaleString(): max?.toLocaleString(), currency: currency });
     };
 

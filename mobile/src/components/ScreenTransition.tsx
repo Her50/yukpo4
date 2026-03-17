@@ -15,6 +15,7 @@ import Animated, {
 // ✅ CORRIGÉ: Utiliser cleanChildren pour éviter les erreurs de rendu
 import { TransitionType } from '../hooks/useScreenTransition';
 import { cleanChildren } from '../utils/safeChildren';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ScreenTransitionProps {
     children: React.ReactNode;
@@ -52,6 +53,7 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
 
     useEffect(() => {
         const timer = setTimeout(() => {
+    const { t } = useLanguageSafe();
             if (typeof withTiming === 'function' && typeof withSpring === 'function') {
                 try {
                     // ✅ AMÉLIORÉ: Animations plus fluides avec easing optimisé

@@ -254,7 +254,7 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
     const getTypeLabel = () => {
         switch (type) {
             case 'hopital_clinique':
-                return 'Hôpital / Clinique';
+                return t('autocompleteStructure.hopitalClinique');
             case 'pharmacie':
                 return 'Pharmacie';
             case 'laboratoire':

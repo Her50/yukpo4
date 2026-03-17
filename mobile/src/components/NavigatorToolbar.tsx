@@ -4,6 +4,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { SafeNativeView } from './SafeNativeView';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 type NavigatorToolbarTone = 'light' | 'dark';
 
@@ -31,6 +32,7 @@ export const NavigatorToolbar: React.FC<NavigatorToolbarProps> = ({
     backgroundColor = 'transparent',
 }) => {
     const navigation = useNavigation();
+    const { t } = useLanguageSafe();
 
     const isDark = tone === 'dark';
     const textColor = isDark ? '#FFFFFF' : modernColors.text;

@@ -121,7 +121,7 @@ const [selectedDate, setSelectedDate] = useState<string>('');
 
     const handleBookSlot = async () => {
         if (!selectedSlot) {
-            Alert.alert('Erreur', 'Veuillez sélectionner un créneau');
+            Alert.alert('Erreur', t('bookAppointmentScreen.veuillezSelectionnerUnCreneau'));
             return;
         }
         if (!patientName.trim()) {
@@ -183,7 +183,7 @@ const [selectedDate, setSelectedDate] = useState<string>('');
                 <View style={{ flex: 1 }}>
                     <Text style={styles.headerTitle}>Prendre rendez-vous</Text>
                     <Text style={styles.headerSubtitle}>
-                        {serviceName || (serviceType === 'hopital' ? 'Hôpital / Clinique' : 'Laboratoire / Imagerie')}
+                        {serviceName || (serviceType === 'hopital' ? t('bookAppointmentScreen.hopitalClinique') : 'Laboratoire / Imagerie')}
                     </Text>
                 </View>
             </View>

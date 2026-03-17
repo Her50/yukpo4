@@ -19,8 +19,8 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet, apiPost } from '../../services/api';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { apiGet, apiPost } from '../../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -105,7 +105,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
             } else if (response.success && response.data) {
                 setAgence(response.data as any);
             } else {
-                Alert.alert('Erreur', 'Agence non trouvée');
+                Alert.alert('Erreur', t('agenceVoyageDetailsScreen.agenceNonTrouvee'));
                 navigation.goBack();
             }
         } catch (error: any) {

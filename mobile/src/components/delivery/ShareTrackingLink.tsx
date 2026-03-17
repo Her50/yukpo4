@@ -10,6 +10,7 @@ import { Alert, Linking, Share, StyleSheet, Text, TouchableOpacity, View } from 
 import { modernColors } from '../../theme/modernTheme';
 import { SafeIcon } from '../SafeIcon';
 import { NativeCard } from '../SafeNativeDesign';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ShareTrackingLinkProps {
     deliveryId: string;
@@ -24,10 +25,11 @@ const ShareTrackingLink: React.FC<ShareTrackingLinkProps> = ({
     onShare,
     style,
 }) => {
-    const [copied, setCopied] = useState(false);
+        const { t } = useLanguageSafe();
+const [copied, setCopied] = useState(false);
 
     const trackingUrl = `https://yukpomnang.com/track/${deliveryId}`;
-    const shareMessage = `Suivez ma livraison en temps réel : ${trackingUrl}`;
+    const shareMessage = t('shareTrackingLink.suivezMaLivraisonEnTempsReel', { trackingUrl: trackingUrl });
 
     const handleCopyLink = async () => {
         try {
@@ -66,7 +68,7 @@ const ShareTrackingLink: React.FC<ShareTrackingLinkProps> = ({
                 try {
                     await Linking.openURL(whatsappUrl);
                 } catch {
-                    Alert.alert('WhatsApp non installé', 'Veuillez installer WhatsApp');
+                    Alert.alert(t('shareTrackingLink.whatsappNonInstalle'), 'Veuillez installer WhatsApp');
                 }
             },
         },
@@ -127,7 +129,7 @@ const ShareTrackingLink: React.FC<ShareTrackingLinkProps> = ({
                         color={copied ? modernColors.success : modernColors.primary}
                     />
                     <Text style={[styles.copyText, copied && styles.copyTextSuccess]}>
-                        {copied ? 'Copié' : 'Copier'}
+                        {copied ? t('shareTrackingLink.copie') : 'Copier'}
                     </Text>
                 </TouchableOpacity>
             </View>

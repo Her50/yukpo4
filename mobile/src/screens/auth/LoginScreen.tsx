@@ -89,7 +89,7 @@ const LoginScreen: React.FC = () => {
         googleResponse.error?.message?.includes('Custom URI scheme') ||
         googleResponse.error?.message?.includes('invalid_request')) {
         errorMessage = t('loginScreen.configurationOauthManquanteLeSchemaUriPersonnalise') +
-          'URI utilisée: ' + (googleRequest?.redirectUri || t('login.nonDefinie')) + '\n\n' +
+          t('loginScreen.uriUtilisee') + (googleRequest?.redirectUri || t('login.nonDefinie')) + '\n\n' +
           'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
       } else if (googleResponse.error?.code === 'access_denied') {
         errorMessage = t('loginScreen.connexionGoogleAnnulee');
@@ -135,9 +135,9 @@ const LoginScreen: React.FC = () => {
             role: decoded.role || 'user',
           });
 
-          Alert.alert('Succès', `Bienvenue ! Vous êtes connecté avec Google.`);
+          Alert.alert(t('loginScreen.succes'), t('loginScreen.bienvenueVousEtesConnecteAvecGoogle'));
         } else {
-          throw new Error('Token non reçu du serveur');
+          throw new Error(t('loginScreen.tokenNonRecuDuServeur'));
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -146,7 +146,7 @@ const LoginScreen: React.FC = () => {
     } catch (error: any) {
       console.error('[LoginScreen] Erreur OAuth:', error);
       setError(error.message || t('login.connexionEchoueeVeuillezReessayer'));
-      Alert.alert('Erreur', error.message || 'Connexion échouée.');
+      Alert.alert('Erreur', error.message || t('loginScreen.connexionEchouee'));
     } finally {
       setFormLoading(false);
     }
@@ -305,7 +305,7 @@ const LoginScreen: React.FC = () => {
           />
           <OAuthButton
             provider="facebook"
-            onPress={() => Alert.alert('OAuth', 'Fonctionnalité Facebook à implémenter')}
+            onPress={() => Alert.alert('OAuth', t('loginScreen.fonctionnaliteFacebookAImplementer'))}
           />
         </View>
 

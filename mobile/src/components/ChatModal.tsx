@@ -209,7 +209,7 @@ const [messages, setMessages] = useState<Message[]>([]);
                         ? { ...msg, status: 'sent' }
                         : msg
                 ));
-                Alert.alert('Erreur', 'Impossible d\'envoyer le message. Veuillez réessayer.');
+                Alert.alert('Erreur', 'Impossible d\t('chatModal.envoyerLeMessageVeuillezReessayer'));
             }
         } catch (error) {
             console.error('[ChatModal] ❌ Erreur envoi message:', error);
@@ -223,7 +223,7 @@ const [messages, setMessages] = useState<Message[]>([]);
             const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
             if (permissionResult.granted === false) {
-                Alert.alert('Permission refusée', 'Permission d\'accès à la galerie refusée');
+                Alert.alert(t('chatModal.permissionRefusee'), 'Permission d\t('chatModal.accesALaGalerieRefusee'));
                 return;
             }
 
@@ -245,7 +245,7 @@ const [messages, setMessages] = useState<Message[]>([]);
             }
         } catch (error) {
             console.error('[ChatModal] Erreur sélection image:', error);
-            Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
+            Alert.alert('Erreur', t('chatModal.impossibleDeSelectionnerL')image');
         }
     };
 
@@ -281,7 +281,7 @@ const [messages, setMessages] = useState<Message[]>([]);
             }
         } catch (error) {
             console.error('[ChatModal] Erreur sélection fichier:', error);
-            Alert.alert('Erreur', 'Impossible de sélectionner le fichier');
+            Alert.alert('Erreur', t('chatModal.impossibleDeSelectionnerLeFichier'));
         }
     };
 
@@ -292,7 +292,7 @@ const [messages, setMessages] = useState<Message[]>([]);
             const permission = await Audio.requestPermissionsAsync();
 
             if (permission.status !== 'granted') {
-                Alert.alert('Permission refusée', 'Permission d\'enregistrement audio refusée');
+                Alert.alert(t('chatModal.permissionRefusee'), 'Permission d\t('chatModal.enregistrementAudioRefusee'));
                 return;
             }
 
@@ -318,7 +318,7 @@ const [messages, setMessages] = useState<Message[]>([]);
             console.log('[ChatModal] ✅ Enregistrement démarré');
         } catch (error) {
             console.error('[ChatModal] Erreur démarrage enregistrement:', error);
-            Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement');
+            Alert.alert('Erreur', t('chatModal.impossibleDeDemarrerL')enregistrement');
         }
     };
 
@@ -370,7 +370,7 @@ const [messages, setMessages] = useState<Message[]>([]);
             setRecordingDuration(0);
         } catch (error) {
             console.error('[ChatModal] Erreur arrêt enregistrement:', error);
-            Alert.alert('Erreur', 'Erreur lors de l\'arrêt de l\'enregistrement');
+            Alert.alert('Erreur', 'Erreur lors de l\t('chatModal.arretDeL')enregistrement');
             setRecording(null);
             setIsRecording(false);
         }
@@ -435,7 +435,7 @@ const [messages, setMessages] = useState<Message[]>([]);
                         : msg
                 ));
 
-                Alert.alert('Succès', `${mediaType === 'image' ? 'Image' : mediaType === 'audio' ? 'Audio' : 'Fichier'} envoyé avec succès`);
+                Alert.alert(t('chatModal.succes'), t('chatModal.envoyeAvecSucces', { mediaType______image: mediaType === 'image' ? 'Image' : mediaType === 'audio' ? 'Audio' : 'Fichier' }));
             } else {
                 throw new Error(response.error || t('chat.erreurEnvoiMedia'));
             }

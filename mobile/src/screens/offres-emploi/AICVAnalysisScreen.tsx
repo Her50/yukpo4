@@ -16,9 +16,9 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 // apiGet/apiPost remplacés par offreEmploiService
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { CVAnalysis, offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const AICVAnalysisScreen: React.FC = () => {
     const navigation = useNavigation() as any;
@@ -87,7 +87,7 @@ const AICVAnalysisScreen: React.FC = () => {
             if (response.success && analysisResult) {
                 setAnalysis(analysisResult);
             } else {
-                Alert.alert('Erreur', response.message || 'Impossible d\'analyser le CV. L\'IA n\'est peut-être pas encore opérationnelle.');
+                Alert.alert('Erreur', response.message || t('aICVAnalysisScreen.estPeutetrePasEncoreOperationnelle'));
             }
         } catch (error: any) {
             console.error('[AICVAnalysisScreen] Erreur analyse:', error);

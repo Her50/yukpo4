@@ -122,18 +122,18 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                                                 [{ text: 'OK', onPress: onServiceUpdated }]
                                             );
                                         } else {
-                                            Alert.alert('Erreur', 'Impossible de réactiver le service');
+                                            Alert.alert('Erreur', t('serviceManagementCard.impossibleDeReactiverLeService'));
                                         }
                                     } catch (error) {
                                         console.error('Erreur lors de la réactivation:', error);
-                                        Alert.alert('Erreur', 'Erreur lors de la réactivation du service');
+                                        Alert.alert('Erreur', t('serviceManagementCard.erreurLorsDeLaReactivationDu'));
                                     }
                                 }
                             }
                         ]
                     );
                 } else {
-                    Alert.alert('Erreur', 'Impossible de récupérer votre solde');
+                    Alert.alert('Erreur', t('serviceManagementCard.impossibleDeRecupererVotreSolde'));
                 }
             } else {
                 // Désactivation (gratuite)
@@ -146,7 +146,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                         [{ text: 'OK', onPress: onServiceUpdated }]
                     );
                 } else {
-                    Alert.alert('Erreur', 'Impossible de désactiver le service');
+                    Alert.alert('Erreur', t('serviceManagementCard.impossibleDeDesactiverLeService'));
                 }
             }
         } catch (error) {
@@ -170,7 +170,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                             const response = await servicesApi.deleteService(service.id);
 
                             if (response.success) {
-                                Alert.alert('Succès', 'Service supprimé avec succès');
+                                Alert.alert(t('serviceManagementCard.succes'), t('serviceManagementCard.serviceSupprimeAvecSucces'));
                                 onServiceDeleted?.();
                             } else {
                                 Alert.alert('Erreur', 'Impossible de supprimer le service');
@@ -255,15 +255,15 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
             const response = await (servicesApi as any).updateServicePromotion(service.id, promotionData);
 
             if (response.success) {
-                Alert.alert('Succès', 'Promotion mise à jour avec succès');
+                Alert.alert(t('serviceManagementCard.succes'), t('serviceManagementCard.promotionMiseAJourAvecSucces'));
                 setShowPromotionModal(false);
                 onServiceUpdated?.();
             } else {
-                Alert.alert('Erreur', 'Impossible de mettre à jour la promotion');
+                Alert.alert('Erreur', t('serviceManagementCard.impossibleDeMettreAJourLa'));
             }
         } catch (error) {
             console.error('Erreur lors de la mise à jour de la promotion:', error);
-            Alert.alert('Erreur', 'Erreur lors de la mise à jour de la promotion');
+            Alert.alert('Erreur', t('serviceManagementCard.erreurLorsDeLaMiseA'));
         }
     };
 
@@ -355,7 +355,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                         onPress={toggleServiceStatus}
                     >
                         <Text style={styles.actionIcon}>{isActive ? '⏸️' : '▶️'}</Text>
-                        <Text style={styles.actionText}>{isActive ? 'Désactiver' : 'Activer'}</Text>
+                        <Text style={styles.actionText}>{isActive ? t('serviceManagementCard.desactiver') : 'Activer'}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={deleteService}>

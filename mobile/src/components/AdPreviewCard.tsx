@@ -97,7 +97,7 @@ export const AdPreviewCard: React.FC<AdPreviewCardProps> = ({
                                 {zone === 'local'
                                     ? 'Local'
                                     : zone === 'regional'
-                                        ? 'Régional'
+                                        ? t('adPreviewCard.regional')
                                         : 'International'}
                             </Text>
                         </View>

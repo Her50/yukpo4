@@ -46,7 +46,7 @@ const getStatutColor = (s: string) => {
     switch (s) { case 'en_attente': return '#F59E0B'; case 'accepte': return '#10B981'; case 'refuse': return '#EF4444'; case 'complete': return '#8B5CF6'; case 'annule': return '#6B7280'; default: return '#6B7280'; }
 };
 const getStatutLabel = (s: string) => {
-    switch (s) { case 'en_attente': return 'En attente'; case 'accepte': return t('trocDetailsScreen.accepte'); case 'refuse': return 'Refusé'; case 'complete': return 'Complété'; case 'annule': return 'Annulé'; default: return s; }
+    switch (s) { case 'en_attente': return 'En attente'; case 'accepte': return t('trocDetailsScreen.accepte'); case 'refuse': return t('trocDetailsScreen.refuse'); case 'complete': return t('trocDetailsScreen.complete'); case 'annule': return t('trocDetailsScreen.annule'); default: return s; }
 };
 
 const TrocDetailsScreen: React.FC = () => {

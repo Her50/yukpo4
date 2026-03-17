@@ -173,7 +173,7 @@ const AgencyTicketManagementScreen: React.FC = () => {
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
                         <Text style={styles.statusText}>
-                            {status === 'upcoming' ? 'À venir' : t('agencyTicketManagementScreen.passe')}
+                            {status === 'upcoming' ? t('agencyTicketManagementScreen.aVenir') : t('agencyTicketManagementScreen.passe')}
                         </Text>
                     </View>
                 </View>
@@ -289,7 +289,7 @@ const AgencyTicketManagementScreen: React.FC = () => {
                                     : filterOption === 'today'
                                         ? "Aujourd'hui"
                                         : filterOption === 'upcoming'
-                                            ? 'À venir'
+                                            ? t('agencyTicketManagementScreen.aVenir')
                                             : t('agencyTicketManagementScreen.passes')}
                             </Text>
                         </TouchableOpacity>

@@ -63,7 +63,7 @@ const [preferences, setPreferences] = useState<NotificationPreferences>({
             await pushNotificationService.savePreferences({ [key]: newPreferences[key] });
         } catch (error) {
             console.error('[NotificationPreferencesModal] Erreur sauvegarde:', error);
-            Alert.alert('Erreur', 'Impossible de sauvegarder les préférences');
+            Alert.alert('Erreur', t('notificationPreferencesModal.impossibleDeSauvegarderLesPreferences'));
             // Restaurer l'ancienne valeur
             setPreferences(preferences);
         }
@@ -73,11 +73,11 @@ const [preferences, setPreferences] = useState<NotificationPreferences>({
         try {
             setLoading(true);
             await pushNotificationService.savePreferences(preferences);
-            Alert.alert('Succès', 'Préférences sauvegardées');
+            Alert.alert(t('notificationPreferencesModal.succes'), t('notificationPreferencesModal.preferencesSauvegardees'));
             onClose();
         } catch (error) {
             console.error('[NotificationPreferencesModal] Erreur sauvegarde:', error);
-            Alert.alert('Erreur', 'Impossible de sauvegarder les préférences');
+            Alert.alert('Erreur', t('notificationPreferencesModal.impossibleDeSauvegarderLesPreferences'));
         } finally {
             setLoading(false);
         }

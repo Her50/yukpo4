@@ -11,6 +11,7 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { TextInput, TextInputProps, StyleSheet } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface StableTextInputProps extends Omit<TextInputProps, 'value' | 'onChangeText'> {
   value?: string;
@@ -31,7 +32,8 @@ const StableTextInput: React.FC<StableTextInputProps> = ({
   ...props
 }) => {
   // ✅ État local pour la valeur - permet la mise à jour visuelle sans re-render du parent
-  const [localValue, setLocalValue] = useState<string>(externalValue);
+      const { t } = useLanguageSafe();
+const [localValue, setLocalValue] = useState<string>(externalValue);
   const inputRef = useRef<TextInput>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isFocusedRef = useRef<boolean>(false);

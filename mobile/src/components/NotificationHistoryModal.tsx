@@ -255,7 +255,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
       setNotifications(prev =>
         prev.map(notif => ({ ...notif, isRead: true }))
       );
-      Alert.alert('Succès', 'Toutes les notifications ont été marquées comme lues');
+      Alert.alert(t('notificationHistoryModal.succes'), t('notificationHistoryModal.toutesLesNotificationsOntEteMarquees'));
 
       onChange?.();
     } catch (error) {
@@ -271,7 +271,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
       // Mettre à jour le state local
       setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
-      Alert.alert('Supprimé', 'Notification supprimée');
+      Alert.alert(t('notificationHistoryModal.supprime'), t('notificationHistoryModal.notificationSupprimee'));
 
       onChange?.();
     } catch (error) {

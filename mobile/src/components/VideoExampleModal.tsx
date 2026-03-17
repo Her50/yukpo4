@@ -69,7 +69,7 @@ const VIDEO_EXAMPLES: VideoExample[] = [
             engagement: '22%',
             creationTime: '4 min',
         },
-        features: ['Narration douce', t('videoExampleModal.superpositionsElegantes'), 'Mise en avant produits', 'Idéal Instagram Stories'],
+        features: ['Narration douce', t('videoExampleModal.superpositionsElegantes'), 'Mise en avant produits', t('videoExampleModal.idealInstagramStories')],
     },
     {
         id: 'cinematic',

@@ -69,7 +69,7 @@ const ImmobilierPriceAlertsScreen: React.FC = () => {
         // Note: L'API backend devrait avoir un endpoint pour activer/désactiver une alerte
         // Pour l'instant, on affiche juste une confirmation
         Alert.alert(
-            currentStatus ? 'Désactiver l\'alerte' : 'Activer l\'alerte',
+            currentStatus ? t('immobilierPriceAlertsScreen.desactiverL')alerte' : 'Activer l\'alerte',
             t('immobilierPriceAlertsScreen.cetteFonctionnaliteSeraDisponibleProchainement'),
             [{ text: 'OK' }]
         );
@@ -86,7 +86,7 @@ const ImmobilierPriceAlertsScreen: React.FC = () => {
                     style: 'destructive',
                     onPress: () => {
                         // TODO: Implémenter la suppression côté backend
-                        Alert.alert('Info', 'Suppression à implémenter');
+                        Alert.alert('Info', t('immobilierPriceAlertsScreen.suppressionAImplementer'));
                     },
                 },
             ]

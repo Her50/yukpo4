@@ -1,11 +1,11 @@
 // 🌍 Context de Langue - Gestion globale de la langue de l'application
 // ✅ Propulsé par i18next + react-i18next (standard industriel)
 // ✅ Rétrocompatible : useLanguage(), useLanguageSafe(), t() fonctionnent comme avant
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import * as React from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { Text } from 'react-native';
 
-import i18n, { SUPPORTED_LANGUAGES } from '../i18n';
-import { detectGeoLanguageContext } from '../services/geoLanguageService';
+import i18n, { SUPPORTED_LANGUAGES, getDeviceLanguage } from '../i18n';
 import SafeStorage from '../utils/safeStorage';
 
 interface LanguageContextType {
@@ -75,22 +75,12 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
                 // ✅ Synchroniser i18next avec la langue sauvegardée
                 await i18n.changeLanguage(savedLanguage);
             } else {
-                // ✅ NOUVEAU: Détection automatique de la langue via GPS au premier lancement
-                try {
-                    const geoCtx = await detectGeoLanguageContext();
-                    const detectedLang = geoCtx.defaultLanguage;
-                    const supported = SUPPORTED_LANGUAGES.map(l => l.code) as readonly string[];
-                    const safeLang = supported.includes(detectedLang) ? detectedLang : 'fr';
-                    console.log('[LanguageContext] Langue détectée par GPS:', safeLang, '(pays:', geoCtx.countryCode, ')');
-                    setLanguageState(safeLang);
-                    await SafeStorage.setItem('app_language', safeLang);
-                    await i18n.changeLanguage(safeLang);
-                } catch (geoError) {
-                    console.warn('[LanguageContext] Détection GPS échouée, fallback fr:', geoError);
-                    setLanguageState('fr');
-                    await SafeStorage.setItem('app_language', 'fr');
-                    await i18n.changeLanguage('fr');
-                }
+                // ✅ PRIORITÉ ABSOLUE: choix utilisateur (langue système)
+                // Le GPS ne sert que pour le SmartSelector, jamais pour surcharger l'utilisateur
+                const systemLang = getDeviceLanguage();
+                setLanguageState(systemLang);
+                await SafeStorage.setItem('app_language', systemLang);
+                await i18n.changeLanguage(systemLang);
             }
         } catch (error) {
             console.error('Erreur chargement langue:', error);

@@ -52,7 +52,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission requise', 'L\'accès à la localisation est nécessaire.');
+                Alert.alert('Permission requise', 'L\t('courierDifficultyModal.accesALaLocalisationEstNecessaire'));
                 return;
             }
 
@@ -108,7 +108,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
 
     const handleSubmit = async () => {
         if (!difficultyType) {
-            Alert.alert('Erreur', 'Veuillez sélectionner le type de difficulté');
+            Alert.alert('Erreur', t('courierDifficultyModal.veuillezSelectionnerLeTypeDeDifficulte'));
             return;
         }
 
@@ -152,7 +152,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
                     ]
                 );
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de signaler la difficulté');
+                Alert.alert('Erreur', response.error || t('courierDifficultyModal.impossibleDeSignalerLaDifficulte'));
             }
         } catch (error: any) {
             console.error('Erreur signalement difficulté:', error);

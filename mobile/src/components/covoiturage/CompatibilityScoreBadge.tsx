@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface CompatibilityScoreBadgeProps {
     score: number; // 0-100
@@ -14,6 +15,7 @@ export const CompatibilityScoreBadge: React.FC<CompatibilityScoreBadgeProps> = (
     size = 'medium',
 }) => {
     const getScoreColor = (score: number) => {
+    const { t } = useLanguageSafe();
         if (score >= 80) return '#10B981'; // Vert
         if (score >= 60) return '#F59E0B'; // Orange
         return '#EF4444'; // Rouge
@@ -21,7 +23,7 @@ export const CompatibilityScoreBadge: React.FC<CompatibilityScoreBadgeProps> = (
 
     const getScoreLabel = (score: number) => {
         if (score >= 90) return 'Excellent';
-        if (score >= 80) return 'Très bon';
+        if (score >= 80) return t('compatibilityScoreBadge.tresBon');
         if (score >= 70) return 'Bon';
         if (score >= 60) return 'Correct';
         return 'Faible';

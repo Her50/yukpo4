@@ -94,7 +94,7 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
             },
             { text: t('common.cancel'), style: 'cancel' as const }
         ];
-        Alert.alert('Sélectionner un lieu de stockage', '', options);
+        Alert.alert(t('storageLocationSelector.selectionnerUnLieuDeStockage'), '', options);
     };
 
     const handleGPSSelect = (coordinates: string) => {
@@ -110,7 +110,7 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
         // Demander le nom et l'adresse
         Alert.prompt(
             'Nom du lieu de stockage',
-            'Donnez un nom à ce lieu de stockage (ex: Entrepôt principal, Magasin centre-ville)',
+            t('storageLocationSelector.donnezUnNomACeLieu'),
             [
                 { text: t('common.cancel'), style: 'cancel', onPress: () => { } },
                 {
@@ -166,12 +166,12 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
             if (response.success && crd?.location) {
                 await loadLocations();
                 onSelect(crd.location.id);
-                Alert.alert('Succès', 'Lieu de stockage créé avec succès');
+                Alert.alert(t('storageLocationSelector.succes'), t('storageLocationSelector.lieuDeStockageCreeAvecSucces'));
             } else {
                 throw new Error(response.message || t('storageLocationSelector.erreurLorsDeLaCreation'));
             }
         } catch (error: any) {
-            Alert.alert('Erreur', error.message || 'Impossible de créer le lieu de stockage');
+            Alert.alert('Erreur', error.message || t('storageLocationSelector.impossibleDeCreerLeLieuDe'));
         } finally {
             setCreatingLocation(false);
         }

@@ -7,6 +7,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import { SafeIcon } from '../SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface EmptyStateProps {
     icon?: string;
@@ -26,6 +27,7 @@ export const EmptyState: React.FC<EmptyStateProps> = React.memo(({
     variant = 'default',
 }) => {
     const getIcon = () => {
+    const { t } = useLanguageSafe();
         if (icon) return icon;
 
         switch (variant) {

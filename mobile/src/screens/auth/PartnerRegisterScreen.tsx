@@ -749,7 +749,7 @@ const PartnerRegisterScreen: React.FC = () => {
               <Title style={styles.sectionTitle}>{t('partnerRegister.paymentMethods') || 'Moyens de paiement'}</Title>
             </View>
             <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginBottom: 12 }}>
-              {t('partnerRegister.paymentMethodsHint') || 'Configurez vos coordonnées Mobile Money pour recevoir vos reversements. Vous pourrez les modifier plus tard.'}
+              {t('partnerRegister.paymentMethodsHint') || t('partnerRegisterScreen.configurezVosCoordonneesMobileMoneyPour')}
             </Text>
 
             {/* MTN Mobile Money */}
@@ -815,7 +815,7 @@ const PartnerRegisterScreen: React.FC = () => {
           <Text style={styles.submitButtonText}>
             {loading ? 'Inscription en cours...' :
               (!form.partner_type || form.partner_type.trim() === '') ?
-                'Sélectionnez un type d\'établissement' :
+                t('partnerRegisterScreen.selectionnezUnTypeDt('partnerRegisterScreen.etablissement') :
                 "S'inscrire comme partenaire"}
           </Text>
         </TouchableOpacity>

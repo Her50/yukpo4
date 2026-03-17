@@ -268,7 +268,7 @@ const ProfilEtudiantScreen: React.FC = () => {
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={styles.textInput}
-                            placeholder={t('profilEtudiant.exJeSuisEnClasse')}ai des difficultés en Français et Histoire. J'aimerais faire des études d'ingénierie..."
+                            placeholder={t('profilEtudiant.exJeSuisEnClasset('profilEtudiantScreen.aiDesDifficultesEnFrancaisEtt('profilEtudiantScreen.aimeraisFaireDesEtudesD')ingénierie..."
                             placeholderTextColor="#9CA3AF"
                             value={profileDescription}
                             onChangeText={setProfileDescription}

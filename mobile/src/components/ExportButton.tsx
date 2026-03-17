@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Share, StyleSheet, Text, TouchableOpacity } f
 import { config } from '../config/environment';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ExportButtonProps {
     data: any;
@@ -19,7 +20,8 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
     filename,
     onExport,
 }) => {
-    const [exporting, setExporting] = useState(false);
+        const { t } = useLanguageSafe();
+const [exporting, setExporting] = useState(false);
 
     const convertToCSV = (data: any): string => {
         if (!Array.isArray(data) || data.length === 0) {
@@ -62,7 +64,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
                     break;
                 case 'pdf':
                     // TODO: Implémenter génération PDF
-                    Alert.alert('Info', 'Export PDF à implémenter');
+                    Alert.alert('Info', t('exportButton.exportPdfAImplementer'));
                     setExporting(false);
                     return;
                 case 'excel':
@@ -77,7 +79,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
                         });
 
                         if (!response.ok) {
-                            throw new Error('Erreur génération Excel');
+                            throw new Error(t('exportButton.erreurGenerationExcel'));
                         }
 
                         const blob = await response.blob();
@@ -100,13 +102,13 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
                                 });
                             } else {
                                 await Share.share({
-                                    message: 'Export Excel généré',
+                                    message: t('exportButton.exportExcelGenere'),
                                     title: fileName,
                                 });
                             }
 
                             onExport?.(fileUri);
-                            Alert.alert('Succès', `Fichier Excel exporté: ${fileName}`);
+                            Alert.alert(t('exportButton.succes'), t('exportButton.fichierExcelExporte', { fileName: fileName }));
                             setExporting(false);
                         };
                         reader.readAsDataURL(blob);
@@ -122,7 +124,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
             }
 
             if (!content) {
-                Alert.alert('Erreur', 'Aucune donnée à exporter');
+                Alert.alert('Erreur', t('exportButton.aucuneDonneeAExporter'));
                 setExporting(false);
                 return;
             }
@@ -150,7 +152,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
             }
 
             onExport?.(fileUri);
-            Alert.alert('Succès', `Fichier exporté: ${fileName}`);
+            Alert.alert(t('exportButton.succes'), t('exportButton.fichierExporte', { fileName: fileName }));
         } catch (error: any) {
             console.error('[ExportButton] Erreur export:', error);
             Alert.alert('Erreur', 'Impossible d\'exporter le fichier');

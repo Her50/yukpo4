@@ -110,7 +110,7 @@ const BloodDonationMatchesScreen: React.FC = () => {
 
             if (response.success) {
                 const notified = (response.data as any)?.notified_count || 0;
-                Alert.alert('Succès', `${notified} donneur(s) ont été notifié(s)`);
+                Alert.alert(t('bloodDonationMatchesScreen.succes'), t('bloodDonationMatchesScreen.donneursOntEteNotifies', { notified: notified }));
                 await loadMatches(); // Recharger pour voir les statuts mis à jour
             } else {
                 Alert.alert('Erreur', (response as any).error || 'Impossible de notifier les donneurs');
@@ -125,7 +125,7 @@ const BloodDonationMatchesScreen: React.FC = () => {
 
     const handleCall = (phoneNumber: string | null) => {
         if (!phoneNumber) {
-            Alert.alert('Erreur', 'Numéro de téléphone non disponible');
+            Alert.alert('Erreur', t('bloodDonationMatchesScreen.numeroDeTelephoneNonDisponible'));
             return;
         }
         Linking.openURL(`tel:${phoneNumber}`);
@@ -133,7 +133,7 @@ const BloodDonationMatchesScreen: React.FC = () => {
 
     const handleWhatsApp = (whatsapp: string | null) => {
         if (!whatsapp) {
-            Alert.alert('Erreur', 'Numéro WhatsApp non disponible');
+            Alert.alert('Erreur', t('bloodDonationMatchesScreen.numeroWhatsappNonDisponible'));
             return;
         }
         const cleanNumber = whatsapp.replace(/[^0-9]/g, '');

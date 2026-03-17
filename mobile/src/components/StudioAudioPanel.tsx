@@ -236,7 +236,7 @@ export const StudioAudioPanel: React.FC<StudioAudioPanelProps> = ({
 
     const handleImportSample = async () => {
         if (!serviceId) {
-            Alert.alert('Profil vocal', 'Sélectionnez un service avant d’importer un sample audio.');
+            Alert.alert('Profil vocal', t('studioAudioPanel.selectionnezUnServiceAvantDimporterUn'));
             return;
         }
         try {
@@ -255,14 +255,14 @@ export const StudioAudioPanel: React.FC<StudioAudioPanelProps> = ({
                 type: asset.mimeType || 'audio/mpeg',
             });
             if (!uploaded) {
-                throw new Error('Réponse inattendue du serveur.');
+                throw new Error(t('studioAudioPanel.reponseInattendueDuServeur'));
             }
             setPendingSample({
                 id: uploaded.id,
                 filename: asset.name || uploaded.path?.split('/').pop() || `sample_${uploaded.id}`,
                 uri: asset.uri,
             });
-            Alert.alert('Profil vocal', 'Sample importé. Associez-le à votre profil.');
+            Alert.alert('Profil vocal', t('studioAudioPanel.sampleImporteAssociezleAVotreProfil'));
         } catch (error: any) {
             Alert.alert('Profil vocal', error?.message || 'Impossible d’importer ce sample audio.');
         } finally {

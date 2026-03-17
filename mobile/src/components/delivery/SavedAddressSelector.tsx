@@ -56,8 +56,8 @@ const [showModal, setShowModal] = useState(false);
     // Format de l'adresse pour l'affichage
     const formatAddressDisplay = (address: UserSavedAddress): string => {
         const parts = [address.address];
-        if (address.building_number) parts.push(`Bât. ${address.building_number}`);
-        if (address.floor) parts.push(`Étage ${address.floor}`);
+        if (address.building_number) parts.push(t('savedAddressSelector.bat', { address_building_number: address.building_number }));
+        if (address.floor) parts.push(t('savedAddressSelector.etage', { address_floor: address.floor }));
         if (address.apartment) parts.push(`Appt. ${address.apartment}`);
         return parts.join(', ');
     };

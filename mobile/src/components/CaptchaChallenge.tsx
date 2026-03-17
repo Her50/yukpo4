@@ -24,7 +24,7 @@ const [question, setQuestion] = useState("");
     if (answer.trim() === "7") {
       onSuccess(); // Simulation
     } else {
-      Alert.alert("Erreur", "Réponse incorrecte");
+      Alert.alert("Erreur", t('captchaChallenge.reponseIncorrecte'));
     }
   };
 

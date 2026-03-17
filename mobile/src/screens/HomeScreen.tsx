@@ -872,6 +872,8 @@ const HomeScreen: React.FC = () => {
                 />
             )}
 
+            {/* FAB déplacé dans AppNavigator.optimized.tsx */}
+
         </SafeNativeView>
     );
 };

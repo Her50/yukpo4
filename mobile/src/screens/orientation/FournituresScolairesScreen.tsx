@@ -82,7 +82,7 @@ const FournituresScolairesScreen: React.FC = () => {
     const renderFourniture = ({ item }: { item: Fourniture }) => (
         <View style={styles.card}>
             <Text style={styles.cardTitle}>
-                {item.nom_etablissement || `Établissement #${item.etablissement_id}`}
+                {item.nom_etablissement || t('fournituresScolairesScreen.etablissement', { item_etablissement_id: item.etablissement_id })}
             </Text>
             <Text style={styles.cardSubtitle}>📚 Niveau: {item.niveau}</Text>
             <Text style={styles.cardSubtitle}>📅 Année: {item.annee_scolaire}</Text>
@@ -150,7 +150,7 @@ const FournituresScolairesScreen: React.FC = () => {
             ) : fournitures.length > 0 ? (
                 <>
                     <Text style={styles.resultsCount}>
-                        {total} liste{total > 1 ? 's' : ''} trouvée{total > 1 ? 's' : ''}
+                        {total} liste{total > 1 ? 's' : 't('fournituresScolairesScreen.trouveetotal1')s' : ''}
                     </Text>
                     <FlatList
                         data={fournitures}

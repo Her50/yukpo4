@@ -67,7 +67,7 @@ const AISuggestFormationsScreen: React.FC = () => {
         if (competencesManquantes.length === 0 && !objectifCarriere.trim()) {
             Alert.alert(
                 'Information requise',
-                'Veuillez renseigner au moins des compétences manquantes ou un objectif de carrière.'
+                t('aISuggestFormationsScreen.veuillezRenseignerAuMoinsDesCompetences')
             );
             return;
         }

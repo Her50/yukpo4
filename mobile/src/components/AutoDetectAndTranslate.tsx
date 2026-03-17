@@ -1,9 +1,11 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const AutoDetectAndTranslate = () => {
-  const [originalText, setOriginalText] = useState('');
+      const { t } = useLanguageSafe();
+const [originalText, setOriginalText] = useState('');
   const [detectedLang, setDetectedLang] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,7 +44,7 @@ const AutoDetectAndTranslate = () => {
         style={{ borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 4 }}
       />
       <TouchableOpacity onPress={handleProcess} disabled={loading}>
-        <Text>{loading ? 'Analyse en cours...' : 'Détecter + Traduire'}</Text>
+        <Text>{loading ? 'Analyse en cours...' : t('autoDetectAndTranslate.detecterTraduire')}</Text>
       </TouchableOpacity>
 
       {detectedLang && (

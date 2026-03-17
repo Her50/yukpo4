@@ -7,10 +7,10 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeCard } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { NativeCard } from '../SafeNativeDesign';
 
 interface DriverReview {
     id: number;
@@ -44,6 +44,7 @@ const CovoiturageDriverProfile: React.FC<CovoiturageDriverProfileProps> = ({
     onContactPress,
     onViewAllReviews
 }) => {
+    const { t } = useLanguageSafe();
     const renderStars = (rating: number) => {
         const stars = [];
         const fullStars = Math.floor(rating);

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DebugPanel, useDebugPanel } from './DebugPanel';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface DebugFloatingButtonProps {
     enabled?: boolean;
@@ -19,7 +20,8 @@ export const DebugFloatingButton: React.FC<DebugFloatingButtonProps> = ({
     enabled = __DEV__ // Activé par défaut en mode développement
 }) => {
     const debugPanel = useDebugPanel();
-    const [position] = useState(new Animated.ValueXY({ x: 20, y: 100 }));
+        const { t } = useLanguageSafe();
+const [position] = useState(new Animated.ValueXY({ x: 20, y: 100 }));
     const [errorCount, setErrorCount] = useState(0);
 
     // Intercepter les erreurs pour afficher un badge

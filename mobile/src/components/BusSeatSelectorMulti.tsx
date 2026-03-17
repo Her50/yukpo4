@@ -411,7 +411,7 @@ const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
                             <SafeIcon name="check-circle" size={22} color="#FFFFFF" />
                             <Text style={styles.confirmButtonText}>
                                 {selectedSeats.length === 0
-                                    ? 'Sélectionnez des places'
+                                    ? t('busSeatSelectorMulti.selectionnezDesPlaces')
                                     : !passengerNames.every(n => n.trim())
                                         ? 'Remplissez les noms'
                                         : `Payer ${totalPrice.toLocaleString()} FCFA`}

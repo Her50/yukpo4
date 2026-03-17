@@ -617,7 +617,7 @@ const [selectedModalities, setSelectedModalities] = useState<string[]>(value || 
                 </View>
             )}
 
-            {/* Modal d'ajout personnalisé - seulement si le tableau n'est pas affiché */}
+            {/* Modal dt('linearAutocompleteEditor.ajoutPersonnaliseSeulementSiLeTableau')est pas affiché */}
             {!showTable && (
                 <Modal
                     visible={showAddModal}

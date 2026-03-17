@@ -77,7 +77,7 @@ const [loading, setLoading] = useState(false);
             });
 
             if (!result || !result.subtitles) {
-                throw new Error('Réponse invalide du serveur');
+                throw new Error(t('autoCaptionsPanel.reponseInvalideDuServeur'));
             }
 
             setSubtitles(result.subtitles);
@@ -101,7 +101,7 @@ const [loading, setLoading] = useState(false);
                 }
             }
 
-            Alert.alert('Erreur de génération', errorMessage, [{ text: 'OK' }]);
+            Alert.alert(t('autoCaptionsPanel.erreurDeGeneration'), errorMessage, [{ text: 'OK' }]);
         } finally {
             setLoading(false);
         }

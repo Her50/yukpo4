@@ -116,12 +116,12 @@ const OffresEmploiFormScreen: React.FC = () => {
     const typesContrat = ['CDI', 'CDD', 'Stage', 'Freelance', 'Temps partiel', 'Alternance'];
     const niveauxEtude = ['Bac', 'Bac+2', 'Bac+3', 'Bac+5', 'Master', 'Doctorat'];
     const secteurs = [
-        'Informatique', 'Commerce', t('offresEmploiFormScreen.sante'), 'Éducation', 'Finance', 'Marketing',
+        'Informatique', 'Commerce', t('offresEmploiFormScreen.sante'), t('offresEmploiFormScreen.education'), 'Finance', 'Marketing',
         'Ressources Humaines', t('offresEmploiFormScreen.ingenierie'), 'Juridique', 'Communication', 'Autre'
     ];
     const competencesOptions = [
         'Gestion de projet', 'Communication', 'Leadership', 'Analyse', t('offresEmploiFormScreen.creativite'),
-        t('offresEmploiFormScreen.travailEnEquipe'), 'Autonome', 'Organisé', 'Polyvalent', 'Rigoureux'
+        t('offresEmploiFormScreen.travailEnEquipe'), 'Autonome', t('offresEmploiFormScreen.organise'), 'Polyvalent', 'Rigoureux'
     ];
     const languesOptions = [t('offresEmploiFormScreen.francais'), 'Anglais', 'Espagnol', 'Allemand', 'Arabe', 'Autre'];
     const permisOptions = ['Permis B', 'Permis A', 'Permis C', 'Permis D', 'Aucun'];
@@ -247,8 +247,8 @@ const OffresEmploiFormScreen: React.FC = () => {
             title: t('offresEmploiForm.profilRecherche'),
             icon: 'user',
             fields: [
-                { label: 'Niveau d\'études', value: formData.niveau_etude },
-                { label: t('offresEmploiForm.experienceMin'), value: formData.experience_min ? `${formData.experience_min} ans` : 'Non renseigné' },
+                { label: 'Niveau d\t('offresEmploiFormScreen.etudes'), value: formData.niveau_etude },
+                { label: t('offresEmploiForm.experienceMin'), value: formData.experience_min ? `${formData.experience_min} ans` : t('offresEmploiFormScreen.nonRenseigne') },
                 { label: t('offresEmploiForm.competences'), value: selectedCompetences.join(', ') },
                 { label: 'Langues', value: selectedLangues.join(', ') },
             ],
@@ -475,7 +475,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                         >
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
                             <Text style={styles.gpsButtonText}>
-                                {selectedGPS ? t('offresEmploiFormScreen.localisationSelectionnee') : 'Sélectionner sur la carte'}
+                                {selectedGPS ? t('offresEmploiFormScreen.localisationSelectionnee') : t('offresEmploiFormScreen.selectionnerSurLaCarte')}
                             </Text>
                             <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
                         </TouchableOpacity>
@@ -638,7 +638,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                             <Text style={styles.dateButtonText}>
                                 {formData.date_limite_candidature
                                     ? formData.date_limite_candidature.toLocaleDateString('fr-FR')
-                                    : 'Sélectionner une date'}
+                                    : t('offresEmploiFormScreen.selectionnerUneDate')}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -653,7 +653,7 @@ const OffresEmploiFormScreen: React.FC = () => {
                             <Text style={styles.dateButtonText}>
                                 {formData.date_debut_poste
                                     ? formData.date_debut_poste.toLocaleDateString('fr-FR')
-                                    : 'Sélectionner une date'}
+                                    : t('offresEmploiFormScreen.selectionnerUneDate')}
                             </Text>
                         </TouchableOpacity>
                     </View>

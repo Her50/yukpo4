@@ -240,7 +240,7 @@ const [messages, setMessages] = useState<Message[]>([]);
   const startRecording = () => {
     setIsRecording(true);
     // TODO: Implémenter l'enregistrement audio avec Expo Audio
-    Alert.alert('Enregistrement audio', 'Fonctionnalité à implémenter avec Expo Audio');
+    Alert.alert('Enregistrement audio', t('chatModalAdvanced.fonctionnaliteAImplementerAvecExpoAudio'));
   };
 
   const stopRecording = () => {

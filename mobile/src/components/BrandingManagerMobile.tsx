@@ -70,7 +70,7 @@ const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
             if (error.message === 'Permission timeout') {
                 console.warn('Timeout permission galerie - continuer sans image');
             } else {
-                Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
+                Alert.alert('Erreur', t('brandingManagerMobile.impossibleDeSelectionnerL')image');
             }
         }
     };

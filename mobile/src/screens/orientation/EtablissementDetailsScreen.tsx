@@ -219,7 +219,7 @@ const EtablissementDetailsScreen: React.FC = () => {
                     service={{
                         id: id?.toString() || '',
                         titre: etablissement.nom_etablissement,
-                        description: `Établissement ${etablissement.type_etablissement} - ${etablissement.ville}`,
+                        description: t('etablissementDetailsScreen.etablissement', { etablissement_type_etabli: etablissement.type_etablissement, etablissement_ville: etablissement.ville }),
                     }}
                     prestataireInfo={{
                         id: parseInt(id?.toString() || '0'),

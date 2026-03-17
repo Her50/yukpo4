@@ -72,7 +72,7 @@ const ImmobilierListScreen: React.FC = () => {
             newSelection.delete(propertyId);
         } else {
             if (newSelection.size >= 5) {
-                Alert.alert('Limite atteinte', 'Vous pouvez comparer jusqu\'à 5 biens maximum');
+                Alert.alert('Limite atteinte', 'Vous pouvez comparer jusqu\t('immobilierListScreen.a5BiensMaximum'));
                 return;
             }
             newSelection.add(propertyId);
@@ -82,7 +82,7 @@ const ImmobilierListScreen: React.FC = () => {
 
     const handleCompare = () => {
         if (selectedProperties.size < 2) {
-            Alert.alert('Sélection requise', 'Sélectionnez au moins 2 biens pour comparer');
+            Alert.alert(t('immobilierListScreen.selectionRequise'), t('immobilierListScreen.selectionnezAuMoins2BiensPour'));
             return;
         }
         (navigation as any).navigate('ImmobilierCompare', {
@@ -116,7 +116,7 @@ const ImmobilierListScreen: React.FC = () => {
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
                     <Text style={styles.headerTitle}>
-                        {properties.length} bien{properties.length > 1 ? 's' : ''} trouvé{properties.length > 1 ? 's' : ''}
+                        {properties.length} bien{properties.length > 1 ? 's' : 't('immobilierListScreen.trouvepropertieslength1')s' : ''}
                     </Text>
                     {selectedProperties.size > 0 && (
                         <Text style={styles.selectionCount}>

@@ -75,7 +75,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
 
     const getCurrentLocation = async () => {
         if (!permissionGranted) {
-            Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la localisation.');
+            Alert.alert('Permission requise', 'Veuillez autoriser l\t('enhancedGPSModal.accesALaLocalisation'));
             return;
         }
 
@@ -135,12 +135,12 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
         const lng = parseFloat(manualLng);
 
         if (isNaN(lat) || isNaN(lng)) {
-            Alert.alert('Erreur', 'Veuillez entrer des coordonnées valides.');
+            Alert.alert('Erreur', t('enhancedGPSModal.veuillezEntrerDesCoordonneesValides'));
             return;
         }
 
         if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-            Alert.alert('Erreur', 'Coordonnées GPS invalides.');
+            Alert.alert('Erreur', t('enhancedGPSModal.coordonneesGpsInvalides'));
             return;
         }
 
@@ -159,7 +159,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
 
     const confirmSelection = () => {
         if (!selectedLocation) {
-            Alert.alert('Erreur', 'Veuillez sélectionner une position.');
+            Alert.alert('Erreur', t('enhancedGPSModal.veuillezSelectionnerUnePosition'));
             return;
         }
 
@@ -347,7 +347,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                                 <Text style={styles.mapPlaceholderSubtitle}>
                                     {selectedLocation
                                         ? `${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`
-                                        : 'Sélectionnez une position'
+                                        : t('enhancedGPSModal.selectionnezUnePosition')
                                     }
                                 </Text>
 

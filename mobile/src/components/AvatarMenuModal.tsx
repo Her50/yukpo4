@@ -18,6 +18,7 @@ interface AvatarMenuModalProps {
 }
 
 const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
+    const { t } = useLanguageSafe();
   isOpen,
   onClose,
   onNavigate
@@ -26,7 +27,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
 
   const handleLogout = async () => {
     Alert.alert(
-      'Déconnexion',
+      t('avatarMenuModal.deconnexion'),
       t('avatarMenuModal.etesvousSurDeVouloirVousDeconnecter'),
       [
         {
@@ -42,7 +43,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
               onClose();
             } catch (error) {
               console.error('Erreur déconnexion:', error);
-              Alert.alert('Erreur', 'Impossible de se déconnecter');
+              Alert.alert('Erreur', t('avatarMenuModal.impossibleDeSeDeconnecter'));
             }
           },
         },

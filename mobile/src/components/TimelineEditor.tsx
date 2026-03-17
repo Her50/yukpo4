@@ -43,7 +43,7 @@ const [editedTimeline, setEditedTimeline] = useState<VideoTimeline>(timeline);
 
     const deleteScene = (index: number) => {
         if (editedTimeline.scenes.length <= 1) {
-            Alert.alert('Erreur', 'Vous devez garder au moins une scène');
+            Alert.alert('Erreur', t('timelineEditor.vousDevezGarderAuMoinsUne'));
             return;
         }
 

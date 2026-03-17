@@ -47,7 +47,7 @@ export const ProductComparison: React.FC<ProductComparisonProps> = ({
 
     const handleCompare = () => {
         if (selectedProducts.length < 2) {
-            toaster.warning('Sélectionnez au moins 2 produits pour comparer');
+            toaster.warning(t('productComparison.selectionnezAuMoins2ProduitsPour'));
             return;
         }
         triggerHaptic('medium');

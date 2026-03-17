@@ -67,7 +67,7 @@ const ShoppingPickupDropScreen: React.FC = () => {
         if (!modalType) return;
         const coords = parseCoordinates(value);
         if (!coords) {
-            Alert.alert('Localisation invalide', 'Impossible de lire la position sélectionnée.');
+            Alert.alert('Localisation invalide', t('shoppingPickupDropScreen.impossibleDeLireLaPositionSelectionnee'));
             return;
         }
 
@@ -92,7 +92,7 @@ const ShoppingPickupDropScreen: React.FC = () => {
 
     const handleContinue = () => {
         if (!pickup?.latitude || !dropoff?.latitude) {
-            Alert.alert('Localisations manquantes', 'Sélectionne le point de retrait et de dépôt.');
+            Alert.alert('Localisations manquantes', t('shoppingPickupDropScreen.selectionneLePointDeRetraitEt'));
             return;
         }
         navigation.navigate('ShoppingSummary');

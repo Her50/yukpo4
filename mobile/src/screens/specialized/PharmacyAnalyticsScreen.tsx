@@ -75,12 +75,12 @@ const PharmacyAnalyticsScreen: React.FC = () => {
                     );
                 }
             } else {
-                Alert.alert('Erreur', 'Impossible de vérifier les permissions');
+                Alert.alert('Erreur', t('pharmacyAnalyticsScreen.impossibleDeVerifierLesPermissions'));
                 navigation.goBack();
             }
         } catch (error: any) {
             console.error('[PharmacyAnalyticsScreen] Erreur vérification propriétaire:', error);
-            Alert.alert('Erreur', 'Impossible de vérifier les permissions');
+            Alert.alert('Erreur', t('pharmacyAnalyticsScreen.impossibleDeVerifierLesPermissions'));
             navigation.goBack();
         }
     };

@@ -64,7 +64,7 @@ const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
       '7d': t('dashboardScreen.tendanceRecente'),
       '30d': 'Performance mensuelle',
       '90d': 'Analyse trimestrielle',
-      '180d': 'Évolution semestrielle',
+      '180d': t('dashboardScreen.evolutionSemestrielle'),
       '365d': 'Bilan annuel'
     };
     return descriptions[period as keyof typeof descriptions] || 'Analyse';
@@ -161,7 +161,7 @@ const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
       }
     } catch (error) {
       console.error('[DashboardScreen] Erreur chargement dashboard:', error);
-      Alert.alert('Erreur', 'Impossible de charger les données du dashboard. Vérifiez votre connexion.');
+      Alert.alert('Erreur', t('dashboardScreen.impossibleDeChargerLesDonneesDu'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -605,10 +605,10 @@ const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
         <TopServicesCard
           services={dashboardData.topPerformingServices}
           onServicePress={(service: any) => {
-            Alert.alert('Service', `Détails du service: ${service.title}`);
+            Alert.alert('Service', t('dashboardScreen.detailsDuService', { service_title: service.title }));
           }}
           onViewAllPress={() => {
-            Alert.alert('Info', 'Redirection vers la liste complète des services');
+            Alert.alert('Info', t('dashboardScreen.redirectionVersLaListeCompleteDes'));
           }}
         />
 
@@ -616,7 +616,7 @@ const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
         <RecentActivityCard
           activities={dashboardData.recentActivity}
           onActivityPress={(activity: any) => {
-            Alert.alert('Activité', `Détails: ${activity.title}`);
+            Alert.alert(t('dashboardScreen.activite'), t('dashboardScreen.details', { activity_title: activity.title }));
           }}
           onViewAllPress={() => {
             Alert.alert('Info', 'Redirection vers l\'historique complet');

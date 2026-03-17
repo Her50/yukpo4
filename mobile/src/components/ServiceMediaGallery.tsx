@@ -225,7 +225,7 @@ const [media, setMedia] = useState<MediaItem[]>([]);
             setMedia(mediaList);
         } catch (error) {
             console.error('[ServiceMediaGallery] Erreur chargement médias:', error);
-            Alert.alert('Erreur', 'Impossible de charger les médias');
+            Alert.alert('Erreur', t('serviceMediaGallery.impossibleDeChargerLesMedias'));
         } finally {
             setLoading(false);
         }
@@ -387,10 +387,10 @@ const [media, setMedia] = useState<MediaItem[]>([]);
                             <SafeIcon name={filter === 'videos' ? 'video-off' : 'image'} size={40} color={modernColors.textSecondary} />
                         </View>
                         <Text style={styles.emptyTitle}>
-                            {filter === 'all' ? t('serviceMediaGallery.aucunMedia') : filter === 'images' ? 'Aucune photo' : 'Aucune vidéo'}
+                            {filter === 'all' ? t('serviceMediaGallery.aucunMedia') : filter === 'images' ? 'Aucune photo' : t('serviceMediaGallery.aucuneVideo')}
                         </Text>
                         <Text style={styles.emptyText}>
-                            Ce prestataire n'a pas encore ajouté de {filter === 'all' ? 'média' : filter === 'images' ? 'photo' : t('serviceMediaGallery.video')}
+                            Ce prestataire nt('serviceMediaGallery.aPasEncoreAjouteDeFilter')all' ? t('serviceMediaGallery.media') : filter === 'images' ? 'photo' : t('serviceMediaGallery.video')}
                         </Text>
                         {filter !== 'all' && (
                             <TouchableOpacity style={styles.emptyButton} onPress={() => setFilter('all')}>

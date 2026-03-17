@@ -360,15 +360,47 @@ export const immobilierService = {
         return response;
     },
 
-    // ✅ Upload visite virtuelle (360°)
-    uploadVirtualTour: async (propertyId: number, tourUrl: string, tourType: string = '360_photo') => {
-        const response = await apiPost<{ success: boolean; tour_id: number }>(
-            `/api/immobilier/biens/${propertyId}/upload-virtual-tour`,
-            {
-                tour_url: tourUrl,
-                tour_type: tourType,
-            }
-        );
+    // Upload visite virtuelle (360° video ou modèle 3D) via multipart
+    uploadVirtualTour: async (propertyId: number, file: { uri: string; type: string; name?: string }) => {
+        const { uploadFiles } = require('./uploadApi');
+        const uploaded = await uploadFiles([file]);
+        if (uploaded.length > 0) {
+            const formData = new FormData();
+            formData.append('file', {
+                uri: file.uri,
+                type: file.type || 'video/mp4',
+                name: file.name || `virtual_tour_${Date.now()}.mp4`,
+            } as any);
+
+            const token = await require('../utils/safeStorage').default.getItem('auth_token');
+            const { config } = require('../config/environment');
+            const response = await fetch(
+                `${config.API_BASE_URL}/api/immobilier/biens/${propertyId}/upload-virtual-tour`,
+                {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token}` },
+                    body: formData,
+                }
+            );
+            return response.json();
+        }
+        return { success: false };
+    },
+
+    // Récupérer les visites virtuelles d'un bien
+    getPropertyVirtualTours: async (propertyId: number) => {
+        const response = await apiGet<{
+            success: boolean;
+            data: Array<{
+                id: number;
+                tour_type: string;
+                media_url: string;
+                thumbnail_url?: string;
+                duration_seconds?: number;
+                description?: string;
+                is_primary: boolean;
+            }>;
+        }>(`/api/immobilier/biens/${propertyId}/virtual-tours`);
         return response;
     },
 

@@ -130,7 +130,7 @@ const [forecast, setForecast] = useState<WeatherForecast[]>([]);
 
             if (!apiKey || apiKey === 'YOUR_OPENWEATHER_API_KEY') {
                 console.log('[WeatherForecastModal] Clé API non configurée, utilisation des données mockées');
-                throw new Error('Clé API météo non configurée');
+                throw new Error(t('weatherForecastModal.cleApiMeteoNonConfiguree'));
             }
 
             let forecastData: WeatherForecast[] = [];

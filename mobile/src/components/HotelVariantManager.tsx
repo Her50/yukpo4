@@ -109,7 +109,7 @@ const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
     const handlePickImage = async (variantId: string) => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission refusée', 'Nous avons besoin d\'accéder à votre galerie');
+            Alert.alert(t('hotelVariantManager.permissionRefusee'), 'Nous avons besoin d\t('hotelVariantManager.accederAVotreGalerie'));
             return;
         }
 

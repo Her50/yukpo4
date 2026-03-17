@@ -95,10 +95,10 @@ const [expanded, setExpanded] = useState(false);
             const response = await apiPost(endpoint, payload);
 
             if (response.success) {
-                Alert.alert('Succès', 'Paramètres d\'optimisation automatique sauvegardés');
+                Alert.alert(t('autoOptimizationSettings.succes'), t('autoOptimizationSettings.parametresDt('autoOptimizationSettings.optimisationAutomatiqueSauvegardes'));
                 onSettingsChange?.(settings);
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de sauvegarder les paramètres');
+                Alert.alert('Erreur', response.error || t('autoOptimizationSettings.impossibleDeSauvegarderLesParametres'));
             }
         } catch (error) {
             console.error('[AutoOptimizationSettings] Erreur sauvegarde:', error);

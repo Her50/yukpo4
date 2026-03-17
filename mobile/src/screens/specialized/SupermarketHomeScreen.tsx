@@ -103,11 +103,11 @@ const SupermarketHomeScreen: React.FC = () => {
                 );
                 setSupermarkets(response.supermarkets);
             } else {
-                Alert.alert('Localisation requise', 'Veuillez activer la localisation pour trouver les supermarchés à proximité');
+                Alert.alert('Localisation requise', t('supermarketHomeScreen.veuillezActiverLaLocalisationPourTrouver'));
             }
         } catch (err: any) {
             console.error('[SupermarketHomeScreen] Erreur chargement supermarchés:', err);
-            Alert.alert('Erreur', 'Impossible de charger les supermarchés');
+            Alert.alert('Erreur', t('supermarketHomeScreen.impossibleDeChargerLesSupermarches'));
         } finally {
             setLoadingSupermarkets(false);
         }
@@ -176,7 +176,7 @@ const SupermarketHomeScreen: React.FC = () => {
                 setPriceComparison(response.data.comparison);
                 setViewMode('compare');
             } else {
-                Alert.alert('Aucun résultat', 'Aucun produit trouvé avec ce nom dans les supermarchés à proximité');
+                Alert.alert(t('supermarketHomeScreen.aucunResultat'), t('supermarketHomeScreen.aucunProduitTrouveAvecCeNom'));
             }
         } catch (err: any) {
             console.error('[SupermarketHomeScreen] Erreur comparaison:', err);

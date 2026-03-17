@@ -97,7 +97,7 @@ export default function LivesListScreen() {
         <View style={styles.liveIndicator}>
           <SafeIcon name="radio" size={8} color="#FFFFFF" />
           <Text style={styles.liveIndicatorText}>
-            {item.isLiveNow ? 'LIVE' : 'À VENIR'}
+            {item.isLiveNow ? 'LIVE' : t('livesListScreen.aVenir')}
           </Text>
         </View>
         <View style={styles.viewerCount}>
@@ -122,7 +122,7 @@ export default function LivesListScreen() {
         <View style={styles.hostInfo}>
           <SafeIcon name="user" size={12} color="#6B7280" />
           <Text style={styles.hostText}>
-            {(item as any).host_name || (item as any).metadata?.host_name || `Hôte #${item.host_user_id}`}
+            {(item as any).host_name || (item as any).metadata?.host_name || t('livesListScreen.hote', { item_host_user_id: item.host_user_id })}
           </Text>
         </View>
 
@@ -213,7 +213,7 @@ export default function LivesListScreen() {
 
       <View style={styles.tabs}>
         {renderTabButton('live', 'En direct', liveNow.length)}
-        {renderTabButton('upcoming', 'À venir', upcomingLives.length)}
+        {renderTabButton('upcoming', t('livesListScreen.aVenir'), upcomingLives.length)}
       </View>
 
       <FlatList

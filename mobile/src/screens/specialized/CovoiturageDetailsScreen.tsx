@@ -20,8 +20,8 @@ import ChatModalMobile from '../../components/ChatModalMobile';
 import CovoiturageDriverProfile from '../../components/covoiturage/CovoiturageDriverProfile';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet } from '../../services/api';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { apiGet, apiPost } from '../../services/api';
 
 interface CovoiturageDetails {
     id: number;
@@ -64,6 +64,10 @@ const CovoiturageDetailsScreen: React.FC = () => {
     const [showChat, setShowChat] = useState(false);
     const [driverReviews, setDriverReviews] = useState<any[]>([]);
     const [loadingReviews, setLoadingReviews] = useState(false);
+    const [reviewNote, setReviewNote] = useState(0);
+    const [reviewComment, setReviewComment] = useState('');
+    const [submittingReview, setSubmittingReview] = useState(false);
+    const [hasSubmittedReview, setHasSubmittedReview] = useState(false);
 
     useEffect(() => { loadCovoiturageDetails(); }, []);
     useEffect(() => { if (covoiturage?.prestataire?.user_id) loadDriverReviews(); }, [covoiturage?.prestataire?.user_id]);
@@ -73,7 +77,7 @@ const CovoiturageDetailsScreen: React.FC = () => {
             setLoading(true);
             const response = await apiGet(`/api/covoiturages/${params.covoiturageId}`);
             if (response.success && response.data) setCovoiturage(response.data as CovoiturageDetails);
-            else { Alert.alert('Erreur', 'Impossible de charger les détails'); navigation.goBack(); }
+            else { Alert.alert('Erreur', t('covoiturageDetailsScreen.impossibleDeChargerLesDetails')); navigation.goBack(); }
         } catch (error: any) { Alert.alert('Erreur', error.message || 'Erreur de chargement'); navigation.goBack(); }
         finally { setLoading(false); }
     };
@@ -88,12 +92,39 @@ const CovoiturageDetailsScreen: React.FC = () => {
     const handleShare = async () => {
         if (!covoiturage) return;
         const dateStr = new Date(covoiturage.date_depart).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+        const deepLink = `https://yukpo-backend-376093909298.europe-west1.run.app/product/${covoiturage.service_id}?serviceId=${covoiturage.service_id}`;
         try {
             await Share.share({
-                message: `Covoiturage ${covoiturage.depart} → ${covoiturage.destination}\nLe ${dateStr}${covoiturage.heure_depart ? ' à ' + covoiturage.heure_depart.substring(0, 5) : ''}\n${covoiturage.prix_par_place.toLocaleString('fr-FR')} ${covoiturage.devise}/place - ${covoiturage.places_disponibles} place(s) dispo\nVia Yukpo`,
+                message: `🚗 Covoiturage ${covoiturage.depart} → ${covoiturage.destination}\nLe ${dateStr}${covoiturage.heure_depart ? ' à ' + covoiturage.heure_depart.substring(0, 5) : ''}\n${covoiturage.prix_par_place.toLocaleString('fr-FR')} ${covoiturage.devise}/place - ${covoiturage.places_disponibles} place(s) dispo\n\n📲 Réservez sur Yukpo: ${deepLink}`,
                 title: `Covoiturage ${covoiturage.depart} → ${covoiturage.destination}`,
+                url: deepLink,
             });
         } catch { }
+    };
+
+    const handleSubmitReview = async () => {
+        if (!covoiturage || reviewNote === 0) {
+            Alert.alert(t('message.error'), t('covoiturageDetails.selectRating') || 'Veuillez sélectionner une note');
+            return;
+        }
+        try {
+            setSubmittingReview(true);
+            const response = await apiPost(`/api/covoiturages/${params.covoiturageId}/reviews`, {
+                note: reviewNote,
+                comment: reviewComment || undefined,
+            });
+            if (response.success) {
+                setHasSubmittedReview(true);
+                Alert.alert(t('covoiturageDetails.merci') || 'Merci !', t('covoiturageDetails.avisEnvoye') || 'Votre avis a été envoyé');
+                loadDriverReviews();
+            } else {
+                Alert.alert(t('message.error'), (response as any).error || t('covoiturageDetails.erreurAvis') || 'Impossible de soumettre l\'avis');
+            }
+        } catch (err: any) {
+            Alert.alert(t('message.error'), err.message || 'Erreur');
+        } finally {
+            setSubmittingReview(false);
+        }
     };
 
     if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#059669" /><Text style={st.centerText}>{t('covoiturageDetails.chargement')}</Text></View>);
@@ -184,8 +215,38 @@ const CovoiturageDetailsScreen: React.FC = () => {
                             }}
                             reviews={driverReviews}
                             onContactPress={() => setShowChat(true)}
-                            onViewAllReviews={() => Alert.alert('Avis', 'Page tous les avis à venir')}
+                            onViewAllReviews={() => Alert.alert('Avis', t('covoiturageDetailsScreen.pageTousLesAvisAVenir'))}
                         />
+                    </View>
+                )}
+
+                {/* Review Form (for passengers who booked) */}
+                {user && covoiturage.user_id !== (user?.id as any) && !hasSubmittedReview && (
+                    <View style={[st.card, { borderColor: '#FDE68A', borderWidth: 1 }]}>
+                        <View style={st.cardHeader}><SafeIcon name="star" size={18} color="#F59E0B" /><Text style={st.cardTitle}>{t('covoiturageDetails.laisserUnAvis') || 'Laisser un avis'}</Text></View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <TouchableOpacity key={star} onPress={() => setReviewNote(star)}>
+                                    <SafeIcon name="star" size={32} color={star <= reviewNote ? '#F59E0B' : '#D1D5DB'} />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                        <TextInput
+                            style={st.textInput}
+                            value={reviewComment}
+                            onChangeText={setReviewComment}
+                            placeholder={t('covoiturageDetails.commentaireOptionnel') || 'Commentaire (optionnel)'}
+                            placeholderTextColor="#9CA3AF"
+                            multiline
+                        />
+                        <TouchableOpacity
+                            style={[st.bookBtn, { backgroundColor: '#F59E0B', marginTop: 12 }, (submittingReview || reviewNote === 0) && { opacity: 0.5 }]}
+                            onPress={handleSubmitReview}
+                            disabled={submittingReview || reviewNote === 0}
+                        >
+                            {submittingReview ? <ActivityIndicator color="#fff" /> : <SafeIcon name="send" size={20} color="#fff" />}
+                            <Text style={st.bookBtnText}>{t('covoiturageDetails.envoyerAvis') || 'Envoyer mon avis'}</Text>
+                        </TouchableOpacity>
                     </View>
                 )}
 

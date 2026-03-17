@@ -152,7 +152,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
             `Voici vos identifiants pour commander des livraisons Yukpo :\n\n` +
             t('externalProvidersAdminScreen.votreCleApiNn', { provider_api_key: provider.api_key }) +
             `📱 Formulaire de commande :\n${FORM_URL}\n\n` +
-            `Ouvrez le lien ci-dessus dans votre navigateur, entrez votre clé API et les détails de la livraison.\n\n` +
+            t('externalProvidersAdminScreen.ouvrezLeLienCidessusDansVotre') +
             `Pour toute question, contactez le support Yukpo.`;
 
         try {
@@ -171,9 +171,9 @@ const ExternalProvidersAdminScreen: React.FC = () => {
             `🚚 *Yukpo - Vos identifiants de livraison*\n\n` +
             `Bonjour *${provider.provider_name}*,\n\n` +
             `Voici vos identifiants pour commander des livraisons Yukpo :\n\n` +
-            `📋 Votre clé API : \`${provider.api_key}\`\n\n` +
+            t('externalProvidersAdminScreen.votreCleApi')${provider.api_key}\`\n\n` +
             `📱 Formulaire de commande :\n${FORM_URL}\n\n` +
-            `Ouvrez le lien ci-dessus dans votre navigateur, entrez votre clé API et les détails de la livraison.`;
+            t('externalProvidersAdminScreen.ouvrezLeLienCidessusDansVotre');
 
         const encodedMessage = encodeURIComponent(message);
         let url = '';
@@ -200,7 +200,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
         const phone = provider.contact_phone?.replace(/[^0-9+]/g, '') || '';
         const message =
             `Yukpo Livraison - Vos identifiants\n` +
-            `Clé API: ${provider.api_key}\n` +
+            t('externalProvidersAdminScreen.cleApiN', { provider_api_key: provider.api_key }) +
             `Formulaire: ${FORM_URL}`;
 
         const url = `sms:${phone}?body=${encodeURIComponent(message)}`;

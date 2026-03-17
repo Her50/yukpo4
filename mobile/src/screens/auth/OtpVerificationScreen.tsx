@@ -95,7 +95,7 @@ const OtpVerificationScreen: React.FC = () => {
     setCode(Array(OTP_LENGTH).fill(''));
     setError(null);
     await sendOtp();
-    Alert.alert('Code renvoyé', 'Un nouveau code a été envoyé à votre numéro.');
+    Alert.alert(t('otpVerificationScreen.codeRenvoye'), t('otpVerificationScreen.unNouveauCodeAEteEnvoye'));
   }, [canResend, sendOtp]);
 
   const handleCodeChange = useCallback((index: number, value: string) => {
@@ -277,7 +277,7 @@ const OtpVerificationScreen: React.FC = () => {
             disabled={loading || code.join('').length < OTP_LENGTH}
           >
             <Text style={styles.verifyButtonText}>
-              {loading ? 'Vérification...' : 'Vérifier'}
+              {loading ? t('otpVerificationScreen.verification') : t('otpVerificationScreen.verifier')}
             </Text>
           </TouchableOpacity>
 

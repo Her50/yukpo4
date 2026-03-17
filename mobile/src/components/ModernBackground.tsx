@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { Dimensions, Animated as RNAnimated, StyleSheet, View } from 'react-native';
 // ✅ CORRIGÉ: Utiliser cleanChildren pour éviter les erreurs de rendu
 import { cleanChildren } from '../utils/safeChildren';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -31,6 +32,7 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
     //     }
     // }, [children, variant, scrollY]);
     const getGradientColors = () => {
+    const { t } = useLanguageSafe();
         switch (variant) {
             case 'home':
                 // Gradient cosmique ultramoderne 2025 (Cosmic/Premium Dark)

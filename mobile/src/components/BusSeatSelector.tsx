@@ -571,7 +571,7 @@ const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
                                     ? (passengerNames.every((n, idx) => idx >= selectedSeats.length || n.trim().length > 0)
                                         ? `Payer ${((parseInt(product.prix) || 0) * selectedSeats.length + 500).toLocaleString()} FCFA`
                                         : `Entrez ${isMultipleMode ? 'les noms' : 'votre nom'}`)
-                                    : `Sélectionnez ${isMultipleMode ? 'les places' : 'une place'}`}
+                                    : t('busSeatSelector.selectionnez', { isMultipleMode____les_pla: isMultipleMode ? 'les places' : 'une place' })}
                             </Text>
                         </TouchableOpacity>
                     </View>

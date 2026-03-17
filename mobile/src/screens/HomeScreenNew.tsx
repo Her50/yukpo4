@@ -177,16 +177,16 @@ const HomeScreenNew: React.FC = () => {
                 console.log('[HomeScreenNew] Suggestions générées:', result.data);
 
                 // TODO: Naviguer vers le formulaire de création quand l'écran sera créé
-                Alert.alert('Succès', 'Suggestions générées ! Redirection vers le formulaire...');
+                Alert.alert(t('homeScreenNew.succes'), t('homeScreenNew.suggestionsGenereesRedirectionVersLeFormulaire'));
 
                 // Pour l'instant, rediriger vers l'onglet Mes Services
                 (navigation as any).navigate('Main', { screen: 'Services' });
             } else {
-                Alert.alert('Erreur', 'Erreur lors de la génération des suggestions');
+                Alert.alert('Erreur', t('homeScreenNew.erreurLorsDeLaGenerationDes'));
             }
         } catch (error: any) {
             console.error('Erreur lors de la création de service:', error);
-            Alert.alert('Erreur', 'Erreur lors de la création de service');
+            Alert.alert('Erreur', t('homeScreenNew.erreurLorsDeLaCreationDe'));
         }
     };
 

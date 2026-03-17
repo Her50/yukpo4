@@ -6,8 +6,9 @@ use std::sync::Arc;
 
 use crate::{
     controllers::webhook_controller::{
-        audio_premium_webhook, cinetpay_webhook, generic_webhook, mtn_money_webhook,
-        notchpay_webhook, orange_money_webhook, test_webhook,
+        audio_premium_webhook, cinetpay_webhook, flutterwave_webhook, generic_webhook,
+        mtn_money_webhook, notchpay_webhook, orange_money_webhook, paypal_cancel, paypal_return,
+        paypal_webhook, stripe_webhook, test_webhook,
     },
     state::AppState,
 };
@@ -18,6 +19,13 @@ pub fn webhook_routes() -> Router<Arc<AppState>> {
         // ✅ Webhooks agrégateurs (production) — URL: /api/webhooks/cinetpay et /api/webhooks/notchpay
         .route("/api/webhooks/cinetpay", post(cinetpay_webhook))
         .route("/api/webhooks/notchpay", post(notchpay_webhook))
+        // ✅ 2026-03-17: Webhooks internationaux (Stripe + PayPal)
+        .route("/api/webhooks/stripe", post(stripe_webhook))
+        .route("/api/webhooks/paypal", post(paypal_webhook))
+        .route("/api/webhooks/paypal/return", get(paypal_return))
+        .route("/api/webhooks/paypal/cancel", get(paypal_cancel))
+        // ✅ 2026-03-17: Webhook Flutterwave (pan-africain 30+ pays)
+        .route("/api/webhooks/flutterwave", post(flutterwave_webhook))
         // Webhooks legacy (providers directs)
         .route("/api/webhooks/orange-money", post(orange_money_webhook))
         .route("/api/webhooks/mtn-money", post(mtn_money_webhook))

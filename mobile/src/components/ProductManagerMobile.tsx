@@ -1443,66 +1443,66 @@ interface ProductManagerMobileProps {
 
 // Configuration des types de produits avec noms adaptés
 export const PRODUCT_TYPES = [
-    { value: 'agroalimentaire', label: _t('productManagerMobile.alimentationProduitsAlimentaires'), icon: '🍽️', color: '#10B981', description: _t('productManagerMobile.desc_alimentationCompleteProduitsFraisFruits'), keywords: ['riz', 'pâtes', 'macaroni', 'spaghetti', 'farine', 'huile', 'arachide', 'palme', 'tournesol', 'olive', 'sucre', 'sel', 'épices', 'poivre', 'curry', 'curcuma', 'gingembre', 'piment', 'sauce', 'ketchup', 'mayonnaise', 'moutarde', 'maggi', 'jumbo', 'bouillon', 'cube', 'conserve', 'sardine', 'thon', 'maquereau', 'haricot', 'pois', 'maïs', 'boisson', 'eau', 'jus', 'soda', 'cola', 'sprite', 'fanta', 'café', 'nescafé', 'thé', 'lipton', 'lait', 'nido', 'peak', 'chocolat', 'cacao', 'biscuit', 'chips', 'snack', 'bonbon', 'confiserie', 'céréale', 'avoine', 'blé', 'mil', 'sorgho', 'manioc', 'couscous', 'semoule', 'légume', 'sec', 'lentille', 'fève', 'pois chiche', 'condiment', 'vinaigre', 'miel', 'confiture', 'beurre', 'cacahuète', 'noix', 'cajou', 'amande', 'produit', 'alimentaire', 'agro', 'transformation', 'conserverie', 'biscuiterie', 'huilerie', 'meunerie', 'rizerie', 'sucrerie', 'chocolaterie', 'confiserie', 'fruit', 'légume', 'viande', 'poisson', 'bœuf', 'poulet', 'porc', 'mouton', 'chèvre', 'tomate', 'oignon', 'pomme', 'banane', 'orange', 'mangue', 'avocat', 'ananas', 'carotte', 'chou', 'salade', 'frais', 'marché', 'alimentaire', 'épicerie', 'supermarché', 'nourriture', 'aliment', 'consommation', 'nutrition'] },
-    { value: 'assurance', label: _t('productManagerMobile.assuranceEtProtection'), icon: '🛡️', color: '#14B8A6', description: _t('productManagerMobile.assuranceAutoSanteHabitationVie'), keywords: ['assurance', 'protection', 'garantie', 'prime', 'contrat', 'couverture', 'police', 'assureur', 'sinistre', 'indemnisation', 'franchise', 'souscription', 'mutuelle', 'prévoyance', 'responsabilité civile', 'tous risques', 'assurance vie', 'assurance auto', 'assurance habitation', 'assurance santé', 'assurance maladie', 'hospitalisation', 'accident', 'décès', 'invalidité', 'capital', 'rente', 'bénéficiaire', 'AXA', 'ACTIVA', 'ALLIANZ', 'SUNU', 'NSIA', 'mensuel', 'annuel', 'renouvellement', 'résiliation', 'clause', 'exclusion', 'risque', 'dommage', 'cotisation', 'assurance voyage', 'rapatriement'] },
-    { value: 'automobile', label: _t('productManagerMobile.automobilesEtVehicules'), icon: '🚗', color: '#EF4444', description: _t('productManagerMobile.voituresMotosCamionsVehiculesUtilitaires'), keywords: ['voiture', 'auto', 'véhicule', 'automobile', 'moto', 'scooter', 'camion', '4x4', 'SUV', 'berline', 'coupé', 'cabriolet', 'Toyota', 'Honda', 'Mercedes', 'Peugeot', 'Renault', 'Nissan', 'occasion', 'neuf', 'kilométrage', 'essence', 'diesel', 'hybride', 'électrique', 'automatique', 'manuelle', 'pickup', 'break', 'monospace', 'citadine', 'BMW', 'Audi', 'Volkswagen', 'Ford', 'Hyundai', 'Kia', 'Mazda', 'Mitsubishi', 'Lexus', 'Land Rover', 'Jeep', 'climatisation', 'GPS', 'cuir', 'jante', 'airbag', 'ABS', 'première main', 'papiers en règle', 'contrôle technique', 'carnet d\'entretien', 'révision', 'km', 'transmission', 'carburant', 'cylindrée', 'puissance'] },
-    { value: 'chaussure', label: _t('productManagerMobile.chaussuresEtAccessoires'), icon: '👟', color: '#6366F1', description: _t('productManagerMobile.desc_chaussuresBasketsSandalesBottes'), keywords: ['chaussure', 'soulier', 'basket', 'sneaker', 'sandale', 'tong', 'botte', 'bottine', 'escarpin', 'talon', 'mocassin', 'ballerine', 'pointure', 'semelle', 'cuir', 'sport', 'ville', 'Nike', 'Adidas', 'Puma', 'Reebok', 'New Balance', 'Converse', 'Vans', 'Jordan', 'Air Max', 'running', 'football', 'tennis', 'toile', 'daim', 'synthétique', 'homme', 'femme', 'enfant', 'neuf', 'occasion', 'pointure 38', 'pointure 39', 'pointure 40', 'pointure 41', 'pointure 42', 'pointure 43', 'pointure 44', 'chaussures de mariage', 'chaussures de soirée', 'casual', 'élégant', 'confortable', 'lacet', 'scratch'] },
-    { value: 'covoiturage', label: _t('productManagerMobile.covoiturageEtTrajets'), icon: '🚙', color: '#F59E0B', description: _t('productManagerMobile.trajetsPartagesCarpoolingTransportCollec'), keywords: ['covoiturage', 'trajet', 'partage', 'carpooling', 'transport partagé', 'passager', 'conducteur', 'départ', 'arrivée', 'itinéraire', 'route', 'place disponible', 'voyage partagé', 'économique', 'écologique', 'voiture', 'auto', 'véhicule', 'trajets quotidiens', 'navette', 'domicile-travail', 'ville à ville', 'interurbain', 'économie carburant', 'convivial', 'rencontre', 'frais partagés', 'co-voiturage', 'BlaBlaCar', 'partage frais', 'trajet régulier', 'ponctuel', 'aller-retour'] },
-    { value: 'decoration', label: _t('productManagerMobile.decorationInterieure'), icon: '🖼️', color: '#E91E63', description: _t('productManagerMobile.tableauxLuminairesTapisAccessoiresDeco'), keywords: ['décoration', 'déco', 'tableau', 'toile', 'peinture', 'affiche', 'cadre', 'luminaire', 'lampe', 'lustre', 'applique', 'tapis', 'carpette', 'coussin', 'rideau', 'vase', 'sculpture', 'miroir', 'horloge', 'bougie', 'moderne', 'classique', 'vintage', 'contemporain'] },
-    { value: 'electricite', label: _t('productManagerMobile.electriciteEtEclairage'), icon: '⚡', color: '#FFC107', description: _t('productManagerMobile.cablesPrisesInterrupteursLampesDisjoncte'), keywords: ['électricité', 'électrique', 'câble', 'fil', 'interrupteur', 'prise', 'disjoncteur', 'tableau électrique', 'lampe', 'ampoule', 'LED', 'néon', 'spot', 'variateur', 'minuterie', 'détecteur', 'multiprise', 'rallonge', '220V', 'installation électrique'] },
-    { value: 'electromenager', label: _t('productManagerMobile.electromenagerDomestique'), icon: '🔌', color: '#14B8A6', description: _t('productManagerMobile.frigosFoursMachinesALaver'), keywords: ['électroménager', 'frigo', 'réfrigérateur', 'congélateur', 'four', 'cuisinière', 'micro-ondes', 'lave-linge', 'machine à laver', 'lave-vaisselle', 'aspirateur', 'climatiseur', 'ventilateur', 'Samsung', 'LG', 'Bosch', 'Whirlpool', 'appareil', 'domestique', 'ménager', 'cuisine', 'gros électroménager', 'petit électroménager', 'neuf', 'occasion', 'garantie', 'économie énergie', 'A++', 'inverter', 'no frost', 'inox', 'mixeur', 'blender', 'robot', 'cafetière', 'bouilloire', 'grille-pain', 'fer à repasser', 'sèche-linge', 'Hisense', 'Midea', 'Haier'] },
-    { value: 'hopital_clinique', label: _t('productManagerMobile.etablissementsDeSante'), icon: '🏥', color: '#DC2626', description: _t('productManagerMobile.hopitauxCliniquesCentresMedicauxSpeciali'), keywords: ['hôpital', 'clinique', 'centre médical', 'centre de santé', 'médecin', 'docteur', 'consultation', 'urgence', 'soins', 'chirurgie', 'imagerie', 'radio', 'scanner', 'IRM', 'maternité', 'pédiatrie', 'cardiologie', 'dentiste', 'rendez-vous'] },
-    { value: 'laboratoire', label: _t('productManagerMobile.laboratoiresImagerieMedicale'), icon: '🔬', color: '#7C3AED', description: _t('productManagerMobile.laboratoiresDanalysesCentresD')'imagerie, scanner, IRM, échographie', keywords: ['laboratoire', 'labo', 'analyse', 'examen', 'biologie', 'prise de sang', 'NFS', 'glycémie', 'sérologie', 'VIH', 'hépatite', 'paludisme', 'parasitologie', 'bactériologie', 'ECBU', 'hormonologie', 'bilan', 'résultat', 'prélèvement', 'biochimie', 'hématologie', 'PCR', 'imagerie', 'radiographie', 'radio', 'scanner', 'IRM', 'échographie', 'écho', 'doppler', 'mammographie', 'panoramique', 'scintigraphie', 'PET scan', 'fibroscopie', 'endoscopie'] },
-    { value: 'hotellerie', label: _t('productManagerMobile.hotellerieEtHebergement'), icon: '🏨', color: '#EC4899', description: _t('productManagerMobile.hotelsChambresDhotesAubergesGitesReservations')', keywords: ['hôtel', 'hébergement', 'chambre', 'chambre d\'hôtes', 'auberge', 'gîte', 'motel', 'palace', 'réservation', 'booking', 'nuitée', 'séjour', 'étoile', 'luxe', 'petit-déjeuner', 'Wi-Fi', 'piscine', 'restaurant', 'spa', 'climatisation'] },
-{ value: 'image_son', label: _t('productManagerMobile.imageEtSon'), icon: '📺', color: '#9C27B0', description: _t('productManagerMobile.tvHomeCinemaEnceintesProjecteurs'), keywords: ['télévision', 'TV', 'téléviseur', 'écran', 'home cinéma', 'enceinte', 'haut-parleur', 'barre de son', 'amplificateur', 'projecteur', 'casque', 'écouteurs', '4K', '8K', 'HD', 'OLED', 'QLED', 'LCD', 'LED', 'Samsung', 'Sony', 'LG'] },
-{ value: 'immobilier_batiment', label: _t('productManagerMobile.immobilierVentelocationLongTerme'), icon: '🏢', color: '#3B82F6', description: _t('productManagerMobile.appartementsVillasMaisonsAVendre'), keywords: ['immobilier', 'appartement', 'appart', 'F2', 'F3', 'F4', 'villa', 'maison', 'studio', 'duplex', 'loft', 'vente', 'location', 'louer', 'acheter', 'bail', 'loyer', 'chambre', 'salon', 'cuisine', 'salle de bain', 'balcon', 'terrasse', 'jardin', 'garage', 'meublé', 'standing'] },
-{ value: 'immobilier_location_courte', label: _t('productManagerMobile.locationCourteDureeAirbnb'), icon: '🏠', color: '#F59E0B', description: _t('productManagerMobile.locationsVacancesSejoursCourtsNuitees'), keywords: ['location courte', 'airbnb', 'booking', 'vacances', 'séjour', 'nuitée', 'week-end', 'hébergement temporaire', 'tourisme', 'meublé vacances', 'villa vacances', 'appartement vacances', 'court séjour', 'par nuit'] },
-{ value: 'immobilier_terrain', label: _t('productManagerMobile.immobilierTerrains'), icon: '🏞️', color: '#10B981', description: _t('productManagerMobile.desc_terrainsConstructiblesParcellesLots'), keywords: ['terrain', 'parcelle', 'lot', 'terrain constructible', 'constructible', 'viabilisé', 'terrain agricole', 'champ', 'plantation', 'titre foncier', 'cadastre', 'superficie', 'hectare', 'mètre carré', 'clôturé', 'lotissement'] },
-{ value: 'jouets_enfants', label: _t('productManagerMobile.jouetsEtArticlesPourEnfants'), icon: '🧸', color: '#FF69B4', description: _t('productManagerMobile.jouetsEducatifsPeluchesJeuxPuzzles'), keywords: ['jouet', 'jeu', 'enfant', 'bébé', 'peluche', 'poupée', 'figurine', 'voiture miniature', 'puzzle', 'lego', 'construction', 'éducatif', 'éveil', 'jeu de société', 'ballon', 'vélo', 'trottinette', 'poussette', 'berceau', 'hochet', 'doudou', '0-3 ans', '3-6 ans'] },
-{ value: 'livres_fournitures', label: _t('productManagerMobile.livresEtFournituresScolaires'), icon: '📚', color: '#7C3AED', description: _t('productManagerMobile.desc_manuelsLivresCahiersStylosFournitures'), keywords: ['livre', 'manuel', 'manuel scolaire', 'cahier', 'classeur', 'feuille', 'papier', 'stylo', 'crayon', 'gomme', 'règle', 'trousse', 'cartable', 'sac à dos', 'marqueur', 'feutre', 'calculatrice', 'dictionnaire', 'roman', 'BD', 'maternelle', 'primaire', 'secondaire', 'lycée', 'université', 'mathématiques', 'français'] },
-{ value: 'mobilier', label: _t('productManagerMobile.mobilierEtAmeublement'), icon: '🪑', color: '#F97316', description: _t('productManagerMobile.desc_meublesSalonChambreBureauRangement'), keywords: ['meuble', 'mobilier', 'ameublement', 'canapé', 'fauteuil', 'chaise', 'table', 'bureau', 'armoire', 'placard', 'commode', 'étagère', 'bibliothèque', 'lit', 'matelas', 'rangement', 'salon', 'chambre', 'salle à manger', 'bois', 'métal', 'cuir', 'moderne', 'vintage', 'IKEA'] },
+    { value: 'agroalimentaire', label: _t('productManagerMobile.alimentationProduitsAlimentaires'), icon: '🍽️', color: '#10B981', description: _t('productManagerMobile.desc_alimentationCompleteProduitsFraisFruits'), keywords: ['riz', t('productManagerMobile.pates'), 'macaroni', 'spaghetti', 'farine', 'huile', 'arachide', 'palme', 'tournesol', 'olive', 'sucre', 'sel', t('productManagerMobile.epices'), 'poivre', 'curry', 'curcuma', 'gingembre', 'piment', 'sauce', 'ketchup', 'mayonnaise', 'moutarde', 'maggi', 'jumbo', 'bouillon', 'cube', 'conserve', 'sardine', 'thon', 'maquereau', 'haricot', 'pois', t('productManagerMobile.mais'), 'boisson', 'eau', 'jus', 'soda', 'cola', 'sprite', 'fanta', t('productManagerMobile.cafe'), t('productManagerMobile.nescafe'), t('productManagerMobile.the'), 'lipton', 'lait', 'nido', 'peak', 'chocolat', 'cacao', 'biscuit', 'chips', 'snack', 'bonbon', 'confiserie', t('productManagerMobile.cereale'), 'avoine', t('productManagerMobile.ble'), 'mil', 'sorgho', 'manioc', 'couscous', 'semoule', t('productManagerMobile.legume'), 'sec', 'lentille', t('productManagerMobile.feve'), 'pois chiche', 'condiment', 'vinaigre', 'miel', 'confiture', 'beurre', t('productManagerMobile.cacahuete'), 'noix', 'cajou', 'amande', 'produit', 'alimentaire', 'agro', 'transformation', 'conserverie', 'biscuiterie', 'huilerie', 'meunerie', 'rizerie', 'sucrerie', 'chocolaterie', 'confiserie', 'fruit', t('productManagerMobile.legume'), 'viande', 'poisson', t('productManagerMobile.buf'), 'poulet', 'porc', 'mouton', t('productManagerMobile.chevre'), 'tomate', 'oignon', 'pomme', 'banane', 'orange', 'mangue', 'avocat', 'ananas', 'carotte', 'chou', 'salade', 'frais', t('productManagerMobile.marche'), 'alimentaire', t('productManagerMobile.epicerie'), t('productManagerMobile.supermarche'), 'nourriture', 'aliment', 'consommation', 'nutrition'] },
+    { value: 'assurance', label: _t('productManagerMobile.assuranceEtProtection'), icon: '🛡️', color: '#14B8A6', description: _t('productManagerMobile.assuranceAutoSanteHabitationVie'), keywords: ['assurance', 'protection', 'garantie', 'prime', 'contrat', 'couverture', 'police', 'assureur', 'sinistre', 'indemnisation', 'franchise', 'souscription', 'mutuelle', t('productManagerMobile.prevoyance'), t('productManagerMobile.responsabiliteCivile'), 'tous risques', 'assurance vie', 'assurance auto', 'assurance habitation', t('productManagerMobile.assuranceSante'), 'assurance maladie', 'hospitalisation', 'accident', t('productManagerMobile.deces'), t('productManagerMobile.invalidite'), 'capital', 'rente', t('productManagerMobile.beneficiaire'), 'AXA', 'ACTIVA', 'ALLIANZ', 'SUNU', 'NSIA', 'mensuel', 'annuel', 'renouvellement', t('productManagerMobile.resiliation'), 'clause', 'exclusion', 'risque', 'dommage', 'cotisation', 'assurance voyage', 'rapatriement'] },
+    { value: 'automobile', label: _t('productManagerMobile.automobilesEtVehicules'), icon: '🚗', color: '#EF4444', description: _t('productManagerMobile.voituresMotosCamionsVehiculesUtilitaires'), keywords: ['voiture', 'auto', t('productManagerMobile.vehicule'), 'automobile', 'moto', 'scooter', 'camion', '4x4', 'SUV', 'berline', t('productManagerMobile.coupe'), 'cabriolet', 'Toyota', 'Honda', 'Mercedes', 'Peugeot', 'Renault', 'Nissan', 'occasion', 'neuf', t('productManagerMobile.kilometrage'), 'essence', 'diesel', 'hybride', t('productManagerMobile.electrique'), 'automatique', 'manuelle', 'pickup', 'break', 'monospace', 'citadine', 'BMW', 'Audi', 'Volkswagen', 'Ford', 'Hyundai', 'Kia', 'Mazda', 'Mitsubishi', 'Lexus', 'Land Rover', 'Jeep', 'climatisation', 'GPS', 'cuir', 'jante', 'airbag', 'ABS', t('productManagerMobile.premiereMain'), t('productManagerMobile.papiersEnRegle'), t('productManagerMobile.controleTechnique'), 'carnet d\'entretien', t('productManagerMobile.revision'), 'km', 'transmission', 'carburant', t('productManagerMobile.cylindree'), 'puissance'] },
+    { value: 'chaussure', label: _t('productManagerMobile.chaussuresEtAccessoires'), icon: '👟', color: '#6366F1', description: _t('productManagerMobile.desc_chaussuresBasketsSandalesBottes'), keywords: ['chaussure', 'soulier', 'basket', 'sneaker', 'sandale', 'tong', 'botte', 'bottine', 'escarpin', 'talon', 'mocassin', 'ballerine', 'pointure', 'semelle', 'cuir', 'sport', 'ville', 'Nike', 'Adidas', 'Puma', 'Reebok', 'New Balance', 'Converse', 'Vans', 'Jordan', 'Air Max', 'running', 'football', 'tennis', 'toile', 'daim', t('productManagerMobile.synthetique'), 'homme', 'femme', 'enfant', 'neuf', 'occasion', 'pointure 38', 'pointure 39', 'pointure 40', 'pointure 41', 'pointure 42', 'pointure 43', 'pointure 44', 'chaussures de mariage', t('productManagerMobile.chaussuresDeSoiree'), 'casual', t('productManagerMobile.elegant'), 'confortable', 'lacet', 'scratch'] },
+    { value: 'covoiturage', label: _t('productManagerMobile.covoiturageEtTrajets'), icon: '🚙', color: '#F59E0B', description: _t('productManagerMobile.trajetsPartagesCarpoolingTransportCollec'), keywords: ['covoiturage', 'trajet', 'partage', 'carpooling', t('productManagerMobile.transportPartage'), 'passager', 'conducteur', t('productManagerMobile.depart'), t('productManagerMobile.arrivee'), t('productManagerMobile.itineraire'), 'route', 'place disponible', t('productManagerMobile.voyagePartage'), t('productManagerMobile.economique'), t('productManagerMobile.ecologique'), 'voiture', 'auto', t('productManagerMobile.vehicule'), 'trajets quotidiens', 'navette', 'domicile-travail', t('productManagerMobile.villeAVille'), 'interurbain', t('productManagerMobile.economieCarburant'), 'convivial', 'rencontre', t('productManagerMobile.fraisPartages'), 'co-voiturage', 'BlaBlaCar', 'partage frais', t('productManagerMobile.trajetRegulier'), 'ponctuel', 'aller-retour'] },
+    { value: 'decoration', label: _t('productManagerMobile.decorationInterieure'), icon: '🖼️', color: '#E91E63', description: _t('productManagerMobile.tableauxLuminairesTapisAccessoiresDeco'), keywords: [t('productManagerMobile.decoration'), t('productManagerMobile.deco'), 'tableau', 'toile', 'peinture', 'affiche', 'cadre', 'luminaire', 'lampe', 'lustre', 'applique', 'tapis', 'carpette', 'coussin', 'rideau', 'vase', 'sculpture', 'miroir', 'horloge', 'bougie', 'moderne', 'classique', 'vintage', 'contemporain'] },
+    { value: 'electricite', label: _t('productManagerMobile.electriciteEtEclairage'), icon: '⚡', color: '#FFC107', description: _t('productManagerMobile.cablesPrisesInterrupteursLampesDisjoncte'), keywords: [t('productManagerMobile.electricite'), t('productManagerMobile.electrique'), t('productManagerMobile.cable'), 'fil', 'interrupteur', 'prise', 'disjoncteur', t('productManagerMobile.tableauElectrique'), 'lampe', 'ampoule', 'LED', t('productManagerMobile.neon'), 'spot', 'variateur', 'minuterie', t('productManagerMobile.detecteur'), 'multiprise', 'rallonge', '220V', t('productManagerMobile.installationElectrique')] },
+    { value: 'electromenager', label: _t('productManagerMobile.electromenagerDomestique'), icon: '🔌', color: '#14B8A6', description: _t('productManagerMobile.frigosFoursMachinesALaver'), keywords: [t('productManagerMobile.electromenager'), 'frigo', t('productManagerMobile.refrigerateur'), t('productManagerMobile.congelateur'), 'four', t('productManagerMobile.cuisiniere'), 'micro-ondes', 'lave-linge', t('productManagerMobile.machineALaver'), 'lave-vaisselle', 'aspirateur', 'climatiseur', 'ventilateur', 'Samsung', 'LG', 'Bosch', 'Whirlpool', 'appareil', 'domestique', t('productManagerMobile.menager'), 'cuisine', t('productManagerMobile.grosElectromenager'), t('productManagerMobile.petitElectromenager'), 'neuf', 'occasion', 'garantie', t('productManagerMobile.economieEnergie'), 'A++', 'inverter', 'no frost', 'inox', 'mixeur', 'blender', 'robot', t('productManagerMobile.cafetiere'), 'bouilloire', 'grille-pain', t('productManagerMobile.ferARepasser'), t('productManagerMobile.sechelinge'), 'Hisense', 'Midea', 'Haier'] },
+    { value: 'hopital_clinique', label: _t('productManagerMobile.etablissementsDeSante'), icon: '🏥', color: '#DC2626', description: _t('productManagerMobile.hopitauxCliniquesCentresMedicauxSpeciali'), keywords: [t('productManagerMobile.hopital'), 'clinique', t('productManagerMobile.centreMedical'), t('productManagerMobile.centreDeSante'), t('productManagerMobile.medecin'), 'docteur', 'consultation', 'urgence', 'soins', 'chirurgie', 'imagerie', 'radio', 'scanner', 'IRM', t('productManagerMobile.maternite'), t('productManagerMobile.pediatrie'), 'cardiologie', 'dentiste', 'rendez-vous'] },
+    { value: 'laboratoire', label: _t('productManagerMobile.laboratoiresImagerieMedicale'), icon: '🔬', color: '#7C3AED', description: _t('productManagerMobile.laboratoiresDanalysesCentresD')t('productManagerMobile.imagerieScannerIrmEchographie'), keywords: ['laboratoire', 'labo', 'analyse', 'examen', 'biologie', 'prise de sang', 'NFS', t('productManagerMobile.glycemie'), t('productManagerMobile.serologie'), 'VIH', t('productManagerMobile.hepatite'), 'paludisme', 'parasitologie', t('productManagerMobile.bacteriologie'), 'ECBU', 'hormonologie', 'bilan', t('productManagerMobile.resultat'), t('productManagerMobile.prelevement'), 'biochimie', t('productManagerMobile.hematologie'), 'PCR', 'imagerie', 'radiographie', 'radio', 'scanner', 'IRM', t('productManagerMobile.echographie'), t('productManagerMobile.echo'), 'doppler', 'mammographie', 'panoramique', 'scintigraphie', 'PET scan', 'fibroscopie', 'endoscopie'] },
+    { value: 'hotellerie', label: _t('productManagerMobile.hotellerieEtHebergement'), icon: '🏨', color: '#EC4899', description: _t('productManagerMobile.hotelsChambresDhotesAubergesGitesReservations')', keywords: [t('productManagerMobile.hotel'), t('productManagerMobile.hebergement'), 'chambre', 'chambre d\t('productManagerMobile.hotes'), 'auberge', t('productManagerMobile.gite'), 'motel', 'palace', t('productManagerMobile.reservation'), 'booking', t('productManagerMobile.nuitee'), t('productManagerMobile.sejour'), t('productManagerMobile.etoile'), 'luxe', t('productManagerMobile.petitdejeuner'), 'Wi-Fi', 'piscine', 'restaurant', 'spa', 'climatisation'] },
+{ value: 'image_son', label: _t('productManagerMobile.imageEtSon'), icon: '📺', color: '#9C27B0', description: _t('productManagerMobile.tvHomeCinemaEnceintesProjecteurs'), keywords: [t('productManagerMobile.television'), 'TV', t('productManagerMobile.televiseur'), t('productManagerMobile.ecran'), t('productManagerMobile.homeCinema'), 'enceinte', 'haut-parleur', 'barre de son', 'amplificateur', 'projecteur', 'casque', t('productManagerMobile.ecouteurs'), '4K', '8K', 'HD', 'OLED', 'QLED', 'LCD', 'LED', 'Samsung', 'Sony', 'LG'] },
+{ value: 'immobilier_batiment', label: _t('productManagerMobile.immobilierVentelocationLongTerme'), icon: '🏢', color: '#3B82F6', description: _t('productManagerMobile.appartementsVillasMaisonsAVendre'), keywords: ['immobilier', 'appartement', 'appart', 'F2', 'F3', 'F4', 'villa', 'maison', 'studio', 'duplex', 'loft', 'vente', 'location', 'louer', 'acheter', 'bail', 'loyer', 'chambre', 'salon', 'cuisine', 'salle de bain', 'balcon', 'terrasse', 'jardin', 'garage', t('productManagerMobile.meuble'), 'standing'] },
+{ value: 'immobilier_location_courte', label: _t('productManagerMobile.locationCourteDureeAirbnb'), icon: '🏠', color: '#F59E0B', description: _t('productManagerMobile.locationsVacancesSejoursCourtsNuitees'), keywords: ['location courte', 'airbnb', 'booking', 'vacances', t('productManagerMobile.sejour'), t('productManagerMobile.nuitee'), 'week-end', t('productManagerMobile.hebergementTemporaire'), 'tourisme', t('productManagerMobile.meubleVacances'), 'villa vacances', 'appartement vacances', t('productManagerMobile.courtSejour'), 'par nuit'] },
+{ value: 'immobilier_terrain', label: _t('productManagerMobile.immobilierTerrains'), icon: '🏞️', color: '#10B981', description: _t('productManagerMobile.desc_terrainsConstructiblesParcellesLots'), keywords: ['terrain', 'parcelle', 'lot', 'terrain constructible', 'constructible', t('productManagerMobile.viabilise'), 'terrain agricole', 'champ', 'plantation', 'titre foncier', 'cadastre', 'superficie', 'hectare', t('productManagerMobile.metreCarre'), t('productManagerMobile.cloture'), 'lotissement'] },
+{ value: 'jouets_enfants', label: _t('productManagerMobile.jouetsEtArticlesPourEnfants'), icon: '🧸', color: '#FF69B4', description: _t('productManagerMobile.jouetsEducatifsPeluchesJeuxPuzzles'), keywords: ['jouet', 'jeu', 'enfant', t('productManagerMobile.bebe'), 'peluche', t('productManagerMobile.poupee'), 'figurine', 'voiture miniature', 'puzzle', 'lego', 'construction', t('productManagerMobile.educatif'), t('productManagerMobile.eveil'), t('productManagerMobile.jeuDeSociete'), 'ballon', t('productManagerMobile.velo'), 'trottinette', 'poussette', 'berceau', 'hochet', 'doudou', '0-3 ans', '3-6 ans'] },
+{ value: 'livres_fournitures', label: _t('productManagerMobile.livresEtFournituresScolaires'), icon: '📚', color: '#7C3AED', description: _t('productManagerMobile.desc_manuelsLivresCahiersStylosFournitures'), keywords: ['livre', 'manuel', 'manuel scolaire', 'cahier', 'classeur', 'feuille', 'papier', 'stylo', 'crayon', 'gomme', t('productManagerMobile.regle'), 'trousse', 'cartable', t('productManagerMobile.sacADos'), 'marqueur', 'feutre', 'calculatrice', 'dictionnaire', 'roman', 'BD', 'maternelle', 'primaire', 'secondaire', t('productManagerMobile.lycee'), t('productManagerMobile.universite'), t('productManagerMobile.mathematiques'), t('productManagerMobile.francais')] },
+{ value: 'mobilier', label: _t('productManagerMobile.mobilierEtAmeublement'), icon: '🪑', color: '#F97316', description: _t('productManagerMobile.desc_meublesSalonChambreBureauRangement'), keywords: ['meuble', 'mobilier', 'ameublement', t('productManagerMobile.canape'), 'fauteuil', 'chaise', 'table', 'bureau', 'armoire', 'placard', 'commode', t('productManagerMobile.etagere'), t('productManagerMobile.bibliotheque'), 'lit', 'matelas', 'rangement', 'salon', 'chambre', t('productManagerMobile.salleAManger'), 'bois', t('productManagerMobile.metal'), 'cuir', 'moderne', 'vintage', 'IKEA'] },
 { value: 'ordinateur', label: _t('productManagerMobile.ordinateursEtInformatique'), icon: '💻', color: '#00BCD4', description: _t('productManagerMobile.desc_pcPortablesBureauxTablettesAccessoires'), keywords: ['ordinateur', 'PC', 'laptop', 'portable', 'desktop', 'MacBook', 'iMac', 'tablette', 'iPad', 'processeur', 'CPU', 'Intel', 'AMD', 'RAM', 'disque dur', 'SSD', 'carte graphique', 'clavier', 'souris', 'Windows', 'macOS', 'Dell', 'HP', 'Lenovo', 'Asus', 'Apple', 'gaming'] },
-{ value: 'pharmacie', label: _t('productManagerMobile.pharmaciesEtGardes'), icon: '💊', color: '#059669', description: _t('productManagerMobile.desc_pharmaciesPlanningDeGardeServices'), keywords: ['pharmacie', 'pharmacien', 'médicament', 'ordonnance', 'prescription', 'garde', 'pharmacie de garde', 'urgence', 'parapharmacie', 'vitamine', 'complément', 'pansement', 'sirop', 'comprimé', 'gélule', 'crème', 'antiseptique', 'doliprane', 'paracétamol'] },
-{ value: 'demenagement', label: _t('productManagerMobile.demenagementEtTransport'), icon: '📦', color: '#F97316', description: _t('productManagerMobile.servicesDeDemenagementLocalNational'), keywords: ['déménagement', 'déménager', 'déménageur', 'manutention', 'transport', 'camion', 'camionnette', 'carton', 'emballage', 'meuble', 'monte-meuble', 'garde-meuble', 'stockage', 'local', 'national', 'international', 'express', 'assurance', 'devis', 'tarif'] },
-{ value: 'cosmetique_parfum', label: _t('productManagerMobile.cosmetiqueParfum'), icon: '✨', color: '#E91E63', description: _t('productManagerMobile.parfumsMaquillageSoinsBeauteHuiles'), keywords: ['cosmétique', 'parfum', 'maquillage', 'beauté', 'soin', 'crème', 'lotion', 'sérum', 'masque', 'fond de teint', 'rouge à lèvres', 'mascara', 'vernis', 'eau de toilette', 'déodorant', 'gel douche', 'shampoing', 'Chanel', 'Dior', 'L\'Oréal', 'Nivea', 'naturel', 'bio'] },
-{ value: 'bijoux', label: _t('productManagerMobile.bijouxAccessoires'), icon: '💎', color: '#FFD700', description: _t('productManagerMobile.colliersBaguesBraceletsMontresPierres'), keywords: ['bijou', 'bijouterie', 'collier', 'pendentif', 'bague', 'alliance', 'bracelet', 'gourmette', 'boucle d\'oreille', 'montre', 'chaîne', 'médaille', 'or', 'argent', 'platine', 'diamant', 'pierre précieuse', 'rubis', 'saphir', 'perle', '18k', '14k', 'plaqué or', 'Cartier', 'Tiffany'] },
-{ value: 'coiffure_beaute', label: _t('productManagerMobile.coiffureBeaute'), icon: '💇‍♀️', color: '#E91E63', description: _t('productManagerMobile.mechesExtensionsPerruquesAccessoiresDe'), keywords: ['coiffure', 'cheveu', 'mèche', 'extension', 'perruque', 'tissage', 'tresse', 'défrisage', 'lissage', 'bouclage', 'coloration', 'teinture', 'balayage', 'coupe', 'brushing', 'lisse', 'bouclé', 'naturel', 'synthétique', 'brésilienne', 'indienne', 'remy hair', 'clip', 'pose'] },
-{ value: 'couturier', label: _t('productManagerMobile.couturierTailleur'), icon: '✂️', color: '#EC4899', description: _t('productManagerMobile.coutureSurMesureRetouchesConfection'), keywords: ['couturier', 'tailleur', 'couture', 'sur mesure', 'retouche', 'confection', 'vêtement', 'robe', 'costume', 'boubou', 'bazin', 'wax', 'pagne', 'traditionnel', 'moderne', 'mariage', 'soirée', 'essayage', 'patron', 'coupe', 'couture', 'broderie', 'surjeteuse', 'machine à coudre', 'atelier', 'mesures', 'tissu', 'finition', 'haute couture', 'prêt-à-porter', 'créateur', 'styliste', 'modéliste', 'assemblage', 'ourlet', 'zip', 'bouton', 'doublure', 'parement'] },
-{ value: 'pieces_auto', label: _t('productManagerMobile.piecesDetacheesAuto'), icon: '🔧', color: '#607D8B', description: _t('productManagerMobile.piecesMoteurFreinsCarrosserieFiltres'), keywords: ['pièce auto', 'pièce détachée', 'pièce automobile', 'moteur', 'frein', 'disque', 'plaquette', 'carrosserie', 'pare-choc', 'aile', 'capot', 'phare', 'feu', 'filtre', 'huile', 'batterie', 'alternateur', 'bougie', 'courroie', 'embrayage', 'suspension', 'amortisseur', 'vidange', 'garage'] },
-{ value: 'pieces_industrielles', label: _t('productManagerMobile.piecesIndustrielles'), icon: '⚙️', color: '#455A64', description: _t('productManagerMobile.roulementsCourroiesMoteursPompesPieces'), keywords: ['pièce industrielle', 'pièce machine', 'roulement', 'palier', 'courroie', 'chaîne', 'poulie', 'pignon', 'engrenage', 'moteur électrique', 'hydraulique', 'pneumatique', 'pompe', 'compresseur', 'vanne', 'vérin', 'tuyau', 'joint', 'acier', 'inox', 'industriel', 'usine', 'maintenance'] },
-{ value: 'prestation_service', label: _t('productManagerMobile.prestationDeService'), icon: '🎯', color: '#8B5CF6', description: _t('productManagerMobile.servicesProfessionnelsDiversCoachingCons'), keywords: ['prestation', 'service', 'serrurier', 'vitrier', 'couvreur', 'tapissier', 'soudeur', 'photographe', 'vidéaste', 'graphiste', 'designer', 'développeur', 'programmeur', 'webmaster', 'informaticien', 'coach', 'formateur', 'tuteur', 'traducteur', 'interprète', 'rédacteur', 'secrétaire', 'assistant', 'comptable', 'consultant', 'conseiller', 'expert', 'avocat', 'juriste', 'notaire', 'huissier', 'dresseur', 'toiletteur', 'DJ', 'musicien', 'animateur', 'artiste', 'comédien', 'danseur', 'maquilleur', 'styliste', 'cordonnier', 'sellier', 'horloger', 'opticien', 'guide', 'moniteur', 'analyste', 'data scientist', 'économiste', 'chercheur', 'scientifique', 'agent immobilier', 'promoteur', 'gestionnaire', 'administrateur', 'manager', 'chef de projet', 'coordinateur', 'superviseur', 'expert-comptable', 'fiscaliste', 'banquier', 'conseiller financier', 'vendeur', 'commercial', 'représentant', 'logisticien', 'magasinier', 'wedding planner', 'organisateur', 'traiteur événementiel', 'décorateur', 'fleuriste', 'imprimeur', 'relieur', 'graveur'] },
-{ value: 'ingenieur_archi', label: _t('productManagerMobile.ingenieurArchitecte'), icon: '📐', color: '#0891B2', description: _t('productManagerMobile.bureauDetudesPlansConceptionSuiviChantierPermis')', keywords: ['architecte', 'ingénieur', 'ingénieur bâtiment', 'ingénieur génie civil', 'bureau d\'études', 'bureau étude', 'BET', 'plan architecte', 'plan maison', 'plan architecture', 'conception architecturale', 'étude architecturale', 'permis de construire', 'dossier permis', 'déclaration préalable', 'étude technique', 'étude de sol', 'étude géotechnique', 'calcul structure', 'calcul béton', 'note de calcul', 'dimensionnement', 'maîtrise d\'œuvre', 'maître d\'œuvre', 'MOE', 'suivi de chantier', 'supervision travaux', 'coordination chantier', 'réception chantier', 'métrés', 'quantitatifs', 'avant-projet', 'APD', 'APS', 'plans d\'exécution', 'plans techniques', 'géomètre', 'topographe', 'levé topographique', 'bornage', 'implantation', 'urbanisme', 'étude urbanisme', 'PLU', 'rénovation énergétique', 'audit énergétique', 'thermique', 'RT2012', 'conception 3D', 'modélisation 3D', 'maquette 3D', 'dessinateur', 'projeteur', 'architecte d\'intérieur', 'aménagement intérieur', 'décoration architecturale'] },
-{ value: 'macon', label: _t('productManagerMobile.macon'), icon: '🧱', color: '#78716C', description: _t('productManagerMobile.maconnerieBetonConstructionFondationsMur'), keywords: ['maçon', 'maçonnerie', 'service maçonnerie', 'construction', 'bâtiment', 'fondation', 'dalle', 'mur', 'béton', 'ciment', 'parpaing', 'brique', 'agglo', 'coffrage', 'ferraillage', 'coulage béton', 'gros œuvre', 'soubassement', 'chaînage', 'linteau', 'poteau', 'poutre', 'plancher', 'chape', 'enduit', 'crépi', 'mortier', 'jointoiement', 'maçon urgence', 'dépanneur maçonnerie', 'réparation fissure', 'reprise sous-œuvre', 'rénovation mur', 'extension maison', 'surélévation', 'agrandissement', 'maçon qualifié', 'entreprise maçonnerie', 'travaux maçonnerie', 'devis maçonnerie', 'maçonnerie générale', 'maçonnerie traditionnelle', 'maçonnerie moderne'] },
-{ value: 'plombier', label: _t('productManagerMobile.plombier'), icon: '🔧', color: '#00BCD4', description: _t('productManagerMobile.servicesDePlomberieInstallationReparatio'), keywords: ['plombier', 'plomberie', 'service plomberie', 'dépannage plomberie', 'urgence plomberie', 'installation plomberie', 'réparation plomberie', 'fuite eau', 'fuite', 'débouchage', 'déboucher', 'canalisation', 'tuyau', 'robinet', 'chauffe-eau', 'ballon eau chaude', 'chaudière', 'WC bouché', 'toilette bouchée', 'évier bouché', 'douche bouchée', 'lavabo', 'évier', 'salle de bain', 'sanitaire installation', 'raccordement eau', 'vidange', 'évacuation', 'siphon', 'mitigeur', 'installation sanitaire', 'rénovation salle de bain', 'plombier urgence', 'dépanneur plomberie', 'plombier 24h', 'intervention rapide', 'détection fuite', 'recherche fuite'] },
-{ value: 'electricien', label: _t('productManagerMobile.electricien'), icon: '⚡', color: '#FFC107', description: _t('productManagerMobile.servicesElectriciteInstallationDepannage'), keywords: ['électricien', 'électricité service', 'service électricité', 'dépannage électricité', 'urgence électricité', 'installation électrique', 'réparation électrique', 'panne électricité', 'panne courant', 'court-circuit', 'disjoncteur saute', 'tableau électrique', 'câblage maison', 'mise aux normes', 'norme électrique', 'raccordement électrique', 'branchement électrique', 'électricité bâtiment', 'installation lampe', 'lustre', 'plafonnier', 'éclairage maison', 'prise électrique installation', 'interrupteur installation', 'électricien urgence', 'dépanneur électricité', 'électricien 24h', 'intervention rapide électricité', 'diagnostic électrique', 'recherche panne', 'rénovation électrique', 'travaux électricité'] },
-{ value: 'electricien_auto', label: _t('productManagerMobile.electricienAutomobile'), icon: '🔋', color: '#FF6B35', description: _t('productManagerMobile.electriciteAutoDiagnosticReparationInsta'), keywords: ['électricien auto', 'électricité automobile', 'électricité voiture', 'électricité moto', 'électronique auto', 'diagnostic électronique', 'réparation électronique voiture', 'batterie auto', 'alternateur', 'démarreur', 'faisceau électrique', 'câblage auto', 'phare voiture', 'feu arrière', 'clignotant', 'klaxon', 'essuie-glace moteur', 'lève-vitre électrique', 'centralisation', 'autoradio installation', 'alarme voiture', 'GPS voiture', 'caméra recul installation', 'capteur parking', 'OBD diagnostic', 'valise diagnostic', 'calculateur moteur', 'boîtier électronique', 'panne électrique voiture', 'court-circuit auto', 'problème batterie', 'alternateur défaillant', 'voyant moteur', 'diagnostic panne électrique', 'réparation faisceau', 'installation équipement électronique'] },
-{ value: 'peintre', label: _t('productManagerMobile.peintreEnBatiment'), icon: '🎨', color: '#8B5CF6', description: _t('productManagerMobile.servicesDePeintureInterieurExterieur'), keywords: ['peintre', 'peinture', 'service peinture', 'peinture bâtiment', 'peinture intérieur', 'peinture extérieur', 'peinture murale', 'peinture plafond', 'ravalement façade', 'crépi façade', 'enduit', 'décoration murale', 'papier peint', 'pose papier peint', 'revêtement mural', 'lessivage', 'préparation support', 'ponçage', 'rebouchage', 'impression', 'sous-couche', 'finition', 'laque', 'glycéro', 'acrylique', 'satinée', 'mate', 'brillante', 'peinture décorative', 'effet décoratif', 'pochoir', 'frise', 'trompe-l\'œil', 'peintre professionnel', 'peintre qualifié', 'devis peinture', 'tarif peinture', 'rénovation peinture', 'rafraîchissement peinture', 'travaux peinture'] },
-{ value: 'staffeur', label: _t('productManagerMobile.staffeurPlatrier'), icon: '🏛️', color: '#64748B', description: _t('productManagerMobile.platrerieStaffFauxPlafondsCloisons'), keywords: ['staffeur', 'plâtrier', 'plâtrerie', 'staff', 'plâtre', 'platrerie', 'faux plafond', 'plafond suspendu', 'cloison', 'cloison sèche', 'placo', 'placoplâtre', 'BA13', 'isolation phonique', 'isolation thermique', 'doublage', 'enduit plâtre', 'enduit intérieur', 'lissage', 'ragréage', 'rebouchage', 'bandes joints', 'joints placo', 'corniche', 'moulure', 'rosace', 'modénature', 'décoration plâtre', 'ornementation', 'staff décoratif', 'plâtre décoratif', 'arc', 'voûte', 'colonne', 'pilastre', 'aménagement intérieur', 'rénovation intérieure', 'finition plâtre', 'staffeur qualifié', 'plâtrier professionnel'] },
-{ value: 'quincaillerie', label: _t('productManagerMobile.quincaillerieAccessoiresConstruction'), icon: '🔨', color: '#F59E0B', description: _t('productManagerMobile.outilsMateriauxConstructionVisseriePeint'), keywords: ['quincaillerie', 'outil', 'marteau', 'tournevis', 'clé', 'pince', 'scie', 'vis', 'boulon', 'écrou', 'cheville', 'serrure', 'cadenas', 'verrou', 'charnière', 'matériaux', 'ciment', 'sable', 'gravier', 'brique', 'parpaing', 'fer', 'acier', 'béton', 'mortier', 'chaux', 'plâtre', 'peinture', 'vernis', 'colle', 'mastic', 'silicone', 'joint', 'colle carrelage', 'joint carrelage', 'croisillon', 'peigne colle', 'domino électrique', 'wago', 'gaine', 'douille', 'rallonge', 'multiprise', 'téflon', 'pâte joint', 'raccord', 'coude', 'flexible', 'collier', 'siphon', 'ruban isolant'] },
-{ value: 'carrelage', label: _t('productManagerMobile.carrelageRevetementsDeSol'), icon: '🏗️', color: '#78716C', description: _t('productManagerMobile.carrelageSolMuralFaienceMosaique'), keywords: ['carrelage', 'carreau', 'carreaux', 'faïence', 'faience', 'mosaïque', 'mosaique', 'revêtement sol', 'revetement sol', 'revêtement mural', 'dalle', 'dalles', 'pavé', 'paves', 'grès', 'grès cérame', 'gres cerame', 'céramique', 'ceramique', 'porcelaine', 'marbre', 'granit', 'granite', 'pierre naturelle', 'pierre', 'travertin', 'ardoise', 'terre cuite', 'tomette', 'zellige', 'carrelage piscine', 'carrelage extérieur', 'carrelage exterieur', 'carrelage terrasse', 'carrelage salle de bain', 'carrelage cuisine', 'carrelage intérieur', 'carrelage interieur', 'carrelage commercial', 'carrelage résidentiel', 'residentiel', 'brillant', 'mat', 'antidérapant', 'antiderapant', 'anti-glisse', 'glissant', '10x10', '15x15', '20x20', '25x25', '30x30', '40x40', '45x45', '60x60', '80x80', '120x60', 'grand format', 'petit format', 'dimensions', 'format', 'finition', 'poli', 'satiné', 'satine', 'structuré', 'structure', 'lappato', 'adouci', 'effet bois', 'imitation bois', 'effet pierre', 'imitation pierre', 'effet marbre', 'imitation marbre', 'effet béton', 'beton', 'imitation', 'uni', 'marbré', 'veiné', 'veine', 'motif', 'géométrique', 'geometrique', 'hexagonal', 'métro', 'décor', 'decor', 'durable', 'résistant', 'resistant', 'qualité', 'qualite', 'premium', 'luxe', 'haut de gamme', 'économique', 'economique', 'neuf', 'stock', 'disponible', 'promotion', 'destockage', 'déstockage', 'import', 'importation', 'espagne', 'espagnol', 'italie', 'italien', 'portugal', 'portugais', 'turquie', 'turc', 'chine', 'chinois', 'inde', 'indien', 'egypte', 'égypte', 'egyptien', 'maroc', 'marocain', 'tunisie', 'tunisien', 'afrique du sud', 'sud-africain'] },
-{ value: 'telephone', label: _t('productManagerMobile.telephonesEtAccessoires'), icon: '📱', color: '#FF9800', description: _t('productManagerMobile.smartphonesAccessoiresCoquesEcouteurs'), keywords: ['téléphone', 'smartphone', 'mobile', 'portable', 'cellulaire', 'iPhone', 'Samsung', 'Huawei', 'Xiaomi', 'Oppo', 'Tecno', 'Infinix', 'Nokia', 'Galaxy', 'Android', 'iOS', 'écran', 'tactile', 'appareil photo', 'caméra', 'double SIM', '4G', '5G', 'Wi-Fi', 'Bluetooth', 'stockage', '64GB', '128GB', '256GB', 'RAM', 'batterie', 'chargeur', 'coque', 'écouteurs', 'neuf', 'occasion', 'débloqué'] },
-{ value: 'ticket_voyage', label: _t('productManagerMobile.ticketsEtBilletsDeTransport'), icon: '🎫', color: '#8B5CF6', description: _t('productManagerMobile.busTrainAvionAvecSelection'), keywords: ['ticket', 'billet', 'voyage', 'transport', 'bus', 'car', 'autobus', 'train', 'avion', 'vol', 'bateau', 'ferry', 'départ', 'arrivée', 'destination', 'trajet', 'place', 'siège', 'réservation', 'aller simple', 'aller-retour', 'économique', 'affaires', 'première classe', 'VIP', 'escale', 'direct', 'compagnie', 'horaire'] },
-{ value: 'ustensiles_cuisine', label: _t('productManagerMobile.ustensilesDeCuisine'), icon: '🍴', color: '#FF5722', description: _t('productManagerMobile.casserolesPoelesCouteauxMixersBatterie'), keywords: ['ustensile', 'cuisine', 'casserole', 'poêle', 'faitout', 'marmite', 'cocotte', 'wok', 'couteau', 'planche à découper', 'râpe', 'fouet', 'louche', 'spatule', 'cuillère', 'mixer', 'mixeur', 'blender', 'robot cuisine', 'balance', 'batterie cuisine', 'inox', 'aluminium', 'téflon', 'anti-adhésif', 'set'] },
-{ value: 'vetement', label: _t('productManagerMobile.vetementsEtPretaporter'), icon: '👕', color: '#EC4899', description: _t('productManagerMobile.vetementsHabitsArticlesDeMode'), keywords: ['vêtement', 'habit', 'mode', 'fashion', 'prêt-à-porter', 'textile', 'chemise', 'polo', 'T-shirt', 'pull', 'sweat', 'gilet', 'veste', 'manteau', 'blouson', 'pantalon', 'jean', 'short', 'jupe', 'robe', 'costume', 'tailleur', 'sous-vêtement', 'chaussette', 'écharpe', 'cravate', 'ceinture', 'gant', 'bonnet', 'chapeau', 'casquette', 'homme', 'femme', 'enfant', 'taille', 'coton', 'soie', 'lin', 'laine', 'Zara', 'H&M'] },
-{ value: 'restauration', label: _t('productManagerMobile.restaurationTraiteur'), icon: '🍽️', color: '#F97316', description: _t('productManagerMobile.restaurantsCafesBarsTraiteursFood'), keywords: ['restaurant', 'resto', 'café', 'bar', 'traiteur', 'food truck', 'cuisine', 'menu', 'plat', 'repas', 'déjeuner', 'dîner', 'petit-déjeuner', 'brunch', 'buffet', 'chef', 'cuisinier', 'gastronomie', 'mets', 'service', 'réservation', 'table', 'terrasse', 'livraison', 'à emporter', 'fast-food', 'snack', 'brasserie', 'bistrot', 'pizzeria', 'boulangerie', 'pâtisserie'] },
-{ value: 'electronique', label: _t('productManagerMobile.electroniqueHightech'), icon: '⚡', color: '#00BCD4', description: _t('productManagerMobile.appareilsElectroniquesGadgetsAccessoires'), keywords: ['électronique', 'high-tech', 'technologie', 'gadget', 'appareil', 'accessoire', 'tech', 'numérique', 'digital', 'connecté', 'smart', 'intelligent', 'console', 'PlayStation', 'Xbox', 'Nintendo', 'drone', 'caméra', 'GoPro', 'stabilisateur', 'microphone', 'audio', 'vidéo', 'streaming', 'gaming', 'esport'] },
-{ value: 'musique_instruments', label: _t('productManagerMobile.musiqueInstruments'), icon: '🎸', color: '#9C27B0', description: _t('productManagerMobile.instrumentsDeMusiqueEquipementsAudio'), keywords: ['musique', 'instrument', 'musical', 'guitare', 'piano', 'clavier', 'synthétiseur', 'batterie', 'percussion', 'saxophone', 'trompette', 'violon', 'flûte', 'harmonica', 'accordéon', 'djembé', 'tam-tam', 'balafon', 'kora', 'ampli', 'amplificateur', 'enceinte', 'micro', 'table de mixage', 'sono', 'sonorisation', 'studio', 'enregistrement'] },
-{ value: 'soutien_scolaire_repetiteur', label: _t('productManagerMobile.soutienScolaireRepetiteur'), icon: '📚', color: '#10B981', description: _t('productManagerMobile.coursParticuliersPrimairesecondaireAideA'), keywords: ['soutien scolaire', 'répétiteur', 'cours particuliers', 'aide devoirs', 'rattrapage scolaire', 'révisions', 'professeur particulier', 'enseignant', 'prof à domicile', 'cours à domicile', 'maths', 'français', 'anglais', 'physique', 'primaire', 'collège', 'lycée', 'CP', 'CE1', 'CE2', 'CM1', 'CM2', '6ème', '5ème', '4ème', '3ème', 'seconde', 'première', 'terminale', 'BEPC', 'probatoire', 'baccalauréat', 'bac'] },
-{ value: 'formation_education', label: _t('productManagerMobile.formationEducation'), icon: '🎓', color: '#7C3AED', description: _t('productManagerMobile.formationProfessionnellePreparationConco'), keywords: ['formation', 'éducation', 'formation professionnelle', 'certification', 'diplôme', 'stage', 'atelier', 'séminaire', 'workshop', 'préparation concours', 'polytechnique', 'ENAM', 'ENS', 'grandes écoles', 'concours', 'webinaire', 'e-learning', 'en ligne', 'langue', 'informatique', 'bureautique', 'management', 'formateur', 'coach', 'mentor'] },
+{ value: 'pharmacie', label: _t('productManagerMobile.pharmaciesEtGardes'), icon: '💊', color: '#059669', description: _t('productManagerMobile.desc_pharmaciesPlanningDeGardeServices'), keywords: ['pharmacie', 'pharmacien', t('productManagerMobile.medicament'), 'ordonnance', 'prescription', 'garde', 'pharmacie de garde', 'urgence', 'parapharmacie', 'vitamine', t('productManagerMobile.complement'), 'pansement', 'sirop', t('productManagerMobile.comprime'), t('productManagerMobile.gelule'), t('productManagerMobile.creme'), 'antiseptique', 'doliprane', t('productManagerMobile.paracetamol')] },
+{ value: 'demenagement', label: _t('productManagerMobile.demenagementEtTransport'), icon: '📦', color: '#F97316', description: _t('productManagerMobile.servicesDeDemenagementLocalNational'), keywords: [t('productManagerMobile.demenagement'), t('productManagerMobile.demenager'), t('productManagerMobile.demenageur'), 'manutention', 'transport', 'camion', 'camionnette', 'carton', 'emballage', 'meuble', 'monte-meuble', 'garde-meuble', 'stockage', 'local', 'national', 'international', 'express', 'assurance', 'devis', 'tarif'] },
+{ value: 'cosmetique_parfum', label: _t('productManagerMobile.cosmetiqueParfum'), icon: '✨', color: '#E91E63', description: _t('productManagerMobile.parfumsMaquillageSoinsBeauteHuiles'), keywords: [t('productManagerMobile.cosmetique'), 'parfum', 'maquillage', t('productManagerMobile.beaute'), 'soin', t('productManagerMobile.creme'), 'lotion', t('productManagerMobile.serum'), 'masque', 'fond de teint', t('productManagerMobile.rougeALevres'), 'mascara', 'vernis', 'eau de toilette', t('productManagerMobile.deodorant'), 'gel douche', 'shampoing', 'Chanel', 'Dior', 'L\t('productManagerMobile.oreal'), 'Nivea', 'naturel', 'bio'] },
+{ value: 'bijoux', label: _t('productManagerMobile.bijouxAccessoires'), icon: '💎', color: '#FFD700', description: _t('productManagerMobile.colliersBaguesBraceletsMontresPierres'), keywords: ['bijou', 'bijouterie', 'collier', 'pendentif', 'bague', 'alliance', 'bracelet', 'gourmette', 'boucle d\'oreille', 'montre', t('productManagerMobile.chaine'), t('productManagerMobile.medaille'), 'or', 'argent', 'platine', 'diamant', t('productManagerMobile.pierrePrecieuse'), 'rubis', 'saphir', 'perle', '18k', '14k', t('productManagerMobile.plaqueOr'), 'Cartier', 'Tiffany'] },
+{ value: 'coiffure_beaute', label: _t('productManagerMobile.coiffureBeaute'), icon: '💇‍♀️', color: '#E91E63', description: _t('productManagerMobile.mechesExtensionsPerruquesAccessoiresDe'), keywords: ['coiffure', 'cheveu', t('productManagerMobile.meche'), 'extension', 'perruque', 'tissage', 'tresse', t('productManagerMobile.defrisage'), 'lissage', 'bouclage', 'coloration', 'teinture', 'balayage', 'coupe', 'brushing', 'lisse', t('productManagerMobile.boucle'), 'naturel', t('productManagerMobile.synthetique'), t('productManagerMobile.bresilienne'), 'indienne', 'remy hair', 'clip', 'pose'] },
+{ value: 'couturier', label: _t('productManagerMobile.couturierTailleur'), icon: '✂️', color: '#EC4899', description: _t('productManagerMobile.coutureSurMesureRetouchesConfection'), keywords: ['couturier', 'tailleur', 'couture', 'sur mesure', 'retouche', 'confection', t('productManagerMobile.vetement'), 'robe', 'costume', 'boubou', 'bazin', 'wax', 'pagne', 'traditionnel', 'moderne', 'mariage', t('productManagerMobile.soiree'), 'essayage', 'patron', 'coupe', 'couture', 'broderie', 'surjeteuse', t('productManagerMobile.machineACoudre'), 'atelier', 'mesures', 'tissu', 'finition', 'haute couture', t('productManagerMobile.pretaporter'), t('productManagerMobile.createur'), 'styliste', t('productManagerMobile.modeliste'), 'assemblage', 'ourlet', 'zip', 'bouton', 'doublure', 'parement'] },
+{ value: 'pieces_auto', label: _t('productManagerMobile.piecesDetacheesAuto'), icon: '🔧', color: '#607D8B', description: _t('productManagerMobile.piecesMoteurFreinsCarrosserieFiltres'), keywords: [t('productManagerMobile.pieceAuto'), t('productManagerMobile.pieceDetachee'), t('productManagerMobile.pieceAutomobile'), 'moteur', 'frein', 'disque', 'plaquette', 'carrosserie', 'pare-choc', 'aile', 'capot', 'phare', 'feu', 'filtre', 'huile', 'batterie', 'alternateur', 'bougie', 'courroie', 'embrayage', 'suspension', 'amortisseur', 'vidange', 'garage'] },
+{ value: 'pieces_industrielles', label: _t('productManagerMobile.piecesIndustrielles'), icon: '⚙️', color: '#455A64', description: _t('productManagerMobile.roulementsCourroiesMoteursPompesPieces'), keywords: [t('productManagerMobile.pieceIndustrielle'), t('productManagerMobile.pieceMachine'), 'roulement', 'palier', 'courroie', t('productManagerMobile.chaine'), 'poulie', 'pignon', 'engrenage', t('productManagerMobile.moteurElectrique'), 'hydraulique', 'pneumatique', 'pompe', 'compresseur', 'vanne', t('productManagerMobile.verin'), 'tuyau', 'joint', 'acier', 'inox', 'industriel', 'usine', 'maintenance'] },
+{ value: 'prestation_service', label: _t('productManagerMobile.prestationDeService'), icon: '🎯', color: '#8B5CF6', description: _t('productManagerMobile.servicesProfessionnelsDiversCoachingCons'), keywords: ['prestation', 'service', 'serrurier', 'vitrier', 'couvreur', 'tapissier', 'soudeur', 'photographe', t('productManagerMobile.videaste'), 'graphiste', 'designer', t('productManagerMobile.developpeur'), 'programmeur', 'webmaster', 'informaticien', 'coach', 'formateur', 'tuteur', 'traducteur', t('productManagerMobile.interprete'), t('productManagerMobile.redacteur'), t('productManagerMobile.secretaire'), 'assistant', 'comptable', 'consultant', 'conseiller', 'expert', 'avocat', 'juriste', 'notaire', 'huissier', 'dresseur', 'toiletteur', 'DJ', 'musicien', 'animateur', 'artiste', t('productManagerMobile.comedien'), 'danseur', 'maquilleur', 'styliste', 'cordonnier', 'sellier', 'horloger', 'opticien', 'guide', 'moniteur', 'analyste', 'data scientist', t('productManagerMobile.economiste'), 'chercheur', 'scientifique', 'agent immobilier', 'promoteur', 'gestionnaire', 'administrateur', 'manager', 'chef de projet', 'coordinateur', 'superviseur', 'expert-comptable', 'fiscaliste', 'banquier', 'conseiller financier', 'vendeur', 'commercial', t('productManagerMobile.representant'), 'logisticien', 'magasinier', 'wedding planner', 'organisateur', t('productManagerMobile.traiteurEvenementiel'), t('productManagerMobile.decorateur'), 'fleuriste', 'imprimeur', 'relieur', 'graveur'] },
+{ value: 'ingenieur_archi', label: _t('productManagerMobile.ingenieurArchitecte'), icon: '📐', color: '#0891B2', description: _t('productManagerMobile.bureauDetudesPlansConceptionSuiviChantierPermis')', keywords: ['architecte', t('productManagerMobile.ingenieur'), t('productManagerMobile.ingenieurBatiment'), t('productManagerMobile.ingenieurGenieCivil'), 'bureau d\t('productManagerMobile.etudes'), t('productManagerMobile.bureauEtude'), 'BET', 'plan architecte', 'plan maison', 'plan architecture', 'conception architecturale', t('productManagerMobile.etudeArchitecturale'), 'permis de construire', 'dossier permis', t('productManagerMobile.declarationPrealable'), t('productManagerMobile.etudeTechnique'), t('productManagerMobile.etudeDeSol'), t('productManagerMobile.etudeGeotechnique'), 'calcul structure', t('productManagerMobile.calculBeton'), 'note de calcul', 'dimensionnement', t('productManagerMobile.maitriseDt('productManagerMobile.uvre'), t('productManagerMobile.maitreDt('productManagerMobile.uvre'), 'MOE', 'suivi de chantier', 'supervision travaux', 'coordination chantier', t('productManagerMobile.receptionChantier'), t('productManagerMobile.metres'), 'quantitatifs', 'avant-projet', 'APD', 'APS', 'plans d\t('productManagerMobile.execution'), 'plans techniques', t('productManagerMobile.geometre'), 'topographe', t('productManagerMobile.leveTopographique'), 'bornage', 'implantation', 'urbanisme', t('productManagerMobile.etudeUrbanisme'), 'PLU', t('productManagerMobile.renovationEnergetique'), t('productManagerMobile.auditEnergetique'), 'thermique', 'RT2012', 'conception 3D', t('productManagerMobile.modelisation3d'), 'maquette 3D', 'dessinateur', 'projeteur', 'architecte d\t('productManagerMobile.interieur'), t('productManagerMobile.amenagementInterieur'), t('productManagerMobile.decorationArchitecturale')] },
+{ value: 'macon', label: _t('productManagerMobile.macon'), icon: '🧱', color: '#78716C', description: _t('productManagerMobile.maconnerieBetonConstructionFondationsMur'), keywords: [t('productManagerMobile.macon'), t('productManagerMobile.maconnerie'), t('productManagerMobile.serviceMaconnerie'), 'construction', t('productManagerMobile.batiment'), 'fondation', 'dalle', 'mur', t('productManagerMobile.beton'), 'ciment', 'parpaing', 'brique', 'agglo', 'coffrage', 'ferraillage', t('productManagerMobile.coulageBeton'), t('productManagerMobile.grosUvre'), 'soubassement', t('productManagerMobile.chainage'), 'linteau', 'poteau', 'poutre', 'plancher', 'chape', 'enduit', t('productManagerMobile.crepi'), 'mortier', 'jointoiement', t('productManagerMobile.maconUrgence'), t('productManagerMobile.depanneurMaconnerie'), t('productManagerMobile.reparationFissure'), t('productManagerMobile.repriseSousuvre'), t('productManagerMobile.renovationMur'), 'extension maison', t('productManagerMobile.surelevation'), 'agrandissement', t('productManagerMobile.maconQualifie'), t('productManagerMobile.entrepriseMaconnerie'), t('productManagerMobile.travauxMaconnerie'), t('productManagerMobile.devisMaconnerie'), t('productManagerMobile.maconnerieGenerale'), t('productManagerMobile.maconnerieTraditionnelle'), t('productManagerMobile.maconnerieModerne')] },
+{ value: 'plombier', label: _t('productManagerMobile.plombier'), icon: '🔧', color: '#00BCD4', description: _t('productManagerMobile.servicesDePlomberieInstallationReparatio'), keywords: ['plombier', 'plomberie', 'service plomberie', t('productManagerMobile.depannagePlomberie'), 'urgence plomberie', 'installation plomberie', t('productManagerMobile.reparationPlomberie'), 'fuite eau', 'fuite', t('productManagerMobile.debouchage'), t('productManagerMobile.deboucher'), 'canalisation', 'tuyau', 'robinet', 'chauffe-eau', 'ballon eau chaude', t('productManagerMobile.chaudiere'), t('productManagerMobile.wcBouche'), t('productManagerMobile.toiletteBouchee'), t('productManagerMobile.evierBouche'), t('productManagerMobile.doucheBouchee'), 'lavabo', t('productManagerMobile.evier'), 'salle de bain', 'sanitaire installation', 'raccordement eau', 'vidange', t('productManagerMobile.evacuation'), 'siphon', 'mitigeur', 'installation sanitaire', t('productManagerMobile.renovationSalleDeBain'), 'plombier urgence', t('productManagerMobile.depanneurPlomberie'), 'plombier 24h', 'intervention rapide', t('productManagerMobile.detectionFuite'), 'recherche fuite'] },
+{ value: 'electricien', label: _t('productManagerMobile.electricien'), icon: '⚡', color: '#FFC107', description: _t('productManagerMobile.servicesElectriciteInstallationDepannage'), keywords: [t('productManagerMobile.electricien'), t('productManagerMobile.electriciteService'), t('productManagerMobile.serviceElectricite'), t('productManagerMobile.depannageElectricite'), t('productManagerMobile.urgenceElectricite'), t('productManagerMobile.installationElectrique'), t('productManagerMobile.reparationElectrique'), t('productManagerMobile.panneElectricite'), 'panne courant', 'court-circuit', 'disjoncteur saute', t('productManagerMobile.tableauElectrique'), t('productManagerMobile.cablageMaison'), 'mise aux normes', t('productManagerMobile.normeElectrique'), t('productManagerMobile.raccordementElectrique'), t('productManagerMobile.branchementElectrique'), t('productManagerMobile.electriciteBatiment'), 'installation lampe', 'lustre', 'plafonnier', t('productManagerMobile.eclairageMaison'), t('productManagerMobile.priseElectriqueInstallation'), 'interrupteur installation', t('productManagerMobile.electricienUrgence'), t('productManagerMobile.depanneurElectricite'), t('productManagerMobile.electricien24h'), t('productManagerMobile.interventionRapideElectricite'), t('productManagerMobile.diagnosticElectrique'), 'recherche panne', t('productManagerMobile.renovationElectrique'), t('productManagerMobile.travauxElectricite')] },
+{ value: 'electricien_auto', label: _t('productManagerMobile.electricienAutomobile'), icon: '🔋', color: '#FF6B35', description: _t('productManagerMobile.electriciteAutoDiagnosticReparationInsta'), keywords: [t('productManagerMobile.electricienAuto'), t('productManagerMobile.electriciteAutomobile'), t('productManagerMobile.electriciteVoiture'), t('productManagerMobile.electriciteMoto'), t('productManagerMobile.electroniqueAuto'), t('productManagerMobile.diagnosticElectronique'), t('productManagerMobile.reparationElectroniqueVoiture'), 'batterie auto', 'alternateur', t('productManagerMobile.demarreur'), t('productManagerMobile.faisceauElectrique'), t('productManagerMobile.cablageAuto'), 'phare voiture', t('productManagerMobile.feuArriere'), 'clignotant', 'klaxon', 'essuie-glace moteur', t('productManagerMobile.levevitreElectrique'), 'centralisation', 'autoradio installation', 'alarme voiture', 'GPS voiture', t('productManagerMobile.cameraReculInstallation'), 'capteur parking', 'OBD diagnostic', 'valise diagnostic', 'calculateur moteur', t('productManagerMobile.boitierElectronique'), t('productManagerMobile.panneElectriqueVoiture'), 'court-circuit auto', t('productManagerMobile.problemeBatterie'), t('productManagerMobile.alternateurDefaillant'), 'voyant moteur', t('productManagerMobile.diagnosticPanneElectrique'), t('productManagerMobile.reparationFaisceau'), t('productManagerMobile.installationEquipementElectronique')] },
+{ value: 'peintre', label: _t('productManagerMobile.peintreEnBatiment'), icon: '🎨', color: '#8B5CF6', description: _t('productManagerMobile.servicesDePeintureInterieurExterieur'), keywords: ['peintre', 'peinture', 'service peinture', t('productManagerMobile.peintureBatiment'), t('productManagerMobile.peintureInterieur'), t('productManagerMobile.peintureExterieur'), 'peinture murale', 'peinture plafond', t('productManagerMobile.ravalementFacade'), t('productManagerMobile.crepiFacade'), 'enduit', t('productManagerMobile.decorationMurale'), 'papier peint', 'pose papier peint', t('productManagerMobile.revetementMural'), 'lessivage', t('productManagerMobile.preparationSupport'), t('productManagerMobile.poncage'), 'rebouchage', 'impression', 'sous-couche', 'finition', 'laque', t('productManagerMobile.glycero'), 'acrylique', t('productManagerMobile.satinee'), 'mate', 'brillante', t('productManagerMobile.peintureDecorative'), t('productManagerMobile.effetDecoratif'), 'pochoir', 'frise', 'trompe-l\t('productManagerMobile.il'), 'peintre professionnel', t('productManagerMobile.peintreQualifie'), 'devis peinture', 'tarif peinture', t('productManagerMobile.renovationPeinture'), t('productManagerMobile.rafraichissementPeinture'), 'travaux peinture'] },
+{ value: 'staffeur', label: _t('productManagerMobile.staffeurPlatrier'), icon: '🏛️', color: '#64748B', description: _t('productManagerMobile.platrerieStaffFauxPlafondsCloisons'), keywords: ['staffeur', t('productManagerMobile.platrier'), t('productManagerMobile.platrerie'), 'staff', t('productManagerMobile.platre'), 'platrerie', 'faux plafond', 'plafond suspendu', 'cloison', t('productManagerMobile.cloisonSeche'), 'placo', t('productManagerMobile.placoplatre'), 'BA13', 'isolation phonique', 'isolation thermique', 'doublage', t('productManagerMobile.enduitPlatre'), t('productManagerMobile.enduitInterieur'), 'lissage', t('productManagerMobile.ragreage'), 'rebouchage', 'bandes joints', 'joints placo', 'corniche', 'moulure', 'rosace', t('productManagerMobile.modenature'), t('productManagerMobile.decorationPlatre'), 'ornementation', t('productManagerMobile.staffDecoratif'), t('productManagerMobile.platreDecoratif'), 'arc', t('productManagerMobile.voute'), 'colonne', 'pilastre', t('productManagerMobile.amenagementInterieur'), t('productManagerMobile.renovationInterieure'), t('productManagerMobile.finitionPlatre'), t('productManagerMobile.staffeurQualifie'), t('productManagerMobile.platrierProfessionnel')] },
+{ value: 'quincaillerie', label: _t('productManagerMobile.quincaillerieAccessoiresConstruction'), icon: '🔨', color: '#F59E0B', description: _t('productManagerMobile.outilsMateriauxConstructionVisseriePeint'), keywords: ['quincaillerie', 'outil', 'marteau', 'tournevis', t('productManagerMobile.cle'), 'pince', 'scie', 'vis', 'boulon', t('productManagerMobile.ecrou'), 'cheville', 'serrure', 'cadenas', 'verrou', t('productManagerMobile.charniere'), t('productManagerMobile.materiaux'), 'ciment', 'sable', 'gravier', 'brique', 'parpaing', 'fer', 'acier', t('productManagerMobile.beton'), 'mortier', 'chaux', t('productManagerMobile.platre'), 'peinture', 'vernis', 'colle', 'mastic', 'silicone', 'joint', 'colle carrelage', 'joint carrelage', 'croisillon', 'peigne colle', t('productManagerMobile.dominoElectrique'), 'wago', 'gaine', 'douille', 'rallonge', 'multiprise', t('productManagerMobile.teflon'), t('productManagerMobile.pateJoint'), 'raccord', 'coude', 'flexible', 'collier', 'siphon', 'ruban isolant'] },
+{ value: 'carrelage', label: _t('productManagerMobile.carrelageRevetementsDeSol'), icon: '🏗️', color: '#78716C', description: _t('productManagerMobile.carrelageSolMuralFaienceMosaique'), keywords: ['carrelage', 'carreau', 'carreaux', t('productManagerMobile.faience'), 'faience', t('productManagerMobile.mosaique'), 'mosaique', t('productManagerMobile.revetementSol'), 'revetement sol', t('productManagerMobile.revetementMural'), 'dalle', 'dalles', t('productManagerMobile.pave'), 'paves', t('productManagerMobile.gres'), t('productManagerMobile.gresCerame'), 'gres cerame', t('productManagerMobile.ceramique'), 'ceramique', 'porcelaine', 'marbre', 'granit', 'granite', 'pierre naturelle', 'pierre', 'travertin', 'ardoise', 'terre cuite', 'tomette', 'zellige', 'carrelage piscine', t('productManagerMobile.carrelageExterieur'), 'carrelage exterieur', 'carrelage terrasse', 'carrelage salle de bain', 'carrelage cuisine', t('productManagerMobile.carrelageInterieur'), 'carrelage interieur', 'carrelage commercial', t('productManagerMobile.carrelageResidentiel'), 'residentiel', 'brillant', 'mat', t('productManagerMobile.antiderapant'), 'antiderapant', 'anti-glisse', 'glissant', '10x10', '15x15', '20x20', '25x25', '30x30', '40x40', '45x45', '60x60', '80x80', '120x60', 'grand format', 'petit format', 'dimensions', 'format', 'finition', 'poli', t('productManagerMobile.satine'), 'satine', t('productManagerMobile.structure'), 'structure', 'lappato', 'adouci', 'effet bois', 'imitation bois', 'effet pierre', 'imitation pierre', 'effet marbre', 'imitation marbre', t('productManagerMobile.effetBeton'), 'beton', 'imitation', 'uni', t('productManagerMobile.marbre'), t('productManagerMobile.veine'), 'veine', 'motif', t('productManagerMobile.geometrique'), 'geometrique', 'hexagonal', t('productManagerMobile.metro'), t('productManagerMobile.decor'), 'decor', 'durable', t('productManagerMobile.resistant'), 'resistant', t('productManagerMobile.qualite'), 'qualite', 'premium', 'luxe', 'haut de gamme', t('productManagerMobile.economique'), 'economique', 'neuf', 'stock', 'disponible', 'promotion', 'destockage', t('productManagerMobile.destockage'), 'import', 'importation', 'espagne', 'espagnol', 'italie', 'italien', 'portugal', 'portugais', 'turquie', 'turc', 'chine', 'chinois', 'inde', 'indien', 'egypte', t('productManagerMobile.egypte'), 'egyptien', 'maroc', 'marocain', 'tunisie', 'tunisien', 'afrique du sud', 'sud-africain'] },
+{ value: 'telephone', label: _t('productManagerMobile.telephonesEtAccessoires'), icon: '📱', color: '#FF9800', description: _t('productManagerMobile.smartphonesAccessoiresCoquesEcouteurs'), keywords: [t('productManagerMobile.telephone'), 'smartphone', 'mobile', 'portable', 'cellulaire', 'iPhone', 'Samsung', 'Huawei', 'Xiaomi', 'Oppo', 'Tecno', 'Infinix', 'Nokia', 'Galaxy', 'Android', 'iOS', t('productManagerMobile.ecran'), 'tactile', 'appareil photo', t('productManagerMobile.camera'), 'double SIM', '4G', '5G', 'Wi-Fi', 'Bluetooth', 'stockage', '64GB', '128GB', '256GB', 'RAM', 'batterie', 'chargeur', 'coque', t('productManagerMobile.ecouteurs'), 'neuf', 'occasion', t('productManagerMobile.debloque')] },
+{ value: 'ticket_voyage', label: _t('productManagerMobile.ticketsEtBilletsDeTransport'), icon: '🎫', color: '#8B5CF6', description: _t('productManagerMobile.busTrainAvionAvecSelection'), keywords: ['ticket', 'billet', 'voyage', 'transport', 'bus', 'car', 'autobus', 'train', 'avion', 'vol', 'bateau', 'ferry', t('productManagerMobile.depart'), t('productManagerMobile.arrivee'), 'destination', 'trajet', 'place', t('productManagerMobile.siege'), t('productManagerMobile.reservation'), 'aller simple', 'aller-retour', t('productManagerMobile.economique'), 'affaires', t('productManagerMobile.premiereClasse'), 'VIP', 'escale', 'direct', 'compagnie', 'horaire'] },
+{ value: 'ustensiles_cuisine', label: _t('productManagerMobile.ustensilesDeCuisine'), icon: '🍴', color: '#FF5722', description: _t('productManagerMobile.casserolesPoelesCouteauxMixersBatterie'), keywords: ['ustensile', 'cuisine', 'casserole', t('productManagerMobile.poele'), 'faitout', 'marmite', 'cocotte', 'wok', 'couteau', t('productManagerMobile.plancheADecouper'), t('productManagerMobile.rape'), 'fouet', 'louche', 'spatule', t('productManagerMobile.cuillere'), 'mixer', 'mixeur', 'blender', 'robot cuisine', 'balance', 'batterie cuisine', 'inox', 'aluminium', t('productManagerMobile.teflon'), t('productManagerMobile.antiadhesif'), 'set'] },
+{ value: 'vetement', label: _t('productManagerMobile.vetementsEtPretaporter'), icon: '👕', color: '#EC4899', description: _t('productManagerMobile.vetementsHabitsArticlesDeMode'), keywords: [t('productManagerMobile.vetement'), 'habit', 'mode', 'fashion', t('productManagerMobile.pretaporter'), 'textile', 'chemise', 'polo', 'T-shirt', 'pull', 'sweat', 'gilet', 'veste', 'manteau', 'blouson', 'pantalon', 'jean', 'short', 'jupe', 'robe', 'costume', 'tailleur', t('productManagerMobile.sousvetement'), 'chaussette', t('productManagerMobile.echarpe'), 'cravate', 'ceinture', 'gant', 'bonnet', 'chapeau', 'casquette', 'homme', 'femme', 'enfant', 'taille', 'coton', 'soie', 'lin', 'laine', 'Zara', 'H&M'] },
+{ value: 'restauration', label: _t('productManagerMobile.restaurationTraiteur'), icon: '🍽️', color: '#F97316', description: _t('productManagerMobile.restaurantsCafesBarsTraiteursFood'), keywords: ['restaurant', 'resto', t('productManagerMobile.cafe'), 'bar', 'traiteur', 'food truck', 'cuisine', 'menu', 'plat', 'repas', t('productManagerMobile.dejeuner'), t('productManagerMobile.diner'), t('productManagerMobile.petitdejeuner'), 'brunch', 'buffet', 'chef', 'cuisinier', 'gastronomie', 'mets', 'service', t('productManagerMobile.reservation'), 'table', 'terrasse', 'livraison', t('productManagerMobile.aEmporter'), 'fast-food', 'snack', 'brasserie', 'bistrot', 'pizzeria', 'boulangerie', t('productManagerMobile.patisserie')] },
+{ value: 'electronique', label: _t('productManagerMobile.electroniqueHightech'), icon: '⚡', color: '#00BCD4', description: _t('productManagerMobile.appareilsElectroniquesGadgetsAccessoires'), keywords: [t('productManagerMobile.electronique'), 'high-tech', 'technologie', 'gadget', 'appareil', 'accessoire', 'tech', t('productManagerMobile.numerique'), 'digital', t('productManagerMobile.connecte'), 'smart', 'intelligent', 'console', 'PlayStation', 'Xbox', 'Nintendo', 'drone', t('productManagerMobile.camera'), 'GoPro', 'stabilisateur', 'microphone', 'audio', t('productManagerMobile.video'), 'streaming', 'gaming', 'esport'] },
+{ value: 'musique_instruments', label: _t('productManagerMobile.musiqueInstruments'), icon: '🎸', color: '#9C27B0', description: _t('productManagerMobile.instrumentsDeMusiqueEquipementsAudio'), keywords: ['musique', 'instrument', 'musical', 'guitare', 'piano', 'clavier', t('productManagerMobile.synthetiseur'), 'batterie', 'percussion', 'saxophone', 'trompette', 'violon', t('productManagerMobile.flute'), 'harmonica', t('productManagerMobile.accordeon'), t('productManagerMobile.djembe'), 'tam-tam', 'balafon', 'kora', 'ampli', 'amplificateur', 'enceinte', 'micro', 'table de mixage', 'sono', 'sonorisation', 'studio', 'enregistrement'] },
+{ value: 'soutien_scolaire_repetiteur', label: _t('productManagerMobile.soutienScolaireRepetiteur'), icon: '📚', color: '#10B981', description: _t('productManagerMobile.coursParticuliersPrimairesecondaireAideA'), keywords: ['soutien scolaire', t('productManagerMobile.repetiteur'), 'cours particuliers', 'aide devoirs', 'rattrapage scolaire', t('productManagerMobile.revisions'), 'professeur particulier', 'enseignant', t('productManagerMobile.profADomicile'), t('productManagerMobile.coursADomicile'), 'maths', t('productManagerMobile.francais'), 'anglais', 'physique', 'primaire', t('productManagerMobile.college'), t('productManagerMobile.lycee'), 'CP', 'CE1', 'CE2', 'CM1', 'CM2', t('productManagerMobile.6eme'), t('productManagerMobile.5eme'), t('productManagerMobile.4eme'), t('productManagerMobile.3eme'), 'seconde', t('productManagerMobile.premiere'), 'terminale', 'BEPC', 'probatoire', t('productManagerMobile.baccalaureat'), 'bac'] },
+{ value: 'formation_education', label: _t('productManagerMobile.formationEducation'), icon: '🎓', color: '#7C3AED', description: _t('productManagerMobile.formationProfessionnellePreparationConco'), keywords: ['formation', t('productManagerMobile.education'), 'formation professionnelle', 'certification', t('productManagerMobile.diplome'), 'stage', 'atelier', t('productManagerMobile.seminaire'), 'workshop', t('productManagerMobile.preparationConcours'), 'polytechnique', 'ENAM', 'ENS', t('productManagerMobile.grandesEcoles'), 'concours', 'webinaire', 'e-learning', 'en ligne', 'langue', 'informatique', 'bureautique', 'management', 'formateur', 'coach', 'mentor'] },
 {
-    value: 'evenementiel', label: _t('productManagerMobile.evenementielOrganisation'), icon: '🎉', color: '#EC4899', description: _t('productManagerMobile.organisationDevenementsMariagesFetesCelebrations')', keywords: ['événement', 'évènement', 'organisation', 'mariage', 'fête', 'anniversaire', 'baptême', 'communion', 'célébration', 'cérémonie', 'réception', 'soirée', 'gala', 'conférence', 'séminaire', 'salon', 'exposition', 'concert', 'spectacle', 'animation', 'DJ', 'sono', 'décoration', 'traiteur', 'location', 'salle', 'tente', 'chapiteau', 'wedding planner', 'organisateur'] },
-    { value: 'agriculture', label: _t('productManagerMobile.agricultureElevage'), icon: '🌱', color: '#10B981', description: _t('productManagerMobile.produitsAgricolesElevageMaterielAgricole'), keywords: ['agriculture', 'agricole', 'ferme', 'exploitation', 'élevage', 'culture', 'plantation', 'récolte', 'moisson', 'semence', 'graine', 'engrais', 'pesticide', 'herbicide', 'tracteur', 'charrue', 'moissonneuse', 'batteuse', 'irrigation', 'arrosage', 'serre', 'pépinière', 'maraîchage', 'légume', 'fruit', 'céréale', 'maïs', 'riz', 'mil', 'sorgho', 'manioc', 'bétail', 'vache', 'bœuf', 'mouton', 'chèvre', 'porc', 'volaille', 'poulet', 'canard', 'lapin'] },
-    { value: 'sport_fitness', label: _t('productManagerMobile.sportFitness'), icon: '💪', color: '#EF4444', description: _t('productManagerMobile.sallesDeSportCoachingEquipements'), keywords: ['sport', 'fitness', 'gym', 'salle de sport', 'musculation', 'cardio', 'crossfit', 'yoga', 'pilates', 'zumba', 'danse', 'aerobic', 'spinning', 'cycling', 'running', 'course', 'jogging', 'marathon', 'natation', 'piscine', 'aquagym', 'tennis', 'foot', 'football', 'basketball', 'volleyball', 'handball', 'rugby', 'boxe', 'MMA', 'arts martiaux', 'karaté', 'judo', 'taekwondo', 'coach sportif', 'personal trainer', 'entraîneur', 'préparateur physique', 'nutrition', 'diététique'] },
-    { value: 'bien_etre_spa', label: _t('productManagerMobile.bienetreSpa'), icon: '🧘', color: '#14B8A6', description: _t('productManagerMobile.spaMassageRelaxationSoinsBienetre'), keywords: ['bien-être', 'spa', 'massage', 'relaxation', 'détente', 'soin', 'hammam', 'sauna', 'jacuzzi', 'balnéothérapie', 'thalasso', 'aromathérapie', 'réflexologie', 'shiatsu', 'ayurveda', 'thai', 'suédois', 'californien', 'pierre chaude', 'huile', 'gommage', 'enveloppement', 'modelage', 'drainage lymphatique', 'méditation', 'yoga', 'sophrologie', 'hypnose', 'reiki', 'énergétique'] },
-    { value: 'nettoyage_entretien', label: _t('productManagerMobile.nettoyageEntretien'), icon: '🧹', color: '#6B7280', description: _t('productManagerMobile.servicesDeNettoyageMenageEntretien'), keywords: ['nettoyage', 'ménage', 'entretien', 'propreté', 'nettoyeur', 'femme de ménage', 'homme de ménage', 'agent d\'entretien', 'société de nettoyage', 'lavage', 'dépoussiérage', 'aspirateur', 'balai', 'serpillière', 'désinfection', 'décontamination', 'vitre', 'carrelage', 'moquette', 'tapis', 'canapé', 'bureaux', 'locaux', 'immeuble', 'copropriété', 'commercial', 'industriel', 'après chantier', 'fin de chantier'] },
-    { value: 'jardinage_paysagisme', label: _t('productManagerMobile.jardinagePaysagisme'), icon: '🌳', color: '#059669', description: _t('productManagerMobile.entretienJardinsCreationEspacesVerts'), keywords: ['jardinage', 'jardin', 'paysagisme', 'paysagiste', 'espaces verts', 'entretien', 'création', 'aménagement', 'plantation', 'arbre', 'arbuste', 'fleur', 'plante', 'pelouse', 'gazon', 'tonte', 'taille', 'élagage', 'débroussaillage', 'arrosage', 'irrigation', 'clôture', 'haie', 'allée', 'terrasse', 'pergola', 'potager', 'verger', 'compost', 'engrais', 'tondeuse', 'taille-haie', 'tronçonneuse'] },
-    { value: 'securite_surveillance', label: _t('productManagerMobile.securiteSurveillance'), icon: '🛡️', color: '#DC2626', description: _t('productManagerMobile.agentsDeSecuriteGardiennageVideosurveill'), keywords: ['sécurité', 'surveillance', 'gardiennage', 'agent de sécurité', 'vigile', 'garde', 'protection', 'sûreté', 'ronde', 'patrouille', 'contrôle', 'accès', 'badge', 'portique', 'caméra', 'vidéosurveillance', 'CCTV', 'alarme', 'détecteur', 'sirène', 'télésurveillance', 'centrale', 'digicode', 'interphone', 'portail', 'barrière', 'gardien', 'concierge', 'veilleur', 'nuit', 'événement', 'magasin', 'entreprise', 'chantier'] },
-    { value: 'plomberie_sanitaire', label: _t('productManagerMobile.plomberieSanitaire'), icon: '🚰', color: '#00BCD4', description: _t('productManagerMobile.venteDeMaterielPlomberieEt'), keywords: ['plomberie', 'sanitaire', 'matériel', 'robinet', 'robinetterie', 'lavabo', 'évier', 'WC', 'toilette', 'douche', 'baignoire', 'chauffe-eau', 'tuyauterie', 'canalisation', 'raccord', 'joint', 'siphon', 'vidange', 'évacuation', 'cuivre', 'PVC', 'inox', 'chrome', 'céramique', 'porcelaine', 'grohe', 'geberit', 'roca', 'hansgrohe', 'duravit', 'installation', 'garantie', 'neuf', 'occasion'] },
-    { value: 'menuiserie', label: _t('productManagerMobile.menuiserieEbenisterie'), icon: '🪵', color: '#F97316', description: _t('productManagerMobile.fabricationPoseReparationBoisEt'), keywords: ['menuiserie', 'menuisier', 'ébénisterie', 'ébéniste', 'bois', 'boiserie', 'charpente', 'charpentier', 'parquet', 'plancher', 'lambris', 'porte', 'fenêtre', 'volet', 'portail', 'portillon', 'clôture', 'pergola', 'terrasse', 'deck', 'escalier', 'garde-corps', 'rambarde', 'placard', 'dressing', 'bibliothèque', 'meuble', 'sur mesure', 'fabrication', 'pose', 'installation', 'réparation', 'restauration', 'rénovation', 'agencement', 'aménagement'] },
-    { value: 'reparateur_frigo', label: _t('productManagerMobile.frigoristeReparateurFrigo'), icon: '❄️', color: '#06B6D4', description: _t('productManagerMobile.reparationFrigosCongelateursDepannageUrg'), keywords: ['frigoriste', 'réparateur', 'dépanneur', 'frigo', 'réfrigérateur', 'congélateur', 'dépannage', 'réparation', 'panne', 'fuite', 'gaz', 'recharge', 'compresseur', 'thermostat', 'Samsung', 'LG', 'Hisense', 'Haier', 'Bosch', 'Whirlpool', 'Beko', 'TCL', 'Midea', 'urgence', 'intervention', 'technicien', 'froid', 'climatisation', 'No Frost', 'Inverter', 'service', 'diagnostic', 'réparation circuit', 'gaz réfrigérant', 'R134a', 'R600a', 'entretien', 'maintenance', 'installation', 'domicile', '24h/24'] },
-    { value: 'reparateur_climatiseur', label: _t('productManagerMobile.reparateurClimatiseurAc'), icon: '❄️', color: '#0EA5E9', description: _t('productManagerMobile.reparationInstallationMaintenanceClimati'), keywords: ['climatiseur', 'climatisation', 'clim', 'AC', 'air conditionné', 'réparateur', 'dépanneur', 'frigoriste', 'technicien', 'dépannage', 'réparation', 'installation', 'maintenance', 'entretien', 'nettoyage', 'recharge gaz', 'R22', 'R410A', 'R32', 'fuite', 'panne', 'compresseur', 'ventilateur', 'filtre', 'drainage', 'condensats', 'split', 'window', 'cassette', 'inverter', 'Midea', 'Gree', 'Haier', 'Hisense', 'LG', 'Samsung', 'Daikin', 'Mitsubishi', 'urgence', '24h/24', 'diagnostic', 'devis gratuit', 'intervention', 'domicile', 'bureau', 'froid', 'BTU'] },
-    { value: 'reparateur_electronique', label: _t('productManagerMobile.reparateurElectroniqueTvradio'), icon: '📺', color: '#9C27B0', description: _t('productManagerMobile.reparationTvRadioHomeCinema'), keywords: ['réparateur', 'dépanneur', 'technicien', 'électronique', 'TV', 'télévision', 'téléviseur', 'écran', 'réparation TV', 'dépannage TV', 'panne TV', 'TV cassée', 'Samsung TV', 'LG TV', 'Hisense TV', 'TCL TV', 'Sony TV', 'Nasco', 'Bruhm', 'Polystar', 'QLED', 'OLED', 'LED', 'Smart TV', '4K', 'dalle', 'écran noir', 'lignes', 'pixels', 'rétro-éclairage', 'carte mère', 'alimentation', 'HDMI', 'radio', 'poste radio', 'transistor', 'home cinéma', 'barre de son', 'enceinte', 'amplificateur', 'audio', 'son', 'vidéo', 'décodeur', 'satellite', 'CANAL+', 'TNT', 'parabole', 'antenne', 'vidéoprojecteur', 'projecteur', 'DVD', 'lecteur', 'diagnostic', 'intervention', 'domicile', 'urgence', 'service', 'installation', 'configuration', 'Smart TV'] },
-    { value: 'animaux_veterinaire', label: _t('productManagerMobile.animauxVeterinaire'), icon: '🐾', color: '#FF69B4', description: _t('productManagerMobile.veterinairesToilettageDressageAccessoire'), keywords: ['animal', 'animaux', 'vétérinaire', 'véto', 'clinique vétérinaire', 'soin', 'consultation', 'vaccination', 'stérilisation', 'castration', 'vermifuge', 'antiparasitaire', 'urgence', 'chirurgie', 'toilettage', 'toiletteur', 'coupe', 'lavage', 'brushing', 'chien', 'chat', 'chiot', 'chaton', 'oiseau', 'lapin', 'rongeur', 'reptile', 'dressage', 'éducation', 'comportementaliste', 'pension', 'garde', 'promenade', 'dog sitter', 'accessoire', 'collier', 'laisse', 'gamelle', 'cage', 'niche', 'litière', 'jouet', 'nourriture', 'croquette', 'pâtée'] },
+    value: 'evenementiel', label: _t('productManagerMobile.evenementielOrganisation'), icon: '🎉', color: '#EC4899', description: _t('productManagerMobile.organisationDevenementsMariagesFetesCelebrations')', keywords: [t('productManagerMobile.evenement'), t('productManagerMobile.evenement'), 'organisation', 'mariage', t('productManagerMobile.fete'), 'anniversaire', t('productManagerMobile.bapteme'), 'communion', t('productManagerMobile.celebration'), t('productManagerMobile.ceremonie'), t('productManagerMobile.reception'), t('productManagerMobile.soiree'), 'gala', t('productManagerMobile.conference'), t('productManagerMobile.seminaire'), 'salon', 'exposition', 'concert', 'spectacle', 'animation', 'DJ', 'sono', t('productManagerMobile.decoration'), 'traiteur', 'location', 'salle', 'tente', 'chapiteau', 'wedding planner', 'organisateur'] },
+    { value: 'agriculture', label: _t('productManagerMobile.agricultureElevage'), icon: '🌱', color: '#10B981', description: _t('productManagerMobile.produitsAgricolesElevageMaterielAgricole'), keywords: ['agriculture', 'agricole', 'ferme', 'exploitation', t('productManagerMobile.elevage'), 'culture', 'plantation', t('productManagerMobile.recolte'), 'moisson', 'semence', 'graine', 'engrais', 'pesticide', 'herbicide', 'tracteur', 'charrue', 'moissonneuse', 'batteuse', 'irrigation', 'arrosage', 'serre', t('productManagerMobile.pepiniere'), t('productManagerMobile.maraichage'), t('productManagerMobile.legume'), 'fruit', t('productManagerMobile.cereale'), t('productManagerMobile.mais'), 'riz', 'mil', 'sorgho', 'manioc', t('productManagerMobile.betail'), 'vache', t('productManagerMobile.buf'), 'mouton', t('productManagerMobile.chevre'), 'porc', 'volaille', 'poulet', 'canard', 'lapin'] },
+    { value: 'sport_fitness', label: _t('productManagerMobile.sportFitness'), icon: '💪', color: '#EF4444', description: _t('productManagerMobile.sallesDeSportCoachingEquipements'), keywords: ['sport', 'fitness', 'gym', 'salle de sport', 'musculation', 'cardio', 'crossfit', 'yoga', 'pilates', 'zumba', 'danse', 'aerobic', 'spinning', 'cycling', 'running', 'course', 'jogging', 'marathon', 'natation', 'piscine', 'aquagym', 'tennis', 'foot', 'football', 'basketball', 'volleyball', 'handball', 'rugby', 'boxe', 'MMA', 'arts martiaux', t('productManagerMobile.karate'), 'judo', 'taekwondo', 'coach sportif', 'personal trainer', t('productManagerMobile.entraineur'), t('productManagerMobile.preparateurPhysique'), 'nutrition', t('productManagerMobile.dietetique')] },
+    { value: 'bien_etre_spa', label: _t('productManagerMobile.bienetreSpa'), icon: '🧘', color: '#14B8A6', description: _t('productManagerMobile.spaMassageRelaxationSoinsBienetre'), keywords: [t('productManagerMobile.bienetre'), 'spa', 'massage', 'relaxation', t('productManagerMobile.detente'), 'soin', 'hammam', 'sauna', 'jacuzzi', t('productManagerMobile.balneotherapie'), 'thalasso', t('productManagerMobile.aromatherapie'), t('productManagerMobile.reflexologie'), 'shiatsu', 'ayurveda', 'thai', t('productManagerMobile.suedois'), 'californien', 'pierre chaude', 'huile', 'gommage', 'enveloppement', 'modelage', 'drainage lymphatique', t('productManagerMobile.meditation'), 'yoga', 'sophrologie', 'hypnose', 'reiki', t('productManagerMobile.energetique')] },
+    { value: 'nettoyage_entretien', label: _t('productManagerMobile.nettoyageEntretien'), icon: '🧹', color: '#6B7280', description: _t('productManagerMobile.servicesDeNettoyageMenageEntretien'), keywords: ['nettoyage', t('productManagerMobile.menage'), 'entretien', t('productManagerMobile.proprete'), 'nettoyeur', t('productManagerMobile.femmeDeMenage'), t('productManagerMobile.hommeDeMenage'), 'agent d\'entretien', t('productManagerMobile.societeDeNettoyage'), 'lavage', t('productManagerMobile.depoussierage'), 'aspirateur', 'balai', t('productManagerMobile.serpilliere'), t('productManagerMobile.desinfection'), t('productManagerMobile.decontamination'), 'vitre', 'carrelage', 'moquette', 'tapis', t('productManagerMobile.canape'), 'bureaux', 'locaux', 'immeuble', t('productManagerMobile.copropriete'), 'commercial', 'industriel', t('productManagerMobile.apresChantier'), 'fin de chantier'] },
+    { value: 'jardinage_paysagisme', label: _t('productManagerMobile.jardinagePaysagisme'), icon: '🌳', color: '#059669', description: _t('productManagerMobile.entretienJardinsCreationEspacesVerts'), keywords: ['jardinage', 'jardin', 'paysagisme', 'paysagiste', 'espaces verts', 'entretien', t('productManagerMobile.creation'), t('productManagerMobile.amenagement'), 'plantation', 'arbre', 'arbuste', 'fleur', 'plante', 'pelouse', 'gazon', 'tonte', 'taille', t('productManagerMobile.elagage'), t('productManagerMobile.debroussaillage'), 'arrosage', 'irrigation', t('productManagerMobile.cloture'), 'haie', t('productManagerMobile.allee'), 'terrasse', 'pergola', 'potager', 'verger', 'compost', 'engrais', 'tondeuse', 'taille-haie', t('productManagerMobile.tronconneuse')] },
+    { value: 'securite_surveillance', label: _t('productManagerMobile.securiteSurveillance'), icon: '🛡️', color: '#DC2626', description: _t('productManagerMobile.agentsDeSecuriteGardiennageVideosurveill'), keywords: [t('productManagerMobile.securite'), 'surveillance', 'gardiennage', t('productManagerMobile.agentDeSecurite'), 'vigile', 'garde', 'protection', t('productManagerMobile.surete'), 'ronde', 'patrouille', t('productManagerMobile.controle'), t('productManagerMobile.acces'), 'badge', 'portique', t('productManagerMobile.camera'), t('productManagerMobile.videosurveillance'), 'CCTV', 'alarme', t('productManagerMobile.detecteur'), t('productManagerMobile.sirene'), t('productManagerMobile.telesurveillance'), 'centrale', 'digicode', 'interphone', 'portail', t('productManagerMobile.barriere'), 'gardien', 'concierge', 'veilleur', 'nuit', t('productManagerMobile.evenement'), 'magasin', 'entreprise', 'chantier'] },
+    { value: 'plomberie_sanitaire', label: _t('productManagerMobile.plomberieSanitaire'), icon: '🚰', color: '#00BCD4', description: _t('productManagerMobile.venteDeMaterielPlomberieEt'), keywords: ['plomberie', 'sanitaire', t('productManagerMobile.materiel'), 'robinet', 'robinetterie', 'lavabo', t('productManagerMobile.evier'), 'WC', 'toilette', 'douche', 'baignoire', 'chauffe-eau', 'tuyauterie', 'canalisation', 'raccord', 'joint', 'siphon', 'vidange', t('productManagerMobile.evacuation'), 'cuivre', 'PVC', 'inox', 'chrome', t('productManagerMobile.ceramique'), 'porcelaine', 'grohe', 'geberit', 'roca', 'hansgrohe', 'duravit', 'installation', 'garantie', 'neuf', 'occasion'] },
+    { value: 'menuiserie', label: _t('productManagerMobile.menuiserieEbenisterie'), icon: '🪵', color: '#F97316', description: _t('productManagerMobile.fabricationPoseReparationBoisEt'), keywords: ['menuiserie', 'menuisier', t('productManagerMobile.ebenisterie'), t('productManagerMobile.ebeniste'), 'bois', 'boiserie', 'charpente', 'charpentier', 'parquet', 'plancher', 'lambris', 'porte', t('productManagerMobile.fenetre'), 'volet', 'portail', 'portillon', t('productManagerMobile.cloture'), 'pergola', 'terrasse', 'deck', 'escalier', 'garde-corps', 'rambarde', 'placard', 'dressing', t('productManagerMobile.bibliotheque'), 'meuble', 'sur mesure', 'fabrication', 'pose', 'installation', t('productManagerMobile.reparation'), 'restauration', t('productManagerMobile.renovation'), 'agencement', t('productManagerMobile.amenagement')] },
+    { value: 'reparateur_frigo', label: _t('productManagerMobile.frigoristeReparateurFrigo'), icon: '❄️', color: '#06B6D4', description: _t('productManagerMobile.reparationFrigosCongelateursDepannageUrg'), keywords: ['frigoriste', t('productManagerMobile.reparateur'), t('productManagerMobile.depanneur'), 'frigo', t('productManagerMobile.refrigerateur'), t('productManagerMobile.congelateur'), t('productManagerMobile.depannage'), t('productManagerMobile.reparation'), 'panne', 'fuite', 'gaz', 'recharge', 'compresseur', 'thermostat', 'Samsung', 'LG', 'Hisense', 'Haier', 'Bosch', 'Whirlpool', 'Beko', 'TCL', 'Midea', 'urgence', 'intervention', 'technicien', 'froid', 'climatisation', 'No Frost', 'Inverter', 'service', 'diagnostic', t('productManagerMobile.reparationCircuit'), t('productManagerMobile.gazRefrigerant'), 'R134a', 'R600a', 'entretien', 'maintenance', 'installation', 'domicile', '24h/24'] },
+    { value: 'reparateur_climatiseur', label: _t('productManagerMobile.reparateurClimatiseurAc'), icon: '❄️', color: '#0EA5E9', description: _t('productManagerMobile.reparationInstallationMaintenanceClimati'), keywords: ['climatiseur', 'climatisation', 'clim', 'AC', t('productManagerMobile.airConditionne'), t('productManagerMobile.reparateur'), t('productManagerMobile.depanneur'), 'frigoriste', 'technicien', t('productManagerMobile.depannage'), t('productManagerMobile.reparation'), 'installation', 'maintenance', 'entretien', 'nettoyage', 'recharge gaz', 'R22', 'R410A', 'R32', 'fuite', 'panne', 'compresseur', 'ventilateur', 'filtre', 'drainage', 'condensats', 'split', 'window', 'cassette', 'inverter', 'Midea', 'Gree', 'Haier', 'Hisense', 'LG', 'Samsung', 'Daikin', 'Mitsubishi', 'urgence', '24h/24', 'diagnostic', 'devis gratuit', 'intervention', 'domicile', 'bureau', 'froid', 'BTU'] },
+    { value: 'reparateur_electronique', label: _t('productManagerMobile.reparateurElectroniqueTvradio'), icon: '📺', color: '#9C27B0', description: _t('productManagerMobile.reparationTvRadioHomeCinema'), keywords: [t('productManagerMobile.reparateur'), t('productManagerMobile.depanneur'), 'technicien', t('productManagerMobile.electronique'), 'TV', t('productManagerMobile.television'), t('productManagerMobile.televiseur'), t('productManagerMobile.ecran'), t('productManagerMobile.reparationTv'), t('productManagerMobile.depannageTv'), 'panne TV', t('productManagerMobile.tvCassee'), 'Samsung TV', 'LG TV', 'Hisense TV', 'TCL TV', 'Sony TV', 'Nasco', 'Bruhm', 'Polystar', 'QLED', 'OLED', 'LED', 'Smart TV', '4K', 'dalle', t('productManagerMobile.ecranNoir'), 'lignes', 'pixels', t('productManagerMobile.retroeclairage'), t('productManagerMobile.carteMere'), 'alimentation', 'HDMI', 'radio', 'poste radio', 'transistor', t('productManagerMobile.homeCinema'), 'barre de son', 'enceinte', 'amplificateur', 'audio', 'son', t('productManagerMobile.video'), t('productManagerMobile.decodeur'), 'satellite', 'CANAL+', 'TNT', 'parabole', 'antenne', t('productManagerMobile.videoprojecteur'), 'projecteur', 'DVD', 'lecteur', 'diagnostic', 'intervention', 'domicile', 'urgence', 'service', 'installation', 'configuration', 'Smart TV'] },
+    { value: 'animaux_veterinaire', label: _t('productManagerMobile.animauxVeterinaire'), icon: '🐾', color: '#FF69B4', description: _t('productManagerMobile.veterinairesToilettageDressageAccessoire'), keywords: ['animal', 'animaux', t('productManagerMobile.veterinaire'), t('productManagerMobile.veto'), t('productManagerMobile.cliniqueVeterinaire'), 'soin', 'consultation', 'vaccination', t('productManagerMobile.sterilisation'), 'castration', 'vermifuge', 'antiparasitaire', 'urgence', 'chirurgie', 'toilettage', 'toiletteur', 'coupe', 'lavage', 'brushing', 'chien', 'chat', 'chiot', 'chaton', 'oiseau', 'lapin', 'rongeur', 'reptile', 'dressage', t('productManagerMobile.education'), 'comportementaliste', 'pension', 'garde', 'promenade', 'dog sitter', 'accessoire', 'collier', 'laisse', 'gamelle', 'cage', 'niche', t('productManagerMobile.litiere'), 'jouet', 'nourriture', 'croquette', t('productManagerMobile.patee')] },
 ] as const ;
     // ✅ Version dynamique utilisant le hook t() du composant (pour l'UI)
     export const getProductTypes = (t: (key: string) => string) => {
@@ -1546,7 +1546,7 @@ Exemple Douala-Paris Vol,450,EUR,Vol direct Air France classe affaires tout incl
 Exemple Hôtel Sawa,45000,XAF,Hôtel moderne centre-ville avec restaurant gastronomique et piscine panoramique,Hôtel,3 étoiles,35,Wi-Fi|Piscine|Restaurant|Bar|Climatisation|Parking,Room service|Concierge|Blanchisserie,Oui,Oui,Oui,Oui,Non,Oui,Oui,Oui,Boulevard de la Liberté,Douala,4.0511°N 9.7679°E,4.2
 Exemple Auberge du Lac,25000,XAF,Auberge chaleureuse au bord du lac avec vue panoramique et terrasse,Auberge,2 étoiles,12,Wi-Fi|Restaurant|Parking,Petit-déjeuner|Navette,Oui,Oui,Non,Non,Non,Oui,Oui,Non,Route du Lac,Yaoundé,3.8480°N 11.5021°E,4.5
 Exemple Resort Paradise,150,EUR,Resort 5 étoiles grand luxe avec spa wellness et plage privée,Resort,5 étoiles,85,Wi-Fi|Piscine|Spa|Gym|Restaurant|Bar|Climatisation|Parking,Room service|Concierge|Blanchisserie|Navette aéroport|Garde d'enfants,Oui,Oui,Oui,Oui,Oui,Oui,Oui,Oui,Front de mer,Kribi,2.9483°N 9.9086°E,4.8
-Exemple Chambre d'hôtes,15000,XAF,Chambre dt('productManagerMobile.hotesFamilialeAccueilChaleureuxPetitdejeunerMaisonchamb')`,
+Exemple Chambre dt('productManagerMobile.hotes15000xafchambreDt')productManagerMobile.hotesFamilialeAccueilChaleureuxPetitdejeunerMaisonchamb')`,
 
         covoiturage: `Nom,Prix,Devise,Description,Départ,Arrivée,Date,Heure,Places disponibles
 Trajet Douala-Yaoundé,2500,XAF,Voiture confortable et sécurisée avec climatisation,Bonanjo,Centre-ville Yaoundé,2024-01-15,06:00,3
@@ -1696,7 +1696,7 @@ Parfum Chanel N°5,85000,XAF,Parfum féminin iconique aux notes florales,Parfum,
 Huile d'Argan Bio,25000,XAF,Huile d'argan pure 100% bio pour cheveux et corps,Huile corporelle,Palmer's,Mixte/Unisexe,100,ml,100%,Tous types de peau,Tous types,,,Argan pur,Bio|Naturel,Maroc
 Rouge à Lèvres MAC,18000,XAF,Rouge à lèvres mat longue tenue,Rouge à lèvres,MAC,Femme,3,g,Non applicable,,,Rouge,Mat,Cire d'abeille|Vitamine E,Cruelty-free,Canada
 Fair & White Lait Corps,12000,XAF,Lait corporel éclaircissant à la vitamine C,Lait corporel,Fair & White,Mixte/Unisexe,500,ml,Non applicable,Peau noire/métissée,,,,Vitamine C|Glutathion,Dermatologiquement testé,France
-Fond de Teint L'Oréal,22000,XAF,Fond de teint longue tenue 24h,Fond de teint,L'Oréal,Femme,30,ml,Non applicable,Peau mixte,,Caramel,Mat,Acide hyaluronique,Non comédogène,France
+Fond de Teint Lt('productManagerMobile.oreal22000xaffondDeTeintLongueTenue24hfond')Oréal,Femme,30,ml,Non applicable,Peau mixte,,Caramel,Mat,Acide hyaluronique,Non comédogène,France
 Shampoing Cantu Afro,8500,XAF,Shampoing sans sulfate pour cheveux crépus,Shampoing,Cantu,Mixte/Unisexe,400,ml,Non applicable,,Cheveux crépus,,,Beurre de karité|Huile de coco,Sans sulfates|Cruelty-free,États-Unis
 Déodorant Dove Roll-on,3500,XAF,Déodorant roll-on 48h protection,Déodorant roll-on,Dove,Femme,50,ml,Non applicable,Peau sensible,,,,Aloe Vera,Dermatologiquement testé,Royaume-Uni`,
 
@@ -1829,7 +1829,7 @@ Exemple Miroir Mural Doré,28000,XAF,Miroir rond cadre métal doré style vintag
 
         sante_beaute: `Nom,Prix,Devise,Description,Type,Marque,Volume,Bio
 Exemple Crème Nivea Visage,8500,XAF,Crème hydratante visage peaux sensibles 50ml formule douce,Soins visage,Nivea,50ml,Non
-Exemple Shampoing L'Oréal,12000,XAF,Shampoing réparateur cheveux abîmés 250ml,Soins cheveux,L'Oréal,250ml,Oui
+Exemple Shampoing Lt('productManagerMobile.oreal12000xafshampoingReparateurCheveuxAbimes250ml')Oréal,250ml,Oui
 Exemple Rouge à Lèvres,5500,XAF,Rouge à lèvres mat longue tenue couleur rouge intense,Maquillage,Garnier,4g,Non`,
 
         juridique: `Nom,Prix,Devise,Description,Type,Spécialité,Expérience,Tarif horaire
@@ -2069,7 +2069,7 @@ Plafonnier LED,25000,XAF,Plafonnier moderne 3 spots orientables,Luminaires inté
             const labels: Record<ProductType, string> = {
                 immobilier_batiment: 'Titre du bien',
                 immobilier_terrain: 'Titre du terrain',
-                hotellerie: 'Nom de l\'établissement',
+                hotellerie: 'Nom de l\t('productManagerMobile.etablissement'),
                 automobile: t('productManagerMobile.designationDuVehicule'),
                 ticket_voyage: 'Trajet / Titre du billet',
                 covoiturage: 'Titre du trajet',
@@ -2091,7 +2091,7 @@ Plafonnier LED,25000,XAF,Plafonnier moderne 3 spots orientables,Luminaires inté
                 prestation_service: 'Nom de la prestation',
                 assurance: 'Type d\'assurance',
                 pharmacie: 'Nom de la pharmacie',
-                hopital_clinique: 'Nom de l\'établissement',
+                hopital_clinique: 'Nom de l\t('productManagerMobile.etablissement'),
                 laboratoire: 'Nom du laboratoire',
                 demenagement: 'Titre de l\'offre',
                 cosmetique_parfum: 'Nom du produit',
@@ -2100,7 +2100,7 @@ Plafonnier LED,25000,XAF,Plafonnier moderne 3 spots orientables,Luminaires inté
                 restauration: 'Nom du restaurant',
                 sport_fitness: t('productManagerMobile.titreDeLactivite'),
                 formation_education: 'Titre de la formation',
-                evenementiel: 'Titre de l\'événement',
+                evenementiel: 'Titre de l\t('productManagerMobile.evenement'),
                 electricite: t('productManagerMobile.nomDuProduitElectrique'),
                 plomberie: 'Titre de la prestation',
                 menuiserie: 'Titre de la prestation',
@@ -2203,7 +2203,7 @@ const handlePickImages = async () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (permissionResult.granted === false) {
-            Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès à la galerie');
+            Alert.alert(t('productManagerMobile.permissionRefusee'), 'Vous devez autoriser l\t('productManagerMobile.accesALaGalerie'));
             return;
         }
 
@@ -2247,7 +2247,7 @@ const handlePickImages = async () => {
             const validImages = compressedImages.filter(img => img !== null) as string[];
 
             if (validImages.length === 0) {
-                Alert.alert('Erreur', 'Impossible de compresser les images. Veuillez réessayer.');
+                Alert.alert('Erreur', t('productManagerMobile.impossibleDeCompresserLesImagesVeuillez'));
                 return;
             }
 
@@ -2266,7 +2266,7 @@ const handlePickImages = async () => {
         }
     } catch (error) {
         console.error('Erreur sélection images:', error);
-        Alert.alert('Erreur', 'Impossible de sélectionner les images');
+        Alert.alert('Erreur', t('productManagerMobile.impossibleDeSelectionnerLesImages'));
     }
 };
 
@@ -2314,7 +2314,7 @@ const handlePickVideos = async () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (permissionResult.granted === false) {
-            Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès à la galerie');
+            Alert.alert(t('productManagerMobile.permissionRefusee'), 'Vous devez autoriser l\t('productManagerMobile.accesALaGalerie'));
             return;
         }
 
@@ -2353,7 +2353,7 @@ const handlePickVideos = async () => {
                 const totalVideos = (newProduct.videos?.length || 0) + 1;
                 Alert.alert(
                     t('productManagerMobile.videoAjoutee'),
-                    `Vidéo ajoutée avec succès${videoSizeMB > 0 ? ` (${videoSizeMB.toFixed(2)} MB)` : ''}\n\n🎥 Total : ${totalVideos} vidéo(s) pour ce produit.`,
+                    t('productManagerMobile.videoAjouteeAvecSuccesvideosizemb0') (${videoSizeMB.toFixed(2)} MB)t('productManagerMobile.nnTotalVideosPourCeProduit', { totalVideos: totalVideos }),
                     [{ text: 'OK' }]
                 );
             } catch (err) {
@@ -2367,7 +2367,7 @@ const handlePickVideos = async () => {
         }
     } catch (error) {
         console.error('Erreur sélection vidéos:', error);
-        Alert.alert('Erreur', 'Impossible de sélectionner les vidéos');
+        Alert.alert('Erreur', t('productManagerMobile.impossibleDeSelectionnerLesVideos'));
     }
 };
 
@@ -2388,7 +2388,7 @@ const removeVideo = (index: number) => {
 // Fonction pour importer des produits depuis Excel
 const handleImportExcel = async () => {
     if (!selectedType) {
-        Alert.alert('Erreur', 'Veuillez d\'abord sélectionner un type de produit');
+        Alert.alert('Erreur', 'Veuillez d\t('productManagerMobile.abordSelectionnerUnTypeDeProduit'));
         return;
     }
 
@@ -3635,7 +3635,7 @@ const handleImportExcel = async () => {
                 t('productManagerMobile.produitsOntEteImportesAvecSucces', { newProducts_length: newProducts.length })
             );
         } else {
-            Alert.alert('Erreur', 'Aucun produit valide trouvé dans le fichier');
+            Alert.alert('Erreur', t('productManagerMobile.aucunProduitValideTrouveDansLe'));
         }
 
     } catch (error) {
@@ -3773,7 +3773,7 @@ const handleAddProduct = () => {
         if (villeDepart && villeArrivee) {
             // Avec trajet complet
             const compagnieStr = compagnie ? ` - ${compagnie}` : '';
-            newProduct.nom = `Déménagement ${type} - ${villeDepart} → ${villeArrivee}${compagnieStr}`;
+            newProduct.nom = t('productManagerMobile.demenagement', { type: type, villeDepart: villeDepart, villeArrivee: villeArrivee, compagnieStr: compagnieStr });
         } else if (compagnie) {
             // Avec compagnie seulement
             newProduct.nom = t('productManagerMobile.demenagement', { type: type, compagnie: compagnie });
@@ -3814,7 +3814,7 @@ const handleAddProduct = () => {
         if (localisation) {
             newProduct.nom = `${type} - ${localisation}`.trim();
         } else {
-            newProduct.nom = `Événement ${type}`.trim();
+            newProduct.nom = t('productManagerMobile.evenement', { type: type }).trim();
         }
     }
 
@@ -4020,7 +4020,7 @@ const handleAddProduct = () => {
     if (selectedType === 'electricien') {
         const type = newProduct.typeElectricien || t('productManagerMobile.servicesElectricite');
         const zones = newProduct.zonesInterventionElectricien?.slice(0, 2).join(', ') || '';
-        newProduct.nom = `Électricien - ${type}${zones ? ` - ${zones}` : ''}`.trim();
+        newProduct.nom = t('productManagerMobile.electricien', { type: type, zones_________zones: zones ? ` - ${zones }) : ''}`.trim();
     }
     if (selectedType === 'menuisier') {
         const type = newProduct.typeMenuisier || t('productManagerMobile.servicesMenuiserie');
@@ -4040,7 +4040,7 @@ const handleAddProduct = () => {
     if (selectedType === 'macon') {
         const type = newProduct.typeMacon || t('productManagerMobile.servicesMaconnerie');
         const zones = newProduct.zonesInterventionMacon?.slice(0, 2).join(', ') || '';
-        newProduct.nom = `Maçon - ${type}${zones ? ` - ${zones}` : ''}`.trim();
+        newProduct.nom = t('productManagerMobile.macon', { type: type, zones_________zones: zones ? ` - ${zones }) : ''}`.trim();
     }
     if (selectedType === 'forgerons') {
         const type = newProduct.typeForge || t('productManagerMobile.servicesForgeEtFerronnerie');
@@ -4075,12 +4075,12 @@ const handleAddProduct = () => {
     if (selectedType === 'reparateur_climatiseur') {
         const service = newProduct.serviceClimatisation || 'Climatisation';
         const zones = newProduct.zonesInterventionClimatiseur?.slice(0, 2).join(', ') || '';
-        newProduct.nom = `Réparateur Climatiseur - ${service}${zones ? ` - ${zones}` : ''}`.trim();
+        newProduct.nom = t('productManagerMobile.reparateurClimatiseur', { service: service, zones_________zones: zones ? ` - ${zones }) : ''}`.trim();
     }
     if (selectedType === 'electricien_auto') {
         const type = newProduct.typeElectricienAuto || t('productManagerMobile.electriciteAutomobile');
         const zones = newProduct.zonesInterventionElectricienAuto?.slice(0, 2).join(', ') || '';
-        newProduct.nom = `Électricien Auto - ${type}${zones ? ` - ${zones}` : ''}`.trim();
+        newProduct.nom = t('productManagerMobile.electricienAuto', { type: type, zones_________zones: zones ? ` - ${zones }) : ''}`.trim();
     }
     if (selectedType === 'nettoyage_entretien') {
         // ✅ Générer nom automatique : "Nettoyage [TYPE] - [FREQUENCE] - [VILLE]"
@@ -4330,7 +4330,7 @@ const handleAddProduct = () => {
 
     // ✅ Validation description pour catégories avec formulaire structuré
     if (selectedType === 'automobile' && !newProduct.description?.trim()) {
-        Alert.alert('Erreur', 'Veuillez remplir la description du véhicule');
+        Alert.alert('Erreur', t('productManagerMobile.veuillezRemplirLaDescriptionDuVehicule'));
         return;
     }
 
@@ -4345,12 +4345,12 @@ const handleAddProduct = () => {
     }
 
     if (selectedType === 'sport_fitness' && !newProduct.description?.trim()) {
-        Alert.alert('Erreur', 'Veuillez remplir la description de votre activité sportive');
+        Alert.alert('Erreur', t('productManagerMobile.veuillezRemplirLaDescriptionDeVotre'));
         return;
     }
 
     if (selectedType === 'bien_etre_spa' && !newProduct.description?.trim()) {
-        Alert.alert('Erreur', 'Veuillez remplir la description de vos services bien-être');
+        Alert.alert('Erreur', t('productManagerMobile.veuillezRemplirLaDescriptionDeVos'));
         return;
     }
 
@@ -5567,8 +5567,7 @@ onSelect = {(value) => setNewProduct({ ...newProduct, politiqueAnnulation: value
 <View style={styles.fieldRow}>
     <View style={[styles.fieldContainer, { flex: 1 }]}>
         <SelectModalitySelector
-            label={t('productManagerMobile.typeD')} hôte"
-        value={newProduct.typeHote || ''}
+            label={t('productManagerMobile.typeDt('productManagerMobile.hoteValuenewproducttypehote')'}
         productType="immobilier_location_courte"
         fieldName="type_hote"
         onSelect={(value) => setNewProduct({ ...newProduct, typeHote: value })}
@@ -5593,12 +5592,7 @@ onSelect = {(value) => setNewProduct({ ...newProduct, politiqueAnnulation: value
     productType="immobilier_location_courte"
     fieldName="paiements"
     onSelect={(values) => setNewProduct({ ...newProduct, paiementsAcceptes: values })}
-    placeholder={t('productManagerMobile.exEspecesMobileMoneyVirement')}
-/>
-
-{/* Disponibilité */ }
-<SelectModalitySelector
-    label={t('productManagerMobile.disponibilite')}
+    placeholder={t('productManagerMobile.exEspecesMobileMoneyVirementt('productManagerMobile.disponibiliteSelectmodalityselectorLabelt')productManagerMobile.disponibilite')}
     value={newProduct.disponibiliteLocationCourte || ''}
     productType="immobilier_location_courte"
     fieldName="disponibilites"
@@ -6098,8 +6092,7 @@ return (
         <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>Description <Text style={styles.required}>*</Text></Text>
             <NativeInput
-                placeholder={t('productManagerMobile.decrivezL')} état général du véhicule, ses points forts, son historique..."
-            value={newProduct.description || ''}
+                placeholder={t('productManagerMobile.decrivezLt('productManagerMobile.etatGeneralDuVehiculeSesPoints')'}
             onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
             multiline
             style={styles.fieldInput}
@@ -6591,12 +6584,7 @@ productType = "mecanicien"
 fieldName = "horaires"
 onSelect = {(value) => setNewProduct({ ...newProduct, horairesGarage: value })}
 required
-placeholder = "Ex: Lundi-Samedi 8h-18h..."
-    />
-
-    {/* Délais */ }
-    < SelectModalitySelector
-label = { t('productManagerMobile.delaisD') }intervention"
+placeholder = "Ex: Lundi-Samedi 8h-18h...t('productManagerMobile.delaisSelectmodalityselectorLabelTproductmanagermo')
 value = { newProduct.delaisIntervention || '' }
 productType = "mecanicien"
 fieldName = "delais"
@@ -6624,13 +6612,7 @@ placeholder = "Ex: Oui - 24h/24..."
     <View style={styles.hintBox}>
         <SafeIcon name="info" size={16} color={modernColors.info} />
         <Text style={styles.hintText}>
-            🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
-        </Text>
-    </View>
-
-{/* Zone d'intervention MULTIPLE avec système intelligent */ }
-<MultiSelectModalitySelector
-    label="Zones d'intervention *"
+            🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligentt('productManagerMobile.textSelectionnezVosZonesD')intervention. Les villes de votre pays st('productManagerMobile.affichentEnPrioriteTextViewZonet('productManagerMobile.interventionMultipleAvecSystemeIntelligentMultisel')intervention *"
     values={newProduct.zonesInterventionMeca || []}
     productType="mecanicien"
     fieldName="zones_intervention"
@@ -6860,8 +6842,7 @@ return (
             placeholder="Langues que vous parlez"
         />
         <SelectModalitySelector
-            label={t('productManagerMobile.zoneD')} intervention étendue"
-        value={newProduct.zoneIntervention || ''}
+            label={t('productManagerMobile.zoneDt('productManagerMobile.interventionEtendueValuenewproductzoneintervention')'}
         productType="transport_intra_urbain"
         fieldName="zones_intervention"
         onSelect={(value) => setNewProduct({ ...newProduct, zoneIntervention: value })}
@@ -6918,13 +6899,7 @@ return (
         <View style={[styles.hintBox, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
             <SafeIcon name="alert-circle" size={16} color="#F59E0B" />
             <Text style={styles.hintText}>
-                <Text style={styles.hintBold}>{t('productManagerMobile.differenceAvecCovoiturage')}</Text> Transport intra-urbain = courses courtes au sein d'une même ville avec négociation de prix.
-            </Text>
-        </View>
-    </>
-);
-
-            case 'ticket_voyage':
+                <Text style={styles.hintBold}>{t('productManagerMobile.differenceAvecCovoiturage')}</Text> Transport intra-urbain = courses courtes au sein dt('productManagerMobile.uneMemeVilleAvecNegociationDe')ticket_voyage':
 // ✅ Configuration par défaut du bus
 const busConfig = newProduct.busConfiguration || {
     rows: 12,
@@ -7568,7 +7543,7 @@ return (
             <View style={styles.infoCard}>
                 <SafeIcon name="info" size={16} color={modernColors.info} />
                 <Text style={styles.infoCardText}>
-                    💰 <Text style={{ fontWeight: '700' }}>{t('productManagerMobile.nouveauSysteme')}</Text> Le client paie le montant complet du ticket dès la réservation (plus de caution). L'argent est versé à votre structure automatiquement.
+                    💰 <Text style={{ fontWeight: '700' }}>{t('productManagerMobile.nouveauSystemet('productManagerMobile.textLeClientPaieLeMontant')argent est versé à votre structure automatiquement.
                 </Text>
             </View>
         </View>
@@ -7581,18 +7556,14 @@ return (
     </>
 );
 
-            case 'hotellerie':
-return (
-    <>
-        {/* Section 1: Identité de l'Établissement */}
+            case 'hotelleriet('productManagerMobile.returnSection1IdentiteDeL')Établissement */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="home" size={20} color={modernColors.primary} />
             <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDeLetablissement')}</Text>
         </View>
 
         <HotelStructureSelector
-            label={t('productManagerMobile.nomDeL')} établissement"
-        value={newProduct.nomEtablissementHotel || newProduct.name || ''}
+            label={t('productManagerMobile.nomDeLt('productManagerMobile.etablissementValuenewproductnometablissementhotelN')'}
         type="hotel"
         onSelect={(value) => setNewProduct({
             ...newProduct,
@@ -7608,8 +7579,7 @@ return (
         <View style={styles.fieldRow}>
             <View style={[{ flex: 1 }]}>
                 <SelectModalitySelector
-                    label={t('productManagerMobile.typeD')} hébergement"
-                value={newProduct.typeHebergement || ''}
+                    label={t('productManagerMobile.typeDt('productManagerMobile.hebergementValuenewproducttypehebergement')'}
                 productType="hotellerie"
                 fieldName="types"
                 onSelect={(value) => setNewProduct({ ...newProduct, typeHebergement: value })}
@@ -7718,9 +7688,7 @@ return (
             placeholder="Ex: Akwa, Bonanjo, Bastos..."
         />
 
-        {/* GPS de l'hôtel */}
-        <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>{t('productManagerMobile.localisationGps')}</Text>
+        {/* GPS de lt('productManagerMobile.hotelViewStylestylesfieldcontainerTextStylestylesf')productManagerMobile.localisationGps')}</Text>
             <TouchableOpacity
                 style={styles.gpsButton}
                 onPress={() => setShowGPSModal(true)}
@@ -7920,8 +7888,7 @@ return (
             </View>
             <View style={[{ flex: 1 }]}>
                 <LocationSelector
-                    label={t('productManagerMobile.villeD')} arrivée"
-                value={newProduct.villeArrivee || ''}
+                    label={t('productManagerMobile.villeDt('productManagerMobile.arriveeValuenewproductvillearrivee')'}
                 onSelect={(value) => setNewProduct({ ...newProduct, villeArrivee: value })}
                 scope="city"
                 required
@@ -7944,8 +7911,7 @@ return (
             </View>
             <View style={[{ flex: 1 }]}>
                 <LocationSelector
-                    label={t('productManagerMobile.pointD')} arrivée"
-                value={newProduct.pointArrivee || ''}
+                    label={t('productManagerMobile.pointDt('productManagerMobile.arriveeValuenewproductpointarrivee')'}
                 onSelect={(value) => setNewProduct({ ...newProduct, pointArrivee: value })}
                 scope="point"
                 cityContext={newProduct.villeArrivee}
@@ -8381,18 +8347,14 @@ return (
     </>
 );
 
-            case 'hopital_clinique':
-return (
-    <>
-        {/* Section 1: Identité de l'Établissement */}
+            case 'hopital_cliniquet('productManagerMobile.returnSection1IdentiteDeL')Établissement */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="activity" size={20} color={modernColors.primary} />
             <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDeLetablissement')}</Text>
         </View>
 
         <HealthStructureSelector
-            label={t('productManagerMobile.nomDeL')} établissement"
-        value={newProduct.nomEtablissement || newProduct.nom || ''}
+            label={t('productManagerMobile.nomDeLt('productManagerMobile.etablissementValuenewproductnometablissementNewpro')'}
         type="hospital"
         onSelect={(value) => setNewProduct({
             ...newProduct,
@@ -8406,8 +8368,7 @@ return (
                         />
 
         <SelectModalitySelector
-            label={t('productManagerMobile.typeD')} établissement"
-        value={newProduct.typeEtablissement || ''}
+            label={t('productManagerMobile.typeDt('productManagerMobile.etablissementValuenewproducttypeetablissement')'}
         productType="hopital_clinique"
         fieldName="types_etablissement"
         onSelect={(value) => setNewProduct({ ...newProduct, typeEtablissement: value })}
@@ -8448,7 +8409,7 @@ return (
         <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>{t('productManagerMobile.joursDouverture')}</Text>
 
-            {/* ✅ NOUVEAU: Bouton "Tout sélectionner" */}
+            {/* ✅ NOUVEAU: Bouton t('productManagerMobile.toutSelectionner') */}
             <TouchableOpacity
                 style={styles.selectAllButton}
                 onPress={() => {
@@ -8466,7 +8427,7 @@ return (
                     color={newProduct.joursOuverture?.length === 7 ? modernColors.primary : modernColors.textSecondary}
                 />
                 <Text style={[styles.selectAllText, newProduct.joursOuverture?.length === 7 && styles.selectAllTextActive]}>
-                    {newProduct.joursOuverture?.length === 7 ? t('productManagerMobile.toutDeselectionner') : 'Sélectionner tous les jours'}
+                    {newProduct.joursOuverture?.length === 7 ? t('productManagerMobile.toutDeselectionner') : t('productManagerMobile.selectionnerTousLesJours')}
                 </Text>
             </TouchableOpacity>
 
@@ -8720,7 +8681,7 @@ return (
         <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>{t('productManagerMobile.joursDouverture')}</Text>
 
-            {/* Bouton "Tout sélectionner" */}
+            {/* Bouton t('productManagerMobile.toutSelectionner') */}
             <TouchableOpacity
                 style={styles.selectAllButton}
                 onPress={() => {
@@ -8738,7 +8699,7 @@ return (
                     color={newProduct.joursOuverturePharmacie?.length === 7 ? modernColors.primary : modernColors.textSecondary}
                 />
                 <Text style={[styles.selectAllText, newProduct.joursOuverturePharmacie?.length === 7 && styles.selectAllTextActive]}>
-                    {newProduct.joursOuverturePharmacie?.length === 7 ? t('productManagerMobile.toutDeselectionner') : 'Sélectionner tous les jours'}
+                    {newProduct.joursOuverturePharmacie?.length === 7 ? t('productManagerMobile.toutDeselectionner') : t('productManagerMobile.selectionnerTousLesJours')}
                 </Text>
             </TouchableOpacity>
 
@@ -8872,7 +8833,7 @@ return (
                     color={newProduct.joursOuvertureLabo?.length === 7 ? modernColors.primary : modernColors.textSecondary}
                 />
                 <Text style={[styles.selectAllText, newProduct.joursOuvertureLabo?.length === 7 && styles.selectAllTextActive]}>
-                    {newProduct.joursOuvertureLabo?.length === 7 ? t('productManagerMobile.toutDeselectionner') : 'Sélectionner tous les jours'}
+                    {newProduct.joursOuvertureLabo?.length === 7 ? t('productManagerMobile.toutDeselectionner') : t('productManagerMobile.selectionnerTousLesJours')}
                 </Text>
             </TouchableOpacity>
 
@@ -9600,7 +9561,7 @@ return (
 
         <View style={styles.hintBox}>
             <Text style={styles.hintText}>
-                📸 <Text style={styles.hintBold}>{t('productManagerMobile.photos')}</Text> Ajoutez 4 à 8 images (vue d'ensemble, détails matériaux, dimensions, défauts éventuels)
+                📸 <Text style={styles.hintBold}>{t('productManagerMobile.photost('productManagerMobile.textAjoutez4A8Images')ensemble, détails matériaux, dimensions, défauts éventuels)
             </Text>
         </View>
 
@@ -9901,12 +9862,7 @@ return (
         {/* Section 1: Informations de la Pièce */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="settings" size={20} color={modernColors.primary} />
-            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeLaPiece')}</Text>
-        </View>
-
-        {/* Nom de la pièce */}
-        <SelectModalitySelector
-            label={t('productManagerMobile.nomDeLaPiece')}
+            <Text style={styles.sectionTitle}>{t('productManagerMobile.informationsDeLaPiecet('productManagerMobile.textViewNomDeLaPiece')productManagerMobile.nomDeLaPiece')}
             value={newProduct.nomPieceAuto || newProduct.name || ''}
             productType="pieces_auto"
             fieldName="noms_pieces"
@@ -10818,9 +10774,7 @@ return (
                     <Text style={styles.sectionTitle}>{t('productManagerMobile.experienceQualifications')}</Text>
                 </View>
 
-                {/* Niveau d'expérience (12 niveaux) */}
-                <ProductFieldSelector
-                    label={t('productManagerMobile.niveauExperience')}
+                {/* Niveau dt('productManagerMobile.experience12NiveauxProductfieldselectorLabelt')productManagerMobile.niveauExperience')}
                     fieldName="niveaux_experience"
                     productType="prestation_service"
                     value={newProduct.niveauExperience || ''}
@@ -11360,11 +11314,7 @@ return (
             case 'vin':
             case 'liqueur':
             case 'champagne':
-            case 'spiritueux':
-return (
-    <>
-        {/* SECTION 1: TYPE ET CATÉGORIE */}
-        <Text style={styles.sectionTitle}>{t('productManagerMobile.typeEtCategorie')}</Text>
+            case 'spiritueuxt('productManagerMobile.returnSection1TypeEtCategorie')productManagerMobile.typeEtCategorie')}</Text>
 
         <ProductFieldSelector
             label={t('productManagerMobile.typeDeProduit')}
@@ -11693,22 +11643,20 @@ return (
             case 'hopital_clinique': {
     // Listes de prestations médicales disponibles
     const prestationsMedicalesOptions = [
-        t('productManagerMobile.consultationGenerale'), 'Consultation spécialisée', 'Chirurgie',
-        t('productManagerMobile.materniteAccouchement'), 'Pédiatrie', 'Cardiologie',
-        'Radiologie', 'Échographie', 'Scanner', 'IRM',
+        t('productManagerMobile.consultationGenerale'), t('productManagerMobile.consultationSpecialisee'), 'Chirurgie',
+        t('productManagerMobile.materniteAccouchement'), t('productManagerMobile.pediatrie'), 'Cardiologie',
+        'Radiologie', t('productManagerMobile.echographie'), 'Scanner', 'IRM',
         'Laboratoire', t('productManagerMobile.analysesMedicales'), 'Pharmacie',
         'Urgences 24h/24', 'Hospitalisation', 'Soins intensifs',
         'Dialyse', 'Dentaire', 'Ophtalmologie', 'ORL',
-        t('productManagerMobile.kinesitherapie'), 'Radiothérapie', 'Chimiothérapie'
+        t('productManagerMobile.kinesitherapie'), t('productManagerMobile.radiotherapie'), t('productManagerMobile.chimiotherapie')
     ];
 
     const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
     return (
         <>
-            {/* Type d'établissement */}
-            <ProductFieldSelector
-                label={t('productManagerMobile.typeD')} établissement médical"
+            {/* Type dt('productManagerMobile.etablissementProductfieldselectorLabelt')productManagerMobile.typeD')} établissement médical"
             fieldName="types"
             productType="hopital_clinique"
             value={newProduct.typeEtablissement || ''}
@@ -11890,13 +11838,13 @@ return (
     // Listes d'examens de laboratoire et imagerie disponibles
     const examensLaboratoireOptions = [
         // Analyses biologiques
-        'Hématologie', 'Biochimie', 'Sérologie', 'Parasitologie',
+        t('productManagerMobile.hematologie'), 'Biochimie', t('productManagerMobile.serologie'), 'Parasitologie',
         t('productManagerMobile.bacteriologie'), 'Hormonologie', 'Immunologie', 'Coagulation',
-        'Lipidique', 'Hépatique', 'Rénal', t('productManagerMobile.diabete'),
+        'Lipidique', t('productManagerMobile.hepatique'), t('productManagerMobile.renal'), t('productManagerMobile.diabete'),
         'Urinaire', 'Cytologie', 'Histologie', t('productManagerMobile.genetique'),
         'Toxicologie', 'PCR',
         // Imagerie médicale
-        'Radiographie', 'Échographie', 'Échographie Doppler',
+        'Radiographie', t('productManagerMobile.echographie'), t('productManagerMobile.echographieDoppler'),
         'Scanner', 'IRM', 'Mammographie', 'Panoramique dentaire',
         'Scintigraphie', 'PET Scan', 'Fibroscopie', 'Coronarographie'
     ];
@@ -11905,9 +11853,7 @@ return (
 
     return (
         <>
-            {/* Type d'établissement */}
-            <ProductFieldSelector
-                label={t('productManagerMobile.typeD')} établissement"
+            {/* Type dt('productManagerMobile.etablissementProductfieldselectorLabelt')productManagerMobile.typeD')} établissement"
             fieldName="types"
             productType="laboratoire"
             value={newProduct.typeLaboratoire || ''}
@@ -12397,7 +12343,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={14} color={modernColors.primary} />
             <Text style={styles.hintText}>
-                💡 <Text style={styles.hintBold}>{t('productManagerMobile.itineraire')}</Text> Indiquez les villes et quartiers de départ et d'arrivée pour un devis précis
+                💡 <Text style={styles.hintBold}>{t('productManagerMobile.itinerairet('productManagerMobile.textIndiquezLesVillesEtQuartiers')arrivée pour un devis précis
             </Text>
         </View>
 
@@ -12414,8 +12360,7 @@ return (
             </View>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
                 <LocationSelector
-                    label={t('productManagerMobile.villeD')} arrivée"
-                value={newProduct.villeArriveeDemenagement || ''}
+                    label={t('productManagerMobile.villeDt('productManagerMobile.arriveeValuenewproductvillearriveedemenagement')'}
                 onSelect={(value) => setNewProduct({ ...newProduct, villeArriveeDemenagement: value })}
                 scope="city"
                 required
@@ -12437,8 +12382,7 @@ return (
             </View>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
                 <LocationSelector
-                    label={t('productManagerMobile.quartierD')} arrivée"
-                value={newProduct.quartierArriveeDemenagement || ''}
+                    label={t('productManagerMobile.quartierDt('productManagerMobile.arriveeValuenewproductquartierarriveedemenagement')'}
                 onSelect={(value) => setNewProduct({ ...newProduct, quartierArriveeDemenagement: value })}
                 scope="point"
                 cityContext={newProduct.villeArriveeDemenagement}
@@ -12798,8 +12742,7 @@ return (
         <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>{t('productManagerMobile.ageRecommandeAnnees')}</Text>
             <NativeInput
-                placeholder={t('productManagerMobile.ex18LaissezVideSi')}
-                value={newProduct.ageRecommandé || ''}
+                placeholder={t('productManagerMobile.ex18LaissezVideSit('productManagerMobile.valuenewproductagerecommande')'}
                 onChangeText={(text) => setNewProduct({ ...newProduct, ageRecommandé: text })}
                 style={styles.fieldInput}
                 keyboardType="numeric"
@@ -13270,8 +13213,7 @@ return (
                 Décrivez votre service de couture (spécialités, style, expérience...)
             </Text>
             <NativeInput
-                placeholder={t('productManagerMobile.exSpecialisteRobesDeMariee')} expérience..."
-            value={newProduct.description || ''}
+                placeholder={t('productManagerMobile.exSpecialisteRobesDeMarieet('productManagerMobile.experienceValuenewproductdescription')'}
             onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
             multiline
             style={styles.fieldInput}
@@ -13591,12 +13533,9 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="star" size={16} color="#8B5CF6" />
             <Text style={styles.hintText}>
-                ✨ <Text style={styles.hintBold}>{t('productManagerMobile.servicesTresDemandesEnAfrique')}</Text>{'\n'}
-                • Robes de mariée complètes (voile, traîne){'\n'}
-                • Boubous grand bazin brodé (hommes){'\n'}
+                ✨ <Text style={styles.hintBold}>{t('productManagerMobile.servicesTresDemandesEnAfrique')}</Text>{'\nt('productManagerMobile.robesDeMarieeCompletesVoileTraine')\nt('productManagerMobile.boubousGrandBazinBrodeHommes')\n'}
                 • Ensembles pagne wax (femmes){'\n'}
-                • Tenues dot/mariage traditionnel{'\n'}
-                • Agbada 3 pièces{'\n'}
+                • Tenues dot/mariage traditionnel{'\nt('productManagerMobile.agbada3Pieces')\n'}
                 • Retouches express (ourlets, taille)
             </Text>
         </View>
@@ -13627,9 +13566,7 @@ return (
         placeholder={t('productManagerMobile.selectionnerVieOuNonVie')}
                         />
 
-        {/* ✅ SECOND CHAMP: Produit d'assurance (filtré selon type) */}
-        <AssuranceProduitSelector
-            label={t('productManagerMobile.produitD')} assurance"
+        {/* ✅ SECOND CHAMP: Produit dt('productManagerMobile.assuranceFiltreSelonTypeAssuranceproduitselectorLa')productManagerMobile.produitD')} assurance"
         value={newProduct.produitAssurance || ''}
         typeAssurance={newProduct.typeAssuranceVie || ''}
         onSelect={(value) => setNewProduct({ ...newProduct, produitAssurance: value })}
@@ -13849,12 +13786,7 @@ return (
             onSelect={(values) => setNewProduct({ ...newProduct, platsIvoiriens: values })}
             multiSelect
             maxSelections={20}
-            placeholder={t('productManagerMobile.attiekeAlocoGarbaKedjenou')}
-        />
-
-        {/* Plats Sénégalais */}
-        <ProductFieldSelector
-            label={t('productManagerMobile.platsSenegalais')}
+            placeholder={t('productManagerMobile.attiekeAlocoGarbaKedjenout('productManagerMobile.platsSenegalaisProductfieldselectorLabelt')productManagerMobile.platsSenegalais')}
             fieldName="plats_senegalais"
             productType="restauration"
             value={newProduct.platsSenegalais || []}
@@ -14185,10 +14117,7 @@ return (
     </>
 );
 
-            case 'electronique':
-return (
-    <>
-        {/* Section 1: Identité de l'Appareil */}
+            case 'electroniquet('productManagerMobile.returnSection1IdentiteDeL')Appareil */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="smartphone" size={20} color={modernColors.primary} />
             <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDeLappareil')}</Text>
@@ -14347,9 +14276,9 @@ return (
             label={
                 newProduct.categorieInstrument === 'Instrument traditionnel africain' ? 'Instrument africain' :
                     newProduct.categorieInstrument === 'Accessoire musical' ? 'Type d\'accessoire' :
-                        newProduct.categorieInstrument === 'Sonorisation & Sono' ? 'Équipement sono' :
-                            newProduct.categorieInstrument === t('productManagerMobile.materielDj') ? 'Équipement DJ' :
-                                newProduct.categorieInstrument === 'Studio & Enregistrement' ? 'Équipement studio' :
+                        newProduct.categorieInstrument === 'Sonorisation & Sono' ? t('productManagerMobile.equipementSono') :
+                            newProduct.categorieInstrument === t('productManagerMobile.materielDj') ? t('productManagerMobile.equipementDj') :
+                                newProduct.categorieInstrument === 'Studio & Enregistrement' ? t('productManagerMobile.equipementStudio') :
                                     'Type d\'instrument'
             }
             fieldName={
@@ -14385,7 +14314,7 @@ return (
                                     newProduct.typeInstrument?.toLowerCase().includes('percussion') ? 'marques_batteries' :
                                     newProduct.typeInstrument?.toLowerCase().includes('saxophone') ||
                                         newProduct.typeInstrument?.toLowerCase().includes('trompette') ||
-                                        newProduct.typeInstrument?.toLowerCase().includes('flûte') ? 'marques_vents' :
+                                        newProduct.typeInstrument?.toLowerCase().includes(t('productManagerMobile.flute')) ? 'marques_vents' :
                                         newProduct.categorieInstrument === 'Sonorisation & Sono' ||
                                             newProduct.categorieInstrument === t('productManagerMobile.materielDj') ? 'marques_sono_dj' :
                                             newProduct.categorieInstrument === 'Studio & Enregistrement' ? 'marques_studio' :
@@ -14542,8 +14471,8 @@ return (
         {(newProduct.categorieInstrument === 'Studio & Enregistrement' ||
             newProduct.categorieInstrument === t('productManagerMobile.materielDj') ||
             newProduct.categorieInstrument === 'Sonorisation & Sono' ||
-            newProduct.typeInstrument?.toLowerCase().includes('électrique') ||
-            newProduct.typeInstrument?.toLowerCase().includes('électronique') ||
+            newProduct.typeInstrument?.toLowerCase().includes(t('productManagerMobile.electrique')) ||
+            newProduct.typeInstrument?.toLowerCase().includes(t('productManagerMobile.electronique')) ||
             newProduct.typeInstrument?.toLowerCase().includes('ampli') ||
             newProduct.typeInstrument?.toLowerCase().includes('clavier') ||
             newProduct.typeInstrument?.toLowerCase().includes(t('productManagerMobile.pianoNumerique'))) && (
@@ -14638,12 +14567,8 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={14} color={modernColors.primary} />
             <Text style={styles.hintText}>
-                💡 <Text style={styles.hintBold}>{t('productManagerMobile.photosRecommandees46')}</Text>{'\n'}
-                • Vue complète de l'instrument{'\n'}
-                • Détails (cordes, clés, mécaniques){'\n'}
-                • Marque/modèle visible{'\n'}
-                • Accessoires inclus{'\n'}
-                • Instrument joué (si possible){'\n'}
+                💡 <Text style={styles.hintBold}>{t('productManagerMobile.photosRecommandees46')}</Text>{'\nt('productManagerMobile.vueCompleteDeL')instrument{'\nt('productManagerMobile.detailsCordesClesMecaniques')\nt('productManagerMobile.marquemodeleVisible')\n'}
+                • Accessoires inclus{'\nt('productManagerMobile.instrumentJoueSiPossible')\n'}
                 {newProduct.categorieInstrument === 'Instrument traditionnel africain' &&
                     '• Sculpture/motifs traditionnels'}
             </Text>
@@ -15167,10 +15092,7 @@ return (
             />
         </View>
 
-        {/* Type d'événement - SelectModalitySelector */}
-        <SelectModalitySelector
-            label={t('productManagerMobile.typeD')} événement"
-        value={newProduct.typeEvenement || ''}
+        {/* Type dt('productManagerMobile.evenementSelectmodalityselectorSelectmodalityselec')productManagerMobile.typeDt('productManagerMobile.evenementValuenewproducttypeevenement')'}
         productType="evenementiel"
         fieldName="types"
         onSelect={(value) => setNewProduct({ ...newProduct, typeEvenement: value })}
@@ -15179,8 +15101,7 @@ return (
 
         {/* Localisation intelligente avec LocationSelector */}
         <LocationSelector
-            label={t('productManagerMobile.lieuDeL')} événement"
-        value={newProduct.localisationEvenement || ''}
+            label={t('productManagerMobile.lieuDeLt('productManagerMobile.evenementValuenewproductlocalisationevenement')'}
         onSelect={(value) => setNewProduct({ ...newProduct, localisationEvenement: value })}
         scope="all" // ✅ EXPLICITE: Recherche universelle pour lieu (établissements + géographie)
         placeholder={t('productManagerMobile.exHotelHiltonSalleDes')}
@@ -15372,8 +15293,7 @@ return (
         </View>
 
         <SelectModalitySelector
-            label={t('productManagerMobile.typeD')} activité sportive"
-        value={newProduct.typeSport || ''}
+            label={t('productManagerMobile.typeDt('productManagerMobile.activiteSportiveValuenewproducttypesport')'}
         productType="sport_fitness"
         fieldName="types"
         onSelect={(value) => setNewProduct({ ...newProduct, typeSport: value })}
@@ -15897,7 +15817,7 @@ return (
         <View style={styles.fieldRow}>
             <View style={[styles.fieldContainer, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                    {newProduct.modeTarificationNettoyage === 'À l\'heure' ? 'Prix horaire' :
+                    {newProduct.modeTarificationNettoyage === t('productManagerMobile.aL')heure' ? 'Prix horaire' :
                         newProduct.modeTarificationNettoyage === 'Au m²' ? 'Prix au m²' :
                             'Prix du forfait'} <Text style={styles.required}>*</Text>
                 </Text>
@@ -16161,11 +16081,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={16} color={modernColors.info} />
             <Text style={styles.hintText}>
-                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
-            </Text>
-        </View>
-
-        {/* Zones d'intervention (intelligent avec API Google Maps + fallback) */}
+                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligentt('productManagerMobile.textSelectionnezVosZonesD')intervention. Les villes de votre pays st('productManagerMobile.affichentEnPrioriteTextViewZones')intervention (intelligent avec API Google Maps + fallback) */}
         <MultiSelectModalitySelector
             label="Zones d'intervention"
             values={newProduct.zonesIntervention || []}
@@ -16238,11 +16154,8 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="star" size={16} color="#059669" />
             <Text style={styles.hintText}>
-                🌴 <Text style={styles.hintBold}>{t('productManagerMobile.servicesPopulairesEnAfrique')}</Text>{'\n'}
-                • Élagage palmiers (royaux, cocotiers, dattiers){'\n'}
-                • Entretien arbres fruitiers (manguiers, avocatiers, papayers){'\n'}
-                • Création potagers africains (gombo, ndolé, manioc){'\n'}
-                • Arrosage automatique (saison sèche){'\n'}
+                🌴 <Text style={styles.hintBold}>{t('productManagerMobile.servicesPopulairesEnAfrique')}</Text>{'\nt('productManagerMobile.elagagePalmiersRoyauxCocotiersDattiers')\n'}
+                • Entretien arbres fruitiers (manguiers, avocatiers, papayers){'\nt('productManagerMobile.creationPotagersAfricainsGomboNdoleManioc')\nt('productManagerMobile.arrosageAutomatiqueSaisonSeche')\n'}
                 • Espaces verts entreprises/hôtels
             </Text>
         </View>
@@ -16399,7 +16312,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={16} color={modernColors.info} />
             <Text style={styles.hintText}>
-                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligentt('productManagerMobile.textSelectionnezVosZonesD')intervention. Les villes de votre pays s'affichent en priorité !
             </Text>
         </View>
 
@@ -16532,12 +16445,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={16} color={modernColors.info} />
             <Text style={styles.hintText}>
-                🏪 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Indiquez où se trouve votre magasin. Les villes de votre pays s'affichent en priorité !
-            </Text>
-        </View>
-
-        <ProductFieldSelector
-            label={t('productManagerMobile.villeDuMagasin')}
+                🏪 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligentt('productManagerMobile.textIndiquezOuSeTrouveVotret('productManagerMobile.affichentEnPrioriteTextViewProductfieldselector')productManagerMobile.villeDuMagasin')}
             fieldName="villes"
             productType="plomberie_sanitaire"
             value={newProduct.villeMagasinPlomberie || ''}
@@ -16676,7 +16584,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={16} color={modernColors.info} />
             <Text style={styles.hintText}>
-                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligentt('productManagerMobile.textSelectionnezVosZonesD')intervention. Les villes de votre pays s'affichent en priorité !
             </Text>
         </View>
 
@@ -16839,7 +16747,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={16} color={modernColors.info} />
             <Text style={styles.hintText}>
-                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligentt('productManagerMobile.textSelectionnezVosZonesD')intervention. Les villes de votre pays s'affichent en priorité !
             </Text>
         </View>
 
@@ -16999,14 +16907,7 @@ maxSelections = { 8}
 label = { t('productManagerMobile.horairesSpecialises') }
 productType = "mecanicien_moto"
 fieldName = "horaires_moto"
-selectedValue = { newProduct.horairesMoto || '' }
-onSelect = {(value) => setNewProduct({ ...newProduct, horairesMoto: value })}
-required
-    />
-
-    {/* Délais d'intervention spécialisés */ }
-    < SelectModalitySelector
-label = { t('productManagerMobile.delaisInterventionSpecialises') }
+selectedValue = { newProduct.horairesMoto || 't('productManagerMobile.onselectValueSetnewproductNewproductHorairesmotoVat('productManagerMobile.interventionSpecialisesSelectmodalityselectorLabel')productManagerMobile.delaisInterventionSpecialises') }
 productType = "mecanicien_moto"
 fieldName = "delais_moto"
 selectedValue = { newProduct.delaisMoto || '' }
@@ -17014,9 +16915,7 @@ onSelect = {(value) => setNewProduct({ ...newProduct, delaisMoto: value })}
 required
     />
 
-    {/* Prestations d'urgence spécialisées */ }
-    < SelectModalitySelector
-label = { t('productManagerMobile.prestationsUrgenceSpecialisees') }
+    {/* Prestations dt('productManagerMobile.urgenceSpecialiseesSelectmodalityselectorLabelT')productManagerMobile.prestationsUrgenceSpecialisees') }
 productType = "mecanicien_moto"
 fieldName = "urgence_moto"
 selectedValue = { newProduct.urgenceMoto || '' }
@@ -17033,24 +16932,12 @@ required
     <View style={styles.hintBox}>
         <SafeIcon name="info" size={16} color={modernColors.info} />
         <Text style={styles.hintText}>
-            🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
-        </Text>
-    </View>
-
-{/* Zone d'intervention MULTIPLE spécialisée avec système intelligent */ }
-<MultiSelectModalitySelector
-    label="Zones d'intervention *"
+            🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligentt('productManagerMobile.textSelectionnezVosZonesD')intervention. Les villes de votre pays st('productManagerMobile.affichentEnPrioriteTextViewZonet('productManagerMobile.interventionMultipleSpecialiseeAvecSystemeIntellig')intervention *"
     values={newProduct.zonesInterventionMoto || []}
     productType="mecanicien_moto"
     fieldName="zone_intervention_moto"
     onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionMoto: values })}
-    placeholder={t('productManagerMobile.exDoualaYaoundeToutLe')}
-    maxSelections={15}
-/>
-
-{/* Langues parlées spécialisées */ }
-<ProductFieldSelector
-    label={t('productManagerMobile.languesParleesSpecialisees')}
+    placeholder={t('productManagerMobile.exDoualaYaoundeToutLet('productManagerMobile.maxselections15LanguesParleesSpecialiseesProductfi')productManagerMobile.languesParleesSpecialisees')}
     productType="mecanicien_moto"
     fieldName="langues_moto"
     selectedValues={newProduct.languesMoto || []}
@@ -17274,7 +17161,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={16} color={modernColors.info} />
             <Text style={styles.hintText}>
-                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligentt('productManagerMobile.textSelectionnezVosZonesD')intervention. Les villes de votre pays s'affichent en priorité !
             </Text>
         </View>
 
@@ -17478,7 +17365,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={16} color={modernColors.info} />
             <Text style={styles.hintText}>
-                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligentt('productManagerMobile.textSelectionnezVosZonesD')intervention. Les villes de votre pays s'affichent en priorité !
             </Text>
         </View>
 
@@ -17856,7 +17743,7 @@ return (
         <View style={styles.hintBox}>
             <SafeIcon name="info" size={16} color={modernColors.info} />
             <Text style={styles.hintText}>
-                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligent')}</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                🌍 <Text style={styles.hintBold}>{t('productManagerMobile.systemeIntelligentt('productManagerMobile.textSelectionnezVosZonesD')intervention. Les villes de votre pays s'affichent en priorité !
             </Text>
         </View>
 
@@ -17916,8 +17803,7 @@ return (
             </View>
             <View style={[{ flex: 1 }]}>
                 <SelectModalitySelector
-                    label={t('productManagerMobile.typeD')} éclairage"
-                value={newProduct.typeElectricite || ''}
+                    label={t('productManagerMobile.typeDt('productManagerMobile.eclairageValuenewproducttypeelectricite')'}
                 productType="electricite"
                 fieldName="types_eclairage"
                 onSelect={(value) => setNewProduct({ ...newProduct, typeElectricite: value })}
@@ -18796,10 +18682,7 @@ return (
     </>
 );
 
-            case 'ordinateur':
-return (
-    <>
-        {/* ========== SECTION 1: IDENTITÉ DE L'ORDINATEUR ========== */}
+            case 'ordinateurt('productManagerMobile.returnSection1IdentiteDeL')ORDINATEUR ========== */}
         <View style={styles.sectionHeader}>
             <SafeIcon name="monitor" size={18} color="#00BCD4" />
             <Text style={styles.sectionTitle}>{t('productManagerMobile.identiteDeLordinateur')}</Text>
@@ -21960,11 +21843,11 @@ return (
                                                 <Text style={styles.fieldLabel}>
                                                     {isPrestationService ? t('productManagerMobile.prixIndicatifAPartirDe') :
                                                         selectedType === 'assurance' ? t('productManagerMobile.primeAPartirDe') :
-                                                            selectedType === 'prestation_service' ? 'À partir de' : 'Prix'}
+                                                            selectedType === 'prestation_service' ? t('productManagerMobile.aPartirDe') : 'Prix'}
                                                     {!isPrestationService && selectedType !== 'prestation_service' && selectedType !== 'assurance' && <Text style={styles.required}>*</Text>}
                                                 </Text>
                                                 <Text style={styles.fieldHint}>
-                                                    {isPrestationService && '💡 Prix indicatif pour donner un ordre d\'idée aux clients (optionnel si tarification sur devis)'}
+                                                    {isPrestationService && '💡 Prix indicatif pour donner un ordre d\t('productManagerMobile.ideeAuxClientsOptionnelSiTarification')}
                                                 </Text>
                                                 <NativeInput
                                                     placeholder={isPrestationService ? 'Ex: 15000 (optionnel)' :
@@ -22118,7 +22001,7 @@ return (
                                                                 styles.pickerButtonText,
                                                                 newProduct.promotionType === type && styles.pickerButtonTextActive
                                                             ]}>
-                                                                {type === 'reduction' ? 'Réduction' :
+                                                                {type === 'reduction' ? t('productManagerMobile.reduction') :
                                                                     type === 'offre' ? 'Offre' :
                                                                         type === 'bon_plan' ? 'Bon plan' : 'Flash'}
                                                             </Text>

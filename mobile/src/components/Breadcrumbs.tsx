@@ -1,11 +1,11 @@
 /**
- * Breadcrumbs - Navigation fil d'Ariane (inspiré Shopify/Amazon)
- * Aide l'utilisateur à s'orienter dans la navigation
+ * Breadcrumbs - Navigation fil dt('breadcrumbs.arianeInspireShopifyamazonAideLt('breadcrumbs.utilisateurAS')orienter dans la navigation
  */
 
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface BreadcrumbItem {
     label: string;
@@ -24,6 +24,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
 }) => {
     // Si trop d'items, afficher seulement le premier, ellipsis, et les 2 derniers
     const displayItems = React.useMemo(() => {
+    const { t } = useLanguageSafe();
         if (items.length <= maxItems) {
             return items;
         }

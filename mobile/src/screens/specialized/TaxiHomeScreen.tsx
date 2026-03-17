@@ -316,7 +316,7 @@ const TaxiHomeScreen: React.FC = () => {
             : destinationLocation?.place_name || '';
 
         if (!departStr || !destinationStr) {
-            Alert.alert('Erreur', 'Veuillez sélectionner un point de départ et une destination précise');
+            Alert.alert(t('common.error'), t('taxiHomeScreen.veuillezSelectionnerUnPointDeDepart'));
             return;
         }
 
@@ -380,7 +380,7 @@ const TaxiHomeScreen: React.FC = () => {
 
     const handleCreateTaxi = async () => {
         if (!taxiForm.telephone?.trim()) {
-            Alert.alert('Erreur', 'Veuillez remplir le numéro de téléphone');
+            Alert.alert(t('common.error'), t('taxiHomeScreen.veuillezRemplirLeNumeroDeTelephone'));
             return;
         }
 
@@ -428,9 +428,9 @@ const TaxiHomeScreen: React.FC = () => {
             const response = await taxiService.createTaxi(taxiData);
 
             if (response.success) {
-                Alert.alert('Succès', t('taxiHome.serviceTaxiCreeAvecSucces'), [
+                Alert.alert(t('taxiHomeScreen.succes'), t('taxiHome.serviceTaxiCreeAvecSucces'), [
                     {
-                        text: 'OK',
+                        text: t('common.ok'),
                         onPress: () => {
                             setShowCreateModal(false);
                             setTaxiForm({
@@ -447,11 +447,11 @@ const TaxiHomeScreen: React.FC = () => {
                     },
                 ]);
             } else {
-                Alert.alert('Erreur', 'Impossible de créer le service taxi');
+                Alert.alert(t('common.error'), t('taxiHomeScreen.impossibleDeCreerLeServiceTaxi'));
             }
         } catch (err: any) {
             console.error('[TaxiHomeScreen] Erreur création:', err);
-            Alert.alert('Erreur', err.message || 'Erreur lors de la création');
+            Alert.alert(t('common.error'), err.message || t('taxiHomeScreen.erreurLorsDeLaCreation'));
         } finally {
             setCreating(false);
         }
@@ -688,7 +688,7 @@ const TaxiHomeScreen: React.FC = () => {
                                 {loading ? (
                                     <>
                                         <ActivityIndicator size="small" color="#FFFFFF" />
-                                        <Text style={styles.searchButtonText}>Recherche...</Text>
+                                        <Text style={styles.searchButtonText}>{t('taxiHome.rechercheDeTaxis')}</Text>
                                     </>
                                 ) : (
                                     <>
@@ -697,7 +697,7 @@ const TaxiHomeScreen: React.FC = () => {
                                             style={[styles.searchButtonText, !canSearch() && styles.searchButtonTextDisabled]}
                                             numberOfLines={1}
                                         >
-                                            {canSearch() ? "Rechercher" : "Remplir destination"}
+                                            {canSearch() ? t('common.search') : "Remplir destination"}
                                         </Text>
                                     </>
                                 )}
@@ -905,6 +905,7 @@ interface TaxiCardProps {
 }
 
 const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, onWhatsApp, onBook, formatPrice, formatDistance }) => {
+    const { t } = useLanguageSafe();
     // Estimation tarifaire locale
     const estimatePrice = (distanceKm?: number): string => {
         if (!distanceKm || !taxi.tarif_base) return '';
@@ -974,7 +975,7 @@ const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, onWhatsApp, 
                 {taxi.paiement_cash && (
                     <View style={styles.featureChip}>
                         <SafeIcon name="dollar-sign" size={12} color="#6B7280" type="lucide" />
-                        <Text style={styles.featureChipText}>Cash</Text>
+                        <Text style={styles.featureChipText}>{t('taxiHome.especes')}</Text>
                     </View>
                 )}
                 {taxi.paiement_mobile_money && (
@@ -1063,6 +1064,7 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
     creating,
     location,
 }) => {
+    const { t } = useLanguageSafe();
     return (
         <KeyboardAwareScreen style={styles.formContainer} contentContainerStyle={styles.formContent}>
             <View style={styles.formSection}>

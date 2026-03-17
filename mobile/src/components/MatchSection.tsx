@@ -2,6 +2,7 @@
 // src/components/MatchSection.tsx
 import { Text } from 'react-native';
 import styles from './services.module.css';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 function MatchSection() {
   return (

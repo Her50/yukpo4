@@ -29,7 +29,7 @@ interface GenerativeVideoWizardProps {
     onVideoGenerated?: (timelineId: string, videoUrl: string) => void;
 }
 
-const STYLES = [t('generativeVideoWizard.cinematique'), 'dramatique', 'dynamique', 'calme', 'épique', 'intime'];
+const STYLES = [t('generativeVideoWizard.cinematique'), 'dramatique', 'dynamique', 'calme', t('generativeVideoWizard.epique'), 'intime'];
 const MOODS = ['energetic', 'relaxing', 'happy', 'sad', 'dramatic', 'calm', 'epic'];
 const ASPECT_RATIOS: Array<'16:9' | '9:16' | '1:1' | '4:5' | '21:9'> = ['16:9', '9:16', '1:1', '4:5', '21:9'];
 const PROVIDERS = [
@@ -74,11 +74,11 @@ const [step, setStep] = useState<1 | 2 | 3>(1);
                     if (pollingInterval) clearInterval(pollingInterval);
                     setLoading(false);
                     onVideoGenerated?.(updatedJob.final_timeline_id || '', updatedJob.final_video_url);
-                    Alert.alert('Succès', 'Vidéo générée avec succès !');
+                    Alert.alert(t('generativeVideoWizard.succes'), t('generativeVideoWizard.videoGenereeAvecSucces'));
                 } else if (updatedJob.status === 'failed') {
                     if (pollingInterval) clearInterval(pollingInterval);
                     setLoading(false);
-                    Alert.alert('Erreur', updatedJob.error || 'Échec de la génération');
+                    Alert.alert('Erreur', updatedJob.error || t('generativeVideoWizard.echecDeLaGeneration'));
                 }
             } catch (error: any) {
                 console.error('[GenerativeVideoWizard] Erreur polling:', error);
@@ -115,7 +115,7 @@ const [step, setStep] = useState<1 | 2 | 3>(1);
             setJobId(response.job_id);
         } catch (error: any) {
             console.error('[GenerativeVideoWizard] Erreur génération:', error);
-            Alert.alert('Erreur', error.message || 'Erreur lors de la génération');
+            Alert.alert('Erreur', error.message || t('generativeVideoWizard.erreurLorsDeLaGeneration'));
             setLoading(false);
             setStep(1);
         }

@@ -81,7 +81,7 @@ const HeaderController: React.FC = () => {
 
   const handleLogout = async () => {
     Alert.alert(
-      'Déconnexion',
+      t('headerController.deconnexion'),
       t('headerController.etesvousSurDeVouloirVousDeconnecter'),
       [
         { text: t('common.cancel'), style: 'cancel' },
@@ -96,7 +96,7 @@ const HeaderController: React.FC = () => {
               navigation.navigate('Login' as never);
             } catch (error) {
               console.error('[HeaderController] Erreur déconnexion:', error);
-              Alert.alert('Erreur', 'Erreur lors de la déconnexion');
+              Alert.alert('Erreur', t('headerController.erreurLorsDeLaDeconnexion'));
             }
           }
         }

@@ -197,7 +197,7 @@ const [newMessage, setNewMessage] = useState('');
 
         Alert.alert(
             'Retirer le participant',
-            '├ètes-vous s├╗r de vouloir retirer cette personne de la conversation ?',
+            t('chatModalMobile_restored.etesvousSrDeVouloirRetirerCette'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -262,7 +262,7 @@ const [newMessage, setNewMessage] = useState('');
     const handleDeleteMessage = async (messageId: string) => {
         Alert.alert(
             'Supprimer le message',
-            '├ètes-vous s├╗r de vouloir supprimer ce message ?',
+            t('chatModalMobile_restored.etesvousSrDeVouloirSupprimerCe'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -391,7 +391,7 @@ const [newMessage, setNewMessage] = useState('');
         }
     };
 
-    const popularEmojis = [t('chatModalMobileRestored.ye'), t('chatModalMobileRestored.ye'), 'ÔØñ´©Å', '­ƒæì', '­ƒæÄ', '­ƒÿì', '­ƒñö', '­ƒÿó', '­ƒÿ«', t('chatModalMobileRestored.on'), '­ƒÆ»', t('chatModalMobileRestored.ae'), '­ƒæÅ', '­ƒÖÅ', '­ƒÆ¬'];
+    const popularEmojis = [t('chatModalMobileRestored.ye'), t('chatModalMobileRestored.ye'), t('chatModalMobile_restored.ona'), t('chatModalMobile_restored.alertqa59'), t('chatModalMobile_restored.alertsu0e'), t('chatModalMobile_restored.yi'), t('chatModalMobile_restored.no'), t('chatModalMobile_restored.yo'), t('chatModalMobile_restored.alertkg8b'), t('chatModalMobileRestored.on'), t('chatModalMobile_restored.alertz0xf'), t('chatModalMobileRestored.ae'), t('chatModalMobile_restored.alertui9s'), '­ƒÖÅ', t('chatModalMobile_restored.alertmug8')];
 
     // Fonction pour convertir fichier en base64 (React Native compatible)
     const convertFileToBase64 = async (uri: string): Promise<string> => {
@@ -625,7 +625,7 @@ const [newMessage, setNewMessage] = useState('');
     // Envoyer message avec m├®dias
     const handleSendWithMedia = async () => {
         if (!newMessage.trim() && selectedImages.length === 0 && !selectedAudio && selectedDocuments.length === 0) {
-            Alert.alert('Message vide', '├ëcrivez un message ou ajoutez un m├®dia');
+            Alert.alert('Message vide', t('chatModalMobile_restored.ecrivezUnMessageOuAjoutezUn'));
             return;
         }
 

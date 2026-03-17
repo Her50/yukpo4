@@ -160,7 +160,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                             });
                             Alert.alert(
                                 'Erreur de navigation',
-                                `Impossible d'ouvrir le formulaire ${service.title}.\n\nRoute: ${service.route}\nErreur: ${fallbackError?.message || t('mesServicesSpecialises.navigationEchouee')}\n\nVeuillez réessayer.`,
+                                t('mesServicesSpecialisesScreen.impossibleDouvrirLeFormulaireNnrouteNerreur', { service_title: service.title, service_route: service.route, fallbackError__messa: fallbackError?.message || t('mesServicesSpecialises.navigationEchouee') }),
                                 [
                                     { text: 'OK' },
                                     {

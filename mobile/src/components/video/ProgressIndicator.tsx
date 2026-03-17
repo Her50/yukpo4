@@ -1,6 +1,6 @@
 /**
  * Indicateurs de progression pour VideoFeed
- * Barre de progression, badge "X vidéos restantes", etc.
+ * Barre de progression, badge t('progressIndicator.xVideosRestantes'), etc.
  */
 
 import React from 'react';
@@ -11,6 +11,7 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 import { modernColors } from '../../theme/modernTheme';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ProgressIndicatorProps {
     currentIndex: number;
@@ -31,6 +32,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
     const progressWidth = useSharedValue(progress);
 
     React.useEffect(() => {
+    const { t } = useLanguageSafe();
         if (typeof withTiming === 'function' && progressWidth) {
             try {
                 progressWidth.value = withTiming(progress, { duration: 200 });
@@ -77,11 +79,11 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
                 })}
             </View>
 
-            {/* Badge "X vidéos restantes" */}
+            {/* Badge t('progressIndicator.xVideosRestantes') */}
             {showRemainingCount && remainingCount > 0 && (
                 <View style={styles.remainingBadge}>
                     <Text style={styles.remainingText}>
-                        {remainingCount} {remainingCount === 1 ? 'vidéo' : 'vidéos'} restante{remainingCount > 1 ? 's' : ''}
+                        {remainingCount} {remainingCount === 1 ? t('progressIndicator.video') : t('progressIndicator.videos')} restante{remainingCount > 1 ? 's' : ''}
                     </Text>
                 </View>
             )}

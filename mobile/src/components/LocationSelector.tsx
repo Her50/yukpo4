@@ -14,14 +14,14 @@ const parseLocationString = (locationStr: string): LocationObject => {
 
     // ✅ AMÉLIORÉ: Liste étendue pour détecter les établissements, sites, bâtiments, boutiques
     const establishmentKeywords = [
-        'restaurant', t('locationSelector.cafe'), 'cafe', 'hôtel', 'hotel', 'hôpital', 'hopital', 'clinique', 'pharmacie',
-        'école', 'ecole', t('locationSelector.universite'), 'universite', 'banque', 'supermarché', 'supermarche',
-        t('locationSelector.marche'), 'marche', 'gare', 'aéroport', 'aeroport', 'station', 'église', 'eglise',
-        t('locationSelector.mosquee'), 'mosquee', 'stade', 'cinéma', 'cinema', 'théâtre', 'theatre', 'musée', 'musee',
-        t('locationSelector.bibliotheque'), 'bibliotheque', 'parc', 'jardin', 'plage', 'bar', 'discothèque', 'discotheque',
-        'boîte', 'boite', 'magasin', 'boutique', 'centre commercial', 'mall', 'bâtiment', 'batiment',
-        'immeuble', 'tour', 'tower', 'centre', 'center', 'complexe', 'complex', 'siège', 'siege',
-        'bureau', 'office', 'agence', 'poste', 'mairie', 'préfecture', 'prefecture'
+        'restaurant', t('locationSelector.cafe'), 'cafe', t('locationSelector.hotel'), 'hotel', t('locationSelector.hopital'), 'hopital', 'clinique', 'pharmacie',
+        t('locationSelector.ecole'), 'ecole', t('locationSelector.universite'), 'universite', 'banque', t('locationSelector.supermarche'), 'supermarche',
+        t('locationSelector.marche'), 'marche', 'gare', t('locationSelector.aeroport'), 'aeroport', 'station', t('locationSelector.eglise'), 'eglise',
+        t('locationSelector.mosquee'), 'mosquee', 'stade', t('locationSelector.cinema'), 'cinema', t('locationSelector.theatre'), 'theatre', t('locationSelector.musee'), 'musee',
+        t('locationSelector.bibliotheque'), 'bibliotheque', 'parc', 'jardin', 'plage', 'bar', t('locationSelector.discotheque'), 'discotheque',
+        t('locationSelector.boite'), 'boite', 'magasin', 'boutique', 'centre commercial', 'mall', t('locationSelector.batiment'), 'batiment',
+        'immeuble', 'tour', 'tower', 'centre', 'center', 'complexe', 'complex', t('locationSelector.siege'), 'siege',
+        'bureau', 'office', 'agence', 'poste', 'mairie', t('locationSelector.prefecture'), 'prefecture'
     ];
     const isEstablishment = establishmentKeywords.some(keyword =>
         locationStr.toLowerCase().includes(keyword)
@@ -69,8 +69,8 @@ const parseLocationString = (locationStr: string): LocationObject => {
     // Format 3 : Simple (pays seul, établissement seul ou lieu simple)
     else {
         // ✅ NOUVEAU: Vérifier si c'est un pays connu
-        const paysConnus = ['Cameroun', 'Côte d\'Ivoire', t('locationSelector.senegal'), 'Mali', 'Burkina Faso',
-            'Niger', 'Tchad', t('locationSelector.guinee'), 'Bénin', 'Togo', 'Congo', 'Gabon',
+        const paysConnus = ['Cameroun', t('locationSelector.coteD')Ivoire', t('locationSelector.senegal'), 'Mali', 'Burkina Faso',
+            'Niger', 'Tchad', t('locationSelector.guinee'), t('locationSelector.benin'), 'Togo', 'Congo', 'Gabon',
             'Centrafrique', 'Madagascar', 'Burundi', 'Rwanda', 'Djibouti',
             'Comores', 'Mauritanie', 'RD Congo'];
         const isPays = paysConnus.some(p => locationStr.toLowerCase() === p.toLowerCase());
@@ -163,24 +163,24 @@ const detectPlaceTypeFromText = (placeText: string): 'city' | 'neighborhood' | '
         // Santé
         'hôpital', 'hopital', 'clinique', 'pharmacie', 'laboratoire', t('locationSelector.cabinetMedical'), 'dispensaire',
         // Éducation
-        'école', 'ecole', t('locationSelector.universite'), 'universite', 'lycée', 'lycee', 'collège', 'college', 'institut',
+        'école', 'ecole', t('locationSelector.universite'), 'universite', t('locationSelector.lycee'), 'lycee', t('locationSelector.college'), 'college', 'institut',
         // Commerce
-        'banque', t('locationSelector.supermarche'), 'supermarche', 'marché', 'marche', 'magasin', 'boutique', 'shop',
+        'banque', t('locationSelector.supermarche'), 'supermarche', t('locationSelector.marche'), 'marche', 'magasin', 'boutique', 'shop',
         'centre commercial', 'mall', 'galerie', 'librairie', 'papeterie',
         // Transport
-        'gare', 'aéroport', 'aeroport', 'station', 'terminal', t('locationSelector.arret'), 'arret',
+        'gare', t('locationSelector.aeroport'), 'aeroport', 'station', 'terminal', t('locationSelector.arret'), 'arret',
         // Religion
-        'église', 'eglise', t('locationSelector.mosquee'), 'mosquee', 'temple', 'cathédrale', 'cathedrale',
+        t('locationSelector.eglise'), 'eglise', t('locationSelector.mosquee'), 'mosquee', 'temple', t('locationSelector.cathedrale'), 'cathedrale',
         // Culture & Loisirs
-        'stade', t('locationSelector.cinema'), 'cinema', 'théâtre', 'theatre', 'musée', 'musee', 'bibliothèque', 'bibliotheque',
+        'stade', t('locationSelector.cinema'), 'cinema', t('locationSelector.theatre'), 'theatre', t('locationSelector.musee'), 'musee', t('locationSelector.bibliotheque'), 'bibliotheque',
         'parc', 'jardin', 'plage', 'piscine', 'salle de sport', 'gym',
         // Divertissement
-        'bar', t('locationSelector.discotheque'), 'discotheque', 'boîte', 'boite', 'nightclub', 'club',
+        'bar', t('locationSelector.discotheque'), 'discotheque', t('locationSelector.boite'), 'boite', 'nightclub', 'club',
         // Bâtiments & Sites
         'bâtiment', 'batiment', 'immeuble', 'tour', 'tower', 'centre', 'center', 'complexe', 'complex',
-        'siège', 'siege', 'bureau', 'office', 'agence', t('locationSelector.entrepot'), 'entrepot', 'usine', 'usine',
+        t('locationSelector.siege'), 'siege', 'bureau', 'office', 'agence', t('locationSelector.entrepot'), 'entrepot', 'usine', 'usine',
         // Autres établissements
-        'poste', 'post office', 'mairie', 'préfecture', 'prefecture', 'tribunal', 'palais de justice',
+        'poste', 'post office', 'mairie', t('locationSelector.prefecture'), 'prefecture', 'tribunal', 'palais de justice',
         'commissariat', 'gendarmerie', 'caserne', 'ambassade', 'consulat'
     ];
 
@@ -215,9 +215,9 @@ const detectPlaceTypeFromText = (placeText: string): 'city' | 'neighborhood' | '
     }
 
     // ✅ Vérifier si c'est un pays connu
-    const paysConnus = ['cameroun', 'côte d\'ivoire', 'cote d\'ivoire', t('locationSelector.senegal'), 'senegal',
+    const paysConnus = ['cameroun', t('locationSelector.coteD')ivoire', 'cote d\'ivoire', t('locationSelector.senegal'), 'senegal',
         'mali', 'burkina faso', 'niger', 'tchad', t('locationSelector.guinee'), 'guinee',
-        'bénin', 'benin', 'togo', 'congo', 'gabon', 'centrafrique',
+        t('locationSelector.benin'), 'benin', 'togo', 'congo', 'gabon', 'centrafrique',
         'madagascar', 'burundi', 'rwanda', 'djibouti', 'comores',
         'mauritanie', 'rd congo'];
     if (paysConnus.includes(text.trim())) {
@@ -274,22 +274,22 @@ const getPlaceIcon = (
                 if (text.includes('restaurant') || text.includes(t('locationSelector.cafe')) || text.includes('cafe')) {
                     return 'utensils';
                 }
-                if (text.includes('hôtel') || text.includes('hotel')) {
+                if (text.includes(t('locationSelector.hotel')) || text.includes('hotel')) {
                     return 'bed';
                 }
-                if (text.includes('hôpital') || text.includes('hopital') || text.includes('pharmacie')) {
+                if (text.includes(t('locationSelector.hopital')) || text.includes('hopital') || text.includes('pharmacie')) {
                     return 'heart';
                 }
-                if (text.includes('école') || text.includes('ecole') || text.includes(t('locationSelector.universite'))) {
+                if (text.includes(t('locationSelector.ecole')) || text.includes('ecole') || text.includes(t('locationSelector.universite'))) {
                     return 'graduation-cap';
                 }
                 if (text.includes('magasin') || text.includes('boutique') || text.includes('mall')) {
                     return 'shopping-bag';
                 }
-                if (text.includes('gare') || text.includes('aéroport') || text.includes('aeroport')) {
+                if (text.includes('gare') || text.includes(t('locationSelector.aeroport')) || text.includes('aeroport')) {
                     return 'navigation';
                 }
-                if (text.includes('église') || text.includes('eglise') || text.includes(t('locationSelector.mosquee'))) {
+                if (text.includes(t('locationSelector.eglise')) || text.includes('eglise') || text.includes(t('locationSelector.mosquee'))) {
                     return 'church';
                 }
                 if (text.includes('banque')) {

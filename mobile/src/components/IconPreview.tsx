@@ -1,6 +1,5 @@
 /**
- * Composant de preview de l'icône Yukpo avec motif Ndop
- * À utiliser pour visualiser l'icône avant génération finale
+ * Composant de preview de lt('iconPreview.iconeYukpoAvecMotifNdopA')icône avant génération finale
  */
 import React from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';

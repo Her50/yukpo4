@@ -92,9 +92,7 @@ const MesOffresScreen: React.FC = () => {
             {offres.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="briefcase" size={64} color="#9CA3AF" />
-                    <Text style={styles.emptyText}>{t('mesOffres.aucuneOffreCreee')}</Text>
-                    <Text style={styles.emptySubtext}>
-                        Créez votre première offre d'emploi pour commencer à recevoir des candidatures
+                    <Text style={styles.emptyText}>{t('mesOffres.aucuneOffreCreeet('mesOffresScreen.textTextStylestylesemptysubtextCreezVotrePremiere')emploi pour commencer à recevoir des candidatures
                     </Text>
                     <TouchableOpacity
                         style={styles.createButton}
@@ -202,7 +200,7 @@ const OffreCard: React.FC<OffreCardProps> = ({ offre, onPress }) => {
                         onPress={(e) => {
                             e.stopPropagation();
                             // Naviguer vers l'analyse IA
-                            Alert.alert('Analyse IA', 'Fonctionnalité à venir');
+                            Alert.alert('Analyse IA', t('mesOffresScreen.fonctionnaliteAVenir'));
                         }}
                     >
                         <SafeIcon name="brain" size={18} color={modernColors.primary} type="lucide" />

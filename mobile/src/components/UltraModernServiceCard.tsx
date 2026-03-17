@@ -218,7 +218,7 @@ const [showChatModal, setShowChatModal] = useState(false);
             return 'map';
         }
         // Automobile
-        if (categoryLower.includes('auto') || categoryLower.includes('véhicule') || categoryLower.includes('voiture')) {
+        if (categoryLower.includes('auto') || categoryLower.includes(t('ultraModernServiceCard.vehicule')) || categoryLower.includes('voiture')) {
             return 'car';
         }
         // Livraison
@@ -230,11 +230,11 @@ const [showChatModal, setShowChatModal] = useState(false);
             return 'trending-down';
         }
         // Santé
-        if (categoryLower.includes(t('ultraModernServiceCard.sante')) || categoryLower.includes('sante') || categoryLower.includes('médical') || categoryLower.includes('pharmacie') || categoryLower.includes('hôpital')) {
+        if (categoryLower.includes(t('ultraModernServiceCard.sante')) || categoryLower.includes('sante') || categoryLower.includes(t('ultraModernServiceCard.medical')) || categoryLower.includes('pharmacie') || categoryLower.includes(t('ultraModernServiceCard.hopital'))) {
             return 'heart';
         }
         // Éducation
-        if (categoryLower.includes('éducation') || categoryLower.includes('education') || categoryLower.includes('étude') || categoryLower.includes('formation') || categoryLower.includes('scolaire')) {
+        if (categoryLower.includes('éducation') || categoryLower.includes('education') || categoryLower.includes(t('ultraModernServiceCard.etude')) || categoryLower.includes('formation') || categoryLower.includes('scolaire')) {
             return 'book-open';
         }
         // Assurance
@@ -250,11 +250,11 @@ const [showChatModal, setShowChatModal] = useState(false);
             return 'coffee';
         }
         // Construction
-        if (categoryLower.includes('construction') || categoryLower.includes('bâtiment') || categoryLower.includes('travaux')) {
+        if (categoryLower.includes('construction') || categoryLower.includes(t('ultraModernServiceCard.batiment')) || categoryLower.includes('travaux')) {
             return 'tool';
         }
         // Beauté/Bien-être
-        if (categoryLower.includes(t('ultraModernServiceCard.beaute')) || categoryLower.includes('coiffure') || categoryLower.includes('esthétique')) {
+        if (categoryLower.includes(t('ultraModernServiceCard.beaute')) || categoryLower.includes('coiffure') || categoryLower.includes(t('ultraModernServiceCard.esthetique'))) {
             return 'scissors';
         }
         // Défaut
@@ -445,7 +445,7 @@ const [showChatModal, setShowChatModal] = useState(false);
                                         [{ text: 'OK' }]
                                     );
                                 } else {
-                                    Alert.alert('Erreur', 'Coordonnées GPS invalides');
+                                    Alert.alert('Erreur', t('ultraModernServiceCard.coordonneesGpsInvalides'));
                                 }
                             } catch (error) {
                                 console.error('Erreur ouverture navigation:', error);

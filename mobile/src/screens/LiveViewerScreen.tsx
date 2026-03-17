@@ -295,7 +295,7 @@ export default function LiveViewerScreen() {
                                                             : isSoldOut ? t('liveViewerScreen.epuise')
                                                                 : ticket?.status === 'pending' ? 'Traitement...'
                                                                     : ticket?.status === 'confirmed' ? t('liveViewerScreen.reserve')
-                                                                        : user ? 'Réserver' : 'Se connecter'}
+                                                                        : user ? t('liveViewerScreen.reserver') : 'Se connecter'}
                                                 </Text>
                                             )}
                                         </TouchableOpacity>

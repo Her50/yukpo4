@@ -122,7 +122,7 @@ const HopitalDetailsScreen: React.FC = () => {
         if (!user) { Alert.alert(t('hopitalDetails.loginRequired'), t('hopitalDetails.pleaseLogin')); navigation.navigate('Login' as never); return; }
         try {
             setBooking(true);
-            const response = await apiPost(`/api/hopitaux/${params.hospitalId}/book`, { notes: 'Réservation depuis l\'application mobile' });
+            const response = await apiPost(`/api/hopitaux/${params.hospitalId}/book`, { notes: t('hopitalDetailsScreen.reservationDepuisL')application mobile' });
             if (response.success) Alert.alert(t('hopitalDetails.bookingCreated'), t('hopitalDetails.appointmentSent'), [{ text: 'OK', onPress: () => navigation.goBack() }]);
             else Alert.alert(t('message.error'), response.error || t('hopitalDetails.cannotBook'));
         } catch (error: any) { Alert.alert(t('message.error'), error.message || t('hopitalDetails.cannotBook')); }
@@ -376,7 +376,7 @@ const HopitalDetailsScreen: React.FC = () => {
                     {hopital.rdv_en_ligne && (
                         <TouchableOpacity style={[st.fullBtn, { backgroundColor: '#EFF6FF', borderLeftColor: '#3B82F6', borderLeftWidth: 3 }]} onPress={handleBook} disabled={booking || !isOpen}>
                             <SafeIcon name="calendar" size={18} color="#3B82F6" />
-                            <Text style={[st.fullBtnText, { color: '#1E40AF' }]}>{booking ? 'Réservation...' : 'Réserver un rendez-vous'}</Text>
+                            <Text style={[st.fullBtnText, { color: '#1E40AF' }]}>{booking ? t('hopitalDetailsScreen.reservation') : t('hopitalDetailsScreen.reserverUnRendezvous')}</Text>
                             <SafeIcon name="chevron-right" size={18} color="#93C5FD" />
                         </TouchableOpacity>
                     )}

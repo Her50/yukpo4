@@ -279,7 +279,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
         if (scheduledPickupEnabled) {
             const trimmed = scheduledPickupInput.trim();
             if (!trimmed) {
-                throw new Error('Indique une date/heure de prise en charge planifiée.');
+                throw new Error(t('creatorStudioCard.indiqueUneDateheureDePriseEn'));
             }
             const parsed = new Date(trimmed);
             if (Number.isNaN(parsed.getTime())) {
@@ -356,7 +356,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
             const payload = buildCourierPayload();
             const deliveryId = await actions.requestCourier(payload);
             setCourierSuccess(t('creatorStudioCard.livraisonCreee', { deliveryId?_slice(0, 8) ?? '': deliveryId?.slice(0, 8) ?? '' }));
-            Alert.alert('Coursier demandé', `Livraison ${deliveryId?.slice(0, 8)} en file de matching.`);
+            Alert.alert(t('creatorStudioCard.coursierDemande'), `Livraison ${deliveryId?.slice(0, 8)} en file de matching.`);
         } catch (err) {
             const message = (err as Error)?.message ?? t('creatorStudioCard.impossibleDeCreerLaLivraison');
             setCourierError(message);

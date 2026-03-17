@@ -19,12 +19,13 @@ const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.
 const getServiceUrl = (serviceId: string) => `${SHARE_BASE_URL}/service/${serviceId}`;
 
 const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, serviceId, titre, description, prix, devise }) => {
+  const { t } = useLanguageSafe();
   const url = getServiceUrl(serviceId);
 
   const handleCopy = async () => {
     try {
       await Clipboard.setStringAsync(url);
-      Alert.alert("✅ Lien copié !", "Le lien a été copié dans votre presse-papiers");
+      Alert.alert(t('shareServiceModal.lienCopie'), t('shareServiceModal.leLienAEteCopieDans'));
     } catch (error) {
       console.error('Erreur copie:', error);
       Alert.alert("Erreur", "Impossible de copier le lien");
@@ -60,7 +61,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
         break;
       case 'email':
         const emailSubject = `Service Yukpo : ${serviceTitle}`;
-        const emailBody = `Bonjour,\n\nJe vous partage ce service intéressant sur Yukpo :\n\n${serviceTitle}${description ? '\n' + description : ''}${prix ? '\n\nPrix: ' + prix + ' ' + (devise || 'XAF') : ''}\n\n${url}\n\nCordialement`;
+        const emailBody = t('shareServiceModal.bonjournnjeVousPartageCeServiceInteressant', { serviceTitle: serviceTitle, description_____n____desc: description ? '\n' + description : '', prix_____n_nPrix______pri: prix ? '\n\nPrix: ' + prix + ' ' + (devise || 'XAF') : '', url: url });
         shareUrl = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
         break;
     }

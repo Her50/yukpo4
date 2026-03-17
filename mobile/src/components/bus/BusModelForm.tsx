@@ -62,12 +62,12 @@ const [model, setModel] = useState<BusModel>(
         initialModel?.equipements || []
     );
 
-    const classeOptions = ['Économique', 'Standard', 'VIP', 'Luxury'];
+    const classeOptions = [t('busModelForm.economique'), 'Standard', 'VIP', 'Luxury'];
     const equipementOptions = [
         'WiFi',
         'Climatisation',
         'Toilettes',
-        'Écrans TV',
+        t('busModelForm.ecransTv'),
         t('busModelForm.priseElectrique'),
         t('busModelForm.eauMinerale'),
         'Snacks',
@@ -91,17 +91,17 @@ const [model, setModel] = useState<BusModel>(
 
     const handleSave = () => {
         if (!model.nom_modele.trim()) {
-            Alert.alert('Erreur', 'Le nom du modèle est obligatoire');
+            Alert.alert('Erreur', t('busModelForm.leNomDuModeleEstObligatoire'));
             return;
         }
 
         if (model.total_seats <= 0) {
-            Alert.alert('Erreur', 'Le nombre de places doit être supérieur à 0');
+            Alert.alert('Erreur', t('busModelForm.leNombreDePlacesDoitEtre'));
             return;
         }
 
         if (model.prix_base <= 0) {
-            Alert.alert('Erreur', 'Le prix de base doit être supérieur à 0');
+            Alert.alert('Erreur', t('busModelForm.lePrixDeBaseDoitEtre'));
             return;
         }
 

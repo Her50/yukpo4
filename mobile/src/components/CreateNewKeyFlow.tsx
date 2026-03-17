@@ -260,7 +260,7 @@ function getCategoryExample(code: string): string {
     'TEL': 'iPhone 14, Samsung Galaxy...',
     'AGRI': t('createNewKeyFlow.rizVietnamMais'),
     'IMMO': 'Villa 4 chambres, Appartement...',
-    'EMPL': 'Développeur, Comptable...',
+    'EMPL': t('createNewKeyFlow.developpeurComptable'),
     'FORM': 'Cours Anglais, Formation Excel...',
   };
   return examples[code] || t('createNewKeyFlow.exemplesVaries');

@@ -57,7 +57,7 @@ const [location, setLocation] = useState<Location.LocationObject | null>(null);
             console.error('Erreur permission GPS:', error);
             // ✅ CORRECTION: Ne pas afficher d'alerte si timeout
             if (error.message !== 'Permission timeout') {
-                Alert.alert('Erreur', 'Impossible d\'accéder à la localisation');
+                Alert.alert('Erreur', 'Impossible d\t('gPSSelector.accederALaLocalisation'));
             }
         }
     };
@@ -81,7 +81,7 @@ const [location, setLocation] = useState<Location.LocationObject | null>(null);
             console.error('Erreur GPS:', error);
             // ✅ CORRECTION: Gestion d'erreur plus douce
             if (error.message === 'GPS timeout') {
-                Alert.alert('GPS lent', 'La localisation prend du temps. Réessayez ou utilisez la recherche d\'adresse.');
+                Alert.alert('GPS lent', t('gPSSelector.laLocalisationPrendDuTempsReessayez')adresse.');
             } else {
                 Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle');
             }

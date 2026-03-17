@@ -110,7 +110,7 @@ const MyPharmacyOrdersScreen: React.FC = () => {
             case 'en_traitement':
                 return modernColors.primary;
             case 'ready':
-            case 'prête':
+            case t('myPharmacyOrdersScreen.prete'):
                 return '#059669';
             case 'delivered':
             case t('myPharmacyOrdersScreen.livree'):
@@ -136,7 +136,7 @@ const MyPharmacyOrdersScreen: React.FC = () => {
             case 'en_traitement':
                 return 'En traitement';
             case 'ready':
-            case 'prête':
+            case t('myPharmacyOrdersScreen.prete'):
                 return t('myPharmacyOrdersScreen.preteARecuperer');
             case 'delivered':
             case t('myPharmacyOrdersScreen.livree'):
@@ -184,7 +184,7 @@ const MyPharmacyOrdersScreen: React.FC = () => {
     const renderOrder = ({ item }: { item: PharmacyOrder }) => {
         const statusColor = getStatusColor(item.status);
         const statusLabel = getStatusLabel(item.status);
-        const deliveryMethod = item.delivery_method === 'delivery' ? 'Livraison' : 'À retirer';
+        const deliveryMethod = item.delivery_method === 'delivery' ? 'Livraison' : t('myPharmacyOrdersScreen.aRetirer');
 
         return (
             <TouchableOpacity

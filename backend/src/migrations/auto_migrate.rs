@@ -6,9 +6,6 @@ use sqlx::PgPool;
 use std::env;
 use uuid::Uuid;
 
-use crate::services::mongo_history_service::MongoHistoryService;
-use std::sync::Arc;
-
 /// Vérifie et crée les tables media_engagement et media_distribution si elles n'existent pas
 pub async fn ensure_media_analytics_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des tables media_engagement & media_distribution...");
@@ -5906,6 +5903,14 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
             ) THEN
                 ALTER TYPE delivery_partner_type ADD VALUE 'covoiturage';
             END IF;
+            
+            -- ✅ NOUVEAU 2026-03-16: Ajouter 'libraire' (pour librairies partenaires - livres neufs)
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_enum 
+                WHERE enumlabel = 'libraire' AND enumtypid = 'delivery_partner_type'::regtype
+            ) THEN
+                ALTER TYPE delivery_partner_type ADD VALUE 'libraire';
+            END IF;
         END
         $$;
         "#,
@@ -9112,7 +9117,25 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto disbursement_requests: {}", e),
     }
 
-    info!("✅ Migrations automatiques terminées");
+    // ✅ NOUVEAU 2026-03-16 : Tables pour le réseau de librairies (livres neufs)
+    match ensure_librairie_network_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: librairie_network tables OK"),
+        Err(e) => error!("❌ Erreur migration auto librairie_network: {}", e),
+    }
+
+    // ✅ NOUVEAU 2026-03-16 : Tables manquantes pour paiements agrégés et QR codes
+    match ensure_missing_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: missing tables (wallets, paiements, QR codes) OK"),
+        Err(e) => error!("❌ Erreur migration auto missing tables: {}", e),
+    }
+
+    // ✅ NOUVEAU 2026-03-16 : Système escrow, commission app, crédits tickets bus
+    match ensure_bus_ticket_escrow_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: bus_ticket_escrow_credit_system OK"),
+        Err(e) => error!("❌ Erreur migration auto bus_ticket_escrow: {}", e),
+    }
+
+    info!("🎉 Toutes les migrations automatiques ont été appliquées avec succès !");
 }
 
 /// Réindexe les services existants UNIQUEMENT si autocomplete_characteristics est vide
@@ -17592,21 +17615,68 @@ pub async fn ensure_optimize_services_update_performance(pool: &PgPool) -> Resul
     Ok(())
 }
 
-/// ✅ 2025-12-30 : Créer les index MongoDB pour optimiser les requêtes
-/// Index critiques pour /api/services/{id}/stats et /api/services/{id}/reviews
-pub async fn ensure_mongodb_indexes(mongo_history: Arc<MongoHistoryService>) -> Result<(), String> {
-    info!("🔍 Création des index MongoDB pour optimiser les requêtes...");
+/// ✅ 2026-03-16 : Table history_events (remplacement complet de MongoDB)
+/// Stocke tous les événements historiques : interactions IA, feedback, actions utilisateur, sécurité
+pub async fn ensure_history_events_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table history_events (remplacement MongoDB)...");
 
-    match mongo_history.ensure_indexes().await {
-        Ok(_) => {
-            info!("✅ Index MongoDB créés avec succès");
-            Ok(())
-        }
-        Err(e) => {
-            error!("❌ Erreur création index MongoDB: {}", e);
-            Err(format!("Erreur création index MongoDB: {}", e))
-        }
-    }
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS history_events (
+            id BIGSERIAL PRIMARY KEY,
+            event_type TEXT NOT NULL,
+            user_id INTEGER,
+            service_id INTEGER,
+            interaction_id TEXT,
+            timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            data JSONB NOT NULL DEFAULT '{}'::JSONB,
+            metadata JSONB
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Index sur service_id (critique pour get_service_stats et get_reviews)
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_history_events_service_id ON history_events(service_id) WHERE service_id IS NOT NULL")
+        .execute(pool)
+        .await?;
+
+    // Index sur user_id
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_history_events_user_id ON history_events(user_id) WHERE user_id IS NOT NULL")
+        .execute(pool)
+        .await?;
+
+    // Index sur event_type
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_history_events_event_type ON history_events(event_type)",
+    )
+    .execute(pool)
+    .await?;
+
+    // Index sur timestamp (tri décroissant pour requêtes récentes)
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_history_events_timestamp ON history_events(timestamp DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    // Index composé pour les agrégations (service_id + event_type + interaction_type dans data)
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_history_events_composite ON history_events(service_id, event_type, ((data->>'interaction_type'))) WHERE service_id IS NOT NULL",
+    )
+    .execute(pool)
+    .await?;
+
+    // Index pour les consultations de service
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_history_events_consultation ON history_events(user_id, event_type, ((metadata->>'action_type'))) WHERE event_type = 'UserAction'",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table history_events créée avec index (remplacement MongoDB)");
+    Ok(())
 }
 
 /// ✅ NOUVEAU 2026-01-02: Optimisation critique de add_product_to_service_jsonb_v2
@@ -20417,5 +20487,40 @@ pub async fn ensure_disbursement_requests_table(pool: &PgPool) -> Result<(), sql
     .await?;
 
     info!("✅ Table disbursement_requests créée");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-16: Crée les tables pour le réseau de librairies
+pub async fn ensure_librairie_network_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🏪 Création des tables réseau de librairies...");
+    
+    // Exécuter le script de migration complet
+    let migration_sql = include_str!("create_librairie_network_tables.sql");
+    sqlx::query(migration_sql).execute(pool).await?;
+    
+    info!("✅ Tables réseau de librairies créées");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-16: Crée les tables manquantes pour paiements agrégés et QR codes
+pub async fn ensure_missing_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("💰 Création des tables manquantes (wallets, paiements, QR codes)...");
+    
+    // Exécuter le script de migration
+    let migration_sql = include_str!("add_missing_tables.sql");
+    sqlx::query(migration_sql).execute(pool).await?;
+    
+    info!("✅ Tables manquantes créées");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-16: Système escrow, commission app, crédits tickets bus
+pub async fn ensure_bus_ticket_escrow_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🎫 Application du système escrow/crédit pour tickets bus...");
+    
+    let migration_sql = include_str!("../../migrations/00000046_bus_ticket_escrow_credit_system.sql");
+    sqlx::query(migration_sql).execute(pool).await?;
+    
+    info!("✅ Système escrow/crédit tickets bus appliqué");
     Ok(())
 }

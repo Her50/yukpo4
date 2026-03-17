@@ -1005,4 +1005,273 @@ impl HotelRoomManagementService {
 
         Ok(())
     }
+
+    /// Annule une réservation hôtel/meublé avec calcul des pénalités
+    pub async fn cancel_hotel_reservation(
+        pool: &PgPool,
+        acting_user_id: i32,
+        reservation_id: i32,
+        reason: Option<String>,
+        refund_amount: Option<f64>,
+    ) -> Result<serde_json::Value, AppError> {
+        // Récupérer la réservation
+        let row = sqlx::query(
+            r#"
+            SELECT 
+                r.property_id, r.date_arrivee, r.date_depart,
+                r.montant_total, r.montant_avance, r.payment_status, r.status,
+                r.created_at as reservation_created_at,
+                p.titre as property_name
+            FROM hotel_meuble_reservations r
+            LEFT JOIN real_estate_properties p ON p.id = r.property_id
+            WHERE r.id = $1
+            "#,
+        )
+        .bind(reservation_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            log::error!(
+                "[cancel_hotel_reservation] Erreur récupération réservation: {}",
+                e
+            );
+            AppError::Internal("Erreur récupération réservation".to_string())
+        })?;
+
+        let row = match row {
+            Some(r) => r,
+            None => return Err(AppError::NotFound("Réservation introuvable".to_string())),
+        };
+
+        let property_id: i32 = row.try_get("property_id").map_err(|e| {
+            log::error!("[cancel_hotel_reservation] Erreur property_id: {}", e);
+            AppError::Internal("Erreur récupération propriété".to_string())
+        })?;
+
+        // Vérifier les permissions
+        Self::ensure_user_can_manage_property(pool, acting_user_id, property_id).await?;
+
+        let date_arrivee: chrono::NaiveDate = row.try_get("date_arrivee").map_err(|e| {
+            log::error!("[cancel_hotel_reservation] Erreur date_arrivee: {}", e);
+            AppError::Internal("Erreur récupération date".to_string())
+        })?;
+
+        let _date_depart: chrono::NaiveDate = row.try_get("date_depart").map_err(|e| {
+            log::error!("[cancel_hotel_reservation] Erreur date_depart: {}", e);
+            AppError::Internal("Erreur récupération date".to_string())
+        })?;
+
+        let _reservation_created_at: chrono::DateTime<chrono::Utc> = row.try_get("reservation_created_at").map_err(|e| {
+            log::error!("[cancel_hotel_reservation] Erreur reservation_created_at: {}", e);
+            AppError::Internal("Erreur récupération date création".to_string())
+        })?;
+
+        let _total: Decimal = row.try_get("montant_total").unwrap_or(Decimal::ZERO);
+        let avance: Decimal = row.try_get("montant_avance").unwrap_or(Decimal::ZERO);
+        let current_status: String = row.try_get("status").unwrap_or_else(|_| "pending".to_string());
+        let _payment_status: String = row.try_get("payment_status").unwrap_or_else(|_| "pending".to_string());
+
+        // Vérifier que la réservation peut être annulée
+        if matches!(current_status.as_str(), "cancelled" | "checked_out" | "completed") {
+            return Err(AppError::BadRequest(format!(
+                "Impossible d'annuler une réservation avec le statut: {}",
+                current_status
+            )));
+        }
+
+        let today = chrono::Utc::now().date_naive();
+        let days_before_arrival = (date_arrivee - today).num_days();
+
+        // Calcul des pénalités selon la politique d'annulation
+        let (penalty_rate, penalty_reason) = if days_before_arrival >= 30 {
+            (0.0, "Annulation > 30 jours: Remboursement intégral")
+        } else if days_before_arrival >= 14 {
+            (0.1, "Annulation 14-29 jours: Pénalité de 10%")
+        } else if days_before_arrival >= 7 {
+            (0.25, "Annulation 7-13 jours: Pénalité de 25%")
+        } else if days_before_arrival >= 3 {
+            (0.5, "Annulation 3-6 jours: Pénalité de 50%")
+        } else if days_before_arrival >= 0 {
+            (0.75, "Annulation 0-2 jours: Pénalité de 75%")
+        } else {
+            (1.0, "Annulation après arrivée: Pénalité de 100%")
+        };
+
+        let penalty_amount = avance * Decimal::from_f64_retain(penalty_rate).unwrap_or(Decimal::ZERO);
+        let refund_amount_calculated = avance.checked_sub(penalty_amount).unwrap_or(Decimal::ZERO);
+
+        // Utiliser le montant de remboursement fourni ou celui calculé
+        let final_refund_amount = if let Some(custom_refund) = refund_amount {
+            let custom = Decimal::from_f64_retain(custom_refund).unwrap_or(Decimal::ZERO);
+            if custom > refund_amount_calculated {
+                return Err(AppError::BadRequest(format!(
+                    "Le montant de remboursement ({}) ne peut pas dépasser le maximum autorisé ({})",
+                    custom, refund_amount_calculated
+                )));
+            }
+            custom
+        } else {
+            refund_amount_calculated
+        };
+
+        // Mettre à jour la réservation
+        sqlx::query(
+            r#"
+            UPDATE hotel_meuble_reservations
+            SET 
+                status = 'cancelled',
+                cancelled_at = NOW(),
+                cancelled_by = $1,
+                cancellation_reason = $2,
+                penalty_rate = $3,
+                penalty_amount = $4,
+                refund_amount = $5,
+                updated_at = NOW()
+            WHERE id = $6
+            "#,
+        )
+        .bind(acting_user_id)
+        .bind(reason.as_deref())
+        .bind(penalty_rate)
+        .bind(penalty_amount)
+        .bind(final_refund_amount)
+        .bind(reservation_id)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            log::error!("[cancel_hotel_reservation] Erreur mise à jour: {}", e);
+            AppError::Internal("Erreur mise à jour annulation".to_string())
+        })?;
+
+        // Libérer l'unité si elle était assignée
+        let unit_id: Option<i32> = row.try_get("unit_id").ok();
+        if let Some(uid) = unit_id {
+            sqlx::query(
+                "UPDATE hotel_meuble_units SET is_available = TRUE WHERE id = $1",
+            )
+            .bind(uid)
+            .execute(pool)
+            .await
+            .map_err(|e| {
+                log::error!("[cancel_hotel_reservation] Erreur libération unité: {}", e);
+                AppError::Internal("Erreur libération unité".to_string())
+            })?;
+        }
+
+        log::info!(
+            "[cancel_hotel_reservation] Réservation {} annulée - Pénalité: {}%, Remboursement: {}",
+            reservation_id, penalty_rate * 100.0, final_refund_amount
+        );
+
+        Ok(json!({
+            "reservation_id": reservation_id,
+            "status": "cancelled",
+            "days_before_arrival": days_before_arrival,
+            "penalty_rate": penalty_rate,
+            "penalty_amount": penalty_amount.to_string().parse::<f64>().unwrap_or(0.0),
+            "original_advance": avance.to_string().parse::<f64>().unwrap_or(0.0),
+            "refund_amount": final_refund_amount.to_string().parse::<f64>().unwrap_or(0.0),
+            "penalty_reason": penalty_reason,
+            "cancellation_reason": reason.unwrap_or_else(|| "Annulation manuelle".to_string()),
+            "cancelled_at": chrono::Utc::now().to_rfc3339(),
+        }))
+    }
+
+    /// Récupère l'historique des annulations avec pénalités pour une propriété
+    pub async fn get_cancellation_history(
+        pool: &PgPool,
+        acting_user_id: i32,
+        property_id: Option<i32>,
+        start_date: Option<chrono::NaiveDate>,
+        end_date: Option<chrono::NaiveDate>,
+    ) -> Result<Vec<serde_json::Value>, AppError> {
+        // Si property_id est fourni, vérifier les permissions
+        if let Some(pid) = property_id {
+            Self::ensure_user_can_manage_property(pool, acting_user_id, pid).await?;
+        } else {
+            // Vérifier que l'utilisateur a au moins une propriété hôtel/meublé
+            let has_properties: bool = sqlx::query_scalar(
+                r#"
+                SELECT EXISTS(
+                    SELECT 1 FROM real_estate_properties rep
+                    INNER JOIN services s ON s.id = rep.service_id
+                    WHERE s.user_id = $1 AND rep.type_bien IN ('hotel', 'meuble')
+                )
+                "#,
+            )
+            .bind(acting_user_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| {
+                log::error!("[get_cancellation_history] Erreur vérification propriétés: {}", e);
+                AppError::Internal("Erreur vérification propriétés".to_string())
+            })?;
+
+            if !has_properties {
+                return Err(AppError::Forbidden("Accès non autorisé".to_string()));
+            }
+        }
+
+        let query = r#"
+        SELECT 
+            r.id as reservation_id,
+            r.property_id,
+            p.titre as property_name,
+            r.nom_client,
+            r.date_arrivee,
+            r.date_depart,
+            r.montant_total,
+            r.montant_avance,
+            r.penalty_rate,
+            r.penalty_amount,
+            r.refund_amount,
+            r.cancellation_reason,
+            r.cancelled_at,
+            r.created_at as reservation_created_at
+        FROM hotel_meuble_reservations r
+        LEFT JOIN real_estate_properties p ON p.id = r.property_id
+        LEFT JOIN services s ON s.id = p.service_id
+        WHERE r.status = 'cancelled'
+        AND (s.user_id = $1 OR $1 IS NULL)
+        AND ($2::int IS NULL OR r.property_id = $2)
+        AND ($3::date IS NULL OR r.cancelled_at::date >= $3)
+        AND ($4::date IS NULL OR r.cancelled_at::date <= $4)
+        ORDER BY r.cancelled_at DESC
+        LIMIT 100
+        "#;
+
+        let rows = sqlx::query(query)
+            .bind(acting_user_id)
+            .bind(property_id)
+            .bind(start_date)
+            .bind(end_date)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| {
+                log::error!("[get_cancellation_history] Erreur récupération historique: {}", e);
+                AppError::Internal("Erreur récupération historique".to_string())
+            })?;
+
+        let mut result = Vec::new();
+        for row in rows {
+            result.push(json!({
+                "reservation_id": row.try_get::<i32, _>("reservation_id").unwrap_or(0),
+                "property_id": row.try_get::<i32, _>("property_id").unwrap_or(0),
+                "property_name": row.try_get::<Option<String>, _>("property_name").unwrap_or(None),
+                "client_name": row.try_get::<Option<String>, _>("nom_client").unwrap_or(None),
+                "date_arrivee": row.try_get::<Option<chrono::NaiveDate>, _>("date_arrivee").ok().flatten().map(|d| d.to_string()),
+                "date_depart": row.try_get::<Option<chrono::NaiveDate>, _>("date_depart").ok().flatten().map(|d| d.to_string()),
+                "total_amount": row.try_get::<Option<Decimal>, _>("montant_total").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
+                "advance_amount": row.try_get::<Option<Decimal>, _>("montant_avance").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
+                "penalty_rate": row.try_get::<Option<f64>, _>("penalty_rate").unwrap_or(Some(0.0)),
+                "penalty_amount": row.try_get::<Option<Decimal>, _>("penalty_amount").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
+                "refund_amount": row.try_get::<Option<Decimal>, _>("refund_amount").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
+                "cancellation_reason": row.try_get::<Option<String>, _>("cancellation_reason").unwrap_or(None),
+                "cancelled_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("cancelled_at").ok().flatten().map(|d| d.to_rfc3339()),
+                "reservation_created_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("reservation_created_at").ok().flatten().map(|d| d.to_rfc3339()),
+            }));
+        }
+
+        Ok(result)
+    }
 }

@@ -92,12 +92,12 @@ const [uploading, setUploading] = useState(false);
             const newVideos = newMedia.filter(m => m.type === 'video').length;
 
             if (currentImages + newImages > maxImages) {
-                Alert.alert('Limite atteinte', `Maximum ${maxImages} photos autorisées`);
+                Alert.alert('Limite atteinte', t('mediaUploader.maximumPhotosAutorisees', { maxImages: maxImages }));
                 return;
             }
 
             if (currentVideos + newVideos > maxVideos) {
-                Alert.alert('Limite atteinte', `Maximum ${maxVideos} vidéos autorisées`);
+                Alert.alert('Limite atteinte', t('mediaUploader.maximumVideosAutorisees', { maxVideos: maxVideos }));
                 return;
             }
 
@@ -127,7 +127,7 @@ const [uploading, setUploading] = useState(false);
 
             const currentImages = media.filter(m => m.type === 'image').length;
             if (currentImages >= maxImages) {
-                Alert.alert('Limite atteinte', `Maximum ${maxImages} photos autorisées`);
+                Alert.alert('Limite atteinte', t('mediaUploader.maximumPhotosAutorisees', { maxImages: maxImages }));
                 return;
             }
 
@@ -157,7 +157,7 @@ const [uploading, setUploading] = useState(false);
 
             const currentVideos = media.filter(m => m.type === 'video').length;
             if (currentVideos >= maxVideos) {
-                Alert.alert('Limite atteinte', `Maximum ${maxVideos} vidéos autorisées`);
+                Alert.alert('Limite atteinte', t('mediaUploader.maximumVideosAutorisees', { maxVideos: maxVideos }));
                 return;
             }
 
@@ -202,7 +202,7 @@ const [uploading, setUploading] = useState(false);
             onMediaChange([...updatedMedia.filter(m => !itemsToUpload.some(i => i.uri === m.uri)), ...newUploadedItems]);
         } catch (error: any) {
             console.error('[MediaUploader] Erreur upload:', error);
-            Alert.alert('Erreur', 'Impossible d\'uploader les médias. Veuillez réessayer.');
+            Alert.alert('Erreur', 'Impossible d\t('mediaUploader.uploaderLesMediasVeuillezReessayer'));
         } finally {
             setUploading(false);
         }

@@ -277,7 +277,7 @@ const [media, setMedia] = useState<any[]>([]);
         } else {
             // Limiter à 5 sélections max
             if (newSelection.size >= 5) {
-                Alert.alert('Limite atteinte', 'Vous ne pouvez sélectionner que 5 médias maximum');
+                Alert.alert('Limite atteinte', t('productGalleryPickerModal.vousNePouvezSelectionnerQue5'));
                 return;
             }
             newSelection.add(url);
@@ -392,7 +392,7 @@ const [media, setMedia] = useState<any[]>([]);
                     <View style={styles.headerCenter}>
                         <Text style={styles.title}>Galerie du service</Text>
                         <Text style={styles.subtitle}>
-                            {selectedMedia.size > 0 ? t('productGalleryPickerModal.selectionnes', { selectedMedia_size: selectedMedia.size }) : `${media.length} média${media.length > 1 ? 's' : ''}`}
+                            {selectedMedia.size > 0 ? t('productGalleryPickerModal.selectionnes', { selectedMedia_size: selectedMedia.size }) : t('productGalleryPickerModal.media', { media_length: media.length, media_length___1____s____: media.length > 1 ? 's' : '' })}
                         </Text>
                     </View>
 

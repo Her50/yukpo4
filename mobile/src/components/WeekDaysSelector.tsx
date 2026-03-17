@@ -99,7 +99,7 @@ const [selectedDays, setSelectedDays] = useState<number[]>(initialDays);
                         onPress={selectAll}
                     >
                         <Text style={[styles.selectAllText, allSelected && styles.selectAllTextActive]}>
-                            {allSelected ? t('weekDaysSelector.deselectionnerTout') : 'Sélectionner tous les jours'}
+                            {allSelected ? t('weekDaysSelector.deselectionnerTout') : t('weekDaysSelector.selectionnerTousLesJours')}
                         </Text>
                     </TouchableOpacity>
 

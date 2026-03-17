@@ -211,7 +211,7 @@ const HashtagDiscoveryScreen: React.FC = () => {
                                 sortBy === sort && styles.sortButtonTextActive,
                             ]}
                         >
-                            {sort === 'recent' ? 'Récent' : sort === 'popular' ? 'Populaire' : 'Tendance'}
+                            {sort === 'recent' ? t('hashtagDiscoveryScreen.recent') : sort === 'popular' ? 'Populaire' : 'Tendance'}
                         </Text>
                     </TouchableOpacity>
                 ))}
@@ -226,9 +226,7 @@ const HashtagDiscoveryScreen: React.FC = () => {
             ) : videos.length === 0 ? (
                 <View style={styles.emptyState}>
                     <SafeIcon name="video-off" size={48} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyTitle}>{t('hashtagDiscovery.aucuneVideoTrouvee')}</Text>
-                    <Text style={styles.emptySubtitle}>
-                        Aucune vidéo n'utilise ce hashtag pour le moment.
+                    <Text style={styles.emptyTitle}>{t('hashtagDiscovery.aucuneVideoTrouveet('hashtagDiscoveryScreen.textTextStylestylesemptysubtitleAucuneVideoN')utilise ce hashtag pour le moment.
                     </Text>
                 </View>
             ) : (

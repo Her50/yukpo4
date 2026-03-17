@@ -99,7 +99,7 @@ const BusTicketPaymentScreen: React.FC = () => {
                 await refreshUser?.();
                 Alert.alert(
                     t('busTicketPaymentScreen.paiementReussi'),
-                    t('busTicketPaymentScreen.votreTicketAEtePayeAvec', { (resData_total_amount || totalPrice)_toLocaleString(): (resData.total_amount || totalPrice).toLocaleString() }),
+                    `${t('busTicketPaymentScreen.votreTicketAEtePayeAvec')} ${(resData.total_amount || totalPrice).toLocaleString()} FCFA`,
                     [
                         {
                             text: t('busTicketPaymentScreen.voirMonTicket'),
@@ -110,7 +110,7 @@ const BusTicketPaymentScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', resData.error || 'Le paiement a échoué');
+                Alert.alert('Erreur', resData.error || t('busTicketPaymentScreen.lePaiementAEchoue'));
             }
         } catch (error: any) {
             console.error('[BusTicketPayment] Erreur:', error);

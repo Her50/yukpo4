@@ -160,7 +160,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
     const getDisplayText = () => {
         if (values.length === 0) return placeholder;
         if (values.length === 1) return values[0];
-        return `${values.length} ${label.toLowerCase()}${values.length > 1 ? 's' : ''} sélectionné${values.length > 1 ? 's' : ''}`;
+        return t('multiSelectModalitySelector.selectionne', { values_length: values.length, label_toLowerCase__: label.toLowerCase(), values_length___1____s___: values.length > 1 ? 's' : '', values_length___1____s___: values.length > 1 ? 's' : '' });
     };
 
     // ✅ NOUVEAU : Filtrer les options selon la recherche
@@ -289,7 +289,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                         {searchQuery.trim() && (
                             <View style={styles.searchResultsInfo}>
                                 <Text style={styles.searchResultsText}>
-                                    {filteredOptions.length} résultat{filteredOptions.length > 1 ? 's' : ''} trouvé{filteredOptions.length > 1 ? 's' : ''}
+                                    {filteredOptions.length} résultat{filteredOptions.length > 1 ? 's' : 't('multiSelectModalitySelector.trouvefilteredoptionslength1')s' : ''}
                                 </Text>
                             </View>
                         )}
@@ -426,7 +426,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                                     const newModality = text;
 
                                     if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('🆕'))) {
-                                        Alert.alert('⚠️ Modalité existante', `"${newModality}" existe déjà dans la liste.`, [{ text: 'OK' }]);
+                                        Alert.alert(t('multiSelectModalitySelector.modaliteExistante'), t('multiSelectModalitySelector.existeDejaDansLaListe', { newModality: newModality }), [{ text: 'OK' }]);
                                         return;
                                     }
 
@@ -448,7 +448,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                                             [{ text: 'OK' }]
                                         );
                                     } else {
-                                        Alert.alert('❌ Erreur', 'Impossible d\'ajouter la modalité.', [{ text: 'OK' }]);
+                                        Alert.alert('❌ Erreur', 'Impossible d\t('multiSelectModalitySelector.ajouterLaModalite'), [{ text: 'OK' }]);
                                     }
                                 }}
                             >

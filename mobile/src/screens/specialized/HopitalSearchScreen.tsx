@@ -125,17 +125,17 @@ const HopitalSearchScreen: React.FC = () => {
         navigation.navigate('HopitalList' as never, { filters } as never);
     };
 
-    const typesEtablissements = ['Hôpital', 'Clinique', 'Dispensaire', t('hopitalSearchScreen.centreDeSante')];
+    const typesEtablissements = [t('hopitalSearchScreen.hopital'), 'Clinique', 'Dispensaire', t('hopitalSearchScreen.centreDeSante')];
     const prestations = [
-        'Urgences', t('hopitalSearchScreen.consultationGenerale'), 'Chirurgie', 'Maternité',
-        'Pédiatrie', 'Cardiologie', 'Neurologie', 'Radiologie'
+        'Urgences', t('hopitalSearchScreen.consultationGenerale'), 'Chirurgie', t('hopitalSearchScreen.maternite'),
+        t('hopitalSearchScreen.pediatrie'), 'Cardiologie', 'Neurologie', 'Radiologie'
     ];
     // ✅ NOUVEAU: Spécialités médicales complètes
     const specialites = [
-        t('hopitalSearchScreen.medecineGenerale'), 'Pédiatrie', 'Gynécologie', 'Cardiologie',
+        t('hopitalSearchScreen.medecineGenerale'), t('hopitalSearchScreen.pediatrie'), t('hopitalSearchScreen.gynecologie'), 'Cardiologie',
         'Chirurgie', 'Dentaire', 'Ophtalmologie', 'Dermatologie',
         'Neurologie', t('hopitalSearchScreen.orthopedie'), 'Urologie', 'Oncologie',
-        'Psychiatrie', 'Radiologie', t('hopitalSearchScreen.anesthesie'), 'Réanimation'
+        'Psychiatrie', 'Radiologie', t('hopitalSearchScreen.anesthesie'), t('hopitalSearchScreen.reanimation')
     ];
     // ✅ NOUVEAU: Assurances acceptées
     const assurances = [
@@ -613,9 +613,7 @@ const HopitalSearchScreen: React.FC = () => {
                         <Text style={styles.infoTitle}>{t('hopitalSearch.bonASavoir')}</Text>
                     </View>
                     <Text style={styles.infoText}>
-                        • Les urgences sont disponibles 24h/24 dans la plupart des hôpitaux{'\n'}
-                        • Vérifiez les prestations disponibles avant de vous déplacer{'\n'}
-                        • Certains établissements proposent la prise de rendez-vous en ligne{'\n'}
+                        • Les urgences sont disponibles 24h/24 dans la plupart des hôpitaux{'\nt('hopitalSearchScreen.verifiezLesPrestationsDisponiblesAvantDe')\nt('hopitalSearchScreen.certainsEtablissementsProposentLaPriseDe')\n'}
                         • En cas d'urgence vitale, appelez directement le 118
                     </Text>
                 </View>

@@ -10,6 +10,7 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import { TrackType } from '../types/AdvancedTimeline';
 import { SafeIcon } from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface TrackHeaderProps {
     trackId: string;
@@ -39,6 +40,7 @@ export const TrackHeader: React.FC<TrackHeaderProps> = ({
     height = 60,
 }) => {
     const getTrackIcon = (trackType: TrackType): string => {
+    const { t } = useLanguageSafe();
         switch (trackType) {
             case 'video':
                 return 'video';

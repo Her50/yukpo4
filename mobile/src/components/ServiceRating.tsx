@@ -71,7 +71,7 @@ const [showReviewFormLocal, setShowReviewFormLocal] = useState(showReviewForm);
         await onRatingSubmit(rating, comment);
         setComment('');
         setShowReviewFormLocal(false);
-        Alert.alert('Succès', 'Votre avis a été envoyé avec succès !');
+        Alert.alert(t('serviceRating.succes'), t('serviceRating.votreAvisAEteEnvoyeAvec'));
       }
     } catch (error) {
       console.error('Erreur lors de la soumission de la note:', error);
@@ -116,7 +116,7 @@ const [showReviewFormLocal, setShowReviewFormLocal] = useState(showReviewForm);
   };
 
   const getRatingText = (rating: number) => {
-    const texts = ['', 'Très mauvais', 'Mauvais', 'Moyen', 'Bon', 'Excellent'];
+    const texts = ['', t('serviceRating.tresMauvais'), 'Mauvais', 'Moyen', 'Bon', 'Excellent'];
     return texts[rating] || '';
   };
 

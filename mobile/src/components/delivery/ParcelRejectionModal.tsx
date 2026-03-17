@@ -47,14 +47,14 @@ const [selectedReason, setSelectedReason] = useState<ParcelRejectionReason | nul
 
     const handleConfirm = async () => {
         if (!selectedReason) {
-            Alert.alert('Erreur', 'Veuillez sélectionner une raison de refus');
+            Alert.alert('Erreur', t('parcelRejectionModal.veuillezSelectionnerUneRaisonDeRefus'));
             return;
         }
 
         setLoading(true);
         try {
             await onConfirm(selectedReason);
-            Alert.alert('Succès', 'Le produit a été refusé avec succès');
+            Alert.alert(t('parcelRejectionModal.succes'), t('parcelRejectionModal.leProduitAEteRefuseAvec'));
             onClose();
             setSelectedReason(null);
         } catch (error: any) {

@@ -11,68 +11,68 @@ import * as Localization from 'expo-localization';
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
+import af from './locales/af.json';
 import am from './locales/am.json';
 import ar from './locales/ar.json';
+import bas from './locales/bas.json';
+import bbj from './locales/bbj.json';
+import bci from './locales/bci.json';
+import bet from './locales/bet.json';
+import bm from './locales/bm.json';
+import bn from './locales/bn.json';
+import bum from './locales/bum.json';
 import de from './locales/de.json';
+import dje from './locales/dje.json';
+import dua from './locales/dua.json';
+import dyu from './locales/dyu.json';
+import ee from './locales/ee.json';
 import en from './locales/en.json';
 import es from './locales/es.json';
+import ewo from './locales/ewo.json';
+import fan from './locales/fan.json';
 import ff from './locales/ff.json';
 import fr from './locales/fr.json';
 import ha from './locales/ha.json';
 import hi from './locales/hi.json';
 import ht from './locales/ht.json';
+import id from './locales/id.json';
 import ig from './locales/ig.json';
+import it from './locales/it.json';
 import ja from './locales/ja.json';
+import kbp from './locales/kbp.json';
+import kg from './locales/kg.json';
+import ko from './locales/ko.json';
 import ln from './locales/ln.json';
+import lua from './locales/lua.json';
 import mg from './locales/mg.json';
+import mos from './locales/mos.json';
+import ms from './locales/ms.json';
+import nl from './locales/nl.json';
 import pap from './locales/pap.json';
+import pcm from './locales/pcm.json';
+import pl from './locales/pl.json';
 import pt from './locales/pt.json';
+import rn from './locales/rn.json';
 import ru from './locales/ru.json';
 import rw from './locales/rw.json';
+import sar from './locales/sar.json';
+import sg from './locales/sg.json';
 import sn from './locales/sn.json';
 import so from './locales/so.json';
+import srr from './locales/srr.json';
+import st from './locales/st.json';
 import sw from './locales/sw.json';
+import th from './locales/th.json';
 import ti from './locales/ti.json';
+import tl from './locales/tl.json';
+import tr from './locales/tr.json';
+import uk from './locales/uk.json';
+import vi from './locales/vi.json';
 import wo from './locales/wo.json';
+import xh from './locales/xh.json';
 import yo from './locales/yo.json';
 import zh from './locales/zh.json';
 import zu from './locales/zu.json';
-import ewo from './locales/ewo.json';
-import dua from './locales/dua.json';
-import bbj from './locales/bbj.json';
-import bas from './locales/bas.json';
-import bum from './locales/bum.json';
-import bci from './locales/bci.json';
-import dyu from './locales/dyu.json';
-import bet from './locales/bet.json';
-import pcm from './locales/pcm.json';
-import mos from './locales/mos.json';
-import bm from './locales/bm.json';
-import dje from './locales/dje.json';
-import ee from './locales/ee.json';
-import kbp from './locales/kbp.json';
-import sar from './locales/sar.json';
-import sg from './locales/sg.json';
-import kg from './locales/kg.json';
-import lua from './locales/lua.json';
-import fan from './locales/fan.json';
-import xh from './locales/xh.json';
-import af from './locales/af.json';
-import st from './locales/st.json';
-import rn from './locales/rn.json';
-import srr from './locales/srr.json';
-import ko from './locales/ko.json';
-import tr from './locales/tr.json';
-import id from './locales/id.json';
-import vi from './locales/vi.json';
-import th from './locales/th.json';
-import bn from './locales/bn.json';
-import tl from './locales/tl.json';
-import ms from './locales/ms.json';
-import uk from './locales/uk.json';
-import pl from './locales/pl.json';
-import it from './locales/it.json';
-import nl from './locales/nl.json';
 
 export const SUPPORTED_LANGUAGES = [
     { code: 'fr', name: 'Français', flag: '🇫🇷' },
@@ -107,7 +107,7 @@ export const SUPPORTED_LANGUAGES = [
     // 🌍 Nouvelles langues (ajoutées automatiquement)
     { code: 'ewo', name: 'Ewondo', flag: '🇨🇲' },
     { code: 'dua', name: 'Duálá', flag: '🇨🇲' },
-    { code: 'bbj', name: 'Ghomálá'', flag: '🇨🇲' },
+    { code: 'bbj', name: 'Ghomálá', flag: '🇨🇲' },
     { code: 'bas', name: 'Bassa', flag: '🇨🇲' },
     { code: 'bum', name: 'Bulu', flag: '🇨🇲' },
     { code: 'bci', name: 'Baoulé', flag: '🇨🇮' },
@@ -226,7 +226,7 @@ i18n
     .use(initReactI18next)
     .init({
         resources,
-        lng: 'fr', // Langue par défaut — sera mise à jour par LanguageContext depuis SafeStorage
+        lng: getDeviceLanguage(), // ✅ Langue système utilisateur en priorité (fallback: fr)
         fallbackLng: 'fr',
         compatibilityJSON: 'v4',
         interpolation: {
@@ -240,3 +240,4 @@ i18n
     });
 
 export default i18n;
+export { getDeviceLanguage };

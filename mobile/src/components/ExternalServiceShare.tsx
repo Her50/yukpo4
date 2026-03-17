@@ -56,7 +56,7 @@ const ExternalServiceShare: React.FC = () => {
     if (!service) return;
 
     try {
-      const shareMessage = `Découvrez ce service sur Yukpo:\n\n${service.title}\n\n${service.description}\n\nPrix: ${service.price.toLocaleString()} XAF\nLocalisation: ${service.location}\n\nTéléchargez Yukpo pour plus de services!`;
+      const shareMessage = t('externalServiceShare.decouvrezCeServiceSurYukponnnnnnprixXafnlocalisati', { service_title: service.title, service_description: service.description, service_price_toLocaleStr: service.price.toLocaleString(), service_location: service.location });
 
       await Share.share({
         message: shareMessage,
@@ -77,7 +77,7 @@ const ExternalServiceShare: React.FC = () => {
         {
           text: t('common.contact'),
           onPress: () => {
-            Alert.alert('Contact', 'Fonctionnalité de contact à implémenter');
+            Alert.alert('Contact', t('externalServiceShare.fonctionnaliteDeContactAImplementer'));
           }
         },
       ]

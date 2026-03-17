@@ -274,9 +274,7 @@ const ProviderOrderManagementScreen: React.FC = () => {
                 <TouchableOpacity
                     onPress={() => navigation.goBack()}
                     style={styles.backButton}
-                    accessibilityLabel="Retour"
-                    accessibilityRole="button"
-                    accessibilityHint="Retourne à l'écran précédent"
+                    accessibilityLabel={t('providerOrderManagementScreen.retourt('providerOrderManagementScreen.accessibilityrolebuttonAccessibilityhintretourneAL')écran précédent"
                 >
                     <SafeIcon name="arrow-back" size={24} color={modernColors.text} />
                 </TouchableOpacity>
@@ -286,7 +284,7 @@ const ProviderOrderManagementScreen: React.FC = () => {
                     style={styles.refreshButton}
                     accessibilityLabel="Actualiser la liste"
                     accessibilityRole="button"
-                    accessibilityHint="Rafraîchit la liste des commandes"
+                    accessibilityHint=t('providerOrderManagementScreen.rafraichitLaListeDesCommandes')
                 >
                     <SafeIcon name="refresh" size={24} color={modernColors.primary} />
                 </TouchableOpacity>
@@ -332,7 +330,7 @@ const ProviderOrderManagementScreen: React.FC = () => {
                                     setSelectedOrder(null);
                                     setRejectReason('');
                                 }}
-                                accessibilityLabel="Annuler le rejet"
+                                accessibilityLabel={t('providerOrderManagementScreen.annulerLeRejet')}
                                 accessibilityRole="button"
                                 accessibilityHint="Annule le rejet de la commande"
                             >
@@ -342,7 +340,7 @@ const ProviderOrderManagementScreen: React.FC = () => {
                                 style={[styles.modalButton, styles.confirmButton]}
                                 onPress={confirmReject}
                                 disabled={rejectingOrderId === selectedOrder?.id}
-                                accessibilityLabel="Confirmer le rejet"
+                                accessibilityLabel={t('providerOrderManagementScreen.confirmerLeRejet')}
                                 accessibilityRole="button"
                                 accessibilityHint="Confirme le rejet de la commande"
                             >

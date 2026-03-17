@@ -84,7 +84,7 @@ jobs:
           echo "Preparing environment variables from GitHub secrets..."
           
           # Créer un fichier JSON pour les variables d'environnement
-          # NOTE: DATABASE_URL, REDIS_URL, MONGODB_URL, JWT_SECRET sont gérés comme secrets GCP, pas comme variables
+          # NOTE: DATABASE_URL, REDIS_URL, JWT_SECRET sont gérés comme secrets GCP, pas comme variables
           # ✅ IMPORTANT: Toutes les variables doivent être ici pour éviter l'écrasement au déploiement
           if command -v jq &> /dev/null; then
             echo '{}' | jq \
@@ -208,7 +208,7 @@ jobs:
                 "CORS_ALLOWED_ORIGINS": "https://yukpo.com,https://yukpo-backend-376093909298.europe-west1.run.app"
               }' > env-vars.json
           else
-            # NOTE: DATABASE_URL, REDIS_URL, MONGODB_URL, JWT_SECRET gérés comme secrets GCP
+            # NOTE: DATABASE_URL, REDIS_URL, JWT_SECRET gérés comme secrets GCP
             cat > env-vars.json << EOF
           {
             "CLOUD_RUN": "true",
@@ -267,8 +267,8 @@ jobs:
           fi
           
           # Ajouter toutes les variables avec prefixe GCP_ENV_
-          # EXCLURE les variables qui sont gérées comme secrets: DATABASE_URL, REDIS_URL, MONGODB_URL, JWT_SECRET
-          SECRET_VARS="DATABASE_URL|REDIS_URL|MONGODB_URL|JWT_SECRET|OPENAI_API_KEY|SORA_API_KEY|S3_ACCESS_KEY|S3_SECRET_KEY|LIVEKIT_API_KEY|LIVEKIT_API_SECRET|GOOGLE_MAPS_API_KEY|OPENWEATHERMAP_API_KEY|CINETPAY_API_KEY|CINETPAY_SITE_ID|CINETPAY_SECRET_KEY|NOTCHPAY_PUBLIC_KEY|NOTCHPAY_SECRET_KEY"
+          # EXCLURE les variables qui sont gérées comme secrets: DATABASE_URL, REDIS_URL, JWT_SECRET
+          SECRET_VARS="DATABASE_URL|REDIS_URL|JWT_SECRET|OPENAI_API_KEY|SORA_API_KEY|S3_ACCESS_KEY|S3_SECRET_KEY|LIVEKIT_API_KEY|LIVEKIT_API_SECRET|GOOGLE_MAPS_API_KEY|OPENWEATHERMAP_API_KEY|CINETPAY_API_KEY|CINETPAY_SITE_ID|CINETPAY_SECRET_KEY|NOTCHPAY_PUBLIC_KEY|NOTCHPAY_SECRET_KEY"
           if command -v gh &> /dev/null; then
             # ✅ FIXED: Add retry and better error handling for GitHub CLI authentication
             gh auth status 2>/dev/null || {
@@ -303,7 +303,7 @@ jobs:
           # ✅ CRITIQUE: Nettoyer env-vars.json pour retirer TOUS les secrets (au cas où ils seraient présents)
           echo "Nettoyage final de env-vars.json (retrait des secrets)..."
           if command -v jq &> /dev/null; then
-            jq 'del(.DATABASE_URL, .REDIS_URL, .MONGODB_URL, .JWT_SECRET, .OPENAI_API_KEY, .SORA_API_KEY, .S3_ACCESS_KEY, .S3_SECRET_KEY, .LIVEKIT_API_KEY, .LIVEKIT_API_SECRET, .GOOGLE_MAPS_API_KEY, .OPENWEATHERMAP_API_KEY, .CINETPAY_API_KEY, .CINETPAY_SITE_ID, .CINETPAY_SECRET_KEY, .NOTCHPAY_PUBLIC_KEY, .NOTCHPAY_SECRET_KEY)' env-vars.json > env-vars-clean.json && mv env-vars-clean.json env-vars.json
+            jq 'del(.DATABASE_URL, .REDIS_URL, .JWT_SECRET, .OPENAI_API_KEY, .SORA_API_KEY, .S3_ACCESS_KEY, .S3_SECRET_KEY, .LIVEKIT_API_KEY, .LIVEKIT_API_SECRET, .GOOGLE_MAPS_API_KEY, .OPENWEATHERMAP_API_KEY, .CINETPAY_API_KEY, .CINETPAY_SITE_ID, .CINETPAY_SECRET_KEY, .NOTCHPAY_PUBLIC_KEY, .NOTCHPAY_SECRET_KEY)' env-vars.json > env-vars-clean.json && mv env-vars-clean.json env-vars.json
             echo "✅ Fichier env-vars.json nettoyé"
           else
             echo "⚠️ jq non disponible, nettoyage manuel impossible"
@@ -365,20 +365,21 @@ jobs:
           echo "🔧 Suppression de DATABASE_URL comme variable d'environnement (si elle existe)..."
           gcloud run services update ${{ env.SERVICE_NAME }} \
             --region ${{ env.REGION }} \
-            --remove-env-vars="DATABASE_URL,REDIS_URL,MONGODB_URL,JWT_SECRET" \
+            --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
             --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found\|No change\|does not have" || true
           
           # Construire la liste des variables d'environnement depuis env-vars.json (sans les secrets)
           echo "Construction de la liste des variables d'environnement..."
           if command -v jq &> /dev/null; then
             # Extraire toutes les clés sauf les secrets - CRITIQUE: Exclure explicitement tous les secrets
-            ENV_VARS=$(jq -r 'to_entries | map(select(.key != "DATABASE_URL" and .key != "REDIS_URL" and .key != "MONGODB_URL" and .key != "JWT_SECRET" and .key != "OPENAI_API_KEY" and .key != "SORA_API_KEY" and .key != "S3_ACCESS_KEY" and .key != "S3_SECRET_KEY" and .key != "LIVEKIT_API_KEY" and .key != "LIVEKIT_API_SECRET" and .key != "GOOGLE_MAPS_API_KEY" and .key != "OPENWEATHERMAP_API_KEY" and .key != "CINETPAY_API_KEY" and .key != "CINETPAY_SITE_ID" and .key != "CINETPAY_SECRET_KEY" and .key != "NOTCHPAY_PUBLIC_KEY" and .key != "NOTCHPAY_SECRET_KEY")) | map("\(.key)=\(.value)") | join(";")' ${{ steps.prepare-env.outputs.env_file }})
+            # ✅ AJOUTÉ 2026-03-17: Variables IA optimisées incluses
+            ENV_VARS=$(jq -r 'to_entries | map(select(.key != "DATABASE_URL" and .key != "REDIS_URL" and .key != "JWT_SECRET" and .key != "OPENAI_API_KEY" and .key != "SORA_API_KEY" and .key != "S3_ACCESS_KEY" and .key != "S3_SECRET_KEY" and .key != "LIVEKIT_API_KEY" and .key != "LIVEKIT_API_SECRET" and .key != "GOOGLE_MAPS_API_KEY" and .key != "OPENWEATHERMAP_API_KEY" and .key != "CINETPAY_API_KEY" and .key != "CINETPAY_SITE_ID" and .key != "CINETPAY_SECRET_KEY" and .key != "NOTCHPAY_PUBLIC_KEY" and .key != "NOTCHPAY_SECRET_KEY")) | map("\(.key)=\(.value)") | join(";")' ${{ steps.prepare-env.outputs.env_file }})
             echo "Variables d'environnement à définir: $ENV_VARS"
             
             # Vérifier que les secrets ne sont pas dans ENV_VARS
-            if echo "$ENV_VARS" | grep -qE "(DATABASE_URL|REDIS_URL|MONGODB_URL|JWT_SECRET|OPENAI_API_KEY|CINETPAY_API_KEY|CINETPAY_SECRET_KEY|NOTCHPAY_SECRET_KEY|GOOGLE_MAPS_API_KEY)"; then
+            if echo "$ENV_VARS" | grep -qE "(DATABASE_URL|REDIS_URL|JWT_SECRET|OPENAI_API_KEY|CINETPAY_API_KEY|CINETPAY_SECRET_KEY|NOTCHPAY_SECRET_KEY|GOOGLE_MAPS_API_KEY)"; then
               echo "❌ ERREUR: Des secrets sont présents dans ENV_VARS!"
-              echo "$ENV_VARS" | grep -E "(DATABASE_URL|REDIS_URL|MONGODB_URL|JWT_SECRET|OPENAI_API_KEY|CINETPAY_API_KEY|CINETPAY_SECRET_KEY|NOTCHPAY_SECRET_KEY|GOOGLE_MAPS_API_KEY)" || true
+              echo "$ENV_VARS" | grep -E "(DATABASE_URL|REDIS_URL|JWT_SECRET|OPENAI_API_KEY|CINETPAY_API_KEY|CINETPAY_SECRET_KEY|NOTCHPAY_SECRET_KEY|GOOGLE_MAPS_API_KEY)" || true
               exit 1
             fi
             
@@ -395,8 +396,8 @@ jobs:
                 --port 8080 \
                 --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
                 --update-env-vars="^;^$ENV_VARS" \
-                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest" \
-                --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
+                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest" \
+                --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER,MONGODB_URL" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
                 --cpu 2 \
@@ -417,7 +418,7 @@ jobs:
                 --allow-unauthenticated \
                 --port 8080 \
                 --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
-                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest" \
+                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest" \
                 --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
@@ -433,7 +434,7 @@ jobs:
           else
             # Fallback: jq non disponible, utilisation manuelle
             echo "⚠️ jq non disponible, utilisation de env-vars-file avec nettoyage manuel..."
-            if grep -q "DATABASE_URL\|REDIS_URL\|MONGODB_URL\|JWT_SECRET" ${{ steps.prepare-env.outputs.env_file }}; then
+            if grep -q "DATABASE_URL\|REDIS_URL\|JWT_SECRET" ${{ steps.prepare-env.outputs.env_file }}; then
               echo "❌ ERREUR: Le fichier env-vars.json contient encore des secrets!"
               exit 1
             fi
@@ -445,7 +446,7 @@ jobs:
               --port 8080 \
               --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
               --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
-              --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,MONGODB_URL=mongodb-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest" \
+              --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest" \
               --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
               --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
               --memory 2Gi \

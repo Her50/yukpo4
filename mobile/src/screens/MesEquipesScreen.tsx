@@ -201,7 +201,7 @@ const MesEquipesScreen: React.FC = () => {
                     <View style={{ flex: 1 }}>
                         <Text style={styles.headerTitle}>{t('mesEquipes.mesEquipes')}</Text>
                         <Text style={styles.headerSubtitle}>
-                            {memberships.length} service{memberships.length !== 1 ? 's' : ''} co-géré{memberships.length !== 1 ? 's' : ''}
+                            {memberships.length} service{memberships.length !== 1 ? 's' : 't('mesEquipesScreen.cogeremembershipslength1')s' : ''}
                         </Text>
                     </View>
                 </View>

@@ -353,7 +353,7 @@ const TaxiBookingScreen: React.FC = () => {
                     <SafeIcon name="check-circle" size={64} color="#10B981" />
                     <Text style={styles.successTitle}>{t('taxiBooking.reservationConfirmee')}</Text>
                     <Text style={styles.successText}>
-                        Votre réservation a été créée. Le chauffeur vous contactera bientôt.
+                        {t('taxiBooking.bookingConfirmedMsg', { price: '' })}
                     </Text>
                     {reservationId && (
                         <>
@@ -404,7 +404,7 @@ const TaxiBookingScreen: React.FC = () => {
                     <View style={styles.statusRow}>
                         <View style={[styles.statusBadge, taxi.is_available_now && styles.statusBadgeAvailable]}>
                             <Text style={[styles.statusText, taxi.is_available_now && styles.statusTextAvailable]}>
-                                {taxi.is_available_now ? 'Disponible' : t('taxiBookingScreen.occupe')}
+                                {taxi.is_available_now ? t('taxiHome.disponible') : t('taxiBookingScreen.occupe')}
                             </Text>
                         </View>
                     </View>
@@ -526,7 +526,7 @@ const TaxiBookingScreen: React.FC = () => {
                 {/* Assurance */}
                 <NativeCard style={styles.card}>
                     <View style={styles.detailRow}>
-                        <Text style={styles.cardTitle}>Assurance</Text>
+                        <Text style={styles.cardTitle}>{t('taxiDetailsScreen.insurance')}</Text>
                         <TouchableOpacity
                             onPress={() => setShowInsuranceSelector(!showInsuranceSelector)}
                             style={styles.toggleButton}
@@ -566,7 +566,7 @@ const TaxiBookingScreen: React.FC = () => {
                                     onPress={handleCall}
                                 >
                                     <SafeIcon name="phone" size={20} color="#fff" />
-                                    <Text style={styles.contactButtonText}>Appeler</Text>
+                                    <Text style={styles.contactButtonText}>{t('taxiBooking.call')}</Text>
                                 </TouchableOpacity>
                             )}
                             {taxi.whatsapp && (
@@ -584,7 +584,7 @@ const TaxiBookingScreen: React.FC = () => {
 
                 {/* Bouton réservation */}
                 <NativeButton
-                    title={booking ? 'Réservation en cours...t('taxiBookingScreen.estimatedpriceReserverEstimatedpricetolocalestringfrfr'))} FCFA` : 'Réserver'}
+                    title={booking ? t('taxiBookingScreen.reservationEnCours') : estimatedPrice ? `${t('taxiBookingScreen.reserver')} ~${estimatedPrice.toLocaleString('fr-FR')} FCFA` : t('taxiBookingScreen.reserver')}
                     onPress={handleBook}
                     disabled={booking || !departureGPS || !arrivalGPS || !taxi.is_available_now}
                     variant="primary"

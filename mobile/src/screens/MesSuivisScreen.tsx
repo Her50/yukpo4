@@ -77,7 +77,7 @@ const MesSuivisScreen: React.FC = () => {
                             }
                             setFollowing((prev) => prev.filter((f) => f.followed_id !== seller.followed_id));
                         } catch {
-                            Alert.alert('Erreur', 'Impossible de se désabonner.');
+                            Alert.alert('Erreur', t('mesSuivisScreen.impossibleDeSeDesabonner'));
                         } finally {
                             setUnfollowingId(null);
                         }

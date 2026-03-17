@@ -58,7 +58,7 @@ const BusTicketBookingScreen: React.FC = () => {
 
     const handleReserve = async (selectedSeats: SelectedSeat[], totalPrice: number) => {
         if (selectedSeats.length === 0) {
-            Alert.alert('Erreur', 'Aucune place sélectionnée');
+            Alert.alert('Erreur', t('busTicketBookingScreen.aucunePlaceSelectionnee'));
             return;
         }
 
@@ -114,7 +114,7 @@ const BusTicketBookingScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[BusTicketBookingScreen] Erreur réservation:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de créer la réservation');
+            Alert.alert('Erreur', error.message || t('busTicketBookingScreen.impossibleDeCreerLaReservation'));
         } finally {
             setLoading(false);
         }

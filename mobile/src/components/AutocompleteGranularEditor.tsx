@@ -353,7 +353,7 @@ const [showModal, setShowModal] = useState(false);
             {/* Champ de saisie rapide avec bouton Ajouter aligné */}
             <View style={styles.quickInputWrapper}>
                 <Text style={styles.quickInputLabel}>
-                    📝 {currentValues.length > 0 ? `${currentValues.length} ajoutée(s)` : t('autocompleteGranularEditor.aucuneCaracteristiqueAjoutee')}
+                    📝 {currentValues.length > 0 ? t('autocompleteGranularEditor.ajoutees', { currentValues_length: currentValues.length }) : t('autocompleteGranularEditor.aucuneCaracteristiqueAjoutee')}
                 </Text>
                 <TouchableOpacity
                     style={styles.quickInputContainer}

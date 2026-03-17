@@ -235,7 +235,7 @@ const [modalVisible, setModalVisible] = useState(false);
                         <Text style={styles.addModalLabel}>{t('assuranceProduitSelector.nomDuProduit')}</Text>
                         <TextInput
                             style={styles.addModalInput}
-                            placeholder={t('assuranceProduitSelector.ex', { typeAssurance === 'VIE' ? 'Épargne retraite' : 'Assurance habitation': typeAssurance === 'VIE' ? 'Épargne retraite' : 'Assurance habitation' })}
+                            placeholder={t('assuranceProduitSelector.ex', { typeAssurance === 'VIE' ? t('assuranceProduitSelector.epargneRetraite') : 'Assurance habitation': typeAssurance === 'VIE' ? t('assuranceProduitSelector.epargneRetraite') : 'Assurance habitation' })}
                             value={newProduitName}
                             onChangeText={setNewProduitName}
                             placeholderTextColor={modernColors.textSecondary}

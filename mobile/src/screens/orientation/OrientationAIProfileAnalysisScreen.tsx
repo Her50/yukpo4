@@ -26,7 +26,7 @@ const OrientationAIProfileAnalysisScreen: React.FC = () => {
 
     const handleAnalyze = async () => {
         if (!user) {
-            Alert.alert('Erreur', 'Vous devez être connecté');
+            Alert.alert('Erreur', t('orientationAIProfileAnalysisScreen.vousDevezEtreConnecte'));
             return;
         }
 
@@ -54,7 +54,7 @@ const OrientationAIProfileAnalysisScreen: React.FC = () => {
             setAnalysis(response);
         } catch (error: any) {
             console.error('[OrientationAIProfileAnalysis] Erreur:', error);
-            Alert.alert('Erreur', 'Impossible d\'analyser le profil. Veuillez réessayer.');
+            Alert.alert('Erreur', 'Impossible d\t('orientationAIProfileAnalysisScreen.analyserLeProfilVeuillezReessayer'));
         } finally {
             setLoading(false);
         }

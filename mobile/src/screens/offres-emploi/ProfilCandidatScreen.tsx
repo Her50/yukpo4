@@ -59,7 +59,7 @@ const ProfilCandidatScreen: React.FC = () => {
     const niveauxLangue = ['debutant', 'intermediaire', 'avance', 'bilingue'];
     const typesContrat = ['CDI', 'CDD', 'Stage', 'Freelance', 'Temps partiel', 'Alternance'];
     const secteurs = [
-        'Informatique', 'Commerce', t('profilCandidatScreen.sante'), 'Éducation', 'Finance',
+        'Informatique', 'Commerce', t('profilCandidatScreen.sante'), t('profilCandidatScreen.education'), 'Finance',
         'Marketing', 'Ressources Humaines', t('profilCandidatScreen.ingenierie'), 'Design', 'Autre'
     ];
 

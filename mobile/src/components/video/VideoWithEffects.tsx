@@ -18,6 +18,7 @@ import {
     videoEffectsService,
 } from '../../services/videoEffectsService';
 import OptimizedVideo from './OptimizedVideo';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface VideoWithEffectsProps extends VideoProps {
     originalUri: string;
@@ -29,7 +30,8 @@ interface VideoWithEffectsProps extends VideoProps {
 
 export const VideoWithEffects = forwardRef<Video, VideoWithEffectsProps>(
     ({ originalUri, contentId, isActive, effectConfig, style, onPlaybackStatusUpdate, ...rest }, ref) => {
-        const [currentTime, setCurrentTime] = useState(0);
+            const { t } = useLanguageSafe();
+const [currentTime, setCurrentTime] = useState(0);
 
         // Appliquer le style de filtre si configuré
         const filterStyle = useMemo(() => {

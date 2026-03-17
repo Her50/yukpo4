@@ -1329,7 +1329,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             : t('ajouterProduitSimpleScreen.ajoutezUnNouveauProduitAVotre');
 
     const submitLabel = (loading || isAddingProductLoading)
-        ? (isAddingProductLoading ? t('ajouterProduitSimpleScreen.creationDuProduit') : isEditing ? '⏳ Mise à jour...' : isDuplicate ? '⏳ Duplication...' : '⏳ Ajout en cours...')
+        ? (isAddingProductLoading ? t('ajouterProduitSimpleScreen.creationDuProduit') : isEditing ? t('ajouterProduitSimpleScreen.miseAJour') : isDuplicate ? '⏳ Duplication...' : '⏳ Ajout en cours...')
         : (isEditing ? 'Enregistrer les modifications' : isDuplicate ? 'Dupliquer le produit' : 'Ajouter le produit');
 
     // Gérer changement de champ
@@ -2265,15 +2265,15 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         // Si le message contient des détails utiles, les afficher
                                         if (backendError.includes('Timeout') || backendError.includes('timeout')) {
                                             errorMessage = t('ajouterProduitSimpleScreen.leServeurAMisTropDe') +
-                                                (backendError.includes('remboursé') ? t('ajouterProduitSimpleScreen.votreSoldeAEteRembourse') : '');
-                                        } else if (backendError.includes(t('ajouterProduitSimpleScreen.surchargee')) || backendError.includes('surchargé')) {
+                                                (backendError.includes(t('ajouterProduitSimpleScreen.rembourse')) ? t('ajouterProduitSimpleScreen.votreSoldeAEteRembourse') : '');
+                                        } else if (backendError.includes(t('ajouterProduitSimpleScreen.surchargee')) || backendError.includes(t('ajouterProduitSimpleScreen.surcharge'))) {
                                             errorMessage = t('ajouterProduitSimpleScreen.leServeurEstTemporairementSurchargeVeuillez') +
-                                                (backendError.includes('remboursé') ? t('ajouterProduitSimpleScreen.votreSoldeAEteRembourse') : '');
+                                                (backendError.includes(t('ajouterProduitSimpleScreen.rembourse')) ? t('ajouterProduitSimpleScreen.votreSoldeAEteRembourse') : '');
                                         } else {
                                             errorMessage = backendError;
                                         }
                                     } else {
-                                        errorMessage = 'Erreur serveur (500). Veuillez réessayer ou contacter le support.';
+                                        errorMessage = t('ajouterProduitSimpleScreen.erreurServeur500VeuillezReessayerOu');
                                     }
                                 } else if (error?.response?.status === 400) {
                                     errorTitle = '⚠️ Erreur de validation';
@@ -2330,15 +2330,15 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     // Si le message contient des détails utiles, les afficher
                     if (backendError.includes('Timeout') || backendError.includes('timeout')) {
                         errorMessage = t('ajouterProduitSimpleScreen.leServeurAMisTropDe') +
-                            (backendError.includes('remboursé') ? t('ajouterProduitSimpleScreen.votreSoldeAEteRembourse') : '');
-                    } else if (backendError.includes(t('ajouterProduitSimpleScreen.surchargee')) || backendError.includes('surchargé')) {
+                            (backendError.includes(t('ajouterProduitSimpleScreen.rembourse')) ? t('ajouterProduitSimpleScreen.votreSoldeAEteRembourse') : '');
+                    } else if (backendError.includes(t('ajouterProduitSimpleScreen.surchargee')) || backendError.includes(t('ajouterProduitSimpleScreen.surcharge'))) {
                         errorMessage = t('ajouterProduitSimpleScreen.leServeurEstTemporairementSurchargeVeuillez') +
-                            (backendError.includes('remboursé') ? t('ajouterProduitSimpleScreen.votreSoldeAEteRembourse') : '');
+                            (backendError.includes(t('ajouterProduitSimpleScreen.rembourse')) ? t('ajouterProduitSimpleScreen.votreSoldeAEteRembourse') : '');
                     } else {
                         errorMessage = backendError;
                     }
                 } else {
-                    errorMessage = 'Erreur serveur (500). Veuillez réessayer ou contacter le support.';
+                    errorMessage = t('ajouterProduitSimpleScreen.erreurServeur500VeuillezReessayerOu');
                 }
             } else if (error?.response?.status === 400) {
                 errorTitle = '⚠️ Erreur de validation';
@@ -2775,7 +2775,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         if (typeof currentValue === 'object' && currentValue !== null) {
                                             return currentValue.place_name || currentValue.raw || t('ajouterProduitSimple.selectionnerUnLieu');
                                         }
-                                        return typeof currentValue === 'string' ? currentValue : 'Sélectionner un lieu...';
+                                        return typeof currentValue === 'string' ? currentValue : t('ajouterProduitSimpleScreen.selectionnerUnLieu');
                                     })()}
                                 </Text>
                                 <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
@@ -2867,7 +2867,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 <Text style={styles.costText}>
                                     {productAddIsFree === true
                                         ? t('ajouterProduitSimpleScreen.gratuitPeriodeDeLancement')
-                                        : `Coût: ${(productAddCost ?? 2000).toLocaleString('fr-FR')} FCFA (Solde: ${(user?.credits ?? 0).toLocaleString('fr-FR')} FCFA)`}
+                                        : t('ajouterProduitSimpleScreen.coutFcfaSoldeFcfa', { _productAddCost____2000__: (productAddCost ?? 2000).toLocaleString('fr-FR'), _user__credits____0__toLo: (user?.credits ?? 0).toLocaleString('fr-FR') })}
                                 </Text>
                             </View>
                         )}

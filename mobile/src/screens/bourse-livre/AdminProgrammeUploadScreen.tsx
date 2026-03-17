@@ -15,8 +15,9 @@ import {
   View,
 } from 'react-native';
 import { bourseLivreV2Api, ProgrammeExtractionResult } from '../../services/bourseLivreV2Api';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
-const NIVEAUX = ['Maternelle', 'Primaire', 'Collège', 'Lycée', 'Université'];
+const NIVEAUX = ['Maternelle', 'Primaire', t('adminProgrammeUploadScreen.college'), t('adminProgrammeUploadScreen.lycee'), t('adminProgrammeUploadScreen.universite')];
 const FICHIER_TYPES = [
   { label: 'PDF', value: 'pdf', icon: 'document-text' },
   { label: 'Excel', value: 'excel', icon: 'grid' },
@@ -25,7 +26,8 @@ const FICHIER_TYPES = [
 
 export default function AdminProgrammeUploadScreen({ navigation }: any) {
   const { t } = useTranslation();
-  const [niveau, setNiveau] = useState('');
+      const { t } = useLanguageSafe();
+const [niveau, setNiveau] = useState('');
   const [classe, setClasse] = useState('');
   const [periodeAcademique, setPeriodeAcademique] = useState('2025-2026');
   const [dateDebut, setDateDebut] = useState('2025-09-01');
@@ -131,12 +133,7 @@ export default function AdminProgrammeUploadScreen({ navigation }: any) {
         style={styles.input}
         value={classe}
         onChangeText={setClasse}
-        placeholder={t('bourseLivreV2.programmeUpload.classePlaceholder')}
-        placeholderTextColor="#999"
-      />
-
-      {/* Période académique */}
-      <Text style={styles.label}>{t('bourseLivreV2.programmeUpload.periodeAcademique')} *</Text>
+        placeholder={t('bourseLivreV2.programmeUpload.classePlaceholdert('adminProgrammeUploadScreen.placeholdertextcolor999PeriodeAcademiqueTextStyles')bourseLivreV2.programmeUpload.periodeAcademique')} *</Text>
       <TextInput
         style={styles.input}
         value={periodeAcademique}

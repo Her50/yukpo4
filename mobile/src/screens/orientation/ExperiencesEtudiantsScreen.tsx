@@ -76,7 +76,7 @@ const ExperiencesEtudiantsScreen: React.FC = () => {
                 <View style={styles.headerLeft}>
                     <Text style={styles.cardTitle}>{item.nom_etudiant}</Text>
                     <Text style={styles.cardSubtitle}>
-                        📍 {item.nom_etablissement || `Établissement #${item.etablissement_id}`}
+                        📍 {item.nom_etablissement || t('experiencesEtudiantsScreen.etablissement', { item_etablissement_id: item.etablissement_id })}
                     </Text>
                 </View>
                 {item.is_modere && (
@@ -136,7 +136,7 @@ const ExperiencesEtudiantsScreen: React.FC = () => {
             ) : experiences.length > 0 ? (
                 <>
                     <Text style={styles.resultsCount}>
-                        {total} expérience{total > 1 ? 's' : ''} trouvée{total > 1 ? 's' : ''}
+                        {total} expérience{total > 1 ? 's' : 't('experiencesEtudiantsScreen.trouveetotal1')s' : ''}
                     </Text>
                     <FlatList
                         data={experiences}

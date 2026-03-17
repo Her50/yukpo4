@@ -77,7 +77,7 @@ const [versions, setVersions] = useState<PubliciteVersion[]>([]);
     const getChangeTypeLabel = (type: string) => {
         switch (type) {
             case 'created':
-                return 'Création';
+                return t('publiciteVersionHistory.creation');
             case 'updated':
                 return 'Modification';
             case 'paused':

@@ -101,11 +101,11 @@ const HopitalListScreen: React.FC = () => {
                 }
                 setHasMore(newHopitaux.length === 20);
             } else {
-                Alert.alert('Erreur', 'Impossible de charger les hôpitaux');
+                Alert.alert('Erreur', t('hopitalListScreen.impossibleDeChargerLesHopitaux'));
             }
         } catch (error: any) {
             console.error('[HopitalListScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les hôpitaux');
+            Alert.alert('Erreur', error.message || t('hopitalListScreen.impossibleDeChargerLesHopitaux'));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -234,7 +234,7 @@ const HopitalListScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <Text style={styles.title}>
-                    {hopitaux.length} hôpital{hopitaux.length > 1 ? 'aux' : ''} trouvé{hopitaux.length > 1 ? 's' : ''}
+                    {hopitaux.length} hôpital{hopitaux.length > 1 ? 'aux' : 't('hopitalListScreen.trouvehopitauxlength1')s' : ''}
                 </Text>
             </View>
 

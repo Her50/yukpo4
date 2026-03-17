@@ -80,14 +80,7 @@ interface ProductCommentsSectionProps {
     displayLimit?: number; // ✅ FIX 2026-03-03: Limite d'affichage initiale des commentaires
 }
 
-const REACTION_OPTIONS = [
-    { type: 'like', label: 'J\'aime', emoji: '👍' },
-    { type: 'love', label: 'J\'adore', emoji: '❤️' },
-    { type: 'insightful', label: 'Pertinent', emoji: '💡' },
-    { type: 'support', label: 'Soutien', emoji: '🤝' },
-    { type: 'funny', label: t('productCommentsSection.drole'), emoji: '😄' },
-    { type: 'angry', label: 'Pas d\'accord', emoji: '😠' },
-];
+// REACTION_OPTIONS moved inside component — see below
 
 const formatDate = (iso: string): string => {
     try {
@@ -211,7 +204,18 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
     const [comments, setComments] = useState<ProductComment[]>([]);
 
-    const { t } = useLanguageSafe();    const [stats, setStats] = useState<CommentStats>({
+    const { t } = useLanguageSafe();
+
+    const REACTION_OPTIONS = [
+        { type: 'like', label: t('productCommentsSection.jaime'), emoji: '👍' },
+        { type: 'love', label: t('productCommentsSection.jadore'), emoji: '❤️' },
+        { type: 'insightful', label: t('productCommentsSection.pertinent'), emoji: '💡' },
+        { type: 'support', label: t('productCommentsSection.soutien'), emoji: '🤝' },
+        { type: 'funny', label: t('productCommentsSection.drole'), emoji: '😄' },
+        { type: 'angry', label: t('productCommentsSection.pasAccord'), emoji: '😠' },
+    ];
+
+    const [stats, setStats] = useState<CommentStats>({
         total_comments: 0,
         rating_count: 0,
         average_rating: 0,
@@ -295,7 +299,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         try {
             const permission = await Audio.requestPermissionsAsync();
             if (permission.status !== 'granted') {
-                Alert.alert('Permission requise', 'Permission microphone nécessaire');
+                Alert.alert('Permission requise', t('productCommentsSection.permissionMicrophoneNecessaire'));
                 return;
             }
 
@@ -339,7 +343,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             }, 1000);
         } catch (error) {
             console.error('[ProductCommentsSection] Erreur enregistrement audio:', error);
-            Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement audio');
+            Alert.alert('Erreur', t('productCommentsSection.impossibleDeDemarrerEnregistrement'));
             setIsRecording(false);
         }
     }, []);
@@ -433,7 +437,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         const hasAudio = !!composerAudio;
 
         if (!trimmed && !hasAudio && !replyTarget && (composerRating === null || composerRating === undefined)) {
-            Alert.alert('Champ requis', 'Veuillez saisir un commentaire, enregistrer un audio ou sélectionner une note');
+            Alert.alert('Champ requis', t('productCommentsSection.veuillezSaisirUnCommentaireEnregistrerUn'));
             return;
         }
 
@@ -505,7 +509,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             }
         } catch (err: any) {
             console.error('[ProductCommentsSection] handleSubmitComment error:', err?.message || err);
-            Alert.alert('Erreur', `Une erreur est survenue lors de l'envoi du commentaire.\n\nDétail : ${err?.message || 'Erreur inconnue'}`);
+            Alert.alert('Erreur', t('productCommentsSection.uneErreurEstSurvenueLorsDe', { err__message_____Err: err?.message || 'Erreur inconnue' }));
         } finally {
             setSubmitting(false);
         }
@@ -564,19 +568,19 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     const handleToggleReaction = useCallback(
         async (comment: ProductComment, reactionType: string) => {
             if (!user?.token) {
-                Alert.alert('Connexion requise', 'Veuillez vous connecter pour réagir à un commentaire');
+                Alert.alert('Connexion requise', t('productCommentsSection.veuillezVousConnecterPourReagirA'));
                 return;
             }
             try {
                 const response = await commentsApi.toggleCommentReaction(comment.id, reactionType);
                 if (!response.success) {
-                    Alert.alert('Erreur', response.error || 'Impossible d\'enregistrer la réaction');
+                    Alert.alert('Erreur', response.error || t('productCommentsSection.impossibleEnregistrerReaction'));
                 } else {
                     await loadComments();
                 }
             } catch (err) {
                 console.error('[ProductCommentsSection] handleToggleReaction error', err);
-                Alert.alert('Erreur', 'Une erreur est survenue lors de la réaction');
+                Alert.alert('Erreur', t('productCommentsSection.uneErreurEstSurvenueLorsDe'));
             }
         },
         [loadComments, user?.token],
@@ -644,7 +648,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
     const handleEdit = useCallback((comment: ProductComment) => {
         if (comment.is_deleted) {
-            Alert.alert('Impossible', 'Vous ne pouvez pas modifier un commentaire supprimé');
+            Alert.alert('Impossible', t('productCommentsSection.vousNePouvezPasModifierUn'));
             return;
         }
         setEditingTarget(comment);

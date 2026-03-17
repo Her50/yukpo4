@@ -159,7 +159,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
       }
     } catch (error) {
       console.error('Erreur sélection images:', error);
-      Alert.alert('Erreur', 'Impossible de sélectionner les images');
+      Alert.alert('Erreur', t('mediaUploadManager.impossibleDeSelectionnerLesImages'));
     } finally {
       setUploading(false);
     }
@@ -167,7 +167,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
 
   const pickVideos = async () => {
     if (videos.length >= maxVideos) {
-      Alert.alert('Limite atteinte', `Vous ne pouvez ajouter que ${maxVideos} vidéos maximum`);
+      Alert.alert('Limite atteinte', t('mediaUploadManager.vousNePouvezAjouterQueVideos', { maxVideos: maxVideos }));
       return;
     }
 
@@ -281,7 +281,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
       }
     } catch (error) {
       console.error('Erreur sélection vidéo:', error);
-      Alert.alert('Erreur', 'Impossible de sélectionner la vidéo');
+      Alert.alert('Erreur', t('mediaUploadManager.impossibleDeSelectionnerLaVideo'));
     } finally {
       setUploading(false);
     }

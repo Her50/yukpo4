@@ -77,7 +77,7 @@ const BayamSelamSearchScreen: React.FC = () => {
             }
         } catch (err: any) {
             console.error('[BayamSelamSearch] Erreur chargement supermarchés:', err);
-            Alert.alert('Erreur', 'Impossible de charger les supermarchés. Veuillez réessayer.');
+            Alert.alert('Erreur', t('bayamSelamSearchScreen.impossibleDeChargerLesSupermarchesVeuillez'));
             setSupermarkets([]);
         } finally {
             setLoading(false);
@@ -251,7 +251,7 @@ const BayamSelamSearchScreen: React.FC = () => {
                     <Text style={styles.emptySubtext}>
                         {searchQuery
                             ? 'Essayez de modifier votre recherche'
-                            : 'Élargissez le rayon de recherche ou activez votre localisation'}
+                            : t('bayamSelamSearchScreen.elargissezLeRayonDeRechercheOu')}
                     </Text>
                     {!searchQuery && (
                         <NativeButton
@@ -284,7 +284,7 @@ const BayamSelamSearchScreen: React.FC = () => {
                     ListHeaderComponent={
                         <View style={styles.listHeader}>
                             <Text style={styles.listHeaderText}>
-                                {filteredSupermarkets.length} supermarché{filteredSupermarkets.length > 1 ? 's' : ''} trouvé{filteredSupermarkets.length > 1 ? 's' : ''}
+                                {filteredSupermarkets.length} supermarché{filteredSupermarkets.length > 1 ? 's' : 't('bayamSelamSearchScreen.trouvefilteredsupermarketslength1')s' : ''}
                             </Text>
                         </View>
                     }

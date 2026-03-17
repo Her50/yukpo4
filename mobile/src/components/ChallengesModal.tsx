@@ -66,7 +66,7 @@ const [challenges, setChallenges] = useState<Challenge[]>([]);
             case 'daily': return 'Quotidien';
             case 'weekly': return 'Hebdomadaire';
             case 'monthly': return 'Mensuel';
-            case 'special': return 'Spécial';
+            case 'special': return t('challengesModal.special');
             default: return type;
         }
     };

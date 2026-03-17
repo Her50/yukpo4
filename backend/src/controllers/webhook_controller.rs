@@ -681,6 +681,527 @@ async fn process_aggregator_webhook(
     Ok(())
 }
 
+/// ✅ Webhook Stripe — endpoint pour paiements internationaux (cartes, Apple Pay, Google Pay)
+pub async fn stripe_webhook(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> AppResult<JsonResponse<WebhookResponse>> {
+    log::info!("[stripe_webhook] Webhook reçu ({} bytes)", body.len());
+
+    let payload = std::str::from_utf8(&body)
+        .map_err(|_| AppError::BadRequest("Invalid UTF-8 payload".to_string()))?;
+
+    let signature = headers
+        .get("stripe-signature")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    if signature.is_empty() {
+        log::warn!("[stripe_webhook] Stripe-Signature header manquant");
+        return Err(AppError::Unauthorized(
+            "Stripe-Signature manquant".to_string(),
+        ));
+    }
+
+    use crate::services::stripe_payment_service::*;
+
+    if !StripeConfig::is_configured() {
+        return Err(AppError::Internal("Stripe non configuré".to_string()));
+    }
+
+    let stripe_service = StripePaymentService::new()
+        .map_err(|e| AppError::Internal(format!("Erreur Stripe init: {}", e)))?;
+
+    let event = stripe_service
+        .verify_webhook_signature(payload, signature)
+        .map_err(|e| {
+            log::warn!("[stripe_webhook] Signature invalide: {}", e);
+            AppError::Unauthorized(format!("Signature invalide: {}", e))
+        })?;
+
+    log::info!(
+        "[stripe_webhook] Event type={}, id={}",
+        event.event_type,
+        event.id
+    );
+
+    match event.event_type.as_str() {
+        "payment_intent.succeeded" => {
+            let pi_id = event.data.object["id"]
+                .as_str()
+                .unwrap_or("")
+                .to_string();
+            let amount = event.data.object["amount"]
+                .as_i64()
+                .unwrap_or(0);
+            let metadata = &event.data.object["metadata"];
+            let payment_id = metadata["payment_id"].as_str().unwrap_or("");
+
+            let payment_attempt: Option<PaymentAttemptWebhookRow> = sqlx::query_as(
+                "SELECT * FROM payment_attempts WHERE payment_id = $1 OR transaction_id = $2",
+            )
+            .bind(payment_id)
+            .bind(&pi_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur DB: {}", e)))?;
+
+            if let Some(attempt) = payment_attempt {
+                if attempt.status != "success" && attempt.status != "completed" {
+                    sqlx::query(
+                        "UPDATE payment_attempts SET status = 'success', transaction_id = $1, confirmed_at = NOW() WHERE id = $2",
+                    )
+                    .bind(&pi_id)
+                    .bind(attempt.id)
+                    .execute(&state.pg)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Erreur update: {}", e)))?;
+
+                    use crate::services::payment_service::PaymentService;
+                    let payment_service = PaymentService::new(state.pg.clone());
+                    let token_amount = amount / 100;
+                    payment_service
+                        .add_tokens_to_user(attempt.user_id, token_amount as f64)
+                        .await
+                        .map_err(|e| {
+                            AppError::Internal(format!("Erreur crédit tokens: {}", e))
+                        })?;
+
+                    log::info!(
+                        "[stripe_webhook] ✅ {} tokens crédités pour user {} (Stripe PI {})",
+                        token_amount,
+                        attempt.user_id,
+                        pi_id
+                    );
+
+                    if let Err(e) =
+                        crate::services::push_notification_service::send_push_notification(
+                            &state.pg,
+                            attempt.user_id,
+                            "✅ Paiement confirmé".to_string(),
+                            format!("Votre paiement de {} a été confirmé", token_amount),
+                            Some(serde_json::json!({
+                                "type": "stripe_payment_completed",
+                                "amount": token_amount,
+                                "payment_intent": pi_id
+                            })),
+                            Some("default".to_string()),
+                        )
+                        .await
+                    {
+                        log::warn!("[stripe_webhook] Erreur notif push: {}", e);
+                    }
+                }
+            }
+        }
+        "payment_intent.payment_failed" => {
+            let pi_id = event.data.object["id"]
+                .as_str()
+                .unwrap_or("")
+                .to_string();
+            let _ = sqlx::query(
+                "UPDATE payment_attempts SET status = 'failed' WHERE transaction_id = $1",
+            )
+            .bind(&pi_id)
+            .execute(&state.pg)
+            .await;
+            log::warn!("[stripe_webhook] Paiement échoué: {}", pi_id);
+        }
+        _ => {
+            log::info!(
+                "[stripe_webhook] Event type non traité: {}",
+                event.event_type
+            );
+        }
+    }
+
+    Ok(JsonResponse(WebhookResponse {
+        success: true,
+        message: "Webhook Stripe traité".to_string(),
+        transaction_id: Some(event.id),
+    }))
+}
+
+/// ✅ Webhook PayPal — endpoint pour paiements PayPal internationaux
+pub async fn paypal_webhook(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(event): Json<Value>,
+) -> AppResult<JsonResponse<WebhookResponse>> {
+    log::info!("[paypal_webhook] Webhook reçu: event_type={}", event["event_type"]);
+
+    let event_type = event["event_type"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+
+    use crate::services::paypal_payment_service::*;
+
+    if PayPalConfig::is_configured() {
+        let paypal_service = PayPalPaymentService::new()
+            .map_err(|e| AppError::Internal(format!("PayPal init: {}", e)))?;
+
+        let webhook_id =
+            std::env::var("PAYPAL_WEBHOOK_ID").unwrap_or_default();
+        let transmission_id = headers
+            .get("paypal-transmission-id")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        let transmission_time = headers
+            .get("paypal-transmission-time")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        let cert_url = headers
+            .get("paypal-cert-url")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        let auth_algo = headers
+            .get("paypal-auth-algo")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        let transmission_sig = headers
+            .get("paypal-transmission-sig")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+
+        if !webhook_id.is_empty() && !transmission_id.is_empty() {
+            match paypal_service
+                .verify_webhook_signature(
+                    &webhook_id,
+                    transmission_id,
+                    transmission_time,
+                    cert_url,
+                    auth_algo,
+                    transmission_sig,
+                    &event,
+                )
+                .await
+            {
+                Ok(true) => {
+                    log::info!("[paypal_webhook] Signature vérifiée");
+                }
+                Ok(false) => {
+                    log::warn!("[paypal_webhook] Signature invalide");
+                    return Err(AppError::Unauthorized(
+                        "Signature PayPal invalide".to_string(),
+                    ));
+                }
+                Err(e) => {
+                    log::warn!("[paypal_webhook] Erreur vérif signature: {}", e);
+                }
+            }
+        }
+    }
+
+    match event_type.as_str() {
+        "CHECKOUT.ORDER.APPROVED" => {
+            let order_id = event["resource"]["id"]
+                .as_str()
+                .unwrap_or("")
+                .to_string();
+            log::info!("[paypal_webhook] Order approuvé: {}", order_id);
+
+            if PayPalConfig::is_configured() {
+                let paypal_service = PayPalPaymentService::new()
+                    .map_err(|e| AppError::Internal(format!("PayPal init: {}", e)))?;
+
+                match paypal_service.capture_order(&order_id).await {
+                    Ok(capture) => {
+                        if capture.status == "COMPLETED" {
+                            let payment_attempt: Option<PaymentAttemptWebhookRow> =
+                                sqlx::query_as(
+                                    "SELECT * FROM payment_attempts WHERE transaction_id = $1",
+                                )
+                                .bind(&order_id)
+                                .fetch_optional(&state.pg)
+                                .await
+                                .map_err(|e| {
+                                    AppError::Internal(format!("Erreur DB: {}", e))
+                                })?;
+
+                            if let Some(attempt) = payment_attempt {
+                                if attempt.status != "success"
+                                    && attempt.status != "completed"
+                                {
+                                    sqlx::query(
+                                        "UPDATE payment_attempts SET status = 'success', confirmed_at = NOW() WHERE id = $1",
+                                    )
+                                    .bind(attempt.id)
+                                    .execute(&state.pg)
+                                    .await
+                                    .map_err(|e| {
+                                        AppError::Internal(format!("Erreur update: {}", e))
+                                    })?;
+
+                                    use crate::services::payment_service::PaymentService;
+                                    let payment_service =
+                                        PaymentService::new(state.pg.clone());
+                                    payment_service
+                                        .add_tokens_to_user(
+                                            attempt.user_id,
+                                            attempt.amount_xaf as f64,
+                                        )
+                                        .await
+                                        .map_err(|e| {
+                                            AppError::Internal(format!(
+                                                "Erreur crédit tokens: {}",
+                                                e
+                                            ))
+                                        })?;
+
+                                    log::info!(
+                                        "[paypal_webhook] ✅ {} tokens crédités pour user {} (PayPal {})",
+                                        attempt.amount_xaf,
+                                        attempt.user_id,
+                                        order_id
+                                    );
+
+                                    let _ = crate::services::push_notification_service::send_push_notification(
+                                        &state.pg,
+                                        attempt.user_id,
+                                        "✅ Paiement PayPal confirmé".to_string(),
+                                        format!("Votre paiement de {} a été confirmé via PayPal", attempt.amount_xaf),
+                                        Some(serde_json::json!({
+                                            "type": "paypal_payment_completed",
+                                            "amount": attempt.amount_xaf,
+                                            "order_id": order_id
+                                        })),
+                                        Some("default".to_string()),
+                                    ).await;
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        log::error!(
+                            "[paypal_webhook] Erreur capture order {}: {}",
+                            order_id,
+                            e
+                        );
+                    }
+                }
+            }
+        }
+        "PAYMENT.CAPTURE.COMPLETED" => {
+            log::info!("[paypal_webhook] Capture complétée");
+        }
+        "PAYMENT.CAPTURE.DENIED" | "PAYMENT.CAPTURE.REFUNDED" => {
+            let order_id = event["resource"]["supplementary_data"]["related_ids"]["order_id"]
+                .as_str()
+                .unwrap_or("");
+            if !order_id.is_empty() {
+                let new_status = if event_type.contains("DENIED") {
+                    "failed"
+                } else {
+                    "refunded"
+                };
+                let _ = sqlx::query(
+                    "UPDATE payment_attempts SET status = $1 WHERE transaction_id = $2",
+                )
+                .bind(new_status)
+                .bind(order_id)
+                .execute(&state.pg)
+                .await;
+            }
+        }
+        _ => {
+            log::info!(
+                "[paypal_webhook] Event type non traité: {}",
+                event_type
+            );
+        }
+    }
+
+    Ok(JsonResponse(WebhookResponse {
+        success: true,
+        message: "Webhook PayPal traité".to_string(),
+        transaction_id: event["id"].as_str().map(|s| s.to_string()),
+    }))
+}
+
+/// ✅ PayPal return URL handler (après approbation client)
+pub async fn paypal_return(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> AppResult<JsonResponse<Value>> {
+    let token = params.get("token").cloned().unwrap_or_default();
+    log::info!("[paypal_return] Retour PayPal, token/order_id={}", token);
+
+    if token.is_empty() {
+        return Err(AppError::BadRequest("Token manquant".to_string()));
+    }
+
+    use crate::services::paypal_payment_service::*;
+
+    if !PayPalConfig::is_configured() {
+        return Err(AppError::Internal("PayPal non configuré".to_string()));
+    }
+
+    let paypal_service = PayPalPaymentService::new()
+        .map_err(|e| AppError::Internal(format!("PayPal init: {}", e)))?;
+
+    match paypal_service.capture_order(&token).await {
+        Ok(capture) => {
+            if capture.status == "COMPLETED" {
+                let payment_attempt: Option<PaymentAttemptWebhookRow> = sqlx::query_as(
+                    "SELECT * FROM payment_attempts WHERE transaction_id = $1",
+                )
+                .bind(&token)
+                .fetch_optional(&state.pg)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur DB: {}", e)))?;
+
+                if let Some(attempt) = payment_attempt {
+                    if attempt.status != "success" && attempt.status != "completed" {
+                        sqlx::query(
+                            "UPDATE payment_attempts SET status = 'success', confirmed_at = NOW() WHERE id = $1",
+                        )
+                        .bind(attempt.id)
+                        .execute(&state.pg)
+                        .await
+                        .map_err(|e| AppError::Internal(format!("Erreur update: {}", e)))?;
+
+                        use crate::services::payment_service::PaymentService;
+                        let payment_service = PaymentService::new(state.pg.clone());
+                        payment_service
+                            .add_tokens_to_user(attempt.user_id, attempt.amount_xaf as f64)
+                            .await
+                            .map_err(|e| {
+                                AppError::Internal(format!("Erreur crédit tokens: {}", e))
+                            })?;
+
+                        log::info!(
+                            "[paypal_return] ✅ {} tokens crédités pour user {}",
+                            attempt.amount_xaf,
+                            attempt.user_id
+                        );
+                    }
+                }
+
+                Ok(JsonResponse(serde_json::json!({
+                    "success": true,
+                    "message": "Paiement PayPal confirmé",
+                    "order_id": token,
+                    "capture_id": capture.capture_id,
+                })))
+            } else {
+                Ok(JsonResponse(serde_json::json!({
+                    "success": false,
+                    "message": "Paiement en cours de traitement",
+                    "status": capture.status,
+                })))
+            }
+        }
+        Err(e) => {
+            log::error!("[paypal_return] Erreur capture: {}", e);
+            Err(AppError::Internal(format!("Erreur capture PayPal: {}", e)))
+        }
+    }
+}
+
+/// ✅ PayPal cancel URL handler
+pub async fn paypal_cancel(
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> AppResult<JsonResponse<Value>> {
+    let token = params.get("token").cloned().unwrap_or_default();
+    log::info!("[paypal_cancel] Paiement annulé, token={}", token);
+
+    Ok(JsonResponse(serde_json::json!({
+        "success": false,
+        "message": "Paiement annulé par l'utilisateur",
+        "order_id": token,
+    })))
+}
+
+/// Webhook Flutterwave — Pan-africain (30+ pays: KE, TZ, UG, RW, GH, ZM, ET...)
+pub async fn flutterwave_webhook(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(event): Json<Value>,
+) -> AppResult<JsonResponse<WebhookResponse>> {
+    log::info!("[flutterwave_webhook] Webhook reçu: event={}", event.get("event").and_then(|e| e.as_str()).unwrap_or("unknown"));
+
+    let secret_hash = headers
+        .get("verif-hash")
+        .and_then(|v| v.to_str().ok());
+
+    let expected_hash = std::env::var("FLUTTERWAVE_WEBHOOK_HASH").unwrap_or_default();
+    if !expected_hash.is_empty() {
+        match secret_hash {
+            Some(hash) if hash == expected_hash => {}
+            _ => {
+                log::warn!("[flutterwave_webhook] Invalid verif-hash");
+                return Err(AppError::Unauthorized("Invalid webhook signature".to_string()));
+            }
+        }
+    }
+
+    let event_type = event.get("event").and_then(|e| e.as_str()).unwrap_or("");
+    let data = event.get("data").cloned().unwrap_or(serde_json::json!({}));
+
+    match event_type {
+        "charge.completed" => {
+            let status = data.get("status").and_then(|s| s.as_str()).unwrap_or("");
+            let tx_ref = data.get("tx_ref").and_then(|t| t.as_str()).unwrap_or("");
+            let amount = data.get("amount").and_then(|a| a.as_f64()).unwrap_or(0.0);
+            let currency = data.get("currency").and_then(|c| c.as_str()).unwrap_or("XAF");
+            let flw_ref = data.get("flw_ref").and_then(|r| r.as_str()).unwrap_or("");
+
+            log::info!(
+                "[flutterwave_webhook] charge.completed: tx_ref={}, status={}, amount={} {}, flw_ref={}",
+                tx_ref, status, amount, currency, flw_ref
+            );
+
+            if status == "successful" && !tx_ref.is_empty() {
+                let token_amount = (amount / 100.0).ceil() as i64;
+                let token_amount = token_amount.max(1);
+
+                let pool = &state.pg;
+                let _ = sqlx::query(
+                    "UPDATE payment_attempts SET status = 'completed', provider_reference = $1, updated_at = NOW() WHERE transaction_id = $2"
+                )
+                .bind(flw_ref)
+                .bind(tx_ref)
+                .execute(pool)
+                .await;
+
+                if let Ok(row) = sqlx::query_as::<_, (i32,)>(
+                    "SELECT user_id FROM payment_attempts WHERE transaction_id = $1"
+                )
+                .bind(tx_ref)
+                .fetch_optional(pool)
+                .await
+                {
+                    if let Some((user_id,)) = row {
+                        let _ = sqlx::query(
+                            "UPDATE user_wallets SET solde = solde + $1, updated_at = NOW() WHERE user_id = $2"
+                        )
+                        .bind(token_amount)
+                        .bind(user_id)
+                        .execute(pool)
+                        .await;
+
+                        log::info!(
+                            "[flutterwave_webhook] Credited {} tokens to user {} (tx={})",
+                            token_amount, user_id, tx_ref
+                        );
+                    }
+                }
+            }
+        }
+        _ => {
+            log::info!("[flutterwave_webhook] Unhandled event type: {}", event_type);
+        }
+    }
+
+    Ok(Json(WebhookResponse {
+        success: true,
+        message: "Flutterwave webhook processed".to_string(),
+        transaction_id: data.get("tx_ref").and_then(|t| t.as_str()).map(|s| s.to_string()),
+    }))
+}
+
 /// Endpoint pour tester les webhooks — UNIQUEMENT en développement
 pub async fn test_webhook(
     State(state): State<Arc<AppState>>,

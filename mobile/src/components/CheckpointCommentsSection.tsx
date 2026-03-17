@@ -94,7 +94,7 @@ const [comments, setComments] = useState<CheckpointComment[]>([]);
 
     const formatTimeAgo = (dateStr: string) => {
         const diff = Date.now() - new Date(dateStr).getTime();
-        if (diff < 60000) return 'à l\'instant';
+        if (diff < 60000) return t('checkpointCommentsSection.aL')instant';
         if (diff < 3600000) return `il y a ${Math.floor(diff / 60000)} min`;
         if (diff < 86400000) return `il y a ${Math.floor(diff / 3600000)}h`;
         return `il y a ${Math.floor(diff / 86400000)}j`;

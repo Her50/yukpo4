@@ -392,9 +392,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                         <Text style={styles.infoTitle}>{t('insuranceServicesSearch.bonASavoir')}</Text>
                     </View>
                     <Text style={styles.infoText}>
-                        • Comparez les garanties et les primes de plusieurs compagnies{'\n'}
-                        • Lisez attentivement les conditions générales avant de souscrire{'\n'}
-                        • Vérifiez les exclusions et les franchises{'\n'}
+                        • Comparez les garanties et les primes de plusieurs compagnies{'\nt('insuranceServicesSearchScreen.lisezAttentivementLesConditionsGeneralesAvant')\nt('insuranceServicesSearchScreen.verifiezLesExclusionsEtLesFranchises')\n'}
                         • Demandez un devis personnalisé pour obtenir le meilleur prix
                     </Text>
                 </View>

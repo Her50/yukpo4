@@ -137,7 +137,7 @@ export const busTicketService = {
     // ✅ Valider un ticket par QR code
     validateTicketQR: async (qrData: string) => {
         const response = await apiPost<{ success: boolean; message: string; passenger?: any }>(
-            '/api/bus-tickets/validate/qr',
+            '/api/bus-tickets/validate',
             { qr_code_data: qrData }
         );
         return response;
@@ -155,7 +155,7 @@ export const busTicketService = {
     // ✅ Résumé d'embarquement
     getBoardingSummary: async (productId: string) => {
         const response = await apiGet<{ success: boolean; data: any }>(
-            `/api/bus-tickets/${productId}/boarding-summary`
+            `/api/bus-tickets/boarding/${productId}/summary`
         );
         return response;
     },
@@ -163,7 +163,7 @@ export const busTicketService = {
     // ✅ Liste des passagers d'un bus
     getBusPassengers: async (productId: string) => {
         const response = await apiGet<{ success: boolean; data: any[] }>(
-            `/api/bus-tickets/${productId}/passengers`
+            `/api/bus-tickets/boarding/${productId}/passengers`
         );
         return response;
     },
@@ -288,7 +288,7 @@ export const busTicketService = {
         currency?: string;
     }) => {
         const response = await apiPost<{ success: boolean; id: string }>(
-            '/api/bus-tickets/products',
+            '/api/bus-tickets/create-product',
             productData
         );
         return response;
@@ -303,7 +303,7 @@ export const busTicketService = {
         equipements?: string[];
     }) => {
         const response = await apiPost<{ success: boolean }>(
-            '/api/bus-tickets/products/link-agency',
+            '/api/bus-tickets/link',
             linkData
         );
         return response;

@@ -45,13 +45,13 @@ interface ExaminationType {
 }
 
 const TYPES_LABO = ['Laboratoire', 'Centre d\'imagerie', 'Les deux'];
-const ANALYSES_OPTIONS = ['Sang', 'Urine', t('laboratoireFormScreen.bacteriologie'), 'Parasitologie', 'Sérologie', 'Biochimie'];
-const IMAGERIE_OPTIONS = ['Radiologie', 'Échographie', 'Scanner', 'IRM', 'Mammographie'];
+const ANALYSES_OPTIONS = ['Sang', 'Urine', t('laboratoireFormScreen.bacteriologie'), 'Parasitologie', t('laboratoireFormScreen.serologie'), 'Biochimie'];
+const IMAGERIE_OPTIONS = ['Radiologie', t('laboratoireFormScreen.echographie'), 'Scanner', 'IRM', 'Mammographie'];
 
 const LaboratoireFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const { t } = useLanguageSafe();
     const { location } = useLocation();
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
@@ -273,6 +273,7 @@ const LaboratoireFormScreen: React.FC = () => {
                     { label: 'IA Analyse', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('LabAIAnalysis', { serviceId }) },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('LabAnalytics', { serviceId }) },
                     { label: t('laboratoireForm.monService'), icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
+                    { label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon as any} size={22} color={a.color} /></View>
@@ -313,7 +314,7 @@ const LaboratoireFormScreen: React.FC = () => {
             <View style={[s.field, { marginTop: 16 }]}>
                 <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
                     <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                    <Text style={s.gpsBtnText}>{selectedGPS ? t('laboratoireFormScreen.gpsSelectionne') : 'Sélectionner sur la carte'}</Text>
+                    <Text style={s.gpsBtnText}>{selectedGPS ? t('laboratoireFormScreen.gpsSelectionne') : t('laboratoireFormScreen.selectionnerSurLaCarte')}</Text>
                     <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                 </TouchableOpacity>
             </View>

@@ -173,7 +173,7 @@ const OffreDetailsScreen: React.FC = () => {
         if (offre.salaire_min && offre.salaire_max) {
             return `${offre.salaire_min.toLocaleString()} - ${offre.salaire_max.toLocaleString()} ${offre.devise}`;
         }
-        if (offre.salaire_min) return `À partir de ${offre.salaire_min.toLocaleString()} ${offre.devise}`;
+        if (offre.salaire_min) return t('offreDetailsScreen.aPartirDe', { offre_salaire_min_toLocal: offre.salaire_min.toLocaleString(), offre_devise: offre.devise });
         return t('offreDetailsScreen.jusqua', { offre_salaire_max?_toLocaleString(): offre.salaire_max?.toLocaleString(), offre_devise: offre.devise });
     };
 

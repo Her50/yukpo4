@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Reaction {
     emoji: string;
@@ -34,7 +35,8 @@ const MessageReactions: React.FC<MessageReactionsProps> = ({
     onAddReaction,
     onRemoveReaction,
 }) => {
-    const [showReactionPicker, setShowReactionPicker] = useState(false);
+        const { t } = useLanguageSafe();
+const [showReactionPicker, setShowReactionPicker] = useState(false);
     const [showReactionDetails, setShowReactionDetails] = useState(false);
     const [selectedReaction, setSelectedReaction] = useState<Reaction | null>(null);
     const scaleAnim = new Animated.Value(1);

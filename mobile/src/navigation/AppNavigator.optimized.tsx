@@ -8,7 +8,8 @@
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import React, { memo, useEffect, useRef, useState } from 'react';
+import { useNavigationState } from '@react-navigation/native';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Platform, StyleSheet, Text, View } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
 import { OfflineIndicator } from '../components/ux/OfflineIndicator';
@@ -41,6 +42,10 @@ import ContactScreen from '../screens/ContactScreen';
 // Services spécialisés (core)
 import GestionServicesSpecialisesScreen from '../screens/specialized/GestionServicesSpecialisesScreen';
 import ServicesDashboard from '../screens/specialized/ServicesDashboard';
+
+// Chat IA intelligent
+import IntelligentChat from '../components/IntelligentChat';
+import IntelligentChatFab from '../components/IntelligentChatFab';
 
 // ============================================================================
 // NAVIGATEURS
@@ -138,6 +143,8 @@ reg('AjouterProduitSimple', () => import('../screens/AjouterProduitSimpleScreen'
 reg('Blog', () => import('../screens/BlogScreen'));
 reg('BloodGroupManagement', () => import('../screens/BloodGroupManagementScreen'));
 reg('BourseLivre', () => import('../screens/BourseLivreScreen'));
+reg('LibrairieRegistration', () => import('../screens/LibrairieRegistrationScreen'));
+reg('QRCodeShare', () => import('../screens/QRCodeShareScreen'));
 reg('BusBoardingManagement', () => import('../screens/BusBoardingManagementScreen'));
 reg('Catalogue', () => import('../screens/CatalogueScreen'));
 reg('Confirmation', () => import('../screens/ConfirmationScreen'));
@@ -197,6 +204,7 @@ reg('SoldeDetail', () => import('../screens/SoldeDetailScreen'));
 reg('SpecializedSearch', () => import('../screens/SpecializedSearchScreen'));
 reg('SpecializedServicesHub', () => import('../screens/SpecializedServicesHubScreen'));
 reg('StartLive', () => import('../screens/StartLiveScreen'));
+reg('ChangePassword', () => import('../screens/ChangePasswordScreen'));
 reg('Start', () => import('../screens/StartScreen'));
 reg('VideoAnalytics', () => import('../screens/VideoAnalyticsScreen'));
 reg('VideoFeed', () => import('../screens/VideoFeedScreen'));
@@ -344,6 +352,7 @@ reg('BayamSelamSearch', () => import('../screens/specialized/BayamSelamSearchScr
 reg('BusReturnRequestForm', () => import('../screens/specialized/BusReturnRequestFormScreen'));
 reg('BusReturnRequests', () => import('../screens/specialized/BusReturnRequestsScreen'));
 reg('BusTicketBooking', () => import('../screens/specialized/BusTicketBookingScreen'));
+reg('BusTicketCredits', () => import('../screens/specialized/BusTicketCreditsScreen'));
 reg('BusTicketDetails', () => import('../screens/specialized/BusTicketDetailsScreen'));
 reg('BusTicketPayment', () => import('../screens/specialized/BusTicketPaymentScreen'));
 reg('BusTicketQRScanner', () => import('../screens/specialized/BusTicketQRScannerScreen'));
@@ -428,6 +437,7 @@ reg('BookRecapV2', () => import('../screens/specialized/BookRecapV2Screen'));
 reg('BookPackages', () => import('../screens/specialized/BookPackagesScreen'));
 reg('BookBuyDirect', () => import('../screens/bourse-livre/BookBuyDirectScreen'));
 reg('AdminProgrammeUpload', () => import('../screens/bourse-livre/AdminProgrammeUploadScreen'));
+reg('NewBooks', () => import('../screens/specialized/NewBooksScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Menu / Recettes (4)
@@ -528,18 +538,33 @@ S['NavigationScreen'] = S['Navigation'];
 // + Mes Courses pour les coursiers
 // ============================================================================
 
-const GESTION_SUPPORTED_TYPES = [
+// Types de partenaires qui doivent être BLOQUÉS du homescreen (services spécialisés uniquement)
+const SPECIALIZED_SERVICES_TYPES = [
   'pharmacie', 'hopital', 'laboratoire',
   'agence de voyage', 'agencevoyage', 'agence_voyage', 'agencedevoyage', 'agence_de_voyage',
-  'banquesang', 'banque_sang', 'covoiturage', 'taxi', 'chauffeur',
+  'banquesang', 'banque_sang', 'transfusion sanguine',
   'hotel', 'meuble', 'immobilier',
   'supermarche', 'restaurant',
   'livrescolaire', 'livre_scolaire',
   'assureur', 'assurance',
   'etablissementscolaire', 'etablissement_scolaire',
   'offre_emploi', 'offreemploi', 'recruteur', 'employeur',
-  'livraison', 'livraison_courses_marche', 'demenagement', 'transport', 'telecom',
-  'ecommerce', 'prestataire', 'service',
+  'telecom', 'ecommerce', 'prestataire', 'service',
+  'fleet', // Fleet management (entreprise de transport/livraison)
+  'automobile', // Concessionnaires/prestataires auto
+];
+
+// Types de transport/livraison INDIVIDUELS qui DOIVENT garder accès au homescreen
+// (chauffeurs indépendants, taxis indépendants, covoitureurs individuels)
+const TRANSPORT_DELIVERY_TYPES = [
+  'covoiturage', 'taxi', 'chauffeur', // Transport de personnes individuel
+  'livraison', 'livraison_courses_marche', 'demenagement', 'transport', // Livraison individuelle
+];
+
+// Liste combinée pour la gestion (maintenir compatibilité)
+const GESTION_SUPPORTED_TYPES = [
+  ...SPECIALIZED_SERVICES_TYPES,
+  ...TRANSPORT_DELIVERY_TYPES,
 ];
 
 // ✅ Mapping partner_type → écran spécialisé (utilisé par PartnerDashboardTab dans les onglets)
@@ -560,6 +585,8 @@ const getPartnerDashboardScreen = (partnerType: string | undefined): string | nu
     'chauffeur': 'FleetDashboard',
     'hotel': 'HotelDashboard',
     'meuble': 'HotelDashboard',
+    'immobilier': 'ImmobilierForm',
+    'fleet': 'FleetDashboard', // Fleet management (entreprise)
     'supermarche': 'SupermarketPartnerDashboard',
     'restaurant': 'RestaurantDashboard',
     'offre_emploi': 'OffresEmploiHub',
@@ -581,7 +608,7 @@ const getPartnerDashboardScreen = (partnerType: string | undefined): string | nu
     'ecommerce': 'GestionServicesSpecialises',
     'prestataire': 'GestionServicesSpecialises',
     'service': 'GestionServicesSpecialises',
-    'immobilier': 'ImmobilierForm',
+    'automobile': 'AutomobileDashboard',
   };
   const normalized = partnerType.toLowerCase().trim().replace(/\s+/g, '');
   const normalizedNoUnderscore = partnerType.toLowerCase().trim().replace(/[\s_]+/g, '');
@@ -624,9 +651,11 @@ function MainTabNavigator() {
     if (role === 'partenaire' && pt) {
       const normalized = pt.toLowerCase().trim().replace(/\s+/g, '');
       const normalizedNoUnderscore = pt.toLowerCase().trim().replace(/[\s_]+/g, '');
-      return GESTION_SUPPORTED_TYPES.includes(pt)
-        || GESTION_SUPPORTED_TYPES.includes(normalized)
-        || GESTION_SUPPORTED_TYPES.includes(normalizedNoUnderscore);
+      // ✅ SEULEMENT les services spécialisés bloquent l'accès homescreen
+      // Les transporteurs/livreurs gardent accès au homescreen
+      return SPECIALIZED_SERVICES_TYPES.includes(pt)
+        || SPECIALIZED_SERVICES_TYPES.includes(normalized)
+        || SPECIALIZED_SERVICES_TYPES.includes(normalizedNoUnderscore);
     }
     return false;
   }, [user?.id, (user as any)?.partner_type, (user as any)?.role]);
@@ -673,17 +702,19 @@ function MainTabNavigator() {
         },
       }}
     >
-      {/* Onglet 1: Accueil */}
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          tabBarLabel: t('tabs.home'),
-          tabBarIcon: ({ focused, color, size }) => (
-            <SafeIcon name="home" size={size} color={focused ? modernColors.primary : color} type="lucide" />
-          ),
-        }}
-      />
+      {/* Onglet 1: Accueil - MASQUÉ pour les partenaires de services spécialisés */}
+      {!hasSpecializedServices && (
+        <Tab.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{
+            tabBarLabel: t('tabs.home'),
+            tabBarIcon: ({ focused, color, size }) => (
+              <SafeIcon name="home" size={size} color={focused ? modernColors.primary : color} type="lucide" />
+            ),
+          }}
+        />
+      )}
 
       {/* Onglet 2: Mes Services (conditionnel: écran spécialisé pour partenaires, MesProduits sinon) */}
       {hasSpecializedServices ? (
@@ -834,6 +865,57 @@ function MainStackNavigator() {
   );
 }
 
+const SCREENS_HIDE_FAB = ['ChatModalMobile', 'Login', 'Register', 'PartnerRegister', 'OtpVerification'];
+
+function getActiveRouteName(state: any): string {
+  if (!state?.routes) return 'Unknown';
+  const route = state.routes[state.index ?? 0];
+  if (route.state) return getActiveRouteName(route.state);
+  return route.name || 'Unknown';
+}
+
+function MainStackWithDeepLinks() {
+  const { user } = useAuth();
+  const [chatVisible, setChatVisible] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
+
+  const navState = useNavigationState((state) => state);
+  const currentScreen = navState ? getActiveRouteName(navState) : 'Home';
+
+  const showIntelligentChat = useCallback((message?: string) => {
+    setChatMessage(message || '');
+    setChatVisible(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof global !== 'undefined') {
+      (global as any).showIntelligentChat = showIntelligentChat;
+    }
+  }, [showIntelligentChat]);
+
+  const fabVisible = !chatVisible && !SCREENS_HIDE_FAB.includes(currentScreen);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <MainStackNavigator />
+
+      {fabVisible && (
+        <IntelligentChatFab
+          onPress={() => showIntelligentChat()}
+          screenName={currentScreen}
+          hideOnScreens={SCREENS_HIDE_FAB}
+        />
+      )}
+
+      <IntelligentChat
+        visible={chatVisible}
+        onClose={() => setChatVisible(false)}
+        initialMessage={chatMessage}
+      />
+    </View>
+  );
+}
+
 // ============================================================================
 // ROOT NAVIGATOR
 // ============================================================================
@@ -862,7 +944,7 @@ function AppNavigator() {
   return (
     <View style={{ flex: 1 }}>
       <OfflineIndicator />
-      <MainStackNavigator />
+      <MainStackWithDeepLinks />
     </View>
   );
 }

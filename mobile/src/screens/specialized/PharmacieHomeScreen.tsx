@@ -312,7 +312,7 @@ const PharmacieHomeScreen: React.FC = () => {
             setAiSuggestions([
                 t('pharmacieHomeScreen.quelsMedicamentsPourLaFievre'),
                 t('pharmacieHomeScreen.commentTraiterUnMalDeTete'),
-                'Quels sont les médicaments disponibles près de moi?'
+                t('pharmacieHomeScreen.quelsSontLesMedicamentsDisponiblesPres')
             ]);
         } else {
             setAiSuggestions([]);

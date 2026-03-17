@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { hapticError, hapticPaymentSuccess } from '../utils/hapticFeedback';
@@ -17,7 +18,6 @@ import { formatCardNumber, validateCardExpiry, validateCardNumber, validatePhone
 import AlerteSecurite from './AlerteSecurite';
 import SafeIcon from './SafeIcon';
 import { NativeInput } from './SafeNativeDesign';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface PaiementEnLigneModalProps {
     visible: boolean;
@@ -38,8 +38,8 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
     montant,
     devise = 'XAF'
 }) => {
-        const { t } = useLanguageSafe();
-const [step, setStep] = useState<'alerte' | 'montant' | 'methode' | 'confirmation'>('alerte');
+    const { t } = useLanguageSafe();
+    const [step, setStep] = useState<'alerte' | 'montant' | 'methode' | 'confirmation'>('alerte');
     const [paymentAmount, setPaymentAmount] = useState(montant?.toString() || '');
     const [prestatairePaymentMethod, setPrestatairePaymentMethod] = useState<any>(null);
     const [loading, setLoading] = useState(false);
@@ -72,7 +72,7 @@ const [step, setStep] = useState<'alerte' | 'montant' | 'methode' | 'confirmatio
 
         if (!prestatairePaymentMethod) {
             hapticError(); // ✅ Haptic feedback pour erreur critique
-            Alert.alert('Erreur', 'Le prestataire n\'a pas configuré de mode de paiement');
+            Alert.alert('Erreur', t('paiementEnLigneModal.aPasConfigureDeModeDe'));
             return;
         }
 
@@ -81,7 +81,7 @@ const [step, setStep] = useState<'alerte' | 'montant' | 'methode' | 'confirmatio
             const validation = validatePhoneNumber(phoneNumber);
             if (!validation.valid) {
                 hapticError(); // ✅ Haptic feedback pour erreur critique
-                Alert.alert('Erreur', validation.error || 'Numéro invalide');
+                Alert.alert('Erreur', validation.error || t('paiementEnLigneModal.numeroInvalide'));
                 return;
             }
         } else if (prestatairePaymentMethod.type === 'carte_bancaire') {
@@ -95,12 +95,12 @@ const [step, setStep] = useState<'alerte' | 'montant' | 'methode' | 'confirmatio
             }
             if (!expiryValidation.valid) {
                 hapticError(); // ✅ Haptic feedback pour erreur critique
-                Alert.alert('Erreur', expiryValidation.error || 'Date expirée');
+                Alert.alert('Erreur', expiryValidation.error || t('paiementEnLigneModal.dateExpiree'));
                 return;
             }
             if (cardCVV.length < 3 || !cardHolder.trim()) {
                 hapticError(); // ✅ Haptic feedback pour erreur critique
-                Alert.alert('Erreur', 'Informations de carte incomplètes');
+                Alert.alert('Erreur', t('paiementEnLigneModal.informationsDeCarteIncompletes'));
                 return;
             }
         }
@@ -142,7 +142,7 @@ const [step, setStep] = useState<'alerte' | 'montant' | 'methode' | 'confirmatio
         } catch (error: any) {
             console.error('[PaiementEnLigneModal] Erreur:', error);
             hapticError(); // ✅ Haptic feedback pour erreur de paiement
-            Alert.alert('Erreur', error.message || 'Le paiement a échoué');
+            Alert.alert('Erreur', error.message || t('paiementEnLigneModal.lePaiementAEchoue'));
         } finally {
             setLoading(false);
         }

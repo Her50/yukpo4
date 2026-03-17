@@ -53,7 +53,7 @@ const [loading, setLoading] = useState(false);
             }
         } catch (error) {
             console.error('Erreur chargement produits inactifs:', error);
-            Alert.alert('Erreur', 'Impossible de charger les produits désactivés');
+            Alert.alert('Erreur', t('productReactivationModal.impossibleDeChargerLesProduitsDesactives'));
         } finally {
             setLoading(false);
         }
@@ -99,7 +99,7 @@ const [loading, setLoading] = useState(false);
 
     const handleReactivate = async () => {
         if (selectedProducts.size === 0) {
-            Alert.alert('Attention', 'Veuillez sélectionner au moins un produit à réactiver');
+            Alert.alert('Attention', t('productReactivationModal.veuillezSelectionnerAuMoinsUnProduit'));
             return;
         }
 
@@ -108,7 +108,7 @@ const [loading, setLoading] = useState(false);
         if (!canAffordReactivation()) {
             Alert.alert(
                 '💸 Solde insuffisant',
-                `Coût total : ${totalCost.toLocaleString()} FCFA\nVotre solde : ${userBalance.toLocaleString()} FCFA\n\nVeuillez recharger votre compte.`,
+                t('productReactivationModal.coutTotalFcfanvotreSoldeFcfannveuillezRecharger', { totalCost_toLocaleSt: totalCost.toLocaleString(), userBalance_toLocale: userBalance.toLocaleString() }),
                 [{ text: 'OK' }]
             );
             return;
@@ -117,7 +117,7 @@ const [loading, setLoading] = useState(false);
         // Confirmation
         Alert.alert(
             t('productReactivationModal.confirmerLaReactivation'),
-            `Réactiver ${selectedProducts.size} produit(s) pour ${totalCost.toLocaleString()} FCFA ?\n\nNouveau solde : ${(userBalance - totalCost).toLocaleString()} FCFA`,
+            t('productReactivationModal.reactiverProduitsPourFcfaNnnouveauSolde', { selectedProducts_siz: selectedProducts.size, totalCost_toLocaleSt: totalCost.toLocaleString(), _userBalance___total: (userBalance - totalCost).toLocaleString() }),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 { text: t('common.confirm'), onPress: performReactivation }
@@ -360,7 +360,7 @@ const [loading, setLoading] = useState(false);
                             </View>
 
                             <NativeButton
-                                title={loading ? "Réactivation..." : `Réactiver (${calculateTotalCost().toLocaleString()} FCFA)`}
+                                title={loading ? t('productReactivationModal.reactivation') : t('productReactivationModal.reactiverFcfa', { calculateTotalCost___toLo: calculateTotalCost().toLocaleString() })}
                                 onPress={handleReactivate}
                                 variant="primary"
                                 size="large"

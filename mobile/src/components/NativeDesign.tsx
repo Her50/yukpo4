@@ -9,6 +9,7 @@ import {
     View
 } from 'react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -31,6 +32,7 @@ export const NativeCard: React.FC<NativeCardProps> = ({
     // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
     // Éviter de rendre des valeurs primitives directement
     const safeChildren = (() => {
+    const { t } = useLanguageSafe();
         // ✅ CRITIQUE: Gérer le cas où children est null/undefined
         if (children == null) {
             return null;

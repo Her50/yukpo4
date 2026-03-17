@@ -42,20 +42,20 @@ const ShoppingSummaryScreen: React.FC = () => {
 
     const handleConfirm = async () => {
         if (!pickup?.latitude || !dropoff?.latitude) {
-            Alert.alert('Informations manquantes', 'Vérifie les adresses avant de confirmer.');
+            Alert.alert('Informations manquantes', t('shoppingSummaryScreen.verifieLesAdressesAvantDeConfirmer'));
             return;
         }
 
         const response = await createShoppingOrder();
         if (!response.success) {
-            Alert.alert('Erreur', response.error ?? 'Impossible de créer la commande.');
+            Alert.alert('Erreur', response.error ?? t('shoppingSummaryScreen.impossibleDeCreerLaCommande'));
             return;
         }
 
         const deliveryId =
             response.data?.delivery_id || response.data?.delivery?.id || response.data?.id;
         if (!deliveryId) {
-            Alert.alert('Commande créée', 'La livraison a été enregistrée avec succès.');
+            Alert.alert(t('shoppingSummaryScreen.commandeCreee'), t('shoppingSummaryScreen.laLivraisonAEteEnregistreeAvec'));
             navigation.navigate('DeliveryHome');
             return;
         }

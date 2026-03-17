@@ -48,7 +48,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
 
     const handleAnalyzeProfile = async () => {
         if (!profileId) {
-            Alert.alert('Profil requis', 'Veuillez d\'abord créer votre profil étudiant');
+            Alert.alert('Profil requis', 'Veuillez d\t('orientationScolaireHubScreen.abordCreerVotreProfilEtudiant'));
             return;
         }
         try {
@@ -59,7 +59,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
             if (response.success) {
                 Alert.alert(
                     t('orientationScolaireHubScreen.analyseTerminee'),
-                    'Votre profil a été analysé avec succès. Consultez les recommandations !'
+                    t('orientationScolaireHubScreen.votreProfilAEteAnalyseAvec')
                 );
             }
         } catch (error: any) {
@@ -71,7 +71,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
 
     const handleGetRecommendations = () => {
         if (!hasProfile) {
-            Alert.alert('Profil requis', 'Veuillez d\'abord créer votre profil étudiant');
+            Alert.alert('Profil requis', 'Veuillez d\t('orientationScolaireHubScreen.abordCreerVotreProfilEtudiant'));
             return;
         }
         navigation.navigate('EtablissementSearch');
@@ -79,7 +79,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
 
     const handleComparePrograms = () => {
         if (!hasProfile) {
-            Alert.alert('Profil requis', 'Veuillez d\'abord créer votre profil étudiant');
+            Alert.alert('Profil requis', 'Veuillez d\t('orientationScolaireHubScreen.abordCreerVotreProfilEtudiant'));
             return;
         }
         navigation.navigate('OrientationAIComparePrograms');
@@ -144,13 +144,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
             <View style={styles.header}>
                 <Text style={styles.title}>Orientation Scolaire</Text>
                 <Text style={styles.subtitle}>
-                    Trouvez l'établissement idéal pour vous ou vos enfants
-                </Text>
-            </View>
-
-            {/* Types d'établissements */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>{t('orientationScolaireHub.typesDetablissements')}</Text>
+                    Trouvez lt('orientationScolaireHubScreen.etablissementIdealPourVousOuVost('orientationScolaireHubScreen.etablissementsViewStylestylessectionTextStylestyle')orientationScolaireHub.typesDetablissements')}</Text>
                 <View style={styles.grid}>
                     {etablissementTypes.map((type) => (
                         <TouchableOpacity

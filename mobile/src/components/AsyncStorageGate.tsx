@@ -1,5 +1,5 @@
 /**
- * AsyncStorageGate - Composant qui bloque le rendu jusqu'à ce qu'AsyncStorage soit prêt
+ * AsyncStorageGate - Composant qui bloque le rendu jusqut('asyncStorageGate.aCeQu')AsyncStorage soit prêt
  * Résout définitivement les erreurs "Driver not found" et "No available storage method found"
  * en s'assurant qu'AsyncStorage est initialisé AVANT que les providers ne soient montés
  */
@@ -7,13 +7,15 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { ensureAsyncStorageReady } from '../utils/asyncStorageInit';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AsyncStorageGateProps {
     children: React.ReactNode;
 }
 
 export const AsyncStorageGate: React.FC<AsyncStorageGateProps> = ({ children }) => {
-    const [isReady, setIsReady] = useState(false);
+        const { t } = useLanguageSafe();
+const [isReady, setIsReady] = useState(false);
     const [hasError, setHasError] = useState(false);
 
     useEffect(() => {

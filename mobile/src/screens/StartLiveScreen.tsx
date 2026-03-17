@@ -62,7 +62,7 @@ export default function StartLiveScreen() {
 
   const handleStartLive = useCallback(async () => {
     if (!user?.id) {
-      Alert.alert('Erreur', 'Vous devez être connecté pour démarrer un live');
+      Alert.alert('Erreur', t('startLiveScreen.vousDevezEtreConnectePourDemarrer'));
       return;
     }
 
@@ -130,9 +130,7 @@ export default function StartLiveScreen() {
 
   const renderServiceSelector = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{t('startLive.serviceAssocieOptionnel')}</Text>
-      <Text style={styles.sectionDescription}>
-        Liez ce live à l'un de vos services pour permettre les ventes flash
+      <Text style={styles.sectionTitle}>{t('startLive.serviceAssocieOptionnelt('startLiveScreen.textTextStylestylessectiondescriptionLiezCeLive')un de vos services pour permettre les ventes flash
       </Text>
 
       {userServices.map((service) => (
@@ -245,7 +243,7 @@ export default function StartLiveScreen() {
 
         <View style={styles.actions}>
           <NativeButton
-            title={isStarting ? 'Démarrage en cours...' : 'Démarrer le Live'}
+            title={isStarting ? t('startLiveScreen.demarrageEnCours') : t('startLiveScreen.demarrerLeLive')}
             onPress={handleStartLive}
             disabled={isStarting || !title.trim()}
             style={[

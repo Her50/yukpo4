@@ -670,7 +670,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const requestImagePermissions = useCallback(async (): Promise<boolean> => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission requise', 'Nous avons besoin de l\'autorisation pour accéder à vos images.');
+            Alert.alert('Permission requise', 'Nous avons besoin de l\t('resultatBesoinScreen.refactored.autorisationPourAccederAVosImages'));
             return false;
         }
         return true;
@@ -679,7 +679,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const takeSearchPhoto = useCallback(async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission requise', 'La caméra est nécessaire pour prendre une photo.');
+            Alert.alert('Permission requise', t('resultatBesoinScreen.refactored.laCameraEstNecessairePourPrendre'));
             return;
         }
         try {
@@ -719,7 +719,7 @@ const ResultatBesoinScreen: React.FC = () => {
             }
         } catch (error) {
             logger.error(t('resultatBesoinScreen.refactored.resultatbesoinscreenErreurSelectionImages'), error);
-            Alert.alert('Erreur', 'Impossible de sélectionner des images.');
+            Alert.alert('Erreur', t('resultatBesoinScreen.refactored.impossibleDeSelectionnerDesImages'));
         }
     }, [requestImagePermissions]);
 
@@ -737,7 +737,7 @@ const ResultatBesoinScreen: React.FC = () => {
             }
         } catch (error) {
             logger.error(t('resultatBesoinScreen.refactored.resultatbesoinscreenErreurSelectionDocument'), error);
-            Alert.alert('Erreur', 'Impossible de sélectionner le document.');
+            Alert.alert('Erreur', t('resultatBesoinScreen.refactored.impossibleDeSelectionnerLeDocument'));
         }
     }, []);
 

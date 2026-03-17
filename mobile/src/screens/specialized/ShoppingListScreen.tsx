@@ -78,7 +78,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
             }
         } catch (error: any) {
             console.error('[ShoppingList] Erreur génération:', error);
-            Alert.alert('Erreur', error.message || 'Erreur lors de la génération de la liste');
+            Alert.alert('Erreur', error.message || t('shoppingListScreen.erreurLorsDeLaGenerationDe'));
         } finally {
             setLoading(false);
         }
@@ -311,7 +311,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
                                     }
                                 } catch (error: any) {
                                     console.error('[ShoppingList] Erreur marchés:', error);
-                                    Alert.alert('Erreur', 'Impossible de charger les marchés');
+                                    Alert.alert('Erreur', t('shoppingListScreen.impossibleDeChargerLesMarches'));
                                 } finally {
                                     setLoadingSupermarkets(false);
                                 }

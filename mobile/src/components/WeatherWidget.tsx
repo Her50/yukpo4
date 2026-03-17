@@ -67,7 +67,7 @@ const [weather, setWeather] = useState<WeatherData | null>(null);
             });
 
             const timeoutPromise = new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('GPS timeout après 10 secondes')), 10000)
+                setTimeout(() => reject(new Error(t('weatherWidget.gpsTimeoutApres10Secondes'))), 10000)
             );
 
             const currentLocation = await Promise.race([locationPromise, timeoutPromise]);
@@ -131,7 +131,7 @@ const [weather, setWeather] = useState<WeatherData | null>(null);
 
             if (!API_KEY || API_KEY === 'YOUR_OPENWEATHER_API_KEY') {
                 console.log('[WeatherWidget] Clé API non configurée, utilisation des données mockées');
-                throw new Error('Clé API météo non configurée');
+                throw new Error(t('weatherWidget.cleApiMeteoNonConfiguree'));
             }
 
             // Appel API météo actuelle

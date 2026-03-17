@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import { DeliveryCheckpoint, DeliveryStatus } from '../../types/delivery';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface TimelineStepperProps {
     checkpoints: DeliveryCheckpoint[];
@@ -52,6 +53,7 @@ const STATUS_ICON: Partial<Record<DeliveryStatus, string>> = {
 
 const TimelineStepper: React.FC<TimelineStepperProps> = ({ checkpoints, currentStatus }) => {
     const timeline = useMemo(() => {
+    const { t } = useLanguageSafe();
         const entries = STATUS_ORDER.map(status => {
             const match = checkpoints.find(item => item.status === status);
             return {
@@ -119,35 +121,35 @@ const statusToLabel = (status: DeliveryStatus): string => {
     switch (status) {
         case 'pending':
         case 'requested':
-            return 'Commande créée';
+            return t('timelineStepper.commandeCreee');
         case 'awaiting_courier':
         case 'awaiting_courier_confirmation':
             return 'Recherche de coursier';
         case 'assigned':
         case 'accepted':
-            return 'Coursier assigné';
+            return t('timelineStepper.coursierAssigne');
         case 'en_route_pickup':
             return 'Coursier en route vers le pickup';
         case 'arrival_pickup':
-            return 'Arrivé au point de retrait';
+            return t('timelineStepper.arriveAuPointDeRetrait');
         case 'picked_up':
-            return 'Colis récupéré';
+            return t('timelineStepper.colisRecupere');
         case 'shopping_pending':
-            return 'En attente au supermarché';
+            return t('timelineStepper.enAttenteAuSupermarche');
         case 'shopping_in_progress':
             return 'Shopping en cours';
         case 'shopping_completed':
-            return 'Shopping terminé';
+            return t('timelineStepper.shoppingTermine');
         case 'en_route_delivery':
             return 'En route vers le destinataire';
         case 'arrival_destination':
-            return 'Arrivé à destination';
+            return t('timelineStepper.arriveADestination');
         case 'delivered':
-            return 'Livraison effectuée';
+            return t('timelineStepper.livraisonEffectuee');
         case 'completed':
-            return 'Livraison terminée';
+            return t('timelineStepper.livraisonTerminee');
         case 'cancelled':
-            return 'Commande annulée';
+            return t('timelineStepper.commandeAnnulee');
         default:
             return status;
     }

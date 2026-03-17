@@ -71,7 +71,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             setPermissionGranted(true);
         } catch (error) {
             console.error('Erreur permission GPS:', error);
-            Alert.alert('Erreur', 'Impossible d\'accéder à la localisation');
+            Alert.alert('Erreur', 'Impossible d\t('modernGPSSelector.accederALaLocalisation'));
         }
     };
 
@@ -137,13 +137,13 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                             };
                             console.log('[ModernGPSSelector] ✅ Coordonnées obtenues:', coords);
                         } else {
-                            throw new Error('Aucun résultat de géocodage');
+                            throw new Error(t('modernGPSSelector.aucunResultatDeGeocodage'));
                         }
                     } catch (geocodeError) {
                         console.error('[ModernGPSSelector] Erreur géocodage:', geocodeError);
                         Alert.alert(
                             'Erreur',
-                            'Impossible de trouver les coordonnées de ce lieu. Veuillez sélectionner une position sur la carte.'
+                            t('modernGPSSelector.impossibleDeTrouverLesCoordonneesDe')
                         );
                         setLoading(false);
                         return;
@@ -247,7 +247,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                     }
                 }, 100); // Réduire le délai pour une réaction plus rapide
             } else {
-                Alert.alert('Erreur', 'Coordonnées GPS non disponibles pour ce lieu');
+                Alert.alert('Erreur', t('modernGPSSelector.coordonneesGpsNonDisponiblesPourCe'));
             }
         } catch (error) {
             console.error('[ModernGPSSelector] Erreur sélection lieu:', error);
@@ -268,7 +268,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             });
             onClose();
         } else {
-            Alert.alert('Erreur', 'Veuillez sélectionner une position');
+            Alert.alert('Erreur', t('modernGPSSelector.veuillezSelectionnerUnePosition'));
         }
     };
 

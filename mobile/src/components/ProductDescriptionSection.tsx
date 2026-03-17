@@ -7,6 +7,7 @@ import {
     View,
 } from 'react-native';
 import SafeIcon from './SafeIcon';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ProductDescriptionSectionProps {
     description: string;
@@ -37,6 +38,7 @@ const ProductDescriptionSection: React.FC<ProductDescriptionSectionProps> = ({
     const shouldShowSeeMore = description.length > showSeeMoreThreshold;
 
     const handleToggle = useCallback(() => {
+    const { t } = useLanguageSafe();
         onToggleDescription(contentId);
     }, [contentId, onToggleDescription]);
 

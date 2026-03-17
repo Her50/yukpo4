@@ -1067,3 +1067,86 @@ pub async fn get_property_ai_insights(
         })),
     ))
 }
+
+/// POST /api/hotel/reservations/{reservation_id}/cancel
+/// Annule une réservation avec calcul des pénalités
+pub async fn cancel_hotel_reservation(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(reservation_id): Path<i32>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<impl IntoResponse, AppError> {
+    let reason: Option<String> = body.get("reason").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let refund_amount: Option<f64> = body.get("refund_amount").and_then(|v| v.as_f64());
+
+    let result = HotelRoomManagementService::cancel_hotel_reservation(
+        &state.pg,
+        user_id,
+        reservation_id,
+        reason,
+        refund_amount,
+    )
+    .await
+    .map_err(|e| {
+        log::error!("[cancel_hotel_reservation] Erreur: {}", e);
+        e
+    })?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": result
+        })),
+    ))
+}
+
+/// GET /api/hotel/cancellations/history
+/// Récupère l'historique des annulations avec pénalités
+pub async fn get_cancellation_history(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    axum::extract::Query(params): axum::extract::Query<serde_json::Value>,
+) -> Result<impl IntoResponse, AppError> {
+    let property_id: Option<i32> = params.get("property_id").and_then(|v| v.as_i64()).and_then(|i| i32::try_from(i).ok());
+    let start_date_str: Option<String> = params.get("start_date").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let end_date_str: Option<String> = params.get("end_date").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+    let start_date = if let Some(date_str) = start_date_str {
+        Some(chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d").map_err(|_| {
+            AppError::BadRequest("Format de date invalide pour start_date. Utilisez YYYY-MM-DD".to_string())
+        })?)
+    } else {
+        None
+    };
+
+    let end_date = if let Some(date_str) = end_date_str {
+        Some(chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d").map_err(|_| {
+            AppError::BadRequest("Format de date invalide pour end_date. Utilisez YYYY-MM-DD".to_string())
+        })?)
+    } else {
+        None
+    };
+
+    let result = HotelRoomManagementService::get_cancellation_history(
+        &state.pg,
+        user_id,
+        property_id,
+        start_date,
+        end_date,
+    )
+    .await
+    .map_err(|e| {
+        log::error!("[get_cancellation_history] Erreur: {}", e);
+        e
+    })?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": result,
+            "total": result.len()
+        })),
+    ))
+}

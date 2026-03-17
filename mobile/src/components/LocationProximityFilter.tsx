@@ -133,8 +133,7 @@ const [mode, setMode] = useState<LocationMode>(initialMode);
                         size={18}
                         color={mode === 'custom' ? '#FFFFFF' : modernColors.primary}
                     />
-                    <Text style={[styles.modeText, mode === 'custom' && styles.modeTextActive]}>
-                        Près d'un lieu
+                    <Text style={[styles.modeText, mode === 'customt('locationProximityFilter.stylesmodetextactivePresD')un lieu
                     </Text>
                 </TouchableOpacity>
 

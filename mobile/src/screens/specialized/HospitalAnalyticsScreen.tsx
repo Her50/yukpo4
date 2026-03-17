@@ -64,7 +64,7 @@ const HospitalAnalyticsScreen: React.FC = () => {
             if (resData?.success || resData?.analytics) {
                 setAnalytics(resData.analytics || resData.data || resData);
             } else {
-                Alert.alert('Info', 'Les analytics ne sont pas encore disponibles pour cet hôpital.');
+                Alert.alert('Info', t('hospitalAnalyticsScreen.lesAnalyticsNeSontPasEncore'));
             }
         } catch (error: any) {
             console.error('[HospitalAnalyticsScreen] Erreur:', error);

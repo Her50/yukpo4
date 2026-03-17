@@ -350,6 +350,20 @@ const LivreScolaireHomeScreen: React.FC = () => {
                             <SafeIcon name="book" size={18} color="#FFFFFF" type="lucide" />
                             <Text style={styles.v2ActionText}>{t('livreScolaireHome.mesLivres')}</Text>
                         </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.v2ActionBtn}
+                            onPress={() => { hapticPress(); (navigation as any).navigate('MesBesoinsLivres'); }}
+                        >
+                            <SafeIcon name="clipboard-list" size={18} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.v2ActionText}>Mes Besoins</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.v2ActionBtn, { backgroundColor: 'rgba(5,150,105,0.3)' }]}
+                            onPress={() => { hapticPress(); (navigation as any).navigate('NewBooks'); }}
+                        >
+                            <SafeIcon name="shopping-bag" size={18} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.v2ActionText}>{t('livresNeufs.neufsCourt')}</Text>
+                        </TouchableOpacity>
                     </View>
                 </LinearGradient>
             </View>

@@ -3,8 +3,8 @@
 
 import React, { useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { NativeButton } from '../SafeNativeDesign';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface IntelligentMatchingFiltersProps {
     onApply: (filters: MatchingFilters) => void;
@@ -25,8 +25,8 @@ export const IntelligentMatchingFilters: React.FC<IntelligentMatchingFiltersProp
     onApply,
     initialFilters,
 }) => {
-        const { t } = useLanguageSafe();
-const [filters, setFilters] = useState<MatchingFilters>(
+    const { t } = useLanguageSafe();
+    const [filters, setFilters] = useState<MatchingFilters>(
         initialFilters || {
             fumeur_autorise: false,
             animaux_autorises: false,

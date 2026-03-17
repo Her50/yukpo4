@@ -29,6 +29,7 @@ pub mod bourse_livre_v2_controller; // ✅ V2 2026-03-15: Sessions upload, recto
 pub mod bus_return_trip_controller; // ✅ 2025-01-28: Contrôleur pour demandes de retour (aller-retour)
 pub mod bus_seat_management_controller; // ✅ 2025-11-27: Contrôleur pour gestion manuelle places non disponibles
 pub mod bus_ticket_controller; // ✅ 2025-11-27: Contrôleur pour tickets bus avec agences de voyage
+pub mod bus_ticket_credit_controller; // ✅ 2026-03-16: Contrôleur pour crédits et report de tickets bus
 pub mod bus_ticket_payment_controller; // ✅ 2025-11-27: Contrôleur pour paiement tickets bus avec commission
 pub mod bus_ticket_rating_controller; // ✅ NOUVEAU: Contrôleur pour ratings tickets bus
 pub mod bus_ticket_validation_controller; // ✅ 2025-11-27: Contrôleur pour validation tickets bus avec QR code
@@ -50,6 +51,7 @@ pub mod gpu_controller; // ✅ NOUVEAU 2026-02-14: Contrôleur pour gestion GPU 
 pub mod hashtag_controller; // ✅ NOUVEAU: Contrôleur pour gestion hashtags
 pub mod health_structure_controller; // ✅ NOUVEAU: Contrôleur pour structures de santé (autocomplete)
 pub mod history_controller;
+pub mod hotel_financial_controller; // ✅ 2026-03-17: Contrôleur financier pour partenaires hôtel/meublé
 pub mod hotel_room_management_controller; // ✅ NOUVEAU 2026-01-27: Contrôleur gestion chambres/unités hôtels et meublés
 pub mod image_search_controller; // ✅ NOUVEAU: Contrôleur pour recherche par image
 pub mod intelligent_service_controller;
@@ -113,5 +115,10 @@ pub mod video_ml_controller;
 pub mod video_upload_controller; // ✅ NOUVEAU: Contrôleur ML pour recommandations vidéo personnalisées
 pub mod webhook_controller;
 pub mod webrtc_controller; // ✅ NOUVEAU: Contrôleur WebRTC pour appels // ✅ NOUVEAU 2025-11-06: Contrôleur pour debug et vérification des tables // ✅ NOUVEAU 2025-01-29: Contrôleur prix dynamique IA (Leadership 100%)
+pub mod librairie_admin_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur admin réseau de librairies
+pub mod librairie_network_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur réseau de librairies et QR codes
+pub mod paiement_admin_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur admin paiements (fournisseurs, remboursements)
+pub mod paiement_agrege_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur paiements agrégés
+pub mod phone_verification_controller; // ✅ NOUVEAU 2026-03-17: Contrôleur validation téléphone et partage WhatsApp/SMS
 
 // pub use service_controller::update_token_debit;

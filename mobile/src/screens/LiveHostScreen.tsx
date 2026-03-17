@@ -97,7 +97,7 @@ export default function LiveHostScreen() {
       }
     } catch (error) {
       console.error('[LiveHostScreen] Erreur connexion LiveKit:', error);
-      Alert.alert('Erreur', 'Impossible de démarrer le live');
+      Alert.alert('Erreur', t('liveHostScreen.impossibleDeDemarrerLeLive'));
     }
   };
 

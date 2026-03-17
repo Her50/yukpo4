@@ -1,15 +1,15 @@
 import React, { useMemo } from "react";
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useRenderMonitor } from "../hooks/useRenderMonitor";
 import { modernColors } from "../theme/modernTheme";
 import { hapticPress } from "../utils/hapticFeedback";
-import { useRenderMonitor } from "../hooks/useRenderMonitor";
-import LanguageSelector from "./LanguageSelector";
-import { SafeIcon } from "./SafeIcon";
-import { SafeNativeView } from "./SafeNativeView";
-import UserAvatarMenu from "./UserAvatarMenu";
+import { ChallengesModal } from "./ChallengesModal";
 import { GamificationBadge } from "./GamificationBadge";
 import { LeaderboardModal } from "./LeaderboardModal";
-import { ChallengesModal } from "./ChallengesModal";
+import { SafeIcon } from "./SafeIcon";
+import { SafeNativeView } from "./SafeNativeView";
+import SmartLanguageSelector from "./SmartLanguageSelector";
+import UserAvatarMenu from "./UserAvatarMenu";
 
 const HEADER_HEIGHT = 56;
 
@@ -110,10 +110,9 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo((props) => {
                                 weatherLocation={selectedLocation}
                             />
                         </View>
-                        <LanguageSelector
-                            selectedLanguage={language}
-                            onLanguageChange={onLanguageChange}
+                        <SmartLanguageSelector
                             compact
+                            onLanguageChange={onLanguageChange}
                         />
                         {user?.id ? (
                             <>

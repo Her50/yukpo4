@@ -17,6 +17,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
@@ -78,7 +79,8 @@ const COURIER_TYPE_LABELS: Record<string, string> = {
 };
 
 const FleetDashboardScreen: React.FC = () => {
-    const { user } = useAuth();
+    const navigation = useNavigation();
+    const { user, logout } = useAuth();
     const { t } = useLanguageSafe();
     const partnerType = ((user as any)?.partner_type || '').toLowerCase().trim();
 
@@ -339,6 +341,52 @@ const FleetDashboardScreen: React.FC = () => {
                     <SafeIcon name="chevron-right" size={18} color="#f59e0b" type="lucide" />
                 </TouchableOpacity>
             )}
+
+            {/* Actions rapides */}
+            <View style={styles.quickSection}>
+                <Text style={styles.sectionSubtitle}>Actions rapides</Text>
+                <View style={styles.quickActionsRow}>
+                    <TouchableOpacity style={styles.quickAction} onPress={() => setActiveTab('applications')}>
+                        <View style={[styles.quickActionIcon, { backgroundColor: '#f59e0b15' }]}>
+                            <SafeIcon name="user-plus" size={22} color="#f59e0b" type="lucide" />
+                        </View>
+                        <Text style={styles.quickActionLabel}>Candidatures</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickAction} onPress={() => setActiveTab('couriers')}>
+                        <View style={[styles.quickActionIcon, { backgroundColor: '#3b82f615' }]}>
+                            <SafeIcon name="users" size={22} color="#3b82f6" type="lucide" />
+                        </View>
+                        <Text style={styles.quickActionLabel}>Coursiers</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickAction} onPress={() => setActiveTab('analytics')}>
+                        <View style={[styles.quickActionIcon, { backgroundColor: '#22c55e15' }]}>
+                            <SafeIcon name="bar-chart-2" size={22} color="#22c55e" type="lucide" />
+                        </View>
+                        <Text style={styles.quickActionLabel}>Analytics</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('WalletFinancial')}>
+                        <View style={[styles.quickActionIcon, { backgroundColor: '#8b5cf615' }]}>
+                            <SafeIcon name="wallet" size={22} color="#8b5cf6" type="lucide" />
+                        </View>
+                        <Text style={styles.quickActionLabel}>Portefeuille</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickAction} onPress={() => {
+                        Alert.alert(
+                            t('common.deconnexion'),
+                            t('common.confirmDeconnexion'),
+                            [
+                                { text: t('common.cancel'), style: 'cancel' },
+                                { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }
+                            ]
+                        );
+                    }}>
+                        <View style={[styles.quickActionIcon, { backgroundColor: '#dc262615' }]}>
+                            <SafeIcon name="log-out" size={22} color="#dc2626" type="lucide" />
+                        </View>
+                        <Text style={styles.quickActionLabel}>{t('common.sortir')}</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
 
             {/* Quick access to top couriers */}
             {couriers.length > 0 && (
@@ -869,6 +917,35 @@ const styles = StyleSheet.create({
     quickCourierMeta: {
         fontSize: 12,
         color: modernColors.textSecondary,
+    },
+    quickActionsRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 16,
+    },
+    quickAction: {
+        flex: 1,
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        borderRadius: 10,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    quickActionIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    quickActionLabel: {
+        fontSize: 10,
+        color: modernColors.text,
+        fontWeight: '500',
+        textAlign: 'center',
     },
     // Status badge
     statusBadge: {

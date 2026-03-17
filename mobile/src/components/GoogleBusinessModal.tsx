@@ -53,14 +53,14 @@ const [hasGoogleBusiness, setHasGoogleBusiness] = useState<boolean | null>(null)
       } else {
         Alert.alert(
           'Erreur',
-          'Impossible de récupérer les détails de ce business. Veuillez réessayer.'
+          t('googleBusinessModal.impossibleDeRecupererLesDetailsDe')
         );
       }
     } catch (error) {
       console.error('[GoogleBusinessModal] Erreur récupération détails:', error);
       Alert.alert(
         'Erreur',
-        'Une erreur est survenue lors de la récupération des informations du business.'
+        t('googleBusinessModal.uneErreurEstSurvenueLorsDe')
       );
     } finally {
       setLoadingDetails(false);

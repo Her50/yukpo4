@@ -20,6 +20,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { useToaster } from '../../components/ToasterProvider';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import {
     AnalyzedBook,
@@ -28,7 +29,6 @@ import {
 } from '../../services/bourseLivreV2Api';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type UploadStep = 'gps' | 'recto' | 'verso' | 'analyzing' | 'result' | 'list';
 
@@ -46,6 +46,8 @@ interface BookEntry {
     image_verso_uri: string;
     confidence: number;
 }
+
+const MAX_BOOKS_PER_SESSION = 20;
 
 const ETAT_COLORS: Record<string, string> = {
     bon: '#22c55e',
@@ -129,7 +131,7 @@ const BookUploadV2Screen: React.FC = () => {
             toaster.show(t('bookUploadV2Screen.sessionCreeePrenezLaPhotoRecto'), 'success');
         } catch (error: any) {
             console.error('[BookUploadV2] Erreur création session:', error);
-            Alert.alert('Erreur', 'Impossible de créer la session. Réessayez.');
+            Alert.alert('Erreur', t('bookUploadV2Screen.impossibleDeCreerLaSessionReessayez'));
         }
     }, [toaster]);
 
@@ -141,7 +143,7 @@ const BookUploadV2Screen: React.FC = () => {
         hapticPress();
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission requise', "Veuillez autoriser l'accès à la caméra pour photographier vos livres.");
+            Alert.alert('Permission requise', t('bookUploadV2Screen.veuillezAutoriserLaccesALaCamera'));
             return;
         }
 
@@ -171,7 +173,7 @@ const BookUploadV2Screen: React.FC = () => {
             }
         } catch (error: any) {
             console.error(`[BookUploadV2] Erreur photo ${side}:`, error);
-            Alert.alert('Erreur', 'Impossible de prendre la photo. Réessayez.');
+            Alert.alert('Erreur', t('bookUploadV2Screen.impossibleDePrendreLaPhotoReessayez'));
         }
     }, [rectoBase64, session, toaster]);
 
@@ -220,10 +222,10 @@ const BookUploadV2Screen: React.FC = () => {
             }
 
             if (result.is_rejected) {
-                toaster.show('Ce livre est rejeté (trop dégradé). Valeur: 0 XAF', 'error');
+                toaster.show(t('bookUploadV2Screen.ceLivreEstRejeteTropDegrade'), 'error');
             } else {
                 toaster.show(
-                    t('bookUploadV2Screen.analyseEtatValeurXaf', { entry_titre: entry.titre, ETAT_LABELS[result_etat_classification]: ETAT_LABELS[result.etat_classification], Math_round(result_valeur_calculee): Math.round(result.valeur_calculee) }),
+                    `${entry.titre} — ${ETAT_LABELS[result.etat_classification]} — ${Math.round(result.valeur_calculee)} XAF`,
                     'success'
                 );
             }
@@ -231,7 +233,7 @@ const BookUploadV2Screen: React.FC = () => {
             console.error('[BookUploadV2] Erreur analyse:', error);
             setAnalyzing(false);
             setStep('recto');
-            Alert.alert('Erreur analyse', "L'IA n'a pas pu analyser ce livre. Réessayez avec des photos plus nettes.");
+            Alert.alert('Erreur analyse', t('bookUploadV2Screen.liaNaPasPuAnalyserCe'));
         }
     }, [session, location, rectoUri, versoUri, toaster]);
 
@@ -240,13 +242,21 @@ const BookUploadV2Screen: React.FC = () => {
     // ============================
 
     const handleNextBook = useCallback(() => {
+        if (books.length >= MAX_BOOKS_PER_SESSION) {
+            Alert.alert(
+                'Limite atteinte',
+                `Vous avez atteint le maximum de ${MAX_BOOKS_PER_SESSION} livres par session. Finalisez cette session pour en commencer une nouvelle.`
+            );
+            setStep('list');
+            return;
+        }
         setRectoUri(null);
         setRectoBase64(null);
         setVersoUri(null);
         setVersoBase64(null);
         setCurrentResult(null);
         setStep('recto');
-    }, []);
+    }, [books.length]);
 
     const handleFinish = useCallback(() => {
         if (books.length === 0) {
@@ -347,7 +357,7 @@ const BookUploadV2Screen: React.FC = () => {
             {/* Counter */}
             <View style={styles.counterBar}>
                 <Text style={styles.counterText}>
-                    {books.length} livre{books.length > 1 ? 's' : ''} analysé{books.length > 1 ? 's' : ''}
+                    {books.length}/{MAX_BOOKS_PER_SESSION} livre{books.length > 1 ? 's' : ''}
                 </Text>
                 {books.length > 0 && (
                     <TouchableOpacity onPress={handleFinish} style={styles.finishMiniBtn}>
@@ -454,7 +464,7 @@ const BookUploadV2Screen: React.FC = () => {
     const renderListStep = () => (
         <View style={styles.listContainer}>
             <Text style={styles.listTitle}>
-                {books.length} livre{books.length > 1 ? 's' : ''} analysé{books.length > 1 ? 's' : ''}
+                {books.length}/{MAX_BOOKS_PER_SESSION} livre{books.length > 1 ? 's' : ''}
             </Text>
             <Text style={styles.listSubtitle}>
                 Valeur totale: {Math.round(totalValue)} XAF
@@ -506,7 +516,7 @@ const BookUploadV2Screen: React.FC = () => {
         <View style={styles.container}>
             {/* Progress bar */}
             <View style={styles.progressBar}>
-                {['GPS', 'Photos', 'Analyse', 'Récap'].map((label, i) => {
+                {['GPS', 'Photos', 'Analyse', t('bookUploadV2Screen.recap')].map((label, i) => {
                     const stepIdx = step === 'gps' ? 0 : step === 'recto' || step === 'verso' ? 1 : step === 'analyzing' || step === 'result' ? 2 : 3;
                     const active = i <= stepIdx;
                     return (

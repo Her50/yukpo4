@@ -48,7 +48,7 @@ interface LivreScolaire {
 const getEtatColor = (etat: string): string => {
     switch (etat) {
         case 'Neuf': return '#10B981';
-        case 'Très bon': return '#059669';
+        case t('livreScolaireDetailsScreen.tresBon'): return '#059669';
         case 'Bon': return '#F59E0B';
         case 'Acceptable': return '#EF4444';
         default: return '#6B7280';
@@ -74,7 +74,7 @@ const LivreScolaireDetailsScreen: React.FC = () => {
             const response = await apiGet(`/api/bourse-livre/${params.livreId}`);
             const r = response.data as any;
             if (response.success && r) setLivre(r.livre);
-            else { Alert.alert('Erreur', 'Impossible de charger les détails'); navigation.goBack(); }
+            else { Alert.alert('Erreur', t('livreScolaireDetailsScreen.impossibleDeChargerLesDetails')); navigation.goBack(); }
         } catch (e: any) { Alert.alert('Erreur', e.message || 'Erreur de chargement'); navigation.goBack(); }
         finally { setLoading(false); }
     };
@@ -94,7 +94,7 @@ const LivreScolaireDetailsScreen: React.FC = () => {
         if (!livre) return;
         try {
             await Share.share({
-                message: `${livre.titre}${livre.auteur ? ' — ' + livre.auteur : ''}\nMatière: ${livre.matiere}\nÉchange: ${livre.classe_actuelle} → ${livre.classe_souhaitee}\nÉtat: ${livre.etat_livre}${livre.ville ? '\n' + livre.ville : ''}\nVia Yukpo`,
+                message: t('livreScolaireDetailsScreen.nmatiereNechangeNetatNviaYukpo', { livre_titre: livre.titre, livre_auteur___________li: livre.auteur ? ' — ' + livre.auteur : '', livre_matiere: livre.matiere, livre_classe_actuelle: livre.classe_actuelle, livre_classe_souhaitee: livre.classe_souhaitee, livre_etat_livre: livre.etat_livre, livre_ville_____n____livr: livre.ville ? '\n' + livre.ville : '' }),
                 title: livre.titre,
             });
         } catch { }
@@ -211,8 +211,8 @@ const LivreScolaireDetailsScreen: React.FC = () => {
                             <TouchableOpacity
                                 style={[st.actionBtn, { borderLeftWidth: 3, borderLeftColor: livre.is_available ? '#EF4444' : '#10B981' }]}
                                 onPress={async () => {
-                                    try { await apiPatch(`/api/bourse-livre/${livre.id}/availability`, { is_available: !livre.is_available }); loadLivreDetails(); Alert.alert('Succès', 'Disponibilité mise à jour'); }
-                                    catch { Alert.alert('Erreur', 'Impossible de mettre à jour'); }
+                                    try { await apiPatch(`/api/bourse-livre/${livre.id}/availability`, { is_available: !livre.is_available }); loadLivreDetails(); Alert.alert(t('livreScolaireDetailsScreen.succes'), t('livreScolaireDetailsScreen.disponibiliteMiseAJour')); }
+                                    catch { Alert.alert('Erreur', t('livreScolaireDetailsScreen.impossibleDeMettreAJour')); }
                                 }}
                             >
                                 <SafeIcon name={livre.is_available ? 'x-circle' : 'check-circle'} size={18} color={livre.is_available ? '#EF4444' : '#10B981'} />

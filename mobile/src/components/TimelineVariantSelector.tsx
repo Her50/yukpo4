@@ -49,7 +49,7 @@ const [loading, setLoading] = useState(false);
             }
         } catch (error: any) {
             console.error('[TimelineVariantSelector] Error:', error);
-            Alert.alert('Erreur', 'Impossible de générer les variantes de timeline');
+            Alert.alert('Erreur', t('timelineVariantSelector.impossibleDeGenererLesVariantesDe'));
         } finally {
             setLoading(false);
         }

@@ -75,12 +75,12 @@ const LabAnalyticsScreen: React.FC = () => {
                     );
                 }
             } else {
-                Alert.alert('Erreur', 'Impossible de vérifier les permissions');
+                Alert.alert('Erreur', t('labAnalyticsScreen.impossibleDeVerifierLesPermissions'));
                 navigation.goBack();
             }
         } catch (error: any) {
             console.error('[LabAnalyticsScreen] Erreur vérification propriétaire:', error);
-            Alert.alert('Erreur', 'Impossible de vérifier les permissions');
+            Alert.alert('Erreur', t('labAnalyticsScreen.impossibleDeVerifierLesPermissions'));
             navigation.goBack();
         }
     };

@@ -175,7 +175,7 @@ const LivreScolaireListScreen: React.FC = () => {
     const getEtatColor = (etat: string): string => {
         switch (etat) {
             case 'Neuf': return modernColors.success;
-            case 'Très bon': return '#10B981';
+            case t('livreScolaireListScreen.tresBon'): return '#10B981';
             case 'Bon': return modernColors.warning;
             case 'Acceptable': return modernColors.error;
             default: return modernColors.textSecondary;
@@ -201,7 +201,7 @@ const LivreScolaireListScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <Text style={styles.title}>
-                    {livres.length} livre{livres.length > 1 ? 's' : ''} trouvé{livres.length > 1 ? 's' : ''}
+                    {livres.length} livre{livres.length > 1 ? 's' : 't('livreScolaireListScreen.trouvelivreslength1')s' : ''}
                 </Text>
             </View>
 

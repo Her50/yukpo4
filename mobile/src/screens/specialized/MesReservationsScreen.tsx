@@ -79,7 +79,7 @@ const [reservations, setReservations] = useState<Reservation[]>([]);
 
                             const cancelData = (response?.data || response) as any;
                             if (cancelData.success) {
-                                Alert.alert('Succès', 'Réservation annulée');
+                                Alert.alert(t('mesReservationsScreen.succes'), t('mesReservationsScreen.reservationAnnulee'));
                                 loadReservations();
                             } else {
                                 Alert.alert('Erreur', response.error || 'Impossible d\'annuler');

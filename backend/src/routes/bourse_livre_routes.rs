@@ -93,6 +93,21 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/bourse-livre/v2/classes-programmes",
             get(bourse_livre_v2_controller::get_classes_with_programmes),
+        )
+        // Suggestions intelligentes (autocomplete multi-critères)
+        .route(
+            "/api/bourse-livre/v2/suggestions",
+            get(bourse_livre_v2_controller::get_smart_suggestions),
+        )
+        // Catalogue livres neufs (public)
+        .route(
+            "/api/bourse-livre/v2/new-books",
+            get(bourse_livre_v2_controller::browse_new_books),
+        )
+        // Comparaison prix neuf vs occasion (public)
+        .route(
+            "/api/bourse-livre/v2/compare-prices",
+            get(bourse_livre_v2_controller::compare_prices),
         );
 
     // V2 Routes protégées
@@ -252,6 +267,33 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/bourse-livre/v2/packages/cancel-book",
             post(bourse_livre_v2_controller::cancel_book_on_site),
+        )
+        // QR Codes pour livraison de livres
+        .route(
+            "/api/bourse-livre/v2/packages/{id}/qr-generate",
+            post(bourse_livre_v2_controller::generate_package_qr),
+        )
+        .route(
+            "/api/bourse-livre/v2/packages/qr-validate",
+            post(bourse_livre_v2_controller::validate_package_qr),
+        )
+        // Libraire: Publier livres neufs en lot
+        .route(
+            "/api/bourse-livre/v2/libraire/publish",
+            post(bourse_livre_v2_controller::libraire_publish_new_books),
+        )
+        // Admin: Gestion des dons
+        .route(
+            "/api/bourse-livre/v2/admin/donations",
+            get(bourse_livre_v2_controller::admin_list_donation_requests),
+        )
+        .route(
+            "/api/bourse-livre/v2/admin/donations/{id}/approve",
+            post(bourse_livre_v2_controller::admin_approve_donation),
+        )
+        .route(
+            "/api/bourse-livre/v2/admin/donations/{id}/reject",
+            post(bourse_livre_v2_controller::admin_reject_donation),
         )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 

@@ -1,6 +1,6 @@
-// @ts-nocheck
-// ✅ Écran de suivi financier complet pour prestataires, partenaires et coursiers
-// Dashboard avec: solde, historique transactions, analytics périodiques, graphiques revenus
+// ✅ Comprehensive Financial Tracking Screen for ALL users
+// Shows: balance, detailed transaction history, periodic summaries, full traceability
+// Supports: regular users, partners, couriers, providers
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import {
@@ -17,23 +17,26 @@ import SafeIcon from '../components/SafeIcon';
 import { NativeCard } from '../components/SafeNativeDesign';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-interface WalletTransaction {
+interface UnifiedTransaction {
     id: number;
-    transaction_type: string;
+    type: 'credit' | 'debit' | 'refund';
     amount_cents: number;
-    balance_before_cents: number;
-    balance_after_cents: number;
+    balance_before_cents?: number;
+    balance_after_cents?: number;
     currency: string;
-    reference_type: string | null;
-    reference_id: string | null;
-    delivery_id: string | null;
+    category: 'payment' | 'consumption' | 'delivery' | 'service' | 'refund' | 'payout' | 'other';
+    reference_type?: string | null;
+    reference_id?: string | null;
     description: string | null;
+    location?: string | null;
     created_at: string;
+    trace_id?: string; // For full traceability
 }
 
 interface FinancialSummary {
@@ -42,17 +45,17 @@ interface FinancialSummary {
     total_refunds_cents: number;
     net_income_cents: number;
     transaction_count: number;
-    growth_percent: number;
+    growth_percent?: number;
+    period_start: string;
+    period_end: string;
 }
 
-interface DailyRevenue {
+interface PeriodSummary {
     date: string;
-    amount_cents: number;
-}
-
-interface DisbursementSummary {
-    count: number;
-    total_completed_cents: number;
+    credits_cents: number;
+    debits_cents: number;
+    net_cents: number;
+    transaction_count: number;
 }
 
 type PeriodDays = 7 | 30 | 90;
@@ -69,12 +72,12 @@ const WalletFinancialScreen: React.FC = () => {
     const [selectedFilter, setSelectedFilter] = useState<TransactionFilter>('all');
     const [activeTab, setActiveTab] = useState<'overview' | 'transactions'>('overview');
 
-    // Data
+    // Unified data
     const [balanceCents, setBalanceCents] = useState(0);
-    const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+    const [transactions, setTransactions] = useState<UnifiedTransaction[]>([]);
     const [summary, setSummary] = useState<FinancialSummary | null>(null);
-    const [dailyRevenue, setDailyRevenue] = useState<DailyRevenue[]>([]);
-    const [disbursements, setDisbursements] = useState<DisbursementSummary | null>(null);
+    const [periodSummaries, setPeriodSummaries] = useState<PeriodSummary[]>([]);
+    const [error, setError] = useState<string | null>(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -84,54 +87,197 @@ const WalletFinancialScreen: React.FC = () => {
 
     const loadAllData = async () => {
         if (!loading) setLoading(true);
+        setError(null);
         try {
-            await Promise.all([loadFinancialSummary(), loadTransactions()]);
+            await Promise.all([
+                loadUnifiedBalance(),
+                loadUnifiedTransactions(),
+                loadFinancialSummary()
+            ]);
         } catch (error) {
             console.error('[WalletFinancial] Error loading data:', error);
+            setError(t('financialTracking.errorLoadingData'));
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
     };
 
+    const loadUnifiedBalance = async () => {
+        try {
+            // Try wallet API first (for partners/couriers)
+            const walletResponse = await apiGet<any>('/shopping/wallet/balance');
+            if (walletResponse?.data?.success) {
+                setBalanceCents(walletResponse.data.balance_cents || 0);
+                return;
+            }
+        } catch (err) {
+            // Fallback to user credits API
+        }
+
+        try {
+            // Fallback: user credits API
+            const creditsResponse = await apiGet<any>('/api/users/credits');
+            if (creditsResponse?.data?.success) {
+                setBalanceCents(creditsResponse.data.credits_cents || 0);
+            }
+        } catch (err) {
+            console.warn('[WalletFinancial] Balance error:', err);
+        }
+    };
+
+    const loadUnifiedTransactions = async () => {
+        const allTransactions: UnifiedTransaction[] = [];
+
+        try {
+            // 1. Wallet transactions (for partners/couriers)
+            const walletResponse = await apiGet<any>('/shopping/wallet/transactions', {
+                params: { limit: 100, offset: 0 }
+            });
+            if (walletResponse?.data?.success) {
+                const walletTxns = (walletResponse.data.transactions || []).map((txn: any) => ({
+                    id: txn.id,
+                    type: txn.transaction_type?.startsWith('credit') ? 'credit' :
+                        txn.transaction_type?.startsWith('debit') ? 'debit' : 'refund',
+                    amount_cents: txn.amount_cents,
+                    balance_before_cents: txn.balance_before_cents,
+                    balance_after_cents: txn.balance_after_cents,
+                    currency: txn.currency || 'XAF',
+                    category: mapTransactionCategory(txn.transaction_type),
+                    reference_type: txn.reference_type,
+                    reference_id: txn.reference_id,
+                    description: txn.description,
+                    location: extractLocation(txn),
+                    created_at: txn.created_at,
+                    trace_id: `wallet_${txn.id}`
+                }));
+                allTransactions.push(...walletTxns);
+            }
+        } catch (err) {
+            console.warn('[WalletFinancial] Wallet transactions error:', err);
+        }
+
+        try {
+            // 2. User credit history (for regular users)
+            const creditsResponse = await apiGet<any>(`/api/users/consumption-history?period=${selectedPeriod}d`);
+            if (creditsResponse?.data?.success) {
+                const creditTxns = (creditsResponse.data.history || []).map((txn: any) => ({
+                    id: txn.id || `credit_${Date.now()}_${Math.random()}`,
+                    type: 'debit',
+                    amount_cents: txn.amount_cents || 0,
+                    balance_before_cents: txn.balance_before_cents,
+                    balance_after_cents: txn.balance_after_cents,
+                    currency: txn.currency || 'XAF',
+                    category: 'consumption',
+                    reference_type: txn.service_type,
+                    reference_id: txn.service_id?.toString(),
+                    description: txn.description || t('financialTracking.serviceUsage'),
+                    location: txn.location,
+                    created_at: txn.created_at,
+                    trace_id: `credit_${txn.id || Math.random()}`
+                }));
+                allTransactions.push(...creditTxns);
+            }
+        } catch (err) {
+            console.warn('[WalletFinancial] Credit history error:', err);
+        }
+
+        try {
+            // 3. Payment history (recharges)
+            const paymentsResponse = await apiGet<any>(`/api/users/payment-history?period=${selectedPeriod}d`);
+            if (paymentsResponse?.data?.success) {
+                const paymentTxns = (paymentsResponse.data.history || []).map((txn: any) => ({
+                    id: txn.id || `payment_${Date.now()}_${Math.random()}`,
+                    type: 'credit',
+                    amount_cents: txn.amount_cents || 0,
+                    balance_before_cents: txn.balance_before_cents,
+                    balance_after_cents: txn.balance_after_cents,
+                    currency: txn.currency || 'XAF',
+                    category: 'payment',
+                    reference_type: txn.payment_method,
+                    reference_id: txn.payment_id?.toString(),
+                    description: txn.description || t('financialTracking.accountRecharge'),
+                    location: txn.location,
+                    created_at: txn.created_at,
+                    trace_id: `payment_${txn.id || Math.random()}`
+                }));
+                allTransactions.push(...paymentTxns);
+            }
+        } catch (err) {
+            console.warn('[WalletFinancial] Payment history error:', err);
+        }
+
+        // Sort all transactions by date (newest first)
+        allTransactions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        // Apply filter
+        const filteredTransactions = selectedFilter === 'all'
+            ? allTransactions
+            : allTransactions.filter(txn => txn.type === selectedFilter);
+
+        setTransactions(filteredTransactions);
+    };
+
     const loadFinancialSummary = async () => {
         try {
-            const response = await apiGet<any>(`/shopping/wallet/financial-summary`, {
-                params: { days: selectedPeriod },
+            // Calculate summary from transactions
+            const filteredTxns = selectedFilter === 'all' ? transactions : transactions.filter(t => t.type === selectedFilter);
+            const credits = filteredTxns.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount_cents, 0);
+            const debits = filteredTxns.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount_cents, 0);
+            const refunds = filteredTxns.filter(t => t.type === 'refund').reduce((sum, t) => sum + t.amount_cents, 0);
+
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - selectedPeriod);
+
+            setSummary({
+                total_credits_cents: credits,
+                total_debits_cents: debits,
+                total_refunds_cents: refunds,
+                net_income_cents: credits - debits + refunds,
+                transaction_count: filteredTxns.length,
+                period_start: startDate.toISOString(),
+                period_end: endDate.toISOString()
             });
-            const data = response.data as any;
-            if (data?.success) {
-                setBalanceCents(data.balance_cents || 0);
-                setSummary(data.summary || null);
-                setDailyRevenue(data.daily_revenue || []);
-                setDisbursements(data.disbursements || null);
-            }
+
+            // Generate period summaries (daily)
+            const dailyMap = new Map<string, PeriodSummary>();
+            filteredTxns.forEach(txn => {
+                const date = new Date(txn.created_at).toISOString().split('T')[0];
+                const existing = dailyMap.get(date) || {
+                    date,
+                    credits_cents: 0,
+                    debits_cents: 0,
+                    net_cents: 0,
+                    transaction_count: 0
+                };
+
+                if (txn.type === 'credit') existing.credits_cents += txn.amount_cents;
+                else if (txn.type === 'debit') existing.debits_cents += txn.amount_cents;
+                else if (txn.type === 'refund') existing.credits_cents += txn.amount_cents;
+
+                existing.transaction_count++;
+                existing.net_cents = existing.credits_cents - existing.debits_cents;
+                dailyMap.set(date, existing);
+            });
+
+            setPeriodSummaries(Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date)));
         } catch (err) {
             console.warn('[WalletFinancial] Summary error:', err);
         }
     };
 
-    const loadTransactions = async () => {
-        try {
-            const params: any = { limit: 100, offset: 0 };
-            if (selectedFilter !== 'all') {
-                params.type = selectedFilter === 'credit'
-                    ? 'credit_payout'
-                    : selectedFilter === 'debit'
-                        ? 'debit_delivery'
-                        : 'refund_delivery';
-            }
-            const response = await apiGet<any>(`/shopping/wallet/transactions`, { params });
-            const data = response.data as any;
-            if (data?.success) {
-                setTransactions(data.transactions || []);
-                if (data.balance_cents !== undefined) {
-                    setBalanceCents(data.balance_cents);
-                }
-            }
-        } catch (err) {
-            console.warn('[WalletFinancial] Transactions error:', err);
-        }
+    // Helper functions
+    const mapTransactionCategory = (type: string): UnifiedTransaction['category'] => {
+        if (type.includes('delivery')) return 'delivery';
+        if (type.includes('payout')) return 'payout';
+        if (type.includes('refund')) return 'refund';
+        if (type.includes('payment')) return 'payment';
+        return 'other';
+    };
+
+    const extractLocation = (txn: any): string | null => {
+        return txn.delivery_location || txn.pickup_location || txn.location || null;
     };
 
     const onRefresh = () => {
@@ -165,38 +311,48 @@ const WalletFinancialScreen: React.FC = () => {
         return { icon: 'activity', color: modernColors.textSecondary };
     };
 
-    const getTransactionLabel = (type: string) => {
-        switch (type) {
-            case 'credit_payout': return t('payment.payout.completed') || t('walletFinancial.reversementRecu');
-            case 'credit_delivery': return 'Crédit livraison';
-            case 'debit_delivery': return 'Débit livraison';
-            case 'refund_delivery': return t('payment.refund.completed') || 'Remboursement';
+    const getTransactionLabel = (txn: UnifiedTransaction) => {
+        const { type, category, description } = txn;
+
+        // Use description if available
+        if (description) return description;
+
+        // Fallback to category-based labels
+        switch (category) {
+            case 'payment': return t('financialTracking.accountRecharge');
+            case 'consumption': return t('financialTracking.serviceUsage');
+            case 'delivery': return type === 'credit'
+                ? t('financialTracking.deliveryEarning')
+                : t('financialTracking.deliveryCost');
+            case 'service': return t('financialTracking.servicePayment');
+            case 'refund': return t('financialTracking.refund');
+            case 'payout': return t('financialTracking.payout');
             default:
-                if (type.startsWith('credit')) return 'Crédit';
-                if (type.startsWith('debit')) return 'Débit';
-                if (type.startsWith('refund')) return 'Remboursement';
-                return type;
+                if (type === 'credit') return t('financialTracking.credit');
+                if (type === 'debit') return t('financialTracking.debit');
+                if (type === 'refund') return t('financialTracking.refund');
+                return t('financialTracking.transaction');
         }
     };
 
-    // ===== Mini bar chart for daily revenue =====
+    // ===== Mini bar chart for daily summaries =====
     const renderMiniChart = () => {
-        if (dailyRevenue.length === 0) {
+        if (periodSummaries.length === 0) {
             return (
                 <View style={styles.chartEmpty}>
-                    <Text style={styles.chartEmptyText}>{t('walletFinancial.aucuneDonneePourCettePeriode')}</Text>
+                    <Text style={styles.chartEmptyText}>{t('financialTracking.noDataForPeriod')}</Text>
                 </View>
             );
         }
-        const maxAmount = Math.max(...dailyRevenue.map(d => d.amount_cents), 1);
-        const barWidth = Math.max(4, (SCREEN_WIDTH - 80) / Math.max(dailyRevenue.length, 1) - 2);
+        const maxAmount = Math.max(...periodSummaries.map(d => Math.abs(d.net_cents)), 1);
+        const barWidth = Math.max(4, (SCREEN_WIDTH - 80) / Math.max(periodSummaries.length, 1) - 2);
 
         return (
             <View style={styles.chartContainer}>
-                <Text style={styles.chartTitle}>{t('walletFinancial.revenusQuotidiens')}</Text>
+                <Text style={styles.chartTitle}>{t('financialTracking.dailySummaries')}</Text>
                 <View style={styles.chartBars}>
-                    {dailyRevenue.map((day, index) => {
-                        const height = Math.max(4, (day.amount_cents / maxAmount) * 100);
+                    {periodSummaries.map((day, index) => {
+                        const height = Math.max(4, (Math.abs(day.net_cents) / maxAmount) * 100);
                         return (
                             <View key={index} style={styles.chartBarWrapper}>
                                 <View
@@ -205,9 +361,9 @@ const WalletFinancialScreen: React.FC = () => {
                                         {
                                             height,
                                             width: barWidth,
-                                            backgroundColor: day.amount_cents > 0
-                                                ? modernColors.primary
-                                                : modernColors.border,
+                                            backgroundColor: day.net_cents > 0
+                                                ? modernColors.success
+                                                : modernColors.error,
                                         },
                                     ]}
                                 />
@@ -217,13 +373,13 @@ const WalletFinancialScreen: React.FC = () => {
                 </View>
                 <View style={styles.chartLabels}>
                     <Text style={styles.chartLabel}>
-                        {dailyRevenue.length > 0
-                            ? new Date(dailyRevenue[0].date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+                        {periodSummaries.length > 0
+                            ? new Date(periodSummaries[0].date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
                             : ''}
                     </Text>
                     <Text style={styles.chartLabel}>
-                        {dailyRevenue.length > 0
-                            ? new Date(dailyRevenue[dailyRevenue.length - 1].date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+                        {periodSummaries.length > 0
+                            ? new Date(periodSummaries[periodSummaries.length - 1].date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
                             : ''}
                     </Text>
                 </View>
@@ -234,15 +390,13 @@ const WalletFinancialScreen: React.FC = () => {
     // ===== KPI Cards =====
     const renderKPIs = () => {
         if (!summary) return null;
-        const growthColor = summary.growth_percent >= 0 ? modernColors.success : modernColors.error;
-        const growthIcon = summary.growth_percent >= 0 ? 'trending-up' : 'trending-down';
 
         return (
             <View style={styles.kpiGrid}>
                 <NativeCard style={[styles.kpiCard, styles.kpiCardLarge]}>
                     <View style={styles.kpiHeader}>
                         <SafeIcon name="wallet" size={18} color={modernColors.primary} />
-                        <Text style={styles.kpiLabel}>{t('payment.wallet.balance') || 'Solde disponible'}</Text>
+                        <Text style={styles.kpiLabel}>{t('financialTracking.currentBalance')}</Text>
                     </View>
                     <Text style={styles.kpiValueLarge}>{formatCurrency(balanceCents)}</Text>
                 </NativeCard>
@@ -250,23 +404,17 @@ const WalletFinancialScreen: React.FC = () => {
                 <NativeCard style={styles.kpiCard}>
                     <View style={styles.kpiHeader}>
                         <SafeIcon name="arrow-down-left" size={16} color={modernColors.success} />
-                        <Text style={styles.kpiLabel}>Revenus</Text>
+                        <Text style={styles.kpiLabel}>{t('financialTracking.credits')}</Text>
                     </View>
                     <Text style={[styles.kpiValue, { color: modernColors.success }]}>
                         +{formatCurrency(summary.total_credits_cents)}
                     </Text>
-                    <View style={styles.growthRow}>
-                        <SafeIcon name={growthIcon} size={12} color={growthColor} />
-                        <Text style={[styles.growthText, { color: growthColor }]}>
-                            {summary.growth_percent >= 0 ? '+' : ''}{summary.growth_percent}%
-                        </Text>
-                    </View>
                 </NativeCard>
 
                 <NativeCard style={styles.kpiCard}>
                     <View style={styles.kpiHeader}>
                         <SafeIcon name="arrow-up-right" size={16} color={modernColors.error} />
-                        <Text style={styles.kpiLabel}>{t('walletFinancial.debits')}</Text>
+                        <Text style={styles.kpiLabel}>{t('financialTracking.debits')}</Text>
                     </View>
                     <Text style={[styles.kpiValue, { color: modernColors.error }]}>
                         -{formatCurrency(summary.total_debits_cents)}
@@ -276,7 +424,7 @@ const WalletFinancialScreen: React.FC = () => {
                 <NativeCard style={styles.kpiCard}>
                     <View style={styles.kpiHeader}>
                         <SafeIcon name="rotate-ccw" size={16} color={modernColors.info} />
-                        <Text style={styles.kpiLabel}>Remboursements</Text>
+                        <Text style={styles.kpiLabel}>{t('financialTracking.refunds')}</Text>
                     </View>
                     <Text style={[styles.kpiValue, { color: modernColors.info }]}>
                         {formatCurrency(summary.total_refunds_cents)}
@@ -286,7 +434,7 @@ const WalletFinancialScreen: React.FC = () => {
                 <NativeCard style={styles.kpiCard}>
                     <View style={styles.kpiHeader}>
                         <SafeIcon name="bar-chart-3" size={16} color={modernColors.primary} />
-                        <Text style={styles.kpiLabel}>{t('walletFinancial.revenuNet')}</Text>
+                        <Text style={styles.kpiLabel}>{t('financialTracking.netIncome')}</Text>
                     </View>
                     <Text style={[styles.kpiValue, {
                         color: summary.net_income_cents >= 0 ? modernColors.success : modernColors.error
@@ -298,7 +446,7 @@ const WalletFinancialScreen: React.FC = () => {
                 <NativeCard style={styles.kpiCard}>
                     <View style={styles.kpiHeader}>
                         <SafeIcon name="hash" size={16} color={modernColors.textSecondary} />
-                        <Text style={styles.kpiLabel}>Transactions</Text>
+                        <Text style={styles.kpiLabel}>{t('financialTracking.transactions')}</Text>
                     </View>
                     <Text style={styles.kpiValue}>{summary.transaction_count}</Text>
                 </NativeCard>
@@ -306,33 +454,10 @@ const WalletFinancialScreen: React.FC = () => {
         );
     };
 
-    // ===== Disbursement summary =====
-    const renderDisbursements = () => {
-        if (!disbursements || (disbursements.count === 0 && disbursements.total_completed_cents === 0)) return null;
-        return (
-            <NativeCard style={styles.disbursementCard}>
-                <View style={styles.disbursementHeader}>
-                    <SafeIcon name="send" size={18} color={modernColors.accent} />
-                    <Text style={styles.disbursementTitle}>Transferts Mobile Money</Text>
-                </View>
-                <View style={styles.disbursementRow}>
-                    <Text style={styles.disbursementLabel}>{t('walletFinancial.transfertsEffectues')}</Text>
-                    <Text style={styles.disbursementValue}>{disbursements.count}</Text>
-                </View>
-                <View style={styles.disbursementRow}>
-                    <Text style={styles.disbursementLabel}>{t('walletFinancial.montantTotalTransfere')}</Text>
-                    <Text style={[styles.disbursementValue, { color: modernColors.success }]}>
-                        {formatCurrency(disbursements.total_completed_cents)}
-                    </Text>
-                </View>
-            </NativeCard>
-        );
-    };
-
     // ===== Transaction item =====
-    const renderTransaction = ({ item }: { item: WalletTransaction }) => {
-        const { icon, color } = getTransactionIcon(item.transaction_type);
-        const isCredit = item.transaction_type.startsWith('credit') || item.transaction_type.startsWith('refund');
+    const renderTransaction = ({ item }: { item: UnifiedTransaction }) => {
+        const { icon, color } = getTransactionIcon(item.type);
+        const isCredit = item.type === 'credit' || item.type === 'refund';
 
         return (
             <View style={styles.txnItem}>
@@ -340,11 +465,17 @@ const WalletFinancialScreen: React.FC = () => {
                     <SafeIcon name={icon} size={18} color={color} />
                 </View>
                 <View style={styles.txnContent}>
-                    <Text style={styles.txnType}>{getTransactionLabel(item.transaction_type)}</Text>
+                    <Text style={styles.txnType}>{getTransactionLabel(item)}</Text>
                     <Text style={styles.txnDesc} numberOfLines={1}>
                         {item.description || item.reference_type || '—'}
                     </Text>
+                    {item.location && (
+                        <Text style={styles.txnLocation}>📍 {item.location}</Text>
+                    )}
                     <Text style={styles.txnDate}>{formatDate(item.created_at)}</Text>
+                    {item.trace_id && (
+                        <Text style={styles.txnTrace}>ID: {item.trace_id}</Text>
+                    )}
                 </View>
                 <View style={styles.txnAmountContainer}>
                     <Text style={[styles.txnAmount, { color: isCredit ? modernColors.success : modernColors.error }]}>
@@ -384,7 +515,7 @@ const WalletFinancialScreen: React.FC = () => {
             >
                 <SafeIcon name="bar-chart-3" size={16} color={activeTab === 'overview' ? '#fff' : modernColors.textSecondary} />
                 <Text style={[styles.tabBtnText, activeTab === 'overview' && styles.tabBtnTextActive]}>
-                    Vue d'ensemble
+                    {t('financialTracking.overview')}
                 </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -393,7 +524,7 @@ const WalletFinancialScreen: React.FC = () => {
             >
                 <SafeIcon name="list" size={16} color={activeTab === 'transactions' ? '#fff' : modernColors.textSecondary} />
                 <Text style={[styles.tabBtnText, activeTab === 'transactions' && styles.tabBtnTextActive]}>
-                    Transactions
+                    {t('financialTracking.transactions')}
                 </Text>
             </TouchableOpacity>
         </View>
@@ -404,10 +535,10 @@ const WalletFinancialScreen: React.FC = () => {
         <View style={styles.filterRow}>
             {(['all', 'credit', 'debit', 'refund'] as TransactionFilter[]).map((filter) => {
                 const labels: Record<TransactionFilter, string> = {
-                    all: 'Tout',
-                    credit: t('walletFinancialScreen.credits'),
-                    debit: t('walletFinancialScreen.debits'),
-                    refund: 'Remb.',
+                    all: t('financialTracking.all'),
+                    credit: t('financialTracking.credits'),
+                    debit: t('financialTracking.debits'),
+                    refund: t('financialTracking.refunds'),
                 };
                 return (
                     <TouchableOpacity
@@ -429,7 +560,25 @@ const WalletFinancialScreen: React.FC = () => {
             <SafeNativeView style={styles.container}>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>{t('walletFinancial.chargementDesDonneesFinancieres')}</Text>
+                    <Text style={styles.loadingText}>{t('financialTracking.loadingFinancialData')}</Text>
+                </View>
+            </SafeNativeView>
+        );
+    }
+
+    if (error) {
+        return (
+            <SafeNativeView style={styles.container}>
+                <View style={styles.errorContainer}>
+                    <SafeIcon name="alert-circle" size={48} color={modernColors.error} />
+                    <Text style={styles.errorTitle}>{t('financialTracking.errorTitle')}</Text>
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity
+                        style={styles.retryBtn}
+                        onPress={() => loadAllData()}
+                    >
+                        <Text style={styles.retryBtnText}>{t('financialTracking.retry')}</Text>
+                    </TouchableOpacity>
                 </View>
             </SafeNativeView>
         );
@@ -448,8 +597,8 @@ const WalletFinancialScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={22} color={modernColors.text} />
                     </TouchableOpacity>
                     <View style={styles.headerCenter}>
-                        <Text style={styles.headerTitle}>{t('payment.wallet.title') || t('walletFinancial.monPortefeuille')}</Text>
-                        <Text style={styles.headerSubtitle}>{t('walletFinancial.suiviFinancierDetaille')}</Text>
+                        <Text style={styles.headerTitle}>{t('financialTracking.financialTracking')}</Text>
+                        <Text style={styles.headerSubtitle}>{t('financialTracking.detailedFinancialOverview')}</Text>
                     </View>
                     <TouchableOpacity
                         onPress={() => (navigation as any).navigate('RechargeTokens')}
@@ -461,7 +610,7 @@ const WalletFinancialScreen: React.FC = () => {
 
                 {/* Balance card */}
                 <View style={styles.balanceCard}>
-                    <Text style={styles.balanceLabel}>{t('payment.wallet.balance') || 'Solde disponible'}</Text>
+                    <Text style={styles.balanceLabel}>{t('financialTracking.currentBalance')}</Text>
                     <Text style={styles.balanceValue}>{formatCurrency(balanceCents)}</Text>
                     <View style={styles.balanceActions}>
                         <TouchableOpacity
@@ -469,7 +618,7 @@ const WalletFinancialScreen: React.FC = () => {
                             onPress={() => (navigation as any).navigate('RechargeTokens')}
                         >
                             <SafeIcon name="plus-circle" size={18} color="#fff" />
-                            <Text style={styles.balanceActionText}>{t('payment.wallet.topUp') || 'Recharger'}</Text>
+                            <Text style={styles.balanceActionText}>{t('financialTracking.recharge')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -485,14 +634,13 @@ const WalletFinancialScreen: React.FC = () => {
                     <>
                         {renderKPIs()}
                         {renderMiniChart()}
-                        {renderDisbursements()}
 
                         {/* Recent transactions preview */}
                         <View style={styles.recentSection}>
                             <View style={styles.recentHeader}>
-                                <Text style={styles.recentTitle}>{t('walletFinancial.transactionsRecentes')}</Text>
+                                <Text style={styles.recentTitle}>{t('financialTracking.recentTransactions')}</Text>
                                 <TouchableOpacity onPress={() => setActiveTab('transactions')}>
-                                    <Text style={styles.recentSeeAll}>{t('walletFinancial.voirTout')}</Text>
+                                    <Text style={styles.recentSeeAll}>{t('financialTracking.seeAll')}</Text>
                                 </TouchableOpacity>
                             </View>
                             {transactions.slice(0, 5).map((txn) => (
@@ -502,7 +650,7 @@ const WalletFinancialScreen: React.FC = () => {
                                 <View style={styles.emptyTxn}>
                                     <SafeIcon name="inbox" size={40} color={modernColors.textTertiary} />
                                     <Text style={styles.emptyTxnText}>
-                                        {t('payment.wallet.noTransactions') || t('walletFinancial.aucuneTransaction')}
+                                        {t('financialTracking.noTransactions')}
                                     </Text>
                                 </View>
                             )}
@@ -520,7 +668,7 @@ const WalletFinancialScreen: React.FC = () => {
                                 <View style={styles.emptyTxn}>
                                     <SafeIcon name="inbox" size={40} color={modernColors.textTertiary} />
                                     <Text style={styles.emptyTxnText}>
-                                        {t('payment.wallet.noTransactions') || t('walletFinancial.aucuneTransaction')}
+                                        {t('financialTracking.noTransactions')}
                                     </Text>
                                 </View>
                             )}
@@ -539,6 +687,19 @@ const styles = StyleSheet.create({
     scroll: { flex: 1 },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 },
     loadingText: { marginTop: 12, fontSize: 14, color: modernColors.textSecondary },
+
+    // Error state
+    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32, paddingTop: 100 },
+    errorTitle: { fontSize: 18, fontWeight: '600', color: modernColors.text, marginTop: 16, textAlign: 'center' },
+    errorText: { fontSize: 14, color: modernColors.textSecondary, marginTop: 8, textAlign: 'center' },
+    retryBtn: {
+        marginTop: 24,
+        backgroundColor: modernColors.primary,
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 8,
+    },
+    retryBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 
     // Header
     header: {
@@ -680,7 +841,9 @@ const styles = StyleSheet.create({
     txnContent: { flex: 1, marginLeft: 12 },
     txnType: { fontSize: 14, fontWeight: '600', color: modernColors.text },
     txnDesc: { fontSize: 12, color: modernColors.textSecondary, marginTop: 2 },
+    txnLocation: { fontSize: 11, color: modernColors.primary, marginTop: 2, fontStyle: 'italic' },
     txnDate: { fontSize: 11, color: modernColors.textTertiary, marginTop: 2 },
+    txnTrace: { fontSize: 10, color: modernColors.textTertiary, marginTop: 1, fontFamily: 'monospace' },
     txnAmountContainer: { alignItems: 'flex-end' },
     txnAmount: { fontSize: 14, fontWeight: '700' },
     txnBalance: { fontSize: 10, color: modernColors.textTertiary, marginTop: 2 },

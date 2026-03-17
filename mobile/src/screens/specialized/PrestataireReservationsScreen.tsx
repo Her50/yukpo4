@@ -72,7 +72,7 @@ const [reservations, setReservations] = useState<Reservation[]>([]);
 
             const confirmData = (response?.data || response) as any;
             if (confirmData.success) {
-                Alert.alert('Succès', 'Réservation confirmée');
+                Alert.alert(t('prestataireReservationsScreen.succes'), t('prestataireReservationsScreen.reservationConfirmee'));
                 loadReservations();
             } else {
                 Alert.alert('Erreur', confirmData.error || 'Impossible de confirmer');
@@ -93,7 +93,7 @@ const [reservations, setReservations] = useState<Reservation[]>([]);
                     text: t('common.yes'),
                     onPress: async () => {
                         // TODO: Implémenter endpoint pour compléter
-                        Alert.alert('Info', 'Fonctionnalité à venir');
+                        Alert.alert('Info', t('prestataireReservationsScreen.fonctionnaliteAVenir'));
                     },
                 },
             ]
@@ -191,7 +191,7 @@ const [reservations, setReservations] = useState<Reservation[]>([]);
                         <NativeButton
                             title="Refuser"
                             variant="secondary"
-                            onPress={() => Alert.alert('Info', 'Fonctionnalité à venir')}
+                            onPress={() => Alert.alert('Info', t('prestataireReservationsScreen.fonctionnaliteAVenir'))}
                             style={styles.actionButton}
                         />
                     </>

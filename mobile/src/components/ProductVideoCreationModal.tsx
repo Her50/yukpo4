@@ -323,7 +323,7 @@ const validateAICohesion = (brief: AIVideoBriefVariant, product: ManagedProduct 
 
     // ✅ Validation 2: Cohérence des caractéristiques principales
     const mainCharacteristics = productHighlights.filter(h =>
-        h.includes('Type:') || h.includes(t('productVideoCreationModal.categorie')) || h.includes('Caractéristique:')
+        h.includes('Type:') || h.includes(t('productVideoCreationModal.categorie')) || h.includes(t('productVideoCreationModal.caracteristique'))
     ).slice(0, 3);
 
     if (mainCharacteristics.length > 0) {
@@ -354,7 +354,7 @@ const validateAICohesion = (brief: AIVideoBriefVariant, product: ManagedProduct 
 
     // ✅ Validation 5: Cohérence du prix
     const priceHighlight = productHighlights.find(h => h.includes('Prix courant:'));
-    if (priceHighlight && !briefText.includes('prix') && !briefText.includes('coût') && !briefText.includes('tarif')) {
+    if (priceHighlight && !briefText.includes('prix') && !briefText.includes(t('productVideoCreationModal.cout')) && !briefText.includes('tarif')) {
         warnings.push(t('productVideoCreationModal.lePrixNestPasMentionneDansLeBrief'));
         suggestions.push(t('productVideoCreationModal.ajoutezUneReferenceAuPrixOu'));
     }
@@ -365,7 +365,7 @@ const validateAICohesion = (brief: AIVideoBriefVariant, product: ManagedProduct 
         warnings.push('⚠️ Le script est trop court (moins de 3 lignes)');
         suggestions.push(t('productVideoCreationModal.enrichissezLeScriptAvecPlusDe'));
     } else if (scriptLength > 8) {
-        warnings.push('⚠️ Le script est très long (plus de 8 lignes)');
+        warnings.push(t('productVideoCreationModal.leScriptEstTresLongPlus'));
         suggestions.push('Raccourcissez le script pour un impact maximal');
     }
 
@@ -438,7 +438,7 @@ const validateStyleCohesion = (suggestion: AIVideoStyleSuggestion, product: Mana
         suggestions.push(t('productVideoCreationModal.optezPourUneMusiquePlusRythmee'));
     }
 
-    if (productTags.some(tag => tag.toLowerCase().includes('relax') || tag.toLowerCase().includes(t('productVideoCreationModal.bienetre'))) && musicHint?.includes('énergique')) {
+    if (productTags.some(tag => tag.toLowerCase().includes('relax') || tag.toLowerCase().includes(t('productVideoCreationModal.bienetre'))) && musicHint?.includes(t('productVideoCreationModal.energique'))) {
         warnings.push(t('productVideoCreationModal.musiqueTropEnergiquePourUnProduit'));
         suggestions.push('Choisissez une musique plus douce et apaisante');
     }
@@ -467,7 +467,7 @@ const buildDefaultVoiceover = (
     if (headline) {
         lines.push(headline.replace(/[✅⚠️🎵🔥📞📦📝🎬…]+/g, '').trim());
     } else {
-        lines.push(`Découvrez ${productName} sur Yukpo.`);
+        lines.push(t('productVideoCreationModal.decouvrezSurYukpo', { productName: productName }));
     }
 
     storyboardLines.slice(0, 3).forEach((line) => {
@@ -506,7 +506,7 @@ const applyBriefVariant = (
         setVoiceoverScript(variant.voiceover);
     }
     setVariantPickerVisible(false);
-    Alert.alert('Brief appliqué', 'La variante sélectionnée a été appliquée.');
+    Alert.alert(t('productVideoCreationModal.briefApplique'), t('productVideoCreationModal.laVarianteSelectionneeAEteAppliquee'));
 };
 
 type ModalStep = 1 | 2 | 3 | 4 | 5 | 6;
@@ -766,7 +766,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
             // ✅ NOUVEAU: Afficher l'alerte après la fermeture du modal pour éviter les conflits
             setTimeout(() => {
-                Alert.alert('Succès', `Vidéo AR ajoutée à la médiathèque du produit "${productToUse.nom || productToUse.titre || 'sélectionné'}"`);
+                Alert.alert(t('productVideoCreationModal.succes'), t('productVideoCreationModal.videoArAjouteeALaMediatheque', { productToUse_nom____: productToUse.nom || productToUse.titre || t('productVideoCreationModal.selectionne') }));
             }, 300);
 
             // Rafraëchir les médias pour obtenir l'ID réel depuis le serveur
@@ -799,7 +799,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             // Afficher un message d'erreur plus détaillé
             let errorMessage = t('productVideoCreationModal.impossibleDajouterLaVideoArReessayezPlusTard');
             if (error?.response?.status === 500) {
-                errorMessage = 'Erreur serveur (500). Veuillez réessayer ou contacter le support.';
+                errorMessage = t('productVideoCreationModal.erreurServeur500VeuillezReessayerOu');
             } else if (error?.message) {
                 errorMessage = error.message;
             }
@@ -1275,7 +1275,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 // Seulement afficher l'alerte si le fallback n'a rien trouvé
                 Alert.alert(
                     t('productVideoCreationModal.erreurRecuperationMedias'),
-                    'Impossible de récupérer vos images et vidéos pour le moment. Réessayez plus tard.'
+                    t('productVideoCreationModal.impossibleDeRecupererVosImagesEt')
                 );
                 return [];
             } finally {
@@ -1403,7 +1403,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         if (response.success && Array.isArray((response.data as any)?.variants) && (response.data as any).variants.length > 0) {
                             return (response.data as any).variants;
                         }
-                        throw new Error('Aucun variant retourné');
+                        throw new Error(t('productVideoCreationModal.aucunVariantRetourne'));
                     },
                     3,
                     'brief'
@@ -1440,7 +1440,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         if (response.success && (response.data as any)?.suggestion) {
                             return (response.data as any).suggestion;
                         }
-                        throw new Error('Aucune suggestion retournée');
+                        throw new Error(t('productVideoCreationModal.aucuneSuggestionRetournee'));
                     },
                     3,
                     'style'
@@ -1685,7 +1685,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         if (response.success && (response.data as any)?.plan) {
                             return (response.data as any).plan;
                         }
-                        throw new Error('Aucun plan retourné');
+                        throw new Error(t('productVideoCreationModal.aucunPlanRetourne'));
                     },
                     3,
                     'plan'
@@ -1735,13 +1735,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     // ✅ NOUVEAU: Fonction pour estimer le coût de génération
     const handleEstimateCost = useCallback(async () => {
         if (!selectedProduct || typeof selectedProduct.product_index !== 'number') {
-            Alert.alert('Produit requis', 'Sélectionnez d\'abord un produit.');
+            Alert.alert('Produit requis', t('productVideoCreationModal.selectionnezD')abord un produit.');
             return;
         }
 
         const serviceId = Number(selectedProduct.serviceId);
         if (Number.isNaN(serviceId)) {
-            Alert.alert('Service invalide', 'Impossible d\'estimer le coût.');
+            Alert.alert('Service invalide', 'Impossible d\t('productVideoCreationModal.estimerLeCout'));
             return;
         }
 
@@ -1797,7 +1797,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     );
                 }
             } else {
-                Alert.alert('Estimation impossible', 'Impossible d\'estimer le coût pour le moment. Réessayez plus tard.');
+                Alert.alert('Estimation impossible', 'Impossible d\t('productVideoCreationModal.estimerLeCoutPourLeMoment'));
             }
         } catch (error: any) {
             console.error('[ProductVideoCreationModal] Erreur estimation coût:', error);
@@ -2017,7 +2017,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     throw new Error(response.error || 'Attache impossible');
                 }
                 await refreshMedia(selectedProduct);
-                Alert.alert('🎵 Audio ajouté', 'La boucle a été ajoutée à votre médiathèque.');
+                Alert.alert(t('productVideoCreationModal.audioAjoute'), t('productVideoCreationModal.laBoucleAEteAjouteeA'));
             } catch (error) {
                 console.error("[ProductVideoCreationModal] Impossible d'attacher la boucle audio: ", error);
                 Alert.alert('Erreur', "Ajout de la boucle audio impossible pour le moment.");
@@ -2030,7 +2030,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     const handleImportAudioTrack = useCallback(async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', "Sélectionnez un produit principal avant d'importer un audio.");
+            Alert.alert('Produit requist('productVideoCreationModal.selectionnezUnProduitPrincipalAvantD')importer un audio.");
             return;
         }
 
@@ -2068,7 +2068,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 setSelectedMusicTrackId(latest?.id ?? null);
             }
 
-            Alert.alert('Audio importé', 'Votre piste a été ajoutée à la médiathèque.');
+            Alert.alert(t('productVideoCreationModal.audioImporte'), t('productVideoCreationModal.votrePisteAEteAjouteeA'));
         } catch (error) {
             console.error('[ProductVideoCreationModal] Import audio échoué:', error);
             Alert.alert(
@@ -2082,7 +2082,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     const handleGenerateBrief = useCallback(async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', 'Sélectionnez un produit avant de générer un brief.');
+            Alert.alert('Produit requis', t('productVideoCreationModal.selectionnezUnProduitAvantDeGenerer'));
             return;
         }
 
@@ -2131,7 +2131,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     `\n\n💡 Suggestions:\n` +
                     allSuggestions.slice(0, 2).join('\n') +
                     (allSuggestions.length > 2 ? `\n... et ${allSuggestions.length - 2} autre(s)` : '') +
-                    `\n\nVoulez-vous continuer avec ces briefs ou les améliorer ?`;
+                    t('productVideoCreationModal.nnvoulezvousContinuerAvecCesBriefsOu');
 
                 Alert.alert(
                     t('productVideoCreationModal.validationIaCoherenceDetectee'),
@@ -2143,7 +2143,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 // Continuer avec les briefs générés
                                 if (variants.length === 1) {
                                     applyBriefVariant(variants[0], setHeadline, setCallToAction, setScriptNotes, setVoiceoverScript, setVariantPickerVisible);
-                                    Alert.alert('Brief généré', 'Le script et le CTA ont été optimisés par Yukpo IA.\n\n⚠️ Certaines incohérences ont été détectées.');
+                                    Alert.alert(t('productVideoCreationModal.briefGenere'), t('productVideoCreationModal.leScriptEtLeCtaOnt'));
                                 } else {
                                     setVariantPickerVisible(true);
                                 }
@@ -2166,10 +2166,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             }
 
             if (variants.length === 0) {
-                throw new Error('Aucune variante générée');
+                throw new Error(t('productVideoCreationModal.aucuneVarianteGeneree'));
             } else if (variants.length === 1) {
                 applyBriefVariant(variants[0], setHeadline, setCallToAction, setScriptNotes, setVoiceoverScript, setVariantPickerVisible);
-                Alert.alert('Brief généré', '✅ Le script et le CTA ont été optimisés par Yukpo IA.\n\n✅ Validation IA: Cohérence parfaite détectée !');
+                Alert.alert(t('productVideoCreationModal.briefGenere'), t('productVideoCreationModal.leScriptEtLeCtaOnt'));
             } else {
                 setVariantPickerVisible(true);
             }
@@ -2187,7 +2187,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     // ✅ NOUVEAU - Fonction pour regénérer les briefs avec contexte amélioré
     const handleGenerateBriefWithEnhancedContext = useCallback(async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', 'Sélectionnez un produit avant de générer des effets IA.');
+            Alert.alert('Produit requis', t('productVideoCreationModal.selectionnezUnProduitAvantDeGenerer'));
             return;
         }
 
@@ -2209,7 +2209,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 // Ajouter les caractéristiques techniques
                 ...((selectedProduct as any)?.caracteristiques ?
                     Array.isArray((selectedProduct as any).caracteristiques)
-                        ? (selectedProduct as any).caracteristiques.slice(0, 3).map((c: string) => `Spécification: ${c}`)
+                        ? (selectedProduct as any).caracteristiques.slice(0, 3).map((c: string) => t('productVideoCreationModal.specification', { c: c }))
                         : []
                     : [])
             ];
@@ -2270,7 +2270,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             console.error('[ProductVideoCreationModal] Brief IA amélioré impossible:', error);
             Alert.alert(
                 'Erreur IA',
-                error instanceof Error ? error.message : 'Impossible d\'améliorer les briefs IA pour le moment.'
+                error instanceof Error ? error.message : 'Impossible d\t('productVideoCreationModal.ameliorerLesBriefsIaPourLe')
             );
         } finally {
             setIsGeneratingBrief(false);
@@ -2288,7 +2288,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     const handleGenerateStyleSuggestion = useCallback(async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', 'Sélectionnez un produit avant de générer des effets IA.');
+            Alert.alert('Produit requis', t('productVideoCreationModal.selectionnezUnProduitAvantDeGenerer'));
             return;
         }
 
@@ -2304,7 +2304,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 product_type: selectedProduct.type || selectedProduct.category_label,
                 tone: stylePreset,
                 // ✅ NOUVEAU - Ajouter les caractéristiques détaillées
-                product_characteristics: highlights.filter(h => h.includes(t('productVideoCreationModal.caracteristique'))).map(h => h.replace('Caractéristique: ', '')),
+                product_characteristics: highlights.filter(h => h.includes(t('productVideoCreationModal.caracteristique'))).map(h => h.replace(t('productVideoCreationModal.caracteristique'), '')),
                 // ✅ NOUVEAU - Ajouter les variants disponibles
                 available_variants: selectedProduct.variants ? Object.keys(selectedProduct.variants) : [],
                 // ✅ NOUVEAU - Ajouter les références visuelles
@@ -2362,7 +2362,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     const handleAnalyzeMedia = useCallback(async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', 'Sélectionnez un produit avant d\'analyser les médias.');
+            Alert.alert('Produit requis', t('productVideoCreationModal.selectionnezUnProduitAvantDt('productVideoCreationModal.analyserLesMedias'));
             return;
         }
 
@@ -2400,7 +2400,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 ambiance: analysis.ambiance,
                 marketingAngle: analysis.marketing_angle,
             });
-            Alert.alert('Analyse IA terminée', 'Couleurs dominantes et angles marketing mis à jour.');
+            Alert.alert(t('productVideoCreationModal.analyseIaTerminee'), t('productVideoCreationModal.couleursDominantesEtAnglesMarketingMis'));
         } catch (error) {
             console.error('[ProductVideoCreationModal] Analyse média impossible:', error);
             Alert.alert(
@@ -2737,7 +2737,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
             if (!aggregate || !aggregate.session || !aggregate.session.id) {
                 console.error('[ProductVideoCreationModal] ensureStudioSession: Réponse invalide de createSession:', aggregate);
-                throw new Error('Réponse invalide de l\'API Studio');
+                throw new Error(t('productVideoCreationModal.reponseInvalideDeL')API Studio');
             }
 
             const sessionId = aggregate.session.id;
@@ -2765,7 +2765,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     // ✅ NOUVEAU: Generate Storyboard via Studio (depuis Wizard)
     const handleGenerateStoryboard = useCallback(async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', 'Sélectionnez un produit avant de générer un storyboard.');
+            Alert.alert('Produit requis', t('productVideoCreationModal.selectionnezUnProduitAvantDeGenerer'));
             return;
         }
 
@@ -2776,7 +2776,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         if (!serviceIdStr || !Number.isFinite(serviceIdNum) || serviceIdNum <= 0) {
             Alert.alert(
                 'Erreur',
-                'Le service associé au produit est invalide. Veuillez sélectionner un autre produit.'
+                t('productVideoCreationModal.leServiceAssocieAuProduitEst')
             );
             console.error('[ProductVideoCreationModal] handleGenerateStoryboard: serviceId invalide', {
                 serviceId: selectedProduct.serviceId,
@@ -2844,7 +2844,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 durationMs,
                 extra: { scenes: result.scenes.length },
             });
-            Alert.alert('Storyboard généré', `${result.scenes.length} scènes créées.`);
+            Alert.alert(t('productVideoCreationModal.storyboardGenere'), t('productVideoCreationModal.scenesCreees', { result_scenes_length: result.scenes.length }));
         } catch (error: any) {
             console.error('[ProductVideoCreationModal] Erreur génération storyboard:', error);
             const durationMs = Date.now() - startedAt;
@@ -2857,7 +2857,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 durationMs,
                 extra: { error: error?.message ?? 'unknown' },
             });
-            Alert.alert('Erreur', error?.message || 'Impossible de générer le storyboard.');
+            Alert.alert('Erreur', error?.message || t('productVideoCreationModal.impossibleDeGenererLeStoryboard'));
         } finally {
             setStoryboardLoading(false);
         }
@@ -2866,7 +2866,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     // ✅ NOUVEAU: Request Short Preview (depuis Wizard)
     const handleShortPreview = useCallback(async () => {
         if (!studioSessionId) {
-            Alert.alert('Session requise', 'Générez d\'abord un storyboard pour créer une session Studio.');
+            Alert.alert('Session requise', t('productVideoCreationModal.generezDt('productVideoCreationModal.abordUnStoryboardPourCreerUne'));
             return;
         }
         const startedAt = Date.now();
@@ -2900,7 +2900,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             try {
                 const session = await studioService.getSession(studioSessionId);
                 if (!session || !session.timeline || session.timeline.length === 0) {
-                    throw new Error('La timeline est vide. Ajoutez d\'abord des médias à votre timeline.');
+                    throw new Error('La timeline est vide. Ajoutez d\t('productVideoCreationModal.abordDesMediasAVotreTimeline'));
                 }
 
                 // ✅ CORRIGÉ: Attacher les médias disponibles comme assets dynamiques si nécessaire
@@ -2951,9 +2951,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     durationMs,
                     prewarmed: false,
                 });
-                Alert.alert('Preview ouverte', 'La prévisualisation s\'ouvre dans votre lecteur vidéo.');
+                Alert.alert('Preview ouverte', t('productVideoCreationModal.laPrevisualisationSt('productVideoCreationModal.ouvreDansVotreLecteurVideo'));
             } else {
-                throw new Error('Aucune URL de preview retournée');
+                throw new Error(t('productVideoCreationModal.aucuneUrlDePreviewRetournee'));
             }
         } catch (error: any) {
             console.error('[ProductVideoCreationModal] Erreur short preview:', error);
@@ -2999,7 +2999,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         t('productVideoCreationModal.ajoutezDesMediasAVotreTimelinen') +
                         t('productVideoCreationModal.utilisezLePreviewRapideCidessusPour');
                 } else if (backendError.includes('Erreur temporaire') ||
-                    backendError.includes('réessayer')) {
+                    backendError.includes(t('productVideoCreationModal.reessayer'))) {
                     errorMessage = t('productVideoCreationModal.erreurTemporaireLorsDeLaGeneration') +
                         t('productVideoCreationModal.veuillezReessayerDansQuelquesInstantsnn') +
                         t('productVideoCreationModal.siLeProblemePersisteUtilisezLe');
@@ -3128,12 +3128,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         <NativeCard style={styles.sectionCard}>
             <View style={styles.emptyProductState}>
                 <SafeIcon name="alert-circle" size={32} color="#F59E0B" />
-                <Text style={styles.emptyProductTitle}>{t('productVideoCreation.produitRequis')}</Text>
-                <Text style={styles.emptyProductSubtitle}>
-                    Sélectionnez un produit à l'étape 1 avant d'accéder à « {stepName} ».
-                </Text>
-                <NativeButton
-                    title={t('productVideoCreation.retourAL')}étape 1"
+                <Text style={styles.emptyProductTitle}>{t('productVideoCreation.produitRequist('productVideoCreationModal.textTextStylestylesemptyproductsubtitleSelectionnet('productVideoCreationModal.etape1AvantDt')productVideoCreationModal.accederAStepnameTextNativebuttonTitlet')productVideoCreation.retourAL')}étape 1"
                     variant="outline"
                     size="small"
                     onPress={() => setActiveStep(1)}
@@ -4380,7 +4375,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 onPress={async () => {
                                     // Générer la timeline si elle n'existe pas
                                     if (!selectedProduct || !briefVariants.length || !styleSuggestion) {
-                                        Alert.alert('Prérequis manquants', 'Générez d\'abord le brief et le style pour créer la timeline.');
+                                        Alert.alert(t('productVideoCreationModal.prerequisManquants'), t('productVideoCreationModal.generezDt('productVideoCreationModal.abordLeBriefEtLeStyle'));
                                         return;
                                     }
                                     setIsGeneratingTimeline(true);
@@ -4429,7 +4424,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         }
                                     } catch (error) {
                                         console.error('[ProductVideoCreationModal] Erreur génération timeline:', error);
-                                        Alert.alert('Erreur', 'Impossible de générer la timeline. La vidéo sera créée avec le script texte.');
+                                        Alert.alert('Erreur', t('productVideoCreationModal.impossibleDeGenererLaTimelineLa'));
                                     } finally {
                                         setIsGeneratingTimeline(false);
                                     }
@@ -5071,17 +5066,17 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     const handleSubmit = async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', "Sélectionnez d'abord le produit principal à mettre en avant.");
+            Alert.alert('Produit requist('productVideoCreationModal.selectionnezD')abord le produit principal à mettre en avant.");
             return;
         }
 
         if (typeof selectedProduct.product_index !== 'number') {
-            Alert.alert('Produit incomplet', "Ce produit ne possède pas d'index. Rechargez la page et réessayez.");
+            Alert.alert('Produit incomplett('productVideoCreationModal.ceProduitNePossedePasD')index. Rechargez la page et réessayez.");
             return;
         }
 
         if (!headline.trim()) {
-            Alert.alert('Titre manquant', 'Ajoutez un titre accrocheur pour votre vidéo.');
+            Alert.alert('Titre manquant', t('productVideoCreationModal.ajoutezUnTitreAccrocheurPourVotre'));
             return;
         }
 
@@ -5095,22 +5090,22 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 'Script requis',
                 t('productVideoCreationModal.leScriptDeMontageVideoEst') +
                 '• Remplir manuellement le script\n' +
-                '• Générer un storyboard IA (étape 1)\n' +
-                '• Générer un brief IA (étape 4)\n\n' +
-                'Une ligne = une scène.'
+                t('productVideoCreationModal.genererUnStoryboardIaEtape1n') +
+                t('productVideoCreationModal.genererUnBriefIaEtape4nn') +
+                t('productVideoCreationModal.uneLigneUneScene')
             );
             return;
         }
 
         const durationSeconds = ensureNumber(duration, 28);
         if (durationSeconds < 10 || durationSeconds > 90) {
-            Alert.alert('Durée invalide', 'Choisissez une durée comprise entre 10 et 90 secondes.');
+            Alert.alert(t('productVideoCreationModal.dureeInvalide'), t('productVideoCreationModal.choisissezUneDureeCompriseEntre10'));
             return;
         }
 
         if (voiceoverEnabled) {
             if (voiceoverScript.trim().length < 10) {
-                Alert.alert('Narration insuffisante', 'Le texte de la voix off doit contenir au moins 10 caractères.');
+                Alert.alert('Narration insuffisante', t('productVideoCreationModal.leTexteDeLaVoixOff'));
                 return;
             }
         }
@@ -5277,9 +5272,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             const isAffordable = estimation.affordable !== false;
 
             let costMessage = `💰 Estimation du coût de génération\n\n`;
-            costMessage += `Coût total : ${totalCost.toLocaleString('fr-FR')} FCFA\n`;
+            costMessage += t('productVideoCreationModal.coutTotalFcfan', { totalCost_toLocaleString_: totalCost.toLocaleString('fr-FR') });
             if (estimation.breakdown) {
-                costMessage += `\nDétail :\n`;
+                costMessage += t('productVideoCreationModal.ndetailN');
                 costMessage += `• Tokens IA : ${estimation.breakdown.tokens_cost_usd.toFixed(2)} USD\n`;
                 if (estimation.breakdown.audio_mastering_usd > 0) {
                     costMessage += `• Mastering audio : ${estimation.breakdown.audio_mastering_usd.toFixed(2)} USD\n`;
@@ -5366,7 +5361,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const proceedWithVideoGeneration = async (payload: VideoGenerationPayload) => {
         // ✅ CORRIGÉ: Validations complètes avant l'appel API
         if (!selectedProduct) {
-            Alert.alert('Produit requis', 'Aucun produit sélectionné. Veuillez sélectionner un produit avant de générer la vidéo.');
+            Alert.alert('Produit requis', t('productVideoCreationModal.aucunProduitSelectionneVeuillezSelectionnerUn'));
             return;
         }
 
@@ -5441,7 +5436,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         if (!autoGenerateImages && !hasSelectedMedia && !useProductGallery && !useServiceMediatech && !hasTimelineMedia) {
             Alert.alert(
-                'Médias requis',
+                t('productVideoCreationModal.mediasRequis'),
                 t('productVideoCreationModal.aucunMediaDisponiblePourGenererLa') +
                 'Solutions :\n' +
                 t('productVideoCreationModal.selectionnezDesMediasDansLaMediathequen') +
@@ -5528,7 +5523,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             }
 
             // ✅ Si ni job_id ni video_url, c'est une erreur
-            throw new Error('Réponse invalide : ni job_id ni video_url reçu');
+            throw new Error(t('productVideoCreationModal.reponseInvalideNiJobidNiVideourl'));
         } catch (error: any) {
             console.error('[ProductVideoCreationModal] Erreur génération vidéo:', error);
 
@@ -5537,7 +5532,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
             if (error?.message) {
                 const msg = error.message.toLowerCase();
-                if (msg.includes('aucune image') || msg.includes(t('productVideoCreationModal.imageTrouvee')) || msg.includes('no media') || msg.includes('aucun média')) {
+                if (msg.includes('aucune image') || msg.includes(t('productVideoCreationModal.imageTrouvee')) || msg.includes('no media') || msg.includes(t('productVideoCreationModal.aucunMedia'))) {
                     errorMessage = t('productVideoCreationModal.aucunMediaDisponiblePourGenererLa') +
                         'Solutions :\n' +
                         t('productVideoCreationModal.ajoutezDesImagesDansLaMediatheque') +
@@ -5552,12 +5547,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     errorMessage = 'Demande invalide.\n\n' +
                         t('productVideoCreationModal.verifiezQueTousLesChampsSont') +
                         'Champs requis :\n' +
-                        '• Durée (10-90 secondes)\n' +
+                        t('productVideoCreationModal.duree1090Secondesn') +
                         '• Script, storyboard ou timeline\n' +
                         t('productVideoCreationModal.auMoinsUnMediaDisponibleOu') +
                         backendDetails;
                 } else if (msg.includes('500') || msg.includes('internal') || msg.includes('erreur 500') || msg.includes(t('productVideoCreationModal.rendererVideoIndisponible'))) {
-                    if (msg.includes('renderer') || msg.includes('prévisualisation')) {
+                    if (msg.includes('renderer') || msg.includes(t('productVideoCreationModal.previsualisation'))) {
                         errorMessage = t('productVideoCreationModal.serviceDePrevisualisationTemporairementIndisponibl') +
                             t('productVideoCreationModal.laGenerationDeLaVideoPrincipale') +
                             t('productVideoCreationModal.veuillezReessayerLaPrevisualisationPlusTard');
@@ -5638,7 +5633,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 setIsSubmitting(false);
                 Alert.alert(
                     t('productVideoCreationModal.delaiDepasse'),
-                    'La génération de la vidéo prend trop de temps (> 10 min).\n\n' +
+                    t('productVideoCreationModal.laGenerationDeLaVideoPrend') +
                     t('productVideoCreationModal.celaPeutEtreDuAUne') +
                     t('productVideoCreationModal.veuillezReessayerPlusTard'),
                     [{ text: 'OK' }]
@@ -6062,7 +6057,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     const handleGenerateDistribution = useCallback(async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', 'Sélectionnez un produit avant de générer un plan de diffusion.');
+            Alert.alert('Produit requis', t('productVideoCreationModal.selectionnezUnProduitAvantDeGenerer'));
             return;
         }
 
@@ -6081,7 +6076,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             }
 
             setDistributionPlan((response.data as any).plan);
-            Alert.alert('Plan IA généré', 'Le plan de diffusion et hashtags ont été ajoutés.');
+            Alert.alert(t('productVideoCreationModal.planIaGenere'), t('productVideoCreationModal.lePlanDeDiffusionEtHashtags'));
         } catch (error) {
             console.error('[ProductVideoCreationModal] Plan IA impossible:', error);
             Alert.alert(
@@ -6261,7 +6256,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         <View style={getFixedBottomButtonStyle()}>
                             {activeStep === 1 && (
                                 <NativeButton
-                                    title={selectedProduct ? "Suivant" : "Sélectionnez un produit"}
+                                    title={selectedProduct ? "Suivant" : t('productVideoCreationModal.selectionnezUnProduit')}
                                     variant="primary"
                                     size="large"
                                     onPress={() => {

@@ -478,7 +478,7 @@ const ServicesScreen: React.FC = () => {
           color={modernColors.primary}
         />
         <Text style={styles.sortButtonText}>
-          {sortOrder === 'asc' ? 'Croissant' : 'Décroissant'}
+          {sortOrder === 'asc' ? 'Croissant' : t('servicesScreen.decroissant')}
         </Text>
       </TouchableOpacity>
 

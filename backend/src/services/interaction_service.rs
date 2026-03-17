@@ -1,11 +1,11 @@
-// Service m?tier pour la gestion des interactions (messages, audio, appels, avis, notes)
-// ? compl?ter avec la logique de sauvegarde, r?cup?ration, etc.
+// Service métier pour la gestion des interactions (messages, audio, appels, avis, notes)
+// ✅ 2026-03-16: Migré de MongoDB vers PostgreSQL (table history_events)
 
 use crate::services::mongo_history_service::MongoHistoryService;
 use chrono::Utc;
-use futures::TryStreamExt;
 use serde_json::json;
 use serde_json::Value;
+use sqlx::Row;
 use std::sync::Arc;
 
 pub async fn save_interaction(
@@ -25,7 +25,7 @@ pub async fn save_interaction(
             metadata,
         )
         .await
-        .map_err(|e| format!("Erreur MongoDB: {e}"))?;
+        .map_err(|e| format!("Erreur insertion: {e}"))?;
     Ok(json!({
         "user_id": user_id,
         "service_id": service_id,
@@ -41,34 +41,52 @@ pub async fn get_interactions(
     user_id: Option<i32>,
     limit: Option<i64>,
 ) -> Result<Vec<Value>, String> {
-    let collection = mongo_history.get_collection("history").await;
-    let mut filter = mongodb::bson::doc! {
-        "event_type": "UserAction",
-        "service_id": service_id,
-    };
-    if let Some(uid) = user_id {
-        filter.insert("user_id", uid);
-    }
+    let pool = mongo_history.pg_pool();
+    let effective_limit = limit.unwrap_or(100);
 
-    // ✅ OPTIMISÉ 2025-12-21: Limiter les résultats directement dans la requête MongoDB
-    // Au lieu de récupérer tous les résultats puis tronquer, on limite à la source
-    // Cela réduit la charge réseau et mémoire, surtout pour les services avec beaucoup d'interactions
-    let effective_limit = limit.unwrap_or(100); // Limite par défaut de 100
-
-    let mut find_options = mongodb::options::FindOptions::default();
-    find_options.limit = Some(effective_limit);
-    find_options.sort = Some(mongodb::bson::doc! { "timestamp": -1 }); // Plus récent en premier
-
-    let mut cursor = collection
-        .find(filter, find_options)
+    let rows = if let Some(uid) = user_id {
+        sqlx::query(
+            "SELECT event_type, user_id, service_id, interaction_id, timestamp, data, metadata
+             FROM history_events
+             WHERE event_type = 'UserAction' AND service_id = $1 AND user_id = $2
+             ORDER BY timestamp DESC
+             LIMIT $3",
+        )
+        .bind(service_id)
+        .bind(uid)
+        .bind(effective_limit)
+        .fetch_all(pool)
         .await
-        .map_err(|e| format!("Erreur MongoDB: {e}"))?;
-    let mut results = Vec::new();
-    while let Some(doc) = cursor.try_next().await.map_err(|e| format!("Erreur it?ration: {e}"))? {
-        let v: Value =
-            mongodb::bson::from_document(doc).map_err(|e| format!("Erreur conversion: {e}"))?;
-        results.push(v);
+    } else {
+        sqlx::query(
+            "SELECT event_type, user_id, service_id, interaction_id, timestamp, data, metadata
+             FROM history_events
+             WHERE event_type = 'UserAction' AND service_id = $1
+             ORDER BY timestamp DESC
+             LIMIT $2",
+        )
+        .bind(service_id)
+        .bind(effective_limit)
+        .fetch_all(pool)
+        .await
     }
+    .map_err(|e| format!("Erreur SQL: {e}"))?;
+
+    let results: Vec<Value> = rows
+        .iter()
+        .map(|row| {
+            json!({
+                "event_type": row.get::<String, _>("event_type"),
+                "user_id": row.get::<Option<i32>, _>("user_id"),
+                "service_id": row.get::<Option<i32>, _>("service_id"),
+                "interaction_id": row.get::<Option<String>, _>("interaction_id"),
+                "timestamp": row.get::<chrono::DateTime<Utc>, _>("timestamp").to_rfc3339(),
+                "data": row.get::<Value, _>("data"),
+                "metadata": row.get::<Option<Value>, _>("metadata"),
+            })
+        })
+        .collect();
+
     Ok(results)
 }
 
@@ -95,7 +113,7 @@ pub async fn save_review(
             metadata,
         )
         .await
-        .map_err(|e| format!("Erreur MongoDB: {e}"))?;
+        .map_err(|e| format!("Erreur insertion: {e}"))?;
     Ok(json!({
         "user_id": user_id,
         "service_id": service_id,
@@ -111,154 +129,88 @@ pub async fn get_reviews(
     service_id: i32,
     limit: Option<i64>,
 ) -> Result<Vec<Value>, String> {
-    let collection = mongo_history.get_collection("history").await;
-    let filter = mongodb::bson::doc! {
-        "event_type": "UserAction",
-        "service_id": service_id,
-        "data.interaction_type": "review"
-    };
+    let pool = mongo_history.pg_pool();
+    let effective_limit = limit.unwrap_or(20);
 
-    // ✅ OPTIMISÉ 2025-12-21: Limiter les résultats directement dans la requête MongoDB
-    // Au lieu de récupérer tous les résultats puis tronquer, on limite à la source
-    // Cela réduit la charge réseau et mémoire, surtout pour les services avec beaucoup d'avis
-    // ✅ OPTIMISÉ 2025-12-30: Limite réduite à 20 pour améliorer les performances
-    let effective_limit = limit.unwrap_or(20); // Limite par défaut de 20 avis (réduit de 50)
+    let rows = sqlx::query(
+        "SELECT user_id, timestamp, data
+         FROM history_events
+         WHERE event_type = 'UserAction' AND service_id = $1 AND data->>'interaction_type' = 'review'
+         ORDER BY timestamp DESC
+         LIMIT $2",
+    )
+    .bind(service_id)
+    .bind(effective_limit)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Erreur SQL: {e}"))?;
 
-    // ✅ OPTIMISÉ 2025-12-30: Projection MongoDB pour ne charger que les champs nécessaires
-    let projection = mongodb::bson::doc! {
-        "user_id": 1,
-        "timestamp": 1,
-        "data.rating": 1,
-        "data.comment": 1,
-        "data.mentions": 1,
-        "data.interaction_type": 1
-    };
+    let results: Vec<Value> = rows
+        .iter()
+        .map(|row| {
+            let data: Value = row.get("data");
+            json!({
+                "user_id": row.get::<Option<i32>, _>("user_id"),
+                "timestamp": row.get::<chrono::DateTime<Utc>, _>("timestamp").to_rfc3339(),
+                "data": data,
+            })
+        })
+        .collect();
 
-    let mut find_options = mongodb::options::FindOptions::default();
-    find_options.limit = Some(effective_limit);
-    find_options.sort = Some(mongodb::bson::doc! { "timestamp": -1 }); // Plus récent en premier
-    find_options.projection = Some(projection); // Ne charger que les champs nécessaires
-
-    let mut cursor = collection
-        .find(filter, find_options)
-        .await
-        .map_err(|e| format!("Erreur MongoDB: {e}"))?;
-    let mut results = Vec::new();
-    while let Some(doc) = cursor.try_next().await.map_err(|e| format!("Erreur it?ration: {e}"))? {
-        let v: Value =
-            mongodb::bson::from_document(doc).map_err(|e| format!("Erreur conversion: {e}"))?;
-        results.push(v);
-    }
     Ok(results)
 }
 
-/// ✅ OPTIMISÉ 2025-12-21: Récupère les statistiques d'un service via agrégation MongoDB (ultra-rapide)
-/// Au lieu de récupérer tous les documents et compter en mémoire (très lent pour services avec beaucoup d'interactions),
-/// on utilise une agrégation MongoDB qui compte directement dans la base de données.
-/// Performance: < 100ms au lieu de 2-3 secondes pour services avec milliers d'interactions
+/// ✅ 2026-03-16: Récupère les statistiques d'un service via agrégation SQL (ex-MongoDB)
 pub async fn get_service_stats_optimized(
     mongo_history: Arc<MongoHistoryService>,
     service_id: i32,
 ) -> Result<Value, String> {
-    use mongodb::bson::doc;
+    let pool = mongo_history.pg_pool();
 
-    let collection = mongo_history.get_collection("history").await;
+    // Compter les interactions par type en une seule requête SQL
+    let rows = sqlx::query(
+        "SELECT data->>'interaction_type' as interaction_type, COUNT(*) as count
+         FROM history_events
+         WHERE event_type = 'UserAction' AND service_id = $1
+         GROUP BY data->>'interaction_type'",
+    )
+    .bind(service_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Erreur agrégation stats: {e}"))?;
 
-    // ✅ Pipeline d'agrégation pour compter les interactions par type directement dans MongoDB
-    // Cela évite de récupérer tous les documents et de compter en mémoire (très lent)
-    let pipeline = vec![
-        // Étape 1: Filtrer les interactions du service
-        doc! {
-            "$match": {
-                "event_type": "UserAction",
-                "service_id": service_id
-            }
-        },
-        // Étape 2: Grouper par type d'interaction et compter
-        doc! {
-            "$group": {
-                "_id": "$data.interaction_type",
-                "count": { "$sum": 1 }
-            }
-        },
-    ];
+    let mut views = 0i32;
+    let mut contacts = 0i32;
+    let mut messages = 0i32;
+    let mut shares = 0i32;
+    let mut likes = 0i32;
 
-    let mut cursor = collection
-        .aggregate(pipeline, None)
-        .await
-        .map_err(|e| format!("Erreur agrégation stats: {e}"))?;
-
-    // Initialiser les compteurs à 0
-    let mut views = 0;
-    let mut contacts = 0;
-    let mut messages = 0;
-    let mut shares = 0;
-    let mut likes = 0;
-
-    // Parcourir les résultats de l'agrégation
-    while let Some(doc) =
-        cursor.try_next().await.map_err(|e| format!("Erreur itération stats: {e}"))?
-    {
-        if let Ok(bson) = mongodb::bson::to_bson(&doc) {
-            if let Ok(json) = serde_json::to_value(bson) {
-                if let Some(interaction_type) = json["_id"].as_str() {
-                    if let Some(count) = json["count"].as_i64() {
-                        match interaction_type {
-                            "view" => views = count as i32,
-                            "contact" => contacts = count as i32,
-                            "message" => messages = count as i32,
-                            "share" => shares = count as i32,
-                            "like" => likes = count as i32,
-                            _ => {}
-                        }
-                    }
-                }
-            }
+    for row in &rows {
+        let interaction_type: Option<String> = row.get("interaction_type");
+        let count: i64 = row.get("count");
+        match interaction_type.as_deref() {
+            Some("view") => views = count as i32,
+            Some("contact") => contacts = count as i32,
+            Some("message") => messages = count as i32,
+            Some("share") => shares = count as i32,
+            Some("like") => likes = count as i32,
+            _ => {}
         }
     }
 
-    // ✅ Pipeline d'agrégation pour calculer la note moyenne des avis directement dans MongoDB
-    let reviews_pipeline = vec![
-        // Étape 1: Filtrer les avis du service
-        doc! {
-            "$match": {
-                "event_type": "UserAction",
-                "service_id": service_id,
-                "data.interaction_type": "review"
-            }
-        },
-        // Étape 2: Calculer la moyenne et le total
-        doc! {
-            "$group": {
-                "_id": null,
-                "total_reviews": { "$sum": 1 },
-                "total_rating": { "$sum": "$data.rating" },
-                "average_rating": { "$avg": "$data.rating" }
-            }
-        },
-    ];
+    // Calculer la note moyenne des avis
+    let review_row = sqlx::query(
+        "SELECT COUNT(*) as total_reviews, AVG((data->>'rating')::float) as average_rating
+         FROM history_events
+         WHERE event_type = 'UserAction' AND service_id = $1 AND data->>'interaction_type' = 'review'",
+    )
+    .bind(service_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| format!("Erreur agrégation reviews: {e}"))?;
 
-    let mut reviews_cursor = collection
-        .aggregate(reviews_pipeline, None)
-        .await
-        .map_err(|e| format!("Erreur agrégation reviews: {e}"))?;
-
-    let mut total_reviews = 0;
-    let mut average_rating = 0.0;
-
-    // Parcourir les résultats de l'agrégation des avis
-    if let Some(doc) = reviews_cursor
-        .try_next()
-        .await
-        .map_err(|e| format!("Erreur itération reviews stats: {e}"))?
-    {
-        if let Ok(bson) = mongodb::bson::to_bson(&doc) {
-            if let Ok(json) = serde_json::to_value(bson) {
-                total_reviews = json["total_reviews"].as_i64().unwrap_or(0) as i32;
-                average_rating = json["average_rating"].as_f64().unwrap_or(0.0);
-            }
-        }
-    }
+    let total_reviews: i64 = review_row.get("total_reviews");
+    let average_rating: Option<f64> = review_row.get("average_rating");
 
     Ok(json!({
         "views": views,
@@ -266,94 +218,62 @@ pub async fn get_service_stats_optimized(
         "messages": messages,
         "shares": shares,
         "likes": likes,
-        "average_rating": average_rating,
+        "average_rating": average_rating.unwrap_or(0.0),
         "total_ratings": total_reviews
     }))
 }
 
-/// ✅ NOUVEAU 2025-01-01: Récupère les avis pour plusieurs services en batch (ultra-rapide)
-/// Utilise une seule requête MongoDB avec $in au lieu de N requêtes séparées
-/// Performance: < 200ms pour 10 services au lieu de 2-4s
+/// ✅ 2026-03-16: Récupère les avis pour plusieurs services en batch via SQL
 pub async fn get_services_reviews_batch(
     mongo_history: Arc<MongoHistoryService>,
     service_ids: Vec<i32>,
     limit_per_service: Option<i64>,
 ) -> Result<serde_json::Value, String> {
-    use mongodb::bson::doc;
-
-    let collection = mongo_history.get_collection("history").await;
+    let pool = mongo_history.pg_pool();
     let effective_limit = limit_per_service.unwrap_or(20);
 
-    // ✅ Pipeline d'agrégation pour récupérer les avis de plusieurs services en une seule requête
-    let pipeline = vec![
-        // Étape 1: Filtrer les avis des services demandés
-        doc! {
-            "$match": {
-                "event_type": "UserAction",
-                "service_id": { "$in": &service_ids },
-                "data.interaction_type": "review"
-            }
-        },
-        // Étape 2: Trier par service_id puis par timestamp (plus récent en premier)
-        doc! {
-            "$sort": {
-                "service_id": 1,
-                "timestamp": -1
-            }
-        },
-        // Étape 3: Grouper par service_id et prendre les N premiers avis
-        doc! {
-            "$group": {
-                "_id": "$service_id",
-                "reviews": {
-                    "$push": {
-                        "user_id": "$user_id",
-                        "timestamp": "$timestamp",
-                        "rating": "$data.rating",
-                        "comment": "$data.comment",
-                        "mentions": "$data.mentions"
-                    }
-                }
-            }
-        },
-        // Étape 4: Limiter le nombre d'avis par service
-        doc! {
-            "$project": {
-                "service_id": "$_id",
-                "reviews": { "$slice": ["$reviews", effective_limit] }
-            }
-        },
-    ];
-
-    let mut cursor = collection
-        .aggregate(pipeline, None)
-        .await
-        .map_err(|e| format!("Erreur agrégation batch reviews: {e}"))?;
+    // Utiliser une window function pour limiter par service
+    let rows = sqlx::query(
+        "SELECT service_id, user_id, timestamp, data
+         FROM (
+             SELECT service_id, user_id, timestamp, data,
+                    ROW_NUMBER() OVER (PARTITION BY service_id ORDER BY timestamp DESC) as rn
+             FROM history_events
+             WHERE event_type = 'UserAction'
+               AND service_id = ANY($1)
+               AND data->>'interaction_type' = 'review'
+         ) sub
+         WHERE rn <= $2
+         ORDER BY service_id, timestamp DESC",
+    )
+    .bind(&service_ids)
+    .bind(effective_limit)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Erreur SQL batch reviews: {e}"))?;
 
     let mut results_map = serde_json::Map::new();
 
-    // Parcourir les résultats et construire un map service_id -> reviews
-    while let Some(doc) = cursor
-        .try_next()
-        .await
-        .map_err(|e| format!("Erreur itération batch reviews: {e}"))?
-    {
-        if let Ok(bson) = mongodb::bson::to_bson(&doc) {
-            if let Ok(json) = serde_json::to_value(bson) {
-                if let Some(service_id) = json["service_id"].as_i64() {
-                    if let Some(reviews) = json["reviews"].as_array() {
-                        results_map.insert(
-                            service_id.to_string(),
-                            serde_json::Value::Array(reviews.clone()),
-                        );
-                    }
-                }
-            }
-        }
+    for row in &rows {
+        let service_id: i32 = row.get("service_id");
+        let review = json!({
+            "user_id": row.get::<Option<i32>, _>("user_id"),
+            "timestamp": row.get::<chrono::DateTime<Utc>, _>("timestamp").to_rfc3339(),
+            "rating": row.get::<Value, _>("data").get("rating"),
+            "comment": row.get::<Value, _>("data").get("comment"),
+            "mentions": row.get::<Value, _>("data").get("mentions"),
+        });
+
+        results_map
+            .entry(service_id.to_string())
+            .or_insert_with(|| serde_json::Value::Array(vec![]))
+            .as_array_mut()
+            .unwrap()
+            .push(review);
     }
 
     // S'assurer que tous les service_ids ont une entrée (même vide)
-    for service_id in service_ids {
+    for service_id in &service_ids {
         if !results_map.contains_key(&service_id.to_string()) {
             results_map.insert(service_id.to_string(), serde_json::Value::Array(vec![]));
         }
@@ -362,175 +282,91 @@ pub async fn get_services_reviews_batch(
     Ok(serde_json::Value::Object(results_map))
 }
 
-/// ✅ NOUVEAU 2025-01-01: Récupère les statistiques pour plusieurs services en batch (ultra-rapide)
-/// Utilise une seule agrégation MongoDB avec $in au lieu de N requêtes séparées
-/// Performance: < 300ms pour 10 services au lieu de 4-8s
+/// ✅ 2026-03-16: Récupère les statistiques pour plusieurs services en batch via SQL
 pub async fn get_services_stats_batch(
     mongo_history: Arc<MongoHistoryService>,
     service_ids: Vec<i32>,
 ) -> Result<serde_json::Value, String> {
-    use mongodb::bson::doc;
+    let pool = mongo_history.pg_pool();
 
-    let collection = mongo_history.get_collection("history").await;
-
-    // ✅ Pipeline d'agrégation pour compter les interactions par type et par service
-    let pipeline = vec![
-        // Étape 1: Filtrer les interactions des services demandés
-        doc! {
-            "$match": {
-                "event_type": "UserAction",
-                "service_id": { "$in": &service_ids }
-            }
-        },
-        // Étape 2: Grouper par service_id et interaction_type, puis compter
-        doc! {
-            "$group": {
-                "_id": {
-                    "service_id": "$service_id",
-                    "interaction_type": "$data.interaction_type"
-                },
-                "count": { "$sum": 1 }
-            }
-        },
-        // Étape 3: Regrouper par service_id pour avoir toutes les stats par service
-        doc! {
-            "$group": {
-                "_id": "$_id.service_id",
-                "interactions": {
-                    "$push": {
-                        "type": "$_id.interaction_type",
-                        "count": "$count"
-                    }
-                }
-            }
-        },
-    ];
-
-    let mut cursor = collection
-        .aggregate(pipeline, None)
-        .await
-        .map_err(|e| format!("Erreur agrégation batch stats: {e}"))?;
+    // Compter les interactions par type et par service en une seule requête
+    let rows = sqlx::query(
+        "SELECT service_id, data->>'interaction_type' as interaction_type, COUNT(*) as count
+         FROM history_events
+         WHERE event_type = 'UserAction' AND service_id = ANY($1)
+         GROUP BY service_id, data->>'interaction_type'",
+    )
+    .bind(&service_ids)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Erreur SQL batch stats: {e}"))?;
 
     let mut results_map = serde_json::Map::new();
 
-    // Parcourir les résultats et construire un map service_id -> stats
-    while let Some(doc) = cursor
-        .try_next()
-        .await
-        .map_err(|e| format!("Erreur itération batch stats: {e}"))?
-    {
-        if let Ok(bson) = mongodb::bson::to_bson(&doc) {
-            if let Ok(json) = serde_json::to_value(bson) {
-                if let Some(service_id) = json["_id"].as_i64() {
-                    let mut views = 0;
-                    let mut contacts = 0;
-                    let mut messages = 0;
-                    let mut shares = 0;
-                    let mut likes = 0;
+    for row in &rows {
+        let service_id: i32 = row.get("service_id");
+        let interaction_type: Option<String> = row.get("interaction_type");
+        let count: i64 = row.get("count");
 
-                    if let Some(interactions) = json["interactions"].as_array() {
-                        for interaction in interactions {
-                            if let Some(interaction_type) = interaction["type"].as_str() {
-                                if let Some(count) = interaction["count"].as_i64() {
-                                    match interaction_type {
-                                        "view" => views = count as i32,
-                                        "contact" => contacts = count as i32,
-                                        "message" => messages = count as i32,
-                                        "share" => shares = count as i32,
-                                        "like" => likes = count as i32,
-                                        _ => {}
-                                    }
-                                }
-                            }
-                        }
-                    }
+        let entry = results_map
+            .entry(service_id.to_string())
+            .or_insert_with(|| {
+                json!({
+                    "views": 0, "contacts": 0, "messages": 0,
+                    "shares": 0, "likes": 0,
+                    "average_rating": 0.0, "total_ratings": 0
+                })
+            });
 
-                    results_map.insert(
-                        service_id.to_string(),
-                        json!({
-                            "views": views,
-                            "contacts": contacts,
-                            "messages": messages,
-                            "shares": shares,
-                            "likes": likes,
-                            "average_rating": 0.0, // Sera calculé séparément
-                            "total_ratings": 0
-                        }),
-                    );
-                }
+        if let Some(obj) = entry.as_object_mut() {
+            match interaction_type.as_deref() {
+                Some("view") => { obj.insert("views".to_string(), json!(count)); }
+                Some("contact") => { obj.insert("contacts".to_string(), json!(count)); }
+                Some("message") => { obj.insert("messages".to_string(), json!(count)); }
+                Some("share") => { obj.insert("shares".to_string(), json!(count)); }
+                Some("like") => { obj.insert("likes".to_string(), json!(count)); }
+                _ => {}
             }
         }
     }
 
-    // ✅ Pipeline séparé pour calculer les notes moyennes des avis
-    let reviews_pipeline = vec![
-        doc! {
-            "$match": {
-                "event_type": "UserAction",
-                "service_id": { "$in": &service_ids },
-                "data.interaction_type": "review"
-            }
-        },
-        doc! {
-            "$group": {
-                "_id": "$service_id",
-                "total_reviews": { "$sum": 1 },
-                "total_rating": { "$sum": "$data.rating" },
-                "average_rating": { "$avg": "$data.rating" }
-            }
-        },
-    ];
+    // Calculer les notes moyennes pour tous les services en une requête
+    let review_rows = sqlx::query(
+        "SELECT service_id, COUNT(*) as total_reviews, AVG((data->>'rating')::float) as average_rating
+         FROM history_events
+         WHERE event_type = 'UserAction' AND service_id = ANY($1) AND data->>'interaction_type' = 'review'
+         GROUP BY service_id",
+    )
+    .bind(&service_ids)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Erreur SQL batch reviews stats: {e}"))?;
 
-    let mut reviews_cursor = collection
-        .aggregate(reviews_pipeline, None)
-        .await
-        .map_err(|e| format!("Erreur agrégation batch reviews stats: {e}"))?;
+    for row in &review_rows {
+        let service_id: i32 = row.get("service_id");
+        let total_reviews: i64 = row.get("total_reviews");
+        let average_rating: Option<f64> = row.get("average_rating");
 
-    // Mettre à jour les stats avec les données des avis
-    while let Some(doc) = reviews_cursor
-        .try_next()
-        .await
-        .map_err(|e| format!("Erreur itération batch reviews stats: {e}"))?
-    {
-        if let Ok(bson) = mongodb::bson::to_bson(&doc) {
-            if let Ok(json) = serde_json::to_value(bson) {
-                if let Some(service_id) = json["_id"].as_i64() {
-                    let total_reviews = json["total_reviews"].as_i64().unwrap_or(0) as i32;
-                    let average_rating = json["average_rating"].as_f64().unwrap_or(0.0);
-
-                    if let Some(stats_obj) = results_map.get_mut(&service_id.to_string()) {
-                        if let Some(stats_map) = stats_obj.as_object_mut() {
-                            stats_map.insert(
-                                "average_rating".to_string(),
-                                serde_json::Value::Number(
-                                    serde_json::Number::from_f64(average_rating)
-                                        .unwrap_or(serde_json::Number::from(0)),
-                                ),
-                            );
-                            stats_map.insert(
-                                "total_ratings".to_string(),
-                                serde_json::Value::Number(serde_json::Number::from(total_reviews)),
-                            );
-                        }
-                    }
-                }
+        if let Some(stats_obj) = results_map.get_mut(&service_id.to_string()) {
+            if let Some(stats_map) = stats_obj.as_object_mut() {
+                stats_map.insert(
+                    "average_rating".to_string(),
+                    json!(average_rating.unwrap_or(0.0)),
+                );
+                stats_map.insert("total_ratings".to_string(), json!(total_reviews));
             }
         }
     }
 
-    // S'assurer que tous les service_ids ont une entrée (même vide)
-    for service_id in service_ids {
+    // S'assurer que tous les service_ids ont une entrée
+    for service_id in &service_ids {
         if !results_map.contains_key(&service_id.to_string()) {
             results_map.insert(
                 service_id.to_string(),
                 json!({
-                    "views": 0,
-                    "contacts": 0,
-                    "messages": 0,
-                    "shares": 0,
-                    "likes": 0,
-                    "average_rating": 0.0,
-                    "total_ratings": 0
+                    "views": 0, "contacts": 0, "messages": 0,
+                    "shares": 0, "likes": 0,
+                    "average_rating": 0.0, "total_ratings": 0
                 }),
             );
         }

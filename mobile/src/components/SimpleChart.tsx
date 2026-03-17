@@ -1,6 +1,7 @@
 import React from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ChartData {
     label: string;
@@ -27,6 +28,7 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
     const totalValue = data.reduce((sum, d) => sum + d.value, 0);
 
     const renderBarChart = () => {
+    const { t } = useLanguageSafe();
         return (
             <View style={styles.chartContainer}>
                 {data.map((item, index) => {

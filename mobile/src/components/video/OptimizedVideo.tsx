@@ -8,6 +8,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { adaptiveVideoService } from '../../services/adaptiveVideoService';
 import { cdnService } from '../../services/cdnService';
 import { videoCacheService } from '../../services/videoCacheService';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface OptimizedVideoProps extends Omit<VideoProps, 'source'> {
     originalUri: string;
@@ -25,7 +26,8 @@ const OptimizedVideo = forwardRef<Video, OptimizedVideoProps>(({
     showCacheIndicator = false,
     ...videoProps
 }, ref) => {
-    const [optimizedUri, setOptimizedUri] = useState<string>(originalUri);
+        const { t } = useLanguageSafe();
+const [optimizedUri, setOptimizedUri] = useState<string>(originalUri);
     const [cacheStatus, setCacheStatus] = useState<'checking' | 'hit' | 'miss' | null>(null);
     const [isInitialized, setIsInitialized] = useState(false);
 

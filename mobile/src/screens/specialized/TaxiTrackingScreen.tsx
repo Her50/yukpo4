@@ -69,7 +69,7 @@ const TaxiTrackingScreen: React.FC = () => {
             }, 5000);
         } catch (error: any) {
             console.error('[TaxiTrackingScreen] Erreur démarrage suivi:', error);
-            Alert.alert('Erreur', 'Impossible de démarrer le suivi');
+            Alert.alert(t('message.error'), t('taxiTrackingScreen.impossibleDeDemarrerLeSuivi'));
         } finally {
             setLoading(false);
         }
@@ -150,11 +150,11 @@ const TaxiTrackingScreen: React.FC = () => {
 
     const getStatusText = (): string => {
         switch (status) {
-            case 'waiting': return 'En attente';
-            case 'coming': return 'En route vers vous';
+            case 'waiting': return t('taxiTrackingScreen.enAttente');
+            case 'coming': return t('taxiTrackingScreen.enRouteVersVous');
             case 'arrived': return t('taxiTrackingScreen.arrive');
-            case 'on_way': return 'En route vers la destination';
-            default: return 'En cours';
+            case 'on_way': return t('taxiTrackingScreen.enRouteVersDestination');
+            default: return t('taxiTrackingScreen.enCours');
         }
     };
 
@@ -226,8 +226,8 @@ const TaxiTrackingScreen: React.FC = () => {
                                     latitude: driverLocation.latitude,
                                     longitude: driverLocation.longitude,
                                 }}
-                                title="Taxi"
-                                description="Votre chauffeur"
+                                title={t('taxiTrackingScreen.taxi')}
+                                description={t('taxiTrackingScreen.votreChauffeur')}
                                 anchor={{ x: 0.5, y: 0.5 }}
                             >
                                 <View style={styles.driverMarker}>
@@ -268,7 +268,7 @@ const TaxiTrackingScreen: React.FC = () => {
                 <View style={styles.infoRow}>
                     <View style={styles.infoItem}>
                         <SafeIcon name="map-pin" size={20} color="#6B7280" type="lucide" />
-                        <Text style={styles.infoLabel}>Distance</Text>
+                        <Text style={styles.infoLabel}>{t('taxiTrackingScreen.distance')}</Text>
                         <Text style={styles.infoValue}>
                             {distance !== null ? formatDistance(distance) : '--'}
                         </Text>
@@ -301,11 +301,11 @@ const TaxiTrackingScreen: React.FC = () => {
                     style={styles.callButton}
                     onPress={() => {
                         hapticPress();
-                        Alert.alert('Appeler', 'Fonctionnalité d\'appel à venir');
+                        Alert.alert(t('taxiTrackingScreen.appeler'), t('taxiTrackingScreen.fonctionnaliteAppelAVenir'));
                     }}
                 >
                     <SafeIcon name="phone" size={20} color="#FFFFFF" type="lucide" />
-                    <Text style={styles.callButtonText}>Appeler le chauffeur</Text>
+                    <Text style={styles.callButtonText}>{t('taxiTrackingScreen.appelerLeChauffeur')}</Text>
                 </TouchableOpacity>
             </View>
         </SafeNativeView>

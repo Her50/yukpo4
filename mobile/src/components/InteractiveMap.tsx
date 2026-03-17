@@ -43,7 +43,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; lon
             setLoading(true);
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission refusée', 'Permission de localisation refusée');
+                Alert.alert(t('interactiveMap.permissionRefusee'), t('interactiveMap.permissionDeLocalisationRefusee'));
                 return;
             }
 
@@ -96,7 +96,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; lon
             });
             onClose();
         } else {
-            Alert.alert('Erreur', 'Veuillez sélectionner un emplacement sur la carte');
+            Alert.alert('Erreur', t('interactiveMap.veuillezSelectionnerUnEmplacementSurLa'));
         }
     };
 

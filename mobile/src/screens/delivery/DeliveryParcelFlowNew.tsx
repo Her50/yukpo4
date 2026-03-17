@@ -673,7 +673,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         { id: 'document', label: 'Document', icon: 'file-text', desc: 'Courrier, dossier, contrat...' },
                         { id: 'package', label: 'Paquet/Sac', icon: 'package', desc: t('deliveryParcelFlowNew.cartonSacObjetEmballe') },
                         { id: 'moving', label: t('deliveryParcelFlowNew.demenagement'), icon: 'truck', desc: 'Meubles, appareils, cartons...' },
-                        { id: 'cake', label: t('deliveryParcelFlowNew.gateau'), icon: 'cake', desc: 'Pâtisserie, gâteau fragile...' },
+                        { id: 'cake', label: t('deliveryParcelFlowNew.gateau'), icon: 'cake', desc: t('deliveryParcelFlowNew.patisserieGateauFragile') },
                     ].map((type) => (
                         <HapticTouchable
                             key={type.id}
@@ -1089,9 +1089,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     const PickupAddressStep = (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
             <Text style={styles.stepTitle}>{t('deliveryParcelFlowNew.adresseDeCollecte')}</Text>
-            <Text style={styles.stepSubtitle}>{t('deliveryParcelFlowNew.ouSeTrouveLeColis')}</Text>
-
-            {/* ✅ NOUVEAU : Sélecteur d'adresse sauvegardée */}
+            <Text style={styles.stepSubtitle}>{t('deliveryParcelFlowNew.ouSeTrouveLeColist('deliveryParcelFlowNew.textNouveauSelecteurD')adresse sauvegardée */}
             <SavedAddressSelector
                 addressType="pickup"
                 value={pickupLocation ? {
@@ -1169,9 +1167,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     const DropoffAddressStep = (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
             <Text style={styles.stepTitle}>{t('deliveryParcelFlowNew.adresseDeLivraison')}</Text>
-            <Text style={styles.stepSubtitle}>{t('deliveryParcelFlowNew.ouSouhaitezvousQueLeColis')}</Text>
-
-            {/* ✅ NOUVEAU : Sélecteur d'adresse sauvegardée */}
+            <Text style={styles.stepSubtitle}>{t('deliveryParcelFlowNew.ouSouhaitezvousQueLeColist('deliveryParcelFlowNew.textNouveauSelecteurD')adresse sauvegardée */}
             <SavedAddressSelector
                 addressType="dropoff"
                 value={dropoffLocation ? {
@@ -1330,7 +1326,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         {parcelType === 'document' ? 'Document' :
                             parcelType === 'package' ? 'Paquet/Sac' :
                                 parcelType === 'moving' ? t('deliveryParcelFlowNew.demenagement') :
-                                    parcelType === 'cake' ? 'Gâteau' : parcelType}
+                                    parcelType === 'cake' ? t('deliveryParcelFlowNew.gateau') : parcelType}
                     </Text>
                 </View>
                 {numberOfItems && (

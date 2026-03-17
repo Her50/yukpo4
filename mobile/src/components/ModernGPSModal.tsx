@@ -122,7 +122,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             const { status } = await Promise.race([permissionPromise, timeoutPromise as Promise<Location.LocationPermissionResponse>]);
             setPermissionGranted(status === 'granted');
             if (status !== 'granted') {
-                Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la localisation pour utiliser cette fonctionnalité.');
+                Alert.alert('Permission requise', 'Veuillez autoriser l\t('modernGPSModal.accesALaLocalisationPourUtiliser'));
             }
         } catch (error: any) {
             console.error('[ModernGPSModal] ❌ Erreur permission:', error);
@@ -135,7 +135,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
 
     const handleGetCurrentLocation = async () => {
         if (!permissionGranted) {
-            Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la localisation.');
+            Alert.alert('Permission requise', 'Veuillez autoriser l\t('modernGPSModal.accesALaLocalisation'));
             return;
         }
 
@@ -183,7 +183,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
         } catch (error: any) {
             console.error('[ModernGPSModal] ❌ Erreur géolocalisation:', error);
             if (error?.message?.includes('timeout')) {
-                Alert.alert('Timeout GPS', 'La géolocalisation prend trop de temps. Veuillez réessayer.');
+                Alert.alert('Timeout GPS', t('modernGPSModal.laGeolocalisationPrendTropDeTemps'));
             } else {
                 Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle.');
             }
@@ -427,7 +427,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                 setSelectedLocation({ lat: result.latitude, lng: result.longitude });
                 setAddress(searchQuery);
             } else {
-                Alert.alert('Aucun résultat', 'Aucune adresse trouvée pour cette recherche.');
+                Alert.alert(t('modernGPSModal.aucunResultat'), t('modernGPSModal.aucuneAdresseTrouveePourCetteRecherche'));
             }
         } catch (error) {
             console.error('Erreur recherche adresse:', error);
@@ -459,7 +459,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
     const confirmSelection = async () => {
         if (zoneType === 'point') {
             if (!selectedLocation) {
-                Alert.alert('Erreur', 'Veuillez sélectionner une position sur la carte.');
+                Alert.alert('Erreur', t('modernGPSModal.veuillezSelectionnerUnePositionSurLa'));
                 return;
             }
 
@@ -496,7 +496,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             }
         } else {
             if ((selectedPolygon || []).length < 3) {
-                Alert.alert('Erreur', 'Veuillez sélectionner au moins 3 points pour créer une zone.');
+                Alert.alert('Erreur', t('modernGPSModal.veuillezSelectionnerAuMoins3Points'));
                 return;
             }
             const coordsString = (selectedPolygon || []).map(p => `${p.lat},${p.lng}`).join('|');
@@ -563,7 +563,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
     // ✅ NOUVEAU 2026-01-04: Fonction pour ouvrir le modal de sauvegarde
     const handleSaveLocation = () => {
         if (!selectedLocation) {
-            Alert.alert('Erreur', 'Veuillez d\'abord sélectionner un lieu sur la carte.');
+            Alert.alert('Erreur', 'Veuillez d\t('modernGPSModal.abordSelectionnerUnLieuSurLa'));
             return;
         }
         setSaveLocationName('');
@@ -666,7 +666,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                     <TouchableOpacity
                         style={styles.closeButton}
                         onPress={onClose}
-                        accessibilityLabel="Fermer"
+                        accessibilityLabel={t('modernGPSModal.fermer')}
                         accessibilityRole="button"
                     >
                         <SafeIcon name="arrow-left" size={22} color="#FFFFFF" />

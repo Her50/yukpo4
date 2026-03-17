@@ -86,8 +86,8 @@ const TaxiDetailsScreen: React.FC = () => {
                 .catch(() => apiGet(`/api/taxis/${params.taxiId}`));
             const r = response.data as any;
             if (response.success && r) setTaxi(r);
-            else { Alert.alert('Erreur', 'Impossible de charger les détails du taxi'); navigation.goBack(); }
-        } catch (error: any) { Alert.alert('Erreur', error.message || 'Erreur de chargement'); navigation.goBack(); }
+            else { Alert.alert(t('message.error'), t('taxiDetailsScreen.impossibleDeChargerLesDetailsDu')); navigation.goBack(); }
+        } catch (error: any) { Alert.alert(t('message.error'), error.message || t('taxiDetailsScreen.impossibleDeChargerLesDetailsDu')); navigation.goBack(); }
         finally { setLoading(false); }
     };
 
@@ -111,14 +111,14 @@ const TaxiDetailsScreen: React.FC = () => {
     };
 
     const handleBook = async () => {
-        if (!user) { Alert.alert('Connexion requise', 'Veuillez vous connecter'); navigation.navigate('Login' as never); return; }
+        if (!user) { Alert.alert(t('taxiBooking.loginRequired'), t('taxiBooking.loginToBook')); navigation.navigate('Login' as never); return; }
         try {
             setBooking(true);
             const response = await apiPost(`/api/taxis/${params.taxiId}/book`, {
                 departure_gps: taxi?.gps_actuel || null,
                 arrival_gps: null,
                 estimated_price: taxi?.tarif_base ? taxi.tarif_base + (5 * (taxi.tarif_par_km || 200)) : null,
-                notes: 'Réservation depuis l\'application mobile',
+                notes: t('taxiDetailsScreen.reservationDepuisApp'),
             });
             const r = response.data as any;
             if (response.success && r?.reservation) {
@@ -133,7 +133,7 @@ const TaxiDetailsScreen: React.FC = () => {
             } else {
                 Alert.alert('Erreur', (response as any).error || t('taxiDetails.impossibleDeCreerLaReservation'));
             }
-        } catch (error: any) { Alert.alert('Erreur', error.message || 'Erreur de réservation'); }
+        } catch (error: any) { Alert.alert(t('message.error'), error.message || t('taxiDetailsScreen.erreurDeReservation')); }
         finally { setBooking(false); }
     };
 
@@ -166,7 +166,7 @@ const TaxiDetailsScreen: React.FC = () => {
                     <View style={st.heroBadges}>
                         <View style={[st.badge, { backgroundColor: isAvailable ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)' }]}>
                             <View style={[st.badgeDot, { backgroundColor: isAvailable ? '#fff' : '#FCA5A5' }]} />
-                            <Text style={st.badgeText}>{isAvailable ? 'Disponible' : t('taxiDetailsScreen.occupe')}</Text>
+                            <Text style={st.badgeText}>{isAvailable ? t('taxiHome.disponible') : t('taxiDetailsScreen.occupe')}</Text>
                         </View>
                         {taxi.driver?.is_verified && (
                             <View style={[st.badge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
@@ -195,7 +195,7 @@ const TaxiDetailsScreen: React.FC = () => {
                 {/* Quick Actions */}
                 <View style={st.quickRow}>
                     {[
-                        taxi.telephone && { icon: 'phone', label: 'Appeler', color: '#D97706', onPress: handleCall },
+                        taxi.telephone && { icon: 'phone', label: t('taxiBooking.call'), color: '#D97706', onPress: handleCall },
                         { icon: 'message-circle', label: 'WhatsApp', color: '#25D366', onPress: handleWhatsApp },
                         taxi.email && { icon: 'mail', label: 'Email', color: '#3B82F6', onPress: handleEmail },
                         { icon: 'share-2', label: t('taxiDetailsScreen.partager'), color: '#8B5CF6', onPress: handleShare },

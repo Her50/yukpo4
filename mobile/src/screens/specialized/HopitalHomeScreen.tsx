@@ -776,7 +776,7 @@ const AIModal: React.FC<AIModalProps> = ({
 
                                     {!pathologyQuery.trim() && (
                                         <Text style={styles.pathologyHint}>
-                                            💡 Exemples : "Douleurs thoraciques", "Fièvre persistante", "Troubles digestifs"
+                                            💡 Exemples : "Douleurs thoraciques", t('hopitalHomeScreen.fievrePersistante'), "Troubles digestifs"
                                         </Text>
                                     )}
                                 </View>
@@ -786,7 +786,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                         <View style={styles.resultsHeader}>
                                             <SafeIcon name="check-circle" size={20} color="#DC2626" type="lucide" />
                                             <Text style={styles.resultsHeaderText}>
-                                                {pathologyResults.length} résultat{pathologyResults.length > 1 ? 's' : ''} trouvé{pathologyResults.length > 1 ? 's' : ''}
+                                                {pathologyResults.length} résultat{pathologyResults.length > 1 ? 's' : 't('hopitalHomeScreen.trouvepathologyresultslength1')s' : ''}
                                             </Text>
                                         </View>
                                         {pathologyResults.map((result, index) => (

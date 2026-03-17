@@ -184,7 +184,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                             style={styles.actionButton}
                         />
                         <NativeButton
-                            title={isUploading ? "⏳ Upload en cours..." : "✅ Utiliser cette vidéo"}
+                            title={isUploading ? "⏳ Upload en cours..." : t('aRVideoEditor.utiliserCetteVideo')}
                             variant="primary"
                             size="large"
                             onPress={handleUseVideo}

@@ -27,7 +27,7 @@ const [activeTab, setActiveTab] = useState<'general' | 'branding'>('general');
 
     const addMedia = (type: string) => {
         // TODO: Implémenter la sélection de fichiers réelle
-        Alert.alert('Ajouter média', `Fonctionnalité d'ajout de ${type} à implémenter`);
+        Alert.alert(t('mediaManager.ajouterMedia'), t('mediaManager.fonctionnaliteDajoutDeAImplementer', { type: type }));
     };
 
     const removeMedia = (type: string, index: number) => {

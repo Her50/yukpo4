@@ -311,7 +311,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                                     const newModality = text;
 
                                     if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('🆕'))) {
-                                        Alert.alert('⚠️ Modalité existante', `"${newModality}" existe déjà dans la liste.`, [{ text: 'OK' }]);
+                                        Alert.alert(t('selectModalitySelector.modaliteExistante'), t('selectModalitySelector.existeDejaDansLaListe', { newModality: newModality }), [{ text: 'OK' }]);
                                         return;
                                     }
 
@@ -327,9 +327,9 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                                         setShowModal(false);
                                         setShowAddModal(false);
                                         setNewModalityText('');
-                                        Alert.alert('✅ Modalité ajoutée', `"${newModality}" a été ajouté avec succès.`, [{ text: 'OK' }]);
+                                        Alert.alert(t('selectModalitySelector.modaliteAjoutee'), t('selectModalitySelector.aEteAjouteAvecSucces', { newModality: newModality }), [{ text: 'OK' }]);
                                     } else {
-                                        Alert.alert('❌ Erreur', 'Impossible d\'ajouter la modalité. Veuillez réessayer.', [{ text: 'OK' }]);
+                                        Alert.alert('❌ Erreur', 'Impossible d\t('selectModalitySelector.ajouterLaModaliteVeuillezReessayer'), [{ text: 'OK' }]);
                                     }
                                 }}
                             >

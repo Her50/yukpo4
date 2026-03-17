@@ -204,7 +204,7 @@ const [loading, setLoading] = useState(false);
                 t('quickPreview.aucunMediaValide'),
                 t('quickPreview.aucunMediaValideTrouveDansLa') +
                 'Veuillez :\n' +
-                '• Ajouter des médias (images, vidéos) à la timeline\n' +
+                t('quickPreview.ajouterDesMediasImagesVideosA') +
                 t('quickPreview.verifierQueLesMediasOntDes') +
                 t('quickPreview.regenererLaTimelineSiNecessaire'),
                 [{ text: 'OK' }]
@@ -267,15 +267,15 @@ const [loading, setLoading] = useState(false);
 
             if (err?.response?.status === 500 || err?.message?.includes('500') || err?.message?.includes('Erreur 500')) {
                 const serverError = err?.response?.data?.error || err?.response?.data?.message || '';
-                if (serverError.includes('média') || serverError.includes('media') || serverError.includes('timeline')) {
-                    errorMessage = `Erreur serveur : ${serverError || t('quickPreview.aucunMediaTrouveDansLa')}\n\nVérifiez que tous les médias de la timeline sont accessibles.`;
+                if (serverError.includes(t('quickPreview.media')) || serverError.includes('media') || serverError.includes('timeline')) {
+                    errorMessage = t('quickPreview.erreurServeurNnverifiezQueTousLes', { serverError____t__quickPr: serverError || t('quickPreview.aucunMediaTrouveDansLa') });
                 } else {
-                    errorMessage = `Erreur serveur (500) : ${serverError || t('quickPreview.lePreviewNaPasPuEtreGenere')}\n\nVérifiez que tous les médias de la timeline sont accessibles.`;
+                    errorMessage = t('quickPreview.erreurServeur500NnverifiezQueTous', { serverError____t__quickPr: serverError || t('quickPreview.lePreviewNaPasPuEtreGenere') });
                 }
             } else if (err?.response?.status === 400) {
                 const badRequestError = err?.response?.data?.error || err?.response?.data?.message || '';
-                errorMessage = `Requête invalide : ${badRequestError || t('quickPreview.verifiezQueLaTimelineEst')}`;
-            } else if (err?.message?.includes('média') || err?.message?.includes('media') || err?.message?.includes('timeline')) {
+                errorMessage = t('quickPreview.requeteInvalide', { badRequestError____t__qui: badRequestError || t('quickPreview.verifiezQueLaTimelineEst') });
+            } else if (err?.message?.includes(t('quickPreview.media')) || err?.message?.includes('media') || err?.message?.includes('timeline')) {
                 errorMessage = t('quickPreview.aucunMediaTrouveDansLaTimelinennveuillez');
             } else if (err?.message?.includes('timeout') || err?.message?.includes('Timeout')) {
                 errorMessage = t('quickPreview.leTraitementPrendTropDeTempsnnveuillez');
@@ -317,7 +317,7 @@ const [loading, setLoading] = useState(false);
                         <>
                             <SafeIcon name="play" size={16} color="#FFF" />
                             <Text style={styles.generateButtonText}>
-                                {timelineIsValid ? t('quickPreview.generer') : 'Médias requis'}
+                                {timelineIsValid ? t('quickPreview.generer') : t('quickPreview.mediasRequis')}
                             </Text>
                         </>
                     )}

@@ -17,9 +17,9 @@ import RealEstateAIFeatures from '../../components/RealEstateAIFeatures';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ImmobilierSearchFilters {
     ville?: string;
@@ -109,18 +109,18 @@ const ImmobilierSearchScreen: React.FC = () => {
     const handleSearch = () => {
         // Validation selon le mode de recherche
         if (searchMode === 'quartiers' && selectedQuartiers.length === 0) {
-            Alert.alert('Erreur', 'Veuillez sélectionner au moins un quartier');
+            Alert.alert('Erreur', t('immobilierSearchScreen.veuillezSelectionnerAuMoinsUnQuartier'));
             return;
         }
         if (searchMode === 'zone' && !searchZone) {
-            Alert.alert('Erreur', 'Veuillez délimiter une zone sur la carte');
+            Alert.alert('Erreur', t('immobilierSearchScreen.veuillezDelimiterUneZoneSurLa'));
             return;
         }
         const villeStr = typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || '';
         const quartierStr = typeof quartier === 'string' ? quartier : (quartier as LocationObject)?.components?.quartier || (quartier as LocationObject)?.place_name || '';
 
         if (searchMode === 'point' && !villeStr.trim() && !quartierStr.trim() && !gpsData) {
-            Alert.alert('Erreur', 'Veuillez renseigner une ville/quartier ou sélectionner un point GPS');
+            Alert.alert('Erreur', t('immobilierSearchScreen.veuillezRenseignerUneVillequartierOuSelectionner'));
             return;
         }
 
@@ -156,8 +156,8 @@ const ImmobilierSearchScreen: React.FC = () => {
     };
 
     const typesBiens = ['Appartement', 'Villa', 'Studio', 'Duplex', 'Triplex', 'Maison', 'Bureau', 'Commerce'];
-    const statuts = ['À vendre', 'À louer (bail)', t('immobilierSearchScreen.aLouerMeuble'), t('immobilierSearchScreen.locationCourteDuree'), 'Colocation'];
-    const standings = ['Économique', 'Standard', 'Bon standing', 'Haut standing', 'Luxe / Prestige'];
+    const statuts = [t('immobilierSearchScreen.aVendre'), t('immobilierSearchScreen.aLouerBail'), t('immobilierSearchScreen.aLouerMeuble'), t('immobilierSearchScreen.locationCourteDuree'), 'Colocation'];
+    const standings = [t('immobilierSearchScreen.economique'), 'Standard', 'Bon standing', 'Haut standing', 'Luxe / Prestige'];
 
     // Recherches rapides spécifiques immobilier
     const quickSearches = [
@@ -382,7 +382,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                             >
                                 <SafeIcon name="map" size={20} color="#1E40AF" type="lucide" />
                                 <Text style={styles.zoneButtonText}>
-                                    {searchZone ? t('immobilierSearchScreen.zoneDelimiteeModifier') : 'Délimiter une zone sur la carte'}
+                                    {searchZone ? t('immobilierSearchScreen.zoneDelimiteeModifier') : t('immobilierSearchScreen.delimiterUneZoneSurLaCarte')}
                                 </Text>
                                 <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
                             </TouchableOpacity>
@@ -433,7 +433,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                             {selectedQuartiers.length > 0 && (
                                 <View style={styles.selectedQuartiersInfo}>
                                     <Text style={styles.selectedQuartiersText}>
-                                        {selectedQuartiers.length} quartier{selectedQuartiers.length > 1 ? 's' : ''} sélectionné{selectedQuartiers.length > 1 ? 's' : ''}
+                                        {selectedQuartiers.length} {t('immobilierSearch.quartiersSelectionnes', { count: selectedQuartiers.length })}
                                     </Text>
                                 </View>
                             )}
@@ -605,10 +605,10 @@ const ImmobilierSearchScreen: React.FC = () => {
                         <Text style={styles.infoTitle}>{t('immobilierSearch.bonASavoir')}</Text>
                     </View>
                     <Text style={styles.infoText}>
-                        • La recherche par zone permet de délimiter précisément votre zone d'intérêt{'\n'}
-                        • Comparez les prix par quartier pour trouver les meilleures opportunités{'\n'}
-                        • Les alertes prix vous notifient quand un bien correspond à vos critères{'\n'}
-                        • Vérifiez les photos et visites virtuelles avant de réserver une visite
+                        {`• ${t('immobilierSearch.infoZone')}
+• ${t('immobilierSearch.infoCompareQuartier')}
+• ${t('immobilierSearch.infoAlertesPrix')}
+• ${t('immobilierSearch.infoVisitesVirtuelles')}`}
                     </Text>
                 </View>
             </KeyboardAwareScreen>

@@ -91,7 +91,7 @@ const [isExpanded, setIsExpanded] = useState(false);
         try {
             const exportData = await logger.exportLogs();
             await Clipboard.setString(exportData);
-            Alert.alert('Succès', 'Logs copiés dans le presse-papier !');
+            Alert.alert(t('debugOverlay.succes'), t('debugOverlay.logsCopiesDansLePressepapier'));
         } catch (err) {
             Alert.alert('Erreur', 'Impossible de copier les logs');
         }

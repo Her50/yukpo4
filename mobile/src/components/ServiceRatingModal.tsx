@@ -46,12 +46,12 @@ const [rating, setRating] = useState(0);
         const hasComment = comment.trim().length > 0;
         
         if (!hasRating && !hasComment) {
-            Alert.alert('Champ requis', 'Veuillez sélectionner une note ou saisir un commentaire.');
+            Alert.alert('Champ requis', t('serviceRatingModal.veuillezSelectionnerUneNoteOuSaisir'));
             return;
         }
         
         if (!hasRating && !allowCommentWithoutRating) {
-            Alert.alert('Note requise', 'Veuillez sélectionner une note avant de soumettre votre avis.');
+            Alert.alert('Note requise', t('serviceRatingModal.veuillezSelectionnerUneNoteAvantDe'));
             return;
         }
 
@@ -68,7 +68,7 @@ const [rating, setRating] = useState(0);
                 setRating(0);
                 setComment('');
             } else {
-                Alert.alert('Erreur', 'Impossible d\'envoyer votre avis. Veuillez réessayer.');
+                Alert.alert('Erreur', 'Impossible d\t('serviceRatingModal.envoyerVotreAvisVeuillezReessayer'));
             }
         } catch (error) {
             console.error('⚠️ [ServiceRatingModal] Erreur soumission:', error);
@@ -109,11 +109,11 @@ const [rating, setRating] = useState(0);
     const getRatingText = () => {
         switch (rating) {
             case 1: return t('serviceRatingModal.tresDecu');
-            case 2: return 'Déçu';
+            case 2: return t('serviceRatingModal.decu');
             case 3: return 'Moyen';
             case 4: return 'Satisfait';
-            case 5: return 'Très satisfait';
-            default: return 'Sélectionnez une note';
+            case 5: return t('serviceRatingModal.tresSatisfait');
+            default: return t('serviceRatingModal.selectionnezUneNote');
         }
     };
 

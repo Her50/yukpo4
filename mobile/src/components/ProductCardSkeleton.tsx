@@ -7,6 +7,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Animated, Dimensions, StyleSheet, View } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.85;
@@ -15,6 +16,7 @@ const ProductCardSkeleton: React.FC = () => {
     const shimmerAnim = React.useRef(new Animated.Value(0)).current;
 
     React.useEffect(() => {
+    const { t } = useLanguageSafe();
         Animated.loop(
             Animated.timing(shimmerAnim, {
                 toValue: 1,

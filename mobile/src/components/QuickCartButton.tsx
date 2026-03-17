@@ -17,6 +17,7 @@ import { apiPost } from '../services/api';
 import { triggerHaptic } from '../utils/hapticFeedback';
 import SafeIcon from './SafeIcon';
 import { useToaster } from './ToasterProvider';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface QuickCartButtonProps {
     product: any;
@@ -34,6 +35,7 @@ export const QuickCartButton: React.FC<QuickCartButtonProps> = ({
     const [isAdding, setIsAdding] = useState(false);
     const [isInCart, setIsInCart] = useState(false);
     const toaster = useToaster();
+    const { t } = useLanguageSafe();
     const scale = useSharedValue(1);
     const rotation = useSharedValue(0);
     const badgeScale = useSharedValue(0);
@@ -79,7 +81,7 @@ export const QuickCartButton: React.FC<QuickCartButtonProps> = ({
 
             setIsInCart(true);
             triggerHaptic('success');
-            toaster.success('Ajouté au panier !');
+            toaster.success(t('quickCartButton.ajouteAuPanier'));
 
             // Animation de succès
             if (typeof withSequence === 'function' && typeof withSpring === 'function' && scale && badgeScale) {
@@ -148,8 +150,8 @@ export const QuickCartButton: React.FC<QuickCartButtonProps> = ({
                     onPress={handlePress}
                     disabled={isAdding}
                     accessibilityRole="button"
-                    accessibilityLabel={isInCart ? "Produit ajouté au panier" : "Ajouter au panier"}
-                    accessibilityHint="Double-tapez pour ajouter ce produit à votre panier"
+                    accessibilityLabel={isInCart ? t('quickCartButton.produitAjouteAuPanier') : "Ajouter au panier"}
+                    accessibilityHint=t('quickCartButton.doubletapezPourAjouterCeProduitA')
                 >
                     <SafeIcon
                         name={isInCart ? 'check' : isAdding ? 'loader' : 'shopping-cart'}
@@ -157,7 +159,7 @@ export const QuickCartButton: React.FC<QuickCartButtonProps> = ({
                         color="#FFFFFF"
                     />
                     <Text style={styles.text}>
-                        {isInCart ? 'Ajouté !' : isAdding ? 'Ajout...' : 'Panier'}
+                        {isInCart ? t('quickCartButton.ajoute') : isAdding ? 'Ajout...' : 'Panier'}
                     </Text>
                     {isInCart && (
                         <AnimatedReanimated.View style={[styles.checkBadge, badgeAnimatedStyle]}>

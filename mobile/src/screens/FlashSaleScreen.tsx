@@ -215,7 +215,7 @@ const FlashSaleScreen: React.FC = () => {
                         const statusLabel = isEnded
                             ? t('flashSaleScreen.termine')
                             : isUpcoming
-                                ? `Débute dans ${formatRelativeTime(timeDiff)}`
+                                ? t('flashSaleScreen.debuteDans', { formatRelativeTime_timeDi: formatRelativeTime(timeDiff) })
                                 : `En cours · fin dans ${formatRelativeTime(timeDiff)}`;
                         const isSoldOut = sale.reserved_quantity >= sale.stock_target;
                         const ratio =
@@ -244,9 +244,9 @@ const FlashSaleScreen: React.FC = () => {
                                         : ticketStatus === 'confirmed'
                                             ? t('flashSaleScreen.reserve')
                                             : reservingSaleId === sale.id
-                                                ? 'Réservation...'
+                                                ? t('flashSaleScreen.reservation')
                                                 : user
-                                                    ? 'Réserver'
+                                                    ? t('flashSaleScreen.reserver')
                                                     : 'Se connecter';
 
                         return (

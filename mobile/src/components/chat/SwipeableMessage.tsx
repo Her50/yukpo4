@@ -10,6 +10,7 @@ import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 // ✅ expo-haptics installé - utiliser le helper existant
 import { hapticPress, hapticSelect } from '../../utils/hapticFeedback';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface SwipeableMessageProps {
     children: React.ReactNode;
@@ -50,6 +51,7 @@ const SwipeableMessage: React.FC<SwipeableMessageProps> = ({
                 opacity.setValue(actionOpacity);
             },
             onPanResponderRelease: (_, gestureState) => {
+    const { t } = useLanguageSafe();
                 const { dx, vx } = gestureState;
                 const shouldTriggerAction =
                     Math.abs(dx) > SWIPE_THRESHOLD || Math.abs(vx) > SWIPE_VELOCITY_THRESHOLD;

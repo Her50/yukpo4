@@ -13,6 +13,7 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 import SafeIcon from '../SafeIcon';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ImmersiveVideoPlayerProps {
     source: { uri: string };
@@ -43,7 +44,8 @@ export const ImmersiveVideoPlayer: React.FC<ImmersiveVideoPlayerProps> = ({
     autoHideControls = true,
     autoHideDelay = 3000,
 }) => {
-    const [controlsVisible, setControlsVisible] = useState(true);
+        const { t } = useLanguageSafe();
+const [controlsVisible, setControlsVisible] = useState(true);
     const [isFullscreen, setIsFullscreen] = useState(true);
     const controlsOpacity = useSharedValue(1);
     const videoRef = React.useRef<Video>(null);

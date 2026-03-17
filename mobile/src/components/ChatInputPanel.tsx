@@ -80,7 +80,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
         // Simulation d'analyse IA
         setAiInsights({
           confidence: 0.8,
-          suggestions: [t('chatInputPanel.ajoutezPlusDeDetailsSurVotre'), 'Précisez votre localisation'],
+          suggestions: [t('chatInputPanel.ajoutezPlusDeDetailsSurVotre'), t('chatInputPanel.precisezVotreLocalisation')],
           complexity: 'medium',
           estimatedTokens: Math.floor(texte.length / 4)
         });
@@ -148,7 +148,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
       }
     } catch (error) {
       console.error('Erreur sélection images:', error);
-      Alert.alert('Erreur', 'Impossible de sélectionner les images');
+      Alert.alert('Erreur', t('chatInputPanel.impossibleDeSelectionnerLesImages'));
     }
   }, []);
 
@@ -171,7 +171,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
       }
     } catch (error) {
       console.error('Erreur sélection documents:', error);
-      Alert.alert('Erreur', 'Impossible de sélectionner les documents');
+      Alert.alert('Erreur', t('chatInputPanel.impossibleDeSelectionnerLesDocuments'));
     }
   }, []);
 
@@ -273,7 +273,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
             color="white"
           />
           <Text style={styles.submitText}>
-            {loading ? "Analyse..." : "Envoyer à Yukpo"}
+            {loading ? "Analyse..." : t('chatInputPanel.envoyerAYukpo')}
           </Text>
         </TouchableOpacity>
       </View>

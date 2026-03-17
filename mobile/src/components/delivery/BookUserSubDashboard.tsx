@@ -135,7 +135,7 @@ const [loading, setLoading] = useState(true);
                         <SafeIcon name="calendar" size={12} color="#92400E" />
                         <Text style={styles.creneauText}>
                             {pkg.creneau_destinataire_debut
-                                ? `Créneau: ${new Date(pkg.creneau_destinataire_debut).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+                                ? t('bookUserSubDashboard.creneau', { new_Date_pkg_creneau_dest: new Date(pkg.creneau_destinataire_debut).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'  })
                                 : pkg.creneau_expediteur_debut
                                 ? t('bookUserSubDashboard.expedition', { new Date(pkg_creneau_expediteur_debut)_toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' : new Date(pkg.creneau_expediteur_debut).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'  })
                                 : ''}

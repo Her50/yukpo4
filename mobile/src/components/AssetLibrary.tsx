@@ -80,7 +80,7 @@ const [assets, setAssets] = useState<Asset[]>([]);
             if (!result.canceled && result.assets[0]) {
                 const asset = result.assets[0];
                 // TODO: Upload vers le backend
-                Alert.alert('Info', 'Upload d\'image à implémenter');
+                Alert.alert('Info', 'Upload d\t('assetLibrary.imageAImplementer'));
             }
         } catch (error) {
             console.error('[AssetLibrary] Erreur upload image:', error);
@@ -99,11 +99,11 @@ const [assets, setAssets] = useState<Asset[]>([]);
             if (!result.canceled && result.assets[0]) {
                 const asset = result.assets[0];
                 // TODO: Upload vers le backend
-                Alert.alert('Info', 'Upload de vidéo à implémenter');
+                Alert.alert('Info', t('assetLibrary.uploadDeVideoAImplementer'));
             }
         } catch (error) {
             console.error('[AssetLibrary] Erreur upload vidéo:', error);
-            Alert.alert('Erreur', 'Impossible d\'uploader la vidéo');
+            Alert.alert('Erreur', 'Impossible d\t('assetLibrary.uploaderLaVideo'));
         }
     }, []);
 
@@ -249,7 +249,7 @@ const [assets, setAssets] = useState<Asset[]>([]);
             )}
 
             <Text style={styles.countText}>
-                {filteredAssets.length} média{filteredAssets.length > 1 ? 'x' : ''} trouvé{filteredAssets.length > 1 ? 's' : ''}
+                {filteredAssets.length} média{filteredAssets.length > 1 ? 'x' : 't('assetLibrary.trouvefilteredassetslength1')s' : ''}
             </Text>
         </NativeCard>
     );

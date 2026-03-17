@@ -24,6 +24,7 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
@@ -110,7 +111,7 @@ const CovoiturageFormScreen: React.FC = () => {
     const { errors, validateField, validateForm, setError } = useFormValidation({
         depart: { required: true },
         destination: { required: true },
-        places_disponibles: { required: true, custom: v => { const n = parseInt(v); return (isNaN(n) || n < 1 || n > 50) ? 'Entre 1 et 50' : null; } },
+        places_disponibles: { required: true, custom: v => { const n = parseInt(v); return (isNaN(n) || n < 1 || n > 50) ? t('covoiturageForm.entre1et50') : null; } },
         prix_par_place: { required: true },
     });
 
@@ -258,7 +259,7 @@ const CovoiturageFormScreen: React.FC = () => {
             <View style={s.statsGrid}>
                 {[
                     { label: t('covoiturageForm.trajetsCrees'), value: myTrips.length, icon: 'map', color: '#6366F1' },
-                    { label: 'Places offertes', value: myTrips.reduce((s, t) => s + (t.places_disponibles || 0), 0), icon: 'users', color: '#3B82F6' },
+                    { label: t('covoiturageForm.placesOffertes'), value: myTrips.reduce((s, t) => s + (t.places_disponibles || 0), 0), icon: 'users', color: '#3B82F6' },
                     { label: t('covoiturageForm.recurrents'), value: myTrips.filter(t => t.is_recurring).length, icon: 'repeat', color: '#10B981' },
                 ].map((st, i) => (
                     <View key={i} style={[s.statCard, { borderLeftColor: st.color }]}>
@@ -277,12 +278,12 @@ const CovoiturageFormScreen: React.FC = () => {
                 </TouchableOpacity>
                 <TouchableOpacity style={s.quickAction} onPress={() => setActiveTab('stats')}>
                     <View style={[s.quickIcon, { backgroundColor: '#F59E0B15' }]}><SafeIcon name="bar-chart-2" size={22} color="#F59E0B" /></View>
-                    <Text style={s.quickLabel}>Statistiques</Text>
+                    <Text style={s.quickLabel}>{t('covoiturageForm.statistiques')}</Text>
                 </TouchableOpacity>
             </View>
 
             {/* Trips List */}
-            <Text style={s.sectionTitle}>Mes trajets ({myTrips.length})</Text>
+            <Text style={s.sectionTitle}>{t('covoiturageForm.mesTrajets')} ({myTrips.length})</Text>
             {myTrips.length === 0 ? (
                 <View style={s.emptyDash}>
                     <SafeIcon name="map" size={48} color="#9CA3AF" />
@@ -309,10 +310,56 @@ const CovoiturageFormScreen: React.FC = () => {
                                     <Text style={s.tripPrice}>{trip.prix_par_place?.toLocaleString()} {trip.devise || devise}/place</Text>
                                 </View>
                                 <View style={s.tripBadges}>
-                                    <View style={s.tripBadge}><Text style={s.tripBadgeText}>{trip.places_disponibles} place{(trip.places_disponibles || 0) > 1 ? 's' : ''}</Text></View>
+                                    <View style={s.tripBadge}><Text style={s.tripBadgeText}>{`${trip.places_disponibles} ${t('covoiturageForm.placesUnit')}`}</Text></View>
                                     {trip.is_recurring && <View style={[s.tripBadge, { backgroundColor: '#DCFCE7' }]}><Text style={[s.tripBadgeText, { color: '#16A34A' }]}>{t('covoiturageForm.recurrent')}</Text></View>}
                                     {isPast && <View style={[s.tripBadge, { backgroundColor: '#FEE2E2' }]}><Text style={[s.tripBadgeText, { color: '#DC2626' }]}>{t('covoiturageForm.passe')}</Text></View>}
                                 </View>
+                                {!isPast && trip.status !== 'en_cours' && (
+                                    <TouchableOpacity
+                                        style={{ marginTop: 8, backgroundColor: '#059669', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' }}
+                                        onPress={() => {
+                                            Alert.alert(
+                                                t('covoiturageForm.confirmerDepart') || 'Confirmer le départ',
+                                                t('covoiturageForm.confirmerDepartMsg') || 'Le reversement sera effectué automatiquement. Confirmer ?',
+                                                [
+                                                    { text: t('common.annuler') || 'Annuler', style: 'cancel' },
+                                                    {
+                                                        text: t('common.confirmer') || 'Confirmer',
+                                                        onPress: async () => {
+                                                            try {
+                                                                const resp = await apiPost(`/api/covoiturages/${trip.id}/confirm-departure`, {});
+                                                                if (resp.success) {
+                                                                    Alert.alert(
+                                                                        t('covoiturageForm.departConfirme') || 'Départ confirmé !',
+                                                                        `${(resp as any).reservations_count || 0} ${t('covoiturageForm.reservations')} — ${t('covoiturageForm.reversement')}: ${((resp as any).total_payout || 0).toLocaleString()} ${devise}`
+                                                                    );
+                                                                    // Refresh trips list
+                                                                    const r = await apiGet('/api/covoiturages/my-trips');
+                                                                    const d = (r?.data || r) as any;
+                                                                    const trips = Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [];
+                                                                    setMyTrips(trips);
+                                                                } else {
+                                                                    Alert.alert(t('message.error'), (resp as any).error || t('message.error'));
+                                                                }
+                                                            } catch (err: any) {
+                                                                Alert.alert(t('message.error'), err.message || t('message.error'));
+                                                            }
+                                                        },
+                                                    },
+                                                ]
+                                            );
+                                        }}
+                                    >
+                                        <SafeIcon name="check-circle" size={16} color="#fff" />
+                                        <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>{t('covoiturageForm.confirmerDepart') || 'Confirmer le départ'}</Text>
+                                    </TouchableOpacity>
+                                )}
+                                {trip.status === 'en_cours' && (
+                                    <View style={{ marginTop: 8, backgroundColor: '#DCFCE7', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' }}>
+                                        <SafeIcon name="check" size={14} color="#16A34A" />
+                                        <Text style={{ color: '#16A34A', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>{t('covoiturageForm.enCours') || 'En cours'}</Text>
+                                    </View>
+                                )}
                             </View>
                         </View>
                     );
@@ -353,7 +400,7 @@ const CovoiturageFormScreen: React.FC = () => {
             {/* Date & Time */}
             <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={[s.field, { flex: 1 }]}>
-                    <Text style={s.label}>Date *</Text>
+                    <Text style={s.label}>{t('covoiturageForm.dateLabel')}</Text>
                     <TouchableOpacity style={s.dateBtn} onPress={() => setShowDatePicker(true)}>
                         <Text style={s.dateBtnText}>{formData.date_depart.toLocaleDateString('fr-FR')}</Text>
                         <SafeIcon name="calendar" size={18} color={modernColors.primary} />
@@ -361,7 +408,7 @@ const CovoiturageFormScreen: React.FC = () => {
                     {showDatePicker && <DateTimePicker value={formData.date_depart} mode="date" display="default" minimumDate={new Date()} onChange={(_, d) => { setShowDatePicker(false); if (d) setFormData({ ...formData, date_depart: d }); }} />}
                 </View>
                 <View style={[s.field, { flex: 1 }]}>
-                    <Text style={s.label}>Heure *</Text>
+                    <Text style={s.label}>{t('covoiturageForm.heureLabel')}</Text>
                     <TouchableOpacity style={s.dateBtn} onPress={() => setShowTimePicker(true)}>
                         <Text style={s.dateBtnText}>{formData.heure_depart}</Text>
                         <SafeIcon name="clock" size={18} color={modernColors.primary} />
@@ -372,8 +419,8 @@ const CovoiturageFormScreen: React.FC = () => {
 
             {/* Vehicle */}
             <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={[s.field, { flex: 1 }]}><NativeInput label={t('covoiturageForm.typeVehicule')} value={formData.type_vehicule} onChangeText={t => setFormData({ ...formData, type_vehicule: t })} placeholder="Ex: Berline" /></View>
-                <View style={[s.field, { flex: 1 }]}><NativeInput label={t('covoiturageForm.marquemodele')} value={formData.marque_modele} onChangeText={t => setFormData({ ...formData, marque_modele: t })} placeholder="Ex: Toyota Corolla" /></View>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label={t('covoiturageForm.typeVehicule')} value={formData.type_vehicule} onChangeText={t => setFormData({ ...formData, type_vehicule: t })} placeholder={t('covoiturageForm.exBerline')} /></View>
+                <View style={[s.field, { flex: 1 }]}><NativeInput label={t('covoiturageForm.marquemodele')} value={formData.marque_modele} onChangeText={t => setFormData({ ...formData, marque_modele: t })} placeholder={t('covoiturageForm.exToyotaCorolla')} /></View>
             </View>
 
             {/* Photo */}
@@ -386,8 +433,8 @@ const CovoiturageFormScreen: React.FC = () => {
                     </View>
                 ) : (
                     <View style={s.imgPickers}>
-                        <TouchableOpacity style={s.imgPickerBtn} onPress={() => pickVehicleImage('camera')}><SafeIcon name="camera" size={22} color={modernColors.primary} /><Text style={s.imgPickerText}>Photo</Text></TouchableOpacity>
-                        <TouchableOpacity style={s.imgPickerBtn} onPress={() => pickVehicleImage('gallery')}><SafeIcon name="image" size={22} color={modernColors.primary} /><Text style={s.imgPickerText}>Galerie</Text></TouchableOpacity>
+                        <TouchableOpacity style={s.imgPickerBtn} onPress={() => pickVehicleImage('camera')}><SafeIcon name="camera" size={22} color={modernColors.primary} /><Text style={s.imgPickerText}>{t('covoiturageForm.photo')}</Text></TouchableOpacity>
+                        <TouchableOpacity style={s.imgPickerBtn} onPress={() => pickVehicleImage('gallery')}><SafeIcon name="image" size={22} color={modernColors.primary} /><Text style={s.imgPickerText}>{t('covoiturageForm.galerie')}</Text></TouchableOpacity>
                     </View>
                 )}
             </View>
@@ -395,7 +442,7 @@ const CovoiturageFormScreen: React.FC = () => {
             {/* Places & Price */}
             <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={[s.field, { flex: 1 }]}>
-                    <NativeInput label="Places *" value={formData.places_disponibles} onChangeText={t => { const n = t.replace(/\D/g, ''); if (!n || (parseInt(n) >= 1 && parseInt(n) <= 20)) setFormData({ ...formData, places_disponibles: n }); }} placeholder="3" keyboardType="numeric" />
+                    <NativeInput label={t('covoiturageForm.placesLabel')} value={formData.places_disponibles} onChangeText={t => { const n = t.replace(/\D/g, ''); if (!n || (parseInt(n) >= 1 && parseInt(n) <= 20)) setFormData({ ...formData, places_disponibles: n }); }} placeholder="3" keyboardType="numeric" />
                 </View>
                 <View style={[s.field, { flex: 1 }]}>
                     <NativeInput label={`${t('covoiturageFormScreen.pricePerSeat')} (${formData.devise}) *`} value={formData.prix_par_place} onChangeText={t => setFormData({ ...formData, prix_par_place: t.replace(/\D/g, '') })} placeholder="5000" keyboardType="numeric" />
@@ -403,12 +450,12 @@ const CovoiturageFormScreen: React.FC = () => {
             </View>
 
             {/* Options */}
-            <Text style={[s.sectionTitle, { marginTop: 8 }]}>Options</Text>
+            <Text style={[s.sectionTitle, { marginTop: 8 }]}>{t('covoiturageForm.options')}</Text>
             {[
                 { label: t('covoiturageForm.bagagesAutorises'), key: 'bagages_autorises', icon: 'briefcase' },
                 { label: t('covoiturageForm.animauxAutorises'), key: 'animaux_autorises', icon: 'heart' },
                 { label: t('covoiturageForm.fumeurAutorise'), key: 'fumeur_autorise', icon: 'wind' },
-                { label: 'Climatisation', key: 'climatisation', icon: 'thermometer' },
+                { label: t('covoiturageForm.climatisation'), key: 'climatisation', icon: 'thermometer' },
             ].map(opt => (
                 <View key={opt.key} style={s.switchRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -431,9 +478,9 @@ const CovoiturageFormScreen: React.FC = () => {
                     <View style={s.field}>
                         <Text style={s.label}>{t('covoiturageForm.type')}</Text>
                         <View style={s.recRow}>
-                            {(['daily', 'weekly', 'monthly'] as const).map(t => (
-                                <TouchableOpacity key={t} style={[s.recBtn, formData.recurrence_type === t && s.recBtnOn]} onPress={() => setFormData({ ...formData, recurrence_type: t })}>
-                                    <Text style={[s.recBtnText, formData.recurrence_type === t && s.recBtnTextOn]}>{{ daily: 'Quotidien', weekly: 'Hebdo', monthly: 'Mensuel' }[t]}</Text>
+                            {(['daily', 'weekly', 'monthly'] as const).map(recType => (
+                                <TouchableOpacity key={recType} style={[s.recBtn, formData.recurrence_type === recType && s.recBtnOn]} onPress={() => setFormData({ ...formData, recurrence_type: recType })}>
+                                    <Text style={[s.recBtnText, formData.recurrence_type === recType && s.recBtnTextOn]}>{{ daily: t('covoiturageForm.quotidien'), weekly: t('covoiturageForm.hebdo'), monthly: t('covoiturageForm.mensuel') }[recType]}</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -452,7 +499,7 @@ const CovoiturageFormScreen: React.FC = () => {
                     <View style={s.field}>
                         <Text style={s.label}>{t('covoiturageForm.dateDeFin')}</Text>
                         <TouchableOpacity style={s.dateBtn} onPress={() => setShowRecurrenceEndDatePicker(true)}>
-                            <Text style={s.dateBtnText}>{formData.recurrence_end_date ? formData.recurrence_end_date.toLocaleDateString('fr-FR') : 'Sans fin'}</Text>
+                            <Text style={s.dateBtnText}>{formData.recurrence_end_date ? formData.recurrence_end_date.toLocaleDateString('fr-FR') : t('covoiturageForm.sansFin')}</Text>
                             <SafeIcon name="calendar" size={18} color={modernColors.primary} />
                         </TouchableOpacity>
                         {showRecurrenceEndDatePicker && <DateTimePicker value={formData.recurrence_end_date || new Date(Date.now() + 30 * 86400000)} mode="date" display="default" minimumDate={new Date(Date.now() + 86400000)} onChange={(_, d) => { setShowRecurrenceEndDatePicker(false); if (d) setFormData({ ...formData, recurrence_end_date: d }); }} />}
@@ -461,7 +508,7 @@ const CovoiturageFormScreen: React.FC = () => {
             )}
 
             <NativeButton
-                title={loading ? 'Création...' : (mode === 'edit' ? t('covoiturageFormScreen.mettreAJour') : t('covoiturageFormScreen.creerLeTrajet'))}
+                title={loading ? t('covoiturageFormScreen.creation') : (mode === 'edit' ? t('covoiturageFormScreen.mettreAJour') : t('covoiturageFormScreen.creerLeTrajet'))}
                 onPress={handleSubmit}
                 disabled={loading || !formData.depart || !formData.destination || !formData.prix_par_place.trim() || (formData.is_recurring && (!formData.recurrence_type || (formData.recurrence_type === 'weekly' && formData.recurrence_days.length === 0)))}
                 variant="primary" size="large" style={{ marginTop: 24 }}
@@ -480,11 +527,11 @@ const CovoiturageFormScreen: React.FC = () => {
                 <View style={s.analyticsCard}>
                     <View style={s.analyticsHdr}><SafeIcon name="bar-chart-2" size={22} color="#6366F1" /><Text style={s.analyticsTitle}>{t('covoiturageForm.vueDensemble')}</Text></View>
                     {[
-                        { l: 'Trajets totaux', v: myTrips.length },
+                        { l: t('covoiturageForm.trajetsTotaux'), v: myTrips.length },
                         { l: t('covoiturageFormScreen.trajetsAVenir'), v: upcomingCount },
                         { l: t('covoiturageFormScreen.trajetsRecurrents'), v: recurringCount },
-                        { l: 'Places offertes', v: totalPlaces },
-                        { l: 'Revenu potentiel', v: `${totalRevenuePotential.toLocaleString()} ${devise}`, c: '#10B981' },
+                        { l: t('covoiturageForm.placesOffertes'), v: totalPlaces },
+                        { l: t('covoiturageForm.revenuPotentiel'), v: `${totalRevenuePotential.toLocaleString()} ${devise}`, c: '#10B981' },
                     ].map((r, i) => (
                         <View key={i} style={s.analyticsRow}><Text style={s.analyticsLbl}>{r.l}</Text><Text style={[s.analyticsVal, r.c ? { color: r.c } : {}]}>{r.v}</Text></View>
                     ))}
@@ -497,7 +544,7 @@ const CovoiturageFormScreen: React.FC = () => {
     const tabs: { key: TabType; label: string; icon: string }[] = [
         { key: 'trips', label: t('covoiturageForm.mesTrajets'), icon: 'map' },
         { key: 'create', label: t('covoiturageFormScreen.nouveau'), icon: 'plus-circle' },
-        { key: 'stats', label: 'Stats', icon: 'bar-chart-2' },
+        { key: 'stats', label: t('covoiturageForm.stats'), icon: 'bar-chart-2' },
     ];
 
     return (
@@ -506,7 +553,7 @@ const CovoiturageFormScreen: React.FC = () => {
                 <View style={s.dashHeaderRow}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.dashTitle}>{hasPreviousTrips ? 'Mes Covoiturages' : 'Proposer un Covoiturage'}</Text>
+                        <Text style={s.dashTitle}>{hasPreviousTrips ? t('covoiturageForm.mesCovoiturages') : t('covoiturageForm.proposerCovoiturage')}</Text>
                         <Text style={s.dashSub}>{myTrips.length > 0 ? `${myTrips.length} ${t('covoiturageFormScreen.tripCreated')}${myTrips.length > 1 ? 's' : ''}` : t('covoiturageFormScreen.shareYourTrips')}</Text>
                     </View>
                 </View>

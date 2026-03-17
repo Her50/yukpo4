@@ -174,7 +174,7 @@ const [open, setOpen] = useState(false);
                                     <Text style={styles.emptyText}>{t('healthStructureSelector.aucunResultatTrouve')}</Text>
                                     <Text style={styles.emptyHint}>
                                         {locationEnabled
-                                            ? "Essayez d'augmenter le rayon ou de désactiver la géolocalisation"
+                                            ? t('healthStructureSelector.essayezDaugmenterLeRayonOuDe')
                                             : "Essayez un autre terme de recherche ou ajoutez votre structure"
                                         }
                                     </Text>

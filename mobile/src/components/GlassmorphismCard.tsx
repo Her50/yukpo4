@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { createGlassmorphismStyle, getCurrentTheme } from '../theme/advancedTheme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface GlassmorphismCardProps {
     children: React.ReactNode;

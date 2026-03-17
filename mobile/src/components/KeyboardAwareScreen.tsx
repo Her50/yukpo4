@@ -30,6 +30,7 @@
 import React, { ReactNode, Ref } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface KeyboardAwareScreenProps {
   children: ReactNode;

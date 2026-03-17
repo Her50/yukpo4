@@ -26,7 +26,7 @@ const [form, setForm] = useState({
 
     const handleSubmit = async () => {
         if (!selectedEventId) {
-            Alert.alert('Campagne requise', 'Sélectionnez une campagne Black Friday.');
+            Alert.alert('Campagne requise', t('globalPromoSubmissionScreen.selectionnezUneCampagneBlackFriday'));
             return;
         }
         if (!form.serviceId) {

@@ -31,7 +31,7 @@ const [name, setName] = useState('');
       await new Promise(resolve => setTimeout(resolve, 1000));
       Alert.alert(
         t('contactScreen.messageEnvoye'),
-        'Nous avons bien reçu votre message et vous répondrons dans les plus brefs délais.'
+        t('contactScreen.nousAvonsBienRecuVotreMessage')
       );
       // Réinitialiser le formulaire
       setName('');

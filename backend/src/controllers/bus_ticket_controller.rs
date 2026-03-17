@@ -843,151 +843,108 @@ pub struct CancelReservationResponse {
 }
 
 /// PATCH /api/bus-tickets/reservations/{id}/cancel
-/// Annuler une réservation avec politique de remboursement selon délai
+/// Annuler une réservation avec politique de remboursement selon délai configuré par l'agence
+/// booking_fee (commission app) JAMAIS remboursée
 pub async fn cancel_reservation(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(reservation_id): Path<String>,
-    Json(_payload): Json<CancelReservationRequest>,
+    Json(payload): Json<CancelReservationRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!(
         "[cancel_reservation] User ID: {}, Reservation ID: {}",
         user_id, reservation_id
     );
 
-    // Récupérer la réservation avec les détails du produit
-    let reservation_info: Option<(
-        i32,
-        String,
-        Option<chrono::DateTime<chrono::Utc>>,
-        i32,
-        Option<String>,
-    )> = sqlx::query_as(
+    // D'abord récupérer le payment_id associé à cette réservation
+    let payment_info: Option<(String,)> = sqlx::query_as(
         r#"
-        SELECT 
-            br.user_id,
-            br.product_id,
-            p.departure_time,
-            br.caution_amount,
-            br.passenger_name
-        FROM bus_reservations br
-        JOIN products p ON p.id::text = br.product_id
-        WHERE br.id = $1
-            AND br.status IN ('pending', 'confirmed')
+        SELECT payment_id 
+        FROM bus_reservations 
+        WHERE id = $1 AND user_id = $2 AND status IN ('pending', 'confirmed')
         "#,
     )
     .bind(&reservation_id)
-    .fetch_optional(&_state.pg)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
     .await
     .map_err(|e| {
-        error!("[cancel_reservation] Erreur: {}", e);
-        AppError::Internal(format!("Erreur récupération réservation: {}", e))
+        error!("[cancel_reservation] Erreur récupération payment_id: {}", e);
+        AppError::Internal(format!("Erreur récupération payment_id: {}", e))
     })?;
 
-    let (reservation_user_id, _product_id, departure_time, caution_amount, _passenger_name) =
-        match reservation_info {
-            Some(info) => info,
-            None => {
-                return Err(AppError::NotFound(
-                    "Réservation non trouvée ou déjà annulée".to_string(),
-                ));
-            }
-        };
-
-    // Vérifier que l'utilisateur est propriétaire de la réservation
-    if reservation_user_id != user_id {
-        return Err(AppError::Forbidden(
-            "Cette réservation ne vous appartient pas".to_string(),
-        ));
-    }
-
-    // Calculer remboursement selon délai
-    let now = chrono::Utc::now();
-    let hours_until_departure = departure_time.map(|dt| (dt - now).num_hours()).unwrap_or(24 * 365); // Si pas de date, considérer comme lointain
-
-    let refund_percentage = if hours_until_departure > 24 {
-        100.0 // Remboursement 100% si > 24h avant départ
-    } else if hours_until_departure > 12 {
-        50.0 // Remboursement 50% si 12-24h avant
-    } else {
-        0.0 // Pas de remboursement si < 12h
+    let payment_id = match payment_info {
+        Some((pid,)) => pid,
+        None => {
+            return Err(AppError::NotFound(
+                "Réservation non trouvée ou déjà annulée".to_string(),
+            ));
+        }
     };
 
-    let refund_amount = (caution_amount as f64 * refund_percentage / 100.0) as i32;
+    // Utiliser la nouvelle fonction SQL cancel_bus_ticket
+    let result: Value = sqlx::query_scalar("SELECT cancel_bus_ticket($1, $2, $3)")
+        .bind(&payment_id)
+        .bind(user_id)
+        .bind(payload.refund_reason.unwrap_or_else(|| "user_request".to_string()))
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[cancel_reservation] Erreur annulation: {}", e);
+            AppError::Internal(format!("Erreur annulation: {}", e))
+        })?;
 
-    // Utiliser une transaction pour garantir cohérence
-    let mut tx = _state.pg.begin().await.map_err(|e| {
-        error!("[cancel_reservation] Erreur début transaction: {}", e);
-        AppError::Internal(format!("Erreur début transaction: {}", e))
-    })?;
+    let success = result
+        .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
 
-    // 1. Libérer le siège (mettre à jour la réservation)
-    sqlx::query(
-        r#"
-        UPDATE bus_reservations
-        SET status = 'cancelled',
-            cancelled_at = NOW(),
-            updated_at = NOW()
-        WHERE id = $1
-        "#,
-    )
-    .bind(&reservation_id)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| {
-        error!("[cancel_reservation] Erreur mise à jour réservation: {}", e);
-        AppError::Internal(format!("Erreur annulation réservation: {}", e))
-    })?;
-
-    // 2. Rembourser si applicable
-    if refund_amount > 0 {
-        sqlx::query("UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2")
-            .bind(refund_amount)
-            .bind(user_id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| {
-                error!("[cancel_reservation] Erreur remboursement: {}", e);
-                AppError::Internal(format!("Erreur remboursement: {}", e))
-            })?;
+    if !success {
+        let error_msg = result
+            .get("error")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Erreur inconnue");
+        return Err(AppError::BadRequest(error_msg.to_string()));
     }
 
-    // 3. Récupérer le nouveau solde
+    // Récupérer le nouveau solde de l'utilisateur
     let new_balance: i64 = sqlx::query_scalar("SELECT tokens_balance FROM users WHERE id = $1")
         .bind(user_id)
-        .fetch_one(&mut *tx)
+        .fetch_one(&state.pg)
         .await
         .map_err(|e| {
             error!("[cancel_reservation] Erreur récupération solde: {}", e);
             AppError::Internal(format!("Erreur récupération solde: {}", e))
         })?;
 
-    // Validation de la transaction
-    tx.commit().await.map_err(|e| {
-        error!(
-            "[cancel_reservation] Erreur validation de la transaction: {}",
-            e
-        );
-        AppError::Internal(format!("Erreur validation transaction: {}", e))
-    })?;
-
     let response = CancelReservationResponse {
         success: true,
         reservation_id: reservation_id.clone(),
-        refund_percentage,
-        refund_amount,
+        refund_percentage: result
+            .get("refund_percentage")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0),
+        refund_amount: result
+            .get("refund_amount")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0) as i32,
         new_balance,
     };
+
+    let message = result
+        .get("message")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Réservation annulée");
 
     Ok((
         StatusCode::OK,
         Json(json!({
             "success": true,
-            "message": format!(
-                "Réservation annulée. Remboursement: {} XAF ({}%)",
-                refund_amount, refund_percentage
-            ),
-            "data": response
+            "message": message,
+            "data": response,
+            "cancellation_deadline_hours": result.get("cancellation_deadline_hours"),
+            "hours_until_departure": result.get("hours_until_departure"),
+            "booking_fee_retained": result.get("booking_fee_retained")
         })),
     ))
 }

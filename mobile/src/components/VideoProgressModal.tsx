@@ -17,6 +17,7 @@ import Animated, {
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export type GenerationStep =
     | 'storyboard'
@@ -46,21 +47,22 @@ interface VideoProgressModalProps {
 }
 
 const getStepLabel = (step: GenerationStep): string => {
+    const { t } = useLanguageSafe();
     switch (step) {
         case 'storyboard':
-            return 'Génération du storyboard';
+            return t('videoProgressModal.generationDuStoryboard');
         case 'clips':
-            return 'Génération des clips vidéo';
+            return t('videoProgressModal.generationDesClipsVideo');
         case 'audio':
             return 'Synchronisation audio';
         case 'rendering':
             return 'Rendu final';
         case 'complete':
-            return 'Vidéo générée!';
+            return t('videoProgressModal.videoGeneree');
         case 'error':
-            return 'Erreur de génération';
+            return t('videoProgressModal.erreurDeGeneration');
         default:
-            return 'Génération en cours...';
+            return t('videoProgressModal.generationEnCours');
     }
 };
 
