@@ -96,7 +96,7 @@ const [hasGoogleBusiness, setHasGoogleBusiness] = useState<boolean | null>(null)
             // ✅ Étape 1: Demander si l'utilisateur a un Google Business
             <View style={styles.content}>
               <Text style={styles.title}>
-                🏢 Avez-vous votre boutique/prestation sur Google Business ?
+                \uD83C\uDFE2 Avez-vous votre boutique/prestation sur Google Business ?
               </Text>
               <Text style={styles.subtitle}>
                 Si oui, nous pouvons récupérer automatiquement vos informations pour pré-remplir le formulaire.

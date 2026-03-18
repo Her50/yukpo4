@@ -64,8 +64,7 @@ interface Schedule {
     notes?: string;
 }
 
-const DAYS = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-const DAYS_FULL = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+// Days are resolved via t() inside the component for multilingual support
 
 const SERVICE_ICONS: Record<string, string> = {
     'Billetterie bus': 'ticket',
@@ -76,7 +75,9 @@ const SERVICE_ICONS: Record<string, string> = {
 
 const AgenceVoyageDetailsScreen: React.FC = () => {
     const navigation = useNavigation();
-    const { t } = useLanguageSafe();
+    const { t, language: activeLang } = useLanguageSafe();
+    const DAYS = ['', t('agenceVoyageForm.jourLun'), t('agenceVoyageForm.jourMar'), t('agenceVoyageForm.jourMer'), t('agenceVoyageForm.jourJeu'), t('agenceVoyageForm.jourVen'), t('agenceVoyageForm.jourSam'), t('agenceVoyageForm.jourDim')];
+    const DAYS_FULL = ['', t('agenceVoyageForm.jourLundi'), t('agenceVoyageForm.jourMardi'), t('agenceVoyageForm.jourMercredi'), t('agenceVoyageForm.jourJeudi'), t('agenceVoyageForm.jourVendredi'), t('agenceVoyageForm.jourSamedi'), t('agenceVoyageForm.jourDimanche')];
     const route = useRoute();
     const { user } = useAuth();
     const params = route.params as any;
@@ -163,8 +164,9 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
         setLoadingAI(true);
         try {
             const resp = await apiPost('/api/ai/chat', {
-                message: `En tant qu'assistant voyage expert, recommande les meilleurs trajets et conseils pour un voyageur utilisant l'agence "${agence.nom_agence}" basée à ${agence.ville || agence.quartier || 'Cameroun'}. Destinations disponibles: ${(agence.destinations || []).join(', ')}. Services: ${(agence.services_voyage || []).join(', ')}. Donne 3 suggestions courtes et pratiques.`,
+                message: `As an expert travel assistant, recommend the best routes and tips for a traveler using the agency "${agence.nom_agence}" based in ${agence.ville || agence.quartier || 'Cameroon'}. Available destinations: ${(agence.destinations || []).join(', ')}. Services: ${(agence.services_voyage || []).join(', ')}. Give 3 short and practical suggestions. Respond in the user's language.`,
                 context: 'travel_agency_recommendation',
+                language: activeLang,
             });
             const d = (resp?.data || resp) as any;
             setAiSuggestion(d?.response || d?.message || d?.data?.response || t('agenceVoyageDetails.aucuneSuggestionDisponiblePourLe'));
@@ -235,7 +237,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
                         <View style={[st.heroBadge, isOpen ? st.heroBadgeOpen : st.heroBadgeClosed]}>
                             <View style={[st.statusDot, { backgroundColor: isOpen ? '#10B981' : '#EF4444' }]} />
                             <Text style={[st.heroBadgeText, { color: isOpen ? '#D1FAE5' : '#FECACA' }]}>
-                                {isOpen ? 'Ouvert' : t('agenceVoyageDetailsScreen.ferme')}
+                                {isOpen ? t('agenceVoyageDetails.ouvert') : t('agenceVoyageDetailsScreen.ferme')}
                             </Text>
                         </View>
                         {agence.is_verified && (
@@ -278,7 +280,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
                             <View style={[st.quickIcon, { backgroundColor: '#F0FDF4' }]}>
                                 <SafeIcon name="phone" size={20} color="#10B981" />
                             </View>
-                            <Text style={st.quickLabel}>Appeler</Text>
+                            <Text style={st.quickLabel}>{t('agenceVoyageDetails.appeler')}</Text>
                         </TouchableOpacity>
                     )}
                     {agence.whatsapp && (
@@ -294,7 +296,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
                             <View style={[st.quickIcon, { backgroundColor: '#F5F3FF' }]}>
                                 <SafeIcon name="globe" size={20} color="#7C3AED" />
                             </View>
-                            <Text style={st.quickLabel}>Site web</Text>
+                            <Text style={st.quickLabel}>{t('agenceVoyageDetails.siteWeb')}</Text>
                         </TouchableOpacity>
                     )}
                     {agence.email && !agence.whatsapp && !agence.site_web && (
@@ -317,14 +319,14 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
                         <View style={st.hoursRow}>
                             <View style={st.hoursBadge}>
                                 <Text style={st.hoursTime}>{agence.heures_ouverture || '—'}</Text>
-                                <Text style={st.hoursLabel}>Ouverture</Text>
+                                <Text style={st.hoursLabel}>{t('agenceVoyageDetails.ouverture')}</Text>
                             </View>
                             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                                 <SafeIcon name="arrow-right" size={16} color="#9CA3AF" />
                             </View>
                             <View style={st.hoursBadge}>
                                 <Text style={st.hoursTime}>{agence.heures_fermeture || '—'}</Text>
-                                <Text style={st.hoursLabel}>Fermeture</Text>
+                                <Text style={st.hoursLabel}>{t('agenceVoyageDetails.fermeture')}</Text>
                             </View>
                         </View>
                     </View>
@@ -353,7 +355,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
                     <View style={st.card}>
                         <View style={st.cardHeader}>
                             <SafeIcon name="map" size={18} color="#10B981" />
-                            <Text style={st.cardTitle}>Destinations ({agence.destinations.length})</Text>
+                            <Text style={st.cardTitle}>{t('agenceVoyageDetails.destinations')} ({agence.destinations.length})</Text>
                         </View>
                         <View style={st.destGrid}>
                             {agence.destinations.map((dest, i) => (
@@ -396,7 +398,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
                             </TouchableOpacity>
                         ))}
                         {schedules.length > 5 && (
-                            <Text style={st.seeMore}>+{schedules.length - 5} autres horaires</Text>
+                            <Text style={st.seeMore}>+{schedules.length - 5} {t('agenceVoyageDetails.autresHoraires')}</Text>
                         )}
                     </View>
                 )}
@@ -406,7 +408,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
                     <View style={st.card}>
                         <View style={st.cardHeader}>
                             <SafeIcon name="truck" size={18} color="#F97316" />
-                            <Text style={st.cardTitle}>Compagnies de bus</Text>
+                            <Text style={st.cardTitle}>{t('agenceVoyageDetails.compagniesDeBus')}</Text>
                         </View>
                         <View style={st.compGrid}>
                             {agence.compagnies_bus.map((comp, i) => (
@@ -430,7 +432,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
                             <Text style={st.aiText}>{aiSuggestion}</Text>
                             <TouchableOpacity onPress={handleAISuggest} style={st.aiRetry}>
                                 <SafeIcon name="refresh-cw" size={14} color="#7C3AED" />
-                                <Text style={st.aiRetryText}>Nouvelles suggestions</Text>
+                                <Text style={st.aiRetryText}>{t('agenceVoyageDetails.nouvellesSuggestions')}</Text>
                             </TouchableOpacity>
                         </View>
                     ) : (
@@ -441,7 +443,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
                                 <SafeIcon name="sparkles" size={18} color="#7C3AED" />
                             )}
                             <Text style={st.aiBtnText}>
-                                {loadingAI ? 'Analyse en cours...' : 'Obtenir des suggestions de voyage'}
+                                {loadingAI ? t('agenceVoyageDetails.analyseEnCours') : t('agenceVoyageDetails.obtenirSuggestions')}
                             </Text>
                         </TouchableOpacity>
                     )}
@@ -464,7 +466,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
                 <View style={st.card}>
                     <View style={st.cardHeader}>
                         <SafeIcon name="phone" size={18} color="#6B7280" />
-                        <Text style={st.cardTitle}>Contact</Text>
+                        <Text style={st.cardTitle}>{t('agenceVoyageDetails.contact')}</Text>
                     </View>
                     {agence.telephone && (
                         <TouchableOpacity style={st.contactRow} onPress={handleCall}>

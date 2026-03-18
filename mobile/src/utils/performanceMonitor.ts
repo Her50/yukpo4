@@ -19,7 +19,7 @@ export const disablePerformanceMonitoring = () => {
 
 export const clearPerformanceData = () => {
     performanceData.clear();
-    console.log('[performanceMonitor] 🗑️ Données effacées');
+    console.log('[performanceMonitor] \uD83D\uDDD1️ Données effacées');
 };
 
 /**
@@ -121,11 +121,11 @@ export const printPerformanceStats = () => {
 
     const stats = getPerformanceStats();
     if (!stats || Object.keys(stats).length === 0) {
-        console.log('[performanceMonitor] 📊 Aucune donnée disponible');
+        console.log('[performanceMonitor] \uD83D\uDCCA Aucune donnée disponible');
         return;
     }
 
-    console.group('📊 Statistiques de performance');
+    console.group('\uD83D\uDCCA Statistiques de performance');
     Object.entries(stats)
         .sort((a, b) => parseFloat(b[1].avg) - parseFloat(a[1].avg))
         .forEach(([label, data]: [string, any]) => {

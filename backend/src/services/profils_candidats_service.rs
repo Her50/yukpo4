@@ -305,10 +305,10 @@ impl ProfilsCandidatsService {
 
     /// Marque un profil comme complété
     pub async fn complete_profil(&self, user_id: i32) -> AppResult<()> {
-        sqlx::query!(
+        sqlx::query(
             "UPDATE profils_candidats SET is_complete = true, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1",
-            user_id
         )
+        .bind(user_id)
         .execute(&self.pool)
         .await
         .map_err(|e| {

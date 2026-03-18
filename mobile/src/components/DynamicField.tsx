@@ -293,7 +293,7 @@ const [localValue, setLocalValue] = useState(value || field.defaultValue || '');
                         >
                             <MapPin size={20} color={theme.colors.primary} />
                             <Text style={styles.gpsButtonText}>
-                                {localValue ? 'Modifier la localisation' : t('dynamicField.selectionnerUneLocalisation')}
+                                {localValue ? 'Modifier la localisation' : 'Sélectionner une localisation'}
                             </Text>
                         </TouchableOpacity>
                         {localValue && (
@@ -313,7 +313,7 @@ const [localValue, setLocalValue] = useState(value || field.defaultValue || '');
                             style={[styles.dateButton, fieldError && styles.dateButtonError]}
                             onPress={() => {
                                 // Ici on pourrait ouvrir un DatePicker
-                                Alert.alert('Date Picker', t('dynamicField.selectionDeDateAImplementer'));
+                                Alert.alert('Date Picker', 'Sélection de date à implémenter');
                             }}
                             disabled={disabled}
                         >
@@ -333,7 +333,7 @@ const [localValue, setLocalValue] = useState(value || field.defaultValue || '');
                             style={[styles.timeButton, fieldError && styles.timeButtonError]}
                             onPress={() => {
                                 // Ici on pourrait ouvrir un TimePicker
-                                Alert.alert('Time Picker', t('dynamicField.selectionDt('dynamicField.heureAImplementer'));
+                                Alert.alert('Time Picker', 'Sélection d\'heure à implémenter');
                             }}
                             disabled={disabled}
                         >

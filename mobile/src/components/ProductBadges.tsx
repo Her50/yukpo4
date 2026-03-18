@@ -83,7 +83,7 @@ export const ProductBadges: React.FC<ProductBadgesProps> = ({ product, service }
     if (product.best_price || product.meilleur_prix || service?.data?.meilleur_prix?.valeur) {
         badges.push({
             type: 'best_price',
-            label: '🎯 Meilleur prix',
+            label: '\uD83C\uDFAF Meilleur prix',
             icon: 'target',
             color: '#10B981',
             gradient: ['#10B981', '#059669'],
@@ -95,7 +95,7 @@ export const ProductBadges: React.FC<ProductBadgesProps> = ({ product, service }
     if (usageCount >= 10) {
         badges.push({
             type: 'trending',
-            label: '🔥 Tendance',
+            label: '\uD83D\uDD25 Tendance',
             icon: 'trending-up',
             color: '#EF4444',
             gradient: ['#EF4444', '#F59E0B'],

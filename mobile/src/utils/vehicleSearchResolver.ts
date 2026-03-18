@@ -1,5 +1,5 @@
 /**
- * 🔍 RÉSOLVEUR INTELLIGENT DE RECHERCHE DE VÉHICULES
+ * \uD83D\uDD0D RÉSOLVEUR INTELLIGENT DE RECHERCHE DE VÉHICULES
  * 
  * Ce module permet de transformer une recherche avec un nom local
  * en filtres concrets pour trouver le bon véhicule.
@@ -235,14 +235,14 @@ export function getSearchHelpMessage(
     if (resolved.isLocalName && resolved.resolvedVehicle) {
         const vehicle = resolved.resolvedVehicle;
 
-        let message = `🔍 "${searchTerm}" correspond à **${vehicle.nomOfficiel}**`;
+        let message = `\uD83D\uDD0D "${searchTerm}" correspond à **${vehicle.nomOfficiel}**`;
 
         if (vehicle.marque && vehicle.modele) {
             message += ` (${vehicle.marque} ${vehicle.modele})`;
         }
 
         if (vehicle.description) {
-            message += `\n\n💡 ${vehicle.description}`;
+            message += `\n\n\uD83D\uDCA1 ${vehicle.description}`;
         }
 
         return message;

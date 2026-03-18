@@ -118,5 +118,54 @@ export const covoiturageService = {
         );
         return response;
     },
+
+    // ✅ Mes trajets (conducteur)
+    getMyTrips: async (params?: { page?: number; limit?: number; status?: string }) => {
+        const queryParams = new URLSearchParams();
+        if (params?.page) queryParams.append('page', params.page.toString());
+        if (params?.limit) queryParams.append('limit', params.limit.toString());
+        if (params?.status) queryParams.append('status', params.status);
+        const qs = queryParams.toString();
+        const response = await apiGet<{ success: boolean; data: Covoiturage[] }>(
+            `/api/covoiturages/my-trips${qs ? `?${qs}` : ''}`
+        );
+        return response;
+    },
+
+    // ✅ Réserver une place
+    bookCovoiturage: async (covoiturageId: number, data: { number_of_places: number; passenger_names?: string[]; notes?: string }) => {
+        const response = await apiPost<{ success: boolean; reservation_id: number; seats_booked: number }>(
+            `/api/covoiturages/${covoiturageId}/book`,
+            data
+        );
+        return response;
+    },
+
+    // ✅ Confirmer le départ (conducteur)
+    confirmDeparture: async (covoiturageId: number) => {
+        const response = await apiPost<{ success: boolean; reservations_count: number; total_payout: number }>(
+            `/api/covoiturages/${covoiturageId}/confirm-departure`,
+            {}
+        );
+        return response;
+    },
+
+    // ✅ Soumettre un avis
+    submitReview: async (covoiturageId: number, data: { rating: number; comment?: string }) => {
+        const response = await apiPost<{ success: boolean }>(
+            `/api/covoiturages/${covoiturageId}/reviews`,
+            data
+        );
+        return response;
+    },
+
+    // ✅ Vérifier le conducteur
+    verifyDriver: async (covoiturageId: number) => {
+        const response = await apiPost<{ success: boolean }>(
+            `/api/covoiturages/${covoiturageId}/verify-driver`,
+            {}
+        );
+        return response;
+    },
 };
 

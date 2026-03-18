@@ -4,15 +4,13 @@ import { networkDiagnostics } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface NetworkDiagnosticsProps {
     onClose?: () => void;
 }
 
 const NetworkDiagnostics: React.FC<NetworkDiagnosticsProps> = ({ onClose }) => {
-        const { t } = useLanguageSafe();
-const [isRunning, setIsRunning] = useState(false);
+    const [isRunning, setIsRunning] = useState(false);
     const [results, setResults] = useState<any>(null);
 
     const runDiagnostics = async () => {
@@ -30,11 +28,11 @@ const [isRunning, setIsRunning] = useState(false);
             const statusIcon = diagnostics.isOnline && diagnostics.apiReachable ? '✅' : '❌';
             const statusText = diagnostics.isOnline && diagnostics.apiReachable
                 ? 'Connexion OK'
-                : t('networkDiagnostics.problemeDeConnexion');
+                : 'Problème de connexion';
 
             Alert.alert(
-                t('networkDiagnostics.diagnosticReseau', { statusIcon: statusIcon }),
-                t('networkDiagnostics.statutNtempsDeReponseMsnerreur', { statusText: statusText, diagnostics_responseTime: diagnostics.responseTime, diagnostics_error || 'Aucune': diagnostics.error || 'Aucune' }),
+                `${statusIcon} Diagnostic réseau`,
+                `Statut: ${statusText}\nTemps de réponse: ${diagnostics.responseTime}ms\nErreur: ${diagnostics.error || 'Aucune'}`,
                 [{ text: 'OK' }]
             );
 
@@ -49,7 +47,7 @@ const [isRunning, setIsRunning] = useState(false);
 
             Alert.alert(
                 '❌ Erreur de diagnostic',
-                t('networkDiagnostics.impossibleDexecuterLeDiagnostic', { error_message: error.message }),
+                `Impossible d'exécuter le diagnostic: ${error.message}`,
                 [{ text: 'OK' }]
             );
         } finally {
@@ -62,7 +60,7 @@ const [isRunning, setIsRunning] = useState(false);
             <NativeCard style={styles.card}>
                 <View style={styles.header}>
                     <SafeIcon name="wifi" size={24} color={modernColors.primary} />
-                    <Text style={styles.title}>{t('networkDiagnostics.diagnosticReseau')}</Text>
+                    <Text style={styles.title}>Diagnostic réseau</Text>
                 </View>
 
                 <Text style={styles.description}>
@@ -70,7 +68,7 @@ const [isRunning, setIsRunning] = useState(false);
                 </Text>
 
                 <NativeButton
-                    title={isRunning ? "⏳ Test en cours..." : "🔍 Lancer le diagnostic"}
+                    title={isRunning ? "⏳ Test en cours..." : "\uD83D\uDD0D Lancer le diagnostic"}
                     onPress={runDiagnostics}
                     variant="primary"
                     style={styles.button}
@@ -79,7 +77,7 @@ const [isRunning, setIsRunning] = useState(false);
 
                 {results && (
                     <View style={styles.results}>
-                        <Text style={styles.resultsTitle}>{t('networkDiagnostics.resultatsDuDiagnostic')}</Text>
+                        <Text style={styles.resultsTitle}>Résultats du diagnostic:</Text>
 
                         <View style={styles.resultItem}>
                             <Text style={styles.resultLabel}>Statut:</Text>
@@ -87,18 +85,18 @@ const [isRunning, setIsRunning] = useState(false);
                                 styles.resultValue,
                                 { color: results.isOnline && results.apiReachable ? modernColors.success : modernColors.error }
                             ]}>
-                                {results.isOnline && results.apiReachable ? t('networkDiagnostics.connecte') : t('networkDiagnostics.deconnecte')}
+                                {results.isOnline && results.apiReachable ? '✅ Connecté' : '❌ Déconnecté'}
                             </Text>
                         </View>
 
                         <View style={styles.resultItem}>
-                            <Text style={styles.resultLabel}>{t('networkDiagnostics.tempsDeReponse')}</Text>
+                            <Text style={styles.resultLabel}>Temps de réponse:</Text>
                             <Text style={styles.resultValue}>{results.responseTime}ms</Text>
                         </View>
 
                         {results.error && (
                             <View style={styles.resultItem}>
-                                <Text style={styles.resultLabel}>{t('networkDiagnostics.erreur')}</Text>
+                                <Text style={styles.resultLabel}>Erreur:</Text>
                                 <Text style={[styles.resultValue, { color: modernColors.error }]}>
                                     {results.error}
                                 </Text>
@@ -109,7 +107,7 @@ const [isRunning, setIsRunning] = useState(false);
 
                 {onClose && (
                     <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                        <Text style={styles.closeButtonText}>{t('networkDiagnostics.fermer')}</Text>
+                        <Text style={styles.closeButtonText}>Fermer</Text>
                     </TouchableOpacity>
                 )}
             </NativeCard>

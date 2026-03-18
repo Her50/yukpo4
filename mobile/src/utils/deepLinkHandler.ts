@@ -54,7 +54,7 @@ export const handlePendingDeepLink = async (navigation: any): Promise<boolean> =
             return false;
         }
 
-        console.log('🔗 Traitement deep link en attente:', deepLink.type);
+        console.log('\uD83D\uDD17 Traitement deep link en attente:', deepLink.type);
 
         // Supprimer de AsyncStorage avant navigation
         await SafeStorage.removeItem(PENDING_DEEP_LINK_KEY);
@@ -67,7 +67,7 @@ export const handlePendingDeepLink = async (navigation: any): Promise<boolean> =
 
         // Rediriger selon le type
         if (deepLink.type === 'product' && deepLink.productId && deepLink.serviceId) {
-            console.log('📦 Redirection vers produit:', deepLink.productId);
+            console.log('\uD83D\uDCE6 Redirection vers produit:', deepLink.productId);
 
             navigation.navigate('ProductDetail', {
                 productId: deepLink.productId,
@@ -76,7 +76,7 @@ export const handlePendingDeepLink = async (navigation: any): Promise<boolean> =
 
             return true;
         } else if (deepLink.type === 'service' && deepLink.serviceId) {
-            console.log('🏢 Redirection vers service:', deepLink.serviceId);
+            console.log('\uD83C\uDFE2 Redirection vers service:', deepLink.serviceId);
 
             navigation.navigate('ServiceDetailShared', {
                 id: deepLink.serviceId,

@@ -1,10 +1,10 @@
 /**
- * Composant de preview de lt('iconPreview.iconeYukpoAvecMotifNdopA')icône avant génération finale
+ * Composant de preview de l'icône Yukpo avec motif Ndop
+ * À utiliser pour visualiser l'icône avant génération finale
  */
 import React from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Svg, {
-import { useLanguageSafe } from '../contexts/LanguageContext';
     Circle,
     Defs,
     FeComponentTransfer,
@@ -36,7 +36,7 @@ const IconPreview: React.FC<IconPreviewProps> = ({
     return (
         <View style={styles.container}>
             {showLabel && (
-                <Text style={styles.title}>{t('iconPreview.iconeYukpoMotifNdop')}</Text>
+                <Text style={styles.title}>Icône Yukpo - Motif Ndop</Text>
             )}
 
             <View style={[styles.iconContainer, { width: size, height: size }]}>
@@ -147,7 +147,7 @@ const IconPreview: React.FC<IconPreviewProps> = ({
 
             {showLabel && (
                 <View style={styles.infoContainer}>
-                    <Text style={styles.subtitle}>🎨 Design Professionnel</Text>
+                    <Text style={styles.subtitle}>\uD83C\uDFA8 Design Professionnel</Text>
                     <Text style={styles.description}>
                         Motif Ndop Bamiléké traditionnel avec le "Y" moderne de Yukpo
                     </Text>

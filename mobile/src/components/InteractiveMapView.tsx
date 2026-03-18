@@ -110,7 +110,7 @@ const [localPolygonPoints, setLocalPolygonPoints] = useState<{ lat: number; lng:
 
     // ✅ FIX 2026-03-07: Log diagnostic au montage
     useEffect(() => {
-        console.log('[InteractiveMapView] 🗺️ Montage composant', {
+        console.log('[InteractiveMapView] \uD83D\uDDFA️ Montage composant', {
             platform: Platform.OS,
             provider: Platform.OS === 'android' ? 'google (default)' : 'PROVIDER_GOOGLE',
             initialRegionSet: !!initialRegion,
@@ -230,7 +230,7 @@ const [localPolygonPoints, setLocalPolygonPoints] = useState<{ lat: number; lng:
             style={styles.container}
             onLayout={(e) => {
                 const { width, height } = e.nativeEvent.layout;
-                console.log(`[InteractiveMapView] 📐 Layout: ${width}x${height}`);
+                console.log(`[InteractiveMapView] \uD83D\uDCD0 Layout: ${width}x${height}`);
                 if (height < 10) {
                     console.error('[InteractiveMapView] ❌ Container height is too small:', height);
                 }
@@ -373,7 +373,7 @@ const [localPolygonPoints, setLocalPolygonPoints] = useState<{ lat: number; lng:
                     </>
                 ) : selectedLocation ? (
                     <Text style={styles.legendText}>
-                        📍 {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+                        \uD83D\uDCCD {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
                     </Text>
                 ) : (
                     <Text style={[styles.legendText, { color: '#9CA3AF' }]}>Touchez la carte pour placer un point</Text>

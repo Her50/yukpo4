@@ -317,37 +317,37 @@ class SmartShareService {
   formatQRShareMessage(qrData: any, recipientName?: string): string {
     const greeting = recipientName ? `Bonjour ${recipientName}` : 'Bonjour';
     
-    return `📦 ${greeting},
+    return `\uD83D\uDCE6 ${greeting},
 
 Voici votre code de livraison Yukpo:
 
-🔸 QR ID: ${qrData.qr_id}
-🔸 Valide jusqu'au: ${new Date(qrData.valide_jusqua).toLocaleString('fr-FR')}
-🔸 Lien direct: ${qrData.share_url}
+\uD83D\uDD38 QR ID: ${qrData.qr_id}
+\uD83D\uDD38 Valide jusqu'au: ${new Date(qrData.valide_jusqua).toLocaleString('fr-FR')}
+\uD83D\uDD38 Lien direct: ${qrData.share_url}
 
 Scannez ce QR code ou cliquez sur le lien pour valider la réception de votre colis.
 
-📲 Téléchargez l'app Yukpo: ${SmartShareService.APP_DOWNLOAD_URL}
+\uD83D\uDCF2 Téléchargez l'app Yukpo: ${SmartShareService.APP_DOWNLOAD_URL}
 
-Merci d'utiliser Yukpo! 🚀`;
+Merci d'utiliser Yukpo! \uD83D\uDE80`;
   }
   
   formatTrackingMessage(deliveryInfo: any, recipientName?: string): string {
     const greeting = recipientName ? `Cher ${recipientName}` : 'Bonjour';
     
-    return `📍 ${greeting},
+    return `\uD83D\uDCCD ${greeting},
 
 Suivez votre livraison Yukpo en temps réel:
 
-🔸 Numéro: ${deliveryInfo.tracking_token}
-🔸 Statut: ${deliveryInfo.status}
-🔸 Lien tracking: ${deliveryInfo.share_url}
+\uD83D\uDD38 Numéro: ${deliveryInfo.tracking_token}
+\uD83D\uDD38 Statut: ${deliveryInfo.status}
+\uD83D\uDD38 Lien tracking: ${deliveryInfo.share_url}
 
 Cliquez sur le lien pour suivre votre colis en temps réel.
 
-📲 Téléchargez l'app Yukpo: ${SmartShareService.APP_DOWNLOAD_URL}
+\uD83D\uDCF2 Téléchargez l'app Yukpo: ${SmartShareService.APP_DOWNLOAD_URL}
 
-Merci de votre confiance! 📦`;
+Merci de votre confiance! \uD83D\uDCE6`;
   }
 }
 

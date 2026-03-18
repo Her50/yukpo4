@@ -8464,6 +8464,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto pharmacy_products: {}", e),
     }
 
+    // ✅ 2026-03-18 : Commandes + réservations Pharmacie
+    match ensure_pharmacy_orders_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: pharmacy orders tables OK"),
+        Err(e) => error!("❌ Erreur migration auto pharmacy orders tables: {}", e),
+    }
+
     match ensure_pharmacy_advanced_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: pharmacy advanced tables OK"),
         Err(e) => error!("❌ Erreur migration auto pharmacy advanced tables: {}", e),
@@ -8540,6 +8546,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_bourse_livre_v2_phase3_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: bourse livre V2 phase3 (delivery bridge) OK"),
         Err(e) => error!("❌ Erreur migration auto bourse livre V2 phase3: {}", e),
+    }
+
+    // ✅ 2026-03-18 : Table équipe libraire (membres, rôles, QR scan)
+    match ensure_libraire_team_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: libraire_team_members table OK"),
+        Err(e) => error!("❌ Erreur migration auto libraire_team_members: {}", e),
     }
 
     // ✅ 2025-01-28 : Tables pour système d'offres d'emploi avec matching intelligent
@@ -17151,6 +17163,18 @@ pub async fn ensure_pharmacy_products_table(pool: &PgPool) -> Result<(), sqlx::E
     Ok(())
 }
 
+/// ✅ 2026-03-18 : Tables commandes + réservations pharmacie
+/// Migration: 00000005_003_add_pharmacy_orders.sql
+pub async fn ensure_pharmacy_orders_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables pharmacy_orders / reservations...");
+
+    let migration_sql = include_str!("../../migrations/00000005_003_add_pharmacy_orders.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+
+    info!("✅ Tables pharmacy_orders + reservations créées/vérifiées");
+    Ok(())
+}
+
 /// ✅ 2025-01-27 : Tables avancées pour Pharmacies (commandes, réservations, analytics)
 /// Migration: 20250127_create_pharmacy_advanced_tables.sql
 pub async fn ensure_pharmacy_advanced_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
@@ -20502,6 +20526,39 @@ pub async fn ensure_librairie_network_tables(pool: &PgPool) -> Result<(), sqlx::
     Ok(())
 }
 
+/// ✅ 2026-03-18 : Table équipe libraire
+pub async fn ensure_libraire_team_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("📚 Vérification/création table libraire_team_members...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS libraire_team_members (
+            id SERIAL PRIMARY KEY,
+            librairie_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            role VARCHAR(20) NOT NULL DEFAULT 'preparer',
+            nom_affiche VARCHAR(255),
+            telephone VARCHAR(50),
+            invited_by INTEGER REFERENCES users(id),
+            is_active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE(librairie_id, user_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_libraire_team_librairie
+            ON libraire_team_members(librairie_id) WHERE is_active = true;
+        CREATE INDEX IF NOT EXISTS idx_libraire_team_user
+            ON libraire_team_members(user_id) WHERE is_active = true;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table libraire_team_members OK");
+    Ok(())
+}
+
 /// ✅ NOUVEAU 2026-03-16: Crée les tables manquantes pour paiements agrégés et QR codes
 pub async fn ensure_missing_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("💰 Création des tables manquantes (wallets, paiements, QR codes)...");
@@ -20511,6 +20568,28 @@ pub async fn ensure_missing_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     sqlx::query(migration_sql).execute(pool).await?;
 
     info!("✅ Tables manquantes créées");
+    Ok(())
+}
+
+/// ✅ 2026-03-18: Table cache pour taux de change (cold-start recovery)
+pub async fn ensure_exchange_rate_cache_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("💱 Vérification table exchange_rate_cache...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS exchange_rate_cache (
+            base_currency VARCHAR(3) PRIMARY KEY DEFAULT 'XAF',
+            rates JSONB NOT NULL DEFAULT '{}'::jsonb,
+            source VARCHAR(50) NOT NULL DEFAULT 'fallback',
+            fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table exchange_rate_cache OK");
     Ok(())
 }
 

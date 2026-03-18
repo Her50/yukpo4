@@ -53,7 +53,7 @@ export const compressImage = async (base64Image: string, maxSizeBytes: number = 
         const ratio = Math.sqrt(maxSizeBytes / currentSize);
         const targetLength = Math.floor(base64Data.length * ratio);
 
-        console.log('[MediaCompression] 🔄 Compression simplifiée - Ratio:', ratio.toFixed(2));
+        console.log('[MediaCompression] \uD83D\uDD04 Compression simplifiée - Ratio:', ratio.toFixed(2));
         console.log('[MediaCompression] ⚠️ Compression basique (troncature) - Pour une vraie compression, installer expo-image-manipulator');
 
         // Tronquer le base64 (compression basique)
@@ -210,7 +210,7 @@ export const compressAllMedia = async (mediaFiles: {
     totalSizeBefore: number;
     totalSizeAfter: number;
 }> => {
-    console.log('[MediaCompression] 🔄 Début compression de tous les médias');
+    console.log('[MediaCompression] \uD83D\uDD04 Début compression de tous les médias');
 
     // Calculer la taille totale avant
     const calculateTotalSize = (media: Record<string, string[]>) => {

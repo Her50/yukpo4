@@ -52,13 +52,13 @@ const PharmacieResultCard: React.FC<PharmacieResultCardProps> = ({ pharmacy, onP
         <TouchableOpacity style={styles.card} onPress={handlePress}>
             <View style={styles.header}>
                 <View style={styles.iconContainer}>
-                    <Text style={styles.icon}>💊</Text>
+                    <Text style={styles.icon}>\uD83D\uDC8A</Text>
                 </View>
                 <View style={styles.titleContainer}>
                     <Text style={styles.title}>{pharmacy.nom}</Text>
                     {pharmacy.is_on_duty_now && (
                         <View style={styles.badge}>
-                            <Text style={styles.badgeText}>🟢 DE GARDE</Text>
+                            <Text style={styles.badgeText}>\uD83D\uDFE2 DE GARDE</Text>
                         </View>
                     )}
                 </View>

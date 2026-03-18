@@ -12,7 +12,7 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 

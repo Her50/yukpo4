@@ -193,7 +193,7 @@ export async function generateShoppingListHTML(listData: ShoppingListPdfData): P
     <div class="list-container">
         <!-- Header -->
         <div class="list-header">
-            <div class="list-title">🛒 LISTE DE COURSES</div>
+            <div class="list-title">\uD83D\uDED2 LISTE DE COURSES</div>
             <div class="list-subtitle">Planification des achats</div>
         </div>
 
@@ -203,11 +203,11 @@ export async function generateShoppingListHTML(listData: ShoppingListPdfData): P
             ${listData.family_members ? `
             <div class="info-section">
                 <div class="info-item">
-                    <div class="info-label">👥 Membres</div>
+                    <div class="info-label">\uD83D\uDC65 Membres</div>
                     <div class="info-value">${listData.family_members}</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">💰 Budget Total</div>
+                    <div class="info-label">\uD83D\uDCB0 Budget Total</div>
                     <div class="info-value">${listData.total_estimated_cost.toLocaleString('fr-FR')} ${currency}</div>
                 </div>
             </div>
@@ -237,7 +237,7 @@ export async function generateShoppingListHTML(listData: ShoppingListPdfData): P
 
             <!-- Résumé total -->
             <div class="summary-section">
-                <div class="summary-label">💰 Coût Total Estimé</div>
+                <div class="summary-label">\uD83D\uDCB0 Coût Total Estimé</div>
                 <div class="summary-value">${listData.total_estimated_cost.toLocaleString('fr-FR')} ${currency}</div>
             </div>
         </div>
@@ -300,7 +300,7 @@ export async function shareShoppingListPDF(pdfUri: string, listTitle: string) {
                 url: `file://${pdfUri}`,
                 type: 'application/pdf',
                 title: `Liste de Courses - ${listTitle}`,
-                message: `🛒 Voici ma liste de courses générée par Yukpo !`,
+                message: `\uD83D\uDED2 Voici ma liste de courses générée par Yukpo !`,
                 social: Share.Social.WHATSAPP,
             });
         } catch (shareError) {

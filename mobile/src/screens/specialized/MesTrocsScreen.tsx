@@ -195,7 +195,7 @@ const MesTrocsScreen: React.FC = () => {
 
                         {item.distance_km && (
                             <Text style={styles.distanceText}>
-                                📍 {item.distance_km.toFixed(1)} km
+                                \uD83D\uDCCD {item.distance_km.toFixed(1)} km
                             </Text>
                         )}
 

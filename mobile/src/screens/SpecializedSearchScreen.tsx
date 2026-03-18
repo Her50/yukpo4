@@ -1,4 +1,4 @@
-// 🔍 Page de recherche intermédiaire pour services spécialisés
+// \uD83D\uDD0D Page de recherche intermédiaire pour services spécialisés
 // Permet de saisir les critères de recherche (texte, GPS, moment/planning) 
 // avant de lancer la recherche dans les tables spécialisées
 
@@ -133,7 +133,7 @@ const SpecializedSearchScreen: React.FC = () => {
                 payload.min_rating = filters.rating;
             }
 
-            console.log('[SpecializedSearchScreen] 🔍 Recherche spécialisée:', {
+            console.log('[SpecializedSearchScreen] \uD83D\uDD0D Recherche spécialisée:', {
                 specializedType,
                 searchQuery,
                 hasGPS: !!gpsData,

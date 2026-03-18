@@ -57,9 +57,9 @@ const [leaderboard, setLeaderboard] = useState<Array<{
 
     const getRankIcon = (rank: number | null | undefined) => {
         if (rank == null) return '#?';
-        if (rank === 1) return '🥇';
-        if (rank === 2) return '🥈';
-        if (rank === 3) return '🥉';
+        if (rank === 1) return '\uD83E\uDD47';
+        if (rank === 2) return '\uD83E\uDD48';
+        if (rank === 3) return '\uD83E\uDD49';
         return `#${rank}`;
     };
 
@@ -68,7 +68,7 @@ const [leaderboard, setLeaderboard] = useState<Array<{
             <View style={styles.overlay}>
                 <View style={styles.container}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>🏆 Classement</Text>
+                        <Text style={styles.title}>\uD83C\uDFC6 Classement</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color="#6B7280" />
                         </TouchableOpacity>

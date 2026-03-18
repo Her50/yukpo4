@@ -662,7 +662,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
-                    t('orderDeliveryModal.laccesALaLocalisationEstNecessairePourUtiliser')
+                    'L\'accès à la localisation est nécessaire pour utiliser votre position actuelle.'
                 );
                 return;
             }
@@ -773,7 +773,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     const handleSubmit = async () => {
         // ✅ CORRIGÉ: Vérifier serviceId avant de soumettre
         if (!serviceId || typeof serviceId !== 'number' || serviceId <= 0) {
-            Alert.alert('Erreur', t('orderDeliveryModal.serviceInvalideImpossibleDeCreerLa'));
+            Alert.alert('Erreur', 'Service invalide. Impossible de créer la commande.');
             return;
         }
 
@@ -783,19 +783,19 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
         }
 
         if (selectedProducts.length === 0) {
-            Alert.alert('Produit requis', t('orderDeliveryModal.veuillezSelectionnerAuMoinsUnProduit'));
+            Alert.alert('Produit requis', 'Veuillez sélectionner au moins un produit');
             return;
         }
 
         // ✅ NOUVEAU 2026-01-23: Vérifier qu'une variation est sélectionnée si le produit en a
         if (productVariants && productVariants.length > 0 && selectedVariantIdx < 0) {
-            Alert.alert('Variation requise', t('orderDeliveryModal.veuillezSelectionnerUneVariationDePrix'));
+            Alert.alert('Variation requise', 'Veuillez sélectionner une variation de prix pour ce produit');
             return;
         }
 
         // ✅ NOUVEAU 2026-01-23: Vérifier que la quantité est valide
         if (quantity < 1) {
-            Alert.alert(t('orderDeliveryModal.quantiteInvalide'), t('orderDeliveryModal.laQuantiteDoitEtreAuMoins'));
+            Alert.alert('Quantité invalide', 'La quantité doit être au moins égale à 1');
             return;
         }
 
@@ -813,7 +813,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     [
                         { text: t('common.cancel'), style: 'cancel' },
                         {
-                            text: t('common.reload'),
+                            text: 'Recharger',
                             onPress: () => {
                                 onClose();
                                 (navigation as any).navigate('RechargeTokens');
@@ -919,7 +919,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
                 if (response.success) {
                     // ✅ FIX 2026-03-03: Toast + son au lieu de Alert bloquant
-                    showToast(t('orderDeliveryModal.commandeCreeeRechercheDeCoursierEn'));
+                    showToast('✅ Commande créée ! Recherche de coursier en cours...');
                     notificationSoundService.playSound('order').catch(console.error);
 
                     // Laisser le toast s'afficher 1.5s avant de naviguer vers le suivi
@@ -930,7 +930,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                         onClose();
                     }, 1500);
                 } else {
-                    Alert.alert('Erreur', response.error || t('orderDeliveryModal.impossibleDeCreerLaCommande'));
+                    Alert.alert('Erreur', response.error || 'Impossible de créer la commande');
                 }
             }
         } catch (error: any) {
@@ -1031,7 +1031,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="shopping-cart" size={18} color="#10B981" />
-                            <Text style={styles.sectionTitle}>{t('orderDelivery.quantite')}</Text>
+                            <Text style={styles.sectionTitle}>Quantité *</Text>
                         </View>
                         <View style={styles.quantityContainer}>
                             <TouchableOpacity
@@ -1065,13 +1065,13 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
                                 <SafeIcon name="package" size={18} color="#9333EA" />
-                                <Text style={styles.sectionTitle}>{t('orderDelivery.produitsACommander')}</Text>
+                                <Text style={styles.sectionTitle}>Produits à commander</Text>
                                 {!showProductSelector && (
                                     <TouchableOpacity
                                         onPress={() => setShowProductSelector(true)}
                                         style={styles.addProductButton}
                                     >
-                                        <Text style={styles.addProductButtonText}>{t('orderDeliveryModal.ajouter')}</Text>
+                                        <Text style={styles.addProductButtonText}>Ajouter</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -1086,7 +1086,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                             onPress={() => setShowProductSelector(false)}
                                             style={styles.closeSelectorButton}
                                         >
-                                            <Text style={styles.closeSelectorButtonText}>{t('orderDeliveryModal.fermer')}</Text>
+                                            <Text style={styles.closeSelectorButtonText}>Fermer</Text>
                                         </TouchableOpacity>
                                     </View>
                                     <ScrollView style={styles.productList} nestedScrollEnabled>
@@ -1201,7 +1201,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={18} color={modernColors.success} />
-                            <Text style={styles.sectionTitle}>{t('orderDelivery.pointDeDepart')}</Text>
+                            <Text style={styles.sectionTitle}>Point de départ</Text>
                         </View>
                         {pickupLocation ? (
                             <View style={styles.locationCard}>
@@ -1223,7 +1223,10 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>{t('orderDelivery.adresseDeLivraisont('orderDeliveryModal.textViewNouveauSelecteurD')adresse sauvegardée */}
+                            <Text style={styles.sectionTitle}>Adresse de livraison *</Text>
+                        </View>
+
+                        {/* ✅ NOUVEAU : Sélecteur d'adresse sauvegardée */}
                         <SavedAddressSelector
                             addressType="dropoff"
                             value={dropoffLocation ? {
@@ -1261,7 +1264,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                             <View style={styles.locationCard}>
                                 <View style={styles.locationCardHeader}>
                                     <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
-                                    <Text style={styles.locationLabel}>{t('orderDelivery.adresseDeLivraison')}</Text>
+                                    <Text style={styles.locationLabel}>Adresse de livraison</Text>
                                 </View>
                                 <Text style={styles.locationText}>
                                     {dropoffLocation.address ||
@@ -1271,7 +1274,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                     style={styles.modifyButton}
                                     onPress={() => setDropoffLocation(null)}
                                 >
-                                    <Text style={styles.modifyButtonText}>{t('orderDelivery.choisirUneAutreAdresse')}</Text>
+                                    <Text style={styles.modifyButtonText}>Choisir une autre adresse</Text>
                                 </TouchableOpacity>
                             </View>
                         ) : (
@@ -1312,14 +1315,14 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     <View style={[styles.section, { borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 24 }]}>
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="clock" size={18} color={modernColors.accent} />
-                            <Text style={styles.sectionTitle}>{t('orderDelivery.preferencesDeLivraisonOptionnel')}</Text>
+                            <Text style={styles.sectionTitle}>Préférences de livraison (optionnel)</Text>
                         </View>
 
                         <View style={styles.preferencesGrid}>
                             {/* Date de livraison */}
                             <View style={styles.preferenceItem}>
                                 <NativeDatePicker
-                                    label={t('orderDelivery.dateDeLivraison')}
+                                    label="Date de livraison"
                                     value={preferredDeliveryDateDisplay}
                                     onChange={(dateString: string) => {
                                         // dateString est au format JJ/MM/AAAA
@@ -1338,18 +1341,18 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                         }
                                     }}
                                     minimumDate={new Date()} // Ne pas permettre les dates passées
-                                    placeholder={t('orderDelivery.selectionnerUneDate')}
+                                    placeholder="Sélectionner une date"
                                 />
                             </View>
 
                             {/* Niveau d'urgence - Sélecteur visuel */}
                             <View style={styles.preferenceItem}>
-                                <Text style={styles.preferenceLabel}>{t('orderDelivery.modeDeLivraison')}</Text>
+                                <Text style={styles.preferenceLabel}>Mode de livraison</Text>
                                 <View style={styles.deliveryModeContainer}>
                                     {[
                                         { key: 'standard' as const, label: 'Standard', icon: 'truck' as const, desc: '2-4h', color: '#3B82F6' },
                                         { key: 'urgent' as const, label: 'Express', icon: 'zap' as const, desc: '30-60min', color: '#F59E0B' },
-                                        { key: 'scheduled' as const, label: t('orderDelivery.programme'), icon: 'calendar' as const, desc: 'Date fixe', color: '#8B5CF6' },
+                                        { key: 'scheduled' as const, label: 'Programmé', icon: 'calendar' as const, desc: 'Date fixe', color: '#8B5CF6' },
                                     ].map((mode) => (
                                         <TouchableOpacity
                                             key={mode.key}
@@ -1384,18 +1387,18 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                             <View style={styles.preferencesGrid}>
                                 <View style={styles.preferenceItem}>
                                     <NativeTimePicker
-                                        label={t('orderDelivery.heureDeDebut')}
+                                        label="Heure de début"
                                         value={preferredDeliveryTimeStart}
                                         onChange={setPreferredDeliveryTimeStart}
-                                        placeholder={t('orderDelivery.selectionnerL')}heure de début"
+                                        placeholder="Sélectionner l'heure de début"
                                     />
                                 </View>
                                 <View style={styles.preferenceItem}>
                                     <NativeTimePicker
-                                        label={t('orderDelivery.heureDeFin')}
+                                        label="Heure de fin"
                                         value={preferredDeliveryTimeEnd}
                                         onChange={setPreferredDeliveryTimeEnd}
-                                        placeholder={t('orderDelivery.selectionnerL')}heure de fin"
+                                        placeholder="Sélectionner l'heure de fin"
                                     />
                                 </View>
                             </View>
@@ -1417,7 +1420,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
                             {isFlexible && (
                                 <View style={styles.flexibilityInput}>
-                                    <Text style={styles.preferenceLabel}>{t('orderDelivery.fenetreDeFlexibiliteJours')}</Text>
+                                    <Text style={styles.preferenceLabel}>Fenêtre de flexibilité (jours)</Text>
                                     <TextInput
                                         style={styles.preferenceInput}
                                         keyboardType="numeric"
@@ -1442,7 +1445,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     <View style={styles.summarySection}>
                         <View style={styles.summarySectionHeader}>
                             <SafeIcon name="file-text" size={20} color={modernColors.primary} />
-                            <Text style={styles.summarySectionTitle}>{t('orderDelivery.recapitulatifDeCommande')}</Text>
+                            <Text style={styles.summarySectionTitle}>Récapitulatif de commande</Text>
                         </View>
 
                         {/* Carte 1: Produit(s) */}
@@ -1463,7 +1466,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                     </View>
                                     {quantity > 1 && (
                                         <View style={styles.summaryRow}>
-                                            <Text style={styles.summaryLabel}>{t('orderDeliveryModal.quantity')} × {quantity}</Text>
+                                            <Text style={styles.summaryLabel}>Quantité × {quantity}</Text>
                                             <Text style={styles.summaryValue}>
                                                 {((productVariants[selectedVariantIdx].prix || productVariants[selectedVariantIdx].price || 0) * quantity).toLocaleString('fr-FR')} FCFA
                                             </Text>
@@ -1547,14 +1550,14 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                         {/* Carte 3: Total + Solde */}
                         <View style={styles.summaryCardTotal}>
                             <View style={[styles.summaryRow, { paddingVertical: 12 }]}>
-                                <Text style={styles.totalLabel}>{t('orderDelivery.totalAPayer')}</Text>
+                                <Text style={styles.totalLabel}>Total à payer</Text>
                                 <Text style={styles.totalValue}>
                                     {((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost).toLocaleString('fr-FR')} FCFA
                                 </Text>
                             </View>
                             <View style={styles.summaryDivider} />
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>{t('orderDelivery.votreSolde')}</Text>
+                                <Text style={styles.summaryLabel}>Votre solde</Text>
                                 <Text style={[
                                     styles.summaryValue,
                                     userBalance < ((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost) && { color: '#EF4444' }
@@ -1589,7 +1592,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                         onPress={onClose}
                         disabled={loading}
                     >
-                        <Text style={styles.cancelButtonText}>{t('orderDeliveryModal.annuler')}</Text>
+                        <Text style={styles.cancelButtonText}>Annuler</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[
@@ -1612,7 +1615,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                                             onPress: () => { }
                                         },
                                         {
-                                            text: t('common.reload'),
+                                            text: 'Recharger',
                                             onPress: () => {
                                                 // Naviguer vers l'écran de recharge
                                                 navigation.navigate('RechargeTokens' as any);
@@ -1631,7 +1634,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                             styles.submitButtonText,
                             userBalance < ((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost) && styles.submitButtonTextWarning
                         ]}>
-                            {loading ? t('orderDeliveryModal.creation') :
+                            {loading ? 'Création...' :
                                 userBalance < ((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost)
                                     ? 'Continuer'
                                     : `Confirmer ${((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost) > 0 ? `• ${((productPrice || 0) + (isDeliveryFree ? 0 : (deliveryCost || 0)) + insuranceCost).toLocaleString('fr-FR')} FCFA` : ''}`
@@ -1668,7 +1671,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                             ? { lat: userGPS.latitude, lng: userGPS.longitude }
                             : undefined
                 }
-                title={t('orderDelivery.selectionnerL')}adresse de livraison"
+                title="Sélectionner l'adresse de livraison"
                 allowZoneSelection={false}
             />
         </Modal>

@@ -298,69 +298,69 @@ class SmartQRShareService {
   formatDeliveryMessage(shareInfo: DeliveryShareInfo, recipientName?: string, locale: string = 'fr'): string {
     if (locale === 'en') {
       const greeting = recipientName ? `Hello ${recipientName}` : 'Hello';
-      return `📦 ${greeting},
+      return `\uD83D\uDCE6 ${greeting},
 
 Your Yukpo delivery is ready:
 
-🔸 Tracking number: ${shareInfo.tracking_token}
-🔸 Tracking link: ${shareInfo.share_url}
-🔸 Status: Awaiting confirmation
+\uD83D\uDD38 Tracking number: ${shareInfo.tracking_token}
+\uD83D\uDD38 Tracking link: ${shareInfo.share_url}
+\uD83D\uDD38 Status: Awaiting confirmation
 
 Click the link to track your package in real time.
 
-📲 Download Yukpo: ${SmartQRShareService.APP_DOWNLOAD_URL}
+\uD83D\uDCF2 Download Yukpo: ${SmartQRShareService.APP_DOWNLOAD_URL}
 
-Thank you for your trust! 🚀`;
+Thank you for your trust! \uD83D\uDE80`;
     }
 
     const greeting = recipientName ? `Bonjour ${recipientName}` : 'Bonjour';
-    return `📦 ${greeting},
+    return `\uD83D\uDCE6 ${greeting},
 
 Votre livraison Yukpo est prête:
 
-🔸 Numéro de suivi: ${shareInfo.tracking_token}
-🔸 Lien de tracking: ${shareInfo.share_url}
-🔸 Statut: En attente de confirmation
+\uD83D\uDD38 Numéro de suivi: ${shareInfo.tracking_token}
+\uD83D\uDD38 Lien de tracking: ${shareInfo.share_url}
+\uD83D\uDD38 Statut: En attente de confirmation
 
 Cliquez sur le lien pour suivre votre colis en temps réel.
 
-📲 Téléchargez l'app Yukpo: ${SmartQRShareService.APP_DOWNLOAD_URL}
+\uD83D\uDCF2 Téléchargez l'app Yukpo: ${SmartQRShareService.APP_DOWNLOAD_URL}
 
-Merci de votre confiance! 🚀`;
+Merci de votre confiance! \uD83D\uDE80`;
   }
 
   formatCourierMessage(shareInfo: DeliveryShareInfo, courierName?: string, locale: string = 'fr'): string {
     if (locale === 'en') {
       const greeting = courierName ? `Hello ${courierName}` : 'Hello';
-      return `🚴 ${greeting},
+      return `\uD83D\uDEB4 ${greeting},
 
 New Yukpo delivery assigned:
 
-🔸 Tracking token: ${shareInfo.tracking_token}
-🔸 Tracking link: ${shareInfo.share_url}
-🔸 Status: Awaiting pickup
+\uD83D\uDD38 Tracking token: ${shareInfo.tracking_token}
+\uD83D\uDD38 Tracking link: ${shareInfo.share_url}
+\uD83D\uDD38 Status: Awaiting pickup
 
 Click the link to start the delivery.
 
-📲 Download Yukpo: ${SmartQRShareService.APP_DOWNLOAD_URL}
+\uD83D\uDCF2 Download Yukpo: ${SmartQRShareService.APP_DOWNLOAD_URL}
 
-Have a safe trip! 📦`;
+Have a safe trip! \uD83D\uDCE6`;
     }
 
     const greeting = courierName ? `Bonjour ${courierName}` : 'Bonjour';
-    return `🚴 ${greeting},
+    return `\uD83D\uDEB4 ${greeting},
 
 Nouvelle livraison Yukpo assignée:
 
-🔸 Token tracking: ${shareInfo.tracking_token}
-🔸 Lien de suivi: ${shareInfo.share_url}
-🔸 Statut: En attente de récupération
+\uD83D\uDD38 Token tracking: ${shareInfo.tracking_token}
+\uD83D\uDD38 Lien de suivi: ${shareInfo.share_url}
+\uD83D\uDD38 Statut: En attente de récupération
 
 Cliquez sur le lien pour commencer la livraison.
 
-📲 Téléchargez l'app Yukpo: ${SmartQRShareService.APP_DOWNLOAD_URL}
+\uD83D\uDCF2 Téléchargez l'app Yukpo: ${SmartQRShareService.APP_DOWNLOAD_URL}
 
-Bonne route! 📦`;
+Bonne route! \uD83D\uDCE6`;
   }
 
   /**

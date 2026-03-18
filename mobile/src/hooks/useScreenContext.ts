@@ -226,7 +226,7 @@ const SCREEN_CONFIGS: Record<string, {
     guide: 'Accueil Pharmacie. Recherchez des médicaments, trouvez les pharmacies proches, suivez vos commandes. L\'IA peut analyser vos ordonnances.',
   },
   PharmacieForm: {
-    type: 'form',
+    type: 'dashboard',
     actions: [
       { id: 'add-product', label: 'Ajouter Médicament', icon: LUCIDE_ICONS.add, category: 'creation', description: 'Ajouter un nouveau médicament à votre stock' },
       { id: 'view-stock', label: 'Voir Stock', icon: LUCIDE_ICONS.package, category: 'action', description: 'Consulter l\'état du stock' },
@@ -234,10 +234,13 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, route: 'PharmacyAnalytics', category: 'navigation', description: 'Voir les statistiques' },
     ],
     elements: [
-      { id: 'product-form', type: 'input', label: 'Formulaire médicament', actionable: true },
-      { id: 'stock-list', type: 'card', label: 'Liste du stock', actionable: true },
+      { id: 'tabs', type: 'tab', label: 'Onglets: Accueil, Produits, Stock, Commandes, Stats', actionable: true },
+      { id: 'product-form', type: 'input', label: 'Formulaire médicament / produit', actionable: true },
+      { id: 'stock-list', type: 'card', label: 'Liste du stock (produits, quantités, prix)', actionable: true },
+      { id: 'orders', type: 'card', label: 'Commandes clients (statuts, paiement, livraison)', actionable: true },
+      { id: 'analytics', type: 'card', label: 'Statistiques (ventes, produits populaires, ruptures)', actionable: false },
     ],
-    guide: 'Gestion de votre pharmacie. Ajoutez des médicaments, gérez le stock, analysez des ordonnances avec l\'IA, consultez les statistiques de vente.',
+    guide: 'Dashboard partenaire Pharmacie. Gérez votre service (infos, GPS, contacts, horaires), ajoutez/modifiez des produits/médicaments, mettez à jour les quantités et prix, traitez les commandes (validation, préparation, livraison/retrait, annulation/remboursement si applicable), consultez les statistiques. L\'assistant peut guider étape par étape pour n\'importe quelle action: ajouter un médicament, modifier un prix, marquer une commande comme prête, activer/désactiver la disponibilité, analyser une ordonnance et vérifier interactions/dosages.',
   },
   PharmacieSearch: {
     type: 'search',
@@ -268,43 +271,98 @@ const SCREEN_CONFIGS: Record<string, {
     guide: 'Accueil Santé. Trouvez des hôpitaux, prenez rendez-vous, consultez l\'historique de vos consultations. L\'IA peut recommander des spécialistes.',
   },
   HopitalForm: {
-    type: 'form',
+    type: 'dashboard',
     actions: [
-      { id: 'manage-slots', label: 'Gérer Créneaux', icon: LUCIDE_ICONS.calendar, route: 'SlotManagement', category: 'action', description: 'Gérer les créneaux de consultation' },
-      { id: 'analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, route: 'HospitalAnalytics', category: 'navigation', description: 'Statistiques hospitalières' },
+      { id: 'manage-slots', label: 'Gérer Créneaux', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'Gérer les créneaux de consultation par prestation et par jour (onglet Créneaux)' },
+      { id: 'analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, route: 'HospitalAnalytics', category: 'navigation', description: 'Consulter les statistiques hospitalières : consultations totales, temps d\'attente, taux d\'occupation (onglet Stats)' },
+      { id: 'edit-service', label: 'Modifier Service', icon: LUCIDE_ICONS.edit, category: 'action', description: 'Modifier les infos de l\'établissement : nom, type, adresse, GPS, prestations, urgences, RDV en ligne (onglet Service)' },
+      { id: 'ai-triage', label: 'IA Triage', icon: LUCIDE_ICONS.activity, route: 'HospitalAIRecommendations', category: 'help', description: 'Accéder au triage IA pour évaluer la sévérité des patients et orienter les urgences' },
+      { id: 'team', label: 'Équipe', icon: LUCIDE_ICONS.users, category: 'action', description: 'Gérer les membres de votre équipe médicale (onglet Équipe)' },
+      { id: 'toggle-urgences', label: 'Urgences On/Off', icon: LUCIDE_ICONS.alert, category: 'action', description: 'Activer ou désactiver le service d\'urgences' },
+      { id: 'toggle-rdv', label: 'RDV en ligne', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'Activer ou désactiver la prise de RDV en ligne' },
+      { id: 'wallet', label: 'Portefeuille', icon: LUCIDE_ICONS['credit-card'], route: 'WalletFinancial', category: 'navigation', description: 'Consulter les revenus et transactions financières' },
     ],
     elements: [
-      { id: 'hospital-form', type: 'input', label: 'Formulaire hôpital', actionable: true },
+      { id: 'stats-grid', type: 'card', label: 'Grille de statistiques (prestations, créneaux, consultations, temps attente)', actionable: false },
+      { id: 'quick-actions', type: 'button', label: 'Actions rapides (Gérer créneaux, IA Triage, Statistiques, Mon service, Déconnexion)', actionable: true },
+      { id: 'emergency-card', type: 'card', label: 'Carte urgences (activées/désactivées, RDV en ligne)', actionable: true },
+      { id: 'consultations-list', type: 'card', label: 'Consultations récentes (patient, prestation, date, statut)', actionable: true },
+      { id: 'hospital-info', type: 'card', label: 'Informations de l\'établissement (adresse, téléphone, type)', actionable: false },
+      { id: 'tabs', type: 'tab', label: 'Onglets: Accueil, Service, Créneaux, Stats, Équipe', actionable: true },
     ],
-    guide: 'Gestion de votre hôpital. Configurez vos spécialités, gérez les créneaux de rendez-vous et consultez les statistiques.',
+    guide: 'Tableau de bord hôpital/clinique complet. 5 onglets : Accueil (stats, actions rapides, statut urgences, consultations récentes, infos), Service (modifier nom, type d\'établissement, adresse, GPS, prestations, urgences, RDV en ligne, contacts), Créneaux (gérer les créneaux de consultation par prestation avec planning hebdomadaire), Stats (consultations totales/7j, temps d\'attente moyen, taux d\'occupation, accès IA triage), Équipe (gestion du personnel médical). Le partenaire peut demander de l\'aide sur : comment ajouter une prestation, configurer ses créneaux horaires, activer les urgences, suivre ses consultations, voir ses statistiques, gérer son équipe, accéder au triage IA.',
   },
 
   // === HÔTEL ===
   HotelDashboard: {
     type: 'dashboard',
     actions: [
-      { id: 'add-room', label: 'Ajouter Chambre', icon: LUCIDE_ICONS.add, category: 'creation', description: 'Ajouter une nouvelle chambre' },
-      { id: 'manage-reservations', label: 'Réservations', icon: LUCIDE_ICONS.calendar, route: 'MesReservations', category: 'action', description: 'Gérer les réservations' },
-      { id: 'check-pricing', label: 'Tarifs', icon: LUCIDE_ICONS['credit-card'], category: 'action', description: 'Modifier les tarifs' },
-      { id: 'qr-scanner', label: 'Scanner QR', icon: LUCIDE_ICONS.camera, route: 'HotelQRScanner', category: 'action', description: 'Scanner un QR code de réservation' },
+      { id: 'add-property', label: 'Ajouter un bien', icon: LUCIDE_ICONS.add, route: 'ImmobilierForm', category: 'creation', description: 'Ajouter un hôtel ou meublé' },
+      { id: 'new-reservation', label: 'Nouvelle réservation', icon: LUCIDE_ICONS.calendar, category: 'creation', description: 'Créer une réservation manuelle pour un client' },
+      { id: 'manage-reservations', label: 'Réservations', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'Voir et gérer toutes les réservations (onglet Réservations)' },
+      { id: 'check-in', label: 'Check-in', icon: LUCIDE_ICONS.check, category: 'action', description: 'Enregistrer l\'arrivée d\'un client (bouton Check-in sur la réservation confirmée)' },
+      { id: 'check-out', label: 'Check-out', icon: LUCIDE_ICONS.check, category: 'action', description: 'Enregistrer le départ d\'un client (bouton Check-out sur la réservation en séjour)' },
+      { id: 'qr-scanner', label: 'Scanner QR', icon: LUCIDE_ICONS.camera, route: 'HotelQRScanner', category: 'action', description: 'Scanner le QR code d\'un client à la réception pour vérifier sa réservation' },
+      { id: 'ai-insights', label: 'IA Insights', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Obtenir des suggestions de tarifs et prévisions de remplissage par l\'IA (onglet IA)' },
+      { id: 'team', label: 'Équipe', icon: LUCIDE_ICONS.list, category: 'action', description: 'Gérer les membres de votre équipe (onglet Équipe)' },
+      { id: 'wallet', label: 'Portefeuille', icon: LUCIDE_ICONS['credit-card'], route: 'WalletFinancial', category: 'navigation', description: 'Accéder au portefeuille pour suivre les revenus' },
+      { id: 'payment', label: 'Paiement réservation', icon: LUCIDE_ICONS['credit-card'], route: 'HotelBookingPayment', category: 'action', description: 'Enregistrer un paiement (avance ou solde) pour une réservation' },
     ],
     elements: [
-      { id: 'rooms-list', type: 'card', label: 'Chambres disponibles', actionable: true },
-      { id: 'reservations-overview', type: 'card', label: 'Réservations du jour', actionable: true },
+      { id: 'stats-grid', type: 'card', label: 'Statistiques (propriétés, réservations, en séjour, revenus)', actionable: false },
+      { id: 'quick-actions', type: 'button', label: 'Actions rapides (ajouter bien, réservation, scanner QR, IA, portefeuille)', actionable: true },
+      { id: 'pending-arrivals', type: 'card', label: 'Arrivées en attente (réservations confirmées non check-in)', actionable: true },
+      { id: 'checked-in-clients', type: 'card', label: 'Clients en séjour actuellement', actionable: true },
+      { id: 'tabs', type: 'button', label: 'Onglets: Vue d\'ensemble, Réservations, Mes biens, IA, Équipe', actionable: true },
     ],
-    guide: 'Tableau de bord hôtelier. Gérez vos chambres, tarifs, réservations. Scannez les QR codes à l\'arrivée des clients.',
+    guide: 'Tableau de bord hôtel/meublé complet. 5 onglets : Vue d\'ensemble (stats + actions rapides + arrivées en attente + clients en séjour), Réservations (liste complète avec check-in/out/QR/paiement), Mes biens (propriétés avec disponibilité + modifier + IA tarifs), IA (insights tarification et remplissage par propriété), Équipe (gestion du personnel). Actions clés : ajouter un bien → ImmobilierForm, créer réservation manuelle → modal, scanner QR client → HotelQRScanner, voir QR réservation, paiement réservation → HotelBookingPayment, portefeuille → WalletFinancial. Le partenaire peut demander de l\'aide sur n\'importe quelle fonctionnalité.',
   },
   HotelMeubleHome: {
     type: 'specialized',
     actions: [
-      { id: 'search-hotel', label: 'Chercher Hôtel', icon: LUCIDE_ICONS.search, category: 'search', description: 'Rechercher un hôtel ou meublé' },
-      { id: 'book-hotel', label: 'Réserver', icon: LUCIDE_ICONS.calendar, route: 'HotelBooking', category: 'action', description: 'Réserver une chambre' },
+      { id: 'search-hotel', label: 'Chercher Hôtel', icon: LUCIDE_ICONS.search, category: 'search', description: 'Rechercher un hôtel ou meublé par nom, ville, standing' },
+      { id: 'filter-standing', label: 'Filtrer par standing', icon: LUCIDE_ICONS.list, category: 'action', description: 'Filtrer: Économique, Standard, Confort, Premium, Luxe' },
+      { id: 'filter-city', label: 'Filtrer par ville', icon: LUCIDE_ICONS['map-pin'], category: 'action', description: 'Filtrer les hébergements par ville' },
+      { id: 'filter-budget', label: 'Budget max', icon: LUCIDE_ICONS['credit-card'], category: 'action', description: 'Définir un budget maximum par nuit' },
+      { id: 'book-hotel', label: 'Réserver', icon: LUCIDE_ICONS.calendar, route: 'HotelBooking', category: 'action', description: 'Réserver un hébergement directement' },
+      { id: 'view-details', label: 'Voir détails', icon: LUCIDE_ICONS.info, route: 'ImmobilierDetails', category: 'navigation', description: 'Voir les détails complets d\'un hébergement' },
     ],
     elements: [
-      { id: 'hotel-search', type: 'input', label: 'Recherche hôtel', actionable: true },
-      { id: 'hotel-list', type: 'card', label: 'Hôtels disponibles', actionable: true },
+      { id: 'hotel-search', type: 'input', label: 'Barre de recherche hôtel/meublé', actionable: true },
+      { id: 'quick-filters', type: 'input', label: 'Filtres rapides: ville, chambres, budget', actionable: true },
+      { id: 'standing-chips', type: 'button', label: 'Chips standing: Tous, Économique, Standard, Confort, Premium, Luxe', actionable: true },
+      { id: 'hotel-list', type: 'card', label: 'Liste des hébergements avec prix/nuit, note, distance, chambres', actionable: true },
     ],
-    guide: 'Recherche d\'hébergement. Trouvez un hôtel ou meublé, comparez les prix, réservez directement.',
+    guide: 'Recherche d\'hébergement hôtel ou meublé. Filtrez par ville, nombre de chambres, budget max et standing. Chaque carte affiche: titre, localisation, chambres, standing, distance, prix/nuit, note. Bouton Réserver pour chaque hébergement → écran de réservation.',
+  },
+  HotelBooking: {
+    type: 'form',
+    actions: [
+      { id: 'submit-booking', label: 'Envoyer la réservation', icon: LUCIDE_ICONS.check, category: 'action', description: 'Soumettre la demande de réservation au gérant' },
+      { id: 'pay-now', label: 'Payer maintenant', icon: LUCIDE_ICONS['credit-card'], route: 'HotelBookingPayment', category: 'action', description: 'Payer la réservation après confirmation' },
+    ],
+    elements: [
+      { id: 'dates-input', type: 'input', label: 'Dates arrivée/départ (format AAAA-MM-JJ)', actionable: true },
+      { id: 'occupants', type: 'input', label: 'Nombre adultes, enfants, chambres (boutons +/-)', actionable: true },
+      { id: 'contact-info', type: 'input', label: 'Nom, téléphone, email du client', actionable: true },
+      { id: 'price-estimate', type: 'card', label: 'Estimation du prix total (prix/nuit × nuits × chambres)', actionable: false },
+    ],
+    guide: 'Formulaire de réservation hôtel/meublé. Renseignez les dates d\'arrivée et de départ (format AAAA-MM-JJ), le nombre d\'adultes/enfants/chambres, vos coordonnées. L\'estimation du prix s\'affiche automatiquement. Après envoi, le gérant confirme la réservation. Vous pouvez ensuite payer directement dans l\'app.',
+  },
+  ImmobilierForm: {
+    type: 'form',
+    actions: [
+      { id: 'publish-property', label: 'Publier le bien', icon: LUCIDE_ICONS.check, category: 'action', description: 'Publier ou modifier l\'annonce immobilière' },
+      { id: 'select-gps', label: 'Sélectionner GPS', icon: LUCIDE_ICONS['map-pin'], category: 'action', description: 'Choisir la localisation sur la carte' },
+      { id: 'add-photos', label: 'Ajouter photos/vidéos', icon: LUCIDE_ICONS.camera, category: 'action', description: 'Ajouter des médias au bien' },
+      { id: 'virtual-tour', label: 'Visite virtuelle 360°', icon: LUCIDE_ICONS.video, category: 'action', description: 'Ajouter une visite virtuelle (mode édition uniquement)' },
+    ],
+    elements: [
+      { id: 'property-form', type: 'input', label: 'Formulaire bien: titre, description, type, statut, localisation, caractéristiques, prix', actionable: true },
+      { id: 'type-selector', type: 'button', label: 'Type de bien: maison, appartement, terrain, bureau, local commercial, hôtel, meublé', actionable: true },
+      { id: 'status-selector', type: 'button', label: 'Statut: vente, location, les deux', actionable: true },
+    ],
+    guide: 'Formulaire de création/modification d\'un bien immobilier. Sections: Informations (titre, description), Type & Statut (7 types + 3 statuts), Localisation (ville, quartier, adresse avec import photos Google), Caractéristiques (superficie, chambres, SDB, standing, état), Prix (vente et/ou location selon statut), Médias (photos + vidéos), Visite virtuelle 360° (en mode édition).',
   },
 
   // === IMMOBILIER ===
@@ -320,6 +378,75 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'property-search', type: 'input', label: 'Recherche immobilière', actionable: true },
     ],
     guide: 'Immobilier. Recherchez, comparez et réservez des biens. Configurez des alertes de prix. Publiez vos annonces.',
+  },
+  ImmobilierSearch: {
+    type: 'search',
+    actions: [
+      { id: 'search', label: 'Lancer la recherche', icon: LUCIDE_ICONS.search, category: 'action', description: 'Rechercher des biens avec les filtres configurés' },
+      { id: 'ai-features', label: 'Fonctionnalités IA', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Estimation prix IA, recommandations, comparaison assistée' },
+      { id: 'select-gps', label: 'Sélectionner GPS', icon: LUCIDE_ICONS['map-pin'], category: 'action', description: 'Choisir un point ou une zone sur la carte' },
+    ],
+    elements: [
+      { id: 'search-mode', type: 'button', label: 'Mode de recherche: Point GPS, Zone carte, Quartiers', actionable: true },
+      { id: 'location-inputs', type: 'input', label: 'Ville + Quartier + Point GPS', actionable: true },
+      { id: 'type-chips', type: 'button', label: 'Types: Appartement, Villa, Studio, Duplex, Triplex, Maison, Bureau, Commerce', actionable: true },
+      { id: 'status-chips', type: 'button', label: 'Statut: À vendre, À louer bail, À louer meublé, Location courte durée, Colocation', actionable: true },
+      { id: 'price-range', type: 'input', label: 'Fourchette de prix min/max', actionable: true },
+      { id: 'characteristics', type: 'input', label: 'Superficie, chambres minimum, standing', actionable: true },
+    ],
+    guide: 'Recherche immobilière avancée. 3 modes: Point GPS (ville+quartier+coordonnées), Zone carte (délimiter une zone polygonale), Quartiers (sélection multiple de quartiers populaires). Filtres: type de bien (8 types), statut (5 options), prix min/max, superficie, chambres minimum, standing (5 niveaux), distance maximum. Fonctionnalités IA: estimation prix, recommandations, comparaison assistée.',
+  },
+  ImmobilierDetails: {
+    type: 'detail',
+    actions: [
+      { id: 'book-visit', label: 'Réserver une visite', icon: LUCIDE_ICONS.calendar, route: 'ImmobilierBooking', category: 'action', description: 'Réserver une visite physique ou virtuelle du bien' },
+      { id: 'simulate-loan', label: 'Simuler un prêt', icon: LUCIDE_ICONS['credit-card'], category: 'action', description: 'Calculer les mensualités d\'un prêt immobilier' },
+      { id: 'ai-estimate', label: 'Estimation IA', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Obtenir une estimation du prix par l\'IA' },
+      { id: 'ai-recommendations', label: 'Recommandations IA', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Obtenir des recommandations d\'investissement et d\'analyse' },
+      { id: 'toggle-favorite', label: 'Favoris', icon: LUCIDE_ICONS.heart, category: 'action', description: 'Ajouter ou retirer des favoris' },
+      { id: 'share', label: 'Partager', icon: LUCIDE_ICONS.share, category: 'action', description: 'Partager le bien par WhatsApp, SMS, lien' },
+    ],
+    elements: [
+      { id: 'property-hero', type: 'card', label: 'En-tête avec titre, localisation, type, standing, prix', actionable: false },
+      { id: 'photo-gallery', type: 'card', label: 'Galerie photos + visites virtuelles 360°', actionable: true },
+      { id: 'characteristics', type: 'card', label: 'Caractéristiques: type, superficie, chambres, salles de bain', actionable: false },
+      { id: 'ai-price-estimate', type: 'card', label: 'Estimation IA du prix (fourchette, prix/m², confiance)', actionable: true },
+      { id: 'ai-recommendations', type: 'card', label: 'Recommandations IA (budget, localisation, potentiel investissement)', actionable: true },
+      { id: 'comments', type: 'card', label: 'Section commentaires/avis', actionable: true },
+    ],
+    guide: 'Détails complets d\'un bien immobilier. En haut: titre, localisation, badges (statut, type, standing), prix. Galerie photos avec visites virtuelles 360°. Actions rapides: appeler, WhatsApp, favoris, partager. Caractéristiques détaillées. Estimation IA du prix avec fourchette et confiance. Recommandations IA (budget, localisation, investissement). Boutons: réserver une visite ou simuler un prêt. Section commentaires en bas.',
+  },
+  ImmobilierCompare: {
+    type: 'specialized',
+    actions: [
+      { id: 'view-details', label: 'Voir détails', icon: LUCIDE_ICONS.info, route: 'ImmobilierDetails', category: 'navigation', description: 'Voir les détails complets d\'un bien' },
+    ],
+    elements: [
+      { id: 'comparison-table', type: 'card', label: 'Tableau comparatif: prix, superficie, chambres, standing, localisation', actionable: true },
+    ],
+    guide: 'Comparaison de biens immobiliers côte à côte (jusqu\'à 5 biens). Comparez prix, superficie, chambres, standing, localisation. Cliquez sur un bien pour voir ses détails.',
+  },
+  ImmobilierBooking: {
+    type: 'form',
+    actions: [
+      { id: 'submit-visit', label: 'Réserver la visite', icon: LUCIDE_ICONS.check, category: 'action', description: 'Confirmer la demande de visite' },
+    ],
+    elements: [
+      { id: 'visit-type', type: 'button', label: 'Type de visite: Physique ou Virtuelle', actionable: true },
+      { id: 'date-time', type: 'input', label: 'Date et heure de visite', actionable: true },
+    ],
+    guide: 'Réservation de visite immobilière. Choisissez le type (physique ou virtuelle), la date (AAAA-MM-JJ), l\'heure. La demande sera envoyée au propriétaire/agent.',
+  },
+  ImmobilierPriceAlerts: {
+    type: 'list',
+    actions: [
+      { id: 'toggle-alert', label: 'Activer/Désactiver', icon: LUCIDE_ICONS.bell, category: 'action', description: 'Activer ou désactiver une alerte prix' },
+      { id: 'delete-alert', label: 'Supprimer', icon: LUCIDE_ICONS.trash, category: 'action', description: 'Supprimer une alerte prix' },
+    ],
+    elements: [
+      { id: 'alerts-list', type: 'card', label: 'Liste des alertes prix actives', actionable: true },
+    ],
+    guide: 'Gestion des alertes de prix immobilier. Recevez des notifications quand un bien correspond à vos critères ou quand un prix baisse. Activez/désactivez ou supprimez vos alertes.',
   },
 
   // === TAXI ===
@@ -416,6 +543,49 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'blood-type-selector', type: 'button', label: 'Groupe sanguin', actionable: true },
     ],
     guide: 'Don de sang. Faites un don, cherchez du sang compatible, consultez l\'historique de vos dons.',
+  },
+
+  BloodDonationRequest: {
+    type: 'form',
+    actions: [
+      { id: 'select-bank', label: 'Choisir Banque', icon: LUCIDE_ICONS.droplet, category: 'action', description: 'Sélectionner la banque de sang' },
+      { id: 'select-group', label: 'Choisir Groupe', icon: LUCIDE_ICONS.list, category: 'action', description: 'Sélectionner le groupe sanguin requis' },
+      { id: 'set-urgency', label: 'Urgence', icon: LUCIDE_ICONS.alert, category: 'action', description: 'Activer une demande urgente et définir le niveau' },
+      { id: 'submit-request', label: 'Créer la Demande', icon: LUCIDE_ICONS.check, category: 'creation', description: 'Créer la demande de don de sang' },
+    ],
+    elements: [
+      { id: 'bank-selector', type: 'card', label: 'Sélection banque de sang', actionable: true },
+      { id: 'blood-group-grid', type: 'button', label: 'Choix groupe sanguin requis', actionable: true },
+      { id: 'quantity', type: 'input', label: 'Quantité + unité', actionable: true },
+      { id: 'urgency-switch', type: 'button', label: 'Switch demande urgente', actionable: true },
+      { id: 'notes', type: 'input', label: 'Informations additionnelles (patient, hôpital, notes)', actionable: true },
+      { id: 'submit', type: 'button', label: 'Bouton créer la demande', actionable: true },
+    ],
+    guide: 'Créer une demande de don de sang. Choisissez une banque, le groupe requis, la quantité, le niveau d\'urgence, et (optionnel) patient/hôpital/notes. Après création, vous pouvez voir les correspondances et notifier des donneurs compatibles.',
+  },
+
+  BloodDonationMatches: {
+    type: 'list',
+    actions: [
+      { id: 'refresh', label: 'Actualiser', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Rafraîchir la liste des correspondances' },
+      { id: 'contact', label: 'Contacter', icon: LUCIDE_ICONS.message, category: 'action', description: 'Contacter un donneur ou une banque (appel/WhatsApp)' },
+    ],
+    elements: [
+      { id: 'matches-list', type: 'card', label: 'Liste des correspondances (donneurs compatibles)', actionable: true },
+    ],
+    guide: 'Correspondances don de sang. Consultez les donneurs compatibles trouvés pour une demande, contactez-les et suivez leur statut (notifié, accepté, refusé, complété).',
+  },
+
+  MyBloodDonations: {
+    type: 'list',
+    actions: [
+      { id: 'refresh', label: 'Actualiser', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Rafraîchir l\'historique' },
+      { id: 'new-request', label: 'Nouvelle Demande', icon: LUCIDE_ICONS.add, route: 'BloodDonationRequest', category: 'creation', description: 'Créer une nouvelle demande' },
+    ],
+    elements: [
+      { id: 'donations-history', type: 'card', label: 'Historique des dons et demandes', actionable: true },
+    ],
+    guide: 'Historique don de sang. Consultez vos dons enregistrés et vos demandes de sang (statuts, dates, banque associée).',
   },
 
   // === ASSURANCE ===
@@ -519,24 +689,130 @@ const SCREEN_CONFIGS: Record<string, {
   SupermarketHome: {
     type: 'specialized',
     actions: [
-      { id: 'browse-products', label: 'Parcourir', icon: LUCIDE_ICONS['shopping-cart'], category: 'search', description: 'Parcourir les produits' },
+      { id: 'select-supermarket', label: 'Choisir Magasin', icon: LUCIDE_ICONS.building2, category: 'navigation', description: 'Sélectionner un supermarché parmi ceux à proximité (onglet Magasins)' },
+      { id: 'browse-products', label: 'Parcourir Produits', icon: LUCIDE_ICONS['shopping-cart'], category: 'search', description: 'Parcourir les produits du supermarché sélectionné (onglet Produits). Filtrer par catégorie et promotions.' },
+      { id: 'compare-prices', label: 'Comparer Prix', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Comparer le prix d\'un produit entre tous les supermarchés à proximité avec IA similarity (onglet Comparer). Trouver le meilleur prix.' },
+      { id: 'view-promotions', label: 'Promotions', icon: LUCIDE_ICONS.tag, category: 'navigation', description: 'Voir les promotions actives du supermarché sélectionné ou de tous les supermarchés à proximité (onglet Promos)' },
       { id: 'menu-planning', label: 'Menu Semaine', icon: LUCIDE_ICONS.calendar, route: 'MenuPlanningHub', category: 'navigation', description: 'Planifier les repas de la semaine' },
       { id: 'shopping-list', label: 'Liste de Courses', icon: LUCIDE_ICONS.list, route: 'ShoppingList', category: 'action', description: 'Ma liste de courses' },
+      { id: 'order-delivery', label: 'Commander Livraison', icon: LUCIDE_ICONS.truck, route: 'DeliveryShoppingFlowNew', category: 'action', description: 'Commander une livraison de courses — un coursier fait vos courses et livre chez vous' },
     ],
-    elements: [],
-    guide: 'Supermarché. Parcourez les produits, planifiez vos repas de la semaine, gérez votre liste de courses.',
+    elements: [
+      { id: 'tab-magasins', type: 'tab', label: 'Magasins (liste des supermarchés à proximité)', actionable: true },
+      { id: 'tab-produits', type: 'tab', label: 'Produits (catalogue du supermarché sélectionné)', actionable: true },
+      { id: 'tab-comparer', type: 'tab', label: 'Comparer (prix entre supermarchés)', actionable: true },
+      { id: 'tab-promos', type: 'tab', label: 'Promos (promotions actives)', actionable: true },
+      { id: 'search-bar', type: 'input', label: 'Barre de recherche (supermarché, produit ou comparaison)', actionable: true },
+      { id: 'category-filter', type: 'button', label: 'Filtres catégorie produits', actionable: true },
+    ],
+    guide: 'Supermarché. 4 onglets : Magasins (sélection par proximité GPS), Produits (catalogue avec filtres catégorie/promotions), Comparer (comparaison IA de prix entre supermarchés — code-barre + similarity trigram), Promos (promotions actives). Sélectionnez d\'abord un supermarché pour accéder aux produits, comparaison et promos. Vous pouvez aussi commander une livraison de courses ou planifier vos repas de la semaine.',
   },
 
   // === AGENCE DE VOYAGE ===
   AgenceVoyageForm: {
+    type: 'dashboard',
+    actions: [
+      { id: 'add-schedule', label: 'Ajouter Horaire', icon: LUCIDE_ICONS.add, category: 'creation', description: 'Créer un nouvel horaire de départ (ville départ, ville arrivée, heures)' },
+      { id: 'manage-schedules', label: 'Horaires', icon: LUCIDE_ICONS.clock, category: 'action', description: 'Voir et gérer tous les horaires de départ de l\'agence' },
+      { id: 'bus-models', label: 'Modèles Bus', icon: LUCIDE_ICONS.truck, category: 'action', description: 'Configurer les modèles de bus (places, classe, équipements)' },
+      { id: 'sold-tickets', label: 'Tickets Vendus', icon: LUCIDE_ICONS['credit-card'], category: 'action', description: 'Voir les tickets vendus, passagers, embarquement' },
+      { id: 'scan-qr', label: 'Scanner QR', icon: LUCIDE_ICONS.camera, route: 'BusTicketQRScanner', category: 'action', description: 'Scanner le QR code d\'un passager pour valider l\'embarquement' },
+      { id: 'edit-service', label: 'Mon Service', icon: LUCIDE_ICONS.settings, category: 'action', description: 'Modifier les infos de l\'agence (nom, adresse, GPS, services, destinations, compagnies, horaires d\'ouverture)' },
+      { id: 'team', label: 'Équipe', icon: LUCIDE_ICONS.users, category: 'action', description: 'Gérer l\'équipe et les collaborateurs de l\'agence' },
+      { id: 'ai-suggest', label: 'Conseils IA', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Obtenir des recommandations IA pour améliorer votre chiffre d\'affaires et la satisfaction client' },
+    ],
+    elements: [
+      { id: 'stats-grid', type: 'card', label: 'Statistiques (destinations, compagnies, horaires, tickets)', actionable: false },
+      { id: 'quick-actions', type: 'button', label: 'Actions rapides', actionable: true },
+      { id: 'ai-card', type: 'card', label: 'Recommandations IA', actionable: true },
+      { id: 'schedules-list', type: 'card', label: 'Horaires récents', actionable: true },
+      { id: 'tabs', type: 'tab', label: 'Onglets: Accueil / Service / Horaires / Bus / Tickets / Équipe', actionable: true },
+    ],
+    guide: 'Dashboard partenaire Agence de Voyage. 6 onglets : Accueil (statistiques, actions rapides, IA conseils, horaires récents), Service (modifier nom/adresse/GPS/services/destinations/compagnies/horaires d\'ouverture), Horaires (créer/modifier/supprimer les horaires de départ), Bus (configurer les modèles de bus avec places et classes), Tickets (voir les ventes, passagers, embarquement, scanner QR), Équipe (gérer les collaborateurs). L\'IA peut analyser votre agence et donner des recommandations business.',
+  },
+  AgenceVoyageSearch: {
+    type: 'search',
+    actions: [
+      { id: 'search-agencies', label: 'Chercher Agences', icon: LUCIDE_ICONS.search, category: 'search', description: 'Rechercher des agences de voyage par ville ou proximité' },
+      { id: 'search-tickets', label: 'Chercher Tickets', icon: LUCIDE_ICONS['credit-card'], route: 'BusTicketSearch', category: 'search', description: 'Rechercher des billets de bus disponibles' },
+      { id: 'my-tickets', label: 'Mes Billets', icon: LUCIDE_ICONS.clipboard, route: 'MyBusTickets', category: 'navigation', description: 'Voir mes billets achetés' },
+    ],
+    elements: [
+      { id: 'mode-selector', type: 'button', label: 'Mode: Agences ou Tickets', actionable: true },
+      { id: 'departure-input', type: 'input', label: 'Ville de départ', actionable: true },
+      { id: 'arrival-input', type: 'input', label: 'Ville d\'arrivée', actionable: true },
+      { id: 'quick-searches', type: 'card', label: 'Recherches rapides', actionable: true },
+    ],
+    guide: 'Recherche voyage. Deux modes : « Agences » (trouver une agence par proximité/destination) et « Tickets » (trouver un billet de bus par ville départ/arrivée/date). Utilisez les recherches rapides pour accéder rapidement à vos billets.',
+  },
+  AgenceVoyageDetails: {
+    type: 'detail',
+    actions: [
+      { id: 'book-ticket', label: 'Réserver Billet', icon: LUCIDE_ICONS['credit-card'], route: 'BusTicketSearch', category: 'action', description: 'Réserver un billet de bus avec cette agence' },
+      { id: 'call', label: 'Appeler', icon: LUCIDE_ICONS.call, category: 'action', description: 'Appeler l\'agence par téléphone' },
+      { id: 'whatsapp', label: 'WhatsApp', icon: LUCIDE_ICONS.message, category: 'action', description: 'Contacter l\'agence sur WhatsApp' },
+      { id: 'share', label: 'Partager', icon: LUCIDE_ICONS.share, category: 'action', description: 'Partager cette agence' },
+      { id: 'ai-tips', label: 'Conseils IA', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Obtenir des recommandations de voyage personnalisées par l\'IA' },
+    ],
+    elements: [
+      { id: 'agency-header', type: 'card', label: 'Nom, adresse, note, statut', actionable: false },
+      { id: 'quick-actions', type: 'button', label: 'Réserver / Appeler / WhatsApp / Site web', actionable: true },
+      { id: 'schedules', type: 'card', label: 'Horaires de départ', actionable: true },
+      { id: 'services', type: 'card', label: 'Services proposés', actionable: false },
+      { id: 'destinations', type: 'card', label: 'Destinations desservies', actionable: false },
+    ],
+    guide: 'Détails d\'une agence de voyage. Consultez les horaires de départ, services, destinations. Réservez un billet, appelez ou contactez via WhatsApp. L\'IA peut recommander les meilleurs trajets.',
+  },
+  BusTicketSearch: {
+    type: 'search',
+    actions: [
+      { id: 'search', label: 'Rechercher', icon: LUCIDE_ICONS.search, category: 'search', description: 'Lancer la recherche de billets de bus' },
+      { id: 'my-tickets', label: 'Mes Billets', icon: LUCIDE_ICONS.clipboard, route: 'MyBusTickets', category: 'navigation', description: 'Voir mes billets existants' },
+    ],
+    elements: [
+      { id: 'departure-input', type: 'input', label: 'Ville de départ', actionable: true },
+      { id: 'arrival-input', type: 'input', label: 'Ville d\'arrivée', actionable: true },
+      { id: 'date-picker', type: 'input', label: 'Date de départ', actionable: true },
+      { id: 'results-list', type: 'card', label: 'Résultats de recherche', actionable: true },
+    ],
+    guide: 'Recherche de billets de bus. Entrez ville de départ, ville d\'arrivée et date. Les résultats montrent les bus disponibles avec prix, places restantes et horaires. Sélectionnez un bus pour réserver.',
+  },
+  BusTicketBooking: {
     type: 'form',
     actions: [
-      { id: 'manage-trips', label: 'Gérer Voyages', icon: LUCIDE_ICONS.map, category: 'action', description: 'Gérer les voyages proposés' },
-      { id: 'schedules', label: 'Horaires', icon: LUCIDE_ICONS.clock, route: 'ManageAgencySchedules', category: 'action', description: 'Gérer les horaires de départ' },
-      { id: 'analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, route: 'AgencyAnalyticsDashboard', category: 'navigation', description: 'Statistiques de l\'agence' },
+      { id: 'select-seats', label: 'Choisir Places', icon: LUCIDE_ICONS.list, category: 'action', description: 'Sélectionner vos places dans le bus (carte interactive des sièges)' },
+      { id: 'pay', label: 'Payer', icon: LUCIDE_ICONS['credit-card'], route: 'BusTicketPayment', category: 'action', description: 'Procéder au paiement après sélection des places' },
     ],
-    elements: [],
-    guide: 'Gestion agence de voyage. Configurez vos voyages, gérez les horaires et consultez les statistiques.',
+    elements: [
+      { id: 'trip-info', type: 'card', label: 'Infos trajet (agence, villes, date, prix)', actionable: false },
+      { id: 'seat-selector', type: 'card', label: 'Carte des sièges du bus', actionable: true },
+      { id: 'trip-map', type: 'card', label: 'Carte du trajet', actionable: false },
+    ],
+    guide: 'Réservation de billet de bus. Visualisez le trajet sur la carte, sélectionnez vos places sur le plan du bus (vert=disponible, rouge=pris), puis procédez au paiement. Une caution est prélevée à la réservation.',
+  },
+  BusTicketPayment: {
+    type: 'form',
+    actions: [
+      { id: 'pay-tokens', label: 'Payer avec Tokens', icon: LUCIDE_ICONS.dollar, category: 'action', description: 'Payer avec votre solde de tokens Yukpo' },
+      { id: 'pay-mobile', label: 'Mobile Money', icon: LUCIDE_ICONS['credit-card'], category: 'action', description: 'Payer par Mobile Money (MTN, Orange)' },
+      { id: 'recharge', label: 'Recharger', icon: LUCIDE_ICONS.add, route: 'RechargeTokens', category: 'navigation', description: 'Recharger votre solde de tokens' },
+    ],
+    elements: [
+      { id: 'summary', type: 'card', label: 'Résumé (places, prix unitaire, sous-total, frais, total)', actionable: false },
+      { id: 'payment-methods', type: 'button', label: 'Méthodes de paiement', actionable: true },
+    ],
+    guide: 'Paiement du billet de bus. Résumé de la réservation avec détail des coûts (prix × places + frais de réservation). Payez avec vos tokens Yukpo ou par Mobile Money. Si solde insuffisant, rechargez.',
+  },
+  MyBusTickets: {
+    type: 'list',
+    actions: [
+      { id: 'view-ticket', label: 'Voir Billet', icon: LUCIDE_ICONS.eye, category: 'action', description: 'Consulter les détails d\'un billet (QR code, places, horaires)' },
+      { id: 'search-new', label: 'Nouveau Billet', icon: LUCIDE_ICONS.search, route: 'BusTicketSearch', category: 'search', description: 'Rechercher un nouveau billet' },
+    ],
+    elements: [
+      { id: 'tickets-list', type: 'card', label: 'Liste de mes billets', actionable: true },
+    ],
+    guide: 'Mes billets de bus. Consultez tous vos billets achetés avec statut de paiement, QR code pour l\'embarquement, et détails du trajet. Appuyez sur un billet pour voir les détails.',
   },
 
   // === VIDÉO ===
@@ -644,6 +920,69 @@ const SCREEN_CONFIGS: Record<string, {
     guide: 'Espace prestataire. Gérez vos produits, commandes, statistiques et publicité.',
   },
 
+  // === MES PRODUITS (Product Management) ===
+  MesProduits: {
+    type: 'dashboard',
+    actions: [
+      { id: 'add-product', label: 'Ajouter Produit', icon: LUCIDE_ICONS.add, route: 'AjouterProduitSimple', category: 'creation', description: 'Ajouter un nouveau produit à votre catalogue' },
+      { id: 'edit-product', label: 'Modifier Produit', icon: LUCIDE_ICONS.edit, category: 'action', description: 'Modifier un produit existant (prix, stock, photos, description)' },
+      { id: 'delete-product', label: 'Supprimer', icon: LUCIDE_ICONS.delete, category: 'action', description: 'Supprimer un produit du catalogue' },
+      { id: 'toggle-status', label: 'Activer/Désactiver', icon: LUCIDE_ICONS.check, category: 'action', description: 'Activer ou désactiver la visibilité d\'un produit' },
+      { id: 'duplicate', label: 'Dupliquer', icon: LUCIDE_ICONS.clipboard, category: 'action', description: 'Dupliquer un produit pour en créer un similaire rapidement' },
+      { id: 'import-csv', label: 'Import CSV', icon: LUCIDE_ICONS.upload, category: 'action', description: 'Importer des produits en masse via fichier CSV/Excel' },
+      { id: 'orders', label: 'Commandes', icon: LUCIDE_ICONS.clipboard, route: 'ProviderOrderManagement', category: 'navigation', description: 'Voir les commandes reçues' },
+      { id: 'analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, route: 'ProductStats', category: 'navigation', description: 'Statistiques de vente' },
+    ],
+    elements: [
+      { id: 'product-list', type: 'card', label: 'Liste des produits', actionable: true },
+      { id: 'search-bar', type: 'input', label: 'Recherche de produits', actionable: true },
+      { id: 'filter-button', type: 'button', label: 'Filtres', icon: LUCIDE_ICONS.filter, actionable: true },
+      { id: 'view-toggle', type: 'button', label: 'Mode d\'affichage (grille/liste)', actionable: true },
+    ],
+    guide: 'Gestion complète de votre catalogue produits. Ajoutez, modifiez, dupliquez ou supprimez des produits. Importez en masse via CSV. Activez/désactivez la visibilité. Chaque produit peut avoir : nom, prix (avec variantes), photos, description, catégorie, stock. Utilisez la duplication pour créer rapidement des produits similaires. Consultez les statistiques de vente par produit.',
+  },
+
+  // === FORMULAIRE CRÉATION SERVICE (First-time) ===
+  FormulaireYukpoIntelligent: {
+    type: 'form',
+    actions: [
+      { id: 'fill-with-ai', label: 'IA Remplissage', icon: LUCIDE_ICONS.sparkles, category: 'action', description: 'L\'IA pré-remplit le formulaire à partir de votre description ou photo' },
+      { id: 'google-business', label: 'Google Business', icon: LUCIDE_ICONS.search, category: 'action', description: 'Importer les infos de votre entreprise depuis Google' },
+      { id: 'add-logo', label: 'Logo & Bannière', icon: LUCIDE_ICONS.image, category: 'action', description: 'Ajouter le logo et la bannière de votre structure' },
+      { id: 'set-payment', label: 'Paiement', icon: LUCIDE_ICONS.money, category: 'action', description: 'Configurer les moyens de paiement acceptés' },
+      { id: 'add-product', label: 'Ajouter Produit', icon: LUCIDE_ICONS.add, category: 'creation', description: 'Ajouter un produit au service en cours de création' },
+      { id: 'submit', label: 'Publier', icon: LUCIDE_ICONS.check, category: 'action', description: 'Publier le service pour le rendre visible aux clients' },
+    ],
+    elements: [
+      { id: 'general-block', type: 'card', label: 'Informations générales (titre, catégorie, description)', actionable: true },
+      { id: 'contact-block', type: 'card', label: 'Contacts (téléphone, WhatsApp, email, site web)', actionable: true },
+      { id: 'location-block', type: 'card', label: 'Localisation (GPS, adresse, zone)', actionable: true },
+      { id: 'products-block', type: 'card', label: 'Produits (nom, prix, variantes, caractéristiques)', actionable: true },
+      { id: 'media-block', type: 'card', label: 'Identité visuelle (logo, bannière, photos produit)', actionable: true },
+      { id: 'payment-block', type: 'card', label: 'Moyens de paiement (Mobile Money, carte, espèces)', actionable: true },
+    ],
+    guide: 'Formulaire intelligent de création de service/boutique. L\'IA analyse votre description ou photo et pré-remplit automatiquement les champs. 6 étapes : 1) Infos générales (titre, catégorie, description) 2) Contacts (téléphone, WhatsApp, email) 3) Localisation GPS 4) Produits (nom, prix avec variantes, caractéristiques) 5) Identité visuelle (logo, bannière, photos) 6) Moyens de paiement. À la première création, Google Business peut importer automatiquement les infos de votre entreprise. Naviguez entre les blocs avec les boutons en haut.',
+  },
+
+  // === AJOUT PRODUIT SIMPLIFIÉ (Subsequent) ===
+  AjouterProduitSimple: {
+    type: 'form',
+    actions: [
+      { id: 'take-photo', label: 'Prendre Photo', icon: LUCIDE_ICONS.camera, category: 'action', description: 'Photographier le produit — l\'IA détecte automatiquement le nom, la catégorie et le prix' },
+      { id: 'gallery', label: 'Galerie', icon: LUCIDE_ICONS.image, category: 'action', description: 'Choisir une photo existante du produit' },
+      { id: 'fill-with-ai', label: 'IA Auto-remplissage', icon: LUCIDE_ICONS.sparkles, category: 'action', description: 'L\'IA analyse la photo et pré-remplit les champs du produit' },
+      { id: 'add-variants', label: 'Variantes Prix', icon: LUCIDE_ICONS.tag, category: 'action', description: 'Ajouter des variantes de prix (tailles, couleurs, options)' },
+      { id: 'submit', label: 'Publier Produit', icon: LUCIDE_ICONS.check, category: 'action', description: 'Publier le produit pour le rendre visible' },
+      { id: 'my-products', label: 'Mes Produits', icon: LUCIDE_ICONS.package, route: 'MesProduits', category: 'navigation', description: 'Voir tous mes produits' },
+    ],
+    elements: [
+      { id: 'product-form', type: 'card', label: 'Formulaire produit (nom, prix, description)', actionable: true },
+      { id: 'media-upload', type: 'card', label: 'Photos et médias du produit', actionable: true },
+      { id: 'ai-suggestion', type: 'card', label: 'Suggestions IA', actionable: false },
+    ],
+    guide: 'Ajout rapide de produit à votre catalogue existant. Prenez simplement une photo de votre produit — l\'IA analyse l\'image et pré-remplit automatiquement le nom, la catégorie, la description et le prix suggéré. Vous pouvez aussi ajouter des variantes de prix (tailles, couleurs, options). Le formulaire est simplifié car votre boutique/service est déjà configurée.',
+  },
+
   // === AI HUB ===
   AIHub: {
     type: 'specialized',
@@ -741,20 +1080,25 @@ const SCREEN_CONFIGS: Record<string, {
   SupermarketPartnerDashboard: {
     type: 'dashboard',
     actions: [
-      { id: 'manage-catalog', label: 'Catalogue', icon: LUCIDE_ICONS.package, category: 'action', description: 'Gérer le catalogue produits et stocks' },
-      { id: 'manage-orders', label: 'Commandes', icon: LUCIDE_ICONS.clipboard, category: 'action', description: 'Traiter les commandes en cours' },
-      { id: 'create-promo', label: 'Créer Promo', icon: LUCIDE_ICONS.tag, category: 'creation', description: 'Créer une promotion' },
-      { id: 'analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, category: 'navigation', description: 'Voir les statistiques de vente' },
-      { id: 'verify-courier', label: 'Vérifier Coursier', icon: LUCIDE_ICONS.check, category: 'action', description: 'Vérifier un coursier pour la livraison' },
+      { id: 'add-product', label: 'Ajouter Produit', icon: LUCIDE_ICONS.add, route: 'FormulaireYukpoIntelligent', category: 'creation', description: 'Ajouter un nouveau produit au catalogue (via formulaire IA avec photo)' },
+      { id: 'bulk-import', label: 'Import en Masse', icon: LUCIDE_ICONS.upload, category: 'action', description: 'Importer jusqu\'à 500 produits d\'un coup via CSV (copier-coller depuis Excel) ou JSON. Format CSV: nom;prix;stock;categorie;marque;unite.' },
+      { id: 'manage-catalog', label: 'Catalogue', icon: LUCIDE_ICONS.package, route: 'MesProduits', category: 'action', description: 'Gérer le catalogue : voir tous les produits, modifier prix/stock, activer/désactiver, ajouter images' },
+      { id: 'manage-orders', label: 'Commandes', icon: LUCIDE_ICONS.clipboard, category: 'action', description: 'Traiter les commandes en cours — voir les commandes des clients, vérifier le coursier, remettre les produits' },
+      { id: 'verify-courier', label: 'Vérifier Coursier', icon: LUCIDE_ICONS.check, route: 'ProviderCourierVerification', category: 'action', description: 'Scanner le QR ou saisir le code PIN du coursier pour vérifier son identité avant de remettre les produits' },
+      { id: 'create-promo', label: 'Créer Promo', icon: LUCIDE_ICONS.tag, route: 'CreateFlashPromo', category: 'creation', description: 'Créer une promotion flash pour attirer les clients' },
+      { id: 'analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, category: 'navigation', description: 'Voir les statistiques : total produits, en stock, en promo, valeur du stock' },
+      { id: 'wallet', label: 'Portefeuille', icon: LUCIDE_ICONS.dollar, route: 'WalletFinancial', category: 'navigation', description: 'Accéder au portefeuille financier — voir solde, historique transactions, retirer des fonds' },
     ],
     elements: [
-      { id: 'overview-tab', type: 'tab', label: 'Vue d\'ensemble', actionable: true },
-      { id: 'catalog-tab', type: 'tab', label: 'Catalogue', actionable: true },
-      { id: 'orders-tab', type: 'tab', label: 'Commandes', actionable: true },
-      { id: 'promos-tab', type: 'tab', label: 'Promotions', actionable: true },
-      { id: 'analytics-tab', type: 'tab', label: 'Statistiques', actionable: true },
+      { id: 'overview-tab', type: 'tab', label: 'Accueil (stats, alertes commandes, actions rapides, catégories, produits récents)', actionable: true },
+      { id: 'catalog-tab', type: 'tab', label: 'Catalogue (ajouter produit, gérer produits, import en masse CSV/JSON)', actionable: true },
+      { id: 'orders-tab', type: 'tab', label: 'Commandes (commandes en attente de pickup, vérification coursier)', actionable: true },
+      { id: 'promos-tab', type: 'tab', label: 'Promotions (créer promo flash, voir promos actives)', actionable: true },
+      { id: 'analytics-tab', type: 'tab', label: 'Statistiques (résumé produits, stock, promotions, valeur)', actionable: true },
+      { id: 'stats-grid', type: 'card', label: 'Grille statistiques (produits, en stock, en promo, valeur stock)', actionable: false },
+      { id: 'alert-banner', type: 'card', label: 'Alerte commandes en attente de pickup', actionable: true },
     ],
-    guide: 'Dashboard Supermarché. 5 onglets : vue d\'ensemble, catalogue (produits, stocks), commandes à traiter, promotions, statistiques. Vérifiez les coursiers pour la livraison.',
+    guide: 'Dashboard Supermarché partenaire. 5 onglets :\n- Accueil : stats (produits, stock, promos, valeur), alertes commandes, 5 actions rapides (ajouter produit, import masse, mes produits, commandes, portefeuille), catégories, produits récents.\n- Catalogue : ajouter un produit via formulaire IA, gérer les produits existants (Mes Produits), import en masse CSV/JSON (jusqu\'à 500 produits, copier-coller depuis Excel).\n- Commandes : commandes clients en attente de pickup par le coursier. Vérifier l\'identité du coursier (QR ou PIN) avant de remettre les produits.\n- Promotions : créer des promotions flash, voir les produits actuellement en promo.\n- Statistiques : résumé total produits, stock, promos, valeur du stock.\nAccès rapide au portefeuille financier pour suivre les revenus.',
   },
 
   RestaurantDashboard: {
@@ -802,25 +1146,35 @@ const SCREEN_CONFIGS: Record<string, {
   },
 
   LaboratoireForm: {
-    type: 'form',
+    type: 'dashboard',
     actions: [
       { id: 'manage-exams', label: 'Examens', icon: LUCIDE_ICONS.clipboard, category: 'action', description: 'Gérer le catalogue d\'examens' },
       { id: 'analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, route: 'LabAnalytics', category: 'navigation', description: 'Statistiques du laboratoire' },
       { id: 'ai-analysis', label: 'Analyse IA', icon: LUCIDE_ICONS.activity, route: 'LabAIAnalysis', category: 'help', description: 'Outils IA d\'analyse' },
     ],
-    elements: [],
-    guide: 'Gestion de votre laboratoire. Configurez vos examens, tarifs, horaires. L\'IA peut assister l\'analyse des résultats.',
+    elements: [
+      { id: 'tabs', type: 'tab', label: 'Onglets: Accueil, Examens, Planning, Résultats/IA, Stats', actionable: true },
+      { id: 'exam-catalog', type: 'card', label: 'Catalogue examens (analyses, imagerie, prix, délais)', actionable: true },
+      { id: 'planning', type: 'card', label: 'Planning / disponibilité (créneaux, jours, heures)', actionable: true },
+      { id: 'ai-tools', type: 'card', label: 'Outils IA (interprétation, explications, recommandations)', actionable: true },
+    ],
+    guide: 'Dashboard partenaire Laboratoire. Gérez le service (infos, GPS, contacts), configurez le catalogue d\'examens (types, prix, délais), gérez la disponibilité/planning, traitez les demandes et consultez les statistiques. Le chat doit pouvoir guider précisément: ajouter un examen, modifier un prix, activer l\'imagerie, définir un planning, analyser un résultat et expliquer la signification.',
   },
 
   BanqueSangForm: {
-    type: 'form',
+    type: 'dashboard',
     actions: [
       { id: 'manage-stock', label: 'Stock Sanguin', icon: LUCIDE_ICONS.droplet, category: 'action', description: 'Gérer le stock de poches de sang' },
       { id: 'manage-groups', label: 'Groupes Sanguins', icon: LUCIDE_ICONS.list, route: 'BloodGroupManagement', category: 'action', description: 'Gérer les groupes sanguins disponibles' },
       { id: 'donation-matches', label: 'Correspondances', icon: LUCIDE_ICONS.users, route: 'BloodDonationMatches', category: 'action', description: 'Voir les correspondances donneur/receveur' },
     ],
-    elements: [],
-    guide: 'Gestion de votre banque de sang. Gérez le stock, les groupes sanguins disponibles et les correspondances donneur/receveur.',
+    elements: [
+      { id: 'tabs', type: 'tab', label: 'Onglets: Accueil, Service, Stocks', actionable: true },
+      { id: 'stock-grid', type: 'card', label: 'Stocks par groupe (quantité, unité, dernière mise à jour)', actionable: true },
+      { id: 'urgence', type: 'button', label: 'Urgence 24h (activer/désactiver)', actionable: true },
+      { id: 'contacts', type: 'card', label: 'Contacts (téléphone, urgence, WhatsApp, email)', actionable: true },
+    ],
+    guide: 'Dashboard partenaire Banque de sang / Transfusion. 3 onglets: Accueil (résumé stock + stats), Service (infos, GPS, contacts, accepte dons/demandes, urgence 24h), Stocks (mise à jour par groupe). Le chat doit guider n\'importe quelle action: enregistrer la banque, sélectionner GPS, mettre à jour un groupe, comprendre compatibilités, traiter une demande urgente, consulter statistiques.',
   },
 
   CovoiturageForm: {

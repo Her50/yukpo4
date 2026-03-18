@@ -69,7 +69,7 @@ pub async fn check_and_notify_new_matchings(pool: &PgPool) -> AppResult<usize> {
     info!("[check_and_notify_new_matchings] Vérification des nouveaux matchings");
 
     // Récupérer les matchings récents (dernières 24h) avec score >= 70%
-    let matchings = sqlx::query!(
+    let matchings = sqlx::query(
         r#"
         SELECT DISTINCT ON (m.candidat_id, m.offre_id)
             m.candidat_id,
@@ -87,7 +87,7 @@ pub async fn check_and_notify_new_matchings(pool: &PgPool) -> AppResult<usize> {
             AND c.offre_id = m.offre_id
         )
         ORDER BY m.candidat_id, m.offre_id, m.created_at DESC
-        "#
+        "#,
     )
     .fetch_all(pool)
     .await
@@ -98,13 +98,19 @@ pub async fn check_and_notify_new_matchings(pool: &PgPool) -> AppResult<usize> {
 
     let mut notified_count = 0;
 
-    for matching in matchings {
+    for matching in &matchings {
+        use sqlx::Row;
+        let candidat_id: i32 = matching.try_get("candidat_id").unwrap_or(0);
+        let offre_id: i32 = matching.try_get("offre_id").unwrap_or(0);
+        let score_total: bigdecimal::BigDecimal =
+            matching.try_get("score_total").unwrap_or_default();
+        let titre_poste: Option<String> = matching.try_get("titre_poste").unwrap_or(None);
         if let Err(e) = notify_new_matching(
             pool,
-            matching.candidat_id,
-            matching.offre_id,
-            ToPrimitive::to_f64(&matching.score_total).unwrap_or(0.0),
-            matching.titre_poste,
+            candidat_id,
+            offre_id,
+            ToPrimitive::to_f64(&score_total).unwrap_or(0.0),
+            titre_poste.unwrap_or_default(),
         )
         .await
         {

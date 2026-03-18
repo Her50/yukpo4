@@ -215,7 +215,9 @@ export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({
                     <ActivityIndicator color="white" size="small" />
                 ) : (
                     <View style={styles.generateButtonContent}>
-                        <SafeIcon name="play" size={20} color="whitet('expressVideoGenerator.textStylestylesgeneratebuttontextGenerer'){EXPRESS_STYLES[selectedStyle].name}"
+                        <SafeIcon name="play" size={20} color="white" />
+                        <Text style={styles.generateButtonText}>
+                            Générer "{EXPRESS_STYLES[selectedStyle].name}"
                         </Text>
                     </View>
                 )}

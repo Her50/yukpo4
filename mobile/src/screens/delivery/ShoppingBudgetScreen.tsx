@@ -54,7 +54,7 @@ const ShoppingBudgetScreen: React.FC = () => {
             <KeyboardAwareScreen contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                 <DeliveryAvatarBubble
                     mood='focused'
-                    message=t('shoppingBudgetScreen.definisTonBudgetEtAjouteDes')
+                    message='Définis ton budget et ajoute des instructions spécifiques.'
                 />
 
                 <View style={styles.section}>

@@ -280,7 +280,8 @@ const [templates, setTemplates] = useState<VideoTemplate[]>([]);
                 }
                 ListHeaderComponent={
                     <Text style={styles.resultsCount}>
-                        {String(filteredTemplates.length)} template{filteredTemplates.length > 1 ? 's' : 't('templateLibrary.trouveFilteredtemplateslength1')s' : ''}
+                        {String(filteredTemplates.length)} template{filteredTemplates.length > 1 ? 's' : ''} trouvé
+                        {filteredTemplates.length > 1 ? 's' : ''}
                     </Text>
                 }
             />

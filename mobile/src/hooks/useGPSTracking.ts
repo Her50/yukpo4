@@ -47,7 +47,7 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
 
     const startTracking = async () => {
         try {
-            console.log('[useGPSTracking] 🚀 Démarrage du tracking GPS...');
+            console.log('[useGPSTracking] \uD83D\uDE80 Démarrage du tracking GPS...');
 
             setState(prev => ({ ...prev, error: null }));
 
@@ -96,7 +96,7 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
                             lng: location.coords.longitude
                         };
 
-                        console.log('[useGPSTracking] 📍 Nouvelle position:', coords);
+                        console.log('[useGPSTracking] \uD83D\uDCCD Nouvelle position:', coords);
 
                         setState(prev => ({
                             ...prev,
@@ -127,7 +127,7 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
     };
 
     const stopTracking = () => {
-        console.log('[useGPSTracking] 🛑 Arrêt du tracking GPS...');
+        console.log('[useGPSTracking] \uD83D\uDED1 Arrêt du tracking GPS...');
 
         if (watchRef.current) {
             watchRef.current.remove();
@@ -144,7 +144,7 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
 
     const updateLocation = async () => {
         try {
-            console.log('[useGPSTracking] 📍 Récupération position actuelle...');
+            console.log('[useGPSTracking] \uD83D\uDCCD Récupération position actuelle...');
 
             // ✅ CORRIGÉ: Ajout d'un timeout pour éviter les blocages GPS
             const locationPromise = Location.getCurrentPositionAsync({
@@ -175,7 +175,7 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
                 lng: location.coords.longitude
             };
 
-            console.log('[useGPSTracking] 📍 Position actuelle:', coords);
+            console.log('[useGPSTracking] \uD83D\uDCCD Position actuelle:', coords);
 
             setState(prev => ({
                 ...prev,

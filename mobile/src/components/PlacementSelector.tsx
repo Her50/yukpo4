@@ -107,7 +107,7 @@ const [expanded, setExpanded] = useState(false);
         <NativeCard style={styles.container}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.title}>📍 Placements</Text>
+                    <Text style={styles.title}>\uD83D\uDCCD Placements</Text>
                     <Text style={styles.subtitle}>
                         Choisissez où afficher votre publicité
                     </Text>

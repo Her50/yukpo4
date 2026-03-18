@@ -15,7 +15,6 @@ import { NativeInput } from '../components/SafeNativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import { apiGet, apiPut } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface PlatformSetting {
   id: number;
@@ -27,8 +26,7 @@ interface PlatformSetting {
 }
 
 const PlatformPaymentSettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-      const { t } = useLanguageSafe();
-const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // MTN Money
@@ -77,7 +75,7 @@ const [loading, setLoading] = useState(true);
       }
     } catch (err: any) {
       console.error('[PlatformPaymentSettings] Erreur chargement:', err);
-      Alert.alert('Erreur', t('platformPaymentSettingsScreen.impossibleDeChargerLesParametresVerifiez'));
+      Alert.alert('Erreur', 'Impossible de charger les paramètres. Vérifiez que vous êtes administrateur.');
     } finally {
       setLoading(false);
     }
@@ -120,9 +118,9 @@ const [loading, setLoading] = useState(true);
       ]);
 
       if (results.every(Boolean)) {
-        Alert.alert(t('platformPaymentSettingsScreen.sauvegarde'), t('platformPaymentSettingsScreen.lesParametresDePaiementDeLa'));
+        Alert.alert('Sauvegardé', 'Les paramètres de paiement de la plateforme ont été mis à jour.');
       } else {
-        Alert.alert('Erreur partielle', t('platformPaymentSettingsScreen.certainsParametresNt('platformPaymentSettingsScreen.ontPasPuEtreSauvegardes'));
+        Alert.alert('Erreur partielle', 'Certains paramètres n\'ont pas pu être sauvegardés.');
       }
     } finally {
       setSaving(false);
@@ -133,7 +131,7 @@ const [loading, setLoading] = useState(true);
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={modernColors.primary} />
-        <Text style={styles.loadingText}>{t('platformPaymentSettings.chargementDesParametres')}</Text>
+        <Text style={styles.loadingText}>Chargement des paramètres...</Text>
       </View>
     );
   }
@@ -150,7 +148,7 @@ const [loading, setLoading] = useState(true);
       <View style={[styles.section, mtnEnabled && styles.sectionActiveMtn]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionEmoji}>📱</Text>
+            <Text style={styles.sectionEmoji}>\uD83D\uDCF1</Text>
             <Text style={[styles.sectionTitle, mtnEnabled && { color: '#B45309' }]}>MTN Mobile Money</Text>
           </View>
           <Switch
@@ -161,7 +159,7 @@ const [loading, setLoading] = useState(true);
           />
         </View>
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>{t('platformPaymentSettings.numeroDeTelephoneMtn')}</Text>
+          <Text style={styles.fieldLabel}>Numéro de téléphone MTN</Text>
           <NativeInput
             placeholder="Ex: 670 XX XX XX"
             value={mtnPhone}
@@ -185,7 +183,7 @@ const [loading, setLoading] = useState(true);
       <View style={[styles.section, orangeEnabled && styles.sectionActiveOrange]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionEmoji}>📱</Text>
+            <Text style={styles.sectionEmoji}>\uD83D\uDCF1</Text>
             <Text style={[styles.sectionTitle, orangeEnabled && { color: '#C2410C' }]}>Orange Money</Text>
           </View>
           <Switch
@@ -196,7 +194,7 @@ const [loading, setLoading] = useState(true);
           />
         </View>
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>{t('platformPaymentSettings.numeroDeTelephoneOrange')}</Text>
+          <Text style={styles.fieldLabel}>Numéro de téléphone Orange</Text>
           <NativeInput
             placeholder="Ex: 690 XX XX XX"
             value={orangePhone}
@@ -220,8 +218,8 @@ const [loading, setLoading] = useState(true);
       <View style={[styles.section, bankEnabled && styles.sectionActiveBank]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionEmoji}>🏦</Text>
-            <Text style={[styles.sectionTitle, bankEnabled && { color: '#1D4ED8' }]}>{t('platformPaymentSettings.compteBancaire')}</Text>
+            <Text style={styles.sectionEmoji}>\uD83C\uDFE6</Text>
+            <Text style={[styles.sectionTitle, bankEnabled && { color: '#1D4ED8' }]}>Compte Bancaire</Text>
           </View>
           <Switch
             value={bankEnabled}
@@ -231,7 +229,7 @@ const [loading, setLoading] = useState(true);
           />
         </View>
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>{t('platformPaymentSettings.nomDeLaBanque')}</Text>
+          <Text style={styles.fieldLabel}>Nom de la banque</Text>
           <NativeInput
             placeholder="Ex: Afriland First Bank"
             value={bankName}
@@ -240,9 +238,9 @@ const [loading, setLoading] = useState(true);
           />
         </View>
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>{t('platformPaymentSettings.numeroDeCompte')}</Text>
+          <Text style={styles.fieldLabel}>Numéro de compte</Text>
           <NativeInput
-            placeholder={t('platformPaymentSettings.numeroDeCompte')}
+            placeholder="Numéro de compte"
             value={bankAccount}
             onChangeText={setBankAccount}
             style={styles.input}
@@ -271,7 +269,7 @@ const [loading, setLoading] = useState(true);
 
       {/* Bouton Sauvegarder */}
       <NativeButton
-        title={saving ? 'Sauvegarde en cours...' : t('platformPaymentSettingsScreen.sauvegarderLesParametres')}
+        title={saving ? 'Sauvegarde en cours...' : 'Sauvegarder les paramètres'}
         onPress={handleSaveAll}
         disabled={saving}
         style={styles.saveButton}

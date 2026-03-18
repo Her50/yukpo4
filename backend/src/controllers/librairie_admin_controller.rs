@@ -9,14 +9,14 @@ use axum::{
     Extension,
 };
 use log::{info, warn};
-use serde::{Deserialize, Serialize};
-use sqlx::Row;
+use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     models::librairie_network::*,
+    models::librairie_network_model::TypeFournisseur,
     state::AppState,
 };
 

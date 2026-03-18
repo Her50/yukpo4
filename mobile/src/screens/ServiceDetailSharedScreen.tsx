@@ -94,7 +94,7 @@ const ServiceDetailSharedScreen: React.FC = () => {
 
       const data = (serviceResponse?.data || serviceResponse) as any;
       if (!serviceResponse.success || !data || !data.id) {
-        throw new Error(serviceResponse.error || t('serviceDetailShared.serviceNonTrouve'));
+        throw new Error(serviceResponse.error || 'Service non trouvé');
       }
 
       setService(data);
@@ -271,7 +271,7 @@ const ServiceDetailSharedScreen: React.FC = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={modernColors.primary} />
-        <Text style={styles.loadingText}>{t('serviceDetailShared.chargementDuService')}</Text>
+        <Text style={styles.loadingText}>Chargement du service...</Text>
       </View>
     );
   }
@@ -280,10 +280,10 @@ const ServiceDetailSharedScreen: React.FC = () => {
     return (
       <View style={styles.errorContainer}>
         <SafeIcon name="alert-circle" size={64} color={modernColors.error} />
-        <Text style={styles.errorTitle}>{t('serviceDetailShared.serviceIntrouvable')}</Text>
-        <Text style={styles.errorMessage}>{error || t('serviceDetailSharedScreen.ceServiceNexistePasOuAEteSupprime')}</Text>
+        <Text style={styles.errorTitle}>Service introuvable</Text>
+        <Text style={styles.errorMessage}>{error || 'Ce service n\'existe pas ou a été supprimé'}</Text>
         <NativeButton
-          title={t('serviceDetailShared.retourAL')}accueil"
+          title="Retour à l'accueil"
           onPress={() => (navigation as any).navigate('Home')}
           variant="primary"
           style={styles.homeButton}

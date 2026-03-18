@@ -13,7 +13,6 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export type SortOption = 'name' | 'date' | 'status' | 'created_at' | 'updated_at';
 export type SortDirection = 'asc' | 'desc';
@@ -36,15 +35,14 @@ const ServiceSortSearchBar: React.FC<Props> = ({
     onSearchChange,
     sortConfig,
     onSortChange,
-    placeholder={t('serviceSortSearchBar.rechercherDansLaListe')},
+    placeholder = 'Rechercher dans la liste...',
 }) => {
-        const { t } = useLanguageSafe();
-const [showSortModal, setShowSortModal] = useState(false);
+    const [showSortModal, setShowSortModal] = useState(false);
 
     const sortOptions: Array<{ value: SortOption; label: string; icon: string }> = [
-        { value: 'name', label: t('serviceSortSearchBar.nom'), icon: 'text' },
-        { value: 'created_at', label: t('serviceSortSearchBar.dateDeCreation'), icon: 'calendar' },
-        { value: 'updated_at', label: t('serviceSortSearchBar.derniereModification'), icon: 'edit' },
+        { value: 'name', label: 'Nom', icon: 'text' },
+        { value: 'created_at', label: 'Date de création', icon: 'calendar' },
+        { value: 'updated_at', label: 'Dernière modification', icon: 'edit' },
         { value: 'status', label: 'Statut', icon: 'check-circle' },
     ];
 
@@ -105,7 +103,7 @@ const [showSortModal, setShowSortModal] = useState(false);
                     <View style={styles.modalContent}>
                         <NativeCard style={styles.sortCard}>
                             <View style={styles.sortHeader}>
-                                <Text style={styles.sortTitle}>{t('serviceSortSearchBar.trierPar')}</Text>
+                                <Text style={styles.sortTitle}>Trier par</Text>
                                 <TouchableOpacity onPress={() => setShowSortModal(false)}>
                                     <SafeIcon name="x" size={20} color={modernColors.textPrimary} />
                                 </TouchableOpacity>

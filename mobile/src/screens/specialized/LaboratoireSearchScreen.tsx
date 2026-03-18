@@ -19,7 +19,6 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface LaboratoireSearchFilters {
     ville?: string;
@@ -37,7 +36,6 @@ interface LaboratoireSearchFilters {
 const LaboratoireSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
-    const { t } = useLanguageSafe();
 
     const [ville, setVille] = useState<LocationObject | string>('');
     const [quartier, setQuartier] = useState<LocationObject | string>('');
@@ -109,17 +107,17 @@ const LaboratoireSearchScreen: React.FC = () => {
 
     const typesEtablissement = ['Laboratoire', 'Centre d\'imagerie', 'Les deux'];
     const prestationsAnalyses = [
-        'Biologie', t('laboratoireSearchScreen.hematologie'), 'Biochimie', 'Microbiologie',
-        t('laboratoireSearchScreen.serologie'), 'Immunologie', 'Radiologie', t('laboratoireSearchScreen.echographie')
+        'Biologie', 'Hématologie', 'Biochimie', 'Microbiologie',
+        'Sérologie', 'Immunologie', 'Radiologie', 'Échographie'
     ];
     // ✅ NOUVEAU: Types d'examens détaillés
     const typesExamens = [
         'Analyse de sang', 'Analyse d\'urine', 'Analyse de selles',
-        'Bilan lipidique', t('laboratoireSearchScreen.bilanHepatique'), t('laboratoireSearchScreen.bilanRenal'),
-        t('laboratoireSearchScreen.glycemie'), t('laboratoireSearchScreen.hemogramme'), 'Coagulation',
-        'Hormones', 'Vitamines', t('laboratoireSearchScreen.serologie'),
-        'Radiographie', t('laboratoireSearchScreen.echographie'), 'IRM', 'Scanner',
-        'Mammographie', t('laboratoireSearchScreen.densitometrieOsseuse')
+        'Bilan lipidique', 'Bilan hépatique', 'Bilan rénal',
+        'Glycémie', 'Hémogramme', 'Coagulation',
+        'Hormones', 'Vitamines', 'Sérologie',
+        'Radiographie', 'Échographie', 'IRM', 'Scanner',
+        'Mammographie', 'Densitométrie osseuse'
     ];
 
     // Recherches rapides spécifiques laboratoires
@@ -128,7 +126,7 @@ const LaboratoireSearchScreen: React.FC = () => {
             id: 'proche',
             title: 'Plus proche',
             icon: 'map-pin',
-            description: t('laboratoireSearch.aProximite'),
+            description: 'À proximité',
             action: () => {
                 hapticPress();
                 setMaxDistance(15);
@@ -148,7 +146,7 @@ const LaboratoireSearchScreen: React.FC = () => {
         },
         {
             id: 'resultats',
-            title: t('laboratoireSearch.resultatsEnLigne'),
+            title: 'Résultats en ligne',
             icon: 'file-text',
             description: 'Consultation digitale',
             action: () => {
@@ -180,7 +178,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="flask" size={32} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>{t('laboratoireSearch.rechercherUnLaboratoire')}</Text>
+                        <Text style={styles.headerTitle}>Rechercher un laboratoire</Text>
                         <Text style={styles.headerSubtitle}>
                             Trouvez rapidement un laboratoire d'analyses ou d'imagerie
                         </Text>
@@ -210,7 +208,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                                 <SafeIcon name="file-text" size={24} color="#FFFFFF" type="lucide" />
                             </View>
                             <View style={styles.myExaminationsBannerText}>
-                                <Text style={styles.myExaminationsBannerTitle}>{t('laboratoireSearch.mesExamens')}</Text>
+                                <Text style={styles.myExaminationsBannerTitle}>Mes examens</Text>
                                 <Text style={styles.myExaminationsBannerSubtitle}>
                                     Consulter mes résultats et analyses
                                 </Text>
@@ -222,7 +220,7 @@ const LaboratoireSearchScreen: React.FC = () => {
 
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
-                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDD0D Recherches rapides</Text>
                     <View style={styles.quickSearchesGrid}>
                         {quickSearches.map((search) => (
                             <TouchableOpacity
@@ -248,23 +246,26 @@ const LaboratoireSearchScreen: React.FC = () => {
 
                 {/* ✅ RÉORIENTÉ: Formulaire de recherche - Priorité sur examens */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>{t('laboratoireSearch.rechercheDexamens')}</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDD2C Recherche d'examens</Text>
                     <Text style={styles.sectionDescription}>
-                        Recherchez un type dt('laboratoireSearchScreen.examenMedicalSpecifiqueTextTypeD')examen recherché (PRIORITAIRE) */}
+                        Recherchez un type d'examen médical spécifique
+                    </Text>
+
+                    {/* Type d'examen recherché (PRIORITAIRE) */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="microscope" size={14} color={modernColors.primary} type="lucide" />{t('laboratoireSearchScreen.typeDexamenRecherche')}
+                            <SafeIcon name="microscope" size={14} color={modernColors.primary} type="lucide" /> Type d'examen recherché
                         </Text>
                         <NativeInput
                             value={prestationAnalyse}
                             onChangeText={setPrestationAnalyse}
-                            placeholder={t('laboratoireSearch.exAnalyseDeSangRadiographie')}
+                            placeholder="Ex: Analyse de sang, Radiographie, Échographie..."
                             autoCapitalize="words"
                         />
                     </View>
 
                     {/* Localisation (optionnelle pour recherche d'examens) */}
-                    <Text style={styles.sectionTitle}>{t('laboratoireSearch.localisationOptionnelle')}</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDCCD Localisation (optionnelle)</Text>
                     <Text style={styles.sectionDescription}>
                         Ajoutez votre position pour trouver des examens à proximité
                     </Text>
@@ -323,7 +324,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                     {/* Type établissement */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="building" size={14} color={modernColors.primary} type="lucide" />{t('laboratoireSearchScreen.typeDetablissement')}
+                            <SafeIcon name="building" size={14} color={modernColors.primary} type="lucide" /> Type d'établissement
                         </Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
                             <TouchableOpacity
@@ -445,7 +446,7 @@ const LaboratoireSearchScreen: React.FC = () => {
 
                     {/* Options */}
                     <View style={styles.optionsSection}>
-                        <Text style={styles.sectionTitle}>{t('laboratoireSearch.optionsDeRecherche')}</Text>
+                        <Text style={styles.sectionTitle}>⚙️ Options de recherche</Text>
 
                         <View style={styles.optionCard}>
                             <View style={styles.optionContent}>
@@ -514,11 +515,13 @@ const LaboratoireSearchScreen: React.FC = () => {
                 <View style={styles.infoCard}>
                     <View style={styles.infoHeader}>
                         <SafeIcon name="info" size={20} color="#6366F1" type="lucide" />
-                        <Text style={styles.infoTitle}>{t('laboratoireSearch.bonASavoir')}</Text>
+                        <Text style={styles.infoTitle}>\uD83D\uDCA1 Bon à savoir</Text>
                     </View>
                     <Text style={styles.infoText}>
-                        • Certains laboratoires proposent la consultation des résultats en ligne{'\nt('laboratoireSearchScreen.verifiezLesHorairesDt('laboratoireSearchScreen.ouvertureAvantDeVousDeplacer')\n'}
-                        • La prise de rendez-vous en ligne permet dt('laboratoireSearchScreen.eviterLesFilesD')attente{'\nt('laboratoireSearchScreen.lesResultatsPeuventEtreDisponiblesSous')analyse
+                        • Certains laboratoires proposent la consultation des résultats en ligne{'\n'}
+                        • Vérifiez les horaires d'ouverture avant de vous déplacer{'\n'}
+                        • La prise de rendez-vous en ligne permet d'éviter les files d'attente{'\n'}
+                        • Les résultats peuvent être disponibles sous 24-48h selon le type d'analyse
                     </Text>
                 </View>
             </KeyboardAwareScreen>

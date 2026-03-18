@@ -318,7 +318,7 @@ export async function generateBusTicketHTML(ticketData: BusTicketData): Promise<
                 <img src="${ticketData.logoAgence}" alt="Logo" class="logo" />
             </div>
             ` : ''}
-            <div class="ticket-title">🎫 TICKET DE VOYAGE</div>
+            <div class="ticket-title">\uD83C\uDFAB TICKET DE VOYAGE</div>
             <div class="compagnie-name">${ticketData.compagnie}</div>
         </div>
 
@@ -346,18 +346,18 @@ export async function generateBusTicketHTML(ticketData: BusTicketData): Promise<
             <!-- Date et Heure -->
             <div class="datetime-container">
                 <div class="datetime-box">
-                    <div class="datetime-label">📅 DATE</div>
+                    <div class="datetime-label">\uD83D\uDCC5 DATE</div>
                     <div class="datetime-value">${ticketData.dateDepart}</div>
                 </div>
                 <div class="datetime-box">
-                    <div class="datetime-label">🕐 HEURE</div>
+                    <div class="datetime-label">\uD83D\uDD50 HEURE</div>
                     <div class="datetime-value">${ticketData.heureDepart}</div>
                 </div>
             </div>
 
             <!-- Informations voyage -->
             <div class="section">
-                <div class="section-title">📋 Informations Voyage</div>
+                <div class="section-title">\uD83D\uDCCB Informations Voyage</div>
                 <div class="info-grid">
                     <div class="info-item">
                         <div class="info-label">Numéro Bus</div>
@@ -395,7 +395,7 @@ export async function generateBusTicketHTML(ticketData: BusTicketData): Promise<
             <!-- Conditions -->
             ${ticketData.conditionsVoyage ? `
             <div class="conditions">
-                <strong>📜 Conditions de voyage:</strong><br/>
+                <strong>\uD83D\uDCDC Conditions de voyage:</strong><br/>
                 ${ticketData.conditionsVoyage}
             </div>
             ` : ''}
@@ -403,7 +403,7 @@ export async function generateBusTicketHTML(ticketData: BusTicketData): Promise<
             <!-- QR Code -->
             <div class="qr-code-section">
                 <img src="${qrCodeUrl}" alt="QR Code" style="width: 180px; height: 180px; border-radius: 10px; border: 3px solid #E5E7EB;" />
-                <div style="font-size: 13px; color: #6B7280; margin-top: 12px; font-weight: 600;">📱 Scannez pour valider le ticket</div>
+                <div style="font-size: 13px; color: #6B7280; margin-top: 12px; font-weight: 600;">\uD83D\uDCF1 Scannez pour valider le ticket</div>
                 <div class="reservation-id">
                     ID: ${ticketData.reservationId}
                 </div>
@@ -414,7 +414,7 @@ export async function generateBusTicketHTML(ticketData: BusTicketData): Promise<
         <div class="footer">
             <div style="margin-bottom: 10px;">✅ TICKET CONFIRMÉ ET VALIDÉ</div>
             <div>Généré le ${now}</div>
-            <div style="margin-top: 10px;">📞 Conservez ce ticket pour votre voyage</div>
+            <div style="margin-top: 10px;">\uD83D\uDCDE Conservez ce ticket pour votre voyage</div>
         </div>
     </div>
 

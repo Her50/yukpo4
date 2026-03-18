@@ -21,7 +21,6 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface GenerativeVideoWizardProps {
     visible: boolean;
@@ -29,7 +28,7 @@ interface GenerativeVideoWizardProps {
     onVideoGenerated?: (timelineId: string, videoUrl: string) => void;
 }
 
-const STYLES = [t('generativeVideoWizard.cinematique'), 'dramatique', 'dynamique', 'calme', t('generativeVideoWizard.epique'), 'intime'];
+const STYLES = ['cinématique', 'dramatique', 'dynamique', 'calme', 'épique', 'intime'];
 const MOODS = ['energetic', 'relaxing', 'happy', 'sad', 'dramatic', 'calm', 'epic'];
 const ASPECT_RATIOS: Array<'16:9' | '9:16' | '1:1' | '4:5' | '21:9'> = ['16:9', '9:16', '1:1', '4:5', '21:9'];
 const PROVIDERS = [
@@ -43,8 +42,7 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
     onClose,
     onVideoGenerated,
 }) => {
-        const { t } = useLanguageSafe();
-const [step, setStep] = useState<1 | 2 | 3>(1);
+    const [step, setStep] = useState<1 | 2 | 3>(1);
     const [description, setDescription] = useState('');
     const [duration, setDuration] = useState('30');
     const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
@@ -74,11 +72,11 @@ const [step, setStep] = useState<1 | 2 | 3>(1);
                     if (pollingInterval) clearInterval(pollingInterval);
                     setLoading(false);
                     onVideoGenerated?.(updatedJob.final_timeline_id || '', updatedJob.final_video_url);
-                    Alert.alert(t('generativeVideoWizard.succes'), t('generativeVideoWizard.videoGenereeAvecSucces'));
+                    Alert.alert('Succès', 'Vidéo générée avec succès !');
                 } else if (updatedJob.status === 'failed') {
                     if (pollingInterval) clearInterval(pollingInterval);
                     setLoading(false);
-                    Alert.alert('Erreur', updatedJob.error || t('generativeVideoWizard.echecDeLaGeneration'));
+                    Alert.alert('Erreur', updatedJob.error || 'Échec de la génération');
                 }
             } catch (error: any) {
                 console.error('[GenerativeVideoWizard] Erreur polling:', error);
@@ -115,7 +113,7 @@ const [step, setStep] = useState<1 | 2 | 3>(1);
             setJobId(response.job_id);
         } catch (error: any) {
             console.error('[GenerativeVideoWizard] Erreur génération:', error);
-            Alert.alert('Erreur', error.message || t('generativeVideoWizard.erreurLorsDeLaGeneration'));
+            Alert.alert('Erreur', error.message || 'Erreur lors de la génération');
             setLoading(false);
             setStep(1);
         }
@@ -133,18 +131,18 @@ const [step, setStep] = useState<1 | 2 | 3>(1);
 
     const renderStep1 = () => (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepTitle}>{t('generativeVideoWizard.descriptionDeLaVideo')}</Text>
+            <Text style={styles.stepTitle}>Description de la vidéo</Text>
             <TextInput
                 style={styles.textArea}
                 value={description}
                 onChangeText={setDescription}
-                placeholder={t('generativeVideoWizard.decrivezLaVideoQueVous')}
+                placeholder="Décrivez la vidéo que vous souhaitez générer..."
                 multiline
                 numberOfLines={6}
                 placeholderTextColor={modernColors.textSecondary}
             />
 
-            <Text style={styles.label}>{t('generativeVideoWizard.dureeSecondes')}</Text>
+            <Text style={styles.label}>Durée (secondes)</Text>
             <NativeInput
                 value={duration}
                 onChangeText={setDuration}
@@ -176,7 +174,7 @@ const [step, setStep] = useState<1 | 2 | 3>(1);
             </View>
 
             <NativeButton
-                title={t('generativeVideoWizard.suivant')}
+                title="Suivant"
                 onPress={() => setStep(2)}
                 variant="primary"
                 disabled={!description.trim()}
@@ -186,7 +184,7 @@ const [step, setStep] = useState<1 | 2 | 3>(1);
 
     const renderStep2 = () => (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepTitle}>{t('generativeVideoWizard.optionsDeGeneration')}</Text>
+            <Text style={styles.stepTitle}>Options de génération</Text>
 
             <Text style={styles.label}>Style visuel (optionnel)</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionsRow}>
@@ -234,7 +232,7 @@ const [step, setStep] = useState<1 | 2 | 3>(1);
                 ))}
             </ScrollView>
 
-            <Text style={styles.label}>{t('generativeVideoWizard.providerIaOptionnelAutoSi')}</Text>
+            <Text style={styles.label}>Provider IA (optionnel - auto si non spécifié)</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionsRow}>
                 {PROVIDERS.map((provider) => (
                     <TouchableOpacity
@@ -265,13 +263,13 @@ const [step, setStep] = useState<1 | 2 | 3>(1);
 
             <View style={styles.stepActions}>
                 <NativeButton
-                    title={t('generativeVideoWizard.retour')}
+                    title="Retour"
                     onPress={() => setStep(1)}
                     variant="outline"
                     style={styles.backButton}
                 />
                 <NativeButton
-                    title={t('generativeVideoWizard.generer')}
+                    title="Générer"
                     onPress={handleGenerate}
                     variant="primary"
                     style={styles.generateButton}
@@ -282,7 +280,7 @@ const [step, setStep] = useState<1 | 2 | 3>(1);
 
     const renderStep3 = () => (
         <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>{t('generativeVideoWizard.generationEnCours')}</Text>
+            <Text style={styles.stepTitle}>Génération en cours...</Text>
 
             {loading && (
                 <ActivityIndicator
@@ -295,9 +293,9 @@ const [step, setStep] = useState<1 | 2 | 3>(1);
             {job && (
                 <View style={styles.progressContainer}>
                     <Text style={styles.progressLabel}>
-                        {job.progress.stage === 'generating_storyboard' ? t('generativeVideoWizard.generationDuStoryboard') :
-                            job.progress.stage === 'generating_clips' ? t('generativeVideoWizard.generationDesClips', { job_progress_current_scene || 0: job.progress.current_scene || 0, job_progress_total_scenes || 0: job.progress.total_scenes || 0 }) :
-                                job.progress.stage === 'assembling' ? t('generativeVideoWizard.assemblageDeLaVideo') :
+                        {job.progress.stage === 'generating_storyboard' ? 'Génération du storyboard...' :
+                            job.progress.stage === 'generating_clips' ? `Génération des clips (${job.progress.current_scene || 0}/${job.progress.total_scenes || 0})...` :
+                                job.progress.stage === 'assembling' ? 'Assemblage de la vidéo...' :
                                     job.progress.message || 'Traitement en cours...'}
                     </Text>
                     <View style={styles.progressBar}>
@@ -316,7 +314,7 @@ const [step, setStep] = useState<1 | 2 | 3>(1);
 
             {storyboard && (
                 <View style={styles.storyboardContainer}>
-                    <Text style={styles.storyboardTitle}>{t('generativeVideoWizard.storyboardGenere')}</Text>
+                    <Text style={styles.storyboardTitle}>Storyboard généré</Text>
                     <Text style={styles.storyboardInfo}>
                         {String(storyboard.scenes.length)} scènes • {String(storyboard.total_duration)}s
                     </Text>
@@ -359,7 +357,7 @@ const [step, setStep] = useState<1 | 2 | 3>(1);
             <View style={styles.overlay}>
                 <View style={styles.container}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>{t('generativeVideoWizard.generationVideoIa')}</Text>
+                        <Text style={styles.title}>Génération Vidéo IA</Text>
                         <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>

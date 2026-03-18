@@ -25,7 +25,7 @@ const BloodDonationAlertManager: React.FC = () => {
 
             // Vérifier si c'est une notification de demande de don de sang
             if (data?.type === 'blood_donation_request') {
-                console.log('[BloodDonationAlertManager] 🩸 Notification demande de don reçue:', data);
+                console.log('[BloodDonationAlertManager] \uD83E\uDE78 Notification demande de don reçue:', data);
 
                 setAlertData({
                     request_id: data.request_id,
@@ -48,7 +48,7 @@ const BloodDonationAlertManager: React.FC = () => {
             const data = response.notification.request.content.data;
 
             if (data?.type === 'blood_donation_request') {
-                console.log('[BloodDonationAlertManager] 👆 Notification demande de don tapée:', data);
+                console.log('[BloodDonationAlertManager] \uD83D\uDC46 Notification demande de don tapée:', data);
 
                 setAlertData({
                     request_id: data.request_id,

@@ -9,7 +9,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, serviceService } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const CreateServiceScreen: React.FC = () => {
     const [formData, setFormData] = useState({
@@ -34,7 +33,6 @@ const CreateServiceScreen: React.FC = () => {
     const [currentStep, setCurrentStep] = useState(1);
     const navigation = ReactNavigation.useNavigation();
     const { location } = useLocation();
-    const { t } = useLanguageSafe();
     const { user } = useAuth();
 
     const vitesses_tarissement = ['lente', 'moyenne', 'rapide'];
@@ -109,7 +107,7 @@ const CreateServiceScreen: React.FC = () => {
     const handleSubmit = async () => {
         // Validation des champs obligatoires
         if (!formData.titre_service || !formData.description || !formData.category || !formData.whatsapp) {
-            Alert.alert('Erreur', t('createServiceScreen_New.veuillezRemplirTousLesChampsObligatoires'));
+            Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires (titre, description, catégorie, WhatsApp)');
             return;
         }
 
@@ -139,8 +137,8 @@ const CreateServiceScreen: React.FC = () => {
 
             if (response.success) {
                 Alert.alert(
-                    t('createServiceScreenNew.succes'),
-                    t('createServiceScreenNew.serviceCreeAvecSucces'),
+                    'Succès',
+                    'Service créé avec succès !',
                     [
                         {
                             text: 'OK',
@@ -152,13 +150,13 @@ const CreateServiceScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', response.message || t('createServiceScreen_New.impossibleDeCreerLeService'));
+                Alert.alert('Erreur', response.message || 'Impossible de créer le service');
             }
 
             setLoading(false);
         } catch (error) {
             console.error('Erreur lors de la création du service:', error);
-            Alert.alert('Erreur', t('createServiceScreen_New.uneErreurEstSurvenueLorsDe'));
+            Alert.alert('Erreur', 'Une erreur est survenue lors de la création du service');
             setLoading(false);
         }
     };
@@ -180,8 +178,8 @@ const CreateServiceScreen: React.FC = () => {
             <View style={styles.content}>
                 {/* En-tête avec progression */}
                 <View style={styles.header}>
-                    <Text style={styles.title}>{t('createServiceScreen_New.creerUnNouveauService')}</Text>
-                    <Text style={styles.subtitle}>{t('createServiceScreen_New.partagezVotreExpertiseAvecLa')}</Text>
+                    <Text style={styles.title}>Créer un Nouveau Service</Text>
+                    <Text style={styles.subtitle}>Partagez votre expertise avec la communauté</Text>
 
                     {/* Indicateur d'étapes */}
                     <View style={styles.stepsIndicator}>
@@ -204,7 +202,7 @@ const CreateServiceScreen: React.FC = () => {
                             </View>
                         ))}
                     </View>
-                    <Text style={styles.stepInfo}>{t('createServiceScreenNew.stepOf', { current: currentStep, total: totalSteps })}</Text>
+                    <Text style={styles.stepInfo}>Étape {currentStep} sur {totalSteps}</Text>
                 </View>
 
                 {/* Étape 1: Informations de base */}
@@ -212,11 +210,11 @@ const CreateServiceScreen: React.FC = () => {
                     <Card style={styles.card}>
                         <View style={styles.cardContent}>
                             <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionTitle}>{t('createServiceScreen_New.informationsDeBase')}</Text>
+                                <Text style={styles.sectionTitle}>Informations de Base</Text>
                                 {suggestionData && (
                                     <View style={styles.aiIndicator}>
                                         <SafeIcon name="cpu" size={16} color={modernColors.primary} />
-                                        <Text style={styles.aiText}>{t('createServiceScreen_New.genereParLia')}</Text>
+                                        <Text style={styles.aiText}>Généré par l'IA</Text>
                                     </View>
                                 )}
                             </View>
@@ -231,20 +229,20 @@ const CreateServiceScreen: React.FC = () => {
                                 }}
                                 mode="outlined"
                                 style={styles.input}
-                                placeholder={t('createServiceScreen_New.exCoiffureADomicile')}
+                                placeholder="Ex: Coiffure à domicile"
                                 editable={!suggestionData}
                                 disabled={!!suggestionData}
                             />
 
                             <View style={styles.fieldContainer}>
-                                <Text style={styles.label}>{t('createServiceScreen_New.categorie')}</Text>
+                                <Text style={styles.label}>Catégorie *</Text>
                                 {suggestionData && formData.category ? (
                                     <View style={styles.readOnlyField}>
                                         <Text style={styles.readOnlyText}>{formData.category}</Text>
                                     </View>
                                 ) : (
                                     <TextInput
-                                        label={t('createServiceScreen_New.entrezUneCategorie')}
+                                        label="Entrez une catégorie"
                                         value={formData.category}
                                         onChangeText={(text) => setFormData({ ...formData, category: text })}
                                         mode="outlined"
@@ -255,7 +253,7 @@ const CreateServiceScreen: React.FC = () => {
                             </View>
 
                             <View style={styles.switchContainer}>
-                                <Text style={styles.switchLabel}>{t('createServiceScreen_New.serviceTarissable')}</Text>
+                                <Text style={styles.switchLabel}>Service tarissable</Text>
                                 <Switch
                                     value={formData.is_tarissable}
                                     onValueChange={(value) => {
@@ -301,7 +299,7 @@ const CreateServiceScreen: React.FC = () => {
                             )}
 
                             <TextInput
-                                label={t('createServiceScreenNew.description')}
+                                label="Description *"
                                 value={formData.description}
                                 onChangeText={(text) => {
                                     if (!suggestionData) {
@@ -312,7 +310,7 @@ const CreateServiceScreen: React.FC = () => {
                                 multiline
                                 numberOfLines={4}
                                 style={styles.input}
-                                placeholder={t('createServiceScreen_New.decrivezVotreServiceEnDetail')}
+                                placeholder="Décrivez votre service en détail..."
                                 editable={!suggestionData}
                                 disabled={!!suggestionData}
                             />
@@ -324,11 +322,11 @@ const CreateServiceScreen: React.FC = () => {
                 {currentStep === 2 && (
                     <Card style={styles.card}>
                         <View style={styles.cardContent}>
-                            <Text style={styles.sectionTitle}>{t('createServiceScreen_New.localisation')}</Text>
+                            <Text style={styles.sectionTitle}>Localisation</Text>
 
                             <View style={styles.gpsContainer}>
                                 <TextInput
-                                    label={t('createServiceScreen_New.coordonneesGpsFixesOptionnel')}
+                                    label="Coordonnées GPS fixes (optionnel)"
                                     value={formData.gps_fixe}
                                     onChangeText={(text) => setFormData({ ...formData, gps_fixe: text })}
                                     mode="outlined"
@@ -342,16 +340,16 @@ const CreateServiceScreen: React.FC = () => {
                             </View>
 
                             <TextInput
-                                label={t('createServiceScreenNew.adresse')}
+                                label="Adresse"
                                 value={formData.adresse}
                                 onChangeText={(text) => setFormData({ ...formData, adresse: text })}
                                 mode="outlined"
                                 style={styles.input}
-                                placeholder={t('createServiceScreen_New.123RueDeLaPaix')}
+                                placeholder="123 Rue de la Paix, Ville"
                             />
 
                             <TextInput
-                                label={t('createServiceScreen_New.zoneD')}intervention"
+                                label="Zone d'intervention"
                                 value={formData.zone_intervention}
                                 onChangeText={(text) => setFormData({ ...formData, zone_intervention: text })}
                                 mode="outlined"
@@ -371,7 +369,7 @@ const CreateServiceScreen: React.FC = () => {
                             <View style={styles.priceContainer}>
                                 <View style={styles.priceInput}>
                                     <TextInput
-                                        label={t('createServiceScreenNew.prix')}
+                                        label="Prix"
                                         value={formData.prix}
                                         onChangeText={(text) => setFormData({ ...formData, prix: text })}
                                         mode="outlined"
@@ -413,11 +411,11 @@ const CreateServiceScreen: React.FC = () => {
                     <Card style={styles.card}>
                         <View style={styles.cardContent}>
                             <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionTitle}>{t('createServiceScreen_New.informationsDeContact')}</Text>
+                                <Text style={styles.sectionTitle}>Informations de Contact</Text>
                                 {userContactInfo && (
                                     <View style={styles.aiIndicator}>
                                         <SafeIcon name="check" size={16} color={modernColors.success} />
-                                        <Text style={styles.aiText}>{t('createServiceScreen_New.prerempli')}</Text>
+                                        <Text style={styles.aiText}>Pré-rempli</Text>
                                     </View>
                                 )}
                             </View>
@@ -438,7 +436,7 @@ const CreateServiceScreen: React.FC = () => {
                             )}
 
                             <TextInput
-                                label={t('createServiceScreen_New.telephone')}
+                                label="Téléphone"
                                 value={formData.telephone}
                                 onChangeText={(text) => setFormData({ ...formData, telephone: text })}
                                 mode="outlined"
@@ -460,7 +458,7 @@ const CreateServiceScreen: React.FC = () => {
                             />
 
                             <TextInput
-                                label={t('createServiceScreen_New.horairesD')}ouverture"
+                                label="Horaires d'ouverture"
                                 value={formData.horaires}
                                 onChangeText={(text) => setFormData({ ...formData, horaires: text })}
                                 mode="outlined"
@@ -476,13 +474,13 @@ const CreateServiceScreen: React.FC = () => {
                     {currentStep > 1 && (
                         <TouchableOpacity style={styles.prevButton} onPress={prevStep}>
                             <SafeIcon name="arrow-back" size={20} color={modernColors.primary} />
-                            <Text style={styles.prevButtonText}>{t('createServiceScreen_New.precedent')}</Text>
+                            <Text style={styles.prevButtonText}>Précédent</Text>
                         </TouchableOpacity>
                     )}
 
                     {currentStep < totalSteps ? (
                         <TouchableOpacity style={styles.nextButton} onPress={nextStep}>
-                            <Text style={styles.nextButtonText}>{t('createServiceScreenNew.suivant')}</Text>
+                            <Text style={styles.nextButtonText}>Suivant</Text>
                             <SafeIcon name="arrow-forward" size={20} color="#FFFFFF" />
                         </TouchableOpacity>
                     ) : (
@@ -493,7 +491,7 @@ const CreateServiceScreen: React.FC = () => {
                         >
                             <SafeIcon name="check" size={20} color="#FFFFFF" />
                             <Text style={styles.submitButtonText}>
-                                {loading ? t('createServiceScreenNew.creation') : t('createServiceScreenNew.creerLeService')}
+                                {loading ? 'Création...' : 'Créer le Service'}
                             </Text>
                         </TouchableOpacity>
                     )}

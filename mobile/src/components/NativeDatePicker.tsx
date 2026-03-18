@@ -3,7 +3,6 @@ import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface NativeDatePickerProps {
     label: string;
@@ -20,12 +19,11 @@ const NativeDatePicker: React.FC<NativeDatePickerProps> = ({
     value,
     onChange,
     required = false,
-    placeholder={t('nativeDatePicker.selectionnerUneDate')},
+    placeholder = 'Sélectionner une date',
     minimumDate,
     maximumDate
 }) => {
-        const { t } = useLanguageSafe();
-const [showPicker, setShowPicker] = useState(false);
+    const [showPicker, setShowPicker] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(
         value ? parseDate(value) : undefined
     );
@@ -109,7 +107,7 @@ const [showPicker, setShowPicker] = useState(false);
 
             {/* Aide visuelle */}
             <Text style={styles.hintText}>
-                📅 Format : JJ/MM/AAAA
+                \uD83D\uDCC5 Format : JJ/MM/AAAA
             </Text>
         </View>
     );

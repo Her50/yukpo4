@@ -1,43 +1,98 @@
-// src/components/LangSwitcher.tsx
-// @ts-check
 import { Picker } from '@react-native-picker/picker';
 import * as React from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLanguageSafe } from '../contexts/LanguageContext';
-// Note: useTranslation doit être adapté pour React Native ou remplacé
-// import { useTranslation } from "@/hooks/useTranslation";
 
-const languages = [
-  { code: "fr", label: t('langSwitcher.francais') },
-  { code: "en", label: "🇬🇧 English" },
-  { code: "pt", label: t('langSwitcher.portugues') },
-  { code: "ar", label: "🇸🇦 العربية" },
-  { code: "ff", label: "🌍 Fula" },
+const LANGUAGES = [
+  // Langues mondiales
+  { code: "fr", label: "Français" },
+  { code: "en", label: "English" },
+  { code: "es", label: "Español" },
+  { code: "pt", label: "Português" },
+  { code: "ar", label: "العربية" },
+  { code: "de", label: "Deutsch" },
+  { code: "zh", label: "中文" },
+  { code: "hi", label: "हिन्दी" },
+  { code: "ja", label: "日本語" },
+  { code: "ru", label: "Русский" },
+  // Langues africaines
+  { code: "sw", label: "Kiswahili" },
+  { code: "ha", label: "Hausa" },
+  { code: "yo", label: "Yorùbá" },
+  { code: "ig", label: "Igbo" },
+  { code: "am", label: "አማርኛ" },
+  { code: "wo", label: "Wolof" },
+  { code: "zu", label: "isiZulu" },
+  { code: "ln", label: "Lingála" },
+  { code: "ff", label: "Fulfulde" },
+  { code: "rw", label: "Kinyarwanda" },
+  { code: "sn", label: "chiShona" },
+  { code: "so", label: "Soomaali" },
+  { code: "ti", label: "ትግርኛ" },
+  { code: "mg", label: "Malagasy" },
+  // Cameroun & Afrique Ouest
+  { code: "ewo", label: "Ewondo" },
+  { code: "dua", label: "Duálá" },
+  { code: "bbj", label: "Ghomálá'" },
+  { code: "bas", label: "Basaa" },
+  { code: "bum", label: "Bulu" },
+  { code: "bci", label: "Baoulé" },
+  { code: "dyu", label: "Dioula" },
+  { code: "bet", label: "Bété" },
+  { code: "pcm", label: "Pidgin" },
+  { code: "mos", label: "Mooré" },
+  { code: "bm", label: "Bambara" },
+  { code: "dje", label: "Zarma" },
+  { code: "ee", label: "Éwé" },
+  { code: "kbp", label: "Kabiyè" },
+  { code: "sar", label: "Sara" },
+  { code: "sg", label: "Sängö" },
+  { code: "kg", label: "Kikongo" },
+  { code: "lua", label: "Cilubà" },
+  { code: "fan", label: "Fang" },
+  // Autres régions africaines
+  { code: "xh", label: "isiXhosa" },
+  { code: "af", label: "Afrikaans" },
+  { code: "st", label: "Sesotho" },
+  { code: "rn", label: "Kirundi" },
+  { code: "srr", label: "Sérère" },
+  { code: "ht", label: "Créole haïtien" },
+  { code: "pap", label: "Papiamento" },
+  // Asie & Europe
+  { code: "ko", label: "한국어" },
+  { code: "tr", label: "Türkçe" },
+  { code: "id", label: "Bahasa Indonesia" },
+  { code: "vi", label: "Tiếng Việt" },
+  { code: "th", label: "ภาษาไทย" },
+  { code: "bn", label: "বাংলা" },
+  { code: "tl", label: "Filipino" },
+  { code: "ms", label: "Bahasa Melayu" },
+  { code: "uk", label: "Українська" },
+  { code: "pl", label: "Polski" },
+  { code: "it", label: "Italiano" },
+  { code: "nl", label: "Nederlands" },
 ];
 
 const LangSwitcher: React.FC = () => {
-  // TODO: Adapter useTranslation pour React Native ou utiliser LanguageContext
-  const [currentLanguage, setCurrentLanguage] = React.useState("fr");
+  const { language, setLanguage, t } = useLanguageSafe();
   const [isTranslating, setIsTranslating] = React.useState(false);
 
-  // Placeholder pour useTranslation
-  // const { currentLanguage, isTranslating, changeLanguage } = useTranslation();
-
   const handleLanguageChange = (languageCode: string) => {
-    setCurrentLanguage(languageCode);
-    // changeLanguage(languageCode);
+    setIsTranslating(true);
+    setLanguage(languageCode);
+    setTimeout(() => setIsTranslating(false), 500);
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.pickerContainer}>
         <Picker
-          selectedValue={currentLanguage}
+          selectedValue={language}
           onValueChange={handleLanguageChange}
           style={styles.picker}
           enabled={!isTranslating}
         >
-          {languages.map(({ code, label }) => (
+          {LANGUAGES.map(({ code, label }) => (
             <Picker.Item key={code} label={label} value={code} />
           ))}
         </Picker>
@@ -45,7 +100,7 @@ const LangSwitcher: React.FC = () => {
       {isTranslating && (
         <View style={styles.translatingContainer}>
           <ActivityIndicator size="small" color="#2563EB" />
-          <Text style={styles.translatingText}>Traduction...</Text>
+          <Text style={styles.translatingText}>{t('common.loading')}</Text>
         </View>
       )}
     </View>
@@ -81,8 +136,3 @@ const styles = StyleSheet.create({
 });
 
 export default LangSwitcher;
-
-
-
-
-

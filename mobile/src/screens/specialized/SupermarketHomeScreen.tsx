@@ -19,19 +19,19 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { PriceComparison, Supermarket, SupermarketProduct, SupermarketPromotion, supermarketService } from '../../services/supermarketService';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type ViewMode = 'select' | 'products' | 'compare' | 'promotions';
 
-const TAB_ITEMS: { key: ViewMode; label: string; icon: string }[] = [
-    { key: 'select', label: 'Magasins', icon: 'store' },
-    { key: 'products', label: 'Produits', icon: 'shopping-bag' },
-    { key: 'compare', label: 'Comparer', icon: 'git-compare' },
-    { key: 'promotions', label: 'Promos', icon: 'tag' },
+const TAB_ITEMS: { key: ViewMode; labelKey: string; icon: string }[] = [
+    { key: 'select', labelKey: 'supermarketHome.tabMagasins', icon: 'store' },
+    { key: 'products', labelKey: 'supermarketHome.tabProduits', icon: 'shopping-bag' },
+    { key: 'compare', labelKey: 'supermarketHome.tabComparer', icon: 'git-compare' },
+    { key: 'promotions', labelKey: 'supermarketHome.tabPromos', icon: 'tag' },
 ];
 
 const SupermarketHomeScreen: React.FC = () => {
@@ -103,11 +103,11 @@ const SupermarketHomeScreen: React.FC = () => {
                 );
                 setSupermarkets(response.supermarkets);
             } else {
-                Alert.alert('Localisation requise', t('supermarketHomeScreen.veuillezActiverLaLocalisationPourTrouver'));
+                Alert.alert(t('supermarketHome.erreur'), t('supermarketHome.veuillezActiverLaLocalisationPourTrouver'));
             }
         } catch (err: any) {
             console.error('[SupermarketHomeScreen] Erreur chargement supermarchés:', err);
-            Alert.alert('Erreur', t('supermarketHomeScreen.impossibleDeChargerLesSupermarches'));
+            Alert.alert(t('supermarketHome.erreur'), t('supermarketHome.impossibleDeChargerLesSupermarches'));
         } finally {
             setLoadingSupermarkets(false);
         }
@@ -139,7 +139,7 @@ const SupermarketHomeScreen: React.FC = () => {
             }
         } catch (err: any) {
             console.error('[SupermarketHomeScreen] Erreur chargement produits:', err);
-            Alert.alert('Erreur', 'Impossible de charger les produits');
+            Alert.alert(t('supermarketHome.erreur'), t('supermarketHome.erreurChargementProduits'));
             setProducts([]);
         } finally {
             setLoadingProducts(false);
@@ -155,7 +155,7 @@ const SupermarketHomeScreen: React.FC = () => {
 
     const handleCompareProduct = async () => {
         if (!compareProductQuery.trim()) {
-            Alert.alert('Erreur', 'Veuillez entrer un nom de produit');
+            Alert.alert(t('supermarketHome.erreur'), t('supermarketHome.veuilleEntrerNomProduit'));
             return;
         }
 
@@ -176,11 +176,11 @@ const SupermarketHomeScreen: React.FC = () => {
                 setPriceComparison(response.data.comparison);
                 setViewMode('compare');
             } else {
-                Alert.alert(t('supermarketHomeScreen.aucunResultat'), t('supermarketHomeScreen.aucunProduitTrouveAvecCeNom'));
+                Alert.alert(t('supermarketHome.aucunResultat'), t('supermarketHome.aucunProduitTrouveAvecCeNom'));
             }
         } catch (err: any) {
             console.error('[SupermarketHomeScreen] Erreur comparaison:', err);
-            Alert.alert('Erreur', 'Impossible de comparer les prix');
+            Alert.alert(t('supermarketHome.erreur'), t('supermarketHome.erreurComparaisonPrix'));
         } finally {
             setLoadingComparison(false);
         }
@@ -302,14 +302,14 @@ const SupermarketHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>
-                                {viewMode === 'select' ? (isBayamSelam ? 'BayamSelam' : t('supermarketHomeScreen.supermarches')) :
-                                    viewMode === 'products' ? selectedSupermarket?.name || 'Produits' :
-                                        viewMode === 'compare' ? 'Comparaison de prix' :
-                                            'Promotions'}
+                                {viewMode === 'select' ? (isBayamSelam ? t('supermarketHome.bayamSelam') : t('supermarketHomeScreen.supermarches')) :
+                                    viewMode === 'products' ? selectedSupermarket?.name || t('supermarketHome.tabProduits') :
+                                        viewMode === 'compare' ? t('supermarketHome.comparaisonDePrix') :
+                                            t('supermarketHome.promotions')}
                             </Text>
                             {viewMode === 'products' && selectedSupermarket && (
                                 <Text style={styles.headerSubtitle}>
-                                    {products.length} produit{products.length > 1 ? 's' : ''}
+                                    {products.length} {products.length > 1 ? t('supermarketHome.produits') : t('supermarketHome.produit')}
                                 </Text>
                             )}
                         </View>
@@ -443,7 +443,7 @@ const SupermarketHomeScreen: React.FC = () => {
                                                 type="lucide"
                                             />
                                             <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
-                                                {tab.label}
+                                                {t(tab.labelKey)}
                                             </Text>
                                             {badgeCount > 0 && !isActive && (
                                                 <View style={styles.tabBadge}>
@@ -547,6 +547,7 @@ const SupermarketSelectionView: React.FC<SupermarketSelectionViewProps> = ({
     onRefresh,
     formatDistance,
 }) => {
+    const { t } = useLanguageSafe();
     if (loading) {
         return (
             <View style={styles.centerContainer}>
@@ -580,7 +581,7 @@ const SupermarketSelectionView: React.FC<SupermarketSelectionViewProps> = ({
                     <SafeIcon name="shopping-bag" size={64} color="#9CA3AF" />
                     <Text style={styles.emptyText}>{t('supermarketHome.aucunSupermarcheTrouve')}</Text>
                     <Text style={styles.emptySubtext}>
-                        Essayez d'activer votre localisation ou d'élargir la zone de recherche
+                        {t('supermarketHome.essayezActiverLocalisation')}
                     </Text>
                 </View>
             }
@@ -657,6 +658,7 @@ const ProductsView: React.FC<ProductsViewProps> = ({
     onCompareProduct,
     formatPrice,
 }) => {
+    const { t } = useLanguageSafe();
     return (
         <View style={styles.productsContainer}>
             {/* Filtres */}
@@ -672,7 +674,7 @@ const ProductsView: React.FC<ProductsViewProps> = ({
                         onPress={() => onCategoryChange('')}
                     >
                         <Text style={[styles.categoryChipText, selectedCategory === '' && styles.categoryChipTextActive]}>
-                            Tous
+                            {t('supermarketHome.tous')}
                         </Text>
                     </TouchableOpacity>
                     {categories.map((category) => (
@@ -697,7 +699,7 @@ const ProductsView: React.FC<ProductsViewProps> = ({
                 >
                     <SafeIcon name="tag" size={16} color={showPromotionsOnly ? '#FFFFFF' : '#10B981'} type="lucide" />
                     <Text style={[styles.promotionsToggleText, showPromotionsOnly && styles.promotionsToggleTextActive]}>
-                        Promotions uniquement
+                        {t('supermarketHome.promotionsUniquement')}
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -732,7 +734,7 @@ const ProductsView: React.FC<ProductsViewProps> = ({
                             <SafeIcon name="package" size={64} color="#9CA3AF" />
                             <Text style={styles.emptyText}>{t('supermarketHome.aucunProduitTrouve')}</Text>
                             <Text style={styles.emptySubtext}>
-                                Essayez de modifier vos filtres de recherche
+                                {t('supermarketHome.essayezModifierFiltres')}
                             </Text>
                         </View>
                     }
@@ -750,14 +752,16 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onCompare, formatPrice }) => {
+    const { t } = useLanguageSafe();
     return (
         <View style={styles.productCard}>
-            {product.image_url && (
-                <View style={styles.productImageContainer}>
-                    {/* TODO: Utiliser Image component pour afficher l'image */}
+            <View style={styles.productImageContainer}>
+                {product.image_url ? (
+                    <Image source={{ uri: product.image_url }} style={{ width: 80, height: 80, borderRadius: 12 }} resizeMode="cover" />
+                ) : (
                     <SafeIcon name="package" size={48} color="#10B981" type="lucide" />
-                </View>
-            )}
+                )}
+            </View>
             <View style={styles.productInfo}>
                 <View style={styles.productHeader}>
                     <Text style={styles.productName} numberOfLines={2}>
@@ -799,11 +803,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onCompare, formatPri
                         onPress={onCompare}
                     >
                         <SafeIcon name="git-compare" size={14} color="#10B981" type="lucide" />
-                        <Text style={styles.compareButtonText}>Comparer</Text>
+                        <Text style={styles.compareButtonText}>{t('supermarketHome.comparer')}</Text>
                     </TouchableOpacity>
                     {product.stock_status === 'out_of_stock' && (
                         <View style={styles.outOfStockBadge}>
-                            <Text style={styles.outOfStockText}>Rupture de stock</Text>
+                            <Text style={styles.outOfStockText}>{t('supermarketHome.ruptureDeStock')}</Text>
                         </View>
                     )}
                 </View>
@@ -828,11 +832,12 @@ const PriceComparisonView: React.FC<PriceComparisonViewProps> = ({
     formatPrice,
     formatDistance,
 }) => {
+    const { t } = useLanguageSafe();
     if (loading) {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color="#10B981" />
-                <Text style={styles.loadingText}>Comparaison en cours...</Text>
+                <Text style={styles.loadingText}>{t('supermarketHome.comparaisonEnCours')}</Text>
             </View>
         );
     }
@@ -841,9 +846,9 @@ const PriceComparisonView: React.FC<PriceComparisonViewProps> = ({
         return (
             <View style={styles.centerContainer}>
                 <SafeIcon name="git-compare" size={64} color="#9CA3AF" />
-                <Text style={styles.emptyText}>Recherchez un produit pour comparer</Text>
+                <Text style={styles.emptyText}>{t('supermarketHome.recherchezProduitPourComparer')}</Text>
                 <Text style={styles.emptySubtext}>
-                    Entrez le nom d'un produit dans la barre de recherche ci-dessus
+                    {t('supermarketHome.entrezNomProduit')}
                 </Text>
             </View>
         );
@@ -858,11 +863,11 @@ const PriceComparisonView: React.FC<PriceComparisonViewProps> = ({
 
             <View style={styles.comparisonStats}>
                 <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Prix moyen</Text>
+                    <Text style={styles.statLabel}>{t('supermarketHome.prixMoyen')}</Text>
                     <Text style={styles.statValue}>{formatPrice(comparison.average_price)}</Text>
                 </View>
                 <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Fourchette</Text>
+                    <Text style={styles.statLabel}>{t('supermarketHome.fourchette')}</Text>
                     <Text style={styles.statValue}>
                         {formatPrice(comparison.price_range.min)} - {formatPrice(comparison.price_range.max)}
                     </Text>
@@ -870,7 +875,7 @@ const PriceComparisonView: React.FC<PriceComparisonViewProps> = ({
             </View>
 
             <Text style={styles.comparisonSectionTitle}>
-                Meilleur prix: {comparison.cheapest.supermarket_name}
+                {t('supermarketHome.meilleurPrix')}: {comparison.cheapest.supermarket_name}
             </Text>
 
             <View style={styles.comparisonList}>
@@ -898,7 +903,7 @@ const PriceComparisonView: React.FC<PriceComparisonViewProps> = ({
                             {item.supermarket_id === comparison.cheapest.supermarket_id && (
                                 <View style={styles.cheapestBadge}>
                                     <SafeIcon name="award" size={14} color="#FFFFFF" type="lucide" />
-                                    <Text style={styles.cheapestBadgeText}>Meilleur prix</Text>
+                                    <Text style={styles.cheapestBadgeText}>{t('supermarketHome.meilleurPrix')}</Text>
                                 </View>
                             )}
                         </View>
@@ -940,6 +945,7 @@ const PromotionsView: React.FC<PromotionsViewProps> = ({
     onSelectProduct,
     formatPrice,
 }) => {
+    const { t } = useLanguageSafe();
     if (loading) {
         return (
             <View style={styles.centerContainer}>
@@ -974,7 +980,7 @@ const PromotionsView: React.FC<PromotionsViewProps> = ({
                     <Text style={styles.emptyText}>{t('supermarketHome.aucunePromotionDisponible')}</Text>
                     <Text style={styles.emptySubtext}>
                         {selectedSupermarket
-                            ? `Aucune promotion active pour ${selectedSupermarket.name}`
+                            ? t('supermarketHome.aucunePromotionActivePour', { name: selectedSupermarket.name })
                             : t('supermarketHomeScreen.aucunePromotionDansLesSupermarchesA')}
                     </Text>
                 </View>
@@ -991,6 +997,7 @@ interface PromotionCardProps {
 }
 
 const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, onSelectProduct, formatPrice }) => {
+    const { t } = useLanguageSafe();
     return (
         <View style={styles.promotionCard}>
             <View style={styles.promotionHeader}>
@@ -1002,11 +1009,11 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, onSelectProduc
                     <Text style={styles.promotionSupermarket}>{promotion.supermarket_name}</Text>
                     {promotion.discount_percentage && (
                         <Text style={styles.promotionDiscount}>
-                            -{promotion.discount_percentage}% de réduction
+                            {t('supermarketHome.deReduction', { percent: promotion.discount_percentage })}
                         </Text>
                     )}
                     <Text style={styles.promotionDates}>
-                        Jusqu'au {new Date(promotion.end_date).toLocaleDateString('fr-FR')}
+                        {t('supermarketHome.jusquAu', { date: new Date(promotion.end_date).toLocaleDateString() })}
                     </Text>
                 </View>
             </View>
@@ -1016,7 +1023,7 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, onSelectProduc
             {promotion.products.length > 0 && (
                 <View style={styles.promotionProducts}>
                     <Text style={styles.promotionProductsTitle}>
-                        {promotion.products.length} produit{promotion.products.length > 1 ? 's' : ''} en promotion
+                        {t('supermarketHome.produitsEnPromotion', { count: promotion.products.length })}
                     </Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         {promotion.products.slice(0, 5).map((product) => (

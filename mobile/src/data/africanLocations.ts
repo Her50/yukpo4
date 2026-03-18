@@ -18,7 +18,7 @@ export interface VilleInfo {
 
 export interface PaysInfo {
     code: string; // Code pays ISO (CM, CI, SN, etc.)
-    emoji: string; // 🇨🇲, 🇨🇮, etc.
+    emoji: string; // \uD83C\uDDE8\uD83C\uDDF2, \uD83C\uDDE8\uD83C\uDDEE, etc.
     nom: string;
     nomComplet: string;
     capitale: string;
@@ -26,11 +26,11 @@ export interface PaysInfo {
 }
 
 // ============================================================================
-// 🇨🇲 CAMEROUN - Le plus détaillé (pays principal de Yukpo)
+// \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN - Le plus détaillé (pays principal de Yukpo)
 // ============================================================================
 export const CAMEROUN: PaysInfo = {
     code: 'CM',
-    emoji: '🇨🇲',
+    emoji: '\uD83C\uDDE8\uD83C\uDDF2',
     nom: 'Cameroun',
     nomComplet: 'République du Cameroun',
     capitale: 'Yaoundé',
@@ -171,11 +171,11 @@ export const CAMEROUN: PaysInfo = {
 };
 
 // ============================================================================
-// 🇨🇩 RDC - RÉPUBLIQUE DÉMOCRATIQUE DU CONGO
+// \uD83C\uDDE8\uD83C\uDDE9 RDC - RÉPUBLIQUE DÉMOCRATIQUE DU CONGO
 // ============================================================================
 export const RDC: PaysInfo = {
     code: 'CD',
-    emoji: '🇨🇩',
+    emoji: '\uD83C\uDDE8\uD83C\uDDE9',
     nom: 'RDC',
     nomComplet: 'République Démocratique du Congo',
     capitale: 'Kinshasa',
@@ -289,11 +289,11 @@ export const RDC: PaysInfo = {
 };
 
 // ============================================================================
-// 🇨🇮 CÔTE D'IVOIRE
+// \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE
 // ============================================================================
 export const COTE_IVOIRE: PaysInfo = {
     code: 'CI',
-    emoji: '🇨🇮',
+    emoji: '\uD83C\uDDE8\uD83C\uDDEE',
     nom: 'Côte d\'Ivoire',
     nomComplet: 'République de Côte d\'Ivoire',
     capitale: 'Yamoussoukro',
@@ -404,11 +404,11 @@ export const COTE_IVOIRE: PaysInfo = {
 };
 
 // ============================================================================
-// 🇸🇳 SÉNÉGAL
+// \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL
 // ============================================================================
 export const SENEGAL: PaysInfo = {
     code: 'SN',
-    emoji: '🇸🇳',
+    emoji: '\uD83C\uDDF8\uD83C\uDDF3',
     nom: 'Sénégal',
     nomComplet: 'République du Sénégal',
     capitale: 'Dakar',
@@ -519,11 +519,11 @@ export const SENEGAL: PaysInfo = {
 };
 
 // ============================================================================
-// 🇲🇱 MALI
+// \uD83C\uDDF2\uD83C\uDDF1 MALI
 // ============================================================================
 export const MALI: PaysInfo = {
     code: 'ML',
-    emoji: '🇲🇱',
+    emoji: '\uD83C\uDDF2\uD83C\uDDF1',
     nom: 'Mali',
     nomComplet: 'République du Mali',
     capitale: 'Bamako',
@@ -634,10 +634,10 @@ export const MALI: PaysInfo = {
 // AUTRES PAYS (ajout progressif avec moins de détails)
 // ============================================================================
 
-// 🇧🇫 BURKINA FASO
+// \uD83C\uDDE7\uD83C\uDDEB BURKINA FASO
 export const BURKINA_FASO: PaysInfo = {
     code: 'BF',
-    emoji: '🇧🇫',
+    emoji: '\uD83C\uDDE7\uD83C\uDDEB',
     nom: 'Burkina Faso',
     nomComplet: 'Burkina Faso',
     capitale: 'Ouagadougou',
@@ -673,10 +673,10 @@ export const BURKINA_FASO: PaysInfo = {
     ]
 };
 
-// 🇳🇪 NIGER
+// \uD83C\uDDF3\uD83C\uDDEA NIGER
 export const NIGER: PaysInfo = {
     code: 'NE',
-    emoji: '🇳🇪',
+    emoji: '\uD83C\uDDF3\uD83C\uDDEA',
     nom: 'Niger',
     nomComplet: 'République du Niger',
     capitale: 'Niamey',
@@ -712,10 +712,10 @@ export const NIGER: PaysInfo = {
     ]
 };
 
-// 🇹🇩 TCHAD
+// \uD83C\uDDF9\uD83C\uDDE9 TCHAD
 export const TCHAD: PaysInfo = {
     code: 'TD',
-    emoji: '🇹🇩',
+    emoji: '\uD83C\uDDF9\uD83C\uDDE9',
     nom: 'Tchad',
     nomComplet: 'République du Tchad',
     capitale: 'N\'Djamena',
@@ -751,10 +751,10 @@ export const TCHAD: PaysInfo = {
     ]
 };
 
-// 🇬🇳 GUINÉE
+// \uD83C\uDDEC\uD83C\uDDF3 GUINÉE
 export const GUINEE: PaysInfo = {
     code: 'GN',
-    emoji: '🇬🇳',
+    emoji: '\uD83C\uDDEC\uD83C\uDDF3',
     nom: 'Guinée',
     nomComplet: 'République de Guinée',
     capitale: 'Conakry',
@@ -790,10 +790,10 @@ export const GUINEE: PaysInfo = {
     ]
 };
 
-// 🇧🇯 BÉNIN
+// \uD83C\uDDE7\uD83C\uDDEF BÉNIN
 export const BENIN: PaysInfo = {
     code: 'BJ',
-    emoji: '🇧🇯',
+    emoji: '\uD83C\uDDE7\uD83C\uDDEF',
     nom: 'Bénin',
     nomComplet: 'République du Bénin',
     capitale: 'Porto-Novo',
@@ -837,10 +837,10 @@ export const BENIN: PaysInfo = {
     ]
 };
 
-// 🇹🇬 TOGO
+// \uD83C\uDDF9\uD83C\uDDEC TOGO
 export const TOGO: PaysInfo = {
     code: 'TG',
-    emoji: '🇹🇬',
+    emoji: '\uD83C\uDDF9\uD83C\uDDEC',
     nom: 'Togo',
     nomComplet: 'République Togolaise',
     capitale: 'Lomé',
@@ -884,10 +884,10 @@ export const TOGO: PaysInfo = {
     ]
 };
 
-// 🇨🇬 CONGO-BRAZZAVILLE
+// \uD83C\uDDE8\uD83C\uDDEC CONGO-BRAZZAVILLE
 export const CONGO_BRAZZAVILLE: PaysInfo = {
     code: 'CG',
-    emoji: '🇨🇬',
+    emoji: '\uD83C\uDDE8\uD83C\uDDEC',
     nom: 'Congo-Brazzaville',
     nomComplet: 'République du Congo',
     capitale: 'Brazzaville',
@@ -924,10 +924,10 @@ export const CONGO_BRAZZAVILLE: PaysInfo = {
     ]
 };
 
-// 🇬🇦 GABON
+// \uD83C\uDDEC\uD83C\uDDE6 GABON
 export const GABON: PaysInfo = {
     code: 'GA',
-    emoji: '🇬🇦',
+    emoji: '\uD83C\uDDEC\uD83C\uDDE6',
     nom: 'Gabon',
     nomComplet: 'République Gabonaise',
     capitale: 'Libreville',
@@ -971,10 +971,10 @@ export const GABON: PaysInfo = {
     ]
 };
 
-// 🇨🇫 CENTRAFRIQUE
+// \uD83C\uDDE8\uD83C\uDDEB CENTRAFRIQUE
 export const CENTRAFRIQUE: PaysInfo = {
     code: 'CF',
-    emoji: '🇨🇫',
+    emoji: '\uD83C\uDDE8\uD83C\uDDEB',
     nom: 'Centrafrique',
     nomComplet: 'République Centrafricaine',
     capitale: 'Bangui',
@@ -1002,10 +1002,10 @@ export const CENTRAFRIQUE: PaysInfo = {
     ]
 };
 
-// 🇲🇬 MADAGASCAR
+// \uD83C\uDDF2\uD83C\uDDEC MADAGASCAR
 export const MADAGASCAR: PaysInfo = {
     code: 'MG',
-    emoji: '🇲🇬',
+    emoji: '\uD83C\uDDF2\uD83C\uDDEC',
     nom: 'Madagascar',
     nomComplet: 'République de Madagascar',
     capitale: 'Antananarivo',
@@ -1049,10 +1049,10 @@ export const MADAGASCAR: PaysInfo = {
     ]
 };
 
-// 🇧🇮 BURUNDI
+// \uD83C\uDDE7\uD83C\uDDEE BURUNDI
 export const BURUNDI: PaysInfo = {
     code: 'BI',
-    emoji: '🇧🇮',
+    emoji: '\uD83C\uDDE7\uD83C\uDDEE',
     nom: 'Burundi',
     nomComplet: 'République du Burundi',
     capitale: 'Gitega',
@@ -1088,10 +1088,10 @@ export const BURUNDI: PaysInfo = {
     ]
 };
 
-// 🇷🇼 RWANDA (partiellement francophone)
+// \uD83C\uDDF7\uD83C\uDDFC RWANDA (partiellement francophone)
 export const RWANDA: PaysInfo = {
     code: 'RW',
-    emoji: '🇷🇼',
+    emoji: '\uD83C\uDDF7\uD83C\uDDFC',
     nom: 'Rwanda',
     nomComplet: 'République du Rwanda',
     capitale: 'Kigali',
@@ -1119,10 +1119,10 @@ export const RWANDA: PaysInfo = {
     ]
 };
 
-// 🇩🇯 DJIBOUTI
+// \uD83C\uDDE9\uD83C\uDDEF DJIBOUTI
 export const DJIBOUTI: PaysInfo = {
     code: 'DJ',
-    emoji: '🇩🇯',
+    emoji: '\uD83C\uDDE9\uD83C\uDDEF',
     nom: 'Djibouti',
     nomComplet: 'République de Djibouti',
     capitale: 'Djibouti',
@@ -1146,10 +1146,10 @@ export const DJIBOUTI: PaysInfo = {
     ]
 };
 
-// 🇰🇲 COMORES
+// \uD83C\uDDF0\uD83C\uDDF2 COMORES
 export const COMORES: PaysInfo = {
     code: 'KM',
-    emoji: '🇰🇲',
+    emoji: '\uD83C\uDDF0\uD83C\uDDF2',
     nom: 'Comores',
     nomComplet: 'Union des Comores',
     capitale: 'Moroni',
@@ -1172,10 +1172,10 @@ export const COMORES: PaysInfo = {
     ]
 };
 
-// 🇲🇷 MAURITANIE
+// \uD83C\uDDF2\uD83C\uDDF7 MAURITANIE
 export const MAURITANIE: PaysInfo = {
     code: 'MR',
-    emoji: '🇲🇷',
+    emoji: '\uD83C\uDDF2\uD83C\uDDF7',
     nom: 'Mauritanie',
     nomComplet: 'République Islamique de Mauritanie',
     capitale: 'Nouakchott',
@@ -1357,7 +1357,7 @@ export const getVillesPourSelecteur = (codePaysUtilisateur?: string): string[] =
     });
 
     // 3. Option personnalisée
-    resultat.push('🆕 Autre ville (saisir)');
+    resultat.push('\uD83C\uDD95 Autre ville (saisir)');
 
     return resultat;
 };
@@ -1369,14 +1369,14 @@ export const getQuartiersPourSelecteur = (nomVille: string, codePays?: string): 
     const quartiers = getQuartiersByVille(nomVille, codePays);
 
     if (quartiers.length === 0) {
-        return ['Centre-ville', '🆕 Autre quartier (saisir)'];
+        return ['Centre-ville', '\uD83C\uDD95 Autre quartier (saisir)'];
     }
 
-    return [...quartiers, '🆕 Autre quartier (saisir)'];
+    return [...quartiers, '\uD83C\uDD95 Autre quartier (saisir)'];
 };
 
 /**
- * Extrait le nom de ville depuis une chaîne formatée (ex: "🇨🇲 Douala" => "Douala")
+ * Extrait le nom de ville depuis une chaîne formatée (ex: "\uD83C\uDDE8\uD83C\uDDF2 Douala" => "Douala")
  */
 export const extraireNomVille = (villeFormatee: string): string => {
     // Supprimer l'emoji et les espaces

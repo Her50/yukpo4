@@ -52,7 +52,8 @@ export const bloodDonationService = {
     createOrUpdateBloodGroup: async (bloodGroup: string) => {
         return await apiPost<{ success: boolean; data: any }>(
             '/api/blood-donation/donor/blood-group',
-            { blood_group: bloodGroup }
+      // ✅ Backend attend `groupe_sanguin`
+      { groupe_sanguin: bloodGroup }
         );
     },
 

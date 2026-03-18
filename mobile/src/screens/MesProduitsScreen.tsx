@@ -101,22 +101,22 @@ const normalizeCategoryKey = (product: Record<string, any>): string | null => {
 };
 
 const getProductTypeLabel = (type: string | null | undefined): string => {
-    if (!type) return t('mesProduitsScreen.nonCategorise');
+    if (!type) return 'Non catégorisé';
     const key = type.toLowerCase();
     const labels: Record<string, string> = {
-        'electronique': t('mesProduitsScreen.electronique'),
-        'informatique': '💻 Informatique',
-        'plombier': '🔧 Plomberie',
-        'plomberie': '🔧 Plomberie',
-        'electricite': t('mesProduitsScreen.electricite'),
-        'automobile': '🚗 Automobile',
-        'agriculture': '🌾 Agriculture',
-        'beaute': t('mesProduitsScreen.beaute'),
-        'sante': t('mesProduitsScreen.sante'),
-        'immobilier': '🏢 Immobilier',
-        'service': '💼 Service',
-        'prestation': '💼 Prestation',
-        'ticket_voyage': '🚌 Ticket de voyage',
+        'electronique': '\uD83D\uDCF1 Électronique',
+        'informatique': '\uD83D\uDCBB Informatique',
+        'plombier': '\uD83D\uDD27 Plomberie',
+        'plomberie': '\uD83D\uDD27 Plomberie',
+        'electricite': '⚡ Électricité',
+        'automobile': '\uD83D\uDE97 Automobile',
+        'agriculture': '\uD83C\uDF3E Agriculture',
+        'beaute': '\uD83D\uDC84 Beauté',
+        'sante': '\uD83E\uDE7A Santé',
+        'immobilier': '\uD83C\uDFE2 Immobilier',
+        'service': '\uD83D\uDCBC Service',
+        'prestation': '\uD83D\uDCBC Prestation',
+        'ticket_voyage': '\uD83D\uDE8C Ticket de voyage',
     };
 
     if (labels[key]) {
@@ -124,7 +124,7 @@ const getProductTypeLabel = (type: string | null | undefined): string => {
     }
 
     if (!key) {
-        return t('mesProduitsScreen.autresCategories');
+        return 'Autres catégories';
     }
 
     return key.charAt(0).toUpperCase() + key.slice(1);
@@ -368,7 +368,7 @@ const MesProduitsScreen: React.FC = () => {
                 // ✅ DEBUG: Logger les prix pour diagnostiquer le problème de multiplication
                 if (__DEV__ && prixValue && prixValue > 0) {
                     const priceVariant = productData.price_variant || productData.variabilite_prix || productData.variation_prix;
-                    console.log(`[MesProduitsScreen] 💰 Prix produit ${product.id}:`, {
+                    console.log(`[MesProduitsScreen] \uD83D\uDCB0 Prix produit ${product.id}:`, {
                         product_price: product.product_price,
                         prixValue,
                         hasPriceVariant: !!priceVariant,
@@ -389,7 +389,7 @@ const MesProduitsScreen: React.FC = () => {
                     serviceId: product.service_id.toString(),
                     productIndex: productIndex,
                     product_index: productIndex,
-                    nom: product.product_name || productData.nom || productData.nom_produit || t('mesProduits.produitSansNom'),
+                    nom: product.product_name || productData.nom || productData.nom_produit || 'Produit sans nom',
                     prix: prixValue || 0,
                     devise: productData.devise || productData.devise_produit || 'XAF',
                     description: productData.description || productData.description_produit || '',
@@ -531,7 +531,7 @@ const MesProduitsScreen: React.FC = () => {
         }
 
         const subscription = DeviceEventEmitter.addListener('product:created', () => {
-            console.log('[MesProduitsScreen] 📦 Événement product:created reçu, rechargement des produits');
+            console.log('[MesProduitsScreen] \uD83D\uDCE6 Événement product:created reçu, rechargement des produits');
             if (typeof loadProducts === 'function') {
                 loadProducts(true);
             }
@@ -623,7 +623,7 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     const handleVideoCreatorSuccess = useCallback(async (result: GeneratedVideoResponse) => {
-        console.log('[MesProduitsScreen] 🎬 Vidéo générée:', result);
+        console.log('[MesProduitsScreen] \uD83C\uDFAC Vidéo générée:', result);
 
         try {
             // ✅ CORRECTION 2025-12-01: Vérifier que media_id existe avant d'appeler trackMediaView
@@ -659,8 +659,8 @@ const MesProduitsScreen: React.FC = () => {
         }
 
         const message = result?.headline
-            ? t('mesProduitsScreen.nnvotreVideoEstMaintenantDisponibleVous', { result_headline: result.headline })
-            : t('mesProduitsScreen.votreVideoEstMaintenantDisponibleVous');
+            ? `${result.headline}\n\nVotre vidéo est maintenant disponible. Vous pouvez la voir dans la galerie du produit.`
+            : 'Votre vidéo est maintenant disponible. Vous pouvez la voir dans la galerie du produit.';
 
         // Navigation vers le service pour voir la vidéo
         const serviceId = result?.service_id;
@@ -706,7 +706,7 @@ const MesProduitsScreen: React.FC = () => {
 
             // Si RÉACTIVATION (inactif → actif)
             if (newStatus) {
-                // 🚌 SPÉCIAL: Bloquer réactivation tickets de voyage expirés
+                // \uD83D\uDE8C SPÉCIAL: Bloquer réactivation tickets de voyage expirés
                 if (product.type === 'ticket_voyage' && product.dateDepart) {
                     try {
                         const [day, month, year] = product.dateDepart.split('/');
@@ -794,7 +794,7 @@ const MesProduitsScreen: React.FC = () => {
                                     }
                                 } catch (error: any) {
                                     // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
-                                    const errorMessage = error instanceof Error ? error.message : (error?.message || t('mesProduits.impossibleDeReactiver'));
+                                    const errorMessage = error instanceof Error ? error.message : (error?.message || 'Impossible de réactiver');
                                     const errorStack = error instanceof Error ? error.stack : undefined;
                                     console.error('[MesProduitsScreen] Erreur réactivation:', {
                                         message: errorMessage,
@@ -848,7 +848,7 @@ const MesProduitsScreen: React.FC = () => {
                                     }
                                 } catch (error: any) {
                                     // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
-                                    const errorMessage = error instanceof Error ? error.message : (error?.message || t('mesProduits.impossibleDeDesactiver'));
+                                    const errorMessage = error instanceof Error ? error.message : (error?.message || 'Impossible de désactiver');
                                     const errorStack = error instanceof Error ? error.stack : undefined;
                                     console.error('[MesProduitsScreen] Erreur désactivation:', {
                                         message: errorMessage,
@@ -948,7 +948,7 @@ const MesProduitsScreen: React.FC = () => {
 
                             const productIndex = productIndexValue;
 
-                            console.log('[MesProduitsScreen] 🗑️ Suppression produit:', {
+                            console.log('[MesProduitsScreen] \uD83D\uDDD1️ Suppression produit:', {
                                 serviceId,
                                 productIndex,
                                 productName: product.nom
@@ -1022,7 +1022,7 @@ const MesProduitsScreen: React.FC = () => {
             let loadedDocuments: string[] = [];
 
             if (typeof product.product_index === 'number' && product.serviceId) {
-                console.log('[MesProduitsScreen] 📥 Chargement des médias pour édition produit:', {
+                console.log('[MesProduitsScreen] \uD83D\uDCE5 Chargement des médias pour édition produit:', {
                     serviceId: product.serviceId,
                     productIndex: product.product_index
                 });
@@ -1097,7 +1097,7 @@ const MesProduitsScreen: React.FC = () => {
                 doc_base64: finalDocuments,
             };
 
-            console.log('[MesProduitsScreen] 📦 Prefill final pour édition:', {
+            console.log('[MesProduitsScreen] \uD83D\uDCE6 Prefill final pour édition:', {
                 nom_produit: prefill.nom_produit,
                 images_count: finalImages.length,
                 videos_count: finalVideos.length,
@@ -1171,7 +1171,7 @@ const MesProduitsScreen: React.FC = () => {
 
             const result = await Share.share({
                 message: shareMessage,
-                title: t('mesProduitsScreen.decouvrez', { product_nom: product.nom }),
+                title: `Découvrez: ${product.nom}`,
                 url: smartLink, // ✅ Utiliser le lien intelligent HTTPS qui sera intercepté par l'app si disponible
             });
 
@@ -1197,7 +1197,7 @@ const MesProduitsScreen: React.FC = () => {
             let loadedDocuments: string[] = [];
 
             if (typeof product.product_index === 'number' && product.serviceId) {
-                console.log('[MesProduitsScreen] 📥 Chargement des médias pour duplication produit:', {
+                console.log('[MesProduitsScreen] \uD83D\uDCE5 Chargement des médias pour duplication produit:', {
                     serviceId: product.serviceId,
                     productIndex: product.product_index
                 });
@@ -1271,7 +1271,7 @@ const MesProduitsScreen: React.FC = () => {
                 doc_base64: finalDocuments,
             };
 
-            console.log('[MesProduitsScreen] 📦 Prefill final pour duplication:', {
+            console.log('[MesProduitsScreen] \uD83D\uDCE6 Prefill final pour duplication:', {
                 nom_produit: prefill.nom_produit,
                 images_count: finalImages.length,
                 videos_count: finalVideos.length,
@@ -1360,7 +1360,7 @@ const MesProduitsScreen: React.FC = () => {
                                 try {
                                     // ✅ CORRECTION: Générer les suggestions IA avant de naviguer (comme dans HomeScreen)
                                     const input = {
-                                        texte: t('mesProduitsScreen.creationDunNouveauService'),
+                                        texte: 'Création d\'un nouveau service',
                                     };
 
                                     const result = await genererSuggestionsService(input);
@@ -1532,7 +1532,7 @@ const MesProduitsScreen: React.FC = () => {
             const service = servicesData[0]; // Premier service
             const serviceData = service.data || {};
 
-            console.log('[MesProduitsScreen] 📝 Édition service', service.id);
+            console.log('[MesProduitsScreen] \uD83D\uDCDD Édition service', service.id);
 
             // Naviguer vers le formulaire en mode edit_service_info
             (navigation as any).navigate('FormulaireYukpoIntelligent', {
@@ -1606,7 +1606,7 @@ const MesProduitsScreen: React.FC = () => {
             { label: 'Actifs', value: activeProducts, accentColor: '#10B981', icon: 'check' },
             { label: 'Vues', value: totalViews, accentColor: '#3B82F6', icon: 'eye' },
             { label: 'Partages', value: totalShares, accentColor: '#8B5CF6', icon: 'share-2' },
-            { label: t('mesProduits.favoris'), value: totalSaves, accentColor: '#EF4444', icon: 'heart' },
+            { label: 'Favoris', value: totalSaves, accentColor: '#EF4444', icon: 'heart' },
         ]
     ), [totalProducts, activeProducts, totalViews, totalShares, totalSaves]);
 
@@ -1942,13 +1942,13 @@ const MesProduitsScreen: React.FC = () => {
             description_produit: prefill.description_produit || 'VIDE',
             prix_produit: prefill.prix_produit || 'VIDE',
             devise_produit: prefill.devise_produit || 'VIDE',
-            produits: prefill.produits ? (Array.isArray(prefill.produits) ? t('mesProduitsScreen.elements', { prefill_produits_length: prefill.produits.length }) : 'non-array') : 'VIDE',
+            produits: prefill.produits ? (Array.isArray(prefill.produits) ? `${prefill.produits.length} élément(s)` : 'non-array') : 'VIDE',
             sous_caracteristiques: prefill.sous_caracteristiques
-                ? (typeof prefill.sous_caracteristiques === 'object' ? `${Object.keys(prefill.sous_caracteristiques).length} dimension(s)` : t('mesProduitsScreen.present'))
+                ? (typeof prefill.sous_caracteristiques === 'object' ? `${Object.keys(prefill.sous_caracteristiques).length} dimension(s)` : 'présent')
                 : 'VIDE',
             lieu_produit: prefill.lieu_produit || 'VIDE',
-            variabilite_prix: prefill.variabilite_prix ? t('mesProduitsScreen.present') : 'VIDE',
-            price_variant: prefill.price_variant ? t('mesProduitsScreen.present') : 'VIDE',
+            variabilite_prix: prefill.variabilite_prix ? 'présent' : 'VIDE',
+            price_variant: prefill.price_variant ? 'présent' : 'VIDE',
             totalKeys: Object.keys(prefill).length,
             allKeys: Object.keys(prefill).filter(k => !['images', 'videos', 'audios', 'documents'].includes(k))
         });
@@ -1982,8 +1982,8 @@ const MesProduitsScreen: React.FC = () => {
                 const prixFormatted = minPrice.toLocaleString('fr-FR');
                 const variantCurrency = modalites[0]?.devise || modalites[0]?.currency || productCurrency || 'XAF';
                 priceValue = variantCurrency && variantCurrency.trim()
-                    ? t('mesProduitsScreen.aPartirDe', { prixFormatted: prixFormatted, variantCurrency_trim__: variantCurrency.trim() })
-                    : t('mesProduitsScreen.aPartirDe', { prixFormatted: prixFormatted });
+                    ? `À partir de ${prixFormatted} ${variantCurrency.trim()}`
+                    : `À partir de ${prixFormatted}`;
             }
         }
 
@@ -2068,7 +2068,7 @@ const MesProduitsScreen: React.FC = () => {
                                 {allUrls.length > 1 && (
                                     <View style={{ position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
                                         <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>
-                                            {imageUrls.length > 0 ? `📷 ${imageUrls.length}` : ''}{imageUrls.length > 0 && videoUrls.length > 0 ? '  ' : ''}{videoUrls.length > 0 ? `🎬 ${videoUrls.length}` : ''}
+                                            {imageUrls.length > 0 ? `\uD83D\uDCF7 ${imageUrls.length}` : ''}{imageUrls.length > 0 && videoUrls.length > 0 ? '  ' : ''}{videoUrls.length > 0 ? `\uD83C\uDFAC ${videoUrls.length}` : ''}
                                         </Text>
                                     </View>
                                 )}
@@ -2078,7 +2078,7 @@ const MesProduitsScreen: React.FC = () => {
                     return (
                         <View style={{ width: '100%', height: 80, backgroundColor: '#F3F4F6', borderTopLeftRadius: 12, borderTopRightRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
                             <SafeIcon name="image" size={32} color="#D1D5DB" />
-                            <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 4 }}>{t('mesProduits.aucuneImage')}</Text>
+                            <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 4 }}>Aucune image</Text>
                         </View>
                     );
                 })()}
@@ -2086,7 +2086,7 @@ const MesProduitsScreen: React.FC = () => {
                 <View style={styles.productHeader}>
                     <View style={styles.productTitleContainer}>
                         <Text style={styles.productName} numberOfLines={2}>
-                            {(product.nom?.trim() || product.nom_produit?.trim() || t('mesProduits.produitSansNom'))}
+                            {(product.nom?.trim() || product.nom_produit?.trim() || 'Produit sans nom')}
                         </Text>
                         <View style={[
                             styles.productStatusBadge,
@@ -2114,7 +2114,7 @@ const MesProduitsScreen: React.FC = () => {
                                             const parsed = JSON.parse(titre.trim());
                                             if (typeof parsed === 'object' && parsed !== null) {
                                                 if ('valeur' in parsed && typeof parsed.valeur === 'string') {
-                                                    return parsed.valeur.trim() || t('mesProduits.serviceSansTitre');
+                                                    return parsed.valeur.trim() || 'Service sans titre';
                                                 }
                                                 return 'Service sans titre';
                                             }
@@ -2122,12 +2122,12 @@ const MesProduitsScreen: React.FC = () => {
                                             // Ce n'est pas du JSON valide, retourner tel quel
                                         }
                                     }
-                                    return titre.trim() || t('mesProduits.serviceSansTitre');
+                                    return titre.trim() || 'Service sans titre';
                                 }
                                 // Si c'est un objet, essayer d'extraire la valeur
                                 if (typeof titre === 'object' && titre !== null) {
                                     if ('valeur' in titre && typeof titre.valeur === 'string') {
-                                        return titre.valeur.trim() || t('mesProduits.serviceSansTitre');
+                                        return titre.valeur.trim() || 'Service sans titre';
                                     }
                                     return 'Service sans titre';
                                 }
@@ -2139,7 +2139,7 @@ const MesProduitsScreen: React.FC = () => {
                     <View style={styles.productInfoRow}>
                         <SafeIcon name="tag" size={14} color="#6B7280" />
                         <Text style={styles.productCategory} numberOfLines={1}>
-                            {categoryLabel || t('mesProduits.nonCategorise')}
+                            {categoryLabel || 'Non catégorisé'}
                         </Text>
                     </View>
 
@@ -2178,7 +2178,7 @@ const MesProduitsScreen: React.FC = () => {
                         onPress={() => handleEditProduct(product)}
                     >
                         <SafeIcon name="edit" size={16} color="#FFFFFF" />
-                        <Text style={styles.primaryButtonText}>{t('mesProduitsScreen.modifier')}</Text>
+                        <Text style={styles.primaryButtonText}>Modifier</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[
@@ -2205,7 +2205,7 @@ const MesProduitsScreen: React.FC = () => {
                         onPress={() => handleShareProduct(product)}
                     >
                         <SafeIcon name="share" size={15} color="#3B82F6" />
-                        <Text style={[styles.contextMenuLabel, { color: '#3B82F6' }]}>{t('mesProduitsScreen.partager')}</Text>
+                        <Text style={[styles.contextMenuLabel, { color: '#3B82F6' }]}>Partager</Text>
                     </TouchableOpacity>
                     {/* ✅ NOUVEAU 2026-03-14: Partage interne produit */}
                     <InternalShareButton
@@ -2219,7 +2219,7 @@ const MesProduitsScreen: React.FC = () => {
                         iconSize={15}
                         iconColor="#8B5CF6"
                         showLabel
-                        label={t('mesProduits.envoyer')}
+                        label="Envoyer"
                         style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}
                     />
                     <TouchableOpacity
@@ -2258,7 +2258,7 @@ const MesProduitsScreen: React.FC = () => {
     // ✅ UX AMÉLIORÉ: Menu regroupant toutes les actions (y compris celles retirées du header)
     const menuActions = [
         {
-            label: t('mesProduits.creerUneVideo'),
+            label: 'Créer une vidéo',
             icon: 'video',
             onPress: () => {
                 setShowMenuModal(false);
@@ -2266,7 +2266,7 @@ const MesProduitsScreen: React.FC = () => {
             },
         },
         {
-            label: t('mesProduits.galerieMedias'),
+            label: 'Galerie médias',
             icon: 'image',
             onPress: () => {
                 setShowMenuModal(false);
@@ -2279,7 +2279,7 @@ const MesProduitsScreen: React.FC = () => {
             },
         },
         {
-            label: t('mesProduits.mesPublicites'),
+            label: 'Mes Publicités',
             icon: 'megaphone',
             onPress: () => {
                 setShowMenuModal(false);
@@ -2323,12 +2323,12 @@ const MesProduitsScreen: React.FC = () => {
                     const firstProduct = filteredProducts.find(p => p.is_active) || filteredProducts[0];
                     handleOpenDeliveryConfig(firstProduct);
                 } else {
-                    Alert.alert('Aucun produit', 'Vous devez d\t('mesProduitsScreen.abordCreerUnProduitPourConfigurer'));
+                    Alert.alert('Aucun produit', 'Vous devez d\'abord créer un produit pour configurer la livraison.');
                 }
             },
         },
         {
-            label: t('mesProduits.gererLesMembres'),
+            label: 'Gérer les membres',
             icon: 'users',
             onPress: () => {
                 setShowMenuModal(false);
@@ -2336,7 +2336,7 @@ const MesProduitsScreen: React.FC = () => {
             },
         },
         {
-            label: t('mesProduits.mesVideos'),
+            label: 'Mes vidéos',
             icon: 'play-circle',
             onPress: () => {
                 setShowMenuModal(false);
@@ -2344,7 +2344,7 @@ const MesProduitsScreen: React.FC = () => {
             },
         },
         {
-            label: t('mesProduits.editerService'),
+            label: 'Éditer service',
             icon: 'settings',
             onPress: () => {
                 setShowMenuModal(false);
@@ -2358,7 +2358,7 @@ const MesProduitsScreen: React.FC = () => {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>{t('mesProduits.chargementDeVosProduits')}</Text>
+                <Text style={styles.loadingText}>Chargement de vos produits...</Text>
             </View>
         );
     }
@@ -2465,11 +2465,11 @@ const MesProduitsScreen: React.FC = () => {
                 {!Array.isArray(filteredProducts) || filteredProducts.length === 0 ? (
                     <View style={styles.emptyState}>
                         <SafeIcon name="package" size={64} color="#D1D5DB" />
-                        <Text style={styles.emptyTitle}>{t('mesProduits.aucunProduit')}</Text>
+                        <Text style={styles.emptyTitle}>Aucun produit</Text>
                         <Text style={styles.emptySubtitle}>
                             {filter !== 'tous'
                                 ? `Aucun produit ${filter}`
-                                : t('mesProduitsScreen.ajoutezDesProduitsAVosServices')}
+                                : 'Ajoutez des produits à vos services'}
                         </Text>
                     </View>
                 ) : (
@@ -2633,7 +2633,7 @@ const MesProduitsScreen: React.FC = () => {
                             </View>
                             <View style={styles.productActionTextCol}>
                                 <Text style={styles.productActionLabel}>Promouvoir</Text>
-                                <Text style={styles.productActionHint}>{t('mesProduits.boosterLaVisibilite')}</Text>
+                                <Text style={styles.productActionHint}>Booster la visibilité</Text>
                             </View>
                         </TouchableOpacity>
 
@@ -2665,7 +2665,7 @@ const MesProduitsScreen: React.FC = () => {
                             </View>
                             <View style={styles.productActionTextCol}>
                                 <Text style={styles.productActionLabel}>Dupliquer</Text>
-                                <Text style={styles.productActionHint}>{t('mesProduits.creerUneCopie')}</Text>
+                                <Text style={styles.productActionHint}>Créer une copie</Text>
                             </View>
                         </TouchableOpacity>
 
@@ -2680,7 +2680,7 @@ const MesProduitsScreen: React.FC = () => {
                                 <SafeIcon name="truck" size={18} color="#3B82F6" />
                             </View>
                             <View style={styles.productActionTextCol}>
-                                <Text style={styles.productActionLabel}>{t('mesProduits.livraison')}</Text>
+                                <Text style={styles.productActionLabel}>Livraison</Text>
                                 <Text style={styles.productActionHint}>Configurer la livraison</Text>
                             </View>
                         </TouchableOpacity>
@@ -2699,8 +2699,8 @@ const MesProduitsScreen: React.FC = () => {
                                 <SafeIcon name="trash-2" size={18} color="#DC2626" />
                             </View>
                             <View style={styles.productActionTextCol}>
-                                <Text style={[styles.productActionLabel, { color: '#DC2626' }]}>{t('mesProduitsScreen.supprimer')}</Text>
-                                <Text style={styles.productActionHint}>{t('mesProduits.supprimerDefinitivement')}</Text>
+                                <Text style={[styles.productActionLabel, { color: '#DC2626' }]}>Supprimer</Text>
+                                <Text style={styles.productActionHint}>Supprimer définitivement</Text>
                             </View>
                         </TouchableOpacity>
 
@@ -2709,7 +2709,7 @@ const MesProduitsScreen: React.FC = () => {
                             style={styles.productActionCancel}
                             onPress={() => setShowProductActionsModal(false)}
                         >
-                            <Text style={styles.productActionCancelText}>{t('mesProduitsScreen.annuler')}</Text>
+                            <Text style={styles.productActionCancelText}>Annuler</Text>
                         </TouchableOpacity>
                     </View>
                 </TouchableOpacity>

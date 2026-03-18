@@ -13,7 +13,7 @@
 // │ POI auto (3 types)      │ 4 pts × 3 = 12                   │ ~255 XAF  │ 510 XAF  │
 // │ POI religion (2 types)  │ 4 pts × 2 = 8                    │ ~170 XAF  │ 340 XAF  │
 // │ POI accommodation       │ 4 pts × 1 = 4                    │ ~85 XAF   │ 170 XAF  │
-// │ Alertes communautaires  │ 1 SQL + 5 reverseGeocode max     │ ~17 XAF   │ 35 XAF   │
+// │ Alertes communautaires  │ 1 SQL + 5 reverseGeocode max     │ ~17 XAF   │ 35 XAF   │  (consultation écran)
 // │ Stats d'activité        │ 5 SQL queries (aucune API)       │ ~0 XAF    │ GRATUIT  │
 // │ Coach IA (à la demande) │ 12 SQL + 1 LLM (GPT-4o)         │ ~3.4 XAF  │ 10 XAF   │
 // │ Coaching push mensuel   │ Notifications auto (pas de LLM)  │ ~0 XAF    │ 500 XAF  │
@@ -49,8 +49,8 @@ const FALLBACK_POI_PRICES: Record<string, number> = {
 };
 
 const FALLBACK_MICRO_PRICES: Record<string, number> = {
-    community_alerts: 35,       // Consultation écran alertes (5 geocodes × 3.3 XAF × 2)
-    community_alerts_sound: 100, // Notification sonore alerte (coût serveur + bande sonore - 100 FCFA)
+    community_alerts: 100,      // 100 FCFA par checkpoint unique rencontré pendant le tracking (rappels progressifs gratuits)
+    community_alerts_sound: 0,   // ✅ FIX 2026-03-18: GRATUIT — la facturation est par checkpoint unique (via community_alerts), pas par notification sonore
     activity_stats: 0,           // GRATUIT — statistiques santé incluses dans coaching mensuel
     ai_coach: 10,               // 3.4 XAF × 2 (marge 100%) → 10 XAF
     coaching_monthly: 1000,    // Forfait push coaching mensuel (augmenté à 1000 FCFA)
@@ -136,7 +136,7 @@ export async function fetchDynamicPricing(): Promise<DynamicPricingState> {
                     const parsed = JSON.parse(cached) as DynamicPricingState;
                     if (Date.now() - parsed.lastFetchedAt < PRICING_CACHE_TTL) {
                         _dynamicState = { ...parsed, source: 'cache' };
-                        console.log('[NavigationPricing] 📦 Tarifs chargés depuis le cache');
+                        console.log('[NavigationPricing] \uD83D\uDCE6 Tarifs chargés depuis le cache');
                         return _dynamicState;
                     }
                 }

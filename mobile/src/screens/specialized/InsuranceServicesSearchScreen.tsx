@@ -17,7 +17,6 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface SearchFilters {
     type_assurance?: string;
@@ -34,7 +33,6 @@ interface SearchFilters {
 const InsuranceServicesSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
-    const { t } = useLanguageSafe();
 
     const [typeAssurance, setTypeAssurance] = useState('');
     const [compagnie, setCompagnie] = useState('');
@@ -95,7 +93,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
         } as never);
     };
 
-    const typesAssurance = ['Auto', t('insuranceServicesSearchScreen.sante'), 'Habitation', 'Vie', 'Voyage', 'Professionnelle', t('insuranceServicesSearchScreen.responsabiliteCivile')];
+    const typesAssurance = ['Auto', 'Santé', 'Habitation', 'Vie', 'Voyage', 'Professionnelle', 'Responsabilité civile'];
     const compagnies = ['AXA', 'Allianz', 'Sanlam', 'NSIA', 'Activa', 'GAT', 'Zenith', 'AAR'];
 
     // Recherches rapides spécifiques assurance
@@ -104,7 +102,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
             id: 'auto',
             title: 'Auto',
             icon: 'car',
-            description: t('insuranceServicesSearch.assuranceVehicule'),
+            description: 'Assurance véhicule',
             action: () => {
                 hapticPress();
                 setTypeAssurance('Auto');
@@ -112,12 +110,12 @@ const InsuranceServicesSearchScreen: React.FC = () => {
         },
         {
             id: 'sante',
-            title: t('insuranceServicesSearch.sante'),
+            title: 'Santé',
             icon: 'heart',
-            description: t('insuranceServicesSearch.assuranceSante'),
+            description: 'Assurance santé',
             action: () => {
                 hapticPress();
-                setTypeAssurance(t('insuranceServicesSearchScreen.sante'));
+                setTypeAssurance('Santé');
             }
         },
         {
@@ -153,7 +151,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="shield" size={32} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>{t('insuranceServicesSearch.rechercherUneAssurance')}</Text>
+                        <Text style={styles.headerTitle}>Rechercher une assurance</Text>
                         <Text style={styles.headerSubtitle}>
                             Comparez les produits d'assurance et demandez un devis
                         </Text>
@@ -168,7 +166,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
             >
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
-                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDD0D Recherches rapides</Text>
                     <View style={styles.quickSearchesGrid}>
                         {quickSearches.map((search) => (
                             <TouchableOpacity
@@ -194,7 +192,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>{t('insuranceServicesSearch.typeDassurance')}</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDEE1️ Type d'assurance</Text>
 
                     {/* Type assurance */}
                     <View style={styles.inputGroup}>
@@ -248,17 +246,17 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Localisation */}
-                    <Text style={styles.sectionTitle}>{t('insuranceServicesSearch.localisation')}</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDCCD Localisation</Text>
 
                     {/* Ville */}
                     <View style={styles.inputGroup}>
                         <LocationSelector
-                            label={t('insuranceServicesSearch.ville')}
+                            label="Ville"
                             value={typeof ville === 'string' ? (ville ? { raw: ville, place_name: ville } : '') : ville}
                             onSelect={(location: LocationObject) => {
                                 setVille(location);
                             }}
-                            placeholder={t('insuranceServicesSearch.rechercherUnLieuVilleQuartier')}
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
                             scope="all"
                             enrichWithBackend={true}
                         />
@@ -267,12 +265,12 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                     {/* Quartier */}
                     <View style={styles.inputGroup}>
                         <LocationSelector
-                            label={t('insuranceServicesSearch.quartierOptionnel')}
+                            label="Quartier (optionnel)"
                             value={typeof quartier === 'string' ? (quartier ? { raw: quartier, place_name: quartier } : '') : quartier}
                             onSelect={(location: LocationObject) => {
                                 setQuartier(location);
                             }}
-                            placeholder={t('insuranceServicesSearch.rechercherUnLieuPrecisQuartier')}
+                            placeholder="Rechercher un lieu précis (quartier, rue, adresse...)"
                             scope="all"
                             cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
                             enrichWithBackend={true}
@@ -333,7 +331,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                     )}
 
                     {/* Prix */}
-                    <Text style={styles.sectionTitle}>💰 Prime annuelle</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDCB0 Prime annuelle</Text>
 
                     <View style={styles.priceRow}>
                         <View style={styles.priceInputContainer}>
@@ -389,10 +387,12 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                 <View style={styles.infoCard}>
                     <View style={styles.infoHeader}>
                         <SafeIcon name="info" size={20} color="#1E40AF" type="lucide" />
-                        <Text style={styles.infoTitle}>{t('insuranceServicesSearch.bonASavoir')}</Text>
+                        <Text style={styles.infoTitle}>\uD83D\uDCA1 Bon à savoir</Text>
                     </View>
                     <Text style={styles.infoText}>
-                        • Comparez les garanties et les primes de plusieurs compagnies{'\nt('insuranceServicesSearchScreen.lisezAttentivementLesConditionsGeneralesAvant')\nt('insuranceServicesSearchScreen.verifiezLesExclusionsEtLesFranchises')\n'}
+                        • Comparez les garanties et les primes de plusieurs compagnies{'\n'}
+                        • Lisez attentivement les conditions générales avant de souscrire{'\n'}
+                        • Vérifiez les exclusions et les franchises{'\n'}
                         • Demandez un devis personnalisé pour obtenir le meilleur prix
                     </Text>
                 </View>

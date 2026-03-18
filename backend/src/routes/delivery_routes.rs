@@ -2476,6 +2476,15 @@ async fn update_delivery_status(
                     );
                     // Ne pas faire échouer la requête, juste logger l'erreur
                 }
+
+                // ✅ CORRIGÉ: Mettre à jour matching_status des packages livres liés
+                let _ = sqlx::query(
+                        "UPDATE book_delivery_packages SET matching_status = 'matched', courier_user_id = (SELECT user_id FROM courier_applications WHERE id = $2 AND status = 'approved' LIMIT 1), updated_at = NOW() WHERE delivery_uuid = $1 AND matching_status = 'searching'"
+                    )
+                    .bind(delivery_id)
+                    .bind(summary.courier_id)
+                    .execute(&state.pg)
+                    .await;
             }
         }
         crate::models::delivery_model::DeliveryStatus::Cancelled => {
@@ -2526,11 +2535,13 @@ async fn update_delivery_status(
                         );
                     }
 
-                    // ✅ NOUVEAU : Reverser les frais de livraison au coursier
+                    // ✅ CORRIGÉ : Reverser les frais de livraison au coursier
+                    // Utilise courier_applications (table réelle) au lieu de couriers
                     if let Some(courier_id) = summary.courier_id {
-                        // Récupérer le user_id du coursier depuis courier_id
                         let courier_user_id_result: Option<(i32,)> =
-                            sqlx::query_as("SELECT user_id FROM couriers WHERE id = $1")
+                            sqlx::query_as(
+                                "SELECT user_id FROM courier_applications WHERE id = $1 AND status = 'approved' UNION SELECT user_id FROM couriers WHERE id = $1 LIMIT 1"
+                            )
                                 .bind(courier_id)
                                 .fetch_optional(&state.pg)
                                 .await
@@ -2551,10 +2562,19 @@ async fn update_delivery_status(
                                     "✅ Reversement coursier effectué pour livraison {}",
                                     delivery_id
                                 );
+                                // Notification push au coursier
+                                let _ = crate::services::push_notification_service::send_push_notification(
+                                    &state.pg,
+                                    courier_user_id,
+                                    "Paiement reçu 💰".to_string(),
+                                    "Votre paiement pour la livraison a été effectué avec succès.".to_string(),
+                                    Some(serde_json::json!({"type": "courier_payout", "delivery_id": delivery_id.to_string()})),
+                                    None,
+                                ).await;
                             }
                         } else {
                             log::warn!(
-                                "Coursier {} non trouvé pour livraison {}",
+                                "Coursier {} non trouvé dans courier_applications ni couriers pour livraison {}",
                                 courier_id,
                                 delivery_id
                             );
@@ -2562,6 +2582,10 @@ async fn update_delivery_status(
                     } else {
                         log::warn!("Pas de coursier assigné pour livraison {}", delivery_id);
                     }
+                    log::info!(
+                        "✅ Cycle de paiement complet pour livraison {}",
+                        delivery_id
+                    );
                 }
             }
         }
@@ -5243,7 +5267,9 @@ async fn start_scheduled_delivery(
     // Vérifier que l'utilisateur est le coursier assigné
     if let Some(courier_id) = summary.courier_id {
         let courier_user_id: Option<i32> =
-            sqlx::query_scalar("SELECT user_id FROM couriers WHERE id = $1")
+            sqlx::query_scalar(
+                "SELECT user_id FROM courier_applications WHERE id = $1 AND status = 'approved' UNION SELECT user_id FROM couriers WHERE id = $1 LIMIT 1"
+            )
                 .bind(courier_id)
                 .fetch_optional(&state.pg)
                 .await?;
@@ -6057,7 +6083,9 @@ async fn report_courier_difficulty(
         .courier_id
         .ok_or_else(|| AppError::BadRequest("Aucun coursier assigné à cette livraison".into()))?;
 
-    let courier_user_id: i32 = sqlx::query_scalar("SELECT user_id FROM couriers WHERE id = $1")
+    let courier_user_id: i32 = sqlx::query_scalar(
+        "SELECT user_id FROM courier_applications WHERE id = $1 AND status = 'approved' UNION SELECT user_id FROM couriers WHERE id = $1 LIMIT 1"
+    )
         .bind(courier_id)
         .fetch_optional(&state.pg)
         .await?

@@ -40,7 +40,7 @@ export const DynamicAutocompleteFilters: React.FC<DynamicAutocompleteFiltersProp
     initialLocationCoords = null,
     initialLocationRadius = 10,
     categoryName = t('dynamicAutocompleteFilters.filtrerLesResultats'),
-    categoryIcon = '🔍',
+    categoryIcon = '\uD83D\uDD0D',
 }) => {
         const { t } = useLanguageSafe();
 const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>(initialFilters);
@@ -111,28 +111,28 @@ const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>
     // Obtenir l'icône pour une caractéristique
     const getCharIcon = (charKey: string): string => {
         const iconMap: Record<string, string> = {
-            marque: '🏷️',
-            modele: '📦',
-            annee: '📅',
-            couleur: '🎨',
-            taille: '📏',
-            pointure: '👟',
-            matiere: '🧵',
+            marque: '\uD83C\uDFF7️',
+            modele: '\uD83D\uDCE6',
+            annee: '\uD83D\uDCC5',
+            couleur: '\uD83C\uDFA8',
+            taille: '\uD83D\uDCCF',
+            pointure: '\uD83D\uDC5F',
+            matiere: '\uD83E\uDDF5',
             style: '✨',
-            type: '🔖',
+            type: '\uD83D\uDD16',
             etat: '⭐',
-            version: '🔢',
+            version: '\uD83D\uDD22',
             carburant: '⛽',
             transmission: '⚙️',
             puissance: '⚡',
-            kilometrage: '🛣️',
-            dimensions: '📐',
+            kilometrage: '\uD83D\uDEE3️',
+            dimensions: '\uD83D\uDCD0',
             poids: '⚖️',
             forme: '◾',
-            nombre_de_places: '👥',
-            capacite: '📊',
+            nombre_de_places: '\uD83D\uDC65',
+            capacite: '\uD83D\uDCCA',
         };
-        return iconMap[charKey.toLowerCase()] || '🔍';
+        return iconMap[charKey.toLowerCase()] || '\uD83D\uDD0D';
     };
 
     return (

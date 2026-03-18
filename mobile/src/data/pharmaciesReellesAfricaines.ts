@@ -12,70 +12,70 @@ export const PHARMACIES_REELLES_PAR_PAYS: Record<string, string[]> = {
         'Pharmacie Hôpital Général (Douala)',
 
         // Nom générique utilisateur peut compléter
-        '🆕 Ajouter votre pharmacie',
+        '\uD83C\uDD95 Ajouter votre pharmacie',
     ],
 
     'CI': [
         'Pharmacie CHU Cocody',
         'Pharmacie CHU Treichville',
-        '🆕 Ajouter votre pharmacie',
+        '\uD83C\uDD95 Ajouter votre pharmacie',
     ],
 
     'SN': [
         'Pharmacie CHU Aristide Le Dantec',
         'Pharmacie CHU Fann',
-        '🆕 Ajouter votre pharmacie',
+        '\uD83C\uDD95 Ajouter votre pharmacie',
     ],
 
     'CD': [
         'Pharmacie CHU Kinshasa',
-        '🆕 Ajouter votre pharmacie',
+        '\uD83C\uDD95 Ajouter votre pharmacie',
     ],
 
     'GA': [
         'Pharmacie CHU Libreville',
-        '🆕 Ajouter votre pharmacie',
+        '\uD83C\uDD95 Ajouter votre pharmacie',
     ],
 
     'BJ': [
         'Pharmacie CNHU Cotonou',
-        '🆕 Ajouter votre pharmacie',
+        '\uD83C\uDD95 Ajouter votre pharmacie',
     ],
 
     'ML': [
         'Pharmacie CHU Point G',
         'Pharmacie Hôpital Gabriel Touré',
-        '🆕 Ajouter votre pharmacie',
+        '\uD83C\uDD95 Ajouter votre pharmacie',
     ],
 
     'BF': [
         'Pharmacie CHU Yalgado Ouédraogo',
-        '🆕 Ajouter votre pharmacie',
+        '\uD83C\uDD95 Ajouter votre pharmacie',
     ],
 
     'NE': [
         'Pharmacie Hôpital National Niamey',
-        '🆕 Ajouter votre pharmacie',
+        '\uD83C\uDD95 Ajouter votre pharmacie',
     ],
 
     'TG': [
         'Pharmacie CHU Sylvanus Olympio',
-        '🆕 Ajouter votre pharmacie',
+        '\uD83C\uDD95 Ajouter votre pharmacie',
     ],
 
     'CG': [
         'Pharmacie CHU Brazzaville',
-        '🆕 Ajouter votre pharmacie',
+        '\uD83C\uDD95 Ajouter votre pharmacie',
     ],
 
     'MG': [
         'Pharmacie CHU Antananarivo',
-        '🆕 Ajouter votre pharmacie',
+        '\uD83C\uDD95 Ajouter votre pharmacie',
     ],
 
     'TD': [
         'Pharmacie Hôpital Central N\'Djamena',
-        '🆕 Ajouter votre pharmacie',
+        '\uD83C\uDD95 Ajouter votre pharmacie',
     ],
 };
 

@@ -19,7 +19,6 @@ import { useCreatorStudio } from '../hooks/useCreatorStudio';
 import { CreateDeliveryRequestPayload } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { safeStringDisplay } from '../utils/displayHelpers';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const VEHICLE_OPTIONS = [
     {
@@ -30,17 +29,17 @@ const VEHICLE_OPTIONS = [
     {
         id: 2,
         label: 'Tricycle',
-        description: t('creatorStudioCard.jusqua1MIdealColis'),
+        description: 'Jusqu’à 1 m³ · idéal colis “pas très importants”',
     },
     {
         id: 3,
         label: 'Fourgonnette',
-        description: t('creatorStudioCard.demenagementLeger3M400'),
+        description: 'Déménagement léger · 3 m³ / 400 kg max',
     },
     {
         id: 4,
         label: 'Camion 4T+',
-        description: t('creatorStudioCard.grosVolumeTourneeMultipoints'),
+        description: 'Gros volume / tournée multi-points',
     },
 ];
 
@@ -76,8 +75,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
     productName,
 }) => {
     const [state, actions] = useCreatorStudio();
-        const { t } = useLanguageSafe();
-const [courierError, setCourierError] = useState<string | null>(null);
+    const [courierError, setCourierError] = useState<string | null>(null);
     const [courierSuccess, setCourierSuccess] = useState<string | null>(null);
     const [pickupAddressInput, setPickupAddressInput] = useState<string>('');
     const [pickupLatitudeInput, setPickupLatitudeInput] = useState<string>('');
@@ -225,7 +223,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
             if (Number.isFinite(normalized)) {
                 return normalized;
             }
-            throw new Error(t('creatorStudioCard.coordonneeInvalide', { label: label }));
+            throw new Error(`Coordonnée ${label} invalide`);
         };
 
         const ensureAddress = (value: string, fallback: string, label: string): string => {
@@ -279,7 +277,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
         if (scheduledPickupEnabled) {
             const trimmed = scheduledPickupInput.trim();
             if (!trimmed) {
-                throw new Error(t('creatorStudioCard.indiqueUneDateheureDePriseEn'));
+                throw new Error('Indique une date/heure de prise en charge planifiée.');
             }
             const parsed = new Date(trimmed);
             if (Number.isNaN(parsed.getTime())) {
@@ -294,7 +292,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                 weight_kg: usePassengerMode ? 80 : vehicleTypeId >= 3 ? 150 : 10,
                 notes: usePassengerMode
                     ? `Transport passager depuis Studio · ${state.brief || 'Brief court'}`
-                    : state.brief || t('creatorStudioCard.livraisonExpressDepuisLeStudio'),
+                    : state.brief || 'Livraison express depuis le Studio',
                 photos: [],
                 constraints: {
                     studio_template: state.template,
@@ -355,17 +353,17 @@ const [courierError, setCourierError] = useState<string | null>(null);
             setCourierError(null);
             const payload = buildCourierPayload();
             const deliveryId = await actions.requestCourier(payload);
-            setCourierSuccess(t('creatorStudioCard.livraisonCreee', { deliveryId?_slice(0, 8) ?? '': deliveryId?.slice(0, 8) ?? '' }));
-            Alert.alert(t('creatorStudioCard.coursierDemande'), `Livraison ${deliveryId?.slice(0, 8)} en file de matching.`);
+            setCourierSuccess(`Livraison #${deliveryId?.slice(0, 8) ?? ''} créée`);
+            Alert.alert('Coursier demandé', `Livraison ${deliveryId?.slice(0, 8)} en file de matching.`);
         } catch (err) {
-            const message = (err as Error)?.message ?? t('creatorStudioCard.impossibleDeCreerLaLivraison');
+            const message = (err as Error)?.message ?? 'Impossible de créer la livraison.';
             setCourierError(message);
         }
     }, [actions, buildCourierPayload]);
 
     const handleRefreshTracking = useCallback(() => {
         actions.refreshDeliveryTelemetry().catch((err: any) => {
-            const message = err?.message || t('creatorStudioCard.rafraichissementTrackingImpossiblePourLe');
+            const message = err?.message || "Rafraîchissement tracking impossible pour le moment.";
             setCourierError(message);
             console.error('[CreatorStudioCard] Erreur refresh tracking:', err);
         });
@@ -376,7 +374,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
             setCourierError(null);
             await actions.generateSuggestions();
         } catch (err: any) {
-            const message = err?.message || t('creatorStudioCard.impossibleDeGenererLesSuggestions');
+            const message = err?.message || 'Impossible de générer les suggestions IA.';
             setCourierError(message);
             console.error('[CreatorStudioCard] Erreur suggestions:', err);
             Alert.alert('Erreur', message);
@@ -388,7 +386,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
             setCourierError(null);
             await actions.requestPreview();
         } catch (err: any) {
-            const message = err?.message || t('creatorStudioCard.impossibleDeGenererLaPrevisualisation');
+            const message = err?.message || 'Impossible de générer la prévisualisation.';
             setCourierError(message);
             console.error('[CreatorStudioCard] Erreur preview:', err);
             Alert.alert('Erreur', message);
@@ -399,7 +397,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
         <NativeCard style={styles.card}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.kicker}>{t('creatorStudioCard.studioCreateurYukpo')}</Text>
+                    <Text style={styles.kicker}>Studio créateur Yukpo</Text>
                     <Text style={styles.title}>Preview intelligente</Text>
                     <Text style={styles.subtitle}>
                         {safeStringDisplay(serviceName, 'Service')} · {safeStringDisplay(productName, 'Produit')}
@@ -414,7 +412,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
             {state.sessionLoading && (
                 <View style={styles.sessionStatus}>
                     <ActivityIndicator size="small" color="#e0e9ff" />
-                    <Text style={styles.sessionStatusText}>{t('creatorStudioCard.connexionAuStudio')}</Text>
+                    <Text style={styles.sessionStatusText}>Connexion au studio…</Text>
                 </View>
             )}
             {state.error && !state.sessionLoading && (
@@ -427,7 +425,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
             <Text style={styles.sectionLabel}>Brief & recommandations IA</Text>
             <TextInput
                 style={styles.briefInput}
-                placeholder={t('creatorStudioCard.decrisTonServiceLesBenefices')}
+                placeholder="Décris ton service, les bénéfices, CTA, délais..."
                 placeholderTextColor="rgba(255,255,255,0.4)"
                 multiline
                 value={state.brief}
@@ -496,7 +494,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                 </TouchableOpacity>
                 <View style={styles.templateLockControl}>
                     <Text style={styles.templateLockLabel}>
-                        {state.templateLockEnabled ? t('creatorStudioCard.verrouille') : 'Auto'}
+                        {state.templateLockEnabled ? 'Verrouillé' : 'Auto'}
                     </Text>
                     <Switch
                         value={state.templateLockEnabled}
@@ -510,7 +508,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
             </View>
             <View style={styles.templatesRow}>
                 {state.templatesLoading ? (
-                    <Text style={styles.loadingTemplates}>{t('creatorStudioCard.chargementDesTemplates')}</Text>
+                    <Text style={styles.loadingTemplates}>Chargement des templates…</Text>
                 ) : (
                     templateSpecs.map((spec) => {
                         const active = spec.id === state.template;
@@ -558,7 +556,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                 {state.template ?? '—'}
             </Text>
 
-            <Text style={styles.sectionLabel}>{t('creatorStudioCard.historiquePreview')}</Text>
+            <Text style={styles.sectionLabel}>Historique preview</Text>
             <View style={styles.previewHistoryHeader}>
                 {state.hasPreviewWarnings && (
                     <View style={styles.warningBadge}>
@@ -598,7 +596,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                 {state.previewEventsLoading ? (
                     <ActivityIndicator color="#94a3b8" size="small" />
                 ) : previewHistorySource.length === 0 ? (
-                    <Text style={styles.previewHistoryEmpty}>{t('creatorStudioCard.aucunApercuEnregistre')}</Text>
+                    <Text style={styles.previewHistoryEmpty}>Aucun aperçu enregistré.</Text>
                 ) : (
                     previewHistorySource.slice(0, 4).map((event) => {
                         const warnings = extractPreviewWarnings(event.warnings);
@@ -640,7 +638,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
             {state.previewReady && (
                 <View style={styles.previewReady}>
                     <SafeIcon name="check-circle" size={20} color={modernColors.success} />
-                    <Text style={styles.previewText}>{t('creatorStudioCard.previewPreteTimelineEstimee6')}</Text>
+                    <Text style={styles.previewText}>Preview prête · Timeline estimée 6 scènes / 28s</Text>
                 </View>
             )}
             {!state.previewReady && state.sessionId && (
@@ -648,16 +646,16 @@ const [courierError, setCourierError] = useState<string | null>(null);
                     Session #{state.sessionId.slice(0, 6)} · appuie sur “Preview 5s” pour générer un aperçu.
                 </Text>
             )}
-            <Text style={styles.sectionLabel}>{t('creatorStudioCard.pickupDropoffFormulaireAvance')}</Text>
+            <Text style={styles.sectionLabel}>Pickup & dropoff (formulaire avancé)</Text>
             <View style={styles.vehicleSelector}>
-                <Text style={styles.formKicker}>{t('creatorStudioCard.typeDeVehicule')}</Text>
+                <Text style={styles.formKicker}>Type de véhicule</Text>
                 {Platform.OS === 'ios' ? (
                     <TouchableOpacity
                         style={styles.pickerButton}
                         onPress={() => {
                             Alert.alert(
-                                t('creatorStudioCard.typeDeVehicule'),
-                                t('creatorStudioCard.choisissezUnTypeDeVehicule'),
+                                'Type de véhicule',
+                                'Choisissez un type de véhicule',
                                 VEHICLE_OPTIONS.map((option) => ({
                                     text: `${option.label} - ${option.description}`,
                                     onPress: () => {
@@ -670,7 +668,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                         }}
                     >
                         <Text style={styles.pickerButtonText}>
-                            {VEHICLE_OPTIONS.find((o) => o.id === vehicleTypeId)?.label || t('creatorStudioCard.selectionner')}
+                            {VEHICLE_OPTIONS.find((o) => o.id === vehicleTypeId)?.label || 'Sélectionner...'}
                         </Text>
                         <SafeIcon name="chevron-down" size={16} color={modernColors.textSecondary} />
                     </TouchableOpacity>
@@ -705,7 +703,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
             <View style={styles.locationForm}>
                 <View style={styles.locationBlock}>
                     <View style={styles.locationHeaderRow}>
-                        <Text style={styles.formKicker}>{t('creatorStudioCard.pointDeCollecte')}</Text>
+                        <Text style={styles.formKicker}>Point de collecte</Text>
                         <TouchableOpacity
                             style={styles.gpsButton}
                             onPress={() => setShowPickupGPSModal(true)}
@@ -716,7 +714,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                     </View>
                     <TextInput
                         style={styles.locationInput}
-                        placeholder={t('creatorStudioCard.adressePickup')}
+                        placeholder="Adresse pickup"
                         placeholderTextColor="rgba(255,255,255,0.35)"
                         value={pickupAddressInput}
                         onChangeText={(value) => {
@@ -756,7 +754,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                     </View>
                     <TextInput
                         style={[styles.locationInput, styles.instructionsInput]}
-                        placeholder={t('creatorStudioCard.instructionsPickupCodePortailEtage')}
+                        placeholder="Instructions pickup (code portail, étage...)"
                         placeholderTextColor="rgba(255,255,255,0.35)"
                         value={pickupInstructions}
                         onChangeText={(value) => {
@@ -769,7 +767,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
 
                 <View style={styles.locationBlock}>
                     <View style={styles.locationHeaderRow}>
-                        <Text style={styles.formKicker}>{t('creatorStudioCard.pointDeLivraison')}</Text>
+                        <Text style={styles.formKicker}>Point de livraison</Text>
                         <TouchableOpacity
                             style={styles.gpsButton}
                             onPress={() => setShowDropoffGPSModal(true)}
@@ -780,7 +778,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                     </View>
                     <TextInput
                         style={styles.locationInput}
-                        placeholder={t('creatorStudioCard.adresseDropoff')}
+                        placeholder="Adresse dropoff"
                         placeholderTextColor="rgba(255,255,255,0.35)"
                         value={dropoffAddressInput}
                         onChangeText={(value) => {
@@ -833,7 +831,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
 
                 <View style={styles.passengerToggle}>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.passengerTitle}>{t('creatorStudioCard.modeTransportPassager')}</Text>
+                        <Text style={styles.passengerTitle}>Mode transport passager</Text>
                         <Text style={styles.passengerSubtitle}>
                             Utilise la même file delivery mais taggue la requête pour transporter un passager.
                         </Text>
@@ -852,7 +850,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                 <View style={styles.scheduleBlock}>
                     <View style={styles.scheduleHeader}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.passengerTitle}>{t('creatorStudioCard.pickupProgramme')}</Text>
+                            <Text style={styles.passengerTitle}>Pickup programmé</Text>
                             <Text style={styles.passengerSubtitle}>
                                 Planifie la prise en charge (ex. “demain 14h”) pour laisser le matching doux.
                             </Text>
@@ -886,7 +884,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                 <View style={styles.billingBlock}>
                     <View style={styles.scheduleHeader}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.passengerTitle}>{t('creatorStudioCard.livraisonIncluseDansLeTarif')}</Text>
+                            <Text style={styles.passengerTitle}>Livraison incluse dans le tarif</Text>
                             <Text style={styles.passengerSubtitle}>
                                 Aucun débit client (transport facturé au marchand / fournisseur).
                             </Text>
@@ -904,7 +902,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                     {billingInclusive && (
                         <TextInput
                             style={styles.locationInput}
-                            placeholder={t('creatorStudioCard.nomDuMarchandService')}
+                            placeholder="Nom du marchand / service"
                             placeholderTextColor="rgba(255,255,255,0.35)"
                             value={billingPartnerLabelValue}
                             onChangeText={(value) => {
@@ -943,7 +941,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                         disabled={!state.deliveryId}
                     >
                         <SafeIcon name="refresh-cw" size={14} color="#93c5fd" />
-                        <Text style={styles.secondaryActionText}>{t('creatorStudioCard.rafraichirTracking')}</Text>
+                        <Text style={styles.secondaryActionText}>Rafraîchir tracking</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[
@@ -953,7 +951,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                         onPress={() => {
                             actions
                                 .shareDropoffLink()
-                                .then(() => setCourierSuccess(t('creatorStudioCard.lienDestinataireGenere')))
+                                .then(() => setCourierSuccess('Lien destinataire généré.'))
                                 .catch(() => {
                                     /* erreur déjà gérée dans le hook */
                                 });
@@ -968,7 +966,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                 </View>
                 {state.dropoffShareLink && (
                     <View style={styles.shareLink}>
-                        <Text style={styles.shareLinkLabel}>{t('creatorStudioCard.lienClientAPartager')}</Text>
+                        <Text style={styles.shareLinkLabel}>Lien client à partager</Text>
                         <Text style={styles.shareLinkValue} selectable numberOfLines={2}>
                             {state.dropoffShareLink}
                         </Text>
@@ -982,7 +980,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                     <View style={styles.deliveryHeaderRow}>
                         <View style={styles.deliveryHeaderLeft}>
                             <SafeIcon name="map-pin" size={16} color={modernColors.primary} />
-                            <Text style={styles.deliveryTitle}>{t('creatorStudioCard.livraisonTempsReel')}</Text>
+                            <Text style={styles.deliveryTitle}>Livraison temps réel</Text>
                         </View>
                         <View
                             style={[
@@ -1010,7 +1008,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                             </Text>
                         </View>
                         <View style={styles.deliveryStat}>
-                            <Text style={styles.deliveryStatLabel}>{t('creatorStudioCard.tarifEstime')}</Text>
+                            <Text style={styles.deliveryStatLabel}>Tarif estimé</Text>
                             <Text style={styles.deliveryStatValue}>
                                 {formatCurrency(state.deliveryPricing?.estimated)}
                             </Text>
@@ -1064,7 +1062,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                         }
                         : undefined
                 }
-                title={t('creatorStudioCard.selectionDuPointDeCollecte')}
+                title="Sélection du point de collecte"
                 allowZoneSelection={false}
             />
 
@@ -1091,7 +1089,7 @@ const [courierError, setCourierError] = useState<string | null>(null);
                         }
                         : undefined
                 }
-                title={t('creatorStudioCard.selectionDuPointDeLivraison')}
+                title="Sélection du point de livraison"
                 allowZoneSelection={false}
             />
         </NativeCard>

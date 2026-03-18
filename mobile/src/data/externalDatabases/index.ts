@@ -1,5 +1,5 @@
 /**
- * 📦 AGRÉGATEUR DES BASES DE DONNÉES EXTERNES
+ * \uD83D\uDCE6 AGRÉGATEUR DES BASES DE DONNÉES EXTERNES
  * 
  * Ce fichier centralise l'accès à toutes les bases de données externes
  * pour faciliter l'import et la synchronisation.

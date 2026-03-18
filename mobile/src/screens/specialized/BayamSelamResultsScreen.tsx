@@ -370,9 +370,9 @@ const BayamSelamResultsScreen: React.FC = () => {
                             <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>{t('bayamSelamResults.resultatsBayamselam')}</Text>
+                            <Text style={styles.headerTitle}>Résultats BayamSelam</Text>
                             <Text style={styles.headerSubtitle}>
-                                {products.length} produit{products.length > 1 ? 's' : 't('bayamSelamResultsScreen.trouveproductslength1')s' : ''}
+                                {products.length} produit{products.length > 1 ? 's' : ''} trouvé{products.length > 1 ? 's' : ''}
                             </Text>
                         </View>
                         <TouchableOpacity
@@ -558,7 +558,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color="#F97316" />
-                <Text style={styles.loadingText}>{t('bayamSelamResults.rechercheEnCours')}</Text>
+                <Text style={styles.loadingText}>Recherche en cours...</Text>
             </View>
         );
     }
@@ -585,7 +585,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
             ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="package" size={64} color="#9CA3AF" />
-                    <Text style={styles.emptyText}>{t('bayamSelamResults.aucunProduitTrouve')}</Text>
+                    <Text style={styles.emptyText}>Aucun produit trouvé</Text>
                     <Text style={styles.emptySubtext}>
                         Essayez de modifier vos critères de recherche
                     </Text>
@@ -716,7 +716,7 @@ const TrendsView: React.FC<TrendsViewProps> = ({
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color="#F97316" />
-                <Text style={styles.loadingText}>{t('bayamSelamResults.chargementDesTendances')}</Text>
+                <Text style={styles.loadingText}>Chargement des tendances...</Text>
             </View>
         );
     }
@@ -744,7 +744,7 @@ const TrendsView: React.FC<TrendsViewProps> = ({
             ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="trending-up" size={64} color="#9CA3AF" />
-                    <Text style={styles.emptyText}>{t('bayamSelamResults.aucuneTendanceDisponible')}</Text>
+                    <Text style={styles.emptyText}>Aucune tendance disponible</Text>
                 </View>
             }
         />
@@ -771,7 +771,7 @@ const PromotionsView: React.FC<PromotionsViewProps> = ({
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color="#F97316" />
-                <Text style={styles.loadingText}>{t('bayamSelamResults.chargementDesPromotions')}</Text>
+                <Text style={styles.loadingText}>Chargement des promotions...</Text>
             </View>
         );
     }
@@ -798,7 +798,7 @@ const PromotionsView: React.FC<PromotionsViewProps> = ({
             ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="tag" size={64} color="#9CA3AF" />
-                    <Text style={styles.emptyText}>{t('bayamSelamResults.aucunePromotionDisponible')}</Text>
+                    <Text style={styles.emptyText}>Aucune promotion disponible</Text>
                 </View>
             }
         />
@@ -869,7 +869,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, formatP
                     activeOpacity={0.7}
                 >
                     <SafeIcon name="shopping-cart" size={16} color="#FFFFFF" type="lucide" />
-                    <Text style={styles.addToCartButtonText}>{t('bayamSelamResultsScreen.ajouter')}</Text>
+                    <Text style={styles.addToCartButtonText}>Ajouter</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -964,7 +964,7 @@ const CartModal: React.FC<CartModalProps> = ({
         <View style={styles.cartModalOverlay}>
             <View style={styles.cartModal}>
                 <View style={styles.cartModalHeader}>
-                    <Text style={styles.cartModalTitle}>{t('bayamSelamResults.monPanier')}</Text>
+                    <Text style={styles.cartModalTitle}>Mon panier</Text>
                     <TouchableOpacity onPress={onClose} style={styles.cartModalClose}>
                         <SafeIcon name="x" size={24} color="#111827" type="lucide" />
                     </TouchableOpacity>
@@ -973,7 +973,7 @@ const CartModal: React.FC<CartModalProps> = ({
                     {cartItems.length === 0 ? (
                         <View style={styles.cartEmpty}>
                             <SafeIcon name="shopping-cart" size={64} color="#9CA3AF" />
-                            <Text style={styles.cartEmptyText}>{t('bayamSelamResults.votrePanierEstVide')}</Text>
+                            <Text style={styles.cartEmptyText}>Votre panier est vide</Text>
                         </View>
                     ) : (
                         cartItems.map((item) => (

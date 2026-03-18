@@ -1,4 +1,4 @@
-// 📁 src/components/GroupeForm.tsx
+// \uD83D\uDCC1 src/components/GroupeForm.tsx
 
 import * as React from "react";
 import { useEffect, useState } from "react";
@@ -125,7 +125,7 @@ const [valeurs, setValeurs] = useState<Record<string, any>>({});
 
     if (!valid) {
       setErreurs(nouvellesErreurs);
-      Alert.alert('Erreur', '🚫 Veuillez corriger les champs.');
+      Alert.alert('Erreur', '\uD83D\uDEAB Veuillez corriger les champs.');
       return;
     }
 

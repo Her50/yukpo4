@@ -3,7 +3,6 @@ import React from 'react';
 import ReactNative from 'react-native';
 import { Card } from 'react-native-paper';
 import { theme } from '../theme/theme';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { StyleSheet, Text, View } = ReactNative;
 
@@ -29,25 +28,25 @@ const GlobalIAStatsPanel: React.FC<GlobalIAStatsPanelProps> = ({
     const statItems = [
         {
             icon: <Brain size={20} color={theme.colors.primary} />,
-            label: t('globalIAStatsPanel.servicesCrees'),
+            label: 'Services créés',
             value: stats.totalServices.toString(),
             color: theme.colors.primary
         },
         {
             icon: <CurrencyDollar size={20} color="#10B981" />,
-            label: t('globalIAStatsPanel.tokensUtilises'),
+            label: 'Tokens utilisés',
             value: stats.totalTokens.toString(),
             color: '#10B981'
         },
         {
             icon: <TrendUp size={20} color="#F59E0B" />,
-            label: t('globalIAStatsPanel.coutMoyen'),
+            label: 'Coût moyen',
             value: `${stats.averageCost} tokens`,
             color: '#F59E0B'
         },
         {
             icon: <Clock size={20} color="#8B5CF6" />,
-            label: t('globalIAStatsPanel.tauxDeSucces'),
+            label: 'Taux de succès',
             value: `${stats.successRate}%`,
             color: '#8B5CF6'
         }
@@ -69,7 +68,7 @@ const GlobalIAStatsPanel: React.FC<GlobalIAStatsPanelProps> = ({
             <Card.Content>
                 <View style={styles.header}>
                     <Brain size={24} color={theme.colors.primary} />
-                    <Text style={styles.title}>{t('globalIAStatsPanel.statistiquesIa')}</Text>
+                    <Text style={styles.title}>Statistiques IA</Text>
                 </View>
 
                 <View style={styles.statsGrid}>
@@ -86,7 +85,7 @@ const GlobalIAStatsPanel: React.FC<GlobalIAStatsPanelProps> = ({
 
                 <View style={styles.summary}>
                     <Text style={styles.summaryText}>
-                        Votre IA a généré {stats.totalServices != null ? String(stats.totalServices) : '0t('globalIAStatsPanel.servicesAvecUnTauxDeSucces')0'}%
+                        Votre IA a généré {stats.totalServices != null ? String(stats.totalServices) : '0'} services avec un taux de succès de {stats.successRate != null ? String(stats.successRate) : '0'}%
                     </Text>
                 </View>
             </Card.Content>

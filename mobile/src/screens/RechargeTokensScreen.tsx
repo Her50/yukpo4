@@ -12,8 +12,30 @@ import ReceiptModal from '../components/ReceiptModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { usePaymentMethodCheck } from '../hooks/usePaymentMethodCheck';
+import useUserCountry from '../hooks/useUserCountry';
 import { apiPost } from '../services/api';
 import { theme } from '../theme/theme';
+
+// Mapping pays → devise (miroir du backend payment_aggregator.rs::currency_for_country)
+const currencyForCountry = (code: string): { currency: string; symbol: string } => {
+  const map: Record<string, { currency: string; symbol: string }> = {
+    CM: { currency: 'XAF', symbol: 'FCFA' }, GA: { currency: 'XAF', symbol: 'FCFA' },
+    CG: { currency: 'XAF', symbol: 'FCFA' }, CF: { currency: 'XAF', symbol: 'FCFA' },
+    TD: { currency: 'XAF', symbol: 'FCFA' }, GQ: { currency: 'XAF', symbol: 'FCFA' },
+    SN: { currency: 'XOF', symbol: 'FCFA' }, CI: { currency: 'XOF', symbol: 'FCFA' },
+    ML: { currency: 'XOF', symbol: 'FCFA' }, BF: { currency: 'XOF', symbol: 'FCFA' },
+    NE: { currency: 'XOF', symbol: 'FCFA' }, TG: { currency: 'XOF', symbol: 'FCFA' },
+    BJ: { currency: 'XOF', symbol: 'FCFA' }, GW: { currency: 'XOF', symbol: 'FCFA' },
+    NG: { currency: 'NGN', symbol: '\u20a6' }, GH: { currency: 'GHS', symbol: 'GH\u20b5' },
+    KE: { currency: 'KES', symbol: 'KSh' }, TZ: { currency: 'TZS', symbol: 'TSh' },
+    UG: { currency: 'UGX', symbol: 'USh' }, RW: { currency: 'RWF', symbol: 'FRw' },
+    ZA: { currency: 'ZAR', symbol: 'R' }, CD: { currency: 'CDF', symbol: 'FC' },
+    ET: { currency: 'ETB', symbol: 'Br' }, MG: { currency: 'MGA', symbol: 'Ar' },
+    MA: { currency: 'MAD', symbol: 'DH' }, DZ: { currency: 'DZD', symbol: 'DA' },
+    TN: { currency: 'TND', symbol: 'DT' }, EG: { currency: 'EGP', symbol: 'E\u00a3' },
+  };
+  return map[code?.toUpperCase()] || { currency: 'XAF', symbol: 'FCFA' };
+};
 
 interface RechargeOption {
   id: string;
@@ -39,6 +61,8 @@ const RechargeTokensScreen: React.FC = () => {
   const route = useRoute<any>();
   const { user, refreshUser } = useAuth();
   const { t } = useLanguageSafe();
+  const { countryCode } = useUserCountry();
+  const userCurrency = currencyForCountry(countryCode);
 
   const returnTo = route.params?.returnTo as string | undefined;
   const returnParams = route.params?.returnParams as Record<string, any> | undefined;
@@ -54,6 +78,8 @@ const RechargeTokensScreen: React.FC = () => {
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'awaiting' | 'success' | 'failed'>('idle');
 
   // Options de recharge prédéfinies
+  // Bonus tiers match backend payment_service.rs::add_tokens_to_user
+  // ≥10000 → 20%, ≥5000 → 10%, ≥2000 → 5%, else 0%
   const rechargeOptions: RechargeOption[] = [
     {
       id: 'option1',
@@ -65,22 +91,23 @@ const RechargeTokensScreen: React.FC = () => {
       id: 'option2',
       amount: 2500,
       tokens: 2500,
-      bonus: 0,
+      bonus: 125,
       popular: true,
+      savings: 5,
     },
     {
       id: 'option3',
       amount: 5000,
       tokens: 5000,
-      bonus: 0,
+      bonus: 500,
       savings: 10,
     },
     {
       id: 'option4',
       amount: 10000,
       tokens: 10000,
-      bonus: 0,
-      savings: 15,
+      bonus: 2000,
+      savings: 20,
     },
   ];
 
@@ -306,7 +333,7 @@ const RechargeTokensScreen: React.FC = () => {
       const response = await apiPost('/api/payments/initiate', {
         amount_xaf: amount,
         payment_method: selectedPaymentMethod,
-        currency: 'XAF',
+        currency: userCurrency.currency,
         phone_number: isMobileMoney ? phoneNumber : undefined,
       });
 
@@ -484,7 +511,7 @@ const RechargeTokensScreen: React.FC = () => {
 
             <View style={styles.optionContent}>
               <Text style={styles.optionAmount}>
-                {option.amount.toLocaleString()} FCFA
+                {option.amount.toLocaleString()} {userCurrency.symbol}
               </Text>
               <Text style={styles.optionTokens}>
                 {t('rechargeScreen.creditedToBalance') || t('rechargeTokens.crediteAVotreSolde')}
@@ -514,7 +541,7 @@ const RechargeTokensScreen: React.FC = () => {
           <Title style={styles.customTitle}>{t('rechargeScreen.customAmount') || t('rechargeTokens.montantPersonnalise')}</Title>
           <TextInput
             style={styles.customInput}
-            placeholder={t('rechargeScreen.enterAmount') || 'Entrez le montant en XAF'}
+            placeholder={t('rechargeScreen.enterAmount') || `Entrez le montant en ${userCurrency.symbol}`}
             value={customAmount}
             onChangeText={(text) => {
               setCustomAmount(text);
@@ -582,10 +609,10 @@ const RechargeTokensScreen: React.FC = () => {
       </View>
 
       {/* Champ numéro de téléphone pour Mobile Money */}
-      {(selectedPaymentMethod === 'mtn_momo' || selectedPaymentMethod === 'orange_money') && (
+      {(['mtn_momo', 'orange_money', 'wave', 'moov_money', 'airtel_money', 'mpesa', 'vodafone_cash', 'free_money', 'tigo_pesa', 'ecocash'].includes(selectedPaymentMethod || '')) && (
         <Card style={styles.phoneCard}>
           <Card.Content>
-            <Text style={styles.phoneLabel}>📱 {t('payment.phone') || t('rechargeTokens.numeroDeTelephone')}</Text>
+            <Text style={styles.phoneLabel}>\uD83D\uDCF1 {t('payment.phone') || t('rechargeTokens.numeroDeTelephone')}</Text>
             <TextInput
               style={styles.phoneInput}
               placeholder={t('rechargeScreen.phonePlaceholder') || 'Exemple: 699999999'}
@@ -596,7 +623,7 @@ const RechargeTokensScreen: React.FC = () => {
               maxLength={15}
             />
             <Text style={styles.phoneHint}>
-              {selectedPaymentMethod === 'mtn_momo' ? '💡 MTN : 67X XXX XXX ou 65X XXX XXX' : '💡 Orange : 69X XXX XXX'}
+              {selectedPaymentMethod === 'mtn_momo' ? '\uD83D\uDCA1 MTN : 67X XXX XXX ou 65X XXX XXX' : '\uD83D\uDCA1 Orange : 69X XXX XXX'}
             </Text>
             {!paymentCheck.has_payment_method && (
               <TouchableOpacity
@@ -621,10 +648,10 @@ const RechargeTokensScreen: React.FC = () => {
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setCurrentStep('confirm')}
-          disabled={!selectedPaymentMethod || ((selectedPaymentMethod === 'mtn_momo' || selectedPaymentMethod === 'orange_money') && !phoneNumber)}
+          disabled={!selectedPaymentMethod || (['mtn_momo', 'orange_money', 'wave', 'moov_money', 'airtel_money', 'mpesa', 'vodafone_cash', 'free_money', 'tigo_pesa', 'ecocash'].includes(selectedPaymentMethod || '') && !phoneNumber)}
           style={[
             styles.nextButton,
-            (!selectedPaymentMethod || ((selectedPaymentMethod === 'mtn_momo' || selectedPaymentMethod === 'orange_money') && !phoneNumber)) && styles.nextButtonDisabled
+            (!selectedPaymentMethod || (['mtn_momo', 'orange_money', 'wave', 'moov_money', 'airtel_money', 'mpesa', 'vodafone_cash', 'free_money', 'tigo_pesa', 'ecocash'].includes(selectedPaymentMethod || '') && !phoneNumber)) && styles.nextButtonDisabled
           ]}
         >
           <Text style={styles.nextButtonText}>{t('rechargeScreen.continue') || 'Continuer →'}</Text>
@@ -642,13 +669,13 @@ const RechargeTokensScreen: React.FC = () => {
           <View style={styles.confirmRow}>
             <Text style={styles.confirmLabel}>{t('rechargeScreen.amount') || 'Montant'}:</Text>
             <Text style={styles.confirmValue}>
-              {getSelectedAmount().toLocaleString()} XAF
+              {getSelectedAmount().toLocaleString()} {userCurrency.symbol}
             </Text>
           </View>
 
           <View style={styles.confirmRow}>
             <Text style={styles.confirmLabel}>{t('rechargeScreen.credited') || t('rechargeTokens.montantCredite')}:</Text>
-            <Text style={styles.confirmValue}>{getSelectedAmount().toLocaleString()} FCFA</Text>
+            <Text style={styles.confirmValue}>{getSelectedAmount().toLocaleString()} {userCurrency.symbol}</Text>
           </View>
 
           <View style={styles.confirmRow}>
@@ -692,7 +719,7 @@ const RechargeTokensScreen: React.FC = () => {
 
   const creditNumber = Number(user?.credits ?? user?.tokens_balance ?? 0);
   const formattedCredits = Number.isFinite(creditNumber) ? creditNumber.toLocaleString() : '0';
-  const balanceLabel = `${t('yourBalance') || 'Solde actuel'}: ${formattedCredits} XAF`;
+  const balanceLabel = `${t('yourBalance') || 'Solde actuel'}: ${formattedCredits} ${userCurrency.symbol}`;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -708,7 +735,7 @@ const RechargeTokensScreen: React.FC = () => {
             style={styles.historyButton}
             onPress={() => (navigation as any).navigate('SoldeDetail')}
           >
-            <Text style={styles.historyButtonText}>📊 {t('tokens.history') || 'Historique'}</Text>
+            <Text style={styles.historyButtonText}>\uD83D\uDCCA {t('tokens.history') || 'Historique'}</Text>
           </TouchableOpacity>
         )}
       />

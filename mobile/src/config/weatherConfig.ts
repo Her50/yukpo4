@@ -72,7 +72,7 @@ export const WEATHER_CONFIG = {
             'Neige',
             'Vent fort'
         ],
-        icons: ['☀️', '☁️', '🌧️', '⛈️', '⛅', '🌫️', '❄️', '💨'],
+        icons: ['☀️', '☁️', '\uD83C\uDF27️', '⛈️', '⛅', '\uD83C\uDF2B️', '❄️', '\uD83D\uDCA8'],
         temperatureRange: {
             min: 18,
             max: 35

@@ -247,7 +247,7 @@ export async function generateRecipeHTML(recipeData: RecipePdfData): Promise<str
     <div class="recipe-container">
         <!-- Header -->
         <div class="recipe-header">
-            <div class="recipe-title">🍽️ ${recipe.recipe_name}</div>
+            <div class="recipe-title">\uD83C\uDF7D️ ${recipe.recipe_name}</div>
             <div class="recipe-subtitle">Recette complète</div>
         </div>
 
@@ -269,7 +269,7 @@ export async function generateRecipeHTML(recipeData: RecipePdfData): Promise<str
                 ` : ''}
                 ${recipe.cook_time_minutes ? `
                 <div class="info-item">
-                    <div class="info-label">🔥 Temps de cuisson</div>
+                    <div class="info-label">\uD83D\uDD25 Temps de cuisson</div>
                     <div class="info-value">${recipe.cook_time_minutes} min</div>
                 </div>
                 ` : ''}
@@ -286,12 +286,12 @@ export async function generateRecipeHTML(recipeData: RecipePdfData): Promise<str
                 </div>
                 ` : ''}
                 <div class="info-item">
-                    <div class="info-label">👥 Portions</div>
+                    <div class="info-label">\uD83D\uDC65 Portions</div>
                     <div class="info-value">${recipe.servings}</div>
                 </div>
                 ${recipe.cuisine_style ? `
                 <div class="info-item">
-                    <div class="info-label">🌍 Style culinaire</div>
+                    <div class="info-label">\uD83C\uDF0D Style culinaire</div>
                     <div class="info-value">${recipe.cuisine_style}</div>
                 </div>
                 ` : ''}
@@ -300,7 +300,7 @@ export async function generateRecipeHTML(recipeData: RecipePdfData): Promise<str
             <!-- Ingrédients -->
             ${recipe.ingredients && recipe.ingredients.length > 0 ? `
             <div class="recipe-section">
-                <h2 class="section-title">📋 Ingrédients</h2>
+                <h2 class="section-title">\uD83D\uDCCB Ingrédients</h2>
                 <ul class="ingredients-list">
                     ${recipe.ingredients.map((ingredient: any) => `
                     <li class="ingredient-item">
@@ -317,7 +317,7 @@ export async function generateRecipeHTML(recipeData: RecipePdfData): Promise<str
             <!-- Instructions -->
             ${recipe.instructions && recipe.instructions.length > 0 ? `
             <div class="recipe-section">
-                <h2 class="section-title">👨‍🍳 Instructions</h2>
+                <h2 class="section-title">\uD83D\uDC68‍\uD83C\uDF73 Instructions</h2>
                 <ol class="instructions-list">
                     ${recipe.instructions.map((instruction: string, index: number) => `
                     <li class="instruction-item">
@@ -332,7 +332,7 @@ export async function generateRecipeHTML(recipeData: RecipePdfData): Promise<str
             <!-- Astuces -->
             ${recipe.tips && recipe.tips.length > 0 ? `
             <div class="recipe-section">
-                <h2 class="section-title">💡 Astuces</h2>
+                <h2 class="section-title">\uD83D\uDCA1 Astuces</h2>
                 <ul class="tips-list">
                     ${recipe.tips.map((tip: string) => `
                     <li class="tip-item">
@@ -346,7 +346,7 @@ export async function generateRecipeHTML(recipeData: RecipePdfData): Promise<str
             <!-- Nutrition -->
             ${recipe.nutrition ? `
             <div class="recipe-section">
-                <h2 class="section-title">🥗 Valeurs nutritionnelles (par portion)</h2>
+                <h2 class="section-title">\uD83E\uDD57 Valeurs nutritionnelles (par portion)</h2>
                 <div class="nutrition-grid">
                     ${recipe.calories_per_serving ? `
                     <div class="nutrition-item">
@@ -374,7 +374,7 @@ export async function generateRecipeHTML(recipeData: RecipePdfData): Promise<str
             ${recipe.estimated_cost ? `
             <div class="recipe-section">
                 <div class="cost-section">
-                    <div class="cost-label">💰 Coût estimé</div>
+                    <div class="cost-label">\uD83D\uDCB0 Coût estimé</div>
                     <div class="cost-value">${recipe.estimated_cost.toLocaleString('fr-FR')} ${currency}</div>
                 </div>
             </div>
@@ -440,7 +440,7 @@ export async function shareRecipePDF(pdfUri: string, recipeName: string) {
                 url: `file://${pdfUri}`,
                 type: 'application/pdf',
                 title: `Recette - ${recipeName}`,
-                message: `🍽️ Voici la recette de "${recipeName}" générée par Yukpo !`,
+                message: `\uD83C\uDF7D️ Voici la recette de "${recipeName}" générée par Yukpo !`,
                 social: Share.Social.WHATSAPP,
             });
         } catch (shareError) {

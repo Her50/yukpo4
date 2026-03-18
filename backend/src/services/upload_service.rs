@@ -5,7 +5,7 @@ use crate::core::types::{AppError, AppResult};
 use crate::services::media_storage_service::MediaStorageService;
 use axum::extract::Multipart;
 use log::{info, warn};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs::{self, File};

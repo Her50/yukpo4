@@ -3,24 +3,24 @@
  * Permet de voir les crédits actifs, leur montant net, et de les utiliser pour un nouveau voyage
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    FlatList,
-    TouchableOpacity,
-    Alert,
-    ActivityIndicator,
-    RefreshControl,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useLanguageSafe } from '../../i18n/useLanguageSafe';
+import { useNavigation } from '@react-navigation/native';
+import { useCallback, useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
+import {
+    formatCreditAmount,
     getUserCredits,
     TicketCredit,
-    formatCreditAmount,
 } from '../../services/busTicketCreditService';
 
 const COLORS = {

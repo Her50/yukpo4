@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SimplePrestationSelectorProps {
     label: string;
@@ -32,10 +31,9 @@ const SimplePrestationSelector: React.FC<SimplePrestationSelectorProps> = ({
     selected,
     onSelectionChange,
     allowCustom = true,
-    placeholder={t('simplePrestationSelector.ajouterUneOptionPersonnalisee')}
+    placeholder = 'Ajouter une option personnalisée'
 }) => {
-        const { t } = useLanguageSafe();
-const [showModal, setShowModal] = useState(false);
+    const [showModal, setShowModal] = useState(false);
     const [customInput, setCustomInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -72,15 +70,15 @@ const [showModal, setShowModal] = useState(false);
                     onPress={() => setShowModal(true)}
                 >
                     <SafeIcon name="plus" size={18} color={modernColors.primary} />
-                    <Text style={styles.addButtonText}>{t('simplePrestationSelector.ajouter')}</Text>
+                    <Text style={styles.addButtonText}>Ajouter</Text>
                 </TouchableOpacity>
             </View>
 
             {/* Liste des options sélectionnées */}
             {selected.length === 0 ? (
                 <View style={styles.emptyState}>
-                    <Text style={styles.emptyText}>{t('simplePrestationSelector.aucuneOptionSelectionnee')}</Text>
-                    <Text style={styles.emptyHint}>{t('simplePrestationSelector.appuyezSurAjouterPourCommencer')}</Text>
+                    <Text style={styles.emptyText}>Aucune option sélectionnée</Text>
+                    <Text style={styles.emptyHint}>Appuyez sur "Ajouter" pour commencer</Text>
                 </View>
             ) : (
                 <View style={styles.selectedList}>
@@ -108,7 +106,7 @@ const [showModal, setShowModal] = useState(false);
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{t('simplePrestationSelector.selectionner')}</Text>
+                            <Text style={styles.modalTitle}>Sélectionner</Text>
                             <TouchableOpacity onPress={() => setShowModal(false)}>
                                 <SafeIcon name="x" size={24} color="#6B7280" />
                             </TouchableOpacity>
@@ -118,7 +116,7 @@ const [showModal, setShowModal] = useState(false);
                             <SafeIcon name="search" size={18} color="#9CA3AF" />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder={t('simplePrestationSelector.rechercher')}
+                                placeholder="Rechercher..."
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 placeholderTextColor="#9CA3AF"
@@ -127,7 +125,7 @@ const [showModal, setShowModal] = useState(false);
 
                         <ScrollView style={styles.optionsList}>
                             {filteredOptions.length === 0 ? (
-                                <Text style={styles.noResults}>{t('simplePrestationSelector.aucunResultat')}</Text>
+                                <Text style={styles.noResults}>Aucun résultat</Text>
                             ) : (
                                 filteredOptions.map((option) => (
                                     <TouchableOpacity

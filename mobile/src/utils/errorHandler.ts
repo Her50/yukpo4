@@ -38,7 +38,7 @@ class ErrorHandler {
         });
 
         // Log détaillé
-        console.error(`🚨 [ErrorHandler] ${context.component || 'Unknown'} - ${context.action || 'Unknown action'}:`, {
+        console.error(`\uD83D\uDEA8 [ErrorHandler] ${context.component || 'Unknown'} - ${context.action || 'Unknown action'}:`, {
             message: errorObj.message,
             stack: errorObj.stack,
             context,
@@ -65,7 +65,7 @@ class ErrorHandler {
             });
 
             if (fallback !== undefined) {
-                console.warn(`🔄 [ErrorHandler] Utilisation du fallback pour ${context?.component}`);
+                console.warn(`\uD83D\uDD04 [ErrorHandler] Utilisation du fallback pour ${context?.component}`);
                 return fallback;
             }
 
@@ -86,7 +86,7 @@ class ErrorHandler {
             });
 
             if (fallback !== undefined) {
-                console.warn(`🔄 [ErrorHandler] Utilisation du fallback pour ${context?.component}`);
+                console.warn(`\uD83D\uDD04 [ErrorHandler] Utilisation du fallback pour ${context?.component}`);
                 return fallback;
             }
 

@@ -1,6 +1,6 @@
 // @ts-nocheck
 /**
- * 🌍 PRODUITS LOCAUX PAR PAYS - AFRIQUE FRANCOPHONE
+ * \uD83C\uDF0D PRODUITS LOCAUX PAR PAYS - AFRIQUE FRANCOPHONE
  * 
  * Cette base centralise les produits locaux critiques manquants dans Open Food Facts
  * pour tous les pays africains francophones.
@@ -11,7 +11,7 @@
 import { EnrichedProduct } from '../enrichedProductDatabase';
 
 // ═══════════════════════════════════════════════════════════
-// 🇨🇮 CÔTE D'IVOIRE
+// \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE
 // ═══════════════════════════════════════════════════════════
 
 export const IVORY_COAST_LOCAL_PRODUCTS: Partial<EnrichedProduct>[] = [
@@ -159,7 +159,7 @@ export const IVORY_COAST_LOCAL_PRODUCTS: Partial<EnrichedProduct>[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════
-// 🇸🇳 SÉNÉGAL
+// \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL
 // ═══════════════════════════════════════════════════════════
 
 export const SENEGAL_LOCAL_PRODUCTS: Partial<EnrichedProduct>[] = [
@@ -313,7 +313,7 @@ export const SENEGAL_LOCAL_PRODUCTS: Partial<EnrichedProduct>[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════
-// 🇲🇱 MALI
+// \uD83C\uDDF2\uD83C\uDDF1 MALI
 // ═══════════════════════════════════════════════════════════
 
 export const MALI_LOCAL_PRODUCTS: Partial<EnrichedProduct>[] = [
@@ -451,7 +451,7 @@ export const MALI_LOCAL_PRODUCTS: Partial<EnrichedProduct>[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════
-// 🇧🇫 BURKINA FASO
+// \uD83C\uDDE7\uD83C\uDDEB BURKINA FASO
 // ═══════════════════════════════════════════════════════════
 
 export const BURKINA_FASO_LOCAL_PRODUCTS: Partial<EnrichedProduct>[] = [

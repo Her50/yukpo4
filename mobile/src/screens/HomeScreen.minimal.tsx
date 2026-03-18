@@ -10,8 +10,7 @@ import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const HomeScreenMinimal = () => {
   const { user } = useAuth();
-      const { t } = useLanguageSafe();
-const [step, setStep] = useState(1);
+  const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,7 +50,7 @@ const [step, setStep] = useState(1);
             await imports[i]();
             await new Promise(resolve => setTimeout(resolve, 200));
           } catch (importError: any) {
-            throw new Error(t('homeScreen.minimal.importEchoue', { i + 1: i + 1, importError_message: importError.message }));
+            throw new Error(`Import ${i + 1} échoué: ${importError.message}`);
           }
         }
 
@@ -59,7 +58,7 @@ const [step, setStep] = useState(1);
         console.log('[HomeScreenMinimal] ✅ TOUS LES COMPOSANTS IMPORTÉS AVEC SUCCÈS !');
 
       } catch (err: any) {
-        const errorMsg = t('homeScreen.minimal.erreurALetape', { step: step, err?_message || String(err): err?.message || String(err) });
+        const errorMsg = `Erreur à l'étape ${step}: ${err?.message || String(err)}`;
         console.error('[HomeScreenMinimal] ❌', errorMsg);
         setError(errorMsg);
       }
@@ -85,15 +84,15 @@ const [step, setStep] = useState(1);
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Yukpomnang</Text>
-        <Text style={styles.subtitle}>{t('homeScreen.minimal.modeDiagnosticHomescreen')}</Text>
+        <Text style={styles.subtitle}>Mode diagnostic HomeScreen</Text>
       </View>
 
       <View style={styles.content}>
         <ActivityIndicator size="large" color="#6366F1" />
-        <Text style={styles.step}>{t('homeScreenMinimal.step')} {step}/5</Text>
+        <Text style={styles.step}>Étape {step}/5</Text>
         <Text style={styles.description}>
           {step === 1 && 'Chargement de HomeScreen...'}
-          {step === 2 && `AuthContext: ${user?.email || t('homeScreen.minimal.utilisateurConnecte')}`}
+          {step === 2 && `AuthContext: ${user?.email || 'Utilisateur connecté'}`}
           {step === 3 && 'Test LanguageContext...'}
           {step === 4 && 'Test des imports de composants...'}
           {step === 5 && '✅ HomeScreen fonctionne !'}
@@ -101,7 +100,7 @@ const [step, setStep] = useState(1);
 
         {step === 5 && (
           <View style={styles.successSection}>
-            <Text style={styles.successTitle}>{t('homeScreen.minimal.diagnosticReussi')}</Text>
+            <Text style={styles.successTitle}>✅ Diagnostic réussi</Text>
             <Text style={styles.successText}>
               HomeScreen peut charger tous les composants sans crash.
               Le problème vient probablement d\'un autre écran ou de la navigation.

@@ -67,7 +67,7 @@ const [expanded, setExpanded] = useState(false);
         <NativeCard style={styles.container}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.title}>🧪 A/B Testing</Text>
+                    <Text style={styles.title}>\uD83E\uDDEA A/B Testing</Text>
                     <Text style={styles.subtitle}>
                         Testez plusieurs variantes pour optimiser vos performances
                     </Text>
@@ -149,7 +149,7 @@ const [expanded, setExpanded] = useState(false);
 
                         {variant.performance && (
                             <View style={styles.performanceContainer}>
-                                <Text style={styles.performanceTitle}>📊 Performances</Text>
+                                <Text style={styles.performanceTitle}>\uD83D\uDCCA Performances</Text>
                                 <View style={styles.performanceRow}>
                                     <View style={styles.performanceMetric}>
                                         <Text style={styles.performanceValue}>

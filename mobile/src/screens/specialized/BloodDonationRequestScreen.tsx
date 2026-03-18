@@ -22,9 +22,9 @@ import { modernColors } from '../../theme/modernTheme';
 
 const GROUPES_SANGUINS = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 const URGENCE_LEVELS = [
-    { value: 'normal', label: 'Normal', color: '#10B981' },
-    { value: 'urgent', label: 'Urgent', color: '#F59E0B' },
-    { value: 'critique', label: 'Critique', color: '#EF4444' },
+    { value: 'normal', labelKey: 'bloodDonationRequest.levelNormal', fallback: 'Normal', color: '#10B981' },
+    { value: 'urgent', labelKey: 'bloodDonationRequest.levelUrgent', fallback: 'Urgent', color: '#F59E0B' },
+    { value: 'critique', labelKey: 'bloodDonationRequest.levelCritique', fallback: 'Critique', color: '#EF4444' },
 ];
 
 interface BloodBank {
@@ -79,12 +79,13 @@ const BloodDonationRequestScreen: React.FC = () => {
     const loadBloodBanks = async () => {
         try {
             setLoadingBanks(true);
-            const response = await apiGet('/api/banques-sang/my-banks');
+            const response = await apiGet('/api/banques-sang');
             if (response.success && response.data) {
-                setBloodBanks(response.data as BloodBank[]);
+                const banks = (response.data as any)?.data || response.data;
+                setBloodBanks(Array.isArray(banks) ? (banks as BloodBank[]) : []);
                 // Si une seule banque et banqueId non fourni, la sélectionner
-                if ((response.data as any[]).length === 1 && !banqueId) {
-                    setFormData({ ...formData, banque_sang_id: (response.data as any[])[0].id });
+                if (Array.isArray(banks) && banks.length === 1 && !banqueId) {
+                    setFormData({ ...formData, banque_sang_id: banks[0].id });
                 }
             }
         } catch (error: any) {
@@ -204,20 +205,20 @@ const BloodDonationRequestScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>{t('bloodDonationRequest.creerUneDemandeDeDon')}</Text>
+                <Text style={styles.title}>{t('bloodDonationRequest.title') || 'Créer une demande de don'}</Text>
             </View>
 
             <ScrollView style={styles.container} contentContainerStyle={styles.content}>
                 {/* Sélection banque de sang */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Banque de sang</Text>
+                    <Text style={styles.sectionTitle}>{t('bloodDonationRequest.banqueDeSang') || 'Banque de sang'}</Text>
                     {loadingBanks ? (
                         <ActivityIndicator size="small" color={modernColors.primary} />
                     ) : (
                         <>
                             {bloodBanks.length === 0 ? (
                                 <Text style={styles.hintText}>
-                                    Aucune banque de sang trouvée. Veuillez d'abord créer une banque de sang.
+                                    {t('bloodDonationRequest.noBanksFound') || 'Aucune banque de sang trouvée. Veuillez d\'abord créer une banque de sang.'}
                                 </Text>
                             ) : (
                                 <View style={styles.bankSelector}>
@@ -267,7 +268,7 @@ const BloodDonationRequestScreen: React.FC = () => {
 
                 {/* Groupe sanguin requis */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('bloodDonationRequest.groupeSanguinRequis')}</Text>
+                    <Text style={styles.sectionTitle}>{t('bloodDonationRequest.groupeSanguinRequis') || 'Groupe sanguin requis'} *</Text>
                     <View style={styles.bloodGroupGrid}>
                         {GROUPES_SANGUINS.map((group) => (
                             <TouchableOpacity
@@ -293,7 +294,7 @@ const BloodDonationRequestScreen: React.FC = () => {
                     {/* Info compatibilité */}
                     {matchingInfo && matchingInfo.compatibleGroups.length > 0 && (
                         <View style={styles.compatibilityInfo}>
-                            <Text style={styles.compatibilityTitle}>Groupes compatibles:</Text>
+                            <Text style={styles.compatibilityTitle}>{t('bloodDonationRequest.groupesCompatibles') || 'Groupes compatibles:'}</Text>
                             <View style={styles.compatibleGroupsList}>
                                 {matchingInfo.compatibleGroups.map((group) => (
                                     <View key={group} style={styles.compatibleGroupTag}>
@@ -307,7 +308,7 @@ const BloodDonationRequestScreen: React.FC = () => {
 
                 {/* Quantité */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('bloodDonationRequest.quantiteRequise')}</Text>
+                    <Text style={styles.sectionTitle}>{t('bloodDonationRequest.quantiteRequise') || 'Quantité requise'} *</Text>
                     <View style={styles.quantityRow}>
                         <TextInput
                             style={styles.quantityInput}
@@ -329,8 +330,8 @@ const BloodDonationRequestScreen: React.FC = () => {
                 <View style={styles.section}>
                     <View style={styles.switchGroup}>
                         <View>
-                            <Text style={styles.sectionTitle}>{t('bloodDonationRequest.demandeUrgente')}</Text>
-                            <Text style={styles.hintText}>{t('bloodDonationRequest.lesDonneursSerontNotifiesEn')}</Text>
+                            <Text style={styles.sectionTitle}>{t('bloodDonationRequest.demandeUrgente') || 'Demande urgente'}</Text>
+                            <Text style={styles.hintText}>{t('bloodDonationRequest.donneursNotifies') || 'Les donneurs seront notifiés en priorité'}</Text>
                         </View>
                         <Switch
                             value={formData.is_urgent}
@@ -347,7 +348,7 @@ const BloodDonationRequestScreen: React.FC = () => {
 
                     {formData.is_urgent && (
                         <View style={styles.urgenceLevelContainer}>
-                            <Text style={styles.label}>Niveau d'urgence</Text>
+                            <Text style={styles.label}>{t('bloodDonationRequest.niveauUrgence') || 'Niveau d\'urgence'}</Text>
                             <View style={styles.urgenceLevelButtons}>
                                 {URGENCE_LEVELS.map((level) => (
                                     <TouchableOpacity
@@ -366,7 +367,7 @@ const BloodDonationRequestScreen: React.FC = () => {
                                                 styles.urgenceLevelTextSelected,
                                             ]}
                                         >
-                                            {level.label}
+                                            {t(level.labelKey) || level.fallback}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
@@ -377,28 +378,28 @@ const BloodDonationRequestScreen: React.FC = () => {
 
                 {/* Informations additionnelles */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('bloodDonationRequest.informationsAdditionnelles')}</Text>
+                    <Text style={styles.sectionTitle}>{t('bloodDonationRequest.infosAdditionnelles') || 'Informations additionnelles'}</Text>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('bloodDonationRequest.nomDuPatientOptionnel')}</Text>
+                        <Text style={styles.label}>{t('bloodDonationRequest.nomPatient') || 'Nom du patient'} ({t('bloodDonationRequest.optionnel') || 'optionnel'})</Text>
                         <NativeInput
                             value={formData.patient_name}
                             onChangeText={(text) => setFormData({ ...formData, patient_name: text })}
-                            placeholder={t('bloodDonationRequest.nomDuPatient')}
+                            placeholder={t('bloodDonationRequest.nomPatient') || 'Nom du patient'}
                         />
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('bloodDonationRequest.hopitalOptionnel')}</Text>
+                        <Text style={styles.label}>{t('bloodDonationRequest.hopital') || 'Hôpital'} ({t('bloodDonationRequest.optionnel') || 'optionnel'})</Text>
                         <NativeInput
                             value={formData.hospital_name}
                             onChangeText={(text) => setFormData({ ...formData, hospital_name: text })}
-                            placeholder={t('bloodDonationRequest.nomDeL')}hôpital"
+                            placeholder={t('bloodDonationRequest.nomHopital') || 'Nom de l\'hôpital'}
                         />
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Date limite (optionnel)</Text>
+                        <Text style={styles.label}>{t('bloodDonationRequest.dateLimite') || 'Date limite'} ({t('bloodDonationRequest.optionnel') || 'optionnel'})</Text>
                         <NativeInput
                             value={formData.deadline_date}
                             onChangeText={(text) => setFormData({ ...formData, deadline_date: text })}
@@ -407,7 +408,7 @@ const BloodDonationRequestScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Distance maximale (km)</Text>
+                        <Text style={styles.label}>{t('bloodDonationRequest.distanceMaximale') || 'Distance maximale (km)'}</Text>
                         <NativeInput
                             value={formData.max_distance_km}
                             onChangeText={(text) => setFormData({ ...formData, max_distance_km: text })}
@@ -417,12 +418,12 @@ const BloodDonationRequestScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('bloodDonationRequest.notesOptionnel')}</Text>
+                        <Text style={styles.label}>{t('bloodDonationRequest.notes') || 'Notes'} ({t('bloodDonationRequest.optionnel') || 'optionnel'})</Text>
                         <TextInput
                             style={styles.notesInput}
                             value={formData.notes}
                             onChangeText={(text) => setFormData({ ...formData, notes: text })}
-                            placeholder={t('bloodDonationRequest.informationsSupplementaires')}
+                            placeholder={t('bloodDonationRequest.infosSupplementaires') || 'Informations supplémentaires...'}
                             multiline
                             numberOfLines={4}
                             textAlignVertical="top"
@@ -432,7 +433,7 @@ const BloodDonationRequestScreen: React.FC = () => {
 
                 {/* Bouton soumettre */}
                 <NativeButton
-                    title={loading ? t('bloodDonationRequestScreen.creationEnCours') : t('bloodDonationRequestScreen.creerLaDemande')}
+                    title={loading ? (t('bloodDonationRequest.creationEnCours') || 'Création en cours...') : (t('bloodDonationRequest.creerDemande') || 'Créer la demande')}
                     onPress={handleSubmit}
                     disabled={loading || !formData.banque_sang_id || !formData.groupe_sanguin_requis}
                     variant="primary"

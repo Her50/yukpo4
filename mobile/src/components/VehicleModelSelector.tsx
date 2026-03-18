@@ -25,10 +25,9 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
     marque,
     onSelect,
     required = false,
-    placeholder={t('vehicleModelSelector.selectionnerUnModele')}
+    placeholder = 'Sélectionner un modèle...'
 }) => {
-        const { t } = useLanguageSafe();
-const [modalVisible, setModalVisible] = useState(false);
+    const [modalVisible, setModalVisible] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [models, setModels] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
@@ -52,25 +51,25 @@ const [modalVisible, setModalVisible] = useState(false);
 
             if (response && Array.isArray(response)) {
                 const modelNames = response.map((v: any) => v.model).sort();
-                setModels([...modelNames, '🆕 Autre (ajouter)']);
+                setModels([...modelNames, '\uD83C\uDD95 Autre (ajouter)']);
             } else {
-                setModels(['🆕 Autre (ajouter)']);
+                setModels(['\uD83C\uDD95 Autre (ajouter)']);
             }
         } catch (error) {
             console.error('Erreur chargement modèles:', error);
             // Fallback: permettre seulement l'ajout manuel
-            setModels(['🆕 Autre (ajouter)']);
+            setModels(['\uD83C\uDD95 Autre (ajouter)']);
         } finally {
             setLoading(false);
         }
     };
 
     const handleSelect = (model: string) => {
-        if (model.includes('🆕 Autre')) {
+        if (model.includes('\uD83C\uDD95 Autre')) {
             // Ajouter un nouveau modèle
             Alert.prompt(
-                t('vehicleModelSelector.nouveauModele', { marque: marque }),
-                t('vehicleModelSelector.entrezLeModeleDe', { marque: marque }),
+                `Nouveau modèle ${marque}`,
+                `Entrez le modèle de ${marque} :`,
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
@@ -93,8 +92,8 @@ const [modalVisible, setModalVisible] = useState(false);
                                     setModalVisible(false);
 
                                     Alert.alert(
-                                        t('vehicleModelSelector.modeleAjoute'),
-                                        t('vehicleModelSelector.aEteAjouteEtSeraDisponible', { marque: marque, newModel: newModel }),
+                                        '✅ Modèle ajouté',
+                                        `"${marque} ${newModel}" a été ajouté et sera disponible pour tous les utilisateurs`,
                                         [{ text: 'OK' }]
                                     );
                                 } catch (error) {
@@ -103,8 +102,8 @@ const [modalVisible, setModalVisible] = useState(false);
                                     onSelect(newModel);
                                     setModalVisible(false);
                                     Alert.alert(
-                                        t('vehicleModelSelector.modeleEnregistreLocalement'),
-                                        t('vehicleModelSelector.aEteEnregistreIlSeraSynchronise', { newModel: newModel }),
+                                        '⚠️ Modèle enregistré localement',
+                                        `"${newModel}" a été enregistré. Il sera synchronisé avec la base de données.`,
                                         [{ text: 'OK' }]
                                     );
                                 }
@@ -155,7 +154,7 @@ const [modalVisible, setModalVisible] = useState(false);
                 {label} {required && <Text style={styles.required}>*</Text>}
             </Text>
             <Text style={styles.marqueHint}>
-                🚗 Modèles {marque}
+                \uD83D\uDE97 Modèles {marque}
             </Text>
 
             <TouchableOpacity
@@ -185,7 +184,7 @@ const [modalVisible, setModalVisible] = useState(false);
                             <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder={t('vehicleModelSelector.rechercherUnModele')}
+                                placeholder="Rechercher un modèle..."
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 placeholderTextColor={modernColors.textSecondary}
@@ -195,7 +194,7 @@ const [modalVisible, setModalVisible] = useState(false);
                         <ScrollView style={styles.optionsList} showsVerticalScrollIndicator={false}>
                             {loading ? (
                                 <View style={styles.loadingContainer}>
-                                    <Text style={styles.loadingText}>{t('vehicleModelSelector.chargementDesModeles')} {marque}...</Text>
+                                    <Text style={styles.loadingText}>Chargement des modèles {marque}...</Text>
                                 </View>
                             ) : filteredModels.length > 0 ? (
                                 filteredModels.map((model, index) => (
@@ -204,14 +203,14 @@ const [modalVisible, setModalVisible] = useState(false);
                                         style={[
                                             styles.option,
                                             value === model && styles.optionSelected,
-                                            model.includes('🆕') && styles.optionAdd
+                                            model.includes('\uD83C\uDD95') && styles.optionAdd
                                         ]}
                                         onPress={() => handleSelect(model)}
                                     >
                                         <Text style={[
                                             styles.optionText,
                                             value === model && styles.optionTextSelected,
-                                            model.includes('🆕') && styles.optionTextAdd
+                                            model.includes('\uD83C\uDD95') && styles.optionTextAdd
                                         ]}>
                                             {model}
                                         </Text>
@@ -222,7 +221,7 @@ const [modalVisible, setModalVisible] = useState(false);
                                 ))
                             ) : (
                                 <View style={styles.emptyContainer}>
-                                    <Text style={styles.emptyText}>{t('vehicleModelSelector.aucunModeleTrouvePour')} {marque}</Text>
+                                    <Text style={styles.emptyText}>Aucun modèle trouvé pour {marque}</Text>
                                 </View>
                             )}
                         </ScrollView>

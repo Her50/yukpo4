@@ -1,6 +1,8 @@
 // @ts-nocheck
 /**
- * Enregistreur vidéo de validation dt('livreScolaireValidationVideoRecorder.etatPourLivreScolairePermetDet('livreScolaireValidationVideoRecorder.etatD')un livre lors dt('livreScolaireValidationVideoRecorder.unTrocViaVideoLiveUtilise')enregistrement professionnel
+ * Enregistreur vidéo de validation d'état pour livre scolaire
+ * Permet de valider l'état d'un livre lors d'un troc via vidéo Live
+ * Utilise expo-camera pour l'enregistrement professionnel
  */
 
 import { Camera, type CameraType } from 'expo-camera';
@@ -17,7 +19,6 @@ import {
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface LivreScolaireValidationVideoRecorderProps {
     livreId: number;
@@ -34,8 +35,7 @@ const LivreScolaireValidationVideoRecorder: React.FC<LivreScolaireValidationVide
     onCancel,
     maxDuration = 60, // 60 secondes max pour validation livre
 }) => {
-        const { t } = useLanguageSafe();
-const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+    const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
     const [cameraType, setCameraType] = useState<CameraType>('back' as CameraType);
@@ -92,7 +92,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
             }
         } catch (error: any) {
             console.error('[LivreScolaireValidationVideoRecorder] Erreur enregistrement:', error);
-            Alert.alert('Erreur', 'Impossible d\t('livreScolaireValidationVideoRecorder.enregistrerLaVideo'));
+            Alert.alert('Erreur', 'Impossible d\'enregistrer la vidéo');
             setIsRecording(false);
             if (recordingTimerRef.current) {
                 clearInterval(recordingTimerRef.current);
@@ -127,7 +127,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
             }
         } catch (error: any) {
             console.error('[LivreScolaireValidationVideoRecorder] Erreur arrêt:', error);
-            Alert.alert('Erreur', 'Impossible d\t('livreScolaireValidationVideoRecorder.arreterL')enregistrement');
+            Alert.alert('Erreur', 'Impossible d\'arrêter l\'enregistrement');
         }
     }, [isRecording, onRecordingComplete]);
 
@@ -147,7 +147,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.permissionText}>{t('livreScolaireValidationVideoRecorder.demandeDautorisation')}</Text>
+                <Text style={styles.permissionText}>Demande d'autorisation...</Text>
             </View>
         );
     }
@@ -163,7 +163,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
                     Veuillez autoriser l'accès à la caméra dans les paramètres
                 </Text>
                 <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-                    <Text style={styles.cancelButtonText}>{t('livreScolaireValidationVideoRecorder.retour')}</Text>
+                    <Text style={styles.cancelButtonText}>Retour</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -199,11 +199,12 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
                     {/* Instructions */}
                     <View style={styles.instructionsContainer}>
                         <Text style={styles.instructionsTitle}>
-                            📚 Instructions de validation
+                            \uD83D\uDCDA Instructions de validation
                         </Text>
                         <Text style={styles.instructionsText}>
                             • Montrez bien la couverture du livre{'\n'}
-                            • Feuilletez les pages importantes{'\nt('livreScolaireValidationVideoRecorder.montrezLesDommagesEventuels')\n'}
+                            • Feuilletez les pages importantes{'\n'}
+                            • Montrez les dommages éventuels{'\n'}
                             • Montrez le dos du livre
                         </Text>
                     </View>

@@ -184,7 +184,7 @@ const HomeScreen: React.FC = () => {
             // ✅ CORRIGÉ: Le backend retourne { success: true, count: number }
             const count = (response.data as any)?.count ?? 0;
             setUnreadNotificationsCount(typeof count === 'number' ? count : 0);
-            console.log('[HomeScreen] 📬 Notifications non lues:', count);
+            console.log('[HomeScreen] \uD83D\uDCEC Notifications non lues:', count);
         } catch (error) {
             console.error('[HomeScreen] Erreur chargement notifications non lues:', error);
             setUnreadNotificationsCount(0);
@@ -206,7 +206,7 @@ const HomeScreen: React.FC = () => {
                     0
                 );
                 setUnreadChatCount(totalUnread);
-                console.log('[HomeScreen] 💬 Messages chat non lus:', totalUnread);
+                console.log('[HomeScreen] \uD83D\uDCAC Messages chat non lus:', totalUnread);
             } else {
                 setUnreadChatCount(0);
             }
@@ -249,7 +249,7 @@ const HomeScreen: React.FC = () => {
     React.useEffect(() => {
         const listener = DeviceEventEmitter.addListener('notification:received', () => {
             // Recharger le nombre de notifications non lues quand une notification est reçue
-            console.log('[HomeScreen] 📬 Notification reçue, mise à jour du badge...');
+            console.log('[HomeScreen] \uD83D\uDCEC Notification reçue, mise à jour du badge...');
             loadUnreadNotificationsCount();
             loadUnreadChatCount();
         });
@@ -723,7 +723,7 @@ const HomeScreen: React.FC = () => {
                             numberOfLines={1}
                             adjustsFontSizeToFit={false} // ✅ DÉSACTIVÉ: Pour éviter le rétrécissement du texte
                         >
-                            🔍 {t('home.searchMode')}
+                            \uD83D\uDD0D {t('home.searchMode')}
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -798,7 +798,7 @@ const HomeScreen: React.FC = () => {
                                     'assurance': 'InsuranceServicesSearch', // ✅ Utilisateur: InsuranceServicesSearchScreen
                                     // Services Éducation (UTILISATEURS)
                                     'orientation_scolaire': 'OrientationScolaireHub', // ✅ Utilisateur: OrientationScolaireHomeScreen
-                                    'bourse_livre': 'LivreScolaireSearch',           // ✅ Utilisateur: LivreScolaireHomeScreen
+                                    'bourse_livre': 'LivreScolaireHome',             // ✅ Utilisateur: LivreScolaireHomeScreen (V2 dashboard)
                                     // Services Emploi (UTILISATEURS)
                                     'offres_emploi': 'OffresEmploiHub',    // ✅ Utilisateur: OffresEmploiHomeScreen
                                     // Services Vie quotidienne (UTILISATEURS)

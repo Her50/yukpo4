@@ -167,7 +167,7 @@ const [locationText, setLocationText] = useState<string>('');
       <View style={styles.header}>
         {getLocationIcon()}
         <Text style={[styles.title, { color: getLocationColor() }]}>
-          {compact ? 'Localisation' : '📍 Localisation du service'}
+          {compact ? 'Localisation' : '\uD83D\uDCCD Localisation du service'}
         </Text>
       </View>
 

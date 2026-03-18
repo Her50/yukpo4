@@ -22,7 +22,6 @@ import ErrorBoundary from './ErrorBoundary';
 import InteractiveMapView from './InteractiveMapView';
 import { LocationObject } from './LocationSelector';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -52,13 +51,12 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
     onSelect,
     onSelectLocation,
     currentLocation,
-    title={t('modernGPS.selectionDeLocalisationGps')},
+    title = 'Sélection de localisation GPS',
     allowZoneSelection = true
 }) => {
     const { location: userLocation } = useLocation();
     const { createAddressFromLocation, addresses: savedAddresses } = useSavedAddresses('both');
-        const { t } = useLanguageSafe();
-const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
+    const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
     const [selectedPolygon, setSelectedPolygon] = useState<{ lat: number; lng: number }[]>([]);
     const [loading, setLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
@@ -122,7 +120,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             const { status } = await Promise.race([permissionPromise, timeoutPromise as Promise<Location.LocationPermissionResponse>]);
             setPermissionGranted(status === 'granted');
             if (status !== 'granted') {
-                Alert.alert('Permission requise', 'Veuillez autoriser l\t('modernGPSModal.accesALaLocalisationPourUtiliser'));
+                Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la localisation pour utiliser cette fonctionnalité.');
             }
         } catch (error: any) {
             console.error('[ModernGPSModal] ❌ Erreur permission:', error);
@@ -135,7 +133,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
 
     const handleGetCurrentLocation = async () => {
         if (!permissionGranted) {
-            Alert.alert('Permission requise', 'Veuillez autoriser l\t('modernGPSModal.accesALaLocalisation'));
+            Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la localisation.');
             return;
         }
 
@@ -183,7 +181,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
         } catch (error: any) {
             console.error('[ModernGPSModal] ❌ Erreur géolocalisation:', error);
             if (error?.message?.includes('timeout')) {
-                Alert.alert('Timeout GPS', t('modernGPSModal.laGeolocalisationPrendTropDeTemps'));
+                Alert.alert('Timeout GPS', 'La géolocalisation prend trop de temps. Veuillez réessayer.');
             } else {
                 Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle.');
             }
@@ -427,7 +425,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                 setSelectedLocation({ lat: result.latitude, lng: result.longitude });
                 setAddress(searchQuery);
             } else {
-                Alert.alert(t('modernGPSModal.aucunResultat'), t('modernGPSModal.aucuneAdresseTrouveePourCetteRecherche'));
+                Alert.alert('Aucun résultat', 'Aucune adresse trouvée pour cette recherche.');
             }
         } catch (error) {
             console.error('Erreur recherche adresse:', error);
@@ -459,7 +457,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
     const confirmSelection = async () => {
         if (zoneType === 'point') {
             if (!selectedLocation) {
-                Alert.alert('Erreur', t('modernGPSModal.veuillezSelectionnerUnePositionSurLa'));
+                Alert.alert('Erreur', 'Veuillez sélectionner une position sur la carte.');
                 return;
             }
 
@@ -496,7 +494,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             }
         } else {
             if ((selectedPolygon || []).length < 3) {
-                Alert.alert('Erreur', t('modernGPSModal.veuillezSelectionnerAuMoins3Points'));
+                Alert.alert('Erreur', 'Veuillez sélectionner au moins 3 points pour créer une zone.');
                 return;
             }
             const coordsString = (selectedPolygon || []).map(p => `${p.lat},${p.lng}`).join('|');
@@ -563,7 +561,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
     // ✅ NOUVEAU 2026-01-04: Fonction pour ouvrir le modal de sauvegarde
     const handleSaveLocation = () => {
         if (!selectedLocation) {
-            Alert.alert('Erreur', 'Veuillez d\t('modernGPSModal.abordSelectionnerUnLieuSurLa'));
+            Alert.alert('Erreur', 'Veuillez d\'abord sélectionner un lieu sur la carte.');
             return;
         }
         setSaveLocationName('');
@@ -666,7 +664,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                     <TouchableOpacity
                         style={styles.closeButton}
                         onPress={onClose}
-                        accessibilityLabel={t('modernGPSModal.fermer')}
+                        accessibilityLabel="Fermer"
                         accessibilityRole="button"
                     >
                         <SafeIcon name="arrow-left" size={22} color="#FFFFFF" />
@@ -692,7 +690,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                         <SafeIcon name="search" size={18} color="#9CA3AF" />
                         <TextInput
                             style={styles.searchInput}
-                            placeholder={t('modernGPS.hopitalPharmacieQuartierRestaurant')}
+                            placeholder="Hôpital, pharmacie, quartier, restaurant..."
                             value={searchQuery}
                             onChangeText={handleSearchQueryChange}
                             placeholderTextColor="#9CA3AF"
@@ -747,7 +745,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                             disabled={loading}
                         >
                             <SafeIcon name={loading ? 'loader' : 'navigation'} size={16} color="#FFF" />
-                            <Text style={styles.gpsBtnText}>{t('modernGPS.maPosition')}</Text>
+                            <Text style={styles.gpsBtnText}>Ma position</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -774,7 +772,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                                         }}
                                     >
                                         <SafeIcon name="refresh-cw" size={16} color="#FFFFFF" />
-                                        <Text style={styles.retryButtonText}>{t('modernGPS.reessayer')}</Text>
+                                        <Text style={styles.retryButtonText}>Réessayer</Text>
                                     </TouchableOpacity>
                                 </View>
                             }
@@ -839,7 +837,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                                         </View>
                                         {suggestion.is_saved && (
                                             <View style={styles.savedBadge}>
-                                                <Text style={styles.savedBadgeText}>{t('modernGPS.sauvegarde')}</Text>
+                                                <Text style={styles.savedBadgeText}>Sauvegardé</Text>
                                             </View>
                                         )}
                                     </TouchableOpacity>
@@ -852,7 +850,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                 {/* Actions en bas */}
                 <View style={styles.actionBar}>
                     <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-                        <Text style={styles.cancelButtonText}>{t('modernGPSModal.annuler')}</Text>
+                        <Text style={styles.cancelButtonText}>Annuler</Text>
                     </TouchableOpacity>
 
                     {/* ✅ NOUVEAU 2026-01-04: Bouton "Sauvegarder ce lieu" (uniquement pour les points) */}
@@ -862,7 +860,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                             onPress={handleSaveLocation}
                         >
                             <SafeIcon name="bookmark" size={16} color="#FFFFFF" />
-                            <Text style={styles.saveLocationButtonText}>{t('modernGPS.sauvegarder')}</Text>
+                            <Text style={styles.saveLocationButtonText}>Sauvegarder</Text>
                         </TouchableOpacity>
                     )}
 
@@ -874,7 +872,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                         onPress={confirmSelection}
                         disabled={(!selectedLocation && zoneType === 'point') || (selectedPolygon.length < 3 && zoneType === 'polygon')}
                     >
-                        <Text style={styles.confirmButtonText}>{t('modernGPSModal.confirmer')}</Text>
+                        <Text style={styles.confirmButtonText}>Confirmer</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -912,7 +910,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
 
                                 <TextInput
                                     style={styles.saveModalInput}
-                                    placeholder={t('modernGPS.nomDuLieu')}
+                                    placeholder="Nom du lieu..."
                                     value={saveLocationName}
                                     onChangeText={setSaveLocationName}
                                     autoFocus={true}
@@ -937,7 +935,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                                             setSaveLocationName('');
                                         }}
                                     >
-                                        <Text style={styles.saveModalCancelText}>{t('modernGPSModal.annuler')}</Text>
+                                        <Text style={styles.saveModalCancelText}>Annuler</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[
@@ -952,7 +950,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                                         ) : (
                                             <>
                                                 <SafeIcon name="check" size={16} color="#FFFFFF" />
-                                                <Text style={styles.saveModalConfirmText}>{t('modernGPSModal.confirmer')}</Text>
+                                                <Text style={styles.saveModalConfirmText}>Confirmer</Text>
                                             </>
                                         )}
                                     </TouchableOpacity>

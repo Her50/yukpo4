@@ -1,5 +1,5 @@
 /**
- * 🎯 SERVICE GÉNÉRIQUE DE PRÉ-REMPLISSAGE AUTOMATIQUE
+ * \uD83C\uDFAF SERVICE GÉNÉRIQUE DE PRÉ-REMPLISSAGE AUTOMATIQUE
  * 
  * Ce service s'adapte automatiquement à N'IMPORTE QUELLE catégorie
  * parmi vos 60+ catégories, sans configuration manuelle !
@@ -48,7 +48,7 @@ class GenericProductAutoFillService {
     private categoryCache = new Map<string, CategoryFieldAnalysis>();
 
     /**
-     * 🎯 PRÉ-REMPLIR AUTOMATIQUEMENT pour N'IMPORTE QUELLE catégorie
+     * \uD83C\uDFAF PRÉ-REMPLIR AUTOMATIQUEMENT pour N'IMPORTE QUELLE catégorie
      */
     async autoFillGeneric(
         productName: string,
@@ -56,7 +56,7 @@ class GenericProductAutoFillService {
         userCountry: string = 'CM'
     ): Promise<GenericAutoFillResult> {
 
-        console.log(`🎯 [GenericAutoFill] Pré-remplissage pour: ${productName} (${category})`);
+        console.log(`\uD83C\uDFAF [GenericAutoFill] Pré-remplissage pour: ${productName} (${category})`);
 
         // 1. Analyser la catégorie si pas en cache
         let categoryAnalysis = this.categoryCache.get(category);
@@ -210,7 +210,7 @@ class GenericProductAutoFillService {
                 field: fieldName,
                 label: this.formatFieldLabel(fieldName),
                 type: fieldType,
-                options: options.length > 0 ? options.filter(o => !o.includes('🆕')) : undefined,
+                options: options.length > 0 ? options.filter(o => !o.includes('\uD83C\uDD95')) : undefined,
                 placeholder: `Entrer ${this.formatFieldLabel(fieldName).toLowerCase()}`
             };
         });
@@ -231,7 +231,7 @@ class GenericProductAutoFillService {
                 field: fieldName,
                 label: this.formatFieldLabel(fieldName),
                 type: fieldType,
-                options: options.length > 0 ? options.filter(o => !o.includes('🆕')) : undefined
+                options: options.length > 0 ? options.filter(o => !o.includes('\uD83C\uDD95')) : undefined
             };
         });
     }
@@ -285,7 +285,7 @@ export const genericProductAutoFillService = new GenericProductAutoFillService()
 
 /**
  * ═══════════════════════════════════════════════════════════════
- * 📊 EXEMPLE D'UTILISATION POUR N'IMPORTE QUELLE CATÉGORIE
+ * \uD83D\uDCCA EXEMPLE D'UTILISATION POUR N'IMPORTE QUELLE CATÉGORIE
  * ═══════════════════════════════════════════════════════════════
  * 
  * // Pour TÉLÉPHONE

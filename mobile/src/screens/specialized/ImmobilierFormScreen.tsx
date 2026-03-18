@@ -13,6 +13,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import IntelligentChat from '../../components/IntelligentChat';
+import IntelligentChatFab from '../../components/IntelligentChatFab';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
@@ -76,6 +78,7 @@ const ImmobilierFormScreen: React.FC = () => {
     const [media, setMedia] = useState<MediaItem[]>([]);
     const [importingGoogleMedia, setImportingGoogleMedia] = useState(false);
     const [lastImportedPlaceId, setLastImportedPlaceId] = useState<string | null>(null);
+    const [showChat, setShowChat] = useState(false);
 
     const defaultCurrency = useCurrencyDetection(formData.ville || formData.quartier);
     const [devise, setDevise] = useState(defaultCurrency);
@@ -218,7 +221,7 @@ const ImmobilierFormScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#fff" />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={st.headerTitle}>{mode === 'edit' ? 'Modifier le bien' : 'Nouveau bien immobilier'}</Text>
+                    <Text style={st.headerTitle}>{mode === 'edit' ? t('immobilierFormScreen.modifierLeBien') : t('immobilierForm.nouveauBienImmobilier')}</Text>
                     <Text style={st.headerSub}>{formData.type_bien ? formatLabel(formData.type_bien) : 'Maison'} · {formatLabel(formData.statut)}</Text>
                 </View>
             </LinearGradient>
@@ -227,8 +230,8 @@ const ImmobilierFormScreen: React.FC = () => {
                 {/* Section: Informations */}
                 <View style={st.section}>
                     <View style={st.sectionHdr}><SafeIcon name="file-text" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>{t('immobilierForm.informationsGenerales')}</Text></View>
-                    <View style={st.field}><NativeInput label="Titre *" value={formData.titre} onChangeText={t => setFormData({ ...formData, titre: t })} placeholder="Ex: Belle maison 4 chambres" /></View>
-                    <View style={st.field}><NativeInput label="Description *" value={formData.description} onChangeText={t => setFormData({ ...formData, description: t })} placeholder={t('immobilierForm.descriptionDetailleeDuBien')} multiline style={{ minHeight: 100, textAlignVertical: 'top' }} /></View>
+                    <View style={st.field}><NativeInput label={`${t('immobilierForm.titre')} *`} value={formData.titre} onChangeText={v => setFormData({ ...formData, titre: v })} placeholder={t('immobilierForm.titrePlaceholder')} /></View>
+                    <View style={st.field}><NativeInput label={`${t('immobilierForm.description')} *`} value={formData.description} onChangeText={v => setFormData({ ...formData, description: v })} placeholder={t('immobilierForm.descriptionDetailleeDuBien')} multiline style={{ minHeight: 100, textAlignVertical: 'top' }} /></View>
                 </View>
 
                 {/* Section: Type & Statut */}
@@ -243,7 +246,7 @@ const ImmobilierFormScreen: React.FC = () => {
                             </TouchableOpacity>
                         ))}
                     </View>
-                    <Text style={[st.label, { marginTop: 16 }]}>Statut *</Text>
+                    <Text style={[st.label, { marginTop: 16 }]}>{t('immobilierForm.statut')} *</Text>
                     <View style={st.statutRow}>
                         {STATUTS.map(s => (
                             <TouchableOpacity key={s.key} style={[st.statutBtn, formData.statut === s.key && st.statutBtnOn]} onPress={() => setFormData({ ...formData, statut: s.key })}>
@@ -273,7 +276,7 @@ const ImmobilierFormScreen: React.FC = () => {
                             if (loc.coordinates?.lat && loc.coordinates?.lng) setSelectedGPS(`${loc.coordinates.lat},${loc.coordinates.lng}`);
                             if (loc.place_id) importGooglePlacePhotos(loc.place_id);
                         }} placeholder={t('immobilierFormScreen.adresseExacte')} scope="all" cityContext={formData.ville?.raw || formData.ville?.place_name || ''} enrichWithBackend />
-                        {importingGoogleMedia && <Text style={st.hint}>📥 Import photos Google en cours...</Text>}
+                        {importingGoogleMedia && <Text style={st.hint}>\uD83D\uDCE5 Import photos Google en cours...</Text>}
                     </View>
                     <TouchableOpacity style={st.gpsBtn} onPress={() => setShowGPSModal(true)}>
                         <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
@@ -328,7 +331,7 @@ const ImmobilierFormScreen: React.FC = () => {
                         </View>
                     </View>
 
-                    <Text style={st.label}>Standing du bien</Text>
+                    <Text style={st.label}>{t('immobilierForm.standingDuBien')}</Text>
                     <View style={st.chips}>{STANDINGS.map(s => <TouchableOpacity key={s} style={[st.chip, formData.standing === s && st.chipOn]} onPress={() => setFormData({ ...formData, standing: s })}><Text style={[st.chipText, formData.standing === s && st.chipTextOn]}>{formatLabel(s)}</Text></TouchableOpacity>)}</View>
                     <Text style={[st.label, { marginTop: 16 }]}>{t('immobilierForm.etatGeneral')}</Text>
                     <View style={st.chips}>{ETATS.map(e => <TouchableOpacity key={e} style={[st.chip, formData.etat_general === e && st.chipOn]} onPress={() => setFormData({ ...formData, etat_general: e })}><Text style={[st.chipText, formData.etat_general === e && st.chipTextOn]}>{formatLabel(e)}</Text></TouchableOpacity>)}</View>
@@ -336,7 +339,7 @@ const ImmobilierFormScreen: React.FC = () => {
 
                 {/* Section: Prix */}
                 <View style={st.section}>
-                    <View style={st.sectionHdr}><SafeIcon name="banknote" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>Prix</Text></View>
+                    <View style={st.sectionHdr}><SafeIcon name="banknote" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>{t('immobilierForm.prix')}</Text></View>
                     {(formData.statut === 'vente' || formData.statut === 'les_deux') && (
                         <View style={st.field}><NativeInput label={`${t('immobilierFormScreen.salePrice')} (${devise}) *`} value={formData.prix_vente} onChangeText={t => setFormData({ ...formData, prix_vente: t })} placeholder="0" keyboardType="numeric" /></View>
                     )}
@@ -408,7 +411,7 @@ const ImmobilierFormScreen: React.FC = () => {
                 {/* Submit */}
                 <View style={{ paddingHorizontal: 16 }}>
                     <NativeButton
-                        title={loading ? 'Enregistrement...' : mode === 'edit' ? t('immobilierFormScreen.modifierLeBien') : 'Publier le bien'}
+                        title={loading ? t('immobilierForm.enregistrement') : mode === 'edit' ? t('immobilierFormScreen.modifierLeBien') : t('immobilierForm.publierLeBien')}
                         onPress={handleSubmit}
                         disabled={loading || !formData.titre.trim() || !serviceId || (!formData.ville && !selectedGPS)}
                         variant="primary" size="large" style={{ marginTop: 8 }}
@@ -427,7 +430,27 @@ const ImmobilierFormScreen: React.FC = () => {
                 </View>
             </ScrollView>
 
-            <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={(c: string) => { setSelectedGPS(c); setShowGPSModal(false); }} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title="Localisation du bien" />
+            <ModernGPSModal visible={showGPSModal} onClose={() => setShowGPSModal(false)} onSelect={(c: string) => { setSelectedGPS(c); setShowGPSModal(false); }} currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null} title={t('immobilierForm.localisation')} />
+
+            {/* Intelligent Chat FAB */}
+            <IntelligentChatFab
+                onPress={() => setShowChat(true)}
+                visible={!showChat && !showGPSModal}
+                screenName="ImmobilierForm"
+            />
+            <IntelligentChat
+                visible={showChat}
+                onClose={() => setShowChat(false)}
+                screenContext={{
+                    screenName: 'ImmobilierForm',
+                    screenType: 'form',
+                    userData: { role: user?.role, partner_type: user?.partner_type, name: user?.name },
+                    serviceData: {
+                        nom: formData.titre || t('immobilierForm.nouveauBienImmobilier'),
+                        description: `${formData.type_bien} - ${formData.statut}`,
+                    },
+                }}
+            />
         </View>
     );
 };

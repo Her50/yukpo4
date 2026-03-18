@@ -24,14 +24,69 @@ use std::f64::consts::PI;
 use std::sync::Arc;
 use uuid::Uuid;
 
-/// ✅ Liste des hôpitaux (stub pour éviter erreur 405)
+/// ✅ Liste des hôpitaux du partenaire connecté
 pub async fn list_hospitals(
-    State(_state): State<Arc<AppState>>,
-    Extension(_user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[list_hospitals] Called");
-    // TODO: Implémenter la vraie liste
-    Ok((StatusCode::OK, Json(json!([]))))
+    info!("[list_hospitals] user_id={}", user_id);
+
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            h.id, h.service_id, h.user_id, h.nom, h.type_etablissement,
+            h.adresse, h.quartier, h.ville, h.gps,
+            h.prestations_medicales, h.urgences_disponible, h.rdv_en_ligne,
+            h.is_available_now, h.telephone, h.telephone_urgence,
+            h.whatsapp, h.email, h.site_web, h.description, h.logo_url,
+            h.banque_sang, h.planning_hebdomadaire, h.is_active
+        FROM hopitaux_cliniques h
+        WHERE h.user_id = $1
+        ORDER BY h.updated_at DESC NULLS LAST
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[list_hospitals] Erreur: {}", e);
+        AppError::Internal("Erreur liste hôpitaux".to_string())
+    })?;
+
+    let hospitals: Vec<serde_json::Value> = rows.iter().map(|row| {
+        json!({
+            "id": row.try_get::<i32, _>("id").ok(),
+            "service_id": row.try_get::<i32, _>("service_id").ok(),
+            "user_id": row.try_get::<i32, _>("user_id").ok(),
+            "nom": row.try_get::<Option<String>, _>("nom").ok().flatten(),
+            "type_etablissement": row.try_get::<Option<String>, _>("type_etablissement").ok().flatten(),
+            "adresse": row.try_get::<Option<String>, _>("adresse").ok().flatten(),
+            "quartier": row.try_get::<Option<String>, _>("quartier").ok().flatten(),
+            "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
+            "gps": row.try_get::<Option<String>, _>("gps").ok().flatten(),
+            "prestations_medicales": row.try_get::<Option<Vec<String>>, _>("prestations_medicales").ok().flatten(),
+            "urgences_disponible": row.try_get::<Option<bool>, _>("urgences_disponible").ok().flatten().unwrap_or(false),
+            "rdv_en_ligne": row.try_get::<Option<bool>, _>("rdv_en_ligne").ok().flatten().unwrap_or(false),
+            "banque_sang": row.try_get::<Option<bool>, _>("banque_sang").ok().flatten().unwrap_or(false),
+            "is_available_now": row.try_get::<Option<bool>, _>("is_available_now").ok().flatten().unwrap_or(false),
+            "telephone": row.try_get::<Option<String>, _>("telephone").ok().flatten(),
+            "telephone_urgence": row.try_get::<Option<String>, _>("telephone_urgence").ok().flatten(),
+            "whatsapp": row.try_get::<Option<String>, _>("whatsapp").ok().flatten(),
+            "email": row.try_get::<Option<String>, _>("email").ok().flatten(),
+            "site_web": row.try_get::<Option<String>, _>("site_web").ok().flatten(),
+            "description": row.try_get::<Option<String>, _>("description").ok().flatten(),
+            "planning_prestations": row.try_get::<Option<serde_json::Value>, _>("planning_hebdomadaire").ok().flatten(),
+        })
+    }).collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": hospitals,
+            "total": hospitals.len()
+        })),
+    ))
 }
 
 /// ✅ Liste des laboratoires (stub pour éviter erreur 405)
@@ -295,6 +350,7 @@ pub struct CreateHospitalRequest {
     pub prestations_medicales: Option<Vec<String>>,
     pub urgences_disponible: Option<bool>,
     pub rdv_en_ligne: Option<bool>,
+    #[serde(alias = "planning_prestations")]
     pub planning_hebdomadaire: Option<serde_json::Value>,
     pub telephone: Option<String>,
     pub telephone_urgence: Option<String>,
@@ -3987,23 +4043,114 @@ pub struct SearchCovoituragesNearbyQuery {
 }
 
 pub async fn search_covoiturages_nearby(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Query(params): Query<SearchCovoituragesNearbyQuery>,
 ) -> AppResult<impl IntoResponse> {
     info!(
-        "[search_covoiturages_nearby] lat={}, lng={}",
-        params.lat, params.lng
+        "[search_covoiturages_nearby] lat={}, lng={}, radius={}km",
+        params.lat,
+        params.lng,
+        params.radius_km.unwrap_or(50.0)
     );
 
-    // Pour l'instant, retourner une liste vide (implémentation basique)
+    let radius_km = params.radius_km.unwrap_or(50.0);
+    let limit = params.limit.unwrap_or(20).min(100);
+    let offset = (params.page.unwrap_or(1).max(1) - 1) * limit;
+
+    // Query all open future trips that have GPS coordinates, then filter by haversine distance
+    let rows = sqlx::query(
+        r#"SELECT c.id as covoiturage_id, c.service_id, c.user_id as driver_id,
+                  c.depart, c.destination, c.gps_depart, c.gps_destination,
+                  c.date_depart, c.heure_depart, c.type_vehicule, c.marque_modele,
+                  c.nombre_places, c.places_disponibles, c.prix_par_place, c.devise,
+                  c.bagages_autorises, c.animaux_autorises, c.fumeur_autorise, c.climatisation,
+                  c.statut, c.is_recurring, c.recurrence_type, c.created_at,
+                  u.name as driver_name
+           FROM covoiturages c
+           JOIN services s ON s.id = c.service_id
+           LEFT JOIN users u ON u.id = c.user_id
+           WHERE c.is_active = TRUE AND c.statut = 'ouvert' AND c.date_depart >= CURRENT_DATE
+                 AND c.gps_depart IS NOT NULL AND c.gps_depart != ''
+           ORDER BY c.date_depart ASC, c.heure_depart ASC
+           LIMIT 200"#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[search_covoiturages_nearby] Erreur: {}", e);
+        AppError::Internal("Erreur recherche covoiturages proximité".to_string())
+    })?;
+
+    let mut trips = Vec::new();
+    for row in &rows {
+        let gps_str: Option<String> = row.try_get::<Option<String>, _>("gps_depart").ok().flatten();
+        if let Some(gps) = gps_str {
+            let parts: Vec<&str> = gps.split(',').collect();
+            if parts.len() == 2 {
+                if let (Ok(lat2), Ok(lng2)) = (
+                    parts[0].trim().parse::<f64>(),
+                    parts[1].trim().parse::<f64>(),
+                ) {
+                    let dist = haversine_km(params.lat, params.lng, lat2, lng2);
+                    if dist <= radius_km {
+                        trips.push(json!({
+                            "id": row.try_get::<i32, _>("covoiturage_id").ok(),
+                            "service_id": row.try_get::<i32, _>("service_id").ok(),
+                            "depart": row.try_get::<Option<String>, _>("depart").ok().flatten(),
+                            "destination": row.try_get::<Option<String>, _>("destination").ok().flatten(),
+                            "gps_depart": gps,
+                            "gps_destination": row.try_get::<Option<String>, _>("gps_destination").ok().flatten(),
+                            "date_depart": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("date_depart").ok().flatten().map(|d| d.to_rfc3339()),
+                            "heure_depart": row.try_get::<Option<chrono::NaiveTime>, _>("heure_depart").ok().flatten().map(|t| t.format("%H:%M").to_string()),
+                            "type_vehicule": row.try_get::<Option<String>, _>("type_vehicule").ok().flatten(),
+                            "marque_modele": row.try_get::<Option<String>, _>("marque_modele").ok().flatten(),
+                            "nombre_places": row.try_get::<Option<i32>, _>("nombre_places").ok().flatten(),
+                            "places_disponibles": row.try_get::<Option<i32>, _>("places_disponibles").ok().flatten(),
+                            "prix_par_place": row.try_get::<Option<i32>, _>("prix_par_place").ok().flatten(),
+                            "devise": row.try_get::<Option<String>, _>("devise").ok().flatten(),
+                            "climatisation": row.try_get::<Option<bool>, _>("climatisation").ok().flatten(),
+                            "bagages_autorises": row.try_get::<Option<bool>, _>("bagages_autorises").ok().flatten(),
+                            "animaux_autorises": row.try_get::<Option<bool>, _>("animaux_autorises").ok().flatten(),
+                            "statut": row.try_get::<Option<String>, _>("statut").ok().flatten(),
+                            "is_recurring": row.try_get::<Option<bool>, _>("is_recurring").ok().flatten(),
+                            "driver_name": row.try_get::<Option<String>, _>("driver_name").ok().flatten(),
+                            "distance_km": (dist * 10.0).round() / 10.0,
+                        }));
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort by distance
+    trips.sort_by(|a, b| {
+        let da = a.get("distance_km").and_then(|v| v.as_f64()).unwrap_or(f64::MAX);
+        let db = b.get("distance_km").and_then(|v| v.as_f64()).unwrap_or(f64::MAX);
+        da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    let total = trips.len();
+    let paginated: Vec<_> = trips.into_iter().skip(offset as usize).take(limit as usize).collect();
+
     Ok((
         StatusCode::OK,
         Json(json!({
             "success": true,
-            "data": [],
-            "total": 0
+            "data": paginated,
+            "total": total
         })),
     ))
+}
+
+/// Haversine distance in km
+fn haversine_km(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
+    const R: f64 = 6371.0;
+    let to_rad = |d: f64| d * PI / 180.0;
+    let dlat = to_rad(lat2 - lat1);
+    let dlng = to_rad(lng2 - lng1);
+    let a = (dlat / 2.0).sin().powi(2)
+        + to_rad(lat1).cos() * to_rad(lat2).cos() * (dlng / 2.0).sin().powi(2);
+    R * 2.0 * a.sqrt().asin()
 }
 
 /// Détails d'un covoiturage
@@ -4079,7 +4226,7 @@ pub async fn get_covoiturage_details(
 
 /// Avis d'un covoiturage
 pub async fn get_covoiturage_reviews(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Path(covoiturage_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     info!(
@@ -4087,12 +4234,63 @@ pub async fn get_covoiturage_reviews(
         covoiturage_id
     );
 
+    let rows = sqlx::query(
+        r#"SELECT pc.id, pc.user_id, pc.rating, pc.content, pc.created_at,
+                  u.name as user_name, u.avatar_url as user_avatar
+           FROM product_comments pc
+           LEFT JOIN users u ON u.id = pc.user_id
+           WHERE pc.service_id = $1 AND pc.parent_comment_id IS NULL
+           ORDER BY pc.created_at DESC
+           LIMIT 50"#,
+    )
+    .bind(covoiturage_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_covoiturage_reviews] Erreur: {}", e);
+        AppError::Internal("Erreur récupération avis".to_string())
+    })?;
+
+    let mut reviews = Vec::new();
+    for row in &rows {
+        reviews.push(json!({
+            "id": row.try_get::<i32, _>("id").ok(),
+            "user_id": row.try_get::<i32, _>("user_id").ok(),
+            "rating": row.try_get::<Option<i32>, _>("rating").ok().flatten(),
+            "comment": row.try_get::<Option<String>, _>("content").ok().flatten(),
+            "user_name": row.try_get::<Option<String>, _>("user_name").ok().flatten(),
+            "user_avatar": row.try_get::<Option<String>, _>("user_avatar").ok().flatten(),
+            "created_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("created_at").ok().flatten().map(|d| d.to_rfc3339()),
+        }));
+    }
+
+    // Calculate average rating
+    let avg_rating: f64 = if !reviews.is_empty() {
+        let sum: f64 = reviews
+            .iter()
+            .filter_map(|r| r.get("rating").and_then(|v| v.as_i64()))
+            .map(|r| r as f64)
+            .sum();
+        let count = reviews
+            .iter()
+            .filter(|r| r.get("rating").and_then(|v| v.as_i64()).is_some())
+            .count();
+        if count > 0 {
+            (sum / count as f64 * 10.0).round() / 10.0
+        } else {
+            0.0
+        }
+    } else {
+        0.0
+    };
+
     Ok((
         StatusCode::OK,
         Json(json!({
             "success": true,
-            "data": [],
-            "total": 0
+            "data": reviews,
+            "total": reviews.len(),
+            "average_rating": avg_rating
         })),
     ))
 }
@@ -4103,6 +4301,13 @@ pub struct SearchHospitalsQuery {
     pub ville: Option<String>,
     pub quartier: Option<String>,
     pub specialite: Option<String>,
+    pub prestation: Option<String>,
+    pub lat: Option<f64>,
+    pub lng: Option<f64>,
+    pub max_distance_km: Option<f64>,
+    pub type_etablissement: Option<String>,
+    pub urgences_only: Option<String>,
+    pub available_only: Option<String>,
     pub page: Option<i64>,
     pub limit: Option<i64>,
 }
@@ -4116,40 +4321,172 @@ pub async fn search_hospitals(
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = (params.page.unwrap_or(1) - 1) * limit;
 
-    let mut query = QueryBuilder::new(
-        "SELECT s.*, h.* FROM services s INNER JOIN hopitaux h ON h.service_id = s.id WHERE 1=1",
-    );
-
-    if let Some(ref ville) = params.ville {
-        query.push(" AND s.ville = ");
-        query.push_bind(ville);
-    }
-
-    query.push(" ORDER BY s.created_at DESC LIMIT ");
-    query.push_bind(limit);
-    query.push(" OFFSET ");
-    query.push_bind(offset);
-
-    let hospitals = query.build().fetch_all(&state.pg).await.map_err(|e| {
+    // ✅ FIX: Correct table name hopitaux_cliniques (not hopitaux)
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            h.id, h.service_id, h.user_id, h.nom, h.type_etablissement,
+            h.adresse, h.quartier, h.ville, h.gps,
+            h.prestations_medicales, h.urgences_disponible, h.rdv_en_ligne,
+            h.is_available_now, h.telephone, h.telephone_urgence,
+            h.whatsapp, h.email, h.site_web, h.description, h.logo_url,
+            h.banque_sang, h.is_active,
+            s.gps as service_gps
+        FROM hopitaux_cliniques h
+        INNER JOIN services s ON s.id = h.service_id
+        WHERE h.is_active = true
+        ORDER BY h.updated_at DESC NULLS LAST, h.created_at DESC
+        LIMIT 100
+        "#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
         error!("[search_hospitals] Erreur: {}", e);
         AppError::Internal("Erreur recherche hôpitaux".to_string())
     })?;
 
+    let user_lat = params.lat;
+    let user_lng = params.lng;
+    let max_dist = params.max_distance_km.unwrap_or(200.0);
+
     let mut hospitals_json = Vec::new();
-    for row in hospitals {
+    for row in &rows {
+        let nom: Option<String> = row.try_get("nom").ok().flatten();
+        let ville: Option<String> = row.try_get("ville").ok().flatten();
+        let quartier: Option<String> = row.try_get("quartier").ok().flatten();
+        let type_etab: Option<String> = row.try_get("type_etablissement").ok().flatten();
+        let urgences: Option<bool> = row.try_get("urgences_disponible").ok().flatten();
+        let is_avail: Option<bool> = row.try_get("is_available_now").ok().flatten();
+        let prestations: Option<Vec<String>> = row.try_get("prestations_medicales").ok().flatten();
+        let gps_str: Option<String> = row
+            .try_get::<Option<String>, _>("gps")
+            .ok()
+            .flatten()
+            .or_else(|| row.try_get::<Option<String>, _>("service_gps").ok().flatten());
+
+        // Filter by ville
+        if let Some(ref v) = params.ville {
+            if ville
+                .as_deref()
+                .map(|x| !x.to_lowercase().contains(&v.to_lowercase()))
+                .unwrap_or(true)
+            {
+                continue;
+            }
+        }
+        // Filter by quartier
+        if let Some(ref q) = params.quartier {
+            if quartier
+                .as_deref()
+                .map(|x| !x.to_lowercase().contains(&q.to_lowercase()))
+                .unwrap_or(true)
+            {
+                continue;
+            }
+        }
+        // Filter by type_etablissement
+        if let Some(ref te) = params.type_etablissement {
+            if type_etab
+                .as_deref()
+                .map(|x| !x.to_lowercase().contains(&te.to_lowercase()))
+                .unwrap_or(true)
+            {
+                continue;
+            }
+        }
+        // Filter urgences only
+        if params.urgences_only.as_deref() == Some("true") && urgences != Some(true) {
+            continue;
+        }
+        // Filter available only
+        if params.available_only.as_deref() == Some("true") && is_avail != Some(true) {
+            continue;
+        }
+        // Filter by prestation
+        if let Some(ref p) = params.prestation {
+            let has = prestations
+                .as_ref()
+                .map(|list| list.iter().any(|pr| pr.to_lowercase().contains(&p.to_lowercase())))
+                .unwrap_or(false);
+            if !has {
+                continue;
+            }
+        }
+
+        // Distance calculation
+        let mut distance_km: Option<f64> = None;
+        if let (Some(ulat), Some(ulng)) = (user_lat, user_lng) {
+            if let Some(ref gps) = gps_str {
+                let parts: Vec<&str> = gps.split(',').collect();
+                if parts.len() == 2 {
+                    if let (Ok(hlat), Ok(hlng)) = (
+                        parts[0].trim().parse::<f64>(),
+                        parts[1].trim().parse::<f64>(),
+                    ) {
+                        let dlat = (hlat - ulat).to_radians();
+                        let dlng = (hlng - ulng).to_radians();
+                        let a = (dlat / 2.0).sin().powi(2)
+                            + ulat.to_radians().cos()
+                                * hlat.to_radians().cos()
+                                * (dlng / 2.0).sin().powi(2);
+                        let c = 2.0 * a.sqrt().asin();
+                        distance_km = Some(6371.0 * c);
+                    }
+                }
+            }
+            if let Some(d) = distance_km {
+                if d > max_dist {
+                    continue;
+                }
+            }
+        }
+
         hospitals_json.push(json!({
             "id": row.try_get::<i32, _>("id").ok(),
-            "nom": row.try_get::<Option<String>, _>("nom").ok().flatten(),
-            "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
+            "service_id": row.try_get::<i32, _>("service_id").ok(),
+            "user_id": row.try_get::<i32, _>("user_id").ok(),
+            "nom": nom,
+            "type_etablissement": type_etab,
+            "adresse": row.try_get::<Option<String>, _>("adresse").ok().flatten(),
+            "quartier": quartier,
+            "ville": ville,
+            "gps": gps_str,
+            "prestations_medicales": prestations,
+            "urgences_disponible": urgences.unwrap_or(false),
+            "rdv_en_ligne": row.try_get::<Option<bool>, _>("rdv_en_ligne").ok().flatten().unwrap_or(false),
+            "banque_sang": row.try_get::<Option<bool>, _>("banque_sang").ok().flatten().unwrap_or(false),
+            "is_available_now": is_avail.unwrap_or(false),
+            "telephone": row.try_get::<Option<String>, _>("telephone").ok().flatten(),
+            "telephone_urgence": row.try_get::<Option<String>, _>("telephone_urgence").ok().flatten(),
+            "whatsapp": row.try_get::<Option<String>, _>("whatsapp").ok().flatten(),
+            "email": row.try_get::<Option<String>, _>("email").ok().flatten(),
+            "site_web": row.try_get::<Option<String>, _>("site_web").ok().flatten(),
+            "description": row.try_get::<Option<String>, _>("description").ok().flatten(),
+            "logo_url": row.try_get::<Option<String>, _>("logo_url").ok().flatten(),
+            "distance_km": distance_km,
         }));
     }
+
+    // Sort by distance if available
+    if user_lat.is_some() && user_lng.is_some() {
+        hospitals_json.sort_by(|a, b| {
+            let da = a["distance_km"].as_f64().unwrap_or(f64::MAX);
+            let db = b["distance_km"].as_f64().unwrap_or(f64::MAX);
+            da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+        });
+    }
+
+    let total = hospitals_json.len();
+    let paginated: Vec<_> =
+        hospitals_json.into_iter().skip(offset as usize).take(limit as usize).collect();
 
     Ok((
         StatusCode::OK,
         Json(json!({
             "success": true,
-            "data": hospitals_json,
-            "total": hospitals_json.len()
+            "data": paginated,
+            "total": total
         })),
     ))
 }
@@ -4161,20 +4498,85 @@ pub async fn get_hospital_details(
 ) -> AppResult<impl IntoResponse> {
     info!("[get_hospital_details] hospital_id={}", hospital_id);
 
-    let hospital = sqlx::query("SELECT s.*, h.* FROM services s INNER JOIN hopitaux h ON h.service_id = s.id WHERE s.id = $1")
-        .bind(hospital_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[get_hospital_details] Erreur: {}", e);
-            AppError::Internal("Erreur récupération hôpital".to_string())
-        })?;
+    // ✅ FIX: Correct table name + return ALL fields mobile needs
+    let hospital = sqlx::query(
+        r#"
+        SELECT
+            h.id, h.service_id, h.user_id, h.nom, h.type_etablissement,
+            h.adresse, h.quartier, h.ville, h.gps,
+            h.prestations_medicales, h.urgences_disponible, h.rdv_en_ligne,
+            h.is_available_now, h.telephone, h.telephone_urgence,
+            h.whatsapp, h.email, h.site_web, h.description, h.logo_url,
+            h.banque_sang, h.planning_hebdomadaire,
+            h.is_active, h.is_verified,
+            h.heures_ouverture, h.heures_fermeture,
+            s.gps as service_gps
+        FROM hopitaux_cliniques h
+        INNER JOIN services s ON s.id = h.service_id
+        WHERE h.id = $1 OR h.service_id = $1
+        LIMIT 1
+        "#,
+    )
+    .bind(hospital_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_hospital_details] Erreur: {}", e);
+        AppError::Internal("Erreur récupération hôpital".to_string())
+    })?;
 
     if let Some(row) = hospital {
+        let gps: Option<String> = row
+            .try_get::<Option<String>, _>("gps")
+            .ok()
+            .flatten()
+            .or_else(|| row.try_get::<Option<String>, _>("service_gps").ok().flatten());
+
+        // Get rating stats
+        let service_id: Option<i32> = row.try_get("service_id").ok();
+        let (note_moyenne, nombre_avis) = if let Some(sid) = service_id {
+            let stats = sqlx::query(
+                "SELECT COALESCE(AVG(rating), 0) as avg_r, COUNT(*) as cnt FROM product_comments WHERE service_id = $1 AND rating IS NOT NULL"
+            ).bind(sid).fetch_optional(&state.pg).await.ok().flatten();
+            match stats {
+                Some(s) => (
+                    s.try_get::<f64, _>("avg_r").ok(),
+                    s.try_get::<i64, _>("cnt").ok().map(|c| c as i32),
+                ),
+                None => (None, None),
+            }
+        } else {
+            (None, None)
+        };
+
         let hospital_json = json!({
             "id": row.try_get::<i32, _>("id").ok(),
+            "service_id": service_id,
+            "user_id": row.try_get::<i32, _>("user_id").ok(),
             "nom": row.try_get::<Option<String>, _>("nom").ok().flatten(),
+            "description": row.try_get::<Option<String>, _>("description").ok().flatten(),
+            "type_etablissement": row.try_get::<Option<String>, _>("type_etablissement").ok().flatten(),
+            "adresse": row.try_get::<Option<String>, _>("adresse").ok().flatten(),
+            "quartier": row.try_get::<Option<String>, _>("quartier").ok().flatten(),
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
+            "gps": gps,
+            "is_available_now": row.try_get::<Option<bool>, _>("is_available_now").ok().flatten().unwrap_or(false),
+            "is_verified": row.try_get::<Option<bool>, _>("is_verified").ok().flatten().unwrap_or(false),
+            "note_moyenne": note_moyenne,
+            "nombre_avis": nombre_avis,
+            "urgences_disponible": row.try_get::<Option<bool>, _>("urgences_disponible").ok().flatten().unwrap_or(false),
+            "banque_sang": row.try_get::<Option<bool>, _>("banque_sang").ok().flatten().unwrap_or(false),
+            "rdv_en_ligne": row.try_get::<Option<bool>, _>("rdv_en_ligne").ok().flatten().unwrap_or(false),
+            "prestations_medicales": row.try_get::<Option<Vec<String>>, _>("prestations_medicales").ok().flatten(),
+            "specialites": row.try_get::<Option<Vec<String>>, _>("prestations_medicales").ok().flatten(),
+            "telephone": row.try_get::<Option<String>, _>("telephone").ok().flatten(),
+            "telephone_urgence": row.try_get::<Option<String>, _>("telephone_urgence").ok().flatten(),
+            "whatsapp": row.try_get::<Option<String>, _>("whatsapp").ok().flatten(),
+            "email": row.try_get::<Option<String>, _>("email").ok().flatten(),
+            "site_web": row.try_get::<Option<String>, _>("site_web").ok().flatten(),
+            "logo_url": row.try_get::<Option<String>, _>("logo_url").ok().flatten(),
+            "heures_ouverture": row.try_get::<Option<String>, _>("heures_ouverture").ok().flatten(),
+            "heures_fermeture": row.try_get::<Option<String>, _>("heures_fermeture").ok().flatten(),
         });
         Ok((
             StatusCode::OK,
@@ -4745,7 +5147,7 @@ pub struct CheckMedicationAvailabilityRequest {
 }
 
 pub async fn check_medication_availability(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Path(pharmacy_id): Path<i32>,
     Json(request): Json<CheckMedicationAvailabilityRequest>,
 ) -> AppResult<impl IntoResponse> {
@@ -4754,12 +5156,81 @@ pub async fn check_medication_availability(
         pharmacy_id, request.medication_name
     );
 
+    let service_id: i32 = sqlx::query_scalar(
+        r#"
+        SELECT service_id FROM pharmacies WHERE id = $1
+        "#,
+    )
+    .bind(pharmacy_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!(
+            "[check_medication_availability] Erreur récupération service_id: {}",
+            e
+        );
+        AppError::Internal("Erreur récupération pharmacie".to_string())
+    })?
+    .ok_or_else(|| AppError::NotFound("Pharmacie non trouvée".to_string()))?;
+
+    let qty = request.quantity.unwrap_or(1).max(1);
+
+    let row = sqlx::query(
+        r#"
+        SELECT id, nom_produit, prix, stock
+        FROM pharmacy_products
+        WHERE pharmacy_service_id = $1
+          AND lower(nom_produit) LIKE lower($2)
+        ORDER BY stock DESC, updated_at DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(service_id)
+    .bind(format!("%{}%", request.medication_name.trim()))
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!(
+            "[check_medication_availability] Erreur recherche produit: {}",
+            e
+        );
+        AppError::Internal("Erreur recherche médicament".to_string())
+    })?;
+
+    if let Some(r) = row {
+        let stock: i32 = r.get("stock");
+        let available = stock >= qty;
+        let price: rust_decimal::Decimal = r.get("prix");
+        return Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "available": available,
+                "medication": {
+                    "name": r.get::<String, _>("nom_produit"),
+                    "dci": null,
+                    "stock_quantity": stock,
+                    "price": price,
+                    "requires_prescription": false
+                },
+                "requested_quantity": qty
+            })),
+        ));
+    }
+
     Ok((
         StatusCode::OK,
         Json(json!({
             "success": true,
-            "available": true,
-            "quantity": 10
+            "available": false,
+            "medication": {
+                "name": request.medication_name,
+                "dci": null,
+                "stock_quantity": 0,
+                "price": null,
+                "requires_prescription": false
+            },
+            "requested_quantity": qty
         })),
     ))
 }
@@ -4769,10 +5240,11 @@ pub async fn check_medication_availability(
 pub struct ReserveMedicationRequest {
     pub medication_name: String,
     pub quantity: i32,
+    pub expiry_hours: Option<i32>,
 }
 
 pub async fn reserve_medication(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(pharmacy_id): Path<i32>,
     Json(request): Json<ReserveMedicationRequest>,
@@ -4782,11 +5254,86 @@ pub async fn reserve_medication(
         pharmacy_id, user_id, request.medication_name
     );
 
+    let service_id: i32 = sqlx::query_scalar("SELECT service_id FROM pharmacies WHERE id = $1")
+        .bind(pharmacy_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[reserve_medication] Erreur récupération service_id: {}", e);
+            AppError::Internal("Erreur récupération pharmacie".to_string())
+        })?
+        .ok_or_else(|| AppError::NotFound("Pharmacie non trouvée".to_string()))?;
+
+    let qty = request.quantity.max(1);
+
+    // Trouver le produit correspondant (meilleur match simple)
+    let product_row = sqlx::query(
+        r#"
+        SELECT id, nom_produit, stock
+        FROM pharmacy_products
+        WHERE pharmacy_service_id = $1
+          AND lower(nom_produit) LIKE lower($2)
+        ORDER BY stock DESC, updated_at DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(service_id)
+    .bind(format!("%{}%", request.medication_name.trim()))
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[reserve_medication] Erreur recherche produit: {}", e);
+        AppError::Internal("Erreur recherche médicament".to_string())
+    })?;
+
+    let (product_id, medication_name, stock): (Option<i32>, String, i32) =
+        if let Some(r) = product_row {
+            (
+                Some(r.get::<i32, _>("id")),
+                r.get::<String, _>("nom_produit"),
+                r.get::<i32, _>("stock"),
+            )
+        } else {
+            (None, request.medication_name.trim().to_string(), 0)
+        };
+
+    if stock < qty {
+        return Err(AppError::BadRequest(
+            "Stock insuffisant pour réserver".to_string(),
+        ));
+    }
+
+    let expiry_hours = request.expiry_hours.unwrap_or(3).clamp(1, 72) as i64;
+    let expires_at = chrono::Utc::now() + chrono::Duration::hours(expiry_hours);
+
+    let reservation_id: uuid::Uuid = sqlx::query_scalar(
+        r#"
+        INSERT INTO pharmacy_medication_reservations
+            (pharmacy_id, user_id, product_id, medication_name, quantity, expires_at)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+        "#,
+    )
+    .bind(pharmacy_id)
+    .bind(user_id)
+    .bind(product_id)
+    .bind(&medication_name)
+    .bind(qty)
+    .bind(expires_at)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[reserve_medication] Erreur création réservation: {}", e);
+        AppError::Internal("Erreur création réservation".to_string())
+    })?;
+
     Ok((
         StatusCode::OK,
         Json(json!({
             "success": true,
-            "reservation_id": 1
+            "reservation_id": reservation_id.to_string(),
+            "expiry_time": expires_at.to_rfc3339(),
+            "message": "Réservation créée"
         })),
     ))
 }
@@ -4794,26 +5341,138 @@ pub async fn reserve_medication(
 /// Créer une commande de pharmacie
 #[derive(Debug, Deserialize)]
 pub struct CreatePharmacyOrderRequest {
-    pub items: Vec<serde_json::Value>,
+    #[serde(default, alias = "items")]
+    pub medications: Vec<CreatePharmacyOrderItem>,
+    pub delivery_method: Option<String>, // pickup | delivery
     pub delivery_address: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct CreatePharmacyOrderItem {
+    pub medication_name: String,
+    pub quantity: i32,
+    pub price: f64,
+}
+
 pub async fn create_pharmacy_order(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(pharmacy_id): Path<i32>,
-    Json(_request): Json<CreatePharmacyOrderRequest>,
+    Json(request): Json<CreatePharmacyOrderRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!(
         "[create_pharmacy_order] pharmacy_id={}, user_id={}",
         pharmacy_id, user_id
     );
 
+    // Vérifier pharmacie existe
+    let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pharmacies WHERE id = $1)")
+        .bind(pharmacy_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!(
+                "[create_pharmacy_order] Erreur vérification pharmacie: {}",
+                e
+            );
+            AppError::Internal("Erreur vérification pharmacie".to_string())
+        })?;
+    if !exists {
+        return Err(AppError::NotFound("Pharmacie non trouvée".to_string()));
+    }
+
+    if request.medications.is_empty() {
+        return Err(AppError::BadRequest(
+            "Aucun médicament dans la commande".to_string(),
+        ));
+    }
+
+    let delivery_method = request.delivery_method.as_deref().unwrap_or("pickup").to_lowercase();
+    if delivery_method != "pickup" && delivery_method != "delivery" {
+        return Err(AppError::BadRequest(
+            "delivery_method invalide (pickup|delivery)".to_string(),
+        ));
+    }
+    if delivery_method == "delivery"
+        && request.delivery_address.as_deref().unwrap_or("").trim().is_empty()
+    {
+        return Err(AppError::BadRequest(
+            "Adresse de livraison requise".to_string(),
+        ));
+    }
+
+    let mut total: f64 = 0.0;
+    for it in &request.medications {
+        let q = it.quantity.max(1) as f64;
+        total += it.price.max(0.0) * q;
+    }
+
+    let mut tx = state.pg.begin().await.map_err(|e| {
+        error!("[create_pharmacy_order] Erreur begin tx: {}", e);
+        AppError::Internal("Erreur transaction".to_string())
+    })?;
+
+    let order_id: uuid::Uuid = sqlx::query_scalar(
+        r#"
+        INSERT INTO pharmacy_orders (pharmacy_id, user_id, status, total_amount, delivery_method, delivery_address)
+        VALUES ($1, $2, 'pending', $3, $4, $5)
+        RETURNING id
+        "#,
+    )
+    .bind(pharmacy_id)
+    .bind(user_id)
+    .bind(rust_decimal::Decimal::from_f64_retain(total).unwrap_or_else(|| rust_decimal::Decimal::ZERO))
+    .bind(&delivery_method)
+    .bind(request.delivery_address.as_ref())
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| {
+        error!("[create_pharmacy_order] Erreur insertion order: {}", e);
+        AppError::Internal("Erreur création commande".to_string())
+    })?;
+
+    for it in &request.medications {
+        let qty = it.quantity.max(1);
+        let unit_price = rust_decimal::Decimal::from_f64_retain(it.price.max(0.0))
+            .unwrap_or_else(|| rust_decimal::Decimal::ZERO);
+
+        sqlx::query(
+            r#"
+            INSERT INTO pharmacy_order_items (order_id, medication_name, quantity, unit_price)
+            VALUES ($1, $2, $3, $4)
+            "#,
+        )
+        .bind(order_id)
+        .bind(it.medication_name.trim())
+        .bind(qty)
+        .bind(unit_price)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            error!("[create_pharmacy_order] Erreur insertion item: {}", e);
+            AppError::Internal("Erreur création items commande".to_string())
+        })?;
+    }
+
+    tx.commit().await.map_err(|e| {
+        error!("[create_pharmacy_order] Erreur commit: {}", e);
+        AppError::Internal("Erreur finalisation commande".to_string())
+    })?;
+
     Ok((
         StatusCode::CREATED,
         Json(json!({
             "success": true,
-            "order_id": 1
+            "data": {
+                "order_id": order_id.to_string(),
+                "total_amount": format!("{:.2}", total),
+                "status": "pending",
+                "message": "Commande créée"
+            },
+            "order_id": order_id.to_string(),
+            "total_amount": format!("{:.2}", total),
+            "status": "pending",
+            "message": "Commande créée"
         })),
     ))
 }
@@ -4872,25 +5531,94 @@ pub async fn suggest_medication_dosage(
 }
 
 /// Obtenir mes commandes de pharmacie
+#[derive(Debug, Deserialize)]
+pub struct MyPharmacyOrdersQuery {
+    pub page: Option<i64>,
+    pub limit: Option<i64>,
+}
+
 pub async fn get_my_pharmacy_orders(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Query(query): Query<MyPharmacyOrdersQuery>,
 ) -> AppResult<impl IntoResponse> {
     info!("[get_my_pharmacy_orders] user_id={}", user_id);
+
+    let page = query.page.unwrap_or(1).max(1);
+    let limit = query.limit.unwrap_or(20).min(100).max(1);
+    let offset = (page - 1) * limit;
+
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            o.id::text as id,
+            o.pharmacy_id,
+            p.nom as pharmacy_name,
+            o.status,
+            o.total_amount::text as total_amount,
+            o.delivery_method,
+            o.delivery_address,
+            o.created_at
+        FROM pharmacy_orders o
+        JOIN pharmacies p ON p.id = o.pharmacy_id
+        WHERE o.user_id = $1
+        ORDER BY o.created_at DESC
+        LIMIT $2 OFFSET $3
+        "#,
+    )
+    .bind(user_id)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_my_pharmacy_orders] Erreur list: {}", e);
+        AppError::Internal("Erreur chargement commandes".to_string())
+    })?;
+
+    let total: i64 =
+        sqlx::query_scalar("SELECT COUNT(*)::bigint FROM pharmacy_orders WHERE user_id = $1")
+            .bind(user_id)
+            .fetch_one(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[get_my_pharmacy_orders] Erreur count: {}", e);
+                AppError::Internal("Erreur chargement commandes".to_string())
+            })?;
+
+    let orders: Vec<serde_json::Value> = rows
+        .into_iter()
+        .map(|r| {
+            json!({
+                "id": r.get::<String, _>("id"),
+                "pharmacy_id": r.get::<i32, _>("pharmacy_id"),
+                "pharmacy_name": r.get::<String, _>("pharmacy_name"),
+                "status": r.get::<String, _>("status"),
+                "total_amount": r.get::<String, _>("total_amount"),
+                "delivery_method": r.get::<String, _>("delivery_method"),
+                "delivery_address": r.get::<Option<String>, _>("delivery_address"),
+                "created_at": r.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
+            })
+        })
+        .collect();
 
     Ok((
         StatusCode::OK,
         Json(json!({
             "success": true,
-            "data": [],
-            "total": 0
+            "data": {
+                "orders": orders,
+                "page": page,
+                "limit": limit,
+                "total": total
+            }
         })),
     ))
 }
 
 /// Analytics d'une pharmacie
 pub async fn get_pharmacy_analytics(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(pharmacy_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
@@ -4899,13 +5627,75 @@ pub async fn get_pharmacy_analytics(
         pharmacy_id, user_id
     );
 
+    // Vérifier propriétaire
+    let is_owner: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM pharmacies WHERE id = $1 AND user_id = $2)",
+    )
+    .bind(pharmacy_id)
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_pharmacy_analytics] Erreur owner check: {}", e);
+        AppError::Internal("Erreur vérification propriétaire".to_string())
+    })?;
+    if !is_owner {
+        return Err(AppError::Forbidden("Accès refusé".to_string()));
+    }
+
+    let total_orders: i64 =
+        sqlx::query_scalar("SELECT COUNT(*)::bigint FROM pharmacy_orders WHERE pharmacy_id = $1")
+            .bind(pharmacy_id)
+            .fetch_one(&state.pg)
+            .await
+            .unwrap_or(0);
+
+    let orders_7d: i64 = sqlx::query_scalar(
+        r#"SELECT COUNT(*)::bigint FROM pharmacy_orders WHERE pharmacy_id = $1 AND created_at >= NOW() - INTERVAL '7 days'"#,
+    )
+    .bind(pharmacy_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    let orders_30d: i64 = sqlx::query_scalar(
+        r#"SELECT COUNT(*)::bigint FROM pharmacy_orders WHERE pharmacy_id = $1 AND created_at >= NOW() - INTERVAL '30 days'"#,
+    )
+    .bind(pharmacy_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    let (total_revenue, avg_order_value): (
+        Option<rust_decimal::Decimal>,
+        Option<rust_decimal::Decimal>,
+    ) = sqlx::query_as(
+        r#"
+            SELECT
+                SUM(total_amount) as total_revenue,
+                AVG(NULLIF(total_amount, 0)) as avg_order_value
+            FROM pharmacy_orders
+            WHERE pharmacy_id = $1
+              AND status <> 'cancelled'
+            "#,
+    )
+    .bind(pharmacy_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or((None, None));
+
     Ok((
         StatusCode::OK,
         Json(json!({
             "success": true,
-            "analytics": {
-                "total_orders": 0,
-                "revenue": 0.0
+            "data": {
+                "analytics": {
+                    "total_orders": total_orders,
+                    "orders_7d": orders_7d,
+                    "orders_30d": orders_30d,
+                    "total_revenue": total_revenue.map(|d| d.to_string()),
+                    "avg_order_value": avg_order_value.map(|d| d.to_string())
+                }
             }
         })),
     ))

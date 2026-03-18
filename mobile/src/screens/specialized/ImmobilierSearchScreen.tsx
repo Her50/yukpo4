@@ -10,6 +10,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import IntelligentChat from '../../components/IntelligentChat';
+import IntelligentChatFab from '../../components/IntelligentChatFab';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
@@ -64,6 +66,7 @@ const ImmobilierSearchScreen: React.FC = () => {
     const [loading, setLoading] = useState(false);
     // ✅ NOUVEAU: Modal fonctionnalités IA
     const [showAIFeatures, setShowAIFeatures] = useState(false);
+    const [showChat, setShowChat] = useState(false);
 
     // Initialiser GPS avec position actuelle
     React.useEffect(() => {
@@ -165,7 +168,7 @@ const ImmobilierSearchScreen: React.FC = () => {
             id: 'vente',
             title: t('immobilierSearch.aVendre'),
             icon: 'tag',
-            description: 'Biens en vente',
+            description: t('immobilierSearch.biensEnVente'),
             action: () => {
                 hapticPress();
                 setStatut('À vendre');
@@ -183,7 +186,7 @@ const ImmobilierSearchScreen: React.FC = () => {
         },
         {
             id: 'proche',
-            title: 'Plus proche',
+            title: t('immobilierSearch.plusProche'),
             icon: 'map-pin',
             description: t('immobilierSearch.aProximite'),
             action: () => {
@@ -217,7 +220,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                         </View>
                         <Text style={styles.headerTitle}>{t('immobilierSearch.rechercherUnBienImmobilier')}</Text>
                         <Text style={styles.headerSubtitle}>
-                            Trouvez le bien idéal selon vos critères
+                            {t('immobilierSearch.trouvezLeBienIdeal')}
                         </Text>
                     </View>
                 </View>
@@ -247,7 +250,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                             <View style={styles.aiFeaturesBannerText}>
                                 <Text style={styles.aiFeaturesBannerTitle}>{t('immobilierSearch.fonctionnalitesIa')}</Text>
                                 <Text style={styles.aiFeaturesBannerSubtitle}>
-                                    Recommandations, estimation prix, comparaison, alertes
+                                    {t('immobilierSearch.recommandationsEstimationPrix')}
                                 </Text>
                             </View>
                             <SafeIcon name="chevron-right" size={20} color="#FFFFFF" type="lucide" />
@@ -257,7 +260,7 @@ const ImmobilierSearchScreen: React.FC = () => {
 
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
-                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
+                    <Text style={styles.sectionTitle}>{t('immobilierSearch.recherchesRapides')}</Text>
                     <View style={styles.quickSearchesGrid}>
                         {quickSearches.map((search) => (
                             <TouchableOpacity
@@ -296,7 +299,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                             >
                                 <SafeIcon name="map-pin" size={18} color={searchMode === 'point' ? '#fff' : '#1E40AF'} type="lucide" />
                                 <Text style={[styles.modeButtonText, searchMode === 'point' && styles.modeButtonTextActive]}>
-                                    Point GPS
+                                    {t('immobilierSearch.pointGps')}
                                 </Text>
                             </TouchableOpacity>
                             <TouchableOpacity
@@ -309,7 +312,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                             >
                                 <SafeIcon name="map" size={18} color={searchMode === 'zone' ? '#fff' : '#1E40AF'} type="lucide" />
                                 <Text style={[styles.modeButtonText, searchMode === 'zone' && styles.modeButtonTextActive]}>
-                                    Zone carte
+                                    {t('immobilierSearch.zoneCarte')}
                                 </Text>
                             </TouchableOpacity>
                             <TouchableOpacity
@@ -321,7 +324,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                             >
                                 <SafeIcon name="layers" size={18} color={searchMode === 'quartiers' ? '#fff' : '#1E40AF'} type="lucide" />
                                 <Text style={[styles.modeButtonText, searchMode === 'quartiers' && styles.modeButtonTextActive]}>
-                                    Quartiers
+                                    {t('immobilierSearch.quartiers')}
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -401,7 +404,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                         <View style={styles.inputGroup}>
                             <Text style={styles.sectionTitle}>{t('immobilierSearch.selectionnerDesQuartiers')}</Text>
                             <Text style={styles.sectionSubtitle}>
-                                Sélectionnez un ou plusieurs quartiers pour filtrer la recherche
+                                {t('immobilierSearch.selectionnezQuartiers')}
                             </Text>
                             <View style={styles.quartiersGrid}>
                                 {popularQuartiers.map((q) => (
@@ -462,7 +465,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.sectionTitle}>💰 Statut</Text>
+                        <Text style={styles.sectionTitle}>{t('immobilierSearch.statut')}</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
                             {statuts.map((s) => (
                                 <TouchableOpacity
@@ -470,7 +473,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                                     style={[styles.chip, statut === s && styles.chipActive]}
                                     onPress={() => {
                                         hapticPress();
-                                        setStatut(statut === s ? '' : statut);
+                                        setStatut(statut === s ? '' : s);
                                     }}
                                 >
                                     <Text style={[styles.chipText, statut === s && styles.chipTextActive]}>
@@ -483,7 +486,7 @@ const ImmobilierSearchScreen: React.FC = () => {
 
                     {/* Prix */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.sectionTitle}>💵 Prix (FCFA)</Text>
+                        <Text style={styles.sectionTitle}>{t('immobilierSearch.prixFcfa')}</Text>
                         <View style={styles.row}>
                             <NativeInput
                                 placeholder={t('immobilierSearch.prixMin')}
@@ -504,7 +507,7 @@ const ImmobilierSearchScreen: React.FC = () => {
 
                     {/* Superficie */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.sectionTitle}>📐 Superficie (m²)</Text>
+                        <Text style={styles.sectionTitle}>{t('immobilierSearch.superficieM2')}</Text>
                         <View style={styles.row}>
                             <NativeInput
                                 placeholder="Min"
@@ -540,7 +543,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                                     style={[styles.chip, standing === s && styles.chipActive]}
                                     onPress={() => {
                                         hapticPress();
-                                        setStanding(standing === s ? '' : standing);
+                                        setStanding(standing === s ? '' : s);
                                     }}
                                 >
                                     <Text style={[styles.chipText, standing === s && styles.chipTextActive]}>
@@ -554,7 +557,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                     {/* Distance */}
                     {searchMode === 'point' && (
                         <View style={styles.inputGroup}>
-                            <Text style={styles.sectionTitle}>📍 Distance maximum</Text>
+                            <Text style={styles.sectionTitle}>{t('immobilierSearch.distanceMaximum')}</Text>
                             <View style={styles.distanceCard}>
                                 <TouchableOpacity
                                     style={styles.distanceButton}
@@ -592,7 +595,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                         <View style={styles.searchButtonContent}>
                             <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
                             <Text style={styles.searchButtonText}>
-                                {loading ? 'Recherche en cours...' : 'Lancer la recherche'}
+                                {loading ? t('immobilierSearch.rechercheEnCours') : t('immobilierSearch.lancerLaRecherche')}
                             </Text>
                         </View>
                     </TouchableOpacity>
@@ -629,6 +632,24 @@ const ImmobilierSearchScreen: React.FC = () => {
             <RealEstateAIFeatures
                 visible={showAIFeatures}
                 onClose={() => setShowAIFeatures(false)}
+            />
+
+            {/* Intelligent Chat FAB */}
+            <IntelligentChatFab
+                onPress={() => setShowChat(true)}
+                visible={!showChat && !showGPSModal && !showAIFeatures}
+                screenName="ImmobilierSearch"
+            />
+            <IntelligentChat
+                visible={showChat}
+                onClose={() => setShowChat(false)}
+                screenContext={{
+                    screenName: 'ImmobilierSearch',
+                    screenType: 'search',
+                    serviceData: {
+                        nom: t('immobilierSearch.rechercherUnBienImmobilier'),
+                    },
+                }}
             />
         </SafeNativeView>
     );

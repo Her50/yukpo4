@@ -17,6 +17,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import IntelligentChat from '../../components/IntelligentChat';
+import IntelligentChatFab from '../../components/IntelligentChatFab';
 import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
 import ShareServiceModal from '../../components/ShareServiceModal';
@@ -53,6 +55,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
     // IA: Recommandations
     const [aiRecommendation, setAiRecommendation] = useState<any>(null);
     const [loadingRecommendation, setLoadingRecommendation] = useState(false);
+    const [showChat, setShowChat] = useState(false);
 
     useEffect(() => { if (propertyId) loadProperty(); }, [propertyId]);
     useEffect(() => { if (property) handleTrackView(); }, [property]);
@@ -156,7 +159,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
     const handleTrackView = async () => { if (!property) return; try { await immobilierService.trackPropertyView(property.id, undefined, ['description'], 'details'); } catch { } };
 
     const formatPrice = (price?: number) => {
-        if (!price) return 'Prix sur demande';
+        if (!price) return t('hotelMeubleHome.prixSurDemande') || 'Prix sur demande';
         if (price >= 1000000) return `${(price / 1000000).toFixed(1)}M FCFA`;
         return `${(price / 1000).toFixed(0)}K FCFA`;
     };
@@ -266,7 +269,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
                     ) : (
                         <TouchableOpacity style={st.aiBtn} onPress={handleAIPriceEstimate} disabled={loadingEstimate}>
                             {loadingEstimate ? <ActivityIndicator size="small" color="#059669" /> : <SafeIcon name="zap" size={16} color="#059669" />}
-                            <Text style={st.aiBtnText}>{loadingEstimate ? 'Analyse en cours...' : 'Obtenir estimation IA'}</Text>
+                            <Text style={st.aiBtnText}>{loadingEstimate ? t('immobilierDetails.analyseEnCours') || 'Analyse en cours...' : t('immobilierDetails.obtenirEstimationIa') || 'Obtenir estimation IA'}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -284,7 +287,7 @@ const ImmobilierDetailsScreen: React.FC = () => {
                     ) : (
                         <TouchableOpacity style={[st.aiBtn, { borderColor: '#8B5CF6' }]} onPress={handleAIRecommendations} disabled={loadingRecommendation}>
                             {loadingRecommendation ? <ActivityIndicator size="small" color="#8B5CF6" /> : <SafeIcon name="compass" size={16} color="#8B5CF6" />}
-                            <Text style={[st.aiBtnText, { color: '#8B5CF6' }]}>{loadingRecommendation ? 'Analyse en cours...' : 'Obtenir recommandations IA'}</Text>
+                            <Text style={[st.aiBtnText, { color: '#8B5CF6' }]}>{loadingRecommendation ? t('immobilierDetails.analyseEnCours') || 'Analyse en cours...' : t('immobilierDetails.obtenirRecommandationsIa') || 'Obtenir recommandations IA'}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -363,6 +366,26 @@ const ImmobilierDetailsScreen: React.FC = () => {
                 description={property.description}
                 prix={property.prix_vente || property.prix_location_mensuel}
                 devise={getCurrencyIntelligently()}
+            />
+
+            {/* Intelligent Chat FAB */}
+            <IntelligentChatFab
+                onPress={() => setShowChat(true)}
+                visible={!showChat && !showShareModal && !showLoanModal}
+                screenName="ImmobilierDetails"
+            />
+            <IntelligentChat
+                visible={showChat}
+                onClose={() => setShowChat(false)}
+                screenContext={{
+                    screenName: 'ImmobilierDetails',
+                    screenType: 'detail',
+                    serviceData: {
+                        nom: property.titre,
+                        prix: property.prix_vente || property.prix_location_mensuel,
+                        description: property.description || `${property.type_bien} - ${property.ville}`,
+                    },
+                }}
             />
         </View>
     );

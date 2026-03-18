@@ -94,7 +94,7 @@ const ConferencesLivesScreen: React.FC = () => {
 
     const handleJoinConference = async (conferenceId: number) => {
         if (!user) {
-            Alert.alert('Connexion requise', t('conferencesLivesScreen.vousDevezEtreConnectePourRejoindre'));
+            Alert.alert('Connexion requise', 'Vous devez être connecté pour rejoindre une conférence');
             return;
         }
 
@@ -111,7 +111,7 @@ const ConferencesLivesScreen: React.FC = () => {
             }
         } catch (error) {
             console.error('[ConferencesLives] Erreur join:', error);
-            Alert.alert('Erreur', t('conferencesLivesScreen.impossibleDeRejoindreLaConference'));
+            Alert.alert('Erreur', 'Impossible de rejoindre la conférence');
         }
     };
 
@@ -136,7 +136,7 @@ const ConferencesLivesScreen: React.FC = () => {
                     <Text style={styles.cardTitle}>{item.titre}</Text>
                     {live && (
                         <View style={styles.liveBadge}>
-                            <Text style={styles.liveText}>🔴 EN DIRECT</Text>
+                            <Text style={styles.liveText}>\uD83D\uDD34 EN DIRECT</Text>
                         </View>
                     )}
                     {upcoming && !live && (
@@ -146,10 +146,10 @@ const ConferencesLivesScreen: React.FC = () => {
                     )}
                 </View>
                 <Text style={styles.cardSubtitle}>
-                    📍 {item.nom_etablissement || t('conferencesLivesScreen.etablissement', { item_etablissement_id: item.etablissement_id })}
+                    \uD83D\uDCCD {item.nom_etablissement || `Établissement #${item.etablissement_id}`}
                 </Text>
                 <Text style={styles.cardSubtitle}>
-                    📅 {new Date(item.date_debut).toLocaleString('fr-FR')}
+                    \uD83D\uDCC5 {new Date(item.date_debut).toLocaleString('fr-FR')}
                 </Text>
                 {item.date_fin && (
                     <Text style={styles.cardSubtitle}>
@@ -168,7 +168,7 @@ const ConferencesLivesScreen: React.FC = () => {
                             onPress={() => handleJoinConference(item.id)}
                         >
                             <Text style={styles.joinButtonText}>
-                                {live ? '🔴 Rejoindre' : 'Rejoindre'}
+                                {live ? '\uD83D\uDD34 Rejoindre' : 'Rejoindre'}
                             </Text>
                         </TouchableOpacity>
                     )}
@@ -195,7 +195,7 @@ const ConferencesLivesScreen: React.FC = () => {
             ) : conferences.length > 0 ? (
                 <>
                     <Text style={styles.resultsCount}>
-                        {total} conférence{total > 1 ? 's' : 't('conferencesLivesScreen.trouveetotal1')s' : ''}
+                        {total} conférence{total > 1 ? 's' : ''} trouvée{total > 1 ? 's' : ''}
                     </Text>
                     <FlatList
                         data={conferences}

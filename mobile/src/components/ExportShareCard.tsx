@@ -2,11 +2,9 @@
 import axios from "axios";
 import { useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const ExportShareCard = ({ content }: { content: string }) => {
-      const { t } = useLanguageSafe();
-const [medium, setMedium] = useState("whatsapp");
+  const [medium, setMedium] = useState("whatsapp");
   const [recipient, setRecipient] = useState("");
   const [link, setLink] = useState("");
   const [status, setStatus] = useState("");
@@ -29,7 +27,7 @@ const [medium, setMedium] = useState("whatsapp");
 
   return (
     <View style="p-4 border rounded mt-4 bg-white shadow">
-      <Text style="text-md font-bold mb-2">📤 Partager le contenu</Text>
+      <Text style="text-md font-bold mb-2">\uD83D\uDCE4 Partager le contenu</Text>
 
       <select
         value={medium}
@@ -42,7 +40,7 @@ const [medium, setMedium] = useState("whatsapp");
 
       <TextInput
         type="text"
-        placeholder={medium === "email" ? "exemple@domaine.com" : t('exportShareCard.numeroWhatsapp')}
+        placeholder={medium === "email" ? "exemple@domaine.com" : "Numéro WhatsApp"}
         value={recipient}
         onChange={(e) => setRecipient(e.target.value)}
         style="block w-full p-2 mb-2 border rounded"
@@ -50,12 +48,17 @@ const [medium, setMedium] = useState("whatsapp");
 
       <TouchableOpacity
         onPress={handleShare}
-        style="bg-green-600 text-white px-3 py-1 roundedt('exportShareCard.genererLeLienTouchableopacityStatusText')mt-2 text-sm">{status}</Text>}
+        style="bg-green-600 text-white px-3 py-1 rounded"
+      >
+        Générer le lien
+      </TouchableOpacity>
+
+      {status && <Text style="mt-2 text-sm">{status}</Text>}
 
       {link && (
         <View style="mt-2">
           <a href={link} target="_blank" rel="noopener noreferrer" style="text-blue-600 underline">
-            👉 Ouvrir le lien
+            \uD83D\uDC49 Ouvrir le lien
           </a>
         </View>
       )}

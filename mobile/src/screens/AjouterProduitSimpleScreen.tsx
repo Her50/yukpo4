@@ -307,22 +307,22 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
     // ✅ CORRECTION : Extraire données depuis suggestionIA avec priorité sur service_data.data
     // La structure peut être : suggestionIA.data OU suggestionIA.service_data.data OU suggestionIA directement
-    console.log('[AjouterProduitSimple] 🔍 suggestionIA reçu:', JSON.stringify(suggestionIA, null, 2));
-    console.log('[AjouterProduitSimple] 🔍 suggestionIA.service_data présent?', !!suggestionIA?.service_data);
-    console.log('[AjouterProduitSimple] 🔍 suggestionIA.service_data.data présent?', !!suggestionIA?.service_data?.data);
-    console.log('[AjouterProduitSimple] 🔍 suggestionIA.data présent?', !!suggestionIA?.data);
-    console.log('[AjouterProduitSimple] 🔍 suggestionIA.service_data complet:', JSON.stringify(suggestionIA?.service_data, null, 2));
+    console.log('[AjouterProduitSimple] \uD83D\uDD0D suggestionIA reçu:', JSON.stringify(suggestionIA, null, 2));
+    console.log('[AjouterProduitSimple] \uD83D\uDD0D suggestionIA.service_data présent?', !!suggestionIA?.service_data);
+    console.log('[AjouterProduitSimple] \uD83D\uDD0D suggestionIA.service_data.data présent?', !!suggestionIA?.service_data?.data);
+    console.log('[AjouterProduitSimple] \uD83D\uDD0D suggestionIA.data présent?', !!suggestionIA?.data);
+    console.log('[AjouterProduitSimple] \uD83D\uDD0D suggestionIA.service_data complet:', JSON.stringify(suggestionIA?.service_data, null, 2));
 
     // ✅ CORRIGÉ: Extraire suggestionData avec toutes les sources possibles
     // 1. service_data.data (données complètes avec produits si présents)
     // 2. data (données de base du service)
     // 3. suggestionIA directement (fallback)
     const suggestionData = suggestionIA?.service_data?.data || suggestionIA?.data || suggestionIA || {};
-    console.log('[AjouterProduitSimple] 🔍 suggestionData extrait:', JSON.stringify(suggestionData, null, 2));
-    console.log('[AjouterProduitSimple] 🔍 suggestionData a des données produit?', !!(suggestionData.nom_produit || suggestionData.prix_produit || suggestionData.produits || suggestionData.variabilite_prix));
-    console.log('[AjouterProduitSimple] 🔍 suggestionData.titre_service:', suggestionData.titre_service);
-    console.log('[AjouterProduitSimple] 🔍 suggestionData.category:', suggestionData.category);
-    console.log('[AjouterProduitSimple] 🔍 suggestionData.description:', suggestionData.description);
+    console.log('[AjouterProduitSimple] \uD83D\uDD0D suggestionData extrait:', JSON.stringify(suggestionData, null, 2));
+    console.log('[AjouterProduitSimple] \uD83D\uDD0D suggestionData a des données produit?', !!(suggestionData.nom_produit || suggestionData.prix_produit || suggestionData.produits || suggestionData.variabilite_prix));
+    console.log('[AjouterProduitSimple] \uD83D\uDD0D suggestionData.titre_service:', suggestionData.titre_service);
+    console.log('[AjouterProduitSimple] \uD83D\uDD0D suggestionData.category:', suggestionData.category);
+    console.log('[AjouterProduitSimple] \uD83D\uDD0D suggestionData.description:', suggestionData.description);
 
     const normalizeMediaList = (value: any): any[] => {
         if (!value) {
@@ -668,7 +668,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         const sousCaracsObj: Record<string, string[]> = {};
 
         // ✅ DEBUG: Logger pour diagnostiquer
-        console.log('[AjouterProduitSimple] 🔍 Construction initiale depuis product_vector/product_labels:', {
+        console.log('[AjouterProduitSimple] \uD83D\uDD0D Construction initiale depuis product_vector/product_labels:', {
             product_vector: suggestionData.produits.product_vector,
             product_labels: suggestionData.produits.product_labels,
             length_vector: suggestionData.produits.product_vector.length,
@@ -707,7 +707,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     // ✅ Lieu produit
     const lieu_produit = extractValue(suggestionData.lieu_produit) || extractValue(suggestionData.lieu_commercial) || extractValue(suggestionData.lieu_commercialisation) || null;
 
-    console.log('[AjouterProduitSimple] 📦 Données chargées depuis IA:', {
+    console.log('[AjouterProduitSimple] \uD83D\uDCE6 Données chargées depuis IA:', {
         nom_produit,
         categorie_produit,
         description_produit,
@@ -768,7 +768,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     ? productLabels.filter(label => label && typeof label === 'string' && finalSousCaracs[label])
                     : Object.keys(finalSousCaracs);
 
-                console.log('[AjouterProduitSimple] 🔍 Construction valeur depuis sous_caracteristiques:', {
+                console.log('[AjouterProduitSimple] \uD83D\uDD0D Construction valeur depuis sous_caracteristiques:', {
                     orderedLabels,
                     sousCaracsKeys: Object.keys(finalSousCaracs),
                     productLabels: productLabels || t('ajouterProduitSimple.nonDisponible')
@@ -967,7 +967,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     };
 
     // ✅ DEBUG: Logger les valeurs initiales pour diagnostiquer le problème
-    console.log('[AjouterProduitSimple] 📝 Valeurs initiales extraites depuis IA:', {
+    console.log('[AjouterProduitSimple] \uD83D\uDCDD Valeurs initiales extraites depuis IA:', {
         nom_produit: nom_produit || 'VIDE',
         categorie_produit: categorie_produit || 'VIDE',
         description_produit: description_produit || 'VIDE',
@@ -980,8 +980,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     // ✅ DEBUG: Logger le prefill pour vérifier qu'il contient bien les données
     React.useEffect(() => {
         if (isEditing || isDuplicate) {
-            console.log('[AjouterProduitSimple] 📝 Mode:', mode);
-            console.log('[AjouterProduitSimple] 📦 Prefill reçu:', {
+            console.log('[AjouterProduitSimple] \uD83D\uDCDD Mode:', mode);
+            console.log('[AjouterProduitSimple] \uD83D\uDCE6 Prefill reçu:', {
                 nom_produit: prefill.nom_produit || 'VIDE',
                 categorie_produit: prefill.categorie_produit || 'VIDE',
                 description_produit: prefill.description_produit || 'VIDE',
@@ -1000,13 +1000,13 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 audios_count: Array.isArray(prefill.audios) ? prefill.audios.length : 0,
                 documents_count: Array.isArray(prefill.documents) ? prefill.documents.length : 0,
             });
-            console.log('[AjouterProduitSimple] 📦 MediaData reçu:', {
+            console.log('[AjouterProduitSimple] \uD83D\uDCE6 MediaData reçu:', {
                 base64_image_count: Array.isArray(mediaData?.base64_image) ? mediaData.base64_image.length : 0,
                 video_base64_count: Array.isArray(mediaData?.video_base64) ? mediaData.video_base64.length : 0,
                 audio_base64_count: Array.isArray(mediaData?.audio_base64) ? mediaData.audio_base64.length : 0,
                 doc_base64_count: Array.isArray(mediaData?.doc_base64) ? mediaData.doc_base64.length : 0,
             });
-            console.log('[AjouterProduitSimple] 📝 Valeurs initiales formValues:', {
+            console.log('[AjouterProduitSimple] \uD83D\uDCDD Valeurs initiales formValues:', {
                 nom_produit: initialFormValues.nom_produit || 'VIDE',
                 categorie_produit: initialFormValues.categorie_produit || 'VIDE',
                 description_produit: initialFormValues.description_produit || 'VIDE',
@@ -1024,7 +1024,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             });
         } else {
             // ✅ DEBUG: Logger aussi en mode création pour diagnostiquer
-            console.log('[AjouterProduitSimple] 📝 Mode création - Valeurs initiales formValues:', {
+            console.log('[AjouterProduitSimple] \uD83D\uDCDD Mode création - Valeurs initiales formValues:', {
                 nom_produit: initialFormValues.nom_produit || 'VIDE',
                 categorie_produit: initialFormValues.categorie_produit || 'VIDE',
                 description_produit: initialFormValues.description_produit || 'VIDE',
@@ -1043,7 +1043,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     // ✅ NOUVEAU: Fonction utilitaire pour vérifier les configurations de livraison existantes
     const checkExistingDeliveryConfigs = async (serviceId: number) => {
         try {
-            console.log('[AjouterProduitSimple] 🔍 Vérification configs livraison existantes pour service:', serviceId);
+            console.log('[AjouterProduitSimple] \uD83D\uDD0D Vérification configs livraison existantes pour service:', serviceId);
             const response = await apiGet(`/api/delivery/product-config/list/${serviceId}`);
 
             if (response.success && response.data && Array.isArray(response.data.products) && response.data.products.length > 0) {
@@ -1110,7 +1110,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             const updatedAudios = combineUnique(currentPrefilledAudios, currentMediaDataAudios);
             const updatedDocuments = combineUnique(currentPrefilledDocuments, currentMediaDataDocuments);
 
-            console.log('[AjouterProduitSimple] 🔄 Mise à jour formValues avec médias en mode édition:', {
+            console.log('[AjouterProduitSimple] \uD83D\uDD04 Mise à jour formValues avec médias en mode édition:', {
                 prefill_images: currentPrefilledImages.length,
                 mediaData_images: currentMediaDataImages.length,
                 final_images: updatedImages.length,
@@ -1157,7 +1157,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 || suggestionIA?.service_data?.session_id
                 || suggestionIA?.service_data?.data?.session_id;
 
-            console.log('[AjouterProduitSimple] 🔍 Extraction session_id:', {
+            console.log('[AjouterProduitSimple] \uD83D\uDD0D Extraction session_id:', {
                 sessionId,
                 from_suggestionIA_session_id: !!suggestionIA?.session_id,
                 from_suggestionIA_data_session_id: !!suggestionIA?.data?.session_id,
@@ -1172,7 +1172,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 hasLoadedCombinations.current = true; // ✅ Marquer comme chargé pour éviter les re-renders
                 try {
                     const combinationsResponse = await apiGet(`/api/combinations/session/${sessionId}`);
-                    console.log('[AjouterProduitSimple] 🔍 Réponse API combinations:', {
+                    console.log('[AjouterProduitSimple] \uD83D\uDD0D Réponse API combinations:', {
                         success: combinationsResponse?.success,
                         hasData: !!combinationsResponse?.data,
                         dataType: Array.isArray(combinationsResponse?.data) ? 'array' : typeof combinationsResponse?.data,
@@ -1228,7 +1228,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     try {
                         await new Promise(resolve => setTimeout(resolve, 2000));
                         const retryResponse = await apiGet(`/api/combinations/session/${sessionId}`);
-                        console.log('[AjouterProduitSimple] 🔍 Retry réponse API combinations:', {
+                        console.log('[AjouterProduitSimple] \uD83D\uDD0D Retry réponse API combinations:', {
                             success: retryResponse?.success,
                             hasData: !!retryResponse?.data,
                             dataType: Array.isArray(retryResponse?.data) ? 'array' : typeof retryResponse?.data,
@@ -1463,7 +1463,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         // ✅ Phase de lancement (LAUNCH_PHASE_START_DATE) : coût 0 si gratuit, sinon 2000 FCFA
         try {
             // ✅ ÉTAPE 1 : Coût effectif (backend = phase lancement ou 1er produit = gratuit)
-            console.log('💰 [AjouterProduitSimple] Vérification coût effectif et solde...');
+            console.log('\uD83D\uDCB0 [AjouterProduitSimple] Vérification coût effectif et solde...');
             const [costResponse, balanceResponse] = await Promise.all([
                 apiGet<{ cost: number; is_free: boolean }>('/api/users/product-add-cost'),
                 apiGet<{ tokens_balance: number }>('/api/users/balance')
@@ -1476,18 +1476,18 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
             if (!balanceResponse.success) {
                 const errorMsg = balanceResponse.error || t('ajouterProduitSimple.impossibleDeVerifierVotreSolde');
-                console.error('💰 [AjouterProduitSimple] ❌ Erreur vérification solde:', errorMsg);
+                console.error('\uD83D\uDCB0 [AjouterProduitSimple] ❌ Erreur vérification solde:', errorMsg);
                 Alert.alert(t('message.error'), errorMsg);
                 return;
             }
             if (!balanceResponse.data || typeof balanceResponse.data.tokens_balance === 'undefined') {
-                console.error('💰 [AjouterProduitSimple] ❌ Données solde invalides:', balanceResponse.data);
+                console.error('\uD83D\uDCB0 [AjouterProduitSimple] ❌ Données solde invalides:', balanceResponse.data);
                 Alert.alert(t('message.error'), t('ajouterProduit.balanceInvalid'));
                 return;
             }
 
             const soldeActuel = balanceResponse.data.tokens_balance || 0;
-            console.log('💰 [AjouterProduitSimple] ✅ Solde:', soldeActuel, 'Coût effectif:', effectiveCost, isFree ? '(gratuit - phase lancement)' : 'FCFA');
+            console.log('\uD83D\uDCB0 [AjouterProduitSimple] ✅ Solde:', soldeActuel, 'Coût effectif:', effectiveCost, isFree ? '(gratuit - phase lancement)' : 'FCFA');
 
             // Bloquer seulement si coût > 0 et solde insuffisant
             if (effectiveCost > 0 && soldeActuel < effectiveCost) {
@@ -1509,7 +1509,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 ? t('ajouterProduit.freeConfirm', { action: actionLabel })
                 : t('ajouterProduit.costConfirm', { cost: effectiveCost.toLocaleString(), balance: soldeActuel.toLocaleString(), action: actionLabel, after: (soldeActuel - effectiveCost).toLocaleString() });
 
-            console.log('[AjouterProduitSimple] 📋 Confirmation création produit:', {
+            console.log('[AjouterProduitSimple] \uD83D\uDCCB Confirmation création produit:', {
                 serviceId,
                 productName: formValues.nom_produit,
                 cost: effectiveCost,
@@ -1765,7 +1765,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
                                 if (hasImagesToCompress || hasVideosToCompress) {
                                     // ✅ SEULEMENT si on a des médias à compresser, importer et compresser
-                                    console.log('[AjouterProduitSimple] 🔄 Compression des médias avant envoi...');
+                                    console.log('[AjouterProduitSimple] \uD83D\uDD04 Compression des médias avant envoi...');
                                     try {
                                         const { compressAllMedia } = await import('../utils/mediaCompression');
 
@@ -1883,7 +1883,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     console.log('[AjouterProduitSimple] ✅ Pas de médias à compresser, traitement rapide');
                                 }
 
-                                console.log('[AjouterProduitSimple] 📦 Données du nouveau produit (complètes):', {
+                                console.log('[AjouterProduitSimple] \uD83D\uDCE6 Données du nouveau produit (complètes):', {
                                     ...nouveauProduit,
                                     images: compressedMedia?.images?.length || (nouveauProduit.images ? nouveauProduit.images.length : 0),
                                     videos: compressedMedia?.videos?.length || (nouveauProduit.videos ? nouveauProduit.videos.length : 0),
@@ -1987,7 +1987,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         (nouveauProduit.video_base64.length || 0) * 2) : 0;
                                 const totalBase64SizeMB = ((base64ImagesSize + base64VideosSize) / (1024 * 1024)).toFixed(2);
 
-                                console.log('[AjouterProduitSimple] 📤 Appel API création produit:', {
+                                console.log('[AjouterProduitSimple] \uD83D\uDCE4 Appel API création produit:', {
                                     url: `/api/services/${serviceId}/products`,
                                     userId,
                                     serviceId,
@@ -2015,7 +2015,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
                                 // ✅ SIMPLIFIÉ: Appel direct sans retry (le timeout de 180s devrait suffire)
                                 // Les retries peuvent causer des timeouts cumulatifs qui dépassent le timeout
-                                console.log(`[AjouterProduitSimple] 📤 Appel API création produit (timeout: 180s)...`);
+                                console.log(`[AjouterProduitSimple] \uD83D\uDCE4 Appel API création produit (timeout: 180s)...`);
 
                                 const startTime = Date.now();
                                 const response = await apiPost(`/api/services/${serviceId}/products`, {
@@ -2024,7 +2024,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 });
                                 const duration = Date.now() - startTime;
 
-                                console.log('[AjouterProduitSimple] 📥 Réponse API création produit:', {
+                                console.log('[AjouterProduitSimple] \uD83D\uDCE5 Réponse API création produit:', {
                                     success: response.success,
                                     hasData: !!response.data,
                                     error: response.error,
@@ -2045,7 +2045,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
                                 if (jobId) {
                                     // ✅ NOUVEAU: Le backend utilise une queue asynchrone, il faut interroger le statut
-                                    console.log('[AjouterProduitSimple] 🔄 Job créé, interrogation du statut (job_id:', jobId, ')');
+                                    console.log('[AjouterProduitSimple] \uD83D\uDD04 Job créé, interrogation du statut (job_id:', jobId, ')');
                                     toaster.info(t('ajouterProduitSimpleScreen.creationDuProduitEnCours'));
 
                                     // Fonction pour interroger le statut du job
@@ -2067,7 +2067,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                                 const statusData: any = statusResponse.data ?? {};
                                                 const jobStatus = statusData.status;
 
-                                                console.log('[AjouterProduitSimple] 📊 Statut job:', jobStatus, '(tentative', attempt + 1, '/', maxAttempts, ')');
+                                                console.log('[AjouterProduitSimple] \uD83D\uDCCA Statut job:', jobStatus, '(tentative', attempt + 1, '/', maxAttempts, ')');
 
                                                 if (jobStatus === 'completed') {
                                                     // Job terminé avec succès, extraire product_index depuis result_data
@@ -2280,7 +2280,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     errorMessage = error?.response?.data?.error || error?.message || t('ajouterProduitSimple.lesDonneesEnvoyeesSontInvalides');
                                     toaster.error('⚠️ Erreur de validation');
                                 } else if (error?.response?.status === 401) {
-                                    errorTitle = '🔐 Erreur d\'authentification';
+                                    errorTitle = '\uD83D\uDD10 Erreur d\'authentification';
                                     errorMessage = t('ajouterProduitSimpleScreen.votreSessionAExpireVeuillezVous');
                                     toaster.error(t('ajouterProduitSimpleScreen.sessionExpiree'));
                                 } else if (error?.response?.data?.error) {
@@ -2344,7 +2344,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 errorTitle = '⚠️ Erreur de validation';
                 errorMessage = error?.response?.data?.error || error?.message || t('ajouterProduitSimple.lesDonneesEnvoyeesSontInvalides');
             } else if (error?.response?.status === 401) {
-                errorTitle = '🔐 Erreur d\'authentification';
+                errorTitle = '\uD83D\uDD10 Erreur d\'authentification';
                 errorMessage = t('ajouterProduitSimpleScreen.votreSessionAExpireVeuillezVous');
             } else if (error?.response?.data?.error) {
                 errorMessage = error.response.data.error;
@@ -2649,7 +2649,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                             formValues.sous_caracteristiques
                                         );
 
-                                        console.log('[AjouterProduitSimple] 🔍 Construction depuis product_vector/product_labels:', {
+                                        console.log('[AjouterProduitSimple] \uD83D\uDD0D Construction depuis product_vector/product_labels:', {
                                             product_vector: formValues.product_vector,
                                             product_labels: formValues.product_labels,
                                             length_vector: formValues.product_vector.length,
@@ -2781,7 +2781,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
                             </TouchableOpacity>
                             <Text style={styles.hint}>
-                                💡 Cliquez pour ouvrir la carte et sélectionner ou créer un lieu précis. Le nom complet du lieu sera affiché.
+                                \uD83D\uDCA1 Cliquez pour ouvrir la carte et sélectionner ou créer un lieu précis. Le nom complet du lieu sera affiché.
                             </Text>
                         </View>
 
@@ -2817,7 +2817,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             {(() => {
                                 const imagesToPass = formValues.images || [];
                                 const videosToPass = formValues.videos || [];
-                                console.log('[AjouterProduitSimple] 📸 Passage des médias à MediaUploadManager:', {
+                                console.log('[AjouterProduitSimple] \uD83D\uDCF8 Passage des médias à MediaUploadManager:', {
                                     images_count: imagesToPass.length,
                                     videos_count: videosToPass.length,
                                     isEditing,

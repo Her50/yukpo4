@@ -41,7 +41,7 @@ export const useOnlineStatus = (
           setLastSeen(null);
         }
 
-        console.log(`📡 [useOnlineStatus] Statut WebSocket pour user ${userId}:`, {
+        console.log(`\uD83D\uDCE1 [useOnlineStatus] Statut WebSocket pour user ${userId}:`, {
           isOnline: isUserOnline,
           lastSeen: userStatus.lastSeen
         });
@@ -61,7 +61,7 @@ export const useOnlineStatus = (
           setLastSeen(null);
         }
 
-        console.log(`🔄 [useOnlineStatus] Statut simulé pour user ${userId}:`, {
+        console.log(`\uD83D\uDD04 [useOnlineStatus] Statut simulé pour user ${userId}:`, {
           isOnline: simulatedOnline,
           serviceAge: `${diffHours.toFixed(1)}h`,
           serviceDate: serviceCreatedAt

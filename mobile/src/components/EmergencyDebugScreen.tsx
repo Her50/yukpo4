@@ -29,7 +29,9 @@ export default function EmergencyDebugScreen({ onClose, logs }: Props) {
                 <View style={styles.instructions}>
                     <Text style={styles.instructionsTitle}>Instructions:</Text>
                     <Text style={styles.instructionsText}>
-                        1. Copiez le contenu ci-dessus{'\nt('emergencyDebugScreen.2EnvoyezleAuDeveloppeur')\nt('emergencyDebugScreen.3RedemarrezL')application
+                        1. Copiez le contenu ci-dessus{'\n'}
+                        2. Envoyez-le au développeur{'\n'}
+                        3. Redémarrez l'application
                     </Text>
                 </View>
             </ScrollView>

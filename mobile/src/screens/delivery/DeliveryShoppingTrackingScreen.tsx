@@ -46,7 +46,6 @@ interface RouteParams {
 
 const DeliveryShoppingTrackingScreen: React.FC = () => {
     const navigation = useNavigation();
-    const { t } = useLanguageSafe();
     const route = useRoute();
     const params = route.params as RouteParams | undefined;
     const deliveryId = params?.deliveryId || null;
@@ -100,13 +99,13 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
 
             // Toast visuel aussi
             if (currentStatus === 'assigned' || currentStatus === 'accepted') {
-                showSuccess(t('deliveryShoppingTrackingScreen.coursierTrouve', { courierName_________couri: courierName ? ` : ${courierName }) : ''} !`);
+                showSuccess(`Coursier trouvé${courierName ? ` : ${courierName}` : ''} !`);
             } else if (currentStatus === 'delivered' || currentStatus === 'completed') {
-                showSuccess(t('deliveryShoppingTrackingScreen.livraisonTerminee'));
+                showSuccess('Livraison terminée !');
             } else if (currentStatus === 'en_route_delivery') {
                 showSuccess('Coursier en route vers vous !');
             } else if (currentStatus === 'arrival_destination') {
-                showSuccess(t('deliveryShoppingTrackingScreen.coursierArriveADestination'));
+                showSuccess('Coursier arrivé à destination !');
             }
         }
 
@@ -185,9 +184,9 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         if (!deliveryId) return;
         try {
             await refresh({ force: true });
-            showSuccess(t('deliveryShoppingTrackingScreen.miseAJourReussie'));
+            showSuccess('Mise à jour réussie');
         } catch {
-            showError(t('deliveryShoppingTrackingScreen.erreurDeMiseAJour'));
+            showError('Erreur de mise à jour');
         }
     };
 
@@ -212,7 +211,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                 source: 'recipient',
             });
 
-            showSuccess(t('deliveryShoppingTrackingScreen.positionPartagee'));
+            showSuccess('Position partagée');
         } catch (error: any) {
             showError(error?.message || 'Erreur');
         }
@@ -301,8 +300,8 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                 if (!destination) missingData.push('destination');
 
                 Alert.alert(
-                    t('deliveryShoppingTrackingScreen.donneesIncompletes'),
-                    t('deliveryShoppingTrackingScreen.impossibleDeDemarrerLaNavigationManquantesnnverifi', { missingData_join(' et '): missingData.join(' et ') }),
+                    'Données incomplètes',
+                    `Impossible de démarrer la navigation : ${missingData.join(' et ')} manquante(s).\n\nVérifiez que les adresses de pickup et dropoff sont bien définies.`,
                     [{ text: 'OK' }]
                 );
                 return;
@@ -317,7 +316,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                 destination.lat < -90 || destination.lat > 90 ||
                 destination.lng < -180 || destination.lng > 180
             ) {
-                Alert.alert('Erreur', t('deliveryShoppingTrackingScreen.coordonneesGpsInvalides'));
+                Alert.alert('Erreur', 'Coordonnées GPS invalides');
                 return;
             }
 
@@ -352,7 +351,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         try {
             const response = await deliveryApi.updateStatus(deliveryId, status);
             if (response.success) {
-                showSuccess(t('deliveryShoppingTrackingScreen.statutMisAJour'));
+                showSuccess('Statut mis à jour');
                 await refresh({ force: true });
             } else {
                 showError(response.error || 'Erreur');
@@ -370,7 +369,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
 
         Alert.alert(
             'Accepter la course',
-            t('deliveryShoppingTrackingScreen.etesvousSurDeVouloirAccepterCette'),
+            'Êtes-vous sûr de vouloir accepter cette course ?',
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -381,7 +380,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                         try {
                             const response = await deliveryApi.acceptDelivery(deliveryId);
                             if (response.success) {
-                                showSuccess(t('deliveryShoppingTrackingScreen.courseAccepteeAvecSucces'));
+                                showSuccess('Course acceptée avec succès !');
                                 await refresh({ force: true });
                             } else {
                                 showError(response.error || 'Erreur lors de l\'acceptation');
@@ -404,17 +403,17 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         switch (status) {
             case 'assigned':
             case 'awaiting_courier':
-                return [{ label: t('deliveryShoppingTracking.enRouteVersDepart'), status: 'en_route_pickup', icon: '🚚' }];
+                return [{ label: 'En route vers départ', status: 'en_route_pickup', icon: '\uD83D\uDE9A' }];
             case 'en_route_pickup':
-                return [{ label: t('deliveryShoppingTracking.arriveAuDepart'), status: 'shopping_pending', icon: '📍' }];
+                return [{ label: 'Arrivé au départ', status: 'shopping_pending', icon: '\uD83D\uDCCD' }];
             case 'shopping_pending':
-                return [{ label: 'Courses en cours', status: 'shopping_in_progress', icon: '🛒' }];
+                return [{ label: 'Courses en cours', status: 'shopping_in_progress', icon: '\uD83D\uDED2' }];
             case 'shopping_in_progress':
-                return [{ label: t('deliveryShoppingTracking.coursesTerminees'), status: 'shopping_completed', icon: '✅' }];
+                return [{ label: 'Courses terminées', status: 'shopping_completed', icon: '✅' }];
             case 'shopping_completed':
-                return [{ label: 'En route livraison', status: 'en_route_delivery', icon: '🚚' }];
+                return [{ label: 'En route livraison', status: 'en_route_delivery', icon: '\uD83D\uDE9A' }];
             case 'en_route_delivery':
-                return [{ label: t('deliveryShoppingTracking.livre'), status: 'delivered', icon: '✅' }];
+                return [{ label: 'Livré', status: 'delivered', icon: '✅' }];
             default:
                 return [];
         }
@@ -424,14 +423,14 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         const labels: Record<string, string> = {
             pending: 'En attente',
             awaiting_courier: 'Recherche coursier',
-            assigned: t('deliveryShoppingTrackingScreen.coursierAssigne'),
-            en_route_pickup: t('deliveryShoppingTrackingScreen.enRouteDepart'),
-            shopping_pending: t('deliveryShoppingTrackingScreen.arriveMarche'),
+            assigned: 'Coursier assigné',
+            en_route_pickup: 'En route départ',
+            shopping_pending: 'Arrivé marché',
             shopping_in_progress: 'Courses en cours',
-            shopping_completed: t('deliveryShoppingTrackingScreen.panierValide'),
+            shopping_completed: 'Panier validé',
             en_route_delivery: 'En route livraison',
-            delivered: t('deliveryShoppingTrackingScreen.livre'),
-            cancelled: t('deliveryShoppingTrackingScreen.annule'),
+            delivered: 'Livré',
+            cancelled: 'Annulé',
         };
         return labels[status] || status;
     };
@@ -509,7 +508,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                             </TouchableOpacity>
                         )}
                         <TouchableOpacity style={styles.button} onPress={handleNavigation}>
-                            <Text style={styles.buttonText}>🧭 Ouvrir navigation</Text>
+                            <Text style={styles.buttonText}>\uD83E\uDDED Ouvrir navigation</Text>
                         </TouchableOpacity>
                         {getStatusOptions().map((opt) => (
                             <TouchableOpacity
@@ -528,7 +527,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                             style={[styles.button, styles.difficultyButton]}
                             onPress={() => setShowDifficultyModal(true)}
                         >
-                            <Text style={styles.buttonText}>{t('deliveryShoppingTracking.signalerUneDifficulte')}</Text>
+                            <Text style={styles.buttonText}>⚠️ Signaler une difficulté</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -590,7 +589,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                         <View style={styles.card}>
                             <View style={styles.cardHeader}>
                                 <SafeIcon name="clock" size={20} color={modernColors.primary} />
-                                <Text style={styles.cardTitle}>{t('deliveryShoppingTracking.historique')}</Text>
+                                <Text style={styles.cardTitle}>Historique</Text>
                             </View>
                             <TimelineStepper checkpoints={timeline} currentStatus={delivery?.status || 'pending'} />
                         </View>
@@ -622,7 +621,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                             </View>
                             {shoppingItems.length === 0 ? (
                                 <View style={styles.empty}>
-                                    <Text style={styles.emptyText}>{t('deliveryShoppingTracking.aucunArticle')}</Text>
+                                    <Text style={styles.emptyText}>Aucun article</Text>
                                 </View>
                             ) : (
                                 <View style={styles.items}>
@@ -645,7 +644,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                                     )}
                                                     <View style={styles.itemMeta}>
                                                         <Text style={styles.itemMetaText}>
-                                                            {item.quantity} {item.unit || t('deliveryShoppingTracking.unites')}
+                                                            {item.quantity} {item.unit || 'unités'}
                                                         </Text>
                                                         {(item.actualTotal || item.estimatedTotal) && (
                                                             <Text style={styles.itemPrice}>
@@ -686,7 +685,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                     style={styles.button}
                                     onPress={() => setShowCourierModal(true)}
                                 >
-                                    <Text style={styles.buttonText}>{t('deliveryShoppingTracking.choisirUnLivreur')}</Text>
+                                    <Text style={styles.buttonText}>Choisir un livreur</Text>
                                 </TouchableOpacity>
                             )}
 
@@ -697,7 +696,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                         style={[styles.button, { backgroundColor: '#EEF2FF', borderWidth: 1, borderColor: modernColors.primary + '40' }]}
                                         onPress={() => (navigation as any).navigate('ProviderCourierVerification', { deliveryId })}
                                     >
-                                        <Text style={[styles.buttonText, { color: modernColors.primary }]}>{t('deliveryShoppingTracking.verifierLidentiteDuCoursier')}</Text>
+                                        <Text style={[styles.buttonText, { color: modernColors.primary }]}>\uD83D\uDEE1️ Vérifier l'identité du coursier</Text>
                                     </TouchableOpacity>
                                 )}
 
@@ -747,12 +746,12 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                 <View style={styles.infoRow}>
                                     <Text style={styles.infoLabel}>Coursier:</Text>
                                     <Text style={styles.infoValue}>
-                                        {courierInfo.courier?.name || t('deliveryShoppingTracking.enAttente')}
+                                        {courierInfo.courier?.name || 'En attente'}
                                     </Text>
                                 </View>
                                 {courierInfo.courier?.phone && (
                                     <View style={styles.infoRow}>
-                                        <Text style={styles.infoLabel}>{t('deliveryShoppingTracking.telephone')}</Text>
+                                        <Text style={styles.infoLabel}>Téléphone:</Text>
                                         <TouchableOpacity
                                             onPress={() => Linking.openURL(`tel:${courierInfo.courier.phone}`)}
                                         >
@@ -763,12 +762,12 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                 <View style={styles.infoRow}>
                                     <Text style={styles.infoLabel}>Destinataire:</Text>
                                     <Text style={styles.infoValue}>
-                                        {courierInfo.recipient?.name || t('deliveryShoppingTracking.invite')}
+                                        {courierInfo.recipient?.name || 'Invité'}
                                     </Text>
                                 </View>
                                 {courierInfo.recipient?.phone && (
                                     <View style={styles.infoRow}>
-                                        <Text style={styles.infoLabel}>{t('deliveryShoppingTracking.telephone')}</Text>
+                                        <Text style={styles.infoLabel}>Téléphone:</Text>
                                         <TouchableOpacity
                                             onPress={() => Linking.openURL(`tel:${courierInfo.recipient.phone}`)}
                                         >
@@ -823,7 +822,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                 deliveryId={deliveryId}
                 onSuccess={async () => {
                     setShowDifficultyModal(false);
-                    showSuccess(t('deliveryShoppingTrackingScreen.difficulteSignaleeUnNouveauCoursierVa'));
+                    showSuccess('Difficulté signalée. Un nouveau coursier va prendre le relais.');
                     await refresh({ force: true });
                 }}
             />

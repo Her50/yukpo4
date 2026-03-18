@@ -1,7 +1,10 @@
 /**
- * 🌍 FORMULAIRE UNIVERSEL DE PRODUIT
+ * \uD83C\uDF0D FORMULAIRE UNIVERSEL DE PRODUIT
  * 
- * Ce composant st('universalProductForm.adapteAutomatiquementANt('universalProductForm.importeQuelleCategorieParmiVos60')analyse automatique pour :
+ * Ce composant s'adapte AUTOMATIQUEMENT à N'IMPORTE QUELLE catégorie
+ * parmi vos 60+ catégories, sans configuration spécifique !
+ * 
+ * Il utilise le système d'analyse automatique pour :
  * 1. Détecter les champs fixes de la catégorie (pré-remplir)
  * 2. Détecter les champs variables (demander à l'utilisateur)
  * 3. Proposer les bonnes options depuis productModalities.ts
@@ -79,7 +82,7 @@ const [productQuery, setProductQuery] = useState(initialProductName);
     };
     
     /**
-     * 🎯 Sélection du produit → Pré-remplissage automatique
+     * \uD83C\uDFAF Sélection du produit → Pré-remplissage automatique
      */
     const handleProductSelect = async (productName: string) => {
         setProductQuery(productName);
@@ -108,7 +111,14 @@ const [productQuery, setProductQuery] = useState(initialProductName);
             
         } catch (error) {
             console.error('[UniversalProductForm] Erreur auto-fill:', error);
-            Alert.alert('Erreur', 'Impossible de charger les informations du produitt('universalProductForm.finallySetloadingfalseMiseAJourD')un champ utilisateur
+            Alert.alert('Erreur', 'Impossible de charger les informations du produit');
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    /**
+     * Mise à jour d'un champ utilisateur
      */
     const handleUserInput = (field: string, value: any) => {
         setUserInputs(prev => ({
@@ -122,7 +132,7 @@ const [productQuery, setProductQuery] = useState(initialProductName);
      */
     const handleSubmit = () => {
         if (!autoFillResult) {
-            Alert.alert('Erreur', t('universalProductForm.veuillezSelectionnerUnProduitD')abord');
+            Alert.alert('Erreur', 'Veuillez sélectionner un produit d\'abord');
             return;
         }
         
@@ -312,7 +322,7 @@ const [productQuery, setProductQuery] = useState(initialProductName);
                     
                     {autoFillResult.fields_saved > 0 && (
                         <Text style={styles.footerText}>
-                            💪 Vous avez économisé {autoFillResult.fields_saved} saisies ({autoFillResult.reduction_percentage}%) !
+                            \uD83D\uDCAA Vous avez économisé {autoFillResult.fields_saved} saisies ({autoFillResult.reduction_percentage}%) !
                         </Text>
                     )}
                 </View>
@@ -519,7 +529,7 @@ const styles = StyleSheet.create({
 
 /**
  * ═══════════════════════════════════════════════════════════════
- * 📚 EXEMPLE D'UTILISATION POUR N'IMPORTE QUELLE CATÉGORIE
+ * \uD83D\uDCDA EXEMPLE D'UTILISATION POUR N'IMPORTE QUELLE CATÉGORIE
  * ═══════════════════════════════════════════════════════════════
  * 
  * // Pour TÉLÉPHONE

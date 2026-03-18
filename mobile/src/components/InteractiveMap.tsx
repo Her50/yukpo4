@@ -82,7 +82,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; lon
         };
 
         setSelectedLocation(newLocation);
-        console.log('📍 Position sélectionnée:', newLocation);
+        console.log('\uD83D\uDCCD Position sélectionnée:', newLocation);
     };
 
     // Confirmer la sélection
@@ -118,13 +118,13 @@ const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; lon
                         style={[styles.mapStyleButton, mapStyle === '3d' && styles.mapStyleButtonActive]}
                         onPress={() => setMapStyle('3d')}
                     >
-                        <Text style={styles.mapStyleIcon}>🏗️</Text>
+                        <Text style={styles.mapStyleIcon}>\uD83C\uDFD7️</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.mapStyleButton, mapStyle === 'satellite' && styles.mapStyleButtonActive]}
                         onPress={() => setMapStyle('satellite')}
                     >
-                        <Text style={styles.mapStyleIcon}>🛰️</Text>
+                        <Text style={styles.mapStyleIcon}>\uD83D\uDEF0️</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -182,7 +182,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; lon
                             left: mapCenter.x - 15,
                             top: mapCenter.y - 30
                         }]}>
-                            <Text style={styles.markerIcon}>📍</Text>
+                            <Text style={styles.markerIcon}>\uD83D\uDCCD</Text>
                         </View>
                     )}
 
@@ -200,7 +200,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; lon
                         style={[styles.controlButton, showBuildings && styles.controlButtonActive]}
                         onPress={() => setShowBuildings(!showBuildings)}
                     >
-                        <Text style={styles.controlIcon}>🏢</Text>
+                        <Text style={styles.controlIcon}>\uD83C\uDFE2</Text>
                         <Text style={styles.controlText}>{t('interactiveMap.batiments')}</Text>
                     </TouchableOpacity>
 
@@ -208,7 +208,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; lon
                         style={[styles.controlButton, showStreets && styles.controlButtonActive]}
                         onPress={() => setShowStreets(!showStreets)}
                     >
-                        <Text style={styles.controlIcon}>🛣️</Text>
+                        <Text style={styles.controlIcon}>\uD83D\uDEE3️</Text>
                         <Text style={styles.controlText}>Rues</Text>
                     </TouchableOpacity>
                 </View>
@@ -220,7 +220,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; lon
                     <Text style={styles.zoneTypeLabel}>{t('interactiveMap.typeDeZone')}</Text>
                     <View style={styles.zoneTypeButtons}>
                         {[
-                            { type: 'point', icon: '📍', label: 'Point' },
+                            { type: 'point', icon: '\uD83D\uDCCD', label: 'Point' },
                             { type: 'circle', icon: '⭕', label: 'Cercle' },
                             { type: 'rectangle', icon: '⬜', label: 'Rectangle' }
                         ].map(({ type, icon, label }) => (
@@ -262,7 +262,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; lon
                 ) : (
                     <View style={styles.helpContainer}>
                         <Text style={styles.helpText}>
-                            👆 Touchez la carte pour sélectionner un emplacement
+                            \uD83D\uDC46 Touchez la carte pour sélectionner un emplacement
                         </Text>
                         <Text style={styles.helpSubtext}>
                             Ou appuyez sur "Actualiser position" pour utiliser votre position actuelle
@@ -299,7 +299,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; lon
                         disabled={loading}
                     >
                         <Text style={styles.useCurrentButtonText}>
-                            {loading ? '⏳ Chargement...' : '📍 Actualiser position'}
+                            {loading ? '⏳ Chargement...' : '\uD83D\uDCCD Actualiser position'}
                         </Text>
                     </TouchableOpacity>
 

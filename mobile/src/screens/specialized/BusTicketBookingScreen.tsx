@@ -14,10 +14,10 @@ import { NativeButton } from '../../components/SafeNativeDesign';
 import SkeletonCard from '../../components/SkeletonCard';
 import TripMap from '../../components/TripMap';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { trackBooking } from '../../services/analytics';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface TicketData {
     product_id: string;
@@ -50,7 +50,7 @@ const BusTicketBookingScreen: React.FC = () => {
 
     const handleSelectSeats = () => {
         if (!productId) {
-            Alert.alert('Erreur', 'Informations de ticket manquantes');
+            Alert.alert(t('message.error'), t('busTicketBooking.informationsDeTicketManquantes'));
             return;
         }
         setShowSeatSelector(true);
@@ -94,7 +94,7 @@ const BusTicketBookingScreen: React.FC = () => {
                     t('busTicketBookingScreen.placesReserveesAvecSuccesVousAvez', { selectedSeats_length: selectedSeats.length }),
                     [
                         {
-                            text: 'Payer maintenant',
+                            text: t('busTicketBooking.payerMaintenant'),
                             onPress: () => {
                                 (navigation as any).navigate('BusTicketPayment', {
                                     productId,
@@ -110,11 +110,11 @@ const BusTicketBookingScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', (response as any).error || t('busTicketBooking.impossibleDeCreerLaReservation'));
+                Alert.alert(t('message.error'), (response as any).error || t('busTicketBooking.impossibleDeCreerLaReservation'));
             }
         } catch (error: any) {
             console.error('[BusTicketBookingScreen] Erreur réservation:', error);
-            Alert.alert('Erreur', error.message || t('busTicketBookingScreen.impossibleDeCreerLaReservation'));
+            Alert.alert(t('message.error'), error.message || t('busTicketBookingScreen.impossibleDeCreerLaReservation'));
         } finally {
             setLoading(false);
         }
@@ -154,7 +154,7 @@ const BusTicketBookingScreen: React.FC = () => {
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 {/* Informations du trajet */}
                 <View style={styles.tripInfoCard}>
-                    <Text style={styles.agencyName}>{ticketData?.agency_nom || 'Agence de voyage'}</Text>
+                    <Text style={styles.agencyName}>{ticketData?.agency_nom || t('busTicketBooking.agenceDeVoyage')}</Text>
 
                     <View style={styles.routeContainer}>
                         <View style={styles.cityContainer}>
@@ -203,8 +203,8 @@ const BusTicketBookingScreen: React.FC = () => {
                         <Text style={styles.priceLabel}>{t('busTicketBooking.prixParPlace')}</Text>
                         <Text style={styles.price}>
                             {ticketData?.ticket_price
-                                ? `${ticketData.ticket_price.toLocaleString('fr-FR')} FCFA`
-                                : 'Non disponible'}
+                                ? `${ticketData.ticket_price.toLocaleString()} FCFA`
+                                : t('busTicketBooking.nonDisponible')}
                         </Text>
                     </View>
                 </View>
@@ -213,7 +213,7 @@ const BusTicketBookingScreen: React.FC = () => {
                 <View style={styles.selectionCard}>
                     <Text style={styles.cardTitle}>{t('busTicketBooking.selectionnerLesPlaces')}</Text>
                     <Text style={styles.cardSubtitle}>
-                        {ticketData?.available_seats || 0} place(s) disponible(s)
+                        {t('busTicketBooking.placesDisponibles', { count: ticketData?.available_seats || 0 })}
                     </Text>
 
                     <NativeButton

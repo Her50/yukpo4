@@ -264,8 +264,8 @@ const TaxiFormScreen: React.FC = () => {
             {/* Payment badges */}
             <Text style={[s.sectionTitle, { marginTop: 16 }]}>{t('taxiForm.paiementsAcceptes')}</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-                {formData.paiement_cash && <View style={s.payBadge}><Text style={s.payText}>💵 {t('taxiFormScreen.cash')}</Text></View>}
-                {formData.paiement_mobile_money && <View style={s.payBadge}><Text style={s.payText}>📱 {t('taxiFormScreen.mobileMoney')}</Text></View>}
+                {formData.paiement_cash && <View style={s.payBadge}><Text style={s.payText}>\uD83D\uDCB5 {t('taxiFormScreen.cash')}</Text></View>}
+                {formData.paiement_mobile_money && <View style={s.payBadge}><Text style={s.payText}>\uD83D\uDCF1 {t('taxiFormScreen.mobileMoney')}</Text></View>}
                 {formData.paiement_carte && <View style={s.payBadge}><Text style={s.payText}>{t('taxiForm.carte')}</Text></View>}
             </View>
         </ScrollView>
@@ -375,7 +375,7 @@ const TaxiFormScreen: React.FC = () => {
                         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
                         <View style={{ flex: 1 }}>
                             <Text style={s.dashTitle}>{formData.nom_chauffeur || t('taxiForm.monTaxi')}</Text>
-                            <Text style={s.dashSub}>{formData.marque_modele || t('taxiForm.vehicule')} · {isAvailable ? `🟢 ${t('taxiFormScreen.disponible')}` : `🔴 ${t('taxiFormScreen.horsService')}`}</Text>
+                            <Text style={s.dashSub}>{formData.marque_modele || t('taxiForm.vehicule')} · {isAvailable ? `\uD83D\uDFE2 ${t('taxiFormScreen.disponible')}` : `\uD83D\uDD34 ${t('taxiFormScreen.horsService')}`}</Text>
                         </View>
                     </View>
                     <View style={s.tabsRow}>{tabs.map(t => (

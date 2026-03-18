@@ -34,18 +34,18 @@ export class IntelligentSearchService {
     query: string,
     context: SearchContext = {}
   ): Promise<IntelligentSearchResult[]> {
-    console.log('[IntelligentSearch] 🧠 Démarrage recherche intelligente');
-    console.log('[IntelligentSearch] 📝 Query:', query);
-    console.log('[IntelligentSearch] 🎯 Context:', context);
+    console.log('[IntelligentSearch] \uD83E\uDDE0 Démarrage recherche intelligente');
+    console.log('[IntelligentSearch] \uD83D\uDCDD Query:', query);
+    console.log('[IntelligentSearch] \uD83C\uDFAF Context:', context);
 
     try {
       // 1. Recherche native PostgreSQL (rapide et fiable)
       const nativeResults = await this.nativeSearch(query, context);
-      console.log('[IntelligentSearch] 🗄️ Résultats natifs:', nativeResults.length);
+      console.log('[IntelligentSearch] \uD83D\uDDC4️ Résultats natifs:', nativeResults.length);
 
       // 2. Si pas assez de résultats, enrichir avec IA
       if (nativeResults.length < 5) {
-        console.log('[IntelligentSearch] 🤖 Enrichissement IA...');
+        console.log('[IntelligentSearch] \uD83E\uDD16 Enrichissement IA...');
         const aiEnhancedResults = await this.enhanceWithAI(query, nativeResults, context);
         console.log('[IntelligentSearch] ✨ Résultats enrichis:', aiEnhancedResults.length);
         return aiEnhancedResults;
@@ -107,11 +107,11 @@ export class IntelligentSearchService {
     try {
       // 1. Analyser le texte avec IA pour extraire des mots-clés
       const textAnalysis = await (iaApi as any).analyzeText(query);
-      console.log('[IntelligentSearch] 🔍 Analyse IA:', textAnalysis);
+      console.log('[IntelligentSearch] \uD83D\uDD0D Analyse IA:', textAnalysis);
 
       // 2. Générer des suggestions de recherche alternatives
       const suggestions = await (iaApi as any).generateSuggestions(query);
-      console.log('[IntelligentSearch] 💡 Suggestions IA:', suggestions);
+      console.log('[IntelligentSearch] \uD83D\uDCA1 Suggestions IA:', suggestions);
 
       // 3. Recherches supplémentaires avec les suggestions
       const additionalResults: IntelligentSearchResult[] = [];
@@ -192,7 +192,7 @@ export class IntelligentSearchService {
     query: string,
     context: SearchContext = {}
   ): Promise<IntelligentSearchResult[]> {
-    console.log('[IntelligentSearch] 🗄️ Recherche PostgreSQL native pure');
+    console.log('[IntelligentSearch] \uD83D\uDDC4️ Recherche PostgreSQL native pure');
     return this.nativeSearch(query, context);
   }
 

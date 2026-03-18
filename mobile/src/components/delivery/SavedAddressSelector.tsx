@@ -14,7 +14,6 @@ import { useSavedAddresses, UserSavedAddress } from '../../hooks/useSavedAddress
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 import { NativeButton, NativeCard } from '../SafeNativeDesign';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface SavedAddressSelectorProps {
     addressType: 'pickup' | 'dropoff';
@@ -36,11 +35,10 @@ export const SavedAddressSelector: React.FC<SavedAddressSelectorProps> = ({
     allowNew = true,
     showQuickSave = false,
     onQuickSave,
-    placeholder={t('savedAddressSelector.selectionnerUneAdresse')},
+    placeholder = 'Sélectionner une adresse...',
 }) => {
     const { addresses, loading, createAddressFromLocation, getDefaultAddress } = useSavedAddresses(addressType);
-        const { t } = useLanguageSafe();
-const [showModal, setShowModal] = useState(false);
+    const [showModal, setShowModal] = useState(false);
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [saveLocation, setSaveLocation] = useState<LocationObject | null>(null);
     const [saveLabel, setSaveLabel] = useState('');
@@ -56,8 +54,8 @@ const [showModal, setShowModal] = useState(false);
     // Format de l'adresse pour l'affichage
     const formatAddressDisplay = (address: UserSavedAddress): string => {
         const parts = [address.address];
-        if (address.building_number) parts.push(t('savedAddressSelector.bat', { address_building_number: address.building_number }));
-        if (address.floor) parts.push(t('savedAddressSelector.etage', { address_floor: address.floor }));
+        if (address.building_number) parts.push(`Bât. ${address.building_number}`);
+        if (address.floor) parts.push(`Étage ${address.floor}`);
         if (address.apartment) parts.push(`Appt. ${address.apartment}`);
         return parts.join(', ');
     };
@@ -143,7 +141,7 @@ const [showModal, setShowModal] = useState(false);
                 <View style={styles.modalContainer}>
                     <View style={styles.modalHeader}>
                         <Text style={styles.modalTitle}>
-                            {addressType === 'pickup' ? t('savedAddressSelector.adresseDeRecuperation') : 'Adresse de livraison'}
+                            {addressType === 'pickup' ? 'Adresse de récupération' : 'Adresse de livraison'}
                         </Text>
                         <TouchableOpacity
                             onPress={() => setShowModal(false)}
@@ -156,12 +154,12 @@ const [showModal, setShowModal] = useState(false);
                     <ScrollView style={styles.modalContent}>
                         {loading ? (
                             <View style={styles.loadingContainer}>
-                                <Text style={styles.loadingText}>{t('savedAddressSelector.chargement')}</Text>
+                                <Text style={styles.loadingText}>Chargement...</Text>
                             </View>
                         ) : filteredAddresses.length === 0 ? (
                             <View style={styles.emptyContainer}>
                                 <SafeIcon name="map-pin" size={48} color={modernColors.textSecondary} />
-                                <Text style={styles.emptyText}>{t('savedAddressSelector.aucuneAdresseSauvegardee')}</Text>
+                                <Text style={styles.emptyText}>Aucune adresse sauvegardée</Text>
                                 {allowNew && (
                                     <Text style={styles.emptyHint}>
                                         Utilisez le sélecteur GPS pour créer votre première adresse
@@ -173,7 +171,7 @@ const [showModal, setShowModal] = useState(false);
                                 {/* Adresse par défaut en premier */}
                                 {defaultAddress && (
                                     <View style={styles.section}>
-                                        <Text style={styles.sectionTitle}>{t('savedAddressSelector.adresseParDefaut')}</Text>
+                                        <Text style={styles.sectionTitle}>Adresse par défaut</Text>
                                         <TouchableOpacity
                                             style={[styles.addressCard, styles.defaultCard]}
                                             onPress={() => handleSelectSaved(defaultAddress)}
@@ -182,7 +180,7 @@ const [showModal, setShowModal] = useState(false);
                                                 <SafeIcon name="star" size={16} color="#F59E0B" />
                                                 <Text style={styles.addressLabel}>{defaultAddress.label}</Text>
                                                 <View style={styles.defaultBadge}>
-                                                    <Text style={styles.defaultBadgeText}>{t('savedAddressSelector.defaut')}</Text>
+                                                    <Text style={styles.defaultBadgeText}>Défaut</Text>
                                                 </View>
                                             </View>
                                             <Text style={styles.addressText} numberOfLines={2}>
@@ -200,7 +198,7 @@ const [showModal, setShowModal] = useState(false);
                                 {/* Autres adresses */}
                                 {filteredAddresses.filter(a => a.id !== defaultAddress?.id).length > 0 && (
                                     <View style={styles.section}>
-                                        <Text style={styles.sectionTitle}>{t('savedAddressSelector.mesAdresses')}</Text>
+                                        <Text style={styles.sectionTitle}>Mes adresses</Text>
                                         {filteredAddresses
                                             .filter(a => a.id !== defaultAddress?.id)
                                             .map((address) => (
@@ -244,7 +242,7 @@ const [showModal, setShowModal] = useState(false);
             >
                 <View style={styles.saveModalOverlay}>
                     <NativeCard style={styles.saveModalCard}>
-                        <Text style={styles.saveModalTitle}>{t('savedAddressSelector.sauvegarderCetteAdresse')}</Text>
+                        <Text style={styles.saveModalTitle}>Sauvegarder cette adresse</Text>
                         <Text style={styles.saveModalHint}>
                             Donnez un nom à cette adresse pour la retrouver facilement
                         </Text>
@@ -258,7 +256,7 @@ const [showModal, setShowModal] = useState(false);
                         />
                         <View style={styles.saveModalActions}>
                             <NativeButton
-                                title={t('savedAddressSelector.annuler')}
+                                title="Annuler"
                                 onPress={() => {
                                     setShowSaveModal(false);
                                     setSaveLabel('');
@@ -267,7 +265,7 @@ const [showModal, setShowModal] = useState(false);
                                 size="small"
                             />
                             <NativeButton
-                                title={t('savedAddressSelector.sauvegarder')}
+                                title="Sauvegarder"
                                 onPress={handleConfirmSave}
                                 variant="primary"
                                 size="small"

@@ -10,11 +10,9 @@ import { NativeButton } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useShoppingBasket } from '../../hooks/useShoppingBasket';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const ShoppingBasketScreen: React.FC = () => {
     const navigation = useNavigation() as any;
-    const { t } = useLanguageSafe();
     const { items, estimateBasket, loadingEstimate } = useShoppingBasket();
 
     // ✅ CORRIGÉ: Gestion du bouton retour Android
@@ -46,7 +44,7 @@ const ShoppingBasketScreen: React.FC = () => {
                 <View style={styles.header}>
                     <DeliveryAvatarBubble
                         mood='smile'
-                        message=t('shoppingBasketScreen.pretesPourLesCoursesAjouteTout')
+                        message="Prêtes pour les courses ? Ajoute tout ce dont tu as besoin, même des indications précises."
                     />
                     <Text style={styles.title}>Compose ton panier</Text>
                     <Text style={styles.subtitle}>

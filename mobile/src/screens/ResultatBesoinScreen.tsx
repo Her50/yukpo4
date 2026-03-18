@@ -203,14 +203,6 @@ const ResultatBesoinScreen: React.FC = () => {
         // ✅ FIX 2026-03-14: Pas de queue — la prochaine carte visible demandera elle-même la lecture
     }, []);
 
-    // ✅ FIX 2026-03-15: Objet coordinateur stable (useMemo) pour éviter de casser la memoization
-    // Avant: un nouvel objet {...} était créé dans renderProductCard à chaque appel,
-    // causant prevProps.videoCoordinator !== nextProps.videoCoordinator → re-render de TOUTES les cartes
-    const stableVideoCoordinator = useMemo(() => ({
-        requestVideoPlayback,
-        releaseVideoPlayback,
-    }), [requestVideoPlayback, releaseVideoPlayback]);
-
     // ✅ FIX 2026-03-14: Suivi des éléments visibles à l'écran (state pour déclencher re-render des cartes)
     const [visibleItemKeys, setVisibleItemKeys] = useState<Set<string>>(new Set());
     const viewabilityConfigRef = useRef({
@@ -301,7 +293,7 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ MIGRATION COMPLÈTE: Tous les produits sont maintenant dans service_products avec product_name (colonne générée)
     // Le backend retourne product_name depuis service_products, mais product_data contient nom_produit
     const getProductName = useCallback((productData: any): string => {
-        if (!productData) return t('resultatBesoin.produitSansNom');
+        if (!productData) return 'Produit sans nom';
 
         // ✅ PRIORITÉ 1: product_name depuis le backend (colonne générée PostgreSQL)
         if (productData.product_name) return String(productData.product_name);
@@ -317,7 +309,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
         // ✅ ERREUR: Si aucun nom n'est disponible, c'est une anomalie
         console.error('[ResultatBesoinScreen] ❌ ERREUR: product_name manquant (anomalie backend):', productData);
-        return t('resultatBesoin.produitSansNom');
+        return 'Produit sans nom';
     }, []);
 
     // ✅ CORRIGÉ 2026-03-05: Stop words français pour filtrer les mots non-significatifs de la requête
@@ -332,8 +324,8 @@ const ResultatBesoinScreen: React.FC = () => {
         'dans', 'sur', 'sous', 'avec', 'sans', 'pour', 'par', 'chez',
         'est', 'sont', 'suis', 'es', 'sommes', 'etes',
         'ai', 'as', 'avons', 'avez', 'ont',
-        t('resultatBesoinScreen.etre'), 'avoir', 'fait', 'faire',
-        'pas', 'ne', 'plus', t('resultatBesoinScreen.tres'), 'bien', 'tout', 'tous', 'aussi',
+        'être', 'avoir', 'fait', 'faire',
+        'pas', 'ne', 'plus', 'très', 'bien', 'tout', 'tous', 'aussi',
         'souhaite', 'veux', 'voudrais', 'cherche', 'besoin', 'faut',
     ]);
 
@@ -467,7 +459,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
     // DEBUG: Afficher les paramètres reçus
     useEffect(() => {
-        console.log('🔍 [ResultatBesoinScreen] Paramètres de navigation reçus:', {
+        console.log('\uD83D\uDD0D [ResultatBesoinScreen] Paramètres de navigation reçus:', {
             hasParams: !!routeParams,
             resultsLength: initialResults?.length || 0,
             results: initialResults,
@@ -526,7 +518,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const filterProducts = (productsList: any[]): any[] => {
         let filtered = [...productsList];
 
-        if (__DEV__) console.log('🔍 [ResultatBesoinScreen] filterProducts:', productsList.length, 'produits');
+        if (__DEV__) console.log('\uD83D\uDD0D [ResultatBesoinScreen] filterProducts:', productsList.length, 'produits');
 
         // Appliquer les filtres de catégorie spécifiques
         if (Object.keys(categoryFilters).length > 0) {
@@ -680,7 +672,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
             if (!location) {
                 // Si pas de géolocalisation, trier seulement par score
-                console.log('📍 Géolocalisation non disponible, tri par score uniquement');
+                console.log('\uD83D\uDCCD Géolocalisation non disponible, tri par score uniquement');
                 return validResults.sort((a, b) => (b.score || 0) - (a.score || 0));
             }
 
@@ -699,7 +691,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     // PRIORITÉ: Utiliser gps_fixe si disponible, sinon gps en temps réel
                     // Note: result.gps contient déjà la bonne valeur selon la logique backend
                     // qui priorise gps_fixe sur gps_mobile
-                    console.log('📍 [ResultatBesoinScreen] GPS utilisé pour distance:', {
+                    console.log('\uD83D\uDCCD [ResultatBesoinScreen] GPS utilisé pour distance:', {
                         serviceId: result.service_id,
                         gps: result.gps
                     });
@@ -768,7 +760,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
             const servicePromises = serviceIds.map(async (serviceId, index) => {
                 try {
-                    console.log(`🔍 [ResultatBesoinScreen] Récupération du service ${serviceId}...`);
+                    console.log(`\uD83D\uDD0D [ResultatBesoinScreen] Récupération du service ${serviceId}...`);
                     const response = await apiGet(`/api/services/${serviceId}`);
                     console.log(`✅ [ResultatBesoinScreen] Service ${serviceId} récupéré:`, response);
 
@@ -780,7 +772,7 @@ const ResultatBesoinScreen: React.FC = () => {
                         try {
                             const productsResponse = await apiGet(`/api/services/${serviceId}/products`);
                             // ✅ DEBUG 2026-01-13: Logs détaillés pour diagnostiquer les problèmes d'affichage
-                            if (__DEV__) console.log(`🔍 [ResultatBesoinScreen] DEBUG produits API pour service ${serviceId}:`, {
+                            if (__DEV__) console.log(`\uD83D\uDD0D [ResultatBesoinScreen] DEBUG produits API pour service ${serviceId}:`, {
                                 success: productsResponse.success,
                                 hasData: !!productsResponse.data,
                                 dataType: typeof productsResponse.data,
@@ -795,7 +787,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                     console.log(`✅ [ResultatBesoinScreen] ${productsFromAPI.length} produits récupérés depuis API pour service ${serviceId}`);
                                     // ✅ DEBUG: Log détaillé des produits récupérés
                                     if (productsFromAPI.length > 0) {
-                                        console.log(`📦 [ResultatBesoinScreen] Détails produits pour service ${serviceId}:`,
+                                        console.log(`\uD83D\uDCE6 [ResultatBesoinScreen] Détails produits pour service ${serviceId}:`,
                                             productsFromAPI.map((p: any) => ({
                                                 id: p.id,
                                                 product_id: p.product_id,
@@ -868,7 +860,7 @@ const ResultatBesoinScreen: React.FC = () => {
             const validServices = results.filter((service): service is Service => service !== null);
 
             if (validServices.length === 0) {
-                setError(t('resultatBesoin.aucunServiceTrouve'));
+                setError("Aucun service trouvé. Les services recherchés ne sont plus disponibles.");
                 setServices([]);
             } else {
                 // ✅ CORRIGÉ 2026-01-13: Utiliser startTransition pour les mises à jour non urgentes
@@ -885,7 +877,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     let serviceProduits: any[] = [];
 
                     // ✅ DEBUG 2026-01-13: Logs détaillés pour diagnostiquer les problèmes d'affichage
-                    if (__DEV__) console.log(`🔍 [ResultatBesoinScreen] DEBUG extraction produits pour service ${service.id}:`, {
+                    if (__DEV__) console.log(`\uD83D\uDD0D [ResultatBesoinScreen] DEBUG extraction produits pour service ${service.id}:`, {
                         hasProductsFromAPI: !!service._productsFromAPI,
                         isArray: Array.isArray(service._productsFromAPI),
                         productsFromAPICount: Array.isArray(service._productsFromAPI) ? service._productsFromAPI.length : 0,
@@ -937,7 +929,7 @@ const ResultatBesoinScreen: React.FC = () => {
                             const productData = productFromAPI.product_data || productFromAPI;
 
                             if (__DEV__) {
-                                console.log(`🔍 [ResultatBesoinScreen] Structure productFromAPI pour service ${service.id}:`, {
+                                console.log(`\uD83D\uDD0D [ResultatBesoinScreen] Structure productFromAPI pour service ${service.id}:`, {
                                     hasProductData: !!productFromAPI.product_data,
                                     productDataKeys: productFromAPI.product_data ? Object.keys(productFromAPI.product_data) : [],
                                     productDataImages: productFromAPI.product_data?.images,
@@ -1011,7 +1003,7 @@ const ResultatBesoinScreen: React.FC = () => {
                             };
 
                             // ✅ DEBUG 2026-02-10: Log détaillé de chaque produit transformé avec description et images
-                            if (__DEV__) console.log(`📦 [ResultatBesoinScreen] Produit transformé pour service ${service.id}:`, {
+                            if (__DEV__) console.log(`\uD83D\uDCE6 [ResultatBesoinScreen] Produit transformé pour service ${service.id}:`, {
                                 id: transformedProduct.id,
                                 product_index: transformedProduct.product_index,
                                 nom_produit: transformedProduct.nom_produit,
@@ -1028,7 +1020,7 @@ const ResultatBesoinScreen: React.FC = () => {
                         });
                         if (__DEV__) {
                             console.log(`✅ [ResultatBesoinScreen] ${serviceProduits.length} produits depuis API service_products pour service ${service.id}`);
-                            console.log(`📋 [ResultatBesoinScreen] Liste des produits extraits pour service ${service.id}:`,
+                            console.log(`\uD83D\uDCCB [ResultatBesoinScreen] Liste des produits extraits pour service ${service.id}:`,
                                 serviceProduits.map((p: any) => ({
                                     id: p.id,
                                     product_index: p.product_index,
@@ -1057,7 +1049,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                 // ✅ DEBUG 2026-03-06: Logger les détails du premier produit pour diagnostiquer
                                 if (__DEV__ && (p.product_index === 0 || score === 0)) {
                                     const productData = p.product_data || p;
-                                    console.log(`🔍 [ResultatBesoinScreen] DEBUG Score produit (index=${p.product_index}):`, {
+                                    console.log(`\uD83D\uDD0D [ResultatBesoinScreen] DEBUG Score produit (index=${p.product_index}):`, {
                                         score,
                                         nom_produit: productData.nom_produit,
                                         product_name: productData.product_name,
@@ -1082,7 +1074,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                 const firstProduct = serviceProduits.find(p => p.product_index === 0);
                                 const firstProductScore = firstProduct ? scoredProducts.find(sp => sp.product === firstProduct)?.relevanceScore : null;
 
-                                console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: Filtrage recherche "${searchQuery}"`, {
+                                console.log(`\uD83C\uDFAF [ResultatBesoinScreen] Service ${service.id}: Filtrage recherche "${searchQuery}"`, {
                                     totalProducts: serviceProduits.length,
                                     relevantCount: relevant.length,
                                     firstProductScore,
@@ -1099,12 +1091,12 @@ const ResultatBesoinScreen: React.FC = () => {
                                 // Avant: les produits gardaient l'ordre d'insertion API (ex: "salle à manger" avant "beignets")
                                 relevant.sort((a: any, b: any) => b.relevanceScore - a.relevanceScore);
                                 filteredServiceProduits = relevant.map((sp: any) => sp.product);
-                                if (__DEV__) console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: ${filteredServiceProduits.length}/${serviceProduits.length} produits pertinents pour "${searchQuery}"`, relevant.map((sp: any) => ({ nom: getProductName(sp.product.product_data || sp.product), score: sp.relevanceScore })));
+                                if (__DEV__) console.log(`\uD83C\uDFAF [ResultatBesoinScreen] Service ${service.id}: ${filteredServiceProduits.length}/${serviceProduits.length} produits pertinents pour "${searchQuery}"`, relevant.map((sp: any) => ({ nom: getProductName(sp.product.product_data || sp.product), score: sp.relevanceScore })));
                             } else {
                                 // ✅ CORRIGÉ 2026-03-02: Aucun produit pertinent → ne rien afficher pour ce service
                                 // L'ancien code gardait le 1er produit par défaut, ce qui affichait des produits hors-sujet
                                 filteredServiceProduits = [];
-                                if (__DEV__) console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: aucun produit pertinent pour "${searchQuery}", service ignoré`);
+                                if (__DEV__) console.log(`\uD83C\uDFAF [ResultatBesoinScreen] Service ${service.id}: aucun produit pertinent pour "${searchQuery}", service ignoré`);
                             }
                         }
 
@@ -1150,7 +1142,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                 if (__DEV__) {
                                     const productDataForLog = product.product_data || product;
                                     const productNameForLog = getProductName(productDataForLog) || 'unknown';
-                                    console.log(`🎯 [ResultatBesoinScreen] Score produit calculé pour "${productNameForLog}":`, {
+                                    console.log(`\uD83C\uDFAF [ResultatBesoinScreen] Score produit calculé pour "${productNameForLog}":`, {
                                         serviceScore: service.score || 0,
                                         productRelevanceScore,
                                         finalScore,
@@ -1275,9 +1267,9 @@ const ResultatBesoinScreen: React.FC = () => {
                 });
 
                 if (__DEV__) {
-                    console.log(`📦 [ResultatBesoinScreen] ${extractedProducts.length} produits extraits de ${validServices.length} services`);
+                    console.log(`\uD83D\uDCE6 [ResultatBesoinScreen] ${extractedProducts.length} produits extraits de ${validServices.length} services`);
                     if (extractedProducts.length > 0) {
-                        console.log(`🔍 [ResultatBesoinScreen] DEBUG produits extraits (avant déduplication):`,
+                        console.log(`\uD83D\uDD0D [ResultatBesoinScreen] DEBUG produits extraits (avant déduplication):`,
                             extractedProducts.map((p: any) => ({
                                 id: p.id,
                                 product_index: p.product_index,
@@ -1330,7 +1322,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 });
 
                 if (__DEV__) {
-                    console.log(`📦 [ResultatBesoinScreen] ${deduplicatedProducts.length} produits après déduplication (${extractedProducts.length - deduplicatedProducts.length} doublons supprimés)`);
+                    console.log(`\uD83D\uDCE6 [ResultatBesoinScreen] ${deduplicatedProducts.length} produits après déduplication (${extractedProducts.length - deduplicatedProducts.length} doublons supprimés)`);
                     if (deduplicatedProducts.length === 0 && extractedProducts.length > 0) {
                         console.error(`❌ [ResultatBesoinScreen] PROBLÈME: ${extractedProducts.length} produits extraits mais 0 après déduplication!`);
                     }
@@ -1354,7 +1346,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     return distA - distB;
                 });
 
-                if (__DEV__) console.log(`📊 [ResultatBesoinScreen] Produits triés: ${deduplicatedProducts.length} produits (ordre final)`);
+                if (__DEV__) console.log(`\uD83D\uDCCA [ResultatBesoinScreen] Produits triés: ${deduplicatedProducts.length} produits (ordre final)`);
 
                 // ✅ CORRIGÉ 2026-01-13: Utiliser startTransition pour les mises à jour non urgentes
                 startTransition(() => {
@@ -1368,13 +1360,13 @@ const ResultatBesoinScreen: React.FC = () => {
                     await fetchPrestatairesBatch(userIds);
                 } else {
                     // Aucun prestataire à charger, marquer comme chargé
-                    if (__DEV__) console.log('📊 Aucun prestataire à charger');
+                    if (__DEV__) console.log('\uD83D\uDCCA Aucun prestataire à charger');
                     setPrestatairesLoaded(true);
                 }
             }
         } catch (error) {
             console.error('❌ Erreur lors de la récupération des services:', error);
-            setError(t('resultatBesoin.erreurRecuperationServices'));
+            setError('Erreur lors de la récupération des services');
             setServices([]);
             setPrestatairesLoaded(true); // Marquer comme chargé même en cas d'erreur
         } finally {
@@ -1385,7 +1377,7 @@ const ResultatBesoinScreen: React.FC = () => {
     // Fonction pour récupérer les informations des prestataires
     const fetchPrestatairesBatch = async (userIds: string[]) => {
         try {
-            if (__DEV__) console.log('🔄 Début du chargement des prestataires pour:', userIds);
+            if (__DEV__) console.log('\uD83D\uDD04 Début du chargement des prestataires pour:', userIds);
 
             const prestatairePromises = userIds.map(async (userId) => {
                 try {
@@ -1416,11 +1408,11 @@ const ResultatBesoinScreen: React.FC = () => {
                         userId: result.userId
                     };
                     newPrestataires.set(result.userId, normalizedPrestataire);
-                    if (__DEV__) console.log(`📝 Prestataire ${result.userId} normalisé:`, normalizedPrestataire.name);
+                    if (__DEV__) console.log(`\uD83D\uDCDD Prestataire ${result.userId} normalisé:`, normalizedPrestataire.name);
                 }
             });
 
-            if (__DEV__) console.log(`📊 ${newPrestataires.size} prestataires chargés sur ${userIds.length} demandés`);
+            if (__DEV__) console.log(`\uD83D\uDCCA ${newPrestataires.size} prestataires chargés sur ${userIds.length} demandés`);
 
             // ✅ CORRIGÉ 2025-01-01: Mémoriser la Map pour éviter les changements de référence
             // Ne mettre à jour que si les données ont réellement changé
@@ -1524,7 +1516,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     initialResultsLength.current = 0;
                     setLoading(false);
                     setPrestatairesLoaded(true);
-                    setError(t('resultatBesoin.formatResultatsInvalide'));
+                    setError('Format de résultats invalide');
                     return;
                 }
 
@@ -1537,7 +1529,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     return;
                 }
 
-                if (__DEV__) console.log('🔄 [ResultatBesoinScreen] Traitement des résultats initiaux:', initialResults.length);
+                if (__DEV__) console.log('\uD83D\uDD04 [ResultatBesoinScreen] Traitement des résultats initiaux:', initialResults.length);
 
                 // Marquer comme traité AVANT le traitement asynchrone
                 hasProcessedInitialResults.current = true;
@@ -1578,7 +1570,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     })
                     .filter((id: any): id is string => id !== null && id !== undefined && id !== '');
 
-                if (__DEV__) console.log('📋 [ResultatBesoinScreen] IDs des services à charger:', serviceIds.length, serviceIds);
+                if (__DEV__) console.log('\uD83D\uDCCB [ResultatBesoinScreen] IDs des services à charger:', serviceIds.length, serviceIds);
 
                 if (serviceIds.length > 0) {
                     await fetchServicesByIds(serviceIds, sortedResults);
@@ -1586,7 +1578,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     if (__DEV__) console.warn('⚠️ [ResultatBesoinScreen] Aucun service ID valide trouvé après extraction');
                     setLoading(false);
                     setPrestatairesLoaded(true);
-                    setError(t('resultatBesoin.aucunServiceValideTrouveDans'));
+                    setError('Aucun service valide trouvé dans les résultats');
                 }
             } catch (error: any) {
                 console.error('❌ [ResultatBesoinScreen] Erreur CRITIQUE lors du traitement des résultats:', error);
@@ -1594,7 +1586,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 console.error('❌ [ResultatBesoinScreen] Résultats initiaux:', initialResults);
                 setLoading(false);
                 setPrestatairesLoaded(true);
-                setError(t('resultatBesoinScreen.erreurLorsDuTraitementDesResultats', { error?_message || 'Erreur inconnue': error?.message || 'Erreur inconnue' }));
+                setError(`Erreur lors du traitement des résultats: ${error?.message || 'Erreur inconnue'}`);
             }
         };
 
@@ -1801,7 +1793,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 // ✅ CORRIGÉ: Utilise apiPost
                 await apiPost('/api/notifications/create', {
                     user_id: service.user_id,
-                    title: `💬 ${user.name} a ouvert une conversation`,
+                    title: `\uD83D\uDCAC ${user.name} a ouvert une conversation`,
                     message: `Au sujet de: ${serviceTitle}\n\nUn client potentiel souhaite discuter avec vous.`,
                     type: 'chat_opened',
                     priority: 'medium',
@@ -1830,7 +1822,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const handleShare = useCallback(async (service: Service) => {
         try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
         try {
-            const titre = service.titre || service.title || service.data?.titre_service?.valeur || t('resultatBesoin.serviceYukpo');
+            const titre = service.titre || service.title || service.data?.titre_service?.valeur || 'Service Yukpo';
             const description = service.description || service.data?.description?.valeur || '';
             const prix = service.prix || service.data?.prix?.valeur;
             const devise = service.devise || 'XAF';
@@ -1897,10 +1889,10 @@ const ResultatBesoinScreen: React.FC = () => {
             let notificationMessage = '';
 
             if (contactType === 'whatsapp') {
-                notificationTitle = `📱 ${user.name} souhaite vous contacter sur WhatsApp`;
+                notificationTitle = `\uD83D\uDCF1 ${user.name} souhaite vous contacter sur WhatsApp`;
                 notificationMessage = `Au sujet de: ${serviceTitle}\n\nUn client potentiel souhaite discuter avec vous sur WhatsApp.`;
             } else if (contactType === 'call') {
-                notificationTitle = `📞 ${user.name} souhaite vous appeler`;
+                notificationTitle = `\uD83D\uDCDE ${user.name} souhaite vous appeler`;
                 notificationMessage = `Au sujet de: ${serviceTitle}\n\nUn client potentiel est en train de vous appeler.`;
             }
 
@@ -2086,7 +2078,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
     // Fonction utilitaire pour extraire la valeur d'un champ de service
     const getServiceFieldValue = (field: any): string => {
-        if (!field) return t('resultatBesoinScreen.nonSpecifie');
+        if (!field) return 'Non spécifié';
 
         if (typeof field === 'string') return field;
 
@@ -2131,7 +2123,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const filteredProducts = useMemo(() => {
         // ✅ OPTIMISÉ 2026-03-XX: Logs gatés derrière __DEV__ pour performance production
         if (__DEV__) {
-            console.log('🔍 [ResultatBesoinScreen] filterProducts:', products.length, 'produits, filtres:', Object.keys(categoryFilters).length);
+            console.log('\uD83D\uDD0D [ResultatBesoinScreen] filterProducts:', products.length, 'produits, filtres:', Object.keys(categoryFilters).length);
         }
 
         if (products.length === 0) {
@@ -2159,7 +2151,7 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ CORRIGÉ 2026-01-14: Mémoriser la liste combinée avec clés STABLES (sans score qui change)
     // ✅ CORRIGÉ 2026-01-XX: Éviter les doublons - ne pas afficher les services qui ont déjà des produits extraits
     const allResults = useMemo(() => {
-        if (__DEV__) console.log('🔍 [ResultatBesoinScreen] allResults:', filteredServices.length, 'services,', filteredProducts.length, 'produits');
+        if (__DEV__) console.log('\uD83D\uDD0D [ResultatBesoinScreen] allResults:', filteredServices.length, 'services,', filteredProducts.length, 'produits');
 
         // ✅ NOUVEAU: Créer un Set des serviceIds qui ont des produits pour éviter les doublons
         // ✅ CORRIGÉ: Vérifier aussi service_id en plus de _serviceId
@@ -2173,7 +2165,7 @@ const ResultatBesoinScreen: React.FC = () => {
         );
 
         // ✅ OPTIMISÉ 2026-03-XX: Debug gaté derriere __DEV__
-        if (__DEV__) console.log('🔍 [ResultatBesoinScreen] serviceIdsWithProducts:', serviceIdsWithProducts.size);
+        if (__DEV__) console.log('\uD83D\uDD0D [ResultatBesoinScreen] serviceIdsWithProducts:', serviceIdsWithProducts.size);
 
         // ✅ CORRIGÉ: Ne pas afficher les services qui ont déjà des produits (éviter doublon)
         const services = filteredServices
@@ -2181,7 +2173,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 const serviceId = String(service.id);
                 const hasProducts = serviceIdsWithProducts.has(serviceId);
                 if (hasProducts && __DEV__) {
-                    console.log(`🔄 [ResultatBesoinScreen] Service ${serviceId} ignoré (produits extraits)`);
+                    console.log(`\uD83D\uDD04 [ResultatBesoinScreen] Service ${serviceId} ignoré (produits extraits)`);
                 }
                 return !hasProducts; // Afficher uniquement les services SANS produits
             })
@@ -2276,12 +2268,14 @@ const ResultatBesoinScreen: React.FC = () => {
         // ✅ CORRIGÉ 2026-01-23: Utiliser la fonction utilitaire pour extraire le nom correctement
         // ✅ CORRIGÉ 2026-01-23: S'assurer que productData n'est jamais undefined
         const productData = product?.product_data || product || {};
-        const productName = getProductName(productData) || t('resultatBesoin.produitSansNom');
+        const productName = getProductName(productData) || 'Produit sans nom';
         const serviceId = product._serviceId || service?.id || 'unknown';
 
-        // ✅ FIX 2026-03-15: Utiliser l'objet coordinateur stable (useMemo) au lieu d'en créer un nouveau à chaque render
-        // L'ancien code créait { requestVideoPlayback, releaseVideoPlayback } ici → nouvelle ref à chaque appel
-        // → MemoizedProductCardWithCoordinator.memo toujours false → re-render de TOUTES les cartes
+        // Créer l'objet coordinateur pour ce produit
+        const videoCoordinator = {
+            requestVideoPlayback,
+            releaseVideoPlayback,
+        };
 
         // ✅ FIX 2026-03-14: Utiliser la clé FlatList réelle pour correspondre à visibleItemKeys
         const itemKey = flatListKey || `product-${serviceId}-${productName}`;
@@ -2295,7 +2289,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 userLocation={userLocationMemo}
                 isScrolling={isScrollingState}
                 isVisible={visibleItemKeys.has(itemKey)}
-                videoCoordinator={stableVideoCoordinator}
+                videoCoordinator={videoCoordinator}
                 onPress={() => {
                     // ✅ CORRIGÉ 2026-02-25: Naviguer vers la boutique du prestataire pour afficher TOUS ses produits
                     if (service?.user_id) {
@@ -2326,7 +2320,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
             />
         );
-    }, [userLocationMemo, isScrollingState, visibleItemKeys, getProductName, navigation, stableVideoCoordinator]);
+    }, [userLocationMemo, isScrollingState, visibleItemKeys, getProductName, navigation, requestVideoPlayback, releaseVideoPlayback]);
 
     // ✅ NOUVEAU 2026-01-XX: Fonction pour rendre ProductCard pour les services (utiliser le même visuel que les produits)
     // ✅ DÉPLACÉ avant renderListItem pour éviter les problèmes de dépendances
@@ -2432,7 +2426,7 @@ const ResultatBesoinScreen: React.FC = () => {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={styles.loadingText}>{t('resultatBesoin.rechercheDesServicesEnCours')}</Text>
+                <Text style={styles.loadingText}>Recherche des services en cours...</Text>
             </View>
         );
     }
@@ -2451,16 +2445,16 @@ const ResultatBesoinScreen: React.FC = () => {
                         style={styles.backButton}
                     >
                         <Text style={styles.backIcon}>←</Text>
-                        <Text style={styles.backText}>{t('resultatBesoin.retour')}</Text>
+                        <Text style={styles.backText}>Retour</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* 🔍 Barre de recherche avec support multimédia (comme HomeScreen) */}
+                {/* \uD83D\uDD0D Barre de recherche avec support multimédia (comme HomeScreen) */}
                 <View style={styles.searchContainer}>
                     <ChatInputMobile
                         onSubmit={handleSearch}
                         loading={loading}
-                        placeholder={t('resultatBesoin.affinerVotreRecherche')}
+                        placeholder="Affiner votre recherche..."
                         onGPSPress={() => setShowGPSModal(true)}
                         showSendButton={true}
                         showAutocomplete={false} // ✅ DÉSACTIVÉ: Autocomplete désactivée pour améliorer les performances
@@ -2491,7 +2485,7 @@ const ResultatBesoinScreen: React.FC = () => {
                             setShowGPSModal(false);
                         }}
                         currentLocation={selectedLocation}
-                        title={t('resultatBesoin.selectionnerVotreLocalisation')}
+                        title="Sélectionner votre localisation"
                         allowZoneSelection={true}
                     />
                 )}
@@ -2503,10 +2497,10 @@ const ResultatBesoinScreen: React.FC = () => {
                             <Text style={styles.gpsWarningIcon}>⚠️</Text>
                             <View style={styles.gpsWarningTextContainer}>
                                 <Text style={styles.gpsWarningTitle}>
-                                    {t('resultatBesoin.gpsWarningTitle')}
+                                    Certains services utilisent la position GPS en temps réel du créateur
                                 </Text>
                                 <Text style={styles.gpsWarningSubtitle}>
-                                    {t('resultatBesoin.gpsWarningSubtitle')}
+                                    Les coordonnées affichées peuvent changer selon la position actuelle du prestataire
                                 </Text>
                             </View>
                         </View>
@@ -2518,13 +2512,13 @@ const ResultatBesoinScreen: React.FC = () => {
                     <View style={styles.errorCard}>
                         <View style={[styles.cardContent, styles.errorContent]}>
                             <Text style={styles.errorIcon}>⚠️</Text>
-                            <Text style={styles.errorTitle}>{t('resultatBesoin.erreurDeChargement')}</Text>
+                            <Text style={styles.errorTitle}>Erreur de chargement</Text>
                             <Text style={styles.errorText}>{error}</Text>
                             <TouchableOpacity
                                 onPress={() => navigation.goBack()}
                                 style={styles.errorButton}
                             >
-                                <Text>{t('resultatBesoin.retour')}</Text>
+                                <Text>Retour</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -2534,18 +2528,18 @@ const ResultatBesoinScreen: React.FC = () => {
                 {!services || services.length === 0 ? (
                     <View style={styles.emptyCard}>
                         <View style={[styles.cardContent, styles.emptyContent]}>
-                            <Text style={styles.emptyIcon}>🔍</Text>
+                            <Text style={styles.emptyIcon}>\uD83D\uDD0D</Text>
                             <Text style={styles.emptyTitle}>
-                                {terminology.emptyMessage || t('resultatBesoin.aucunResultatTrouve')}
+                                {terminology.emptyMessage || 'Aucun résultat trouvé'}
                             </Text>
                             <Text style={styles.emptyText}>
-                                {t('resultatBesoin.aucunPrestataire', { provider: terminology.providerLabel.toLowerCase() })}
+                                Aucun {terminology.providerLabel.toLowerCase()} ne correspond à vos critères pour le moment.
                             </Text>
                             <TouchableOpacity
                                 onPress={() => navigation.goBack()}
                                 style={styles.emptyButton}
                             >
-                                <Text>{t('resultatBesoin.retourALaRecherche')}</Text>
+                                <Text>Retour à la recherche</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -2553,15 +2547,15 @@ const ResultatBesoinScreen: React.FC = () => {
                     <View style={styles.loadingCard}>
                         <View style={[styles.cardContent, styles.loadingContent]}>
                             <ActivityIndicator size="large" color={theme.colors.primary} />
-                            <Text style={styles.loadingTitle}>{t('resultatBesoin.chargementDesInformationsPrestataire')}</Text>
+                            <Text style={styles.loadingTitle}>Chargement des informations prestataire</Text>
                             <Text style={styles.loadingSubtitle}>
-                                {t('resultatBesoin.recuperationDonnees')}
+                                Récupération des données GPS et des informations des prestataires...
                             </Text>
                         </View>
                     </View>
                 ) : (
                     <>
-                        {/* 🎨 Section de filtres moderne */}
+                        {/* \uD83C\uDFA8 Section de filtres moderne */}
                         <View style={styles.modernFiltersContainer}>
                             {/* En-tête avec compteur */}
                             <View style={styles.modernFiltersHeader}>
@@ -2569,14 +2563,14 @@ const ResultatBesoinScreen: React.FC = () => {
                                     <Text style={styles.modernHeaderIcon}>{categoryStyle.icon}</Text>
                                     <View style={styles.modernHeaderText}>
                                         <Text style={styles.modernHeaderTitle} numberOfLines={1} ellipsizeMode="tail">
-                                            {t('resultatBesoin.resultatsDeRecherche')}
+                                            Résultats de recherche
                                         </Text>
                                         <Text style={styles.modernHeaderSubtitle} numberOfLines={1}>
                                             {(() => {
                                                 // ✅ CORRIGÉ 2026-02-25: Afficher uniquement allResults.length (déjà dédupliqué)
                                                 // products.length + services.length double-comptait les services ayant des produits
                                                 const total = allResults.length;
-                                                return `${total} ${total > 1 ? t('resultatBesoin.resultats') : t('resultatBesoin.resultat')}`;
+                                                return `${total} résultat${total > 1 ? 's' : ''}`;
                                             })()}
                                         </Text>
                                     </View>
@@ -2739,7 +2733,7 @@ const ResultatBesoinScreen: React.FC = () => {
                         ) : (
                             <View style={styles.emptyState}>
                                 <SafeIcon name="package" size={48} color="#D1D5DB" />
-                                <Text style={styles.emptyStateText}>{t('resultatBesoin.aucunResultatTrouve')}</Text>
+                                <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
                                 <Text style={styles.emptyStateSubtext}>
                                     {Object.keys(categoryFilters).length > 0
                                         ? 'Essayez de modifier vos filtres'
@@ -3203,7 +3197,7 @@ const styles = StyleSheet.create({
     sortButtonTextActive: {
         color: 'white',
     },
-    // 🎨 Nouveaux styles modernes pour les filtres
+    // \uD83C\uDFA8 Nouveaux styles modernes pour les filtres
     modernFiltersContainer: {
         backgroundColor: '#FFFFFF',
         marginHorizontal: 16,

@@ -6,27 +6,27 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { BookDeliveryPackage, BookPurchase, bourseLivreV2Api } from '../../services/bourseLivreV2Api';
+import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 import { NativeCard } from '../SafeNativeDesign';
-import { modernColors } from '../../theme/modernTheme';
-import { bourseLivreV2Api, BookDeliveryPackage, BookPurchase } from '../../services/bourseLivreV2Api';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface BookUserSubDashboardProps {
     onRefresh?: () => void;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-    a_constituer: t('bookUserSubDashboard.aConstituer'),
-    constitue: t('bookUserSubDashboard.constitue'),
-    en_route: 'En route',
-    livre: t('bookUserSubDashboard.livre'),
-    confirme: t('bookUserSubDashboard.confirme'),
-    en_attente: 'En attente',
-    en_livraison: 'En livraison',
-    paye: t('bookUserSubDashboard.paye'),
-    annule: t('bookUserSubDashboard.annule'),
-};
+const getStatusLabels = (t: (key: string, fallback?: string) => string): Record<string, string> => ({
+    a_constituer: t('bookUserSubDashboard.aConstituer', 'À constituer'),
+    constitue: t('bookUserSubDashboard.constitue', 'Constitué'),
+    en_route: t('bookUserSubDashboard.enRoute', 'En route'),
+    livre: t('bookUserSubDashboard.livre', 'Livré'),
+    confirme: t('bookUserSubDashboard.confirme', 'Confirmé'),
+    en_attente: t('bookUserSubDashboard.enAttente', 'En attente'),
+    en_livraison: t('bookUserSubDashboard.enLivraison', 'En livraison'),
+    paye: t('bookUserSubDashboard.paye', 'Payé'),
+    annule: t('bookUserSubDashboard.annule', 'Annulé'),
+});
 
 const STATUS_COLORS: Record<string, string> = {
     a_constituer: '#F59E0B',
@@ -41,8 +41,9 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const BookUserSubDashboard: React.FC<BookUserSubDashboardProps> = ({ onRefresh }) => {
-        const { t } = useLanguageSafe();
-const [loading, setLoading] = useState(true);
+    const { t } = useLanguageSafe();
+    const STATUS_LABELS = getStatusLabels(t);
+    const [loading, setLoading] = useState(true);
     const [paquetsAEnvoyer, setPaquetsAEnvoyer] = useState<BookDeliveryPackage[]>([]);
     const [paquetsARecevoir, setPaquetsARecevoir] = useState<BookDeliveryPackage[]>([]);
     const [achatsEnCours, setAchatsEnCours] = useState<BookPurchase[]>([]);
@@ -97,12 +98,12 @@ const [loading, setLoading] = useState(true);
                         <View style={styles.infoRow}>
                             <SafeIcon name="search" size={14} color={
                                 pkg.matching_status === 'matched' ? '#10B981' :
-                                pkg.matching_status === 'searching' ? '#F59E0B' : '#9CA3AF'
+                                    pkg.matching_status === 'searching' ? '#F59E0B' : '#9CA3AF'
                             } />
                             <Text style={styles.infoText}>
                                 {pkg.matching_status === 'matched' ? t('bookUserSubDashboard.coursierAssigne') :
-                                 pkg.matching_status === 'searching' ? 'Recherche de coursier...' :
-                                 pkg.matching_status === 'no_courier' ? 'Aucun coursier disponible' : 'En attente'}
+                                    pkg.matching_status === 'searching' ? t('bookUserSubDashboard.rechercheDeCoursier', 'Recherche de coursier...') :
+                                        pkg.matching_status === 'no_courier' ? t('bookUserSubDashboard.aucunCoursierDisponible', 'Aucun coursier disponible') : t('bookUserSubDashboard.enAttente', 'En attente')}
                             </Text>
                         </View>
                     )}
@@ -135,10 +136,10 @@ const [loading, setLoading] = useState(true);
                         <SafeIcon name="calendar" size={12} color="#92400E" />
                         <Text style={styles.creneauText}>
                             {pkg.creneau_destinataire_debut
-                                ? t('bookUserSubDashboard.creneau', { new_Date_pkg_creneau_dest: new Date(pkg.creneau_destinataire_debut).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'  })
+                                ? `Créneau: ${new Date(pkg.creneau_destinataire_debut).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
                                 : pkg.creneau_expediteur_debut
-                                ? t('bookUserSubDashboard.expedition', { new Date(pkg_creneau_expediteur_debut)_toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' : new Date(pkg.creneau_expediteur_debut).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'  })
-                                : ''}
+                                    ? `Expédition: ${new Date(pkg.creneau_expediteur_debut).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+                                    : ''}
                         </Text>
                     </View>
                 )}
@@ -175,7 +176,7 @@ const [loading, setLoading] = useState(true);
                     <View style={styles.infoRow}>
                         <SafeIcon name="credit-card" size={14} color={modernColors.textSecondary} />
                         <Text style={styles.infoText}>
-                            Paiement: {purchase.paiement_statut === 'paye' ? t('bookUserSubDashboard.paye') : 'En attente'}
+                            {t('bookUserSubDashboard.paiement', 'Paiement')}: {purchase.paiement_statut === 'paye' ? t('bookUserSubDashboard.paye') : t('bookUserSubDashboard.enAttente', 'En attente')}
                         </Text>
                     </View>
                 </View>
@@ -186,7 +187,7 @@ const [loading, setLoading] = useState(true);
     const tabs = [
         { key: 'recevoir' as const, label: t('bookUserSubDashboard.aRecevoir'), count: paquetsARecevoir.length, icon: 'inbox' },
         { key: 'envoyer' as const, label: t('bookUserSubDashboard.aEnvoyer'), count: paquetsAEnvoyer.length, icon: 'send' },
-        { key: 'achats' as const, label: 'Achats', count: achatsEnCours.length, icon: 'shopping-cart' },
+        { key: 'achats' as const, label: t('bookUserSubDashboard.achats', 'Achats'), count: achatsEnCours.length, icon: 'shopping-cart' },
         { key: 'historique' as const, label: t('bookUserSubDashboard.historique'), count: historique.length, icon: 'clock' },
     ];
 
@@ -280,7 +281,7 @@ const [loading, setLoading] = useState(true);
                                 : <View style={styles.emptyState}>
                                     <SafeIcon name="inbox" size={28} color={modernColors.textSecondary} />
                                     <Text style={styles.emptyText}>{t('bookUserSubDashboard.aucunPaquetARecevoir')}</Text>
-                                  </View>
+                                </View>
                         )}
                         {activeTab === 'envoyer' && (
                             paquetsAEnvoyer.length > 0
@@ -288,7 +289,7 @@ const [loading, setLoading] = useState(true);
                                 : <View style={styles.emptyState}>
                                     <SafeIcon name="send" size={28} color={modernColors.textSecondary} />
                                     <Text style={styles.emptyText}>{t('bookUserSubDashboard.aucunPaquetAEnvoyer')}</Text>
-                                  </View>
+                                </View>
                         )}
                         {activeTab === 'achats' && (
                             achatsEnCours.length > 0
@@ -296,7 +297,7 @@ const [loading, setLoading] = useState(true);
                                 : <View style={styles.emptyState}>
                                     <SafeIcon name="shopping-cart" size={28} color={modernColors.textSecondary} />
                                     <Text style={styles.emptyText}>{t('bookUserSubDashboard.aucunAchatEnCours')}</Text>
-                                  </View>
+                                </View>
                         )}
                         {activeTab === 'historique' && (
                             historique.length > 0
@@ -304,7 +305,7 @@ const [loading, setLoading] = useState(true);
                                 : <View style={styles.emptyState}>
                                     <SafeIcon name="clock" size={28} color={modernColors.textSecondary} />
                                     <Text style={styles.emptyText}>{t('bookUserSubDashboard.aucunHistorique')}</Text>
-                                  </View>
+                                </View>
                         )}
                     </View>
                 </View>

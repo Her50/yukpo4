@@ -71,7 +71,7 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
             const welcomeMessage: ChatMessage = {
                 id: Date.now().toString(),
                 from: 'prestataire',
-                content: `Bonjour 👋, je suis là pour vous aider avec votre demande. Que puis-je faire pour vous ?`,
+                content: `Bonjour \uD83D\uDC4B, je suis là pour vous aider avec votre demande. Que puis-je faire pour vous ?`,
                 timestamp: new Date(),
                 status: 'read',
                 type: 'text',
@@ -115,7 +115,7 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
         }
 
         try {
-            console.log('🔌 [useWebSocketChat] Connexion WebSocket...');
+            console.log('\uD83D\uDD0C [useWebSocketChat] Connexion WebSocket...');
 
             // ✅ CORRIGÉ: Utilise la configuration centralisée avec valeurs converties en number
             const wsUrl = WS_ENDPOINTS.CHAT(serviceIdNum, prestataireIdNum, userIdNum);
@@ -151,7 +151,7 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
             wsRef.current.onmessage = (event) => {
                 try {
                     const rawData = JSON.parse(event.data);
-                    console.log('📨 [useWebSocketChat] Message reçu:', rawData);
+                    console.log('\uD83D\uDCE8 [useWebSocketChat] Message reçu:', rawData);
 
                     // ✅ CORRIGÉ: Le serveur envoie ChatWsMessage avec { message_type, data, user_id, ... }
                     // On doit extraire le payload depuis rawData.data si c'est le nouveau format
@@ -162,7 +162,7 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
 
                     // ✅ CORRIGÉ: Ignorer les messages envoyés par nous-mêmes (déjà ajoutés localement)
                     if (msgType === 'message' && senderUserId === userIdNum) {
-                        console.log('📨 [useWebSocketChat] Message de nous-même ignoré (déjà ajouté localement)');
+                        console.log('\uD83D\uDCE8 [useWebSocketChat] Message de nous-même ignoré (déjà ajouté localement)');
                         return;
                     }
 
@@ -227,14 +227,14 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
             };
 
             wsRef.current.onclose = (event) => {
-                console.log('🔌 [useWebSocketChat] WebSocket fermé:', event.code, event.reason);
+                console.log('\uD83D\uDD0C [useWebSocketChat] WebSocket fermé:', event.code, event.reason);
                 setIsConnected(false);
                 setIsTyping(false);
 
                 // Tentative de reconnexion automatique
                 if (event.code !== 1000) { // Pas une fermeture normale
                     reconnectTimeoutRef.current = setTimeout(() => {
-                        console.log('🔄 [useWebSocketChat] Tentative de reconnexion...');
+                        console.log('\uD83D\uDD04 [useWebSocketChat] Tentative de reconnexion...');
                         connectWebSocket();
                     }, 3000);
                 }
@@ -295,7 +295,7 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                 const imageMessage: ChatMessage = {
                     id: `${messageId}_img_${Date.now()}`,
                     from: 'client',
-                    content: '📷 Image',
+                    content: '\uD83D\uDCF7 Image',
                     timestamp: new Date(),
                     status: 'sent',
                     type: 'image',
@@ -311,7 +311,7 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
             const audioMessage: ChatMessage = {
                 id: `${messageId}_audio_${Date.now()}`,
                 from: 'client',
-                content: '🎤 Message vocal',
+                content: '\uD83C\uDFA4 Message vocal',
                 timestamp: new Date(),
                 status: 'sent',
                 type: 'audio',
@@ -327,7 +327,7 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                 const docMessage: ChatMessage = {
                     id: `${messageId}_doc_${Date.now()}`,
                     from: 'client',
-                    content: '📎 Document',
+                    content: '\uD83D\uDCCE Document',
                     timestamp: new Date(),
                     status: 'sent',
                     type: 'file',
@@ -395,7 +395,7 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                     console.error('❌ [useWebSocketChat] Erreur envoi WebSocket:', error);
                     // Si erreur INVALID_STATE_ERR, forcer reconnexion
                     if (error?.message?.includes('INVALID_STATE') || error?.name === 'InvalidStateError') {
-                        console.warn('🔄 [useWebSocketChat] INVALID_STATE_ERR détecté, reconnexion...');
+                        console.warn('\uD83D\uDD04 [useWebSocketChat] INVALID_STATE_ERR détecté, reconnexion...');
                         if (wsRef.current) {
                             try {
                                 wsRef.current.close();
@@ -441,7 +441,7 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                                 recipient_id: prestataireId,
                                 sender_id: userId,
                                 sender_name: user?.name || 'Un utilisateur',
-                                message_preview: msg.content || (msg.type === 'image' ? '📷 Image' : msg.type === 'audio' ? '🎤 Audio' : '📎 Fichier'),
+                                message_preview: msg.content || (msg.type === 'image' ? '\uD83D\uDCF7 Image' : msg.type === 'audio' ? '\uD83C\uDFA4 Audio' : '\uD83D\uDCCE Fichier'),
                                 service_id: serviceId,
                                 service_title: 'Service'
                             });

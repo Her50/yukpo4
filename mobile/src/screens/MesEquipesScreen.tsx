@@ -165,17 +165,17 @@ const MesEquipesScreen: React.FC = () => {
 
     const getCategoryLabel = (category: string | null) => {
         const map: Record<string, string> = {
-            pharmacie: '💊 Pharmacie',
+            pharmacie: '\uD83D\uDC8A Pharmacie',
             hotel: t('mesEquipesScreen.hotel'),
             hopital: t('mesEquipesScreen.hopital'),
-            laboratoire: '🔬 Laboratoire',
+            laboratoire: '\uD83D\uDD2C Laboratoire',
             agence_voyage: '✈️ Agence de voyage',
-            restaurant: '🍽️ Restaurant',
-            immobilier: '🏠 Immobilier',
-            taxi: '🚕 Taxi',
-            covoiturage: '🚗 Covoiturage',
-            bus: '🚌 Bus',
-            assurance: '🛡️ Assurance',
+            restaurant: '\uD83C\uDF7D️ Restaurant',
+            immobilier: '\uD83C\uDFE0 Immobilier',
+            taxi: '\uD83D\uDE95 Taxi',
+            covoiturage: '\uD83D\uDE97 Covoiturage',
+            bus: '\uD83D\uDE8C Bus',
+            assurance: '\uD83D\uDEE1️ Assurance',
         };
         return map[category?.toLowerCase() || ''] || category || 'Service';
     };
@@ -201,7 +201,7 @@ const MesEquipesScreen: React.FC = () => {
                     <View style={{ flex: 1 }}>
                         <Text style={styles.headerTitle}>{t('mesEquipes.mesEquipes')}</Text>
                         <Text style={styles.headerSubtitle}>
-                            {memberships.length} service{memberships.length !== 1 ? 's' : 't('mesEquipesScreen.cogeremembershipslength1')s' : ''}
+                            {memberships.length} service{memberships.length !== 1 ? 's' : ''} co-géré{memberships.length !== 1 ? 's' : ''}
                         </Text>
                     </View>
                 </View>

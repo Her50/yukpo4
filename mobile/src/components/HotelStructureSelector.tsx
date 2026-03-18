@@ -4,7 +4,6 @@ import { hotelPlacesService, HotelStructureType } from '../services/hotelPlacesS
 import { modalityService } from '../services/modalityService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface HotelStructureSelectorProps {
     label: string;
@@ -22,13 +21,12 @@ export const HotelStructureSelector: React.FC<HotelStructureSelectorProps> = ({
     value,
     onSelect,
     type = 'hotel',
-    placeholder={t('hotelStructureSelector.rechercherUnHotel')},
+    placeholder = 'Rechercher un hôtel...',
     required = false,
     useLocation = true,
     radius = 5000,
 }) => {
-        const { t } = useLanguageSafe();
-const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [options, setOptions] = useState<string[]>([]);
@@ -64,7 +62,7 @@ const [open, setOpen] = useState(false);
     const handleAddCustomHotel = async () => {
         const name = newHotelName.trim();
         if (!name) {
-            Alert.alert('Erreur', 'Veuillez entrer un nom d\t('hotelStructureSelector.hotel'));
+            Alert.alert('Erreur', 'Veuillez entrer un nom d\'hôtel');
             return;
         }
 
@@ -93,7 +91,7 @@ const [open, setOpen] = useState(false);
                         {value || placeholder}
                     </Text>
                     {locationEnabled && (
-                        <Text style={styles.locationHint}>{t('hotelStructureSelector.rechercheParProximiteActivee')}</Text>
+                        <Text style={styles.locationHint}>\uD83D\uDCCD Recherche par proximité activée</Text>
                     )}
                 </View>
                 <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
@@ -128,7 +126,7 @@ const [open, setOpen] = useState(false);
                                     color={locationEnabled ? modernColors.primary : modernColors.textSecondary}
                                 />
                                 <Text style={[styles.locationToggleText, locationEnabled && styles.locationToggleTextActive]}>
-                                    {locationEnabled ? t('hotelStructureSelector.rechercheParProximite') : 'Recherche par nom'}
+                                    {locationEnabled ? 'Recherche par proximité' : 'Recherche par nom'}
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -152,7 +150,7 @@ const [open, setOpen] = useState(false);
 
                         {loading && (
                             <View style={styles.loadingContainer}>
-                                <Text style={styles.loadingText}>{t('hotelStructureSelector.rechercheEnCours')}</Text>
+                                <Text style={styles.loadingText}>\uD83D\uDD0D Recherche en cours...</Text>
                             </View>
                         )}
 
@@ -160,9 +158,9 @@ const [open, setOpen] = useState(false);
                             {options.length === 0 && !loading && (
                                 <View style={styles.emptyContainer}>
                                     <SafeIcon name="search" size={40} color={modernColors.textSecondary} />
-                                    <Text style={styles.emptyText}>{t('hotelStructureSelector.aucunHotelTrouve')}</Text>
+                                    <Text style={styles.emptyText}>Aucun hôtel trouvé</Text>
                                     <Text style={styles.emptyHint}>
-                                        {locationEnabled ? t('hotelStructureSelector.essayezDeDesactiverLaGeolocalisation') : "Essayez un autre terme"}
+                                        {locationEnabled ? "Essayez de désactiver la géolocalisation" : "Essayez un autre terme"}
                                     </Text>
                                 </View>
                             )}
@@ -189,7 +187,7 @@ const [open, setOpen] = useState(false);
                             onPress={() => setShowAddModal(true)}
                         >
                             <SafeIcon name="plus-circle" size={18} color={modernColors.primary} />
-                            <Text style={styles.addButtonText}>{t('hotelStructureSelector.ajouterUnHotel')}</Text>
+                            <Text style={styles.addButtonText}>Ajouter un hôtel</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -199,9 +197,9 @@ const [open, setOpen] = useState(false);
             <Modal visible={showAddModal} transparent animationType="fade" onRequestClose={() => setShowAddModal(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.addModalContainer}>
-                        <Text style={styles.addModalTitle}>{t('hotelStructureSelector.ajouterUnHotel')}</Text>
+                        <Text style={styles.addModalTitle}>Ajouter un hôtel</Text>
                         <TextInput
-                            placeholder={t('hotelStructureSelector.nomDeL')}hôtel"
+                            placeholder="Nom de l'hôtel"
                             value={newHotelName}
                             onChangeText={setNewHotelName}
                             style={styles.addModalInput}
@@ -216,13 +214,13 @@ const [open, setOpen] = useState(false);
                                     setNewHotelName('');
                                 }}
                             >
-                                <Text style={styles.addModalButtonTextCancel}>{t('hotelStructureSelector.annuler')}</Text>
+                                <Text style={styles.addModalButtonTextCancel}>Annuler</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.addModalButton, styles.addModalButtonConfirm]}
                                 onPress={handleAddCustomHotel}
                             >
-                                <Text style={styles.addModalButtonTextConfirm}>{t('hotelStructureSelector.ajouter')}</Text>
+                                <Text style={styles.addModalButtonTextConfirm}>Ajouter</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

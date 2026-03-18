@@ -20,16 +20,16 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useAIWithFallback } from '../../hooks/useAIWithFallback';
 import { CVAnalysis, FormationSuggestion, OffreEmploi, offreEmploiService, SalaryPrediction, SearchOffresFilters } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 // Filtres rapides par type de contrat
-const CONTRACT_FILTERS = [
-    { id: 'all', label: 'Tous', icon: 'list' },
+const getContractFilters = (t: (key: string) => string) => [
+    { id: 'all', label: t('offresEmploiHome.tous'), icon: 'list' },
     { id: 'CDI', label: 'CDI', icon: 'shield' },
     { id: 'CDD', label: 'CDD', icon: 'clock' },
     { id: 'Stage', label: 'Stage', icon: 'graduation-cap' },
@@ -98,7 +98,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                 setOffres(response.data.data);
                 setTotalResults(response.data.total || 0);
             } else {
-                setError(t('offresEmploiHome.aucuneOffreTrouvee'));
+                setError('Aucune offre trouvée');
                 setOffres([]);
             }
         } catch (err: any) {
@@ -159,7 +159,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                 `Estimation salaire${source}`,
                 `Poste: ${offre.titre_poste}\n\n` +
                 `Fourchette: ${(est.salaire_estime_min || 0).toLocaleString()} - ${(est.salaire_estime_max || 0).toLocaleString()} FCFA/mois\n` +
-                t('offresEmploiHomeScreen.medianFcfamoisnn', { _est_salaire_estime_media: (est.salaire_estime_median || 0).toLocaleString() }) +
+                `Médian: ${(est.salaire_estime_median || 0).toLocaleString()} FCFA/mois\n\n` +
                 `${est.comparaison_marche || ''}`,
                 [{ text: 'OK' }]
             );
@@ -188,11 +188,11 @@ const OffresEmploiHomeScreen: React.FC = () => {
     };
 
     const formatSalary = (min?: number, max?: number, devise?: string) => {
-        const currency = devise || 'FCFA';
-        if (!min && !max) return t('offresEmploiHomeScreen.salaireNonSpecifie');
+        const currency = devise || 'XAF';
+        if (!min && !max) return t('offresEmploiHome.salaireNonSpecifie');
         if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()} ${currency}`;
-        if (min) return t('offresEmploiHomeScreen.aPartirDe', { min_toLocaleString__: min.toLocaleString(), currency: currency });
-        return t('offresEmploiHomeScreen.jusqua', { max?_toLocaleString(): max?.toLocaleString(), currency: currency });
+        if (min) return `${t('offresEmploiHome.aPartirDe')} ${min.toLocaleString()} ${currency}`;
+        return `${t('offresEmploiHome.jusqua')} ${max?.toLocaleString()} ${currency}`;
     };
 
     return (
@@ -277,21 +277,21 @@ const OffresEmploiHomeScreen: React.FC = () => {
                             onPress={handleAnalyzeCV}
                         >
                             <SafeIcon name="file-text" size={16} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.quickActionText}>Analyser CV</Text>
+                            <Text style={styles.quickActionText}>{t('offresEmploiHome.analyserCv')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.quickActionButton}
                             onPress={handlePredictSalary}
                         >
                             <SafeIcon name="dollar-sign" size={16} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.quickActionText}>Salaire IA</Text>
+                            <Text style={styles.quickActionText}>{t('offresEmploiHome.salaireIa')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.quickActionButton}
                             onPress={handleSuggestFormations}
                         >
                             <SafeIcon name="graduation-cap" size={16} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.quickActionText}>Formations</Text>
+                            <Text style={styles.quickActionText}>{t('offresEmploiHome.formations')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.quickActionButton}
@@ -301,7 +301,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                             }}
                         >
                             <SafeIcon name="bell" size={16} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.quickActionText}>Alertes</Text>
+                            <Text style={styles.quickActionText}>{t('offresEmploiHome.alertes')}</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -316,15 +316,15 @@ const OffresEmploiHomeScreen: React.FC = () => {
                                 if (response.success && matchData.length > 0) {
                                     (navigation as any).navigate('OffreList', {
                                         offres: matchData,
-                                        title: t('offresEmploiHome.offresRecommandeesPourVous'),
+                                        title: 'Offres recommandées pour vous',
                                     });
                                 } else {
                                     Alert.alert(
                                         'Aucune suggestion',
-                                        t('offresEmploiHomeScreen.creezVotreProfilCandidatPourRecevoirDes'),
+                                        'Créez votre profil candidat pour recevoir des suggestions personnalisées d\'offres.',
                                         [
                                             { text: t('common.cancel') },
-                                            { text: t('offresEmploiHome.creerMonProfil'), onPress: () => (navigation as any).navigate('ProfilCandidat') },
+                                            { text: 'Créer mon profil', onPress: () => (navigation as any).navigate('ProfilCandidat') },
                                         ]
                                     );
                                 }
@@ -332,10 +332,10 @@ const OffresEmploiHomeScreen: React.FC = () => {
                                 console.error('[OffresEmploiHomeScreen] Erreur suggestions:', err);
                                 Alert.alert(
                                     'Suggestions',
-                                    t('offresEmploiHomeScreen.creezVotreProfilCandidatPourRecevoir'),
+                                    'Créez votre profil candidat pour recevoir des suggestions personnalisées.',
                                     [
                                         { text: t('common.cancel') },
-                                        { text: t('offresEmploiHome.creerMonProfil'), onPress: () => (navigation as any).navigate('ProfilCandidat') },
+                                        { text: 'Créer mon profil', onPress: () => (navigation as any).navigate('ProfilCandidat') },
                                     ]
                                 );
                             }
@@ -415,7 +415,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                                     >
                                         <SafeIcon name="bookmark" size={14} color={savedOffers.has(item.id.toString()) ? '#6366F1' : '#9CA3AF'} type="lucide" />
                                         <Text style={[styles.quickActionRowButtonText, savedOffers.has(item.id.toString()) && styles.quickActionRowButtonTextSaved]}>
-                                            {savedOffers.has(item.id.toString()) ? t('offresEmploiHomeScreen.sauvegarde') : 'Sauvegarder'}
+                                            {savedOffers.has(item.id.toString()) ? t('offresEmploiHome.sauvegarde') : t('offresEmploiHome.sauvegarder')}
                                         </Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
@@ -423,7 +423,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                                         onPress={() => handleInlineSalaryEstimate(item)}
                                     >
                                         <SafeIcon name="trending-up" size={14} color="#F59E0B" type="lucide" />
-                                        <Text style={styles.quickActionRowButtonTextEstimate}>Estimer salaire</Text>
+                                        <Text style={styles.quickActionRowButtonTextEstimate}>{t('offresEmploiHome.estimerSalaire')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -444,7 +444,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
                                 <SafeIcon name="briefcase" size={64} color="#9CA3AF" />
                                 <Text style={styles.emptyText}>{t('offresEmploiHome.aucuneOffreTrouvee')}</Text>
                                 <Text style={styles.emptySubtext}>
-                                    Essayez de modifier vos critères de recherche
+                                    {t('offresEmploiHome.modifierCriteres')}
                                 </Text>
                             </View>
                         }
@@ -521,7 +521,7 @@ const OffreCard: React.FC<OffreCardProps> = ({ offre, onPress, onApply, formatSa
                 {offre.remote && (
                     <View style={styles.offreMetaItem}>
                         <SafeIcon name="wifi" size={14} color="#6B7280" type="lucide" />
-                        <Text style={styles.offreMetaText}>{t('offresEmploiHome.teletravail')}</Text>
+                        <Text style={styles.offreMetaText}>Télétravail</Text>
                     </View>
                 )}
             </View>
@@ -577,7 +577,7 @@ const AIModal: React.FC<AIModalProps> = ({
                 <View style={styles.modalContent}>
                     <View style={styles.modalHeader}>
                         <Text style={styles.modalTitle}>
-                            {mode === 'cv' ? 'Analyse CV IA' : mode === 'salary' ? t('offresEmploiHomeScreen.predictionSalaireIa') : 'Suggestions Formations IA'}
+                            {mode === 'cv' ? 'Analyse CV IA' : mode === 'salary' ? 'Prédiction Salaire IA' : 'Suggestions Formations IA'}
                         </Text>
                         <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
                             <SafeIcon name="x" size={24} color="#111827" type="lucide" />
@@ -595,7 +595,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                 <Text style={styles.analysisTitle}>Score global: {cvAnalysis.score_global}/100</Text>
                                 {cvAnalysis.points_forts.length > 0 && (
                                     <View style={styles.pointsContainer}>
-                                        <Text style={styles.pointsTitle}>{t('offresEmploiHome.pointsForts')}</Text>
+                                        <Text style={styles.pointsTitle}>Points forts:</Text>
                                         {cvAnalysis.points_forts.map((point, i) => (
                                             <Text key={i} style={styles.pointText}>• {point}</Text>
                                         ))}
@@ -603,7 +603,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                 )}
                                 {cvAnalysis.suggestions_amelioration.length > 0 && (
                                     <View style={styles.suggestionsContainer}>
-                                        <Text style={styles.suggestionsTitle}>{t('offresEmploiHome.suggestionsDamelioration')}</Text>
+                                        <Text style={styles.suggestionsTitle}>Suggestions d'amélioration:</Text>
                                         {cvAnalysis.suggestions_amelioration.map((suggestion, i) => (
                                             <Text key={i} style={styles.suggestionText}>• {suggestion}</Text>
                                         ))}
@@ -612,7 +612,7 @@ const AIModal: React.FC<AIModalProps> = ({
                             </View>
                         ) : mode === 'salary' && salaryPrediction ? (
                             <View style={styles.salaryContainer}>
-                                <Text style={styles.salaryTitle}>{t('offresEmploiHome.salaireEstime')}</Text>
+                                <Text style={styles.salaryTitle}>Salaire estimé</Text>
                                 <Text style={styles.salaryValue}>
                                     {salaryPrediction.salaire_estime_min.toLocaleString()} - {salaryPrediction.salaire_estime_max.toLocaleString()} {salaryPrediction.devise}
                                 </Text>
@@ -641,7 +641,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                 ))}
                             </View>
                         ) : (
-                            <Text style={styles.placeholderText}>{t('offresEmploiHome.aucuneDonneeDisponible')}</Text>
+                            <Text style={styles.placeholderText}>Aucune donnée disponible</Text>
                         )}
                     </ScrollView>
                 </View>

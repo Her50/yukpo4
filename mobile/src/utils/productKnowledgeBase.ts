@@ -1,5 +1,5 @@
 /**
- * 🧠 BASE DE CONNAISSANCES PRODUITS
+ * \uD83E\uDDE0 BASE DE CONNAISSANCES PRODUITS
  * 
  * Parse votre base locale de 1000+ produits pour créer des mappings :
  * NOM_PRODUIT → [CARACTÉRISTIQUES MULTIPLES]
@@ -59,7 +59,7 @@ class ProductKnowledgeBase {
     async initialize() {
         if (this.initialized) return;
 
-        console.log('🧠 [ProductKnowledgeBase] Initialisation...');
+        console.log('\uD83E\uDDE0 [ProductKnowledgeBase] Initialisation...');
 
         const categories = getAllCategories();
         let totalProducts = 0;
@@ -92,7 +92,7 @@ class ProductKnowledgeBase {
             const marques = getFieldOptions(category, 'marques');
 
             for (const marque of marques) {
-                if (marque.includes('🆕')) continue;
+                if (marque.includes('\uD83C\uDD95')) continue;
 
                 // Récupérer les modèles de cette marque
                 const modeles = this.getModelesForMarque(marque, 'telephone');
@@ -123,7 +123,7 @@ class ProductKnowledgeBase {
             const marques = getFieldOptions(category, 'marques');
 
             for (const marque of marques) {
-                if (marque.includes('🆕')) continue;
+                if (marque.includes('\uD83C\uDD95')) continue;
 
                 const modeles = this.getModelesForMarque(marque, 'automobile');
 
@@ -151,10 +151,10 @@ class ProductKnowledgeBase {
             const origines = getFieldOptions(category, 'origines') || [];
 
             for (const type of types) {
-                if (type.includes('🆕')) continue;
+                if (type.includes('\uD83C\uDD95')) continue;
 
                 for (const origine of origines) {
-                    if (origine.includes('🆕')) continue;
+                    if (origine.includes('\uD83C\uDD95')) continue;
 
                     const productName = `${type} ${origine}`;
 
@@ -182,10 +182,10 @@ class ProductKnowledgeBase {
             const genres = getFieldOptions(category, 'genres') || [];
 
             for (const type of types) {
-                if (type.includes('🆕')) continue;
+                if (type.includes('\uD83C\uDD95')) continue;
 
                 for (const genre of genres) {
-                    if (genre.includes('🆕')) continue;
+                    if (genre.includes('\uD83C\uDD95')) continue;
 
                     const productName = `${type} ${genre}`;
 

@@ -23,32 +23,16 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import ServiceTeamManager from '../../components/ServiceTeamManager';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
 import { useFormValidation } from '../../hooks/useFormValidation';
 import { usePartnerData } from '../../hooks/usePartnerData';
 import { apiGet, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const STORAGE_KEY = '@hopital_form';
 type TabType = 'overview' | 'service' | 'slots' | 'analytics' | 'team';
-
-const TYPES_ETABLISSEMENT = [
-    { key: 'Hôpital', icon: 'building' },
-    { key: 'Clinique', icon: 'heart' },
-    { key: t('hopitalFormScreen.centreDeSante'), icon: 'activity' },
-    { key: 'Dispensaire', icon: 'plus-circle' },
-];
-
-const PRESTATIONS_OPTIONS = [
-    'Urgences', t('hopitalFormScreen.consultationGenerale'), t('hopitalFormScreen.chirurgieGenerale'), 'Chirurgie cardiaque',
-    t('hopitalFormScreen.chirurgieOrthopedique'), t('hopitalFormScreen.maternite'), t('hopitalFormScreen.pediatrie'), 'Cardiologie', 'Radiologie',
-    t('hopitalFormScreen.imagerieMedicale'), 'Urologie', t('hopitalFormScreen.cancerologie'), 'Oncologie', 'Dentisterie',
-    'Ophtalmologie', 'ORL', 'Dermatologie', 'Neurologie', 'Psychiatrie', t('hopitalFormScreen.gynecologie'),
-    t('hopitalFormScreen.medecineInterne'), t('hopitalFormScreen.anesthesie'), t('hopitalFormScreen.reanimation'), 'Laboratoire d\'analyses',
-    'Pharmacie', t('hopitalFormScreen.kinesitherapie'), t('hopitalFormScreen.physiotherapie'),
-];
 
 interface HospitalAnalytics {
     total_consultations?: number;
@@ -63,6 +47,44 @@ const HopitalFormScreen: React.FC = () => {
     const { user, logout } = useAuth();
     const { location } = useLocation();
     const { t } = useLanguageSafe();
+
+    const TYPES_ETABLISSEMENT = [
+        { key: t('hopitalFormScreen.hopital') || 'Hôpital', icon: 'building' },
+        { key: t('hopitalFormScreen.clinique') || 'Clinique', icon: 'heart' },
+        { key: t('hopitalFormScreen.centreDeSante') || 'Centre de santé', icon: 'activity' },
+        { key: t('hopitalFormScreen.dispensaire') || 'Dispensaire', icon: 'plus-circle' },
+    ];
+
+    const PRESTATIONS_OPTIONS = [
+        t('hopitalFormScreen.urgences') || 'Urgences',
+        t('hopitalFormScreen.consultationGenerale') || 'Consultation générale',
+        t('hopitalFormScreen.chirurgieGenerale') || 'Chirurgie générale',
+        t('hopitalFormScreen.chirurgieCardiaque') || 'Chirurgie cardiaque',
+        t('hopitalFormScreen.chirurgieOrthopedique') || 'Chirurgie orthopédique',
+        t('hopitalFormScreen.maternite') || 'Maternité',
+        t('hopitalFormScreen.pediatrie') || 'Pédiatrie',
+        t('hopitalFormScreen.cardiologie') || 'Cardiologie',
+        t('hopitalFormScreen.radiologie') || 'Radiologie',
+        t('hopitalFormScreen.imagerieMedicale') || 'Imagerie médicale',
+        t('hopitalFormScreen.urologie') || 'Urologie',
+        t('hopitalFormScreen.cancerologie') || 'Cancérologie',
+        t('hopitalFormScreen.oncologie') || 'Oncologie',
+        t('hopitalFormScreen.dentisterie') || 'Dentisterie',
+        t('hopitalFormScreen.ophtalmologie') || 'Ophtalmologie',
+        'ORL',
+        t('hopitalFormScreen.dermatologie') || 'Dermatologie',
+        t('hopitalFormScreen.neurologie') || 'Neurologie',
+        t('hopitalFormScreen.psychiatrie') || 'Psychiatrie',
+        t('hopitalFormScreen.gynecologie') || 'Gynécologie',
+        t('hopitalFormScreen.medecineInterne') || 'Médecine interne',
+        t('hopitalFormScreen.anesthesie') || 'Anesthésie',
+        t('hopitalFormScreen.reanimation') || 'Réanimation',
+        t('hopitalFormScreen.laboratoireDanalyses') || 'Laboratoire d\'analyses',
+        t('hopitalFormScreen.pharmaciePrestation') || 'Pharmacie',
+        t('hopitalFormScreen.kinesitherapie') || 'Kinésithérapie',
+        t('hopitalFormScreen.physiotherapie') || 'Physiothérapie',
+    ];
+
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
     const mode = (route.params as any)?.mode as string | undefined;
@@ -243,10 +265,10 @@ const HopitalFormScreen: React.FC = () => {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
             <View style={s.statsGrid}>
                 {[
-                    { label: 'Prestations', value: stats.totalPrestations, icon: 'stethoscope', color: '#DC2626' },
+                    { label: t('hopitalFormScreen.prestations') || 'Prestations', value: stats.totalPrestations, icon: 'stethoscope', color: '#DC2626' },
                     { label: t('hopitalForm.creneaux'), value: stats.totalSlots, icon: 'calendar', color: '#3B82F6' },
-                    { label: 'Consultations', value: consultations.length, icon: 'users', color: '#10B981' },
-                    { label: 'Temps attente', value: analyticsData?.avg_wait_time_min ? `${analyticsData.avg_wait_time_min}min` : '—', icon: 'clock', color: '#F59E0B' },
+                    { label: t('hopitalFormScreen.consultations') || 'Consultations', value: consultations.length, icon: 'users', color: '#10B981' },
+                    { label: t('hopitalFormScreen.tempsAttente') || 'Temps attente', value: analyticsData?.avg_wait_time_min ? `${analyticsData.avg_wait_time_min}min` : '—', icon: 'clock', color: '#F59E0B' },
                 ].map((st, i) => (
                     <View key={i} style={[s.statCard, { borderLeftColor: st.color }]}>
                         <SafeIcon name={st.icon as any} size={18} color={st.color} />
@@ -257,12 +279,12 @@ const HopitalFormScreen: React.FC = () => {
             </View>
 
             {/* Quick Actions */}
-            <Text style={s.sectionTitle}>Actions rapides</Text>
+            <Text style={s.sectionTitle}>{t('hopitalFormScreen.actionsRapides') || 'Actions rapides'}</Text>
             <View style={s.quickRow}>
                 {[
                     { label: t('hopitalForm.gererCreneaux'), icon: 'calendar', color: '#3B82F6', onPress: () => setActiveTab('slots') },
-                    { label: 'IA Triage', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('HospitalAIRecommendations', { serviceId }) },
-                    { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('HospitalAnalytics', { serviceId }) },
+                    { label: t('hopitalFormScreen.iaTriage') || 'IA Triage', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('HospitalAIRecommendations', { serviceId }) },
+                    { label: t('hopitalFormScreen.statistiques') || 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('HospitalAnalytics', { serviceId }) },
                     { label: t('hopitalForm.monService'), icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
                     { label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },
                 ].map((a, i) => (
@@ -280,7 +302,7 @@ const HopitalFormScreen: React.FC = () => {
                     <Text style={[s.emergencyTitle, { color: formData.urgences_disponible ? '#DC2626' : '#6B7280' }]}>
                         {formData.urgences_disponible ? t('hopitalFormScreen.urgencesActivees') : t('hopitalFormScreen.urgencesDesactivees')}
                     </Text>
-                    <Text style={s.emergencySub}>{formData.rdv_en_ligne ? 'RDV en ligne disponible' : 'RDV en ligne non disponible'}</Text>
+                    <Text style={s.emergencySub}>{formData.rdv_en_ligne ? (t('hopitalFormScreen.rdvEnLigneDisponible') || 'RDV en ligne disponible') : (t('hopitalFormScreen.rdvEnLigneNonDisponible') || 'RDV en ligne non disponible')}</Text>
                 </View>
             </View>
 
@@ -292,11 +314,11 @@ const HopitalFormScreen: React.FC = () => {
                         <View key={i} style={s.consultCard}>
                             <SafeIcon name="user" size={16} color="#6B7280" />
                             <View style={{ flex: 1, marginLeft: 10 }}>
-                                <Text style={s.consultName}>{c.patient_name || 'Patient'}</Text>
+                                <Text style={s.consultName}>{c.patient_name || t('hopitalFormScreen.patient') || 'Patient'}</Text>
                                 <Text style={s.consultDetail}>{c.prestation || c.service || '—'} · {c.date ? new Date(c.date).toLocaleDateString('fr-FR') : '—'}</Text>
                             </View>
                             <View style={[s.consultBadge, { backgroundColor: c.status === 'completed' ? '#DCFCE7' : '#FEF3C7' }]}>
-                                <Text style={[s.consultBadgeText, { color: c.status === 'completed' ? '#16A34A' : '#D97706' }]}>{c.status === 'completed' ? t('hopitalFormScreen.termine') : 'En cours'}</Text>
+                                <Text style={[s.consultBadgeText, { color: c.status === 'completed' ? '#16A34A' : '#D97706' }]}>{c.status === 'completed' ? t('hopitalFormScreen.termine') : (t('hopitalFormScreen.enCours') || 'En cours')}</Text>
                             </View>
                         </View>
                     ))}
@@ -306,7 +328,7 @@ const HopitalFormScreen: React.FC = () => {
             {/* Hospital Info */}
             {hospitalData && (
                 <>
-                    <Text style={[s.sectionTitle, { marginTop: 20 }]}>Informations</Text>
+                    <Text style={[s.sectionTitle, { marginTop: 20 }]}>{t('hopitalFormScreen.informations') || 'Informations'}</Text>
                     {[
                         hospitalData.adresse && { icon: 'map-pin', text: hospitalData.adresse },
                         hospitalData.telephone && { icon: 'phone', text: hospitalData.telephone },
@@ -347,8 +369,8 @@ const HopitalFormScreen: React.FC = () => {
             <View style={s.field}>
                 <LocationSelector label={t('hopitalForm.quartier')} value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, quartier: loc })} placeholder={t('hopitalForm.rechercher')} scope="all" enrichWithBackend />
             </View>
-            <View style={s.switchRow}><View><Text style={s.switchLbl}>Urgences disponibles</Text><Text style={s.hint}>Active le service d'urgences</Text></View><Switch value={formData.urgences_disponible} onValueChange={v => setFormData({ ...formData, urgences_disponible: v })} trackColor={{ false: '#D1D5DB', true: '#DC2626' }} /></View>
-            <View style={s.switchRow}><View><Text style={s.switchLbl}>RDV en ligne</Text><Text style={s.hint}>Permet les prises de RDV</Text></View><Switch value={formData.rdv_en_ligne} onValueChange={v => setFormData({ ...formData, rdv_en_ligne: v })} trackColor={{ false: '#D1D5DB', true: modernColors.primary }} /></View>
+            <View style={s.switchRow}><View><Text style={s.switchLbl}>{t('hopitalFormScreen.urgencesDisponibles') || 'Urgences disponibles'}</Text><Text style={s.hint}>{t('hopitalFormScreen.activeLeServiceDurgences') || 'Active le service d\'urgences'}</Text></View><Switch value={formData.urgences_disponible} onValueChange={v => setFormData({ ...formData, urgences_disponible: v })} trackColor={{ false: '#D1D5DB', true: '#DC2626' }} /></View>
+            <View style={s.switchRow}><View><Text style={s.switchLbl}>{t('hopitalFormScreen.rdvEnLigne') || 'RDV en ligne'}</Text><Text style={s.hint}>{t('hopitalFormScreen.permetLesPrisesDeRdv') || 'Permet les prises de RDV'}</Text></View><Switch value={formData.rdv_en_ligne} onValueChange={v => setFormData({ ...formData, rdv_en_ligne: v })} trackColor={{ false: '#D1D5DB', true: modernColors.primary }} /></View>
             {user?.role !== 'partenaire' && (
                 <>
                     <View style={s.field}><NativeInput label={t('hopitalForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
@@ -358,7 +380,7 @@ const HopitalFormScreen: React.FC = () => {
                     <View style={s.field}><NativeInput label="Site web" value={formData.site_web} onChangeText={t => setFormData({ ...formData, site_web: t })} placeholder="https://..." autoCapitalize="none" /></View>
                 </>
             )}
-            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? t('hopitalFormScreen.mettreAJour') : 'Enregistrer')} onPress={handleSubmit} disabled={loading || !formData.nom.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
+            <NativeButton title={loading ? (t('hopitalFormScreen.enregistrement') || 'Enregistrement...') : (isDashboardMode ? t('hopitalFormScreen.mettreAJour') : (t('hopitalFormScreen.enregistrer') || 'Enregistrer'))} onPress={handleSubmit} disabled={loading || !formData.nom.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
         </ScrollView>
     );
 
@@ -367,11 +389,11 @@ const HopitalFormScreen: React.FC = () => {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
             {/* Stats */}
             <View style={s.slotStats}>
-                <View style={s.slotStatItem}><Text style={s.slotStatVal}>{stats.totalPrestations}</Text><Text style={s.slotStatLbl}>Prestations</Text></View>
+                <View style={s.slotStatItem}><Text style={s.slotStatVal}>{stats.totalPrestations}</Text><Text style={s.slotStatLbl}>{t('hopitalFormScreen.prestations') || 'Prestations'}</Text></View>
                 <View style={s.slotStatDiv} />
                 <View style={s.slotStatItem}><Text style={s.slotStatVal}>{stats.totalSlots}</Text><Text style={s.slotStatLbl}>{t('hopitalForm.creneaux')}</Text></View>
                 <View style={s.slotStatDiv} />
-                <View style={s.slotStatItem}><Text style={s.slotStatVal}>{stats.withSlots}</Text><Text style={s.slotStatLbl}>Avec planning</Text></View>
+                <View style={s.slotStatItem}><Text style={s.slotStatVal}>{stats.withSlots}</Text><Text style={s.slotStatLbl}>{t('hopitalFormScreen.avecPlanning') || 'Avec planning'}</Text></View>
             </View>
             <PrestationSelectorWithSchedule
                 label={t('hopitalForm.prestationsMedicalesPlanning')}
@@ -392,10 +414,10 @@ const HopitalFormScreen: React.FC = () => {
                 {analyticsData ? (
                     <View style={{ gap: 12 }}>
                         {[
-                            { l: 'Consultations totales', v: analyticsData.total_consultations || 0 },
-                            { l: 'Consultations (7j)', v: analyticsData.consultations_7d || 0 },
-                            { l: 'Temps attente moyen', v: analyticsData.avg_wait_time_min ? `${analyticsData.avg_wait_time_min} min` : '—' },
-                            { l: 'Taux occupation', v: analyticsData.occupancy_rate ? `${Math.round(analyticsData.occupancy_rate * 100)}%` : '—', c: '#10B981' },
+                            { l: t('hopitalFormScreen.consultationsTotales') || 'Consultations totales', v: analyticsData.total_consultations || 0 },
+                            { l: t('hopitalFormScreen.consultations7j') || 'Consultations (7j)', v: analyticsData.consultations_7d || 0 },
+                            { l: t('hopitalFormScreen.tempsAttenteMoyen') || 'Temps attente moyen', v: analyticsData.avg_wait_time_min ? `${analyticsData.avg_wait_time_min} min` : '—' },
+                            { l: t('hopitalFormScreen.tauxOccupation') || 'Taux occupation', v: analyticsData.occupancy_rate ? `${Math.round(analyticsData.occupancy_rate * 100)}%` : '—', c: '#10B981' },
                         ].map((r, i) => (
                             <View key={i} style={s.analyticsRow}><Text style={s.analyticsLbl}>{r.l}</Text><Text style={[s.analyticsVal, r.c ? { color: r.c } : {}]}>{r.v}</Text></View>
                         ))}
@@ -403,9 +425,9 @@ const HopitalFormScreen: React.FC = () => {
                 ) : <Text style={s.analyticsEmpty}>{t('hopitalForm.statistiquesDisponiblesApresLesPremieres')}</Text>}
             </View>
             <View style={s.analyticsCard}>
-                <View style={s.analyticsHdr}><SafeIcon name="sparkles" size={22} color="#F59E0B" /><Text style={s.analyticsTitle}>Intelligence Artificielle</Text></View>
-                <Text style={s.analyticsEmpty}>Triage IA, recommandations et recherche par pathologie disponibles.</Text>
-                <NativeButton title="Triage IA" onPress={() => (navigation as any).navigate('HospitalAIRecommendations')} style={{ marginTop: 12, backgroundColor: '#F59E0B' }} />
+                <View style={s.analyticsHdr}><SafeIcon name="sparkles" size={22} color="#F59E0B" /><Text style={s.analyticsTitle}>{t('hopitalFormScreen.intelligenceArtificielle') || 'Intelligence Artificielle'}</Text></View>
+                <Text style={s.analyticsEmpty}>{t('hopitalFormScreen.triageIaDescription') || 'Triage IA, recommandations et recherche par pathologie disponibles.'}</Text>
+                <NativeButton title={t('hopitalFormScreen.iaTriage') || 'Triage IA'} onPress={() => (navigation as any).navigate('HospitalAIRecommendations')} style={{ marginTop: 12, backgroundColor: '#F59E0B' }} />
             </View>
         </ScrollView>
     );
@@ -414,9 +436,9 @@ const HopitalFormScreen: React.FC = () => {
     if (isDashboardMode || (user?.role === 'partenaire' && serviceId)) {
         const tabs: { key: TabType; label: string; icon: string }[] = [
             { key: 'overview', label: t('hopitalForm.accueil'), icon: 'layout-dashboard' },
-            { key: 'service', label: 'Service', icon: 'settings' },
+            { key: 'service', label: t('hopitalFormScreen.service') || 'Service', icon: 'settings' },
             { key: 'slots', label: t('hopitalForm.creneaux'), icon: 'calendar' },
-            { key: 'analytics', label: 'Stats', icon: 'bar-chart-2' },
+            { key: 'analytics', label: t('hopitalFormScreen.stats') || 'Stats', icon: 'bar-chart-2' },
             { key: 'team', label: t('hopitalForm.equipe'), icon: 'users' },
         ];
         return (

@@ -17,7 +17,6 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Etablissement {
     id: number;
@@ -31,7 +30,6 @@ interface Etablissement {
 
 const EtablissementSearchScreen: React.FC = () => {
     const navigation = useNavigation() as any;
-    const { t } = useLanguageSafe();
     const route = useRoute();
     const typeParam = (route.params as any)?.type || '';
 
@@ -107,7 +105,7 @@ const EtablissementSearchScreen: React.FC = () => {
                         {item.is_verified && (
                             <View style={styles.verifiedBadge}>
                                 <SafeIcon name="check-circle" size={12} color="#10B981" type="lucide" />
-                                <Text style={styles.verifiedText}>{t('etablissementSearch.verifie')}</Text>
+                                <Text style={styles.verifiedText}>Vérifié</Text>
                             </View>
                         )}
                     </View>
@@ -135,8 +133,8 @@ const EtablissementSearchScreen: React.FC = () => {
         </TouchableOpacity>
     );
 
-    const typesEtablissements = ['Primaire', 'Secondaire', t('etablissementSearchScreen.superieur'), 'Formation professionnelle'];
-    const filieres = ['Scientifique', t('etablissementSearchScreen.litteraire'), 'Technique', 'Commercial', 'Artistique'];
+    const typesEtablissements = ['Primaire', 'Secondaire', 'Supérieur', 'Formation professionnelle'];
+    const filieres = ['Scientifique', 'Littéraire', 'Technique', 'Commercial', 'Artistique'];
 
     // Recherches rapides spécifiques établissements
     const quickSearches = [
@@ -144,7 +142,7 @@ const EtablissementSearchScreen: React.FC = () => {
             id: 'primaire',
             title: 'Primaire',
             icon: 'book-open',
-            description: t('etablissementSearch.ecolesPrimaires'),
+            description: 'Écoles primaires',
             action: () => {
                 hapticPress();
                 setTypeEtablissement('Primaire');
@@ -154,7 +152,7 @@ const EtablissementSearchScreen: React.FC = () => {
             id: 'secondaire',
             title: 'Secondaire',
             icon: 'graduation-cap',
-            description: t('etablissementSearch.collegesLycees'),
+            description: 'Collèges & Lycées',
             action: () => {
                 hapticPress();
                 setTypeEtablissement('Secondaire');
@@ -162,9 +160,9 @@ const EtablissementSearchScreen: React.FC = () => {
         },
         {
             id: 'superieur',
-            title: t('etablissementSearch.superieur'),
+            title: 'Supérieur',
             icon: 'university',
-            description: t('etablissementSearch.universites'),
+            description: 'Universités',
             action: () => {
                 hapticPress();
                 setTypeEtablissement('Supérieur');
@@ -193,7 +191,7 @@ const EtablissementSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="school" size={32} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>{t('etablissementSearch.rechercherUnEtablissement')}</Text>
+                        <Text style={styles.headerTitle}>Rechercher un établissement</Text>
                         <Text style={styles.headerSubtitle}>
                             Trouvez l'établissement idéal pour votre orientation
                         </Text>
@@ -208,7 +206,7 @@ const EtablissementSearchScreen: React.FC = () => {
             >
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
-                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDD0D Recherches rapides</Text>
                     <View style={styles.quickSearchesGrid}>
                         {quickSearches.map((search) => (
                             <TouchableOpacity
@@ -234,15 +232,15 @@ const EtablissementSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>{t('etablissementSearch.localisation')}</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDCCD Localisation</Text>
 
                     {/* Ville */}
                     <View style={styles.inputGroup}>
                         <LocationSelector
-                            label={t('etablissementSearch.ville')}
+                            label="Ville"
                             value={ville}
                             onSelect={(location) => setVille(location)}
-                            placeholder={t('etablissementSearch.rechercherUnLieuVilleQuartier')}
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
                             scope="all"
                             enrichWithBackend={true}
                         />
@@ -251,10 +249,10 @@ const EtablissementSearchScreen: React.FC = () => {
                     {/* Région */}
                     <View style={styles.inputGroup}>
                         <LocationSelector
-                            label={t('etablissementSearch.region')}
+                            label="Région"
                             value={region}
                             onSelect={(location) => setRegion(location)}
-                            placeholder={t('etablissementSearch.rechercherUneRegionOuUn')}
+                            placeholder="Rechercher une région ou un lieu..."
                             scope="all"
                             enrichWithBackend={true}
                         />
@@ -263,7 +261,7 @@ const EtablissementSearchScreen: React.FC = () => {
                     {/* Type établissement */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="building" size={14} color={modernColors.primary} type="lucide" />{t('etablissementSearchScreen.typeDetablissement')}
+                            <SafeIcon name="building" size={14} color={modernColors.primary} type="lucide" /> Type d'établissement
                         </Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
                             {typesEtablissements.map((type) => (
@@ -286,12 +284,12 @@ const EtablissementSearchScreen: React.FC = () => {
                     {/* Filière */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="book" size={14} color={modernColors.primary} type="lucide" />{t('etablissementSearchScreen.filiere')}
+                            <SafeIcon name="book" size={14} color={modernColors.primary} type="lucide" /> Filière
                         </Text>
                         <NativeInput
                             value={filiere}
                             onChangeText={setFiliere}
-                            placeholder={t('etablissementSearch.exScientifiqueLitteraire')}
+                            placeholder="Ex: Scientifique, Littéraire"
                         />
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
                             {filieres.map((f) => (
@@ -330,12 +328,12 @@ const EtablissementSearchScreen: React.FC = () => {
                 {loading ? (
                     <View style={styles.centerContainer}>
                         <ActivityIndicator size="large" color="#3B82F6" />
-                        <Text style={styles.loadingText}>{t('etablissementSearch.chargement')}</Text>
+                        <Text style={styles.loadingText}>Chargement...</Text>
                     </View>
                 ) : etablissements.length > 0 ? (
                     <View style={styles.resultsSection}>
                         <Text style={styles.resultsCount}>
-                            {total} établissement{total > 1 ? 's' : 't('etablissementSearchScreen.trouvetotal1')s' : ''}
+                            {total} établissement{total > 1 ? 's' : ''} trouvé{total > 1 ? 's' : ''}
                         </Text>
                         {etablissements.map((item) => renderEtablissement({ item }))}
                     </View>
@@ -343,7 +341,7 @@ const EtablissementSearchScreen: React.FC = () => {
                     <View style={styles.infoCard}>
                         <View style={styles.infoHeader}>
                             <SafeIcon name="info" size={20} color="#3B82F6" type="lucide" />
-                            <Text style={styles.infoTitle}>{t('etablissementSearch.aucunResultat')}</Text>
+                            <Text style={styles.infoTitle}>\uD83D\uDCA1 Aucun résultat</Text>
                         </View>
                         <Text style={styles.infoText}>
                             Aucun établissement ne correspond à vos critères. Essayez de modifier vos filtres de recherche.

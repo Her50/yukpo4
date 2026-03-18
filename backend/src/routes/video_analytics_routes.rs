@@ -137,7 +137,7 @@ pub async fn get_top_videos(
     let days = query.days.unwrap_or(7);
     let limit = 50;
 
-    let rows = sqlx::query!(
+    let rows = sqlx::query(
         r#"
         SELECT 
             vas.video_id,
@@ -150,7 +150,6 @@ pub async fn get_top_videos(
             s.category,
             s.user_id as creator_id,
             u.name as creator_name,
-            -- Thumbnail et metadata
             (
                 SELECT m2.path FROM media m2 
                 WHERE m2.service_id = m.service_id 
@@ -158,7 +157,6 @@ pub async fn get_top_videos(
                 ORDER BY COALESCE(m2.is_main_image, FALSE) DESC, m2.id ASC
                 LIMIT 1
             ) as thumbnail_path,
-            -- Titre du service
             s.data->'titre_service'->>'valeur' as service_title
         FROM video_analytics_realtime vas
         JOIN media m ON m.id = vas.video_id
@@ -168,26 +166,27 @@ pub async fn get_top_videos(
         ORDER BY vas.engagement_score DESC, vas.total_views DESC
         LIMIT $2
         "#,
-        days as i32,
-        limit
     )
+    .bind(days as i32)
+    .bind(limit)
     .fetch_all(&state.pg)
     .await
     .map_err(|e| crate::core::types::AppError::Database(format!("Erreur top vidéos: {}", e)))?;
 
-    let videos = rows.into_iter().map(|row| serde_json::json!({
-        "video_id": row.video_id,
-        "total_views": row.total_views,
-        "unique_viewers": row.unique_viewers,
-        "avg_watch_time_seconds": row.avg_watch_time,
-        "completion_rate": row.completion_rate,
-        "engagement_score": row.engagement_score,
-        "video_path": row.video_path,
-        "thumbnail_path": row.thumbnail_path,
-        "category": row.category,
-        "creator_id": row.creator_id,
-        "creator_name": row.creator_name,
-        "service_title": row.service_title
+    use sqlx::Row;
+    let videos = rows.iter().map(|row| serde_json::json!({
+        "video_id": row.try_get::<Option<i32>, _>("video_id").unwrap_or(None),
+        "total_views": row.try_get::<Option<i64>, _>("total_views").unwrap_or(None),
+        "unique_viewers": row.try_get::<Option<i64>, _>("unique_viewers").unwrap_or(None),
+        "avg_watch_time_seconds": row.try_get::<Option<f64>, _>("avg_watch_time").unwrap_or(None),
+        "completion_rate": row.try_get::<Option<f64>, _>("completion_rate").unwrap_or(None),
+        "engagement_score": row.try_get::<Option<f64>, _>("engagement_score").unwrap_or(None),
+        "video_path": row.try_get::<Option<String>, _>("video_path").unwrap_or(None),
+        "thumbnail_path": row.try_get::<Option<String>, _>("thumbnail_path").unwrap_or(None),
+        "category": row.try_get::<Option<String>, _>("category").unwrap_or(None),
+        "creator_id": row.try_get::<Option<i32>, _>("creator_id").unwrap_or(None),
+        "creator_name": row.try_get::<Option<String>, _>("creator_name").unwrap_or(None),
+        "service_title": row.try_get::<Option<String>, _>("service_title").unwrap_or(None)
     })).collect::<Vec<_>>();
 
     Ok(Json(serde_json::json!({
@@ -205,7 +204,7 @@ pub async fn get_global_analytics(
 ) -> Result<Json<serde_json::Value>, crate::core::types::AppError> {
     let days = query.days.unwrap_or(7);
 
-    let metrics = sqlx::query!(
+    let metrics = sqlx::query(
         r#"
         WITH daily_stats AS (
             SELECT 
@@ -228,24 +227,25 @@ pub async fn get_global_analytics(
             MIN(daily_views) as min_daily_views
         FROM daily_stats
         "#,
-        days as i32
     )
+    .bind(days as i32)
     .fetch_one(&state.pg)
     .await
     .map_err(|e| crate::core::types::AppError::Database(format!("Erreur analytics globaux: {}", e)))?;
 
+    use sqlx::Row;
     Ok(Json(serde_json::json!({
         "success": true,
         "period_days": days,
         "metrics": {
-            "total_videos": metrics.total_views,
-            "total_views": metrics.total_views,
-            "avg_daily_views": metrics.avg_daily_views,
-            "total_viewers": metrics.total_viewers,
-            "avg_daily_viewers": metrics.avg_daily_viewers,
-            "total_sessions": metrics.total_sessions,
-            "peak_daily_views": metrics.peak_daily_views,
-            "min_daily_views": metrics.min_daily_views
+            "total_videos": metrics.try_get::<Option<i64>, _>("total_videos").unwrap_or(None),
+            "total_views": metrics.try_get::<Option<i64>, _>("total_views").unwrap_or(None),
+            "avg_daily_views": metrics.try_get::<Option<f64>, _>("avg_daily_views").unwrap_or(None),
+            "total_viewers": metrics.try_get::<Option<i64>, _>("total_viewers").unwrap_or(None),
+            "avg_daily_viewers": metrics.try_get::<Option<f64>, _>("avg_daily_viewers").unwrap_or(None),
+            "total_sessions": metrics.try_get::<Option<i64>, _>("total_sessions").unwrap_or(None),
+            "peak_daily_views": metrics.try_get::<Option<i64>, _>("peak_daily_views").unwrap_or(None),
+            "min_daily_views": metrics.try_get::<Option<i64>, _>("min_daily_views").unwrap_or(None)
         }
     })))
 }
@@ -257,7 +257,7 @@ pub async fn get_performance_analytics(
 ) -> Result<Json<serde_json::Value>, crate::core::types::AppError> {
     let days = query.days.unwrap_or(7);
 
-    let performance = sqlx::query!(
+    let performance = sqlx::query(
         r#"
         SELECT 
             device_info->>'platform' as platform,
@@ -283,22 +283,27 @@ pub async fn get_performance_analytics(
         GROUP BY platform, connection_type, network_quality, quality
         ORDER BY event_count DESC
         "#,
-        days as i32
     )
+    .bind(days as i32)
     .fetch_all(&state.pg)
     .await
     .map_err(|e| crate::core::types::AppError::Database(format!("Erreur performance analytics: {}", e)))?;
 
-    let performance_data = performance.into_iter().map(|row| serde_json::json!({
-        "platform": row.platform,
-        "connection_type": row.connection_type,
-        "network_quality": row.network_quality,
-        "quality": row.quality,
-        "event_count": row.event_count,
-        "avg_buffer_time_ms": row.avg_buffer_time_ms,
-        "error_count": row.error_count,
-        "error_rate": if row.event_count > 0 { row.error_count as f64 / row.event_count as f64 * 100.0 } else { 0.0 }
-    })).collect::<Vec<_>>();
+    use sqlx::Row;
+    let performance_data = performance.iter().map(|row| {
+        let event_count: i64 = row.try_get("event_count").unwrap_or(0);
+        let error_count: i64 = row.try_get("error_count").unwrap_or(0);
+        serde_json::json!({
+            "platform": row.try_get::<Option<String>, _>("platform").unwrap_or(None),
+            "connection_type": row.try_get::<Option<String>, _>("connection_type").unwrap_or(None),
+            "network_quality": row.try_get::<Option<String>, _>("network_quality").unwrap_or(None),
+            "quality": row.try_get::<Option<String>, _>("quality").unwrap_or(None),
+            "event_count": event_count,
+            "avg_buffer_time_ms": row.try_get::<Option<f64>, _>("avg_buffer_time_ms").unwrap_or(None),
+            "error_count": error_count,
+            "error_rate": if event_count > 0 { error_count as f64 / event_count as f64 * 100.0 } else { 0.0 }
+        })
+    }).collect::<Vec<_>>();
 
     Ok(Json(serde_json::json!({
         "success": true,

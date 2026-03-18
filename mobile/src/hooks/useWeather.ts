@@ -54,7 +54,7 @@ export const useWeather = (latitude?: number, longitude?: number) => {
                 description: 'Données météo non disponibles',
                 humidity: 50,
                 windSpeed: 10,
-                icon: '🌤️',
+                icon: '\uD83C\uDF24️',
                 city: 'Position actuelle',
                 country: ''
             };
@@ -66,17 +66,17 @@ export const useWeather = (latitude?: number, longitude?: number) => {
 
     const getWeatherIcon = (iconCode: string): string => {
         const iconMap: { [key: string]: string } = {
-            '01d': '☀️', '01n': '🌙',
+            '01d': '☀️', '01n': '\uD83C\uDF19',
             '02d': '⛅', '02n': '☁️',
             '03d': '☁️', '03n': '☁️',
             '04d': '☁️', '04n': '☁️',
-            '09d': '🌧️', '09n': '🌧️',
-            '10d': '🌦️', '10n': '🌧️',
+            '09d': '\uD83C\uDF27️', '09n': '\uD83C\uDF27️',
+            '10d': '\uD83C\uDF26️', '10n': '\uD83C\uDF27️',
             '11d': '⛈️', '11n': '⛈️',
             '13d': '❄️', '13n': '❄️',
-            '50d': '🌫️', '50n': '🌫️'
+            '50d': '\uD83C\uDF2B️', '50n': '\uD83C\uDF2B️'
         };
-        return iconMap[iconCode] || '🌤️';
+        return iconMap[iconCode] || '\uD83C\uDF24️';
     };
 
     useEffect(() => {

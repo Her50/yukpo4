@@ -95,7 +95,7 @@ const CovoiturageDetailsScreen: React.FC = () => {
         const deepLink = `https://yukpo-backend-376093909298.europe-west1.run.app/product/${covoiturage.service_id}?serviceId=${covoiturage.service_id}`;
         try {
             await Share.share({
-                message: `🚗 Covoiturage ${covoiturage.depart} → ${covoiturage.destination}\nLe ${dateStr}${covoiturage.heure_depart ? ' à ' + covoiturage.heure_depart.substring(0, 5) : ''}\n${covoiturage.prix_par_place.toLocaleString('fr-FR')} ${covoiturage.devise}/place - ${covoiturage.places_disponibles} place(s) dispo\n\n📲 Réservez sur Yukpo: ${deepLink}`,
+                message: `\uD83D\uDE97 Covoiturage ${covoiturage.depart} → ${covoiturage.destination}\nLe ${dateStr}${covoiturage.heure_depart ? ' à ' + covoiturage.heure_depart.substring(0, 5) : ''}\n${covoiturage.prix_par_place.toLocaleString('fr-FR')} ${covoiturage.devise}/place - ${covoiturage.places_disponibles} place(s) dispo\n\n\uD83D\uDCF2 Réservez sur Yukpo: ${deepLink}`,
                 title: `Covoiturage ${covoiturage.depart} → ${covoiturage.destination}`,
                 url: deepLink,
             });

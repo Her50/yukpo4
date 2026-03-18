@@ -77,11 +77,11 @@ const ProductDetailScreen: React.FC = () => {
                 }));
 
                 Alert.alert(
-                    '👋 Bienvenue sur Yukpo!',
-                    t('productDetailScreen.pourVoirCeProduitVeuillezVous'),
+                    '\uD83D\uDC4B Bienvenue sur Yukpo!',
+                    'Pour voir ce produit, veuillez vous connecter ou créer un compte gratuitement.',
                     [
                         {
-                            text: t('productDetail.creerUnCompte'),
+                            text: 'Créer un compte',
                             onPress: () => navigation.navigate('Register' as never)
                         },
                         {
@@ -93,13 +93,13 @@ const ProductDetailScreen: React.FC = () => {
                 return;
             }
 
-            console.log('🔍 Chargement produit:', productId || finalProductIndex, 'du service:', finalServiceId);
+            console.log('\uD83D\uDD0D Chargement produit:', productId || finalProductIndex, 'du service:', finalServiceId);
 
             // ✅ CORRIGÉ 2026-02-10: Utiliser le nouveau système (service_products via API)
             // Charger le service
             const serviceResponse = await apiGet(`/api/services/${finalServiceId}`);
             if (!serviceResponse.success || !serviceResponse.data) {
-                throw new Error(t('productDetailScreen.serviceNonTrouve'));
+                throw new Error('Service non trouvé');
             }
             const loadedService = serviceResponse.data;
             setService(loadedService);
@@ -136,7 +136,7 @@ const ProductDetailScreen: React.FC = () => {
             }
 
             if (!foundProduct) {
-                throw new Error(t('productDetailScreen.produitNonTrouveDansCeService'));
+                throw new Error('Produit non trouvé dans ce service');
             }
 
             // ✅ CORRIGÉ 2026-02-10: Enrichir le produit avec le service parent
@@ -180,7 +180,7 @@ const ProductDetailScreen: React.FC = () => {
 
             Alert.alert(
                 'Produit introuvable',
-                t('productDetailScreen.ceProduitNexistePlusOuAEteSupprime'),
+                'Ce produit n\'existe plus ou a été supprimé.',
                 [
                     {
                         text: t('common.back'),
@@ -217,7 +217,7 @@ const ProductDetailScreen: React.FC = () => {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>{t('productDetail.chargementDuProduit')}</Text>
+                <Text style={styles.loadingText}>Chargement du produit...</Text>
             </View>
         );
     }
@@ -226,10 +226,10 @@ const ProductDetailScreen: React.FC = () => {
         return (
             <View style={styles.errorContainer}>
                 <SafeIcon name="alert-circle" size={64} color={modernColors.error} />
-                <Text style={styles.errorTitle}>{t('productDetail.produitIntrouvable')}</Text>
+                <Text style={styles.errorTitle}>Produit introuvable</Text>
                 <Text style={styles.errorText}>{error || 'Ce produit n\'existe plus'}</Text>
                 <NativeButton
-                    title={t('productDetail.retourAL')}accueil"
+                    title="\uD83C\uDFE0 Retour à l'accueil"
                     onPress={() => navigation.navigate('Home' as never)}
                     variant="primary"
                     size="large"
@@ -241,7 +241,7 @@ const ProductDetailScreen: React.FC = () => {
     return (
         <View style={styles.container}>
             <NavigatorToolbar
-                title={t('productDetail.detailDuProduit')}
+                title="Détail du produit"
                 subtitle={product?.nom ? product.nom.slice(0, 50) : undefined}
                 showHandle={false}
                 density="compact"
@@ -253,7 +253,7 @@ const ProductDetailScreen: React.FC = () => {
                 <View style={styles.welcomeBanner}>
                     <SafeIcon name="share" size={20} color={modernColors.primary} />
                     <Text style={styles.welcomeText}>
-                        Produit partagé avec vous! 🎉
+                        Produit partagé avec vous! \uD83C\uDF89
                     </Text>
                 </View>
 
@@ -291,9 +291,9 @@ const ProductDetailScreen: React.FC = () => {
                 {/* Boutons d'action */}
                 <View style={styles.actionsContainer}>
                     <NativeButton
-                        title={t('productDetail.creerUneVideoImmersive')}
+                        title="\uD83C\uDFAC Créer une vidéo immersive"
                         onPress={() => {
-                            console.log('[ProductDetailScreen] 🎬 Navigation vers VideoCreationIntro');
+                            console.log('[ProductDetailScreen] \uD83C\uDFAC Navigation vers VideoCreationIntro');
                             try {
                                 const parentNavigation = (navigation as any).getParent();
                                 const params = {
@@ -311,7 +311,7 @@ const ProductDetailScreen: React.FC = () => {
                                 }
                             } catch (error) {
                                 console.error('[ProductDetailScreen] ❌ Erreur navigation vers VideoCreationIntro:', error);
-                                Alert.alert('Erreur', 'Impossible d\t('productDetailScreen.ouvrirLaCreationDeVideo'));
+                                Alert.alert('Erreur', 'Impossible d\'ouvrir la création de vidéo.');
                             }
                         }}
                         variant="primary"
@@ -319,7 +319,7 @@ const ProductDetailScreen: React.FC = () => {
                     />
 
                     <NativeButton
-                        title={t('productDetailScreen.voirTousLesProduitsSimilaires')}
+                        title="\uD83D\uDD0D Voir tous les produits similaires"
                         onPress={() => {
                             navigation.navigate('ResultatBesoin' as never, {
                                 results: [{ service_id: serviceId }],

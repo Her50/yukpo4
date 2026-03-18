@@ -225,6 +225,7 @@ const CovoiturageFormScreen: React.FC = () => {
                 date_depart: formData.date_depart.toISOString(),
                 heure_depart: formData.heure_depart,
                 type_vehicule: formData.type_vehicule || null, marque_modele: formData.marque_modele || null,
+                nombre_places: parseInt(formData.places_disponibles) || 3,
                 places_disponibles: parseInt(formData.places_disponibles) || 3,
                 prix_par_place: parseInt(formData.prix_par_place) || 0,
                 devise: formData.devise,
@@ -489,7 +490,7 @@ const CovoiturageFormScreen: React.FC = () => {
                         <View style={s.field}>
                             <Text style={s.label}>{t('covoiturageForm.jours')}</Text>
                             <View style={s.daysRow}>
-                                {[{ v: 1, l: 'L' }, { v: 2, l: 'M' }, { v: 3, l: 'M' }, { v: 4, l: 'J' }, { v: 5, l: 'V' }, { v: 6, l: 'S' }, { v: 7, l: 'D' }].map(d => {
+                                {[{ v: 1, l: t('covoiturageForm.dayMon') || 'L' }, { v: 2, l: t('covoiturageForm.dayTue') || 'M' }, { v: 3, l: t('covoiturageForm.dayWed') || 'M' }, { v: 4, l: t('covoiturageForm.dayThu') || 'J' }, { v: 5, l: t('covoiturageForm.dayFri') || 'V' }, { v: 6, l: t('covoiturageForm.daySat') || 'S' }, { v: 7, l: t('covoiturageForm.daySun') || 'D' }].map(d => {
                                     const on = formData.recurrence_days.includes(d.v);
                                     return <TouchableOpacity key={d.v} style={[s.dayBtn, on && s.dayBtnOn]} onPress={() => setFormData({ ...formData, recurrence_days: on ? formData.recurrence_days.filter(x => x !== d.v) : [...formData.recurrence_days, d.v].sort() })}><Text style={[s.dayBtnText, on && s.dayBtnTextOn]}>{d.l}</Text></TouchableOpacity>;
                                 })}

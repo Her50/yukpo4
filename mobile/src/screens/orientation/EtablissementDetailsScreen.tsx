@@ -92,10 +92,10 @@ const EtablissementDetailsScreen: React.FC = () => {
                 <Text style={styles.title}>{etablissement.nom_etablissement}</Text>
                 <View style={styles.metaContainer}>
                     <Text style={styles.meta}>
-                        📍 {etablissement.ville}
+                        \uD83D\uDCCD {etablissement.ville}
                         {etablissement.region && `, ${etablissement.region}`}
                     </Text>
-                    <Text style={styles.meta}>🎓 {etablissement.type_etablissement}</Text>
+                    <Text style={styles.meta}>\uD83C\uDF93 {etablissement.type_etablissement}</Text>
                     {etablissement.is_verified && (
                         <View style={styles.verifiedBadge}>
                             <Text style={styles.verifiedText}>{t('etablissementDetails.verifie')}</Text>
@@ -108,14 +108,14 @@ const EtablissementDetailsScreen: React.FC = () => {
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Contact</Text>
                 {etablissement.adresse && (
-                    <Text style={styles.sectionText}>📍 {etablissement.adresse}</Text>
+                    <Text style={styles.sectionText}>\uD83D\uDCCD {etablissement.adresse}</Text>
                 )}
                 {etablissement.telephone && (
                     <TouchableOpacity
                         onPress={() => Linking.openURL(`tel:${etablissement.telephone}`)}
                     >
                         <Text style={[styles.sectionText, styles.link]}>
-                            📞 {etablissement.telephone}
+                            \uD83D\uDCDE {etablissement.telephone}
                         </Text>
                     </TouchableOpacity>
                 )}
@@ -133,7 +133,7 @@ const EtablissementDetailsScreen: React.FC = () => {
                         onPress={() => Linking.openURL(etablissement.site_web!)}
                     >
                         <Text style={[styles.sectionText, styles.link]}>
-                            🌐 {etablissement.site_web}
+                            \uD83C\uDF10 {etablissement.site_web}
                         </Text>
                     </TouchableOpacity>
                 )}
@@ -165,7 +165,7 @@ const EtablissementDetailsScreen: React.FC = () => {
                             })
                         }
                     >
-                        <Text style={styles.actionIcon}>📖</Text>
+                        <Text style={styles.actionIcon}>\uD83D\uDCD6</Text>
                         <Text style={styles.actionText}>Programmes</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -187,7 +187,7 @@ const EtablissementDetailsScreen: React.FC = () => {
                             })
                         }
                     >
-                        <Text style={styles.actionIcon}>🏆</Text>
+                        <Text style={styles.actionIcon}>\uD83C\uDFC6</Text>
                         <Text style={styles.actionText}>Concours</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -198,7 +198,7 @@ const EtablissementDetailsScreen: React.FC = () => {
                             })
                         }
                     >
-                        <Text style={styles.actionIcon}>💬</Text>
+                        <Text style={styles.actionIcon}>\uD83D\uDCAC</Text>
                         <Text style={styles.actionText}>{t('etablissementDetails.experiences')}</Text>
                     </TouchableOpacity>
                 </View>

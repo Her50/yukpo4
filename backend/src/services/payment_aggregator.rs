@@ -308,6 +308,88 @@ pub fn currency_for_country(country_code: &str) -> &'static str {
     }
 }
 
+/// Taux de conversion approximatif vers XAF (Franc CFA BEAC).
+/// 1 unité de devise étrangère = N XAF.
+/// Taux indicatifs statiques (à remplacer par un service de taux en temps réel en production).
+/// Sources: taux moyens mars 2026 — arrondis pour faciliter les calculs.
+pub fn exchange_rate_to_xaf(currency: &str) -> f64 {
+    match currency {
+        "XAF" => 1.0,
+        "XOF" => 1.0,     // XAF et XOF ont parité fixe 1:1 (zone franc CFA)
+        "EUR" => 655.957, // Parité fixe EUR/XAF
+        "USD" => 610.0,
+        "GBP" => 770.0,
+        "NGN" => 0.40,  // 1 NGN ≈ 0.40 XAF
+        "GHS" => 42.0,  // 1 GHS ≈ 42 XAF
+        "GNF" => 0.070, // 1 GNF ≈ 0.07 XAF
+        "MRU" => 15.5,  // 1 MRU ≈ 15.5 XAF
+        "KES" => 4.5,   // 1 KES ≈ 4.5 XAF
+        "TZS" => 0.24,  // 1 TZS ≈ 0.24 XAF
+        "UGX" => 0.16,  // 1 UGX ≈ 0.16 XAF
+        "RWF" => 0.46,  // 1 RWF ≈ 0.46 XAF
+        "BIF" => 0.21,  // 1 BIF ≈ 0.21 XAF
+        "ETB" => 5.0,   // 1 ETB ≈ 5.0 XAF
+        "CDF" => 0.22,  // 1 CDF ≈ 0.22 XAF
+        "ZAR" => 33.0,  // 1 ZAR ≈ 33 XAF
+        "MGA" => 0.13,  // 1 MGA ≈ 0.13 XAF
+        "MAD" => 60.0,  // 1 MAD ≈ 60 XAF
+        "DZD" => 4.5,   // 1 DZD ≈ 4.5 XAF
+        "TND" => 195.0, // 1 TND ≈ 195 XAF
+        "EGP" => 12.5,  // 1 EGP ≈ 12.5 XAF
+        "CHF" => 690.0,
+        "CAD" => 450.0,
+        "BRL" => 120.0,
+        "MXN" => 35.0,
+        "INR" => 7.3,
+        "CNY" => 84.0,
+        "AED" => 166.0,
+        "SAR" => 163.0,
+        _ => {
+            log::error!(
+                "[exchange_rate_to_xaf] Devise inconnue '{}' — taux 0 pour bloquer la transaction",
+                currency
+            );
+            0.0
+        }
+    }
+}
+
+/// Convertit un montant dans une devise source vers XAF (tokens).
+/// Retourne le montant équivalent en XAF (entier arrondi).
+pub fn convert_to_xaf(amount: f64, source_currency: &str) -> i64 {
+    let rate = exchange_rate_to_xaf(source_currency);
+    let xaf_amount = amount * rate;
+    xaf_amount.round() as i64
+}
+
+/// Symbole de devise pour affichage
+pub fn currency_symbol(currency: &str) -> &str {
+    match currency {
+        "XAF" | "XOF" => "FCFA",
+        "EUR" => "€",
+        "USD" => "$",
+        "GBP" => "£",
+        "NGN" => "₦",
+        "GHS" => "GH₵",
+        "KES" => "KSh",
+        "TZS" => "TSh",
+        "UGX" => "USh",
+        "RWF" => "FRw",
+        "ZAR" => "R",
+        "MAD" => "DH",
+        "EGP" => "E£",
+        "ETB" => "Br",
+        "CDF" => "FC",
+        "BIF" => "FBu",
+        "MGA" => "Ar",
+        "GNF" => "FG",
+        "TND" => "DT",
+        "DZD" => "DA",
+        "MRU" => "UM",
+        _ => currency,
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InitPaymentRequest {
     pub user_id: i32,

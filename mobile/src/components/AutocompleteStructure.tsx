@@ -11,7 +11,6 @@ import {
 import { apiGet, apiPost } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AutocompleteStructureProps {
     type: 'hopital_clinique' | 'pharmacie' | 'laboratoire';
@@ -41,14 +40,13 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
     type,
     value,
     onChangeText,
-    placeholder={t('autocompleteStructure.nomDeLaStructure')},
+    placeholder = 'Nom de la structure',
     label,
     required = false,
     autoLoadLastUsed = true,
     userId,
 }) => {
-        const { t } = useLanguageSafe();
-const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
     const [allStructures, setAllStructures] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
@@ -81,7 +79,7 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
             if (cached) {
                 structures = JSON.parse(cached) as string[];
                 setAllStructures(structures);
-                console.log(`📋 [AutocompleteStructure] ${structures.length} structures chargées du cache`);
+                console.log(`\uD83D\uDCCB [AutocompleteStructure] ${structures.length} structures chargées du cache`);
             }
 
             // 2. Charger depuis la base de données (source de vérité)
@@ -98,7 +96,7 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
                     await SafeStorage.setItem(storageKey, JSON.stringify(merged));
                     setAllStructures(merged);
 
-                    console.log(`🌐 [AutocompleteStructure] ${dbStructures.length} structures chargées de la DB, ${merged.length} au total`);
+                    console.log(`\uD83C\uDF10 [AutocompleteStructure] ${dbStructures.length} structures chargées de la DB, ${merged.length} au total`);
                 }
             } catch (dbError) {
                 // Si erreur DB, on utilise le cache local uniquement
@@ -122,7 +120,7 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
                 // Si le champ est vide et qu'on doit auto-charger, pré-remplir
                 if (autoLoadLastUsed && !value) {
                     onChangeText(lastUsed);
-                    console.log(`💡 [AutocompleteStructure] Dernière valeur chargée: ${lastUsed}`);
+                    console.log(`\uD83D\uDCA1 [AutocompleteStructure] Dernière valeur chargée: ${lastUsed}`);
                 }
             }
         } catch (error) {
@@ -171,7 +169,7 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
                     });
 
                     if (response.success) {
-                        console.log(`🌐 [AutocompleteStructure] Structure sauvegardée en DB: ${normalized}`);
+                        console.log(`\uD83C\uDF10 [AutocompleteStructure] Structure sauvegardée en DB: ${normalized}`);
                     }
                 } catch (dbError) {
                     // Erreur DB non bloquante - la structure reste dans le cache local
@@ -254,7 +252,7 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
     const getTypeLabel = () => {
         switch (type) {
             case 'hopital_clinique':
-                return t('autocompleteStructure.hopitalClinique');
+                return 'Hôpital / Clinique';
             case 'pharmacie':
                 return 'Pharmacie';
             case 'laboratoire':
@@ -345,7 +343,7 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
                                     </Text>
                                     {isLastUsed && (
                                         <View style={styles.lastUsedBadge}>
-                                            <Text style={styles.lastUsedBadgeText}>{t('autocompleteStructure.recente')}</Text>
+                                            <Text style={styles.lastUsedBadgeText}>Récente</Text>
                                         </View>
                                     )}
                                 </TouchableOpacity>
@@ -360,7 +358,7 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
             {/* Hint */}
             {!showSuggestions && allStructures.length > 0 && (
                 <Text style={styles.hint}>
-                    💡 {allStructures.length} {getTypeLabel().toLowerCase()}(s) enregistré(s).
+                    \uD83D\uDCA1 {allStructures.length} {getTypeLabel().toLowerCase()}(s) enregistré(s).
                     Tapez pour voir les suggestions.
                 </Text>
             )}

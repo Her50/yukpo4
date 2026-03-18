@@ -1,5 +1,5 @@
 /**
- * 🎯 DÉTECTEUR INTELLIGENT DE CATÉGORIE
+ * \uD83C\uDFAF DÉTECTEUR INTELLIGENT DE CATÉGORIE
  * 
  * Détermine automatiquement quelle catégorie (et donc quel formulaire)
  * utiliser pour créer une nouvelle clé autocomplete.

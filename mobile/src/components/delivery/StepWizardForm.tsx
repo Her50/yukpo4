@@ -1,5 +1,5 @@
 /**
- * 🧙 Composant de formulaire multi-étapes avec progress bar
+ * \uD83E\uDDD9 Composant de formulaire multi-étapes avec progress bar
  * Design moderne inspiré d'Instacart et Uber Eats
  */
 
@@ -56,7 +56,7 @@ const [currentStep, setCurrentStep] = useState(0);
         console.log('[StepWizardForm] ✅ Validation passée pour étape:', currentStepData.id);
 
         if (isLastStep) {
-            console.log('[StepWizardForm] 🎯 Dernière étape - appel onComplete avec formData:', formData);
+            console.log('[StepWizardForm] \uD83C\uDFAF Dernière étape - appel onComplete avec formData:', formData);
             try {
                 await onComplete(formData);
                 console.log('[StepWizardForm] ✅ onComplete terminé avec succès');

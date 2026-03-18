@@ -6,7 +6,7 @@ use tokio::fs;
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct SharedFile {
     pub id: String,
     pub user_id: i32,
@@ -139,11 +139,11 @@ impl FileSharingService {
         }
 
         // Sauvegarder le fichier
+        let file_size = file_data.len() as i64;
         fs::write(&file_path, file_data).await?;
 
         // Enregistrer en base de données
-        let shared_file = sqlx::query_as!(
-            SharedFile,
+        let shared_file = sqlx::query_as::<_, SharedFile>(
             r#"
             INSERT INTO shared_files (
                 id, user_id, chat_id, original_filename, stored_filename, file_path,
@@ -154,18 +154,18 @@ impl FileSharingService {
                       file_size_bytes, mime_type, is_public, download_count, max_downloads, 
                       expires_at, created_at, updated_at
             "#,
-            file_id.to_string(),
-            user_id,
-            request.chat_id,
-            request.original_filename,
-            stored_filename,
-            &file_path.to_string_lossy(), // Ajout du & pour convertir Cow en &str
-            file_data.len() as i64, // Changé en i64
-            request.mime_type,
-            request.is_public,
-            request.max_downloads,
-            request.expires_at,
         )
+        .bind(file_id.to_string())
+        .bind(user_id)
+        .bind(&request.chat_id)
+        .bind(&request.original_filename)
+        .bind(&stored_filename)
+        .bind(&*file_path.to_string_lossy())
+        .bind(file_size)
+        .bind(&request.mime_type)
+        .bind(request.is_public)
+        .bind(request.max_downloads)
+        .bind(request.expires_at)
         .fetch_one(&self.pool)
         .await?;
 
@@ -188,11 +188,10 @@ impl FileSharingService {
         user_agent: Option<String>,
     ) -> AppResult<(Vec<u8>, SharedFile)> {
         // Récupérer les informations du fichier
-        let shared_file = sqlx::query_as!(
-            SharedFile,
+        let shared_file = sqlx::query_as::<_, SharedFile>(
             "SELECT * FROM shared_files WHERE id = $1",
-            file_id
         )
+        .bind(file_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -268,11 +267,10 @@ impl FileSharingService {
         media_storage: &crate::services::media_storage_service::MediaStorageService,
     ) -> AppResult<String> {
         // Récupérer les informations du fichier
-        let shared_file = sqlx::query_as!(
-            SharedFile,
+        let shared_file = sqlx::query_as::<_, SharedFile>(
             "SELECT * FROM shared_files WHERE id = $1",
-            file_id
         )
+        .bind(file_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -360,11 +358,10 @@ impl FileSharingService {
 
     /// Récupérer tous les fichiers d'un chat
     pub async fn get_chat_files(&self, chat_id: &str) -> AppResult<Vec<SharedFile>> {
-        let files = sqlx::query_as!(
-            SharedFile,
+        let files = sqlx::query_as::<_, SharedFile>(
             "SELECT * FROM shared_files WHERE chat_id = $1 ORDER BY created_at DESC",
-            chat_id
         )
+        .bind(chat_id)
         .fetch_all(&self.pool)
         .await?;
 
@@ -374,12 +371,11 @@ impl FileSharingService {
     /// Supprimer un fichier
     pub async fn delete_file(&self, file_id: &str, user_id: i32) -> AppResult<()> {
         // Vérifier que l'utilisateur est le propriétaire
-        let shared_file = sqlx::query_as!(
-            SharedFile,
+        let shared_file = sqlx::query_as::<_, SharedFile>(
             "SELECT * FROM shared_files WHERE id = $1 AND user_id = $2",
-            file_id,
-            user_id
         )
+        .bind(file_id)
+        .bind(user_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -405,16 +401,16 @@ impl FileSharingService {
         Ok(())
     }
 
-    #[derive(sqlx::FromRow)]
-    struct FileStatsRow {
-        total_files: Option<i64>,
-        total_size: Option<i64>,
-        avg_size: Option<f64>,
-        total_downloads: Option<i64>,
-    }
-
     /// Obtenir les statistiques des fichiers
     pub async fn get_file_stats(&self, user_id: i32) -> AppResult<serde_json::Value> {
+        #[derive(sqlx::FromRow)]
+        struct FileStatsRow {
+            total_files: Option<i64>,
+            total_size: Option<i64>,
+            avg_size: Option<f64>,
+            total_downloads: Option<i64>,
+        }
+
         let stats: FileStatsRow = sqlx::query_as(
             r#"
             SELECT 
@@ -443,11 +439,10 @@ impl FileSharingService {
         let now = Utc::now();
         
         // Récupérer les fichiers expirés
-        let expired_files = sqlx::query_as!(
-            SharedFile,
+        let expired_files = sqlx::query_as::<_, SharedFile>(
             "SELECT * FROM shared_files WHERE expires_at < $1",
-            now
         )
+        .bind(now)
         .fetch_all(&self.pool)
         .await?;
 

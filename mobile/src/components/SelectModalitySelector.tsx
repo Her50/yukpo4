@@ -24,7 +24,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
     fieldName,
     onSelect,
     required = false,
-    placeholder={t('selectModalitySelector.selectionner')}
+    placeholder = 'Sélectionner...'
 }) => {
     const [allOptions, setAllOptions] = useState<string[]>([]);
 
@@ -63,10 +63,10 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
             // ✅ PRIORISATION GÉOGRAPHIQUE: Trier avec zone utilisateur en premier
             let sortedOptions = sortOptionsByZone(combinedOptions, userZone);
 
-            // Mettre "🆕 Autre" à la fin même après tri géographique
+            // Mettre "\uD83C\uDD95 Autre" à la fin même après tri géographique
             sortedOptions = sortedOptions.sort((a, b) => {
-                if (a.includes('🆕')) return 1;
-                if (b.includes('🆕')) return -1;
+                if (a.includes('\uD83C\uDD95')) return 1;
+                if (b.includes('\uD83C\uDD95')) return -1;
                 return 0; // Garder l'ordre géographique déjà trié
             });
 
@@ -77,8 +77,8 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
             const staticOptions = getFieldOptions(productType, fieldName);
             let sortedOptions = sortOptionsByZone(staticOptions, userZone);
             sortedOptions = sortedOptions.sort((a, b) => {
-                if (a.includes('🆕')) return 1;
-                if (b.includes('🆕')) return -1;
+                if (a.includes('\uD83C\uDD95')) return 1;
+                if (b.includes('\uD83C\uDD95')) return -1;
                 return 0;
             });
             setAllOptions(sortedOptions);
@@ -88,7 +88,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
     };
 
     const handleSelect = async (option: string) => {
-        if (option.includes('🆕 Autre')) {
+        if (option.includes('\uD83C\uDD95 Autre')) {
             // Ouvrir modale d'ajout compatible Android/iOS
             setShowAddModal(true);
         } else {
@@ -103,8 +103,8 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
 
     const clearSelection = () => {
         Alert.alert(
-            t('selectModalitySelector.effacerLaSelection'),
-            t('selectModalitySelector.voulezvousEffacerLeSelectionne', { label_toLowerCase(): label.toLowerCase() }),
+            'Effacer la sélection',
+            `Voulez-vous effacer le ${label.toLowerCase()} sélectionné ?`,
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -174,7 +174,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                     <View style={styles.modalContainer}>
                         {/* Header */}
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{t('selectModalitySelector.selectionner')} {label.toLowerCase()}</Text>
+                            <Text style={styles.modalTitle}>Sélectionner {label.toLowerCase()}</Text>
                             <TouchableOpacity
                                 onPress={() => setShowModal(false)}
                                 style={styles.closeButton}
@@ -203,7 +203,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                         {/* Liste des options */}
                         <ScrollView style={styles.optionsList}>
                             {loading ? (
-                                <Text style={styles.loadingText}>{t('selectModalitySelector.chargement')}</Text>
+                                <Text style={styles.loadingText}>Chargement...</Text>
                             ) : (
                                 <>
                                     {/* ✅ AMÉLIORATION UX : Bouton d'ajout rapide si aucun résultat */}
@@ -249,7 +249,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                                                 <Text style={[
                                                     styles.optionText,
                                                     value === option && styles.optionTextSelected,
-                                                    option.includes('🆕') && styles.optionTextNew
+                                                    option.includes('\uD83C\uDD95') && styles.optionTextNew
                                                 ]}>
                                                     {option}
                                                 </Text>
@@ -300,7 +300,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                                 style={[styles.addModalButton, { backgroundColor: '#F3F4F6' }]}
                                 onPress={() => { setShowAddModal(false); setNewModalityText(''); }}
                             >
-                                <Text style={[styles.addModalButtonText, { color: modernColors.textSecondary }]}>{t('selectModalitySelector.annuler')}</Text>
+                                <Text style={[styles.addModalButtonText, { color: modernColors.textSecondary }]}>Annuler</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.addModalButton, { backgroundColor: modernColors.primary }]}
@@ -310,8 +310,8 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
 
                                     const newModality = text;
 
-                                    if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('🆕'))) {
-                                        Alert.alert(t('selectModalitySelector.modaliteExistante'), t('selectModalitySelector.existeDejaDansLaListe', { newModality: newModality }), [{ text: 'OK' }]);
+                                    if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('\uD83C\uDD95'))) {
+                                        Alert.alert('⚠️ Modalité existante', `"${newModality}" existe déjà dans la liste.`, [{ text: 'OK' }]);
                                         return;
                                     }
 
@@ -327,13 +327,13 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                                         setShowModal(false);
                                         setShowAddModal(false);
                                         setNewModalityText('');
-                                        Alert.alert(t('selectModalitySelector.modaliteAjoutee'), t('selectModalitySelector.aEteAjouteAvecSucces', { newModality: newModality }), [{ text: 'OK' }]);
+                                        Alert.alert('✅ Modalité ajoutée', `"${newModality}" a été ajouté avec succès.`, [{ text: 'OK' }]);
                                     } else {
-                                        Alert.alert('❌ Erreur', 'Impossible d\t('selectModalitySelector.ajouterLaModaliteVeuillezReessayer'), [{ text: 'OK' }]);
+                                        Alert.alert('❌ Erreur', 'Impossible d\'ajouter la modalité. Veuillez réessayer.', [{ text: 'OK' }]);
                                     }
                                 }}
                             >
-                                <Text style={[styles.addModalButtonText, { color: '#FFFFFF' }]}>{t('selectModalitySelector.ajouter')}</Text>
+                                <Text style={[styles.addModalButtonText, { color: '#FFFFFF' }]}>Ajouter</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

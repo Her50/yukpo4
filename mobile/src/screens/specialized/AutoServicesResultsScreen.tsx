@@ -67,10 +67,10 @@ interface SearchResponse {
 }
 
 const SORT_OPTIONS = [
-    { key: 'recent', label: t('autoServicesResults.recent'), icon: 'clock' },
-    { key: 'price_asc', label: t('autoServicesResultsScreen.prixCroissant'), icon: 'trending-up' },
-    { key: 'price_desc', label: t('autoServicesResults.prixDecroissant'), icon: 'trending-down' },
-    { key: 'year_desc', label: t('autoServicesResults.anneeRecente'), icon: 'calendar' },
+    { key: 'recent', label: 'Récent', icon: 'clock' },
+    { key: 'price_asc', label: 'Prix croissant', icon: 'trending-up' },
+    { key: 'price_desc', label: 'Prix décroissant', icon: 'trending-down' },
+    { key: 'year_desc', label: 'Année récente', icon: 'calendar' },
 ];
 
 const AutoServicesResultsScreen: React.FC = () => {
@@ -141,7 +141,7 @@ const AutoServicesResultsScreen: React.FC = () => {
         } catch (error: any) {
             console.error('[AutoResults] Erreur:', error);
             if (!append) {
-                Alert.alert('Erreur', t('autoServicesResultsScreen.impossibleDeChargerLesResultats'));
+                Alert.alert('Erreur', 'Impossible de charger les résultats');
             }
         } finally {
             setLoading(false);
@@ -190,15 +190,16 @@ const AutoServicesResultsScreen: React.FC = () => {
         .map(([key, val]) => {
             const labels: Record<string, string> = {
                 q: 'Recherche', marque: 'Marque', type_vehicule: 'Type', carburant: 'Carburant',
-                transmission: 'Transmission', couleur: 'Couleur', etat: t('autoServicesResultsScreen.etat'),
-                prix_min: 'Prix min', prix_max: 'Prix max', annee_min: 'Depuis', annee_max: "Jusqut('autoServicesResultsScreen.aKmmax')Km max', ville: 'Ville', quartier: 'Quartier',
+                transmission: 'Transmission', couleur: 'Couleur', etat: 'État',
+                prix_min: 'Prix min', prix_max: 'Prix max', annee_min: 'Depuis', annee_max: "Jusqu'à",
+                km_max: 'Km max', ville: 'Ville', quartier: 'Quartier',
             };
             return { key, label: labels[key] || key, value: String(val) };
         });
 
     const renderVehicleCard = ({ item }: { item: AutoProduct }) => {
         const hasImage = item.images && item.images.length > 0;
-        const displayTitle = item.nom || [item.marque, item.modele].filter(Boolean).join(' ') || t('autoServicesResults.vehicule');
+        const displayTitle = item.nom || [item.marque, item.modele].filter(Boolean).join(' ') || 'Véhicule';
         const specs = [
             item.annee ? `${item.annee}` : null,
             formatKm(item.kilometrage),
@@ -223,7 +224,7 @@ const AutoServicesResultsScreen: React.FC = () => {
                     ) : (
                         <View style={styles.noImageContainer}>
                             <SafeIcon name="car" size={36} color="#CBD5E1" type="lucide" />
-                            <Text style={styles.noImageText}>{t('autoServicesResults.pasDePhoto')}</Text>
+                            <Text style={styles.noImageText}>Pas de photo</Text>
                         </View>
                     )}
                     {/* Badge état */}
@@ -401,7 +402,7 @@ const AutoServicesResultsScreen: React.FC = () => {
                             activeOpacity={0.7}
                         >
                             <SafeIcon name="share" size={16} color="#8B5CF6" />
-                            <Text style={[styles.actionBtnText, { color: '#8B5CF6' }]}>{t('autoServicesResultsScreen.partager')}</Text>
+                            <Text style={[styles.actionBtnText, { color: '#8B5CF6' }]}>Partager</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -430,7 +431,7 @@ const AutoServicesResultsScreen: React.FC = () => {
         if (!item.vendeur_whatsapp) return;
         try {
             const phoneNumber = item.vendeur_whatsapp.replace(/\s+/g, '');
-            const message = t('autoServicesResultsScreen.bonjourJeSuisInteresseParVotret('autoServicesResultsScreen.itemnomItemnomAItemprixtolocalestring')fr-FR')} ${item.devise}` : ''}. Est-il toujours disponible ?`;
+            const message = `Bonjour, je suis intéressé par votre véhicule "${item.nom}"${item.prix ? ` à ${item.prix.toLocaleString('fr-FR')} ${item.devise}` : ''}. Est-il toujours disponible ?`;
             const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
             const canOpen = await Linking.canOpenURL(whatsappUrl);
             if (canOpen) {
@@ -439,14 +440,14 @@ const AutoServicesResultsScreen: React.FC = () => {
                 if (user && item.vendeur_user_id) {
                     apiPost('/api/notifications', {
                         user_id: item.vendeur_user_id,
-                        title: `📱 ${user.name} vous contacte sur WhatsApp`,
+                        title: `\uD83D\uDCF1 ${user.name} vous contacte sur WhatsApp`,
                         message: `Au sujet de: ${item.nom}`,
                         type: 'whatsapp_contact',
                         priority: 'high',
                     }).catch(() => { });
                 }
             } else {
-                Alert.alert('Erreur', t('autoServicesResultsScreen.whatsappNestPasInstalleSurCet'));
+                Alert.alert('Erreur', "WhatsApp n'est pas installé sur cet appareil");
             }
         } catch (error) {
             console.error('[AutoResults] Erreur WhatsApp:', error);
@@ -466,14 +467,14 @@ const AutoServicesResultsScreen: React.FC = () => {
                 if (user && item.vendeur_user_id) {
                     apiPost('/api/notifications', {
                         user_id: item.vendeur_user_id,
-                        title: `📞 ${user.name} souhaite vous appeler`,
+                        title: `\uD83D\uDCDE ${user.name} souhaite vous appeler`,
                         message: `Au sujet de: ${item.nom}`,
                         type: 'phone_call',
                         priority: 'high',
                     }).catch(() => { });
                 }
             } else {
-                Alert.alert('Erreur', t('autoServicesResultsScreen.impossibleDouvrirLeTelephone'));
+                Alert.alert('Erreur', "Impossible d'ouvrir le téléphone");
             }
         } catch (error) {
             console.error('[AutoResults] Erreur appel:', error);
@@ -482,11 +483,11 @@ const AutoServicesResultsScreen: React.FC = () => {
 
     const handleShare = useCallback(async (item: AutoProduct) => {
         try {
-            const productName = item.nom || t('autoServicesResults.vehicule');
+            const productName = item.nom || 'Véhicule';
             const specs = [item.marque, item.modele, item.annee ? `${item.annee}` : null, item.carburant].filter(Boolean).join(' · ');
             const priceStr = item.prix ? `${item.prix.toLocaleString('fr-FR')} ${item.devise}` : 'Prix sur demande';
             const smartLink = generateSmartShareLink(item.product_index, item.service_id);
-            const message = `🚗 ${productName}\n${specs ? `📋 ${specs}\n` : ''}💰 ${priceStr}\n\n${smartLink}`;
+            const message = `\uD83D\uDE97 ${productName}\n${specs ? `\uD83D\uDCCB ${specs}\n` : ''}\uD83D\uDCB0 ${priceStr}\n\n${smartLink}`;
 
             await Share.share({
                 message,
@@ -498,7 +499,7 @@ const AutoServicesResultsScreen: React.FC = () => {
         }
     }, []);
 
-    const currentSortLabel = SORT_OPTIONS.find(s => s.key === currentSort)?.label || t('autoServicesResults.recent');
+    const currentSortLabel = SORT_OPTIONS.find(s => s.key === currentSort)?.label || 'Récent';
 
     return (
         <View style={styles.container}>
@@ -508,9 +509,9 @@ const AutoServicesResultsScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={22} color="#0F172A" />
                 </TouchableOpacity>
                 <View style={styles.headerCenter}>
-                    <Text style={styles.title}>{t('autoServicesResults.resultats')}</Text>
+                    <Text style={styles.title}>Résultats</Text>
                     <Text style={styles.subtitle}>
-                        {loading ? 'Recherche...' : t('autoServicesResultsScreen.vehicule', { total: total, total > 1 ? 's' : '': total > 1 ? 's' : '' })}
+                        {loading ? 'Recherche...' : `${total} véhicule${total > 1 ? 's' : ''}`}
                     </Text>
                 </View>
                 <TouchableOpacity onPress={() => { hapticPress(); setShowSortMenu(!showSortMenu); }} style={styles.sortButton}>
@@ -551,7 +552,7 @@ const AutoServicesResultsScreen: React.FC = () => {
                         ))}
                         <TouchableOpacity style={styles.editFiltersChip} onPress={() => navigation.goBack()}>
                             <SafeIcon name="edit-2" size={12} color={ACCENT_LIGHT} type="lucide" />
-                            <Text style={styles.editFiltersText}>{t('autoServicesResultsScreen.modifier')}</Text>
+                            <Text style={styles.editFiltersText}>Modifier</Text>
                         </TouchableOpacity>
                     </ScrollView>
                 </View>
@@ -566,20 +567,20 @@ const AutoServicesResultsScreen: React.FC = () => {
             {loading && !refreshing ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={ACCENT_LIGHT} />
-                    <Text style={styles.loadingText}>{t('autoServicesResults.rechercheDeVehicules')}</Text>
+                    <Text style={styles.loadingText}>Recherche de véhicules...</Text>
                 </View>
             ) : results.length === 0 ? (
                 <View style={styles.centerContainer}>
                     <View style={styles.emptyIcon}>
                         <SafeIcon name="car" size={48} color="#CBD5E1" type="lucide" />
                     </View>
-                    <Text style={styles.emptyTitle}>{t('autoServicesResults.aucunVehiculeTrouve')}</Text>
+                    <Text style={styles.emptyTitle}>Aucun véhicule trouvé</Text>
                     <Text style={styles.emptyText}>
                         Essayez d'élargir vos critères de recherche ou de modifier les filtres.
                     </Text>
                     <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
                         <SafeIcon name="sliders" size={18} color="#FFFFFF" type="lucide" />
-                        <Text style={styles.retryText}>{t('autoServicesResultsScreen.modifierLesFiltres')}</Text>
+                        <Text style={styles.retryText}>Modifier les filtres</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.viewAllButton} onPress={() => {
                         hapticPress();
@@ -599,7 +600,7 @@ const AutoServicesResultsScreen: React.FC = () => {
                             }
                         }).catch(() => { });
                     }}>
-                        <Text style={styles.viewAllText}>{t('autoServicesResults.voirTousLesVehicules')}</Text>
+                        <Text style={styles.viewAllText}>Voir tous les véhicules</Text>
                     </TouchableOpacity>
                 </View>
             ) : (
@@ -617,10 +618,10 @@ const AutoServicesResultsScreen: React.FC = () => {
                         loadingMore ? (
                             <View style={styles.loadingMoreContainer}>
                                 <ActivityIndicator size="small" color={ACCENT_LIGHT} />
-                                <Text style={styles.loadingMoreText}>{t('autoServicesResults.chargement')}</Text>
+                                <Text style={styles.loadingMoreText}>Chargement...</Text>
                             </View>
                         ) : !hasMore && results.length > 0 ? (
-                            <Text style={styles.endText}>{t('autoServicesResults.tousLesResultatsAffiches')}</Text>
+                            <Text style={styles.endText}>Tous les résultats affichés</Text>
                         ) : null
                     }
                 />

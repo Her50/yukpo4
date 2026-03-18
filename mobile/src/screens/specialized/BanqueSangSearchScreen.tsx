@@ -474,7 +474,8 @@ const BanqueSangSearchScreen: React.FC = () => {
                     </View>
                     <Text style={styles.infoText}>
                         • Les banques de sang acceptent les dons volontaires{'\n'}
-                        • En cas dt('banqueSangSearchScreen.urgenceContactezDirectementLeTelephoneDurgence')\nt('banqueSangSearchScreen.verifiezLesStocksDisponiblesAvantDe')\n'}
+                        • {t('banqueSangSearchScreen.urgenceContactezDirectementLeTelephoneDurgence')}{'\n'}
+                        • {t('banqueSangSearchScreen.verifiezLesStocksDisponiblesAvantDe')}{'\n'}
                         • Les groupes sanguins compatibles sont automatiquement suggérés
                     </Text>
                 </View>

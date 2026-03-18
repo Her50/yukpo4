@@ -5,7 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 const PaiementPlanPage: React.FC = () => (
   <View style={styles.container}>
-    <Text style={styles.title}>💳 Plan de paiement</Text>
+    <Text style={styles.title}>\uD83D\uDCB3 Plan de paiement</Text>
     <Text style={styles.message}>Cette page est en cours de construction.</Text>
   </View>
 );

@@ -1,5 +1,5 @@
 /**
- * 🗄️ BASE DE DONNÉES ENRICHIE DE PRODUITS
+ * \uD83D\uDDC4️ BASE DE DONNÉES ENRICHIE DE PRODUITS
  * 
  * Cette base contient des produits pré-configurés avec TOUTES leurs caractéristiques.
  * Quand l'utilisateur sélectionne un produit, le système pré-remplit automatiquement
@@ -47,7 +47,7 @@ export interface EnrichedProduct {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 📱 TÉLÉPHONES - Base enrichie avec caractéristiques complètes
+// \uD83D\uDCF1 TÉLÉPHONES - Base enrichie avec caractéristiques complètes
 // ═══════════════════════════════════════════════════════════════
 
 export const TELEPHONES_ENRICHIS: EnrichedProduct[] = [
@@ -216,7 +216,7 @@ export const TELEPHONES_ENRICHIS: EnrichedProduct[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════════
-// 🚗 AUTOMOBILES - Base enrichie
+// \uD83D\uDE97 AUTOMOBILES - Base enrichie
 // ═══════════════════════════════════════════════════════════════
 
 export const AUTOMOBILES_ENRICHIES: EnrichedProduct[] = [
@@ -337,7 +337,7 @@ export const AUTOMOBILES_ENRICHIES: EnrichedProduct[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════════
-// 🌾 PRODUITS AGRICOLES - Base enrichie avec unités africaines
+// \uD83C\uDF3E PRODUITS AGRICOLES - Base enrichie avec unités africaines
 // ═══════════════════════════════════════════════════════════════
 
 export const PRODUITS_AGRICOLES_ENRICHIS: EnrichedProduct[] = [
@@ -433,7 +433,7 @@ export const PRODUITS_AGRICOLES_ENRICHIS: EnrichedProduct[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════════
-// 🏗️ MATÉRIAUX DE CONSTRUCTION
+// \uD83C\uDFD7️ MATÉRIAUX DE CONSTRUCTION
 // ═══════════════════════════════════════════════════════════════
 
 export const MATERIAUX_CONSTRUCTION_ENRICHIS: EnrichedProduct[] = [
@@ -474,7 +474,7 @@ export const MATERIAUX_CONSTRUCTION_ENRICHIS: EnrichedProduct[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════════
-// 🔧 FONCTIONS UTILITAIRES
+// \uD83D\uDD27 FONCTIONS UTILITAIRES
 // ═══════════════════════════════════════════════════════════════
 
 /**

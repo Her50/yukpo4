@@ -1,5 +1,5 @@
 /**
- * 🔬 ANALYSEUR AUTOMATIQUE DE TOUTES VOS CATÉGORIES
+ * \uD83D\uDD2C ANALYSEUR AUTOMATIQUE DE TOUTES VOS CATÉGORIES
  * 
  * Ce système scanne TOUTES vos 60+ catégories et génère automatiquement
  * les configurations de pré-remplissage pour chacune.
@@ -32,13 +32,13 @@ export interface CategoryFieldAnalysis {
 class CategoryAnalyzer {
 
     /**
-     * 🎯 FONCTION PRINCIPALE : Analyser TOUTES vos catégories
+     * \uD83C\uDFAF FONCTION PRINCIPALE : Analyser TOUTES vos catégories
      */
     async analyzeAllCategories(): Promise<Record<string, CategoryFieldAnalysis>> {
         const categories = getAllCategories(); // Vos 60+ catégories
         const results: Record<string, CategoryFieldAnalysis> = {};
 
-        console.log(`🔬 [CategoryAnalyzer] Analyse de ${categories.length} catégories...`);
+        console.log(`\uD83D\uDD2C [CategoryAnalyzer] Analyse de ${categories.length} catégories...`);
 
         for (const category of categories) {
             results[category] = this.analyzeCategory(category);
@@ -306,7 +306,7 @@ class CategoryAnalyzer {
     } {
         // Si unités explicites dans les modalités
         if (modalities.unites && Array.isArray(modalities.unites)) {
-            const valid = modalities.unites.filter((u: string) => !u.includes('🆕'));
+            const valid = modalities.unites.filter((u: string) => !u.includes('\uD83C\uDD95'));
             if (valid.length > 0) {
                 return { default: valid[0], alternatives: valid.slice(1), confidence: 95 };
             }
@@ -402,15 +402,15 @@ class CategoryAnalyzer {
             .slice(0, 5);
 
         console.log(`\n╔═══════════════════════════════════════════════════════════╗`);
-        console.log(`║     📊 RAPPORT D'ANALYSE DES CATÉGORIES                  ║`);
+        console.log(`║     \uD83D\uDCCA RAPPORT D'ANALYSE DES CATÉGORIES                  ║`);
         console.log(`╚═══════════════════════════════════════════════════════════╝`);
-        console.log(`\n📦 Total de catégories analysées: ${totalCategories}`);
-        console.log(`📈 Réduction moyenne de saisie: ${avgReduction.toFixed(0)}%`);
-        console.log(`📝 Champs moyens par catégorie: ${avgFields.toFixed(1)}`);
+        console.log(`\n\uD83D\uDCE6 Total de catégories analysées: ${totalCategories}`);
+        console.log(`\uD83D\uDCC8 Réduction moyenne de saisie: ${avgReduction.toFixed(0)}%`);
+        console.log(`\uD83D\uDCDD Champs moyens par catégorie: ${avgFields.toFixed(1)}`);
         console.log(`✨ Champs auto-remplis moyens: ${avgAutofill.toFixed(1)}`);
         console.log(`✍️  Champs manuels moyens: ${avgManual.toFixed(1)}`);
 
-        console.log(`\n🏆 Top 5 catégories avec meilleure réduction:`);
+        console.log(`\n\uD83C\uDFC6 Top 5 catégories avec meilleure réduction:`);
         topCategories.forEach((cat, index) => {
             console.log(`   ${index + 1}. ${cat.category}: ${cat.reduction_percentage}% (${cat.estimated_autofill}/${cat.total_fields} champs)`);
         });
@@ -432,7 +432,7 @@ class CategoryAnalyzer {
 export const categoryAnalyzer = new CategoryAnalyzer();
 
 /**
- * 🎯 FONCTION HELPER : Obtenir la configuration pour une catégorie
+ * \uD83C\uDFAF FONCTION HELPER : Obtenir la configuration pour une catégorie
  */
 export async function getCategoryConfiguration(category: string): Promise<CategoryFieldAnalysis | null> {
     try {

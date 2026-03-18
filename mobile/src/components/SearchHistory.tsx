@@ -67,7 +67,7 @@ const [history, setHistory] = useState<SearchHistoryItem[]>([]);
         const diffMs = now.getTime() - date.getTime();
         const diffMins = Math.floor(diffMs / 60000);
 
-        if (diffMins < 1) return t('searchHistory.aL')instant';
+        if (diffMins < 1) return 'À l\'instant';
         if (diffMins < 60) return `Il y a ${diffMins} min`;
         if (diffMins < 1440) return `Il y a ${Math.floor(diffMins / 60)} h`;
         return `Il y a ${Math.floor(diffMins / 1440)} j`;

@@ -3,7 +3,6 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { Text, TouchableOpacity, View } from 'react-native';
 import { API_BASE_URL } from '../config/api';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 type StatusData = {
   enabled: boolean;
@@ -12,8 +11,7 @@ type StatusData = {
 };
 
 const SchedulerStatusCard: React.FC = () => {
-      const { t } = useLanguageSafe();
-const [data, setData] = useState<StatusData | null>(null);
+  const [data, setData] = useState<StatusData | null>(null);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/admin/scheduler-status`)
@@ -24,7 +22,7 @@ const [data, setData] = useState<StatusData | null>(null);
   if (!data) {
     return (
       <View style="p-4">
-        <Text>{t('schedulerStatusCard.chargement')}</Text>
+        <Text>Chargement...</Text>
         <TouchableOpacity
           onPress={() =>
             fetch(`${API_BASE_URL}/api/admin/run-summary-now`, { method: "POST" })
@@ -33,7 +31,7 @@ const [data, setData] = useState<StatusData | null>(null);
           }
           style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#4F46E5', borderRadius: 6 } as any}
         >
-          <Text style={{ color: '#fff' }}>{t('schedulerStatusCard.resumerMaintenant')}</Text>
+          <Text style={{ color: '#fff' }}>\uD83E\uDDE0 Résumer maintenant</Text>
         </TouchableOpacity>
       </View>
     );
@@ -46,9 +44,12 @@ const [data, setData] = useState<StatusData | null>(null);
 
   return (
     <View style="p-4 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 border rounded shadow">
-      <Text style="text-lg font-semibold mb-2t('schedulerStatusCard.tschedulerstatuscardstatutdelaplanificationiatextT') "}
+      <Text style="text-lg font-semibold mb-2">\uD83D\uDD50 Statut de la Planification IA</Text>
+
+      <Text>
+        État :{" "}
         <Text style={data.enabled ? "text-green-600" : "text-red-500"}>
-          {data.enabled ? t('schedulerStatusCard.activee') : t('schedulerStatusCard.desactivee')}
+          {data.enabled ? "✅ Activée" : "⛔ Désactivée"}
         </Text>
       </Text>
 
@@ -59,10 +60,10 @@ const [data, setData] = useState<StatusData | null>(null);
         </Text>
       </Text>
 
-      <Text>{t('schedulerStatusCard.nextScheduled')}: {data.next_run}</Text>
+      <Text>Prochaine prévue : {data.next_run}</Text>
 
       {showAlert && (
-        <Text style="text-red-500 mt-2">{t('schedulerStatusCard.plusDe48hDepuisLe')}</Text>
+        <Text style="text-red-500 mt-2">\uD83D\uDEA8 Plus de 48h depuis le dernier résumé</Text>
       )}
 
       <TouchableOpacity
@@ -73,7 +74,7 @@ const [data, setData] = useState<StatusData | null>(null);
         }
         style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#4F46E5', borderRadius: 6 } as any}
       >
-        <Text style={{ color: '#fff' }}>{t('schedulerStatusCard.resumerMaintenant')}</Text>
+        <Text style={{ color: '#fff' }}>\uD83E\uDDE0 Résumer maintenant</Text>
       </TouchableOpacity>
     </View>
   );

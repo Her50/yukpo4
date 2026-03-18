@@ -15,7 +15,6 @@ import InteractiveMapView, { InteractiveMapViewRef } from './InteractiveMapView'
 import LocationSelector, { LocationObject } from './LocationSelector';
 import SafeIcon from './SafeIcon';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -38,10 +37,9 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
     onClose,
     onSelect,
     currentLocation,
-    title={t('modernGPSSelector.selectionDeLocalisationGps')}
+    title = 'Sélection de localisation GPS'
 }) => {
-        const { t } = useLanguageSafe();
-const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
+    const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
     const [loading, setLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
     const [searchLocation, setSearchLocation] = useState<LocationObject | string>(''); // ✅ NOUVEAU: Utiliser LocationObject
@@ -63,7 +61,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
-                    t('modernGPSSelector.laccesALaLocalisationEstNecessairePourUtiliser'),
+                    'L\'accès à la localisation est nécessaire pour utiliser cette fonctionnalité.',
                     [{ text: 'OK' }]
                 );
                 return;
@@ -71,7 +69,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             setPermissionGranted(true);
         } catch (error) {
             console.error('Erreur permission GPS:', error);
-            Alert.alert('Erreur', 'Impossible d\t('modernGPSSelector.accederALaLocalisation'));
+            Alert.alert('Erreur', 'Impossible d\'accéder à la localisation');
         }
     };
 
@@ -137,13 +135,13 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                             };
                             console.log('[ModernGPSSelector] ✅ Coordonnées obtenues:', coords);
                         } else {
-                            throw new Error(t('modernGPSSelector.aucunResultatDeGeocodage'));
+                            throw new Error('Aucun résultat de géocodage');
                         }
                     } catch (geocodeError) {
                         console.error('[ModernGPSSelector] Erreur géocodage:', geocodeError);
                         Alert.alert(
                             'Erreur',
-                            t('modernGPSSelector.impossibleDeTrouverLesCoordonneesDe')
+                            'Impossible de trouver les coordonnées de ce lieu. Veuillez sélectionner une position sur la carte.'
                         );
                         setLoading(false);
                         return;
@@ -247,7 +245,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                     }
                 }, 100); // Réduire le délai pour une réaction plus rapide
             } else {
-                Alert.alert('Erreur', t('modernGPSSelector.coordonneesGpsNonDisponiblesPourCe'));
+                Alert.alert('Erreur', 'Coordonnées GPS non disponibles pour ce lieu');
             }
         } catch (error) {
             console.error('[ModernGPSSelector] Erreur sélection lieu:', error);
@@ -268,7 +266,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             });
             onClose();
         } else {
-            Alert.alert('Erreur', t('modernGPSSelector.veuillezSelectionnerUnePosition'));
+            Alert.alert('Erreur', 'Veuillez sélectionner une position');
         }
     };
 
@@ -313,7 +311,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                         {/* Ligne 1: Bouton GPS + Recherche */}
                         <View style={styles.topRow}>
                             <NativeButton
-                                title={t('modernGPSSelector.maPosition')}
+                                title="Ma Position"
                                 onPress={getCurrentLocation}
                                 disabled={loading || !permissionGranted}
                                 variant="primary"
@@ -327,7 +325,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                                     label=""
                                     value={searchLocation}
                                     onSelect={handleLocationSelect}
-                                    placeholder={t('modernGPSSelector.villeQuartierLieuSite')}
+                                    placeholder="Ville, quartier, lieu, site..."
                                     enrichWithBackend={true}
                                 />
                             </View>
@@ -400,7 +398,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                                     icon="trash-2"
                                 />
                                 <NativeButton
-                                    title={t('modernGPSSelector.confirmer')}
+                                    title="Confirmer"
                                     onPress={handleConfirmSelection}
                                     disabled={!selectedLocation}
                                     variant="primary"

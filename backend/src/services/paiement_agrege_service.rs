@@ -8,7 +8,7 @@ use axum::extract::State;
 use axum::response::IntoResponse;
 use axum::Json;
 use chrono::{DateTime, Utc};
-use log::info;
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
@@ -314,6 +314,49 @@ impl PaiementAgregeService {
                     }),
                 });
             }
+
+            // ✅ CORRIGÉ: Inclure le coursier dans la répartition si delivery associée
+            #[derive(sqlx::FromRow)]
+            struct CourierRow {
+                courier_user_id: Option<i32>,
+                courier_nom: Option<String>,
+                frais_livraison: f64,
+            }
+            let courier_info = sqlx::query_as::<_, CourierRow>(
+                r#"
+                SELECT bdp.courier_user_id::int as courier_user_id,
+                       COALESCE(u.nom, 'Coursier') as courier_nom,
+                       COALESCE(bdp.frais_livraison, 0.0) as frais_livraison
+                FROM book_delivery_packages bdp
+                LEFT JOIN users u ON bdp.courier_user_id = u.id
+                WHERE bdp.commande_id = $1 AND bdp.courier_user_id IS NOT NULL
+                LIMIT 1
+                "#,
+            )
+            .bind(commande_id)
+            .fetch_optional(pg)
+            .await
+            .ok()
+            .flatten();
+
+            if let Some(courier) = courier_info {
+                if courier.frais_livraison > 0.0 {
+                    let commission_coursier = courier.frais_livraison * self.commission_app;
+                    beneficiaires.push(BeneficiairePaiement {
+                        id: Uuid::new_v4(),
+                        type_beneficiaire: TypeBeneficiaire::Coursier,
+                        nom: courier.courier_nom.unwrap_or_else(|| "Coursier".to_string()),
+                        montant_brut: courier.frais_livraison,
+                        commission: commission_coursier,
+                        montant_net: courier.frais_livraison - commission_coursier,
+                        reference_paiement: format!("COUR-{}", demande.transaction_id),
+                        details: serde_json::json!({
+                            "courier_user_id": courier.courier_user_id,
+                            "commande_id": commande_id
+                        }),
+                    });
+                }
+            }
         }
 
         let montant_net = demande.montant_total - commission_app;
@@ -370,14 +413,16 @@ impl PaiementAgregeService {
         transaction: &TransactionAgregee,
         pg: &sqlx::PgPool,
     ) -> Result<ReponsePaiement, AppError> {
-        let solde: f64 =
-            sqlx::query_scalar("SELECT COALESCE(solde, 0.0) FROM user_wallets WHERE user_id = $1")
+        let balance_cents: i64 =
+            sqlx::query_scalar("SELECT COALESCE(balance_cents, 0) FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'")
                 .bind(demande.user_id)
-                .fetch_one(pg)
+                .fetch_optional(pg)
                 .await
-                .map_err(|e| AppError::Internal(format!("Erreur vérification solde: {}", e)))?;
+                .map_err(|e| AppError::Internal(format!("Erreur vérification solde: {}", e)))?
+                .unwrap_or(0);
 
-        if solde < demande.montant_total {
+        let montant_cents = (demande.montant_total * 100.0) as i64;
+        if balance_cents < montant_cents {
             return Err(AppError::BadRequest("Solde wallet insuffisant".to_string()));
         }
 
@@ -387,12 +432,20 @@ impl PaiementAgregeService {
             .await
             .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
-        sqlx::query("UPDATE user_wallets SET solde = solde - $1 WHERE user_id = $2")
-            .bind(demande.montant_total)
+        sqlx::query("UPDATE user_wallets SET balance_cents = balance_cents - $1, updated_at = NOW() WHERE user_id = $2 AND currency = 'XAF'")
+            .bind(montant_cents)
             .bind(demande.user_id)
             .execute(&mut *tx)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur débit wallet: {}", e)))?;
+
+        // SYNC: also decrement users.tokens_balance for compatibility
+        sqlx::query("UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2")
+            .bind(montant_cents / 100)
+            .bind(demande.user_id)
+            .execute(&mut *tx)
+            .await
+            .ok();
 
         let wallet_ref = format!("WALLET-{}", Uuid::new_v4());
         sqlx::query(
@@ -559,15 +612,16 @@ impl PaiementAgregeService {
                 TypeBeneficiaire::Librairie
                 | TypeBeneficiaire::VendeurOccasion
                 | TypeBeneficiaire::Coursier => {
+                    let net_cents = (beneficiaire.montant_net * 100.0) as i64;
                     sqlx::query(
-                        r#"INSERT INTO user_wallets (user_id, solde, updated_at)
-                        VALUES ($1, $2, NOW())
-                        ON CONFLICT (user_id) DO UPDATE SET
-                            solde = user_wallets.solde + $2,
+                        r#"INSERT INTO user_wallets (user_id, balance_cents, currency, updated_at, created_at)
+                        VALUES ($1, $2, 'XAF', NOW(), NOW())
+                        ON CONFLICT (user_id, currency) DO UPDATE SET
+                            balance_cents = user_wallets.balance_cents + $2,
                             updated_at = NOW()"#,
                     )
                     .bind(beneficiaire.id)
-                    .bind(beneficiaire.montant_net)
+                    .bind(net_cents)
                     .execute(&mut **tx)
                     .await
                     .map_err(|e| AppError::Internal(format!("Erreur crédit wallet: {}", e)))?;
@@ -667,15 +721,15 @@ impl PaiementAgregeService {
         user_id: Uuid,
         pg: &sqlx::PgPool,
     ) -> Result<f64, AppError> {
-        let solde: f64 =
-            sqlx::query_scalar("SELECT COALESCE(solde, 0.0) FROM user_wallets WHERE user_id = $1")
+        let balance_cents: i64 =
+            sqlx::query_scalar("SELECT COALESCE(balance_cents, 0) FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'")
                 .bind(user_id)
                 .fetch_optional(pg)
                 .await
                 .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-                .unwrap_or(0.0);
+                .unwrap_or(0);
 
-        Ok(solde)
+        Ok(balance_cents as f64 / 100.0)
     }
 
     pub async fn crediter_wallet(
@@ -685,29 +739,53 @@ impl PaiementAgregeService {
         motif: &str,
         pg: &sqlx::PgPool,
     ) -> Result<(), AppError> {
+        let montant_cents = (montant * 100.0) as i64;
+
         let mut tx = pg
             .begin()
             .await
             .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
         sqlx::query(
-            r#"INSERT INTO user_wallets (user_id, solde, updated_at)
-            VALUES ($1, $2, NOW())
-            ON CONFLICT (user_id) DO UPDATE SET
-                solde = user_wallets.solde + $2,
+            r#"INSERT INTO user_wallets (user_id, balance_cents, currency, updated_at, created_at)
+            VALUES ($1, $2, 'XAF', NOW(), NOW())
+            ON CONFLICT (user_id, currency) DO UPDATE SET
+                balance_cents = user_wallets.balance_cents + $2,
                 updated_at = NOW()"#,
         )
         .bind(user_id)
-        .bind(montant)
+        .bind(montant_cents)
         .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur crédit wallet: {}", e)))?;
 
-        sqlx::query(
-            "INSERT INTO wallet_transactions (user_id, montant, type_transaction, motif, created_at) VALUES ($1, $2, 'credit', $3, NOW())"
+        // Sync: also update users.tokens_balance for compatibility
+        sqlx::query("UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2")
+            .bind(montant_cents / 100) // tokens_balance is in whole XAF
+            .bind(user_id)
+            .execute(&mut *tx)
+            .await
+            .ok(); // Non-fatal if users table uses different id type
+
+        // Fetch actual balance for accurate audit trail
+        let balance_after: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(balance_cents, 0) FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'"
         )
         .bind(user_id)
-        .bind(montant)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur lecture solde: {}", e)))?
+        .unwrap_or(0);
+        let balance_before = balance_after - montant_cents;
+
+        sqlx::query(
+            r#"INSERT INTO wallet_transactions (user_id, transaction_type, amount_cents, balance_before_cents, balance_after_cents, currency, description, created_at)
+            VALUES ($1, 'credit', $2, $3, $4, 'XAF', $5, NOW())"#
+        )
+        .bind(user_id)
+        .bind(montant_cents)
+        .bind(balance_before)
+        .bind(balance_after)
         .bind(motif)
         .execute(&mut *tx)
         .await
@@ -718,8 +796,8 @@ impl PaiementAgregeService {
             .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
         info!(
-            "[crediter_wallet] {} crédité à user_id: {} ({})",
-            montant, user_id, motif
+            "[crediter_wallet] {} XAF ({} cents) crédité à user_id: {} ({})",
+            montant, montant_cents, user_id, motif
         );
         Ok(())
     }
@@ -778,25 +856,107 @@ pub async fn callback_orange_money(
 
 /// Callback MTN Mobile Money
 pub async fn callback_mtn_mobile_money(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<serde_json::Value>,
 ) -> AppResult<impl IntoResponse> {
     info!("[callback_mtn_mobile_money] Callback reçu: {:?}", payload);
+
+    let external_id = payload
+        .get("externalId")
+        .or_else(|| payload.get("referenceId"))
+        .or_else(|| payload.get("financialTransactionId"))
+        .and_then(|v| v.as_str());
+    let status = payload.get("status").and_then(|v| v.as_str()).unwrap_or("UNKNOWN");
+
+    let new_status = match status {
+        "SUCCESSFUL" | "COMPLETED" => "confirme",
+        "FAILED" | "REJECTED" => "echoue",
+        "PENDING" => "en_attente",
+        _ => "en_attente",
+    };
+
+    if let Some(ref_id) = external_id {
+        let updated = sqlx::query(
+            "UPDATE transactions_agregees SET statut = $1, updated_at = NOW(), metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{mtn_callback}', $3::jsonb) WHERE reference_paiement = $2"
+        )
+        .bind(new_status)
+        .bind(ref_id)
+        .bind(&payload)
+        .execute(&state.pg)
+        .await;
+
+        match updated {
+            Ok(r) => info!(
+                "[callback_mtn] Mise à jour transaction {}: {} ({} rows)",
+                ref_id,
+                new_status,
+                r.rows_affected()
+            ),
+            Err(e) => error!(
+                "[callback_mtn] Erreur mise à jour transaction {}: {}",
+                ref_id, e
+            ),
+        }
+    }
+
     Ok(Json(serde_json::json!({
         "success": true,
-        "message": "Callback MTN traité"
+        "message": "Callback MTN traité",
+        "status": new_status
     })))
 }
 
 /// Callback Wave
 pub async fn callback_wave(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<serde_json::Value>,
 ) -> AppResult<impl IntoResponse> {
     info!("[callback_wave] Callback reçu: {:?}", payload);
+
+    let client_reference = payload
+        .get("client_reference")
+        .or_else(|| payload.get("transaction_id"))
+        .and_then(|v| v.as_str());
+    let payment_status = payload
+        .get("payment_status")
+        .or_else(|| payload.get("status"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+
+    let new_status = match payment_status {
+        "succeeded" | "completed" => "confirme",
+        "failed" | "cancelled" | "expired" => "echoue",
+        _ => "en_attente",
+    };
+
+    if let Some(ref_id) = client_reference {
+        let updated = sqlx::query(
+            "UPDATE transactions_agregees SET statut = $1, updated_at = NOW(), metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{wave_callback}', $3::jsonb) WHERE reference_paiement = $2"
+        )
+        .bind(new_status)
+        .bind(ref_id)
+        .bind(&payload)
+        .execute(&state.pg)
+        .await;
+
+        match updated {
+            Ok(r) => info!(
+                "[callback_wave] Mise à jour transaction {}: {} ({} rows)",
+                ref_id,
+                new_status,
+                r.rows_affected()
+            ),
+            Err(e) => error!(
+                "[callback_wave] Erreur mise à jour transaction {}: {}",
+                ref_id, e
+            ),
+        }
+    }
+
     Ok(Json(serde_json::json!({
         "success": true,
-        "message": "Callback Wave traité"
+        "message": "Callback Wave traité",
+        "status": new_status
     })))
 }
 

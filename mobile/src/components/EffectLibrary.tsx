@@ -278,7 +278,8 @@ const [effects, setEffects] = useState<Effect[]>([]);
                 }
                 ListHeaderComponent={
                     <Text style={styles.resultsCount}>
-                        {filteredEffects.length} effet{filteredEffects.length > 1 ? 's' : 't('effectLibrary.trouveFilteredeffectslength1')s' : ''}
+                        {filteredEffects.length} effet{filteredEffects.length > 1 ? 's' : ''} trouvé
+                        {filteredEffects.length > 1 ? 's' : ''}
                     </Text>
                 }
             />

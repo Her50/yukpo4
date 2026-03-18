@@ -19,7 +19,6 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { GeneratedRecipe, menuPlanningService } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
 import { generateAndDownloadRecipePDF, shareRecipePDF } from '../../utils/recipePdfGenerator';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 // Fonction utilitaire pour extraire le nombre de portions
 const getServingsNumber = (servings: number | { number: number; size: string } | undefined): number => {
@@ -30,7 +29,6 @@ const getServingsNumber = (servings: number | { number: number; size: string } |
 
 const RecipeSearchScreen: React.FC = () => {
     const navigation = useNavigation();
-    const { t } = useLanguageSafe();
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [generatedRecipe, setGeneratedRecipe] = useState<GeneratedRecipe | null>(null);
@@ -58,7 +56,7 @@ const RecipeSearchScreen: React.FC = () => {
             console.log('[RecipeSearch] Début génération recette:', queryToUse);
 
             const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error(t('recipeSearchScreen.laGenerationDeLaRecettePrend'))), 95000);
+                setTimeout(() => reject(new Error('La génération de la recette prend trop de temps. Veuillez réessayer.')), 95000);
             });
 
             const responsePromise = menuPlanningService.generateRecipe(queryToUse);
@@ -81,7 +79,7 @@ const RecipeSearchScreen: React.FC = () => {
                 }
                 
                 if (!response.success && !recipe) {
-                    const errorMsg = response.error || response.message || response.data?.error || response.data?.message || t('recipeSearch.impossibleDeGenererLaRecette');
+                    const errorMsg = response.error || response.message || response.data?.error || response.data?.message || 'Impossible de générer la recette';
                     Alert.alert('Erreur', errorMsg);
                     setLoading(false);
                     return;
@@ -98,7 +96,7 @@ const RecipeSearchScreen: React.FC = () => {
                     setLoading(false);
                 }, 200);
             } else {
-                Alert.alert('Erreur', 'Impossible d\t('recipeSearchScreen.extraireLaRecetteDeLaReponse'));
+                Alert.alert('Erreur', 'Impossible d\'extraire la recette de la réponse. Veuillez réessayer.');
                 setLoading(false);
             }
         } catch (error: any) {
@@ -114,7 +112,7 @@ const RecipeSearchScreen: React.FC = () => {
             }
 
             if (errorMessage.includes('temps') || errorMessage.includes('timeout') || error.code === 'ABORT_ERR' || error.name === 'AbortError') {
-                errorMessage = t('recipeSearchScreen.laGenerationPrendTropDeTemps');
+                errorMessage = 'La génération prend trop de temps. Veuillez réessayer avec un nom de recette plus simple.';
             }
 
             Alert.alert('Erreur', errorMessage);
@@ -126,8 +124,8 @@ const RecipeSearchScreen: React.FC = () => {
     const loadingView = useMemo(() => (
         <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={modernColors.primary} animating={loading} />
-            <Text style={styles.loadingText}>{t('recipeSearch.generationDeLaRecetteEn')}</Text>
-            <Text style={styles.loadingSubtext}>{t('recipeSearch.celaPeutPrendreJusqua90')}</Text>
+            <Text style={styles.loadingText}>Génération de la recette en cours...</Text>
+            <Text style={styles.loadingSubtext}>Cela peut prendre jusqu'à 90 secondes</Text>
         </View>
     ), [loading]);
 
@@ -138,7 +136,7 @@ const RecipeSearchScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>{t('recipeSearch.rechercheDeRecettes')}</Text>
+                <Text style={styles.title}>Recherche de Recettes</Text>
             </View>
 
             {/* Contenu scrollable */}
@@ -150,12 +148,12 @@ const RecipeSearchScreen: React.FC = () => {
             >
                 <View style={styles.form}>
                     <NativeCard style={styles.searchCard}>
-                        <Text style={styles.label}>{t('recipeSearch.rechercherUneRecette')}</Text>
+                        <Text style={styles.label}>\uD83D\uDD0D Rechercher une recette</Text>
                         <View style={styles.searchContainer}>
                             <TextInput
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
-                                placeholder={t('recipeSearch.exPouletDgNdoleRiz')}
+                                placeholder="Ex: Poulet DG, Ndolé, Riz sauté..."
                                 onSubmitEditing={handleSearch}
                                 returnKeyType="search"
                                 style={styles.searchInput}
@@ -163,7 +161,7 @@ const RecipeSearchScreen: React.FC = () => {
                                 autoCorrect={false}
                             />
                             <NativeButton
-                                title={t('recipeSearch.rechercher')}
+                                title="Rechercher"
                                 onPress={handleSearch}
                                 loading={loading}
                                 variant="primary"
@@ -192,7 +190,7 @@ const RecipeSearchScreen: React.FC = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{t('recipeSearch.recetteGeneree')}</Text>
+                            <Text style={styles.modalTitle}>Recette générée</Text>
                             <TouchableOpacity onPress={() => {
                                 setShowRecipeDetails(false);
                                 setGeneratedRecipe(null);
@@ -210,7 +208,7 @@ const RecipeSearchScreen: React.FC = () => {
                                 keyboardShouldPersistTaps="handled"
                             >
                                 <View style={styles.recipeHeader}>
-                                    <Text style={styles.recipeTitle}>{generatedRecipe.recipe_name || t('recipeSearch.recetteSansNom')}</Text>
+                                    <Text style={styles.recipeTitle}>{generatedRecipe.recipe_name || 'Recette sans nom'}</Text>
                                     {generatedRecipe.description && (
                                         <Text style={styles.recipeDescription}>{generatedRecipe.description}</Text>
                                     )}
@@ -239,11 +237,11 @@ const RecipeSearchScreen: React.FC = () => {
                                 {/* Ingrédients */}
                                 {generatedRecipe.ingredients && generatedRecipe.ingredients.length > 0 ? (
                                     <View style={styles.recipeSection}>
-                                        <Text style={styles.recipeSectionTitle}>{t('recipeSearch.ingredients')}</Text>
+                                        <Text style={styles.recipeSectionTitle}>Ingrédients</Text>
                                         {generatedRecipe.ingredients.map((ingredient, index) => (
                                             <View key={index} style={styles.ingredientItem}>
                                                 <Text style={styles.ingredientText}>
-                                                    • {ingredient.name || t('recipeSearch.ingredient')}: {ingredient.quantity || 0} {ingredient.unit || ''}
+                                                    • {ingredient.name || 'Ingrédient'}: {ingredient.quantity || 0} {ingredient.unit || ''}
                                                     {ingredient.notes && ` (${ingredient.notes})`}
                                                 </Text>
                                             </View>
@@ -251,8 +249,8 @@ const RecipeSearchScreen: React.FC = () => {
                                     </View>
                                 ) : (
                                     <View style={styles.recipeSection}>
-                                        <Text style={styles.recipeSectionTitle}>{t('recipeSearch.ingredients')}</Text>
-                                        <Text style={styles.emptyText}>{t('recipeSearch.aucunIngredientDisponible')}</Text>
+                                        <Text style={styles.recipeSectionTitle}>Ingrédients</Text>
+                                        <Text style={styles.emptyText}>Aucun ingrédient disponible</Text>
                                     </View>
                                 )}
 
@@ -265,14 +263,14 @@ const RecipeSearchScreen: React.FC = () => {
                                                 <View style={styles.instructionNumber}>
                                                     <Text style={styles.instructionNumberText}>{index + 1}</Text>
                                                 </View>
-                                                <Text style={styles.instructionText}>{instruction || t('recipeSearch.etapeSansDescription')}</Text>
+                                                <Text style={styles.instructionText}>{instruction || 'Étape sans description'}</Text>
                                             </View>
                                         ))}
                                     </View>
                                 ) : (
                                     <View style={styles.recipeSection}>
                                         <Text style={styles.recipeSectionTitle}>Instructions</Text>
-                                        <Text style={styles.emptyText}>{t('recipeSearch.aucuneInstructionDisponible')}</Text>
+                                        <Text style={styles.emptyText}>Aucune instruction disponible</Text>
                                     </View>
                                 )}
 
@@ -301,7 +299,7 @@ const RecipeSearchScreen: React.FC = () => {
                                                 </Text>
                                             </View>
                                             <View style={styles.nutritionItem}>
-                                                <Text style={styles.nutritionLabel}>{t('recipeSearch.proteines')}</Text>
+                                                <Text style={styles.nutritionLabel}>Protéines</Text>
                                                 <Text style={styles.nutritionValue}>
                                                     {generatedRecipe.nutrition.proteins.toFixed(1)}g
                                                 </Text>
@@ -325,7 +323,7 @@ const RecipeSearchScreen: React.FC = () => {
                                 {/* Coût estimé */}
                                 {generatedRecipe.estimated_cost && (
                                     <View style={styles.recipeSection}>
-                                        <Text style={styles.recipeSectionTitle}>{t('recipeSearch.coutEstime')}</Text>
+                                        <Text style={styles.recipeSectionTitle}>Coût estimé</Text>
                                         <Text style={styles.costText}>
                                             {generatedRecipe.estimated_cost.toLocaleString()} FCFA
                                         </Text>
@@ -336,15 +334,15 @@ const RecipeSearchScreen: React.FC = () => {
                             <View style={styles.modalBody}>
                                 <View style={styles.errorContainer}>
                                     <SafeIcon name="AlertCircle" size={48} color={modernColors.error || '#EF4444'} type="lucide" />
-                                    <Text style={styles.errorText}>{t('recipeSearch.aucuneRecetteAAfficher')}</Text>
-                                    <Text style={styles.errorSubtext}>{t('recipeSearch.laRecetteGenereeEstInvalide')}</Text>
+                                    <Text style={styles.errorText}>Aucune recette à afficher</Text>
+                                    <Text style={styles.errorSubtext}>La recette générée est invalide ou incomplète</Text>
                                 </View>
                             </View>
                         )}
 
                         <View style={styles.modalFooter}>
                             <NativeButton
-                                title={t('recipeSearchScreen.fermer')}
+                                title="Fermer"
                                 onPress={() => {
                                     setShowRecipeDetails(false);
                                     setGeneratedRecipe(null);
@@ -353,7 +351,7 @@ const RecipeSearchScreen: React.FC = () => {
                                 style={styles.modalButton}
                             />
                             <NativeButton
-                                title={exportingRecipePDF ? t('recipeSearchScreen.generation') : 'Partager en PDF'}
+                                title={exportingRecipePDF ? 'Génération...' : 'Partager en PDF'}
                                 onPress={async () => {
                                     if (!generatedRecipe) return;
 
@@ -365,7 +363,7 @@ const RecipeSearchScreen: React.FC = () => {
                                         });
 
                                         await shareRecipePDF(pdfUri, generatedRecipe.recipe_name);
-                                        Alert.alert(t('recipeSearchScreen.succes'), t('recipeSearchScreen.recettePartageeAvecSucces'));
+                                        Alert.alert('Succès', 'Recette partagée avec succès !');
                                     } catch (error: any) {
                                         console.error('[RecipeSearch] Erreur partage recette PDF:', error);
                                         Alert.alert('Erreur', error.message || 'Impossible de partager la recette en PDF');

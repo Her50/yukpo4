@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use tokio::sync::RwLock;
 use std::sync::Arc;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct PushSubscription {
     pub id: i32,
     pub user_id: i32,
@@ -55,18 +55,17 @@ impl PushNotificationService {
         p256dh: String,
         auth: String,
     ) -> AppResult<PushSubscription> {
-        let subscription = sqlx::query_as!(
-            PushSubscription,
+        let subscription = sqlx::query_as::<_, PushSubscription>(
             r#"
             INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth)
             VALUES ($1, $2, $3, $4)
             RETURNING id, user_id, endpoint, p256dh, auth, created_at
             "#,
-            user_id,
-            endpoint,
-            p256dh,
-            auth
         )
+        .bind(user_id)
+        .bind(&endpoint)
+        .bind(&p256dh)
+        .bind(&auth)
         .fetch_one(&self.pool)
         .await?;
 
@@ -95,11 +94,10 @@ impl PushNotificationService {
             Some(sub) => sub,
             None => {
                 // Récupérer depuis la base de données
-                let sub = sqlx::query_as!(
-                    PushSubscription,
+                let sub = sqlx::query_as::<_, PushSubscription>(
                     "SELECT id, user_id, endpoint, p256dh, auth, created_at FROM push_subscriptions WHERE user_id = $1",
-                    user_id
                 )
+                .bind(user_id)
                 .fetch_one(&self.pool)
                 .await?;
                 

@@ -327,7 +327,8 @@ pub async fn update_product(
 ) -> AppResult<Json<ProductResponse>> {
     // Vérifier que l'utilisateur est propriétaire du service
     let owner: Option<i32> =
-        sqlx::query_scalar!("SELECT user_id FROM services WHERE id = $1", service_id)
+        sqlx::query_scalar::<_, i32>("SELECT user_id FROM services WHERE id = $1")
+            .bind(service_id)
             .fetch_optional(&state.pg)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur vérification propriétaire: {}", e)))?;
@@ -371,7 +372,8 @@ pub async fn delete_product(
 ) -> AppResult<Json<Value>> {
     // Vérifier que l'utilisateur est propriétaire du service
     let owner: Option<i32> =
-        sqlx::query_scalar!("SELECT user_id FROM services WHERE id = $1", service_id)
+        sqlx::query_scalar::<_, i32>("SELECT user_id FROM services WHERE id = $1")
+            .bind(service_id)
             .fetch_optional(&state.pg)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur vérification propriétaire: {}", e)))?;
@@ -504,7 +506,8 @@ pub async fn duplicate_product(
 ) -> AppResult<Json<ProductResponse>> {
     // Vérifier que l'utilisateur est propriétaire du service
     let owner: Option<i32> =
-        sqlx::query_scalar!("SELECT user_id FROM services WHERE id = $1", service_id)
+        sqlx::query_scalar::<_, i32>("SELECT user_id FROM services WHERE id = $1")
+            .bind(service_id)
             .fetch_optional(&state.pg)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur vérification propriétaire: {}", e)))?;

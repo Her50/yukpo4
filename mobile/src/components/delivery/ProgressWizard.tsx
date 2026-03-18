@@ -1,5 +1,5 @@
 /**
- * 🧙 Progress Wizard pour formulaires multi-étapes
+ * \uD83E\uDDD9 Progress Wizard pour formulaires multi-étapes
  * Design moderne avec animations fluides
  */
 

@@ -67,10 +67,10 @@ const LaboratoireHomeScreen: React.FC = () => {
     // Options de tri
     const sortOptions: { value: SortOption; label: string; icon: string }[] = [
         { value: 'relevance', label: 'Pertinence', icon: 'star' },
-        { value: 'price_asc', label: t('laboratoireHomeScreen.prixCroissant'), icon: 'arrow-up' },
-        { value: 'price_desc', label: t('laboratoireHome.prixDecroissant'), icon: 'arrow-down' },
+        { value: 'price_asc', label: 'Prix croissant', icon: 'arrow-up' },
+        { value: 'price_desc', label: 'Prix décroissant', icon: 'arrow-down' },
         { value: 'distance_asc', label: 'Plus proche', icon: 'map-pin' },
-        { value: 'name_asc', label: t('laboratoireHomeScreen.nomAz'), icon: 'type' },
+        { value: 'name_asc', label: 'Nom (A-Z)', icon: 'type' },
     ];
 
     // Obtenir l'icône du tri courant
@@ -171,7 +171,7 @@ const LaboratoireHomeScreen: React.FC = () => {
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur chargement disponibilité:', err);
-            setError(t('laboratoireHomeScreen.erreurLorsDuChargementDesLaboratoires'));
+            setError('Erreur lors du chargement des laboratoires disponibles');
             setAvailableLaboratories([]);
         } finally {
             setLoading(false);
@@ -200,20 +200,20 @@ const LaboratoireHomeScreen: React.FC = () => {
                 const results = r?.results || r || [];
                 if (Array.isArray(results) && results.length > 0) {
                     setPathologyResults(results);
-                    toaster.success(t('laboratoireHomeScreen.pathologiesTrouvees', { results_length: results.length }));
+                    toaster.success(`${results.length} pathologie(s) trouvée(s)`);
                 } else {
-                    toaster.warning(t('laboratoireHomeScreen.aucunePathologieTrouveeEssayezAvecDautresSymptomes'));
+                    toaster.warning('Aucune pathologie trouvée. Essayez avec d\'autres symptômes.');
                     setPathologyResults([]);
                 }
             } else {
                 const r = response.data as any;
-                const errorMsg = r?.message || response.error || t('laboratoireHomeScreen.liaDeRecherchePathologiqueNestPasEncoreOperationnelle');
+                const errorMsg = r?.message || response.error || 'L\'IA de recherche pathologique n\'est pas encore opérationnelle.';
                 toaster.error(errorMsg);
                 setPathologyResults([]);
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur recherche pathologie:', err);
-            const errorMsg = err.message || err.error || t('laboratoireHome.erreurLorsDeLaRechercheLiaDe')';
+            const errorMsg = err.message || err.error || 'Erreur lors de la recherche. L\'IA de recherche pathologique n\'est peut-être pas encore opérationnelle.';
             toaster.error(errorMsg);
             setPathologyResults([]);
         } finally {
@@ -277,7 +277,7 @@ const LaboratoireHomeScreen: React.FC = () => {
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur sélection image:', err);
-            toaster.error(err.message || t('laboratoireHome.erreurLorsDeLaSelectionDeLimage'));
+            toaster.error(err.message || 'Erreur lors de la sélection de l\'image');
             setLoadingAI(false);
             setImageAnalysis(null);
         }
@@ -289,11 +289,11 @@ const LaboratoireHomeScreen: React.FC = () => {
             t('labHome.chooseSourceMsg'),
             [
                 {
-                    text: t('common.camera'),
+                    text: 'Caméra',
                     onPress: () => handlePickImage('camera'),
                 },
                 {
-                    text: t('common.gallery'),
+                    text: 'Galerie',
                     onPress: () => handlePickImage('gallery'),
                 },
                 {
@@ -312,7 +312,7 @@ const LaboratoireHomeScreen: React.FC = () => {
         try {
             const response = await laboratoryService.analyzeExaminationImage(
                 imageBase64,
-                selectedExamination?.name || t('laboratoireHome.analyseGenerale'),
+                selectedExamination?.name || 'Analyse générale',
                 undefined,
                 undefined
             );
@@ -323,21 +323,21 @@ const LaboratoireHomeScreen: React.FC = () => {
                 const analysis = r?.analysis || r;
                 if (analysis) {
                     setImageAnalysis(analysis);
-                    toaster.success(t('laboratoireHomeScreen.analyseDimageTerminee'));
+                    toaster.success('Analyse d\'image terminée');
                 } else {
-                    const errorMsg = t('laboratoireHomeScreen.impossibleDanalyserLimageLiaDanalyseDimagesNestPeutetre');
+                    const errorMsg = 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
                     toaster.error(errorMsg);
                     setImageAnalysis(null);
                 }
             } else {
                 const r = response.data as any;
-                const errorMsg = r?.message || response.error || t('laboratoireHomeScreen.impossibleDanalyserLimageLiaDanalyseDimagesNestPeutetre');
+                const errorMsg = r?.message || response.error || 'Impossible d\'analyser l\'image. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
                 toaster.error(errorMsg);
                 setImageAnalysis(null);
             }
         } catch (err: any) {
             console.error('[LaboratoireHomeScreen] Erreur analyse image:', err);
-            const errorMsg = err.message || err.error || t('laboratoireHomeScreen.erreurLorsDeLanalyseLiaDanalyseDimagesNest');
+            const errorMsg = err.message || err.error || 'Erreur lors de l\'analyse. L\'IA d\'analyse d\'images n\'est peut-être pas encore opérationnelle.';
             toaster.error(errorMsg);
             setImageAnalysis(null);
         } finally {
@@ -365,7 +365,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>Laboratoires</Text>
-                            <Text style={styles.headerSubtitle}>{t('laboratoireHome.rechercheDexamens')}</Text>
+                            <Text style={styles.headerSubtitle}>Recherche d'examens</Text>
                         </View>
                         <TouchableOpacity
                             onPress={() => {
@@ -385,7 +385,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                             <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder={t('laboratoireHome.rechercherUnExamenExHemogramme')}
+                                placeholder="Rechercher un examen (ex: Hémogramme, Glycémie...)"
                                 placeholderTextColor="#9CA3AF"
                                 value={autocompleteQuery}
                                 onChangeText={(text) => {
@@ -467,7 +467,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                             }}
                         >
                             <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.quickActionText}>{t('laboratoireHome.recherchePathologie')}</Text>
+                            <Text style={styles.quickActionText}>Recherche pathologie</Text>
                         </TouchableOpacity>
                     </View>
                 </LinearGradient>
@@ -489,7 +489,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                             type="lucide"
                         />
                         <Text style={styles.sortButtonText}>
-                            {sortOptions.find(o => o.value === sortBy)?.label || t('laboratoireHome.trier')}
+                            {sortOptions.find(o => o.value === sortBy)?.label || 'Trier'}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -499,7 +499,7 @@ const LaboratoireHomeScreen: React.FC = () => {
             {loading && availableLaboratories.length === 0 ? (
                 <View style={styles.content}>
                     <ActivityIndicator size="large" color="#2563EB" />
-                    <Text style={styles.placeholderText}>{t('laboratoireHome.rechercheDesLaboratoiresDisponibles')}</Text>
+                    <Text style={styles.placeholderText}>Recherche des laboratoires disponibles...</Text>
                 </View>
             ) : availableLaboratories.length > 0 ? (
                 <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -527,7 +527,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                                     {lab.is_available_now && (
                                         <View style={styles.availableBadge}>
                                             <SafeIcon name="check-circle" size={14} color="#10B981" type="lucide" />
-                                            <Text style={styles.availableBadgeText}>{t('laboratoireHome.disponible')}</Text>
+                                            <Text style={styles.availableBadgeText}>Disponible</Text>
                                         </View>
                                     )}
                                 </View>
@@ -549,7 +549,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                                 )}
                                 {lab.distance_km !== undefined && (
                                     <Text style={styles.distanceText}>
-                                        📍 {lab.distance_km.toFixed(1)} km
+                                        \uD83D\uDCCD {lab.distance_km.toFixed(1)} km
                                     </Text>
                                 )}
                                 {/* Actions rapides */}
@@ -579,7 +579,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                                         }}
                                     >
                                         <SafeIcon name="calendar" size={14} color="#3B82F6" type="lucide" />
-                                        <Text style={{ marginLeft: 4, fontSize: 12, color: '#3B82F6', fontWeight: '600' }}>{t('laboratoireHome.reserver')}</Text>
+                                        <Text style={{ marginLeft: 4, fontSize: 12, color: '#3B82F6', fontWeight: '600' }}>Réserver</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F0FDF4', borderRadius: 8, paddingVertical: 8, borderWidth: 1, borderColor: '#BBF7D0' }}
@@ -723,7 +723,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                         <View style={styles.pathologySearchBar}>
                                             <TextInput
                                                 style={styles.pathologyInput}
-                                                placeholder={t('laboratoireHome.exMauxDeTeteFievre')}
+                                                placeholder="Ex: Maux de tête, fièvre, douleurs abdominales..."
                                                 placeholderTextColor="#9CA3AF"
                                                 value={pathologyQuery}
                                                 onChangeText={onPathologyQueryChange}
@@ -776,7 +776,7 @@ const AIModal: React.FC<AIModalProps> = ({
 
                                     {!pathologyQuery.trim() && (
                                         <Text style={styles.pathologyHint}>
-                                            💡 Exemples : "Douleurs thoraciques", t('laboratoireHomeScreen.fievrePersistante'), "Troubles digestifs"
+                                            \uD83D\uDCA1 Exemples : "Douleurs thoraciques", "Fièvre persistante", "Troubles digestifs"
                                         </Text>
                                     )}
                                 </View>
@@ -786,7 +786,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                         <View style={styles.resultsHeader}>
                                             <SafeIcon name="check-circle" size={20} color="#2563EB" type="lucide" />
                                             <Text style={styles.resultsHeaderText}>
-                                                {pathologyResults.length} résultat{pathologyResults.length > 1 ? 's' : 't('laboratoireHomeScreen.trouvepathologyresultslength1')s' : ''}
+                                                {pathologyResults.length} résultat{pathologyResults.length > 1 ? 's' : ''} trouvé{pathologyResults.length > 1 ? 's' : ''}
                                             </Text>
                                         </View>
                                         {pathologyResults.map((result, index) => (
@@ -795,7 +795,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                                 <Text style={styles.pathologyDescription}>{result.description}</Text>
                                                 {result.recommended_examinations.length > 0 && (
                                                     <View style={styles.examsContainer}>
-                                                        <Text style={styles.examsTitle}>{t('laboratoireHome.examensRecommandes')}</Text>
+                                                        <Text style={styles.examsTitle}>Examens recommandés:</Text>
                                                         {result.recommended_examinations.map((exam, i) => (
                                                             <Text key={i} style={styles.examItem}>• {exam}</Text>
                                                         ))}
@@ -818,16 +818,16 @@ const AIModal: React.FC<AIModalProps> = ({
                                     </View>
                                 ) : imageAnalysis ? (
                                     <View style={styles.analysisContainer}>
-                                        <Text style={styles.analysisTitle}>{t('laboratoireHome.resultatsDeLanalyse')}</Text>
-                                        <Text style={styles.interpretation}>{String(imageAnalysis.interpretation || t('laboratoireHome.aucuneInterpretationDisponible'))}</Text>
+                                        <Text style={styles.analysisTitle}>Résultats de l'analyse</Text>
+                                        <Text style={styles.interpretation}>{String(imageAnalysis.interpretation || 'Aucune interprétation disponible')}</Text>
                                         {Array.isArray(imageAnalysis.anomalies_detected) && imageAnalysis.anomalies_detected.length > 0 && (
                                             <View style={styles.anomaliesContainer}>
-                                                <Text style={styles.anomaliesTitle}>{t('laboratoireHome.anomaliesDetectees')}</Text>
+                                                <Text style={styles.anomaliesTitle}>Anomalies détectées:</Text>
                                                 {imageAnalysis.anomalies_detected.map((anomaly, i) => (
                                                     <View key={i} style={styles.anomalyCard}>
-                                                        <Text style={styles.anomalyParameter}>{String(anomaly.parameter || t('laboratoireHome.parametreInconnu'))}</Text>
+                                                        <Text style={styles.anomalyParameter}>{String(anomaly.parameter || 'Paramètre inconnu')}</Text>
                                                         <Text style={styles.anomalyValue}>{String(anomaly.value || 'Valeur inconnue')}</Text>
-                                                        <Text style={styles.anomalyDescription}>{String(anomaly.description || t('laboratoireHome.aucuneDescription'))}</Text>
+                                                        <Text style={styles.anomalyDescription}>{String(anomaly.description || 'Aucune description')}</Text>
                                                     </View>
                                                 ))}
                                             </View>
@@ -842,7 +842,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                         )}
                                         {Array.isArray(imageAnalysis.follow_up_exams) && imageAnalysis.follow_up_exams.length > 0 && (
                                             <View style={styles.followUpContainer}>
-                                                <Text style={styles.followUpTitle}>{t('laboratoireHome.examensComplementairesSuggeres')}</Text>
+                                                <Text style={styles.followUpTitle}>Examens complémentaires suggérés:</Text>
                                                 {imageAnalysis.follow_up_exams.map((exam, i) => (
                                                     <Text key={i} style={styles.followUpItem}>• {String(exam)}</Text>
                                                 ))}
@@ -868,7 +868,7 @@ const AIModal: React.FC<AIModalProps> = ({
                                             onPress={onPickImage}
                                         >
                                             <SafeIcon name="camera" size={18} color="#FFFFFF" type="lucide" />
-                                            <Text style={styles.searchButtonText}>{t('laboratoireHome.selectionnerUneImage')}</Text>
+                                            <Text style={styles.searchButtonText}>Sélectionner une image</Text>
                                         </TouchableOpacity>
                                     </View>
                                 )}

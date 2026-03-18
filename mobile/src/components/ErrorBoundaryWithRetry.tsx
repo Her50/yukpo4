@@ -9,7 +9,6 @@ import * as Sentry from 'sentry-expo';
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface Props {
     children: ReactNode;
@@ -140,10 +139,10 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
                             <SafeIcon name="alert-circle" size={64} color={modernColors.error} />
                         </View>
 
-                        <Text style={styles.title}>{t('errorBoundaryWithRetry.oupsUneErreurSestProduite')}</Text>
+                        <Text style={styles.title}>Oups ! Une erreur s'est produite</Text>
 
                         <Text style={styles.message}>
-                            Lt('errorBoundaryWithRetry.applicationARencontreUneErreurInattenduecanretry')errorBoundaryWithRetry.tentativeDeRecuperationAutomatique') : ''}
+                            L'application a rencontré une erreur inattendue.{canRetry ? ' Tentative de récupération automatique...' : ''}
                         </Text>
 
                         {isRetrying && (
@@ -171,7 +170,7 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
                         <View style={styles.actions}>
                             {canRetry && !isRetrying && (
                                 <NativeButton
-                                    title={t('errorBoundaryWithRetry.reessayerMaintenant')}
+                                    title="\uD83D\uDD04 Réessayer maintenant"
                                     onPress={this.handleManualRetry}
                                     variant="primary"
                                     size="large"
@@ -180,7 +179,7 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
                             )}
 
                             <NativeButton
-                                title={t('errorBoundaryWithRetry.retourAL')}accueil"
+                                title="\uD83C\uDFE0 Retour à l'accueil"
                                 onPress={() => {
                                     // Navigation sera gérée par le parent
                                     this.setState({

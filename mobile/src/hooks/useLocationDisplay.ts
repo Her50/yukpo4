@@ -40,7 +40,7 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
 
     const convertGpsToLocation = useCallback(async (gpsString: string): Promise<string> => {
         try {
-            console.log('🔍 [useLocationDisplay] Conversion GPS:', gpsString);
+            console.log('\uD83D\uDD0D [useLocationDisplay] Conversion GPS:', gpsString);
 
             const [lat, lng] = gpsString.split(',').map(coord => parseFloat(coord.trim()));
 
@@ -49,7 +49,7 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
                 return 'Position non valide';
             }
 
-            console.log('📍 [useLocationDisplay] Coordonnées parsées:', { lat, lng });
+            console.log('\uD83D\uDCCD [useLocationDisplay] Coordonnées parsées:', { lat, lng });
 
             // ✅ CORRIGÉ: Essayer d'abord l'API interne avec apiPost
             try {
@@ -58,11 +58,11 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
                     longitude: lng
                 });
 
-                console.log('🔗 [useLocationDisplay] Statut API interne:', response.success);
+                console.log('\uD83D\uDD17 [useLocationDisplay] Statut API interne:', response.success);
 
                 if (response.success && response.data) {
                     const data = response.data as any;
-                    console.log('📍 [useLocationDisplay] Réponse API interne:', data);
+                    console.log('\uD83D\uDCCD [useLocationDisplay] Réponse API interne:', data);
 
                     // CORRECTION: Filtrer les Plus Codes (format: 2RH9+W2, XXXX+XX, etc.) de manière plus robuste
                     const isPlusCode = (str: string) => {
@@ -105,7 +105,7 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
             }
 
             // Fallback : Utiliser Expo Location pour le géocodage inversé
-            console.log('🌍 [useLocationDisplay] Utilisation Expo Location');
+            console.log('\uD83C\uDF0D [useLocationDisplay] Utilisation Expo Location');
             try {
                 const reverseGeocode = await Location.reverseGeocodeAsync({
                     latitude: lat,
@@ -185,22 +185,22 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
         const countryLower = country.toLowerCase();
 
         // Drapeaux des pays africains et internationaux
-        if (countryLower.includes('cameroun') || countryLower.includes('cameroon')) return '🇨🇲';
-        if (countryLower.includes('nigeria')) return '🇳🇬';
-        if (countryLower.includes('sénégal') || countryLower.includes('senegal')) return '🇸🇳';
-        if (countryLower.includes('côte') || countryLower.includes('ivoire') || countryLower.includes('ivory')) return '🇨🇮';
-        if (countryLower.includes('ghana')) return '🇬🇭';
-        if (countryLower.includes('france')) return '🇫🇷';
-        if (countryLower.includes('togo')) return '🇹🇬';
-        if (countryLower.includes('bénin') || countryLower.includes('benin')) return '🇧🇯';
-        if (countryLower.includes('mali')) return '🇲🇱';
-        if (countryLower.includes('burkina')) return '🇧🇫';
-        if (countryLower.includes('niger')) return '🇳🇪';
-        if (countryLower.includes('tchad') || countryLower.includes('chad')) return '🇹🇩';
-        if (countryLower.includes('gabon')) return '🇬🇦';
-        if (countryLower.includes('congo')) return '🇨🇬';
+        if (countryLower.includes('cameroun') || countryLower.includes('cameroon')) return '\uD83C\uDDE8\uD83C\uDDF2';
+        if (countryLower.includes('nigeria')) return '\uD83C\uDDF3\uD83C\uDDEC';
+        if (countryLower.includes('sénégal') || countryLower.includes('senegal')) return '\uD83C\uDDF8\uD83C\uDDF3';
+        if (countryLower.includes('côte') || countryLower.includes('ivoire') || countryLower.includes('ivory')) return '\uD83C\uDDE8\uD83C\uDDEE';
+        if (countryLower.includes('ghana')) return '\uD83C\uDDEC\uD83C\uDDED';
+        if (countryLower.includes('france')) return '\uD83C\uDDEB\uD83C\uDDF7';
+        if (countryLower.includes('togo')) return '\uD83C\uDDF9\uD83C\uDDEC';
+        if (countryLower.includes('bénin') || countryLower.includes('benin')) return '\uD83C\uDDE7\uD83C\uDDEF';
+        if (countryLower.includes('mali')) return '\uD83C\uDDF2\uD83C\uDDF1';
+        if (countryLower.includes('burkina')) return '\uD83C\uDDE7\uD83C\uDDEB';
+        if (countryLower.includes('niger')) return '\uD83C\uDDF3\uD83C\uDDEA';
+        if (countryLower.includes('tchad') || countryLower.includes('chad')) return '\uD83C\uDDF9\uD83C\uDDE9';
+        if (countryLower.includes('gabon')) return '\uD83C\uDDEC\uD83C\uDDE6';
+        if (countryLower.includes('congo')) return '\uD83C\uDDE8\uD83C\uDDEC';
 
-        return '🌍'; // Icône générique pour pays non reconnu
+        return '\uD83C\uDF0D'; // Icône générique pour pays non reconnu
     };
 
     const extractCountryFromLocation = (location: string): string => {
@@ -246,17 +246,17 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
 
                 // PRIORITÉ 1: GPS fixe du service (coordonnées choisies par le prestataire)
                 const gpsFixe = getFieldValue(service.data?.gps_fixe);
-                console.log('📍 [useLocationDisplay] ==================');
-                console.log('📍 [useLocationDisplay] ANALYSE GPS POUR SERVICE ID:', service.id);
-                console.log('📍 [useLocationDisplay] GPS fixe brut:', service.data?.gps_fixe);
-                console.log('📍 [useLocationDisplay] GPS fixe après getFieldValue:', gpsFixe);
-                console.log('📍 [useLocationDisplay] Type:', typeof gpsFixe);
+                console.log('\uD83D\uDCCD [useLocationDisplay] ==================');
+                console.log('\uD83D\uDCCD [useLocationDisplay] ANALYSE GPS POUR SERVICE ID:', service.id);
+                console.log('\uD83D\uDCCD [useLocationDisplay] GPS fixe brut:', service.data?.gps_fixe);
+                console.log('\uD83D\uDCCD [useLocationDisplay] GPS fixe après getFieldValue:', gpsFixe);
+                console.log('\uD83D\uDCCD [useLocationDisplay] Type:', typeof gpsFixe);
 
                 if (gpsFixe && gpsFixe !== 'Non spécifié' && gpsFixe !== '' && gpsFixe.includes(',')) {
                     // Gérer aussi les zones (polygones avec |)
                     const firstPoint = gpsFixe.split('|')[0]; // Prendre le premier point si c'est une zone
                     const coords = firstPoint.split(',').map(coord => parseFloat(coord.trim()));
-                    console.log('📍 [useLocationDisplay] Coordonnées parsées:', coords);
+                    console.log('\uD83D\uDCCD [useLocationDisplay] Coordonnées parsées:', coords);
 
                     if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
                         coordinates = { lat: coords[0], lng: coords[1] };
@@ -279,7 +279,7 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
                 // PRIORITÉ 2: GPS du service lui-même (champ gps standard)
                 if (!location && service.gps) {
                     const serviceGps = typeof service.gps === 'string' ? service.gps : getFieldValue(service.gps);
-                    console.log('📍 [useLocationDisplay] GPS standard du service:', serviceGps);
+                    console.log('\uD83D\uDCCD [useLocationDisplay] GPS standard du service:', serviceGps);
 
                     if (serviceGps && serviceGps !== 'Non spécifié' && serviceGps.includes(',')) {
                         const firstPoint = serviceGps.split('|')[0];
@@ -298,7 +298,7 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
                 // CORRECTION: C'est le fallback principal avant "Localisation non disponible"
                 if (!location && serviceCreatorInfo) {
                     const creatorGps = getFieldValue(serviceCreatorInfo.gps);
-                    console.log('👤 [useLocationDisplay] GPS EN TEMPS RÉEL du prestataire:', creatorGps);
+                    console.log('\uD83D\uDC64 [useLocationDisplay] GPS EN TEMPS RÉEL du prestataire:', creatorGps);
 
                     if (creatorGps && creatorGps !== 'Non spécifié' && creatorGps.includes(',')) {
                         const firstPoint = creatorGps.split('|')[0];
@@ -352,7 +352,7 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
                 setLocationData({
                     location: 'Localisation non disponible',
                     country: 'Inconnu',
-                    countryFlag: '🌍',
+                    countryFlag: '\uD83C\uDF0D',
                     coordinates: null,
                     source: 'service',
                     isRealTime: false

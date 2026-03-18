@@ -53,7 +53,7 @@ const TopServicesCard: React.FC<TopServicesCardProps> = ({
                     <Text style={styles.title}>{t('topServicesCard.servicesLesPlusPerformants')}</Text>
                 </View>
                 <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyIcon}>💼</Text>
+                    <Text style={styles.emptyIcon}>\uD83D\uDCBC</Text>
                     <Text style={styles.emptyTitle}>{t('topServicesCard.aucunService')}</Text>
                     <Text style={styles.emptyText}>
                         Créez votre premier service pour voir les statistiques de performance
@@ -110,13 +110,13 @@ const TopServicesCard: React.FC<TopServicesCardProps> = ({
 
                             <View style={styles.statsContainer}>
                                 <View style={styles.statItem}>
-                                    <Text style={styles.statIcon}>👁️</Text>
+                                    <Text style={styles.statIcon}>\uD83D\uDC41️</Text>
                                     <Text style={styles.statValue}>{formatNumber(service.views)}</Text>
                                     <Text style={styles.statLabel}>vues</Text>
                                 </View>
 
                                 <View style={styles.statItem}>
-                                    <Text style={styles.statIcon}>💬</Text>
+                                    <Text style={styles.statIcon}>\uD83D\uDCAC</Text>
                                     <Text style={styles.statValue}>{formatNumber(service.interactions)}</Text>
                                     <Text style={styles.statLabel}>interactions</Text>
                                 </View>

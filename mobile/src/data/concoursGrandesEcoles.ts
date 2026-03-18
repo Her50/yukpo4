@@ -23,7 +23,7 @@ export interface DomaineConcoursInfo {
 }
 
 // ============================================================================
-// 🇨🇲 CONCOURS CAMEROUN
+// \uD83C\uDDE8\uD83C\uDDF2 CONCOURS CAMEROUN
 // ============================================================================
 
 const CONCOURS_CAMEROUN: ConcoursInfo[] = [
@@ -35,7 +35,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'administration',
         niveau: 'bac+3',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Culture générale', 'Français', 'Anglais', 'Droit', 'Économie', 'Sciences politiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -47,7 +47,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Physique', 'Chimie', 'Anglais'],
         dureePreparation: '12-24 mois',
         difficulte: 'Très élevée',
@@ -60,7 +60,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Physique', 'Chimie', 'Anglais'],
         dureePreparation: '12-24 mois',
         difficulte: 'Très élevée'
@@ -72,7 +72,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'enseignement',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Physique', 'Chimie', 'SVT', 'Français', 'Anglais', 'Histoire-Géo'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -84,7 +84,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -96,7 +96,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'commerce',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Économie', 'Français', 'Anglais', 'Culture générale'],
         dureePreparation: '6-12 mois',
         difficulte: 'Élevée'
@@ -108,7 +108,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'administration',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Culture générale', 'Anglais', 'Français', 'Sciences politiques', 'Relations internationales'],
         dureePreparation: '6-12 mois',
         difficulte: 'Élevée'
@@ -120,7 +120,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'administration',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Culture générale', 'Français', 'Anglais', 'Sport', 'Tests psychotechniques'],
         dureePreparation: '6 mois',
         difficulte: 'Élevée'
@@ -133,7 +133,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Informatique', 'Logique', 'Anglais'],
         dureePreparation: '6-12 mois',
         difficulte: 'Élevée'
@@ -145,7 +145,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Informatique', 'Physique', 'Anglais'],
         dureePreparation: '6-12 mois',
         difficulte: 'Élevée'
@@ -157,7 +157,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Physique', 'Électronique', 'Anglais'],
         dureePreparation: '12 mois',
         difficulte: 'Très élevée'
@@ -170,7 +170,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'enseignement',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Physique', 'Technologie', 'Mécanique', 'Électronique'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -182,7 +182,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'enseignement',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Physique', 'Technologie', 'Anglais'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -195,7 +195,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Physique', 'Topographie', 'Dessin technique'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -207,7 +207,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Physique', 'Télécommunications', 'Informatique'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -220,7 +220,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'autre',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Statistiques', 'Économie', 'Informatique'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -233,7 +233,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'autre',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Physique', 'Météorologie', 'Anglais'],
         dureePreparation: '12 mois',
         difficulte: 'Très élevée'
@@ -246,7 +246,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Physique', 'Technologie', 'Français'],
         dureePreparation: '6-12 mois',
         difficulte: 'Moyenne'
@@ -258,7 +258,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Physique', 'Technologie'],
         dureePreparation: '6-12 mois',
         difficulte: 'Moyenne'
@@ -270,7 +270,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Cameroun',
-        emojiPays: '🇨🇲',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDF2',
         matieres: ['Mathématiques', 'Physique', 'Informatique', 'Gestion'],
         dureePreparation: '6-12 mois',
         difficulte: 'Moyenne'
@@ -278,7 +278,7 @@ const CONCOURS_CAMEROUN: ConcoursInfo[] = [
 ];
 
 // ============================================================================
-// 🇨🇩 CONCOURS RDC
+// \uD83C\uDDE8\uD83C\uDDE9 CONCOURS RDC
 // ============================================================================
 
 const CONCOURS_RDC: ConcoursInfo[] = [
@@ -289,7 +289,7 @@ const CONCOURS_RDC: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'RDC',
-        emojiPays: '🇨🇩',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDE9',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -301,7 +301,7 @@ const CONCOURS_RDC: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'RDC',
-        emojiPays: '🇨🇩',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDE9',
         matieres: ['Mathématiques', 'Physique', 'Chimie'],
         dureePreparation: '12 mois',
         difficulte: 'Très élevée'
@@ -313,7 +313,7 @@ const CONCOURS_RDC: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'RDC',
-        emojiPays: '🇨🇩',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDE9',
         matieres: ['Mathématiques', 'Physique', 'Chimie'],
         dureePreparation: '12 mois',
         difficulte: 'Très élevée'
@@ -325,7 +325,7 @@ const CONCOURS_RDC: ConcoursInfo[] = [
         type: 'commerce',
         niveau: 'bac',
         pays: 'RDC',
-        emojiPays: '🇨🇩',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDE9',
         matieres: ['Mathématiques', 'Économie', 'Français', 'Anglais'],
         dureePreparation: '6 mois',
         difficulte: 'Élevée'
@@ -337,7 +337,7 @@ const CONCOURS_RDC: ConcoursInfo[] = [
         type: 'administration',
         niveau: 'bac+2',
         pays: 'RDC',
-        emojiPays: '🇨🇩',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDE9',
         matieres: ['Culture générale', 'Droit', 'Économie', 'Sciences politiques', 'Français'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -349,7 +349,7 @@ const CONCOURS_RDC: ConcoursInfo[] = [
         type: 'enseignement',
         niveau: 'bac',
         pays: 'RDC',
-        emojiPays: '🇨🇩',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDE9',
         matieres: ['Mathématiques', 'Physique', 'SVT', 'Français', 'Pédagogie'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -361,7 +361,7 @@ const CONCOURS_RDC: ConcoursInfo[] = [
         type: 'enseignement',
         niveau: 'bac',
         pays: 'RDC',
-        emojiPays: '🇨🇩',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDE9',
         matieres: ['Mathématiques', 'Physique', 'SVT', 'Français', 'Pédagogie'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -369,7 +369,7 @@ const CONCOURS_RDC: ConcoursInfo[] = [
 ];
 
 // ============================================================================
-// 🇨🇮 CONCOURS CÔTE D'IVOIRE
+// \uD83C\uDDE8\uD83C\uDDEE CONCOURS CÔTE D'IVOIRE
 // ============================================================================
 
 const CONCOURS_COTE_IVOIRE: ConcoursInfo[] = [
@@ -380,7 +380,7 @@ const CONCOURS_COTE_IVOIRE: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Côte d\'Ivoire',
-        emojiPays: '🇨🇮',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDEE',
         matieres: ['Mathématiques', 'Physique', 'Chimie', 'SVT', 'Français'],
         dureePreparation: '12-24 mois',
         difficulte: 'Très élevée'
@@ -392,7 +392,7 @@ const CONCOURS_COTE_IVOIRE: ConcoursInfo[] = [
         type: 'enseignement',
         niveau: 'bac',
         pays: 'Côte d\'Ivoire',
-        emojiPays: '🇨🇮',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDEE',
         matieres: ['Mathématiques', 'Physique', 'SVT', 'Français', 'Anglais', 'Histoire-Géo'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -404,7 +404,7 @@ const CONCOURS_COTE_IVOIRE: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Côte d\'Ivoire',
-        emojiPays: '🇨🇮',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDEE',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Français'],
         dureePreparation: '6 mois',
         difficulte: 'Élevée'
@@ -416,7 +416,7 @@ const CONCOURS_COTE_IVOIRE: ConcoursInfo[] = [
         type: 'administration',
         niveau: 'bac+2',
         pays: 'Côte d\'Ivoire',
-        emojiPays: '🇨🇮',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDEE',
         matieres: ['Culture générale', 'Droit', 'Économie', 'Sciences politiques', 'Français', 'Anglais'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -428,7 +428,7 @@ const CONCOURS_COTE_IVOIRE: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Côte d\'Ivoire',
-        emojiPays: '🇨🇮',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDEE',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -440,7 +440,7 @@ const CONCOURS_COTE_IVOIRE: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Côte d\'Ivoire',
-        emojiPays: '🇨🇮',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDEE',
         matieres: ['Mathématiques', 'Physique', 'Chimie', 'Géologie'],
         dureePreparation: '12 mois',
         difficulte: 'Très élevée'
@@ -452,7 +452,7 @@ const CONCOURS_COTE_IVOIRE: ConcoursInfo[] = [
         type: 'commerce',
         niveau: 'bac',
         pays: 'Côte d\'Ivoire',
-        emojiPays: '🇨🇮',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDEE',
         matieres: ['Mathématiques', 'Économie', 'Français', 'Anglais', 'Gestion'],
         dureePreparation: '6-12 mois',
         difficulte: 'Élevée'
@@ -460,7 +460,7 @@ const CONCOURS_COTE_IVOIRE: ConcoursInfo[] = [
 ];
 
 // ============================================================================
-// 🇸🇳 CONCOURS SÉNÉGAL
+// \uD83C\uDDF8\uD83C\uDDF3 CONCOURS SÉNÉGAL
 // ============================================================================
 
 const CONCOURS_SENEGAL: ConcoursInfo[] = [
@@ -471,7 +471,7 @@ const CONCOURS_SENEGAL: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Sénégal',
-        emojiPays: '🇸🇳',
+        emojiPays: '\uD83C\uDDF8\uD83C\uDDF3',
         matieres: ['Mathématiques', 'Physique', 'Chimie', 'Sciences', 'Français'],
         dureePreparation: '12-24 mois',
         difficulte: 'Très élevée'
@@ -483,7 +483,7 @@ const CONCOURS_SENEGAL: ConcoursInfo[] = [
         type: 'enseignement',
         niveau: 'bac',
         pays: 'Sénégal',
-        emojiPays: '🇸🇳',
+        emojiPays: '\uD83C\uDDF8\uD83C\uDDF3',
         matieres: ['Mathématiques', 'Physique', 'SVT', 'Français', 'Anglais', 'Histoire-Géo'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -495,7 +495,7 @@ const CONCOURS_SENEGAL: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Sénégal',
-        emojiPays: '🇸🇳',
+        emojiPays: '\uD83C\uDDF8\uD83C\uDDF3',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -507,7 +507,7 @@ const CONCOURS_SENEGAL: ConcoursInfo[] = [
         type: 'administration',
         niveau: 'bac+2',
         pays: 'Sénégal',
-        emojiPays: '🇸🇳',
+        emojiPays: '\uD83C\uDDF8\uD83C\uDDF3',
         matieres: ['Culture générale', 'Droit', 'Économie', 'Sciences politiques', 'Français', 'Anglais'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -519,7 +519,7 @@ const CONCOURS_SENEGAL: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Sénégal',
-        emojiPays: '🇸🇳',
+        emojiPays: '\uD83C\uDDF8\uD83C\uDDF3',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques', 'SVT'],
         dureePreparation: '12 mois',
         difficulte: 'Très élevée'
@@ -527,7 +527,7 @@ const CONCOURS_SENEGAL: ConcoursInfo[] = [
 ];
 
 // ============================================================================
-// 🇲🇱 CONCOURS MALI
+// \uD83C\uDDF2\uD83C\uDDF1 CONCOURS MALI
 // ============================================================================
 
 const CONCOURS_MALI: ConcoursInfo[] = [
@@ -538,7 +538,7 @@ const CONCOURS_MALI: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Mali',
-        emojiPays: '🇲🇱',
+        emojiPays: '\uD83C\uDDF2\uD83C\uDDF1',
         matieres: ['Mathématiques', 'Physique', 'Chimie', 'Sciences'],
         dureePreparation: '12 mois',
         difficulte: 'Très élevée'
@@ -550,7 +550,7 @@ const CONCOURS_MALI: ConcoursInfo[] = [
         type: 'enseignement',
         niveau: 'bac',
         pays: 'Mali',
-        emojiPays: '🇲🇱',
+        emojiPays: '\uD83C\uDDF2\uD83C\uDDF1',
         matieres: ['Mathématiques', 'Physique', 'SVT', 'Français', 'Histoire-Géo'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -562,7 +562,7 @@ const CONCOURS_MALI: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Mali',
-        emojiPays: '🇲🇱',
+        emojiPays: '\uD83C\uDDF2\uD83C\uDDF1',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -570,7 +570,7 @@ const CONCOURS_MALI: ConcoursInfo[] = [
 ];
 
 // ============================================================================
-// 🇧🇫 CONCOURS BURKINA FASO
+// \uD83C\uDDE7\uD83C\uDDEB CONCOURS BURKINA FASO
 // ============================================================================
 
 const CONCOURS_BURKINA_FASO: ConcoursInfo[] = [
@@ -581,7 +581,7 @@ const CONCOURS_BURKINA_FASO: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Burkina Faso',
-        emojiPays: '🇧🇫',
+        emojiPays: '\uD83C\uDDE7\uD83C\uDDEB',
         matieres: ['Mathématiques', 'Physique', 'Chimie', 'Français', 'Anglais'],
         dureePreparation: '12 mois',
         difficulte: 'Très élevée'
@@ -593,7 +593,7 @@ const CONCOURS_BURKINA_FASO: ConcoursInfo[] = [
         type: 'enseignement',
         niveau: 'bac',
         pays: 'Burkina Faso',
-        emojiPays: '🇧🇫',
+        emojiPays: '\uD83C\uDDE7\uD83C\uDDEB',
         matieres: ['Mathématiques', 'Physique', 'SVT', 'Français', 'Histoire-Géo'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -605,7 +605,7 @@ const CONCOURS_BURKINA_FASO: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Burkina Faso',
-        emojiPays: '🇧🇫',
+        emojiPays: '\uD83C\uDDE7\uD83C\uDDEB',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -613,7 +613,7 @@ const CONCOURS_BURKINA_FASO: ConcoursInfo[] = [
 ];
 
 // ============================================================================
-// 🇧🇯 CONCOURS BÉNIN
+// \uD83C\uDDE7\uD83C\uDDEF CONCOURS BÉNIN
 // ============================================================================
 
 const CONCOURS_BENIN: ConcoursInfo[] = [
@@ -624,7 +624,7 @@ const CONCOURS_BENIN: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Bénin',
-        emojiPays: '🇧🇯',
+        emojiPays: '\uD83C\uDDE7\uD83C\uDDEF',
         matieres: ['Mathématiques', 'Physique', 'Chimie', 'Français'],
         dureePreparation: '12 mois',
         difficulte: 'Très élevée'
@@ -636,7 +636,7 @@ const CONCOURS_BENIN: ConcoursInfo[] = [
         type: 'enseignement',
         niveau: 'bac',
         pays: 'Bénin',
-        emojiPays: '🇧🇯',
+        emojiPays: '\uD83C\uDDE7\uD83C\uDDEF',
         matieres: ['Mathématiques', 'Physique', 'SVT', 'Français', 'Histoire-Géo'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -648,7 +648,7 @@ const CONCOURS_BENIN: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Bénin',
-        emojiPays: '🇧🇯',
+        emojiPays: '\uD83C\uDDE7\uD83C\uDDEF',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -656,7 +656,7 @@ const CONCOURS_BENIN: ConcoursInfo[] = [
 ];
 
 // ============================================================================
-// 🇹🇬 CONCOURS TOGO
+// \uD83C\uDDF9\uD83C\uDDEC CONCOURS TOGO
 // ============================================================================
 
 const CONCOURS_TOGO: ConcoursInfo[] = [
@@ -667,7 +667,7 @@ const CONCOURS_TOGO: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Togo',
-        emojiPays: '🇹🇬',
+        emojiPays: '\uD83C\uDDF9\uD83C\uDDEC',
         matieres: ['Mathématiques', 'Physique', 'Chimie'],
         dureePreparation: '12 mois',
         difficulte: 'Très élevée'
@@ -679,7 +679,7 @@ const CONCOURS_TOGO: ConcoursInfo[] = [
         type: 'enseignement',
         niveau: 'bac',
         pays: 'Togo',
-        emojiPays: '🇹🇬',
+        emojiPays: '\uD83C\uDDF9\uD83C\uDDEC',
         matieres: ['Mathématiques', 'Physique', 'SVT', 'Français', 'Histoire-Géo'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -691,7 +691,7 @@ const CONCOURS_TOGO: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Togo',
-        emojiPays: '🇹🇬',
+        emojiPays: '\uD83C\uDDF9\uD83C\uDDEC',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -699,7 +699,7 @@ const CONCOURS_TOGO: ConcoursInfo[] = [
 ];
 
 // ============================================================================
-// 🇬🇦 CONCOURS GABON
+// \uD83C\uDDEC\uD83C\uDDE6 CONCOURS GABON
 // ============================================================================
 
 const CONCOURS_GABON: ConcoursInfo[] = [
@@ -710,7 +710,7 @@ const CONCOURS_GABON: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Gabon',
-        emojiPays: '🇬🇦',
+        emojiPays: '\uD83C\uDDEC\uD83C\uDDE6',
         matieres: ['Mathématiques', 'Physique', 'Chimie'],
         dureePreparation: '12 mois',
         difficulte: 'Très élevée'
@@ -722,7 +722,7 @@ const CONCOURS_GABON: ConcoursInfo[] = [
         type: 'enseignement',
         niveau: 'bac',
         pays: 'Gabon',
-        emojiPays: '🇬🇦',
+        emojiPays: '\uD83C\uDDEC\uD83C\uDDE6',
         matieres: ['Mathématiques', 'Physique', 'SVT', 'Français', 'Histoire-Géo'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -734,7 +734,7 @@ const CONCOURS_GABON: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Gabon',
-        emojiPays: '🇬🇦',
+        emojiPays: '\uD83C\uDDEC\uD83C\uDDE6',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -742,7 +742,7 @@ const CONCOURS_GABON: ConcoursInfo[] = [
 ];
 
 // ============================================================================
-// 🇨🇬 CONCOURS CONGO-BRAZZAVILLE
+// \uD83C\uDDE8\uD83C\uDDEC CONCOURS CONGO-BRAZZAVILLE
 // ============================================================================
 
 const CONCOURS_CONGO: ConcoursInfo[] = [
@@ -753,7 +753,7 @@ const CONCOURS_CONGO: ConcoursInfo[] = [
         type: 'enseignement',
         niveau: 'bac',
         pays: 'Congo-Brazzaville',
-        emojiPays: '🇨🇬',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDEC',
         matieres: ['Mathématiques', 'Physique', 'SVT', 'Français', 'Histoire-Géo'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -765,7 +765,7 @@ const CONCOURS_CONGO: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Congo-Brazzaville',
-        emojiPays: '🇨🇬',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDEC',
         matieres: ['Mathématiques', 'Physique', 'Chimie'],
         dureePreparation: '12 mois',
         difficulte: 'Très élevée'
@@ -777,7 +777,7 @@ const CONCOURS_CONGO: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Congo-Brazzaville',
-        emojiPays: '🇨🇬',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDEC',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -785,7 +785,7 @@ const CONCOURS_CONGO: ConcoursInfo[] = [
 ];
 
 // ============================================================================
-// 🇲🇬 CONCOURS MADAGASCAR
+// \uD83C\uDDF2\uD83C\uDDEC CONCOURS MADAGASCAR
 // ============================================================================
 
 const CONCOURS_MADAGASCAR: ConcoursInfo[] = [
@@ -797,7 +797,7 @@ const CONCOURS_MADAGASCAR: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Madagascar',
-        emojiPays: '🇲🇬',
+        emojiPays: '\uD83C\uDDF2\uD83C\uDDEC',
         matieres: ['Mathématiques', 'Physique', 'Chimie', 'Français'],
         dureePreparation: '12-18 mois',
         difficulte: 'Très élevée'
@@ -809,7 +809,7 @@ const CONCOURS_MADAGASCAR: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Madagascar',
-        emojiPays: '🇲🇬',
+        emojiPays: '\uD83C\uDDF2\uD83C\uDDEC',
         matieres: ['Mathématiques', 'Informatique', 'Physique', 'Français'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -822,7 +822,7 @@ const CONCOURS_MADAGASCAR: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Madagascar',
-        emojiPays: '🇲🇬',
+        emojiPays: '\uD83C\uDDF2\uD83C\uDDEC',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -835,7 +835,7 @@ const CONCOURS_MADAGASCAR: ConcoursInfo[] = [
         type: 'commerce',
         niveau: 'bac',
         pays: 'Madagascar',
-        emojiPays: '🇲🇬',
+        emojiPays: '\uD83C\uDDF2\uD83C\uDDEC',
         matieres: ['Mathématiques', 'Économie', 'Français', 'Anglais'],
         dureePreparation: '6-12 mois',
         difficulte: 'Élevée'
@@ -848,14 +848,14 @@ const CONCOURS_MADAGASCAR: ConcoursInfo[] = [
         type: 'enseignement',
         niveau: 'bac',
         pays: 'Madagascar',
-        emojiPays: '🇲🇬',
+        emojiPays: '\uD83C\uDDF2\uD83C\uDDEC',
         matieres: ['Mathématiques', 'Physique', 'SVT', 'Français', 'Histoire-Géo'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
     }
 ];
 
-// 🇨🇫 CONCOURS CENTRAFRIQUE
+// \uD83C\uDDE8\uD83C\uDDEB CONCOURS CENTRAFRIQUE
 // ============================================================================
 
 const CONCOURS_CENTRAFRIQUE: ConcoursInfo[] = [
@@ -867,7 +867,7 @@ const CONCOURS_CENTRAFRIQUE: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Centrafrique',
-        emojiPays: '🇨🇫',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDEB',
         matieres: ['Mathématiques', 'Physique', 'Informatique', 'Français'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -880,14 +880,14 @@ const CONCOURS_CENTRAFRIQUE: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Centrafrique',
-        emojiPays: '🇨🇫',
+        emojiPays: '\uD83C\uDDE8\uD83C\uDDEB',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
     }
 ];
 
-// 🇹🇩 CONCOURS TCHAD
+// \uD83C\uDDF9\uD83C\uDDE9 CONCOURS TCHAD
 // ============================================================================
 
 const CONCOURS_TCHAD: ConcoursInfo[] = [
@@ -899,7 +899,7 @@ const CONCOURS_TCHAD: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Tchad',
-        emojiPays: '🇹🇩',
+        emojiPays: '\uD83C\uDDF9\uD83C\uDDE9',
         matieres: ['Mathématiques', 'Physique', 'Informatique', 'Français'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -912,14 +912,14 @@ const CONCOURS_TCHAD: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Tchad',
-        emojiPays: '🇹🇩',
+        emojiPays: '\uD83C\uDDF9\uD83C\uDDE9',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
     }
 ];
 
-// 🇳🇪 CONCOURS NIGER
+// \uD83C\uDDF3\uD83C\uDDEA CONCOURS NIGER
 // ============================================================================
 
 const CONCOURS_NIGER: ConcoursInfo[] = [
@@ -931,7 +931,7 @@ const CONCOURS_NIGER: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Niger',
-        emojiPays: '🇳🇪',
+        emojiPays: '\uD83C\uDDF3\uD83C\uDDEA',
         matieres: ['Mathématiques', 'Physique', 'Informatique', 'Français'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -944,14 +944,14 @@ const CONCOURS_NIGER: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Niger',
-        emojiPays: '🇳🇪',
+        emojiPays: '\uD83C\uDDF3\uD83C\uDDEA',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
     }
 ];
 
-// 🇬🇼 CONCOURS GUINÉE-BISSAU
+// \uD83C\uDDEC\uD83C\uDDFC CONCOURS GUINÉE-BISSAU
 // ============================================================================
 
 const CONCOURS_GUINEE_BISSAU: ConcoursInfo[] = [
@@ -963,14 +963,14 @@ const CONCOURS_GUINEE_BISSAU: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Guinée-Bissau',
-        emojiPays: '🇬🇼',
+        emojiPays: '\uD83C\uDDEC\uD83C\uDDFC',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
     }
 ];
 
-// 🇲🇷 CONCOURS MAURITANIE
+// \uD83C\uDDF2\uD83C\uDDF7 CONCOURS MAURITANIE
 // ============================================================================
 
 const CONCOURS_MAURITANIE: ConcoursInfo[] = [
@@ -982,7 +982,7 @@ const CONCOURS_MAURITANIE: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac',
         pays: 'Mauritanie',
-        emojiPays: '🇲🇷',
+        emojiPays: '\uD83C\uDDF2\uD83C\uDDF7',
         matieres: ['Mathématiques', 'Physique', 'Informatique', 'Français'],
         dureePreparation: '12 mois',
         difficulte: 'Élevée'
@@ -995,7 +995,7 @@ const CONCOURS_MAURITANIE: ConcoursInfo[] = [
         type: 'medecine',
         niveau: 'bac',
         pays: 'Mauritanie',
-        emojiPays: '🇲🇷',
+        emojiPays: '\uD83C\uDDF2\uD83C\uDDF7',
         matieres: ['Biologie', 'Chimie', 'Physique', 'Mathématiques'],
         dureePreparation: '6-12 mois',
         difficulte: 'Très élevée'
@@ -1003,7 +1003,7 @@ const CONCOURS_MAURITANIE: ConcoursInfo[] = [
 ];
 
 // ============================================================================
-// 🌍 CONCOURS INTERNATIONAUX / PANAFRICAINS
+// \uD83C\uDF0D CONCOURS INTERNATIONAUX / PANAFRICAINS
 // ============================================================================
 
 const CONCOURS_INTERNATIONAUX: ConcoursInfo[] = [
@@ -1014,7 +1014,7 @@ const CONCOURS_INTERNATIONAUX: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac+2',
         pays: 'France',
-        emojiPays: '🇫🇷',
+        emojiPays: '\uD83C\uDDEB\uD83C\uDDF7',
         matieres: ['Mathématiques', 'Physique', 'Chimie', 'Français', 'Anglais', 'SI (Sciences Industrielles)'],
         dureePreparation: '24-36 mois',
         difficulte: 'Très élevée'
@@ -1026,7 +1026,7 @@ const CONCOURS_INTERNATIONAUX: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac+2',
         pays: 'France',
-        emojiPays: '🇫🇷',
+        emojiPays: '\uD83C\uDDEB\uD83C\uDDF7',
         matieres: ['Mathématiques', 'Physique', 'Chimie', 'Français', 'Anglais'],
         dureePreparation: '24 mois',
         difficulte: 'Très élevée'
@@ -1038,7 +1038,7 @@ const CONCOURS_INTERNATIONAUX: ConcoursInfo[] = [
         type: 'ingenieur',
         niveau: 'bac+2',
         pays: 'France',
-        emojiPays: '🇫🇷',
+        emojiPays: '\uD83C\uDDEB\uD83C\uDDF7',
         matieres: ['Mathématiques', 'Physique', 'Chimie', 'SI'],
         dureePreparation: '24 mois',
         difficulte: 'Très élevée'
@@ -1050,7 +1050,7 @@ const CONCOURS_INTERNATIONAUX: ConcoursInfo[] = [
         type: 'commerce',
         niveau: 'bac+2',
         pays: 'France',
-        emojiPays: '🇫🇷',
+        emojiPays: '\uD83C\uDDEB\uD83C\uDDF7',
         matieres: ['Mathématiques', 'Culture générale', 'Économie', 'Langues', 'Géopolitique'],
         dureePreparation: '24 mois',
         difficulte: 'Très élevée'
@@ -1062,7 +1062,7 @@ const CONCOURS_INTERNATIONAUX: ConcoursInfo[] = [
         type: 'commerce',
         niveau: 'bac+2',
         pays: 'France',
-        emojiPays: '🇫🇷',
+        emojiPays: '\uD83C\uDDEB\uD83C\uDDF7',
         matieres: ['Mathématiques', 'Culture générale', 'Économie', 'Langues'],
         dureePreparation: '24 mois',
         difficulte: 'Très élevée'
@@ -1124,7 +1124,7 @@ export const genererListeConcours = (codePays: string = 'CM'): string[] => {
     const concours: string[] = [];
 
     // ════════════════════════════════════════════════════════════
-    // 🎯 CONCOURS DU PAYS (PRIORITÉ)
+    // \uD83C\uDFAF CONCOURS DU PAYS (PRIORITÉ)
     // ════════════════════════════════════════════════════════════
     const concoursPays = TOUS_LES_CONCOURS.filter(c =>
         c.emojiPays.includes(codePays) ||
@@ -1153,36 +1153,36 @@ export const genererListeConcours = (codePays: string = 'CM'): string[] => {
         };
 
         if (parType.ingenieur.length > 0) {
-            concours.push('─── 🔧 Écoles d\'Ingénieurs ───');
+            concours.push('─── \uD83D\uDD27 Écoles d\'Ingénieurs ───');
             parType.ingenieur.forEach(c => concours.push(`${c.emojiPays} ${c.nom} - ${c.nomComplet}`));
         }
 
         if (parType.medecine.length > 0) {
-            concours.push('─── 🩺 Médecine & Santé ───');
+            concours.push('─── \uD83E\uDE7A Médecine & Santé ───');
             parType.medecine.forEach(c => concours.push(`${c.emojiPays} ${c.nom} - ${c.nomComplet}`));
         }
 
         if (parType.enseignement.length > 0) {
-            concours.push('─── 🎓 Écoles Normales (Enseignement) ───');
+            concours.push('─── \uD83C\uDF93 Écoles Normales (Enseignement) ───');
             parType.enseignement.forEach(c => concours.push(`${c.emojiPays} ${c.nom} - ${c.nomComplet}`));
         }
 
         if (parType.administration.length > 0) {
-            concours.push('─── 🏛️ Administration & Magistrature ───');
+            concours.push('─── \uD83C\uDFDB️ Administration & Magistrature ───');
             parType.administration.forEach(c => concours.push(`${c.emojiPays} ${c.nom} - ${c.nomComplet}`));
         }
 
         if (parType.commerce.length > 0) {
-            concours.push('─── 💼 Commerce & Gestion ───');
+            concours.push('─── \uD83D\uDCBC Commerce & Gestion ───');
             parType.commerce.forEach(c => concours.push(`${c.emojiPays} ${c.nom} - ${c.nomComplet}`));
         }
     }
 
     // ════════════════════════════════════════════════════════════
-    // 🌍 CONCOURS INTERNATIONAUX (France, Canada...)
+    // \uD83C\uDF0D CONCOURS INTERNATIONAUX (France, Canada...)
     // ════════════════════════════════════════════════════════════
     concours.push('──────────────────────────');
-    concours.push('─── 🇫🇷 GRANDES ÉCOLES FRANÇAISES ───');
+    concours.push('─── \uD83C\uDDEB\uD83C\uDDF7 GRANDES ÉCOLES FRANÇAISES ───');
 
     CONCOURS_INTERNATIONAUX.forEach(c => {
         concours.push(`${c.emojiPays} ${c.nom} - ${c.nomComplet}`);
@@ -1192,9 +1192,9 @@ export const genererListeConcours = (codePays: string = 'CM'): string[] => {
     // OPTIONS SPÉCIALES
     // ════════════════════════════════════════════════════════════
     concours.push('──────────────────────────');
-    concours.push('🎯 Préparation concours généraux (toutes écoles)');
-    concours.push('📚 Méthodologie concours (toutes filières)');
-    concours.push('🆕 Autre concours (préciser)');
+    concours.push('\uD83C\uDFAF Préparation concours généraux (toutes écoles)');
+    concours.push('\uD83D\uDCDA Méthodologie concours (toutes filières)');
+    concours.push('\uD83C\uDD95 Autre concours (préciser)');
 
     return concours;
 };
@@ -1208,7 +1208,7 @@ export const genererMatieresPreparationConcours = (codePays: string = 'CM', type
     // ════════════════════════════════════════════════════════════
     // MATIÈRES SCIENTIFIQUES (Ingénieurs, Médecine, Polytechniques)
     // ════════════════════════════════════════════════════════════
-    matieres.push('─── 🔬 MATIÈRES SCIENTIFIQUES ───');
+    matieres.push('─── \uD83D\uDD2C MATIÈRES SCIENTIFIQUES ───');
     matieres.push('Mathématiques (algèbre, analyse, géométrie)');
     matieres.push('Mathématiques supérieures (prépa)');
     matieres.push('Physique (mécanique, thermodynamique, électricité)');
@@ -1222,7 +1222,7 @@ export const genererMatieresPreparationConcours = (codePays: string = 'CM', type
     // ════════════════════════════════════════════════════════════
     // MATIÈRES LITTÉRAIRES & LANGUES
     // ════════════════════════════════════════════════════════════
-    matieres.push('─── 📖 MATIÈRES LITTÉRAIRES ───');
+    matieres.push('─── \uD83D\uDCD6 MATIÈRES LITTÉRAIRES ───');
     matieres.push('Français (dissertation, résumé, synthèse)');
     matieres.push('Français avancé (commentaire, analyse)');
     matieres.push('Anglais (grammaire, vocabulaire, compréhension)');
@@ -1234,7 +1234,7 @@ export const genererMatieresPreparationConcours = (codePays: string = 'CM', type
     // ════════════════════════════════════════════════════════════
     // SCIENCES HUMAINES & SOCIALES
     // ════════════════════════════════════════════════════════════
-    matieres.push('─── 🌍 SCIENCES HUMAINES ───');
+    matieres.push('─── \uD83C\uDF0D SCIENCES HUMAINES ───');
     matieres.push('Histoire-Géographie');
     matieres.push('Sciences politiques');
     matieres.push('Géopolitique');
@@ -1246,7 +1246,7 @@ export const genererMatieresPreparationConcours = (codePays: string = 'CM', type
     // ════════════════════════════════════════════════════════════
     // MATIÈRES SPÉCIALISÉES CONCOURS
     // ════════════════════════════════════════════════════════════
-    matieres.push('─── 🎯 PRÉPARATION SPÉCIALISÉE ───');
+    matieres.push('─── \uD83C\uDFAF PRÉPARATION SPÉCIALISÉE ───');
     matieres.push('Tests psychotechniques');
     matieres.push('Tests de logique & raisonnement');
     matieres.push('QCM (Questions à Choix Multiples)');
@@ -1260,9 +1260,9 @@ export const genererMatieresPreparationConcours = (codePays: string = 'CM', type
     // OPTIONS SPÉCIALES
     // ════════════════════════════════════════════════════════════
     matieres.push('──────────────────────────');
-    matieres.push('📚 Préparation complète (toutes matières)');
-    matieres.push('🎯 Méthodologie générale concours');
-    matieres.push('🆕 Autre matière (préciser)');
+    matieres.push('\uD83D\uDCDA Préparation complète (toutes matières)');
+    matieres.push('\uD83C\uDFAF Méthodologie générale concours');
+    matieres.push('\uD83C\uDD95 Autre matière (préciser)');
 
     return matieres;
 };
@@ -1280,20 +1280,20 @@ export const getMatieresConcours = (codeConcours: string): string[] => {
  */
 export const getTypesConcours = (): string[] => {
     return [
-        '🔧 Écoles d\'Ingénieurs (Polytechnique, Mines, etc.)',
-        '🩺 Médecine, Pharmacie & Santé',
-        '🎓 Écoles Normales Supérieures (ENS - Enseignement)',
-        '🏛️ Écoles d\'Administration (ENA, ENAM, Magistrature)',
-        '💼 Écoles de Commerce (HEC, ESSEC, etc.)',
+        '\uD83D\uDD27 Écoles d\'Ingénieurs (Polytechnique, Mines, etc.)',
+        '\uD83E\uDE7A Médecine, Pharmacie & Santé',
+        '\uD83C\uDF93 Écoles Normales Supérieures (ENS - Enseignement)',
+        '\uD83C\uDFDB️ Écoles d\'Administration (ENA, ENAM, Magistrature)',
+        '\uD83D\uDCBC Écoles de Commerce (HEC, ESSEC, etc.)',
         '⚖️ Concours de la Magistrature',
-        '👮 Concours Police & Gendarmerie',
-        '🌾 Écoles d\'Agronomie & Vétérinaire',
-        '🎨 Écoles d\'Arts & Architecture',
-        '📰 Écoles de Journalisme & Communication',
+        '\uD83D\uDC6E Concours Police & Gendarmerie',
+        '\uD83C\uDF3E Écoles d\'Agronomie & Vétérinaire',
+        '\uD83C\uDFA8 Écoles d\'Arts & Architecture',
+        '\uD83D\uDCF0 Écoles de Journalisme & Communication',
         '✈️ Aviation & Aéronautique',
         '⚓ Marine & Naval',
-        '🌍 Concours internationaux (France, Canada, Belgique)',
-        '🆕 Autre type de concours'
+        '\uD83C\uDF0D Concours internationaux (France, Canada, Belgique)',
+        '\uD83C\uDD95 Autre type de concours'
     ];
 };
 
@@ -1302,18 +1302,18 @@ export const getTypesConcours = (): string[] => {
  */
 export const getNiveauxPreparationConcours = (): string[] => {
     return [
-        '─── 📚 NIVEAU BAC (après Terminale) ───',
+        '─── \uD83D\uDCDA NIVEAU BAC (après Terminale) ───',
         'Préparation intensive (3-6 mois)',
         'Préparation longue (12 mois)',
         'Préparation très longue (18-24 mois)',
 
-        '─── 🎓 NIVEAU BAC+2 (Classes Prépa) ───',
+        '─── \uD83C\uDF93 NIVEAU BAC+2 (Classes Prépa) ───',
         'Prépa Maths Sup / Maths Spé (MPSI, PCSI)',
         'Prépa Commerciales (ECE, ECS)',
         'Prépa Littéraires (Khâgne, Hypokhâgne)',
         'Prépa Biologie (BCPST)',
 
-        '─── 🏆 NIVEAU BAC+3/+5 ───',
+        '─── \uD83C\uDFC6 NIVEAU BAC+3/+5 ───',
         'Préparation Master / Doctorat',
         'Préparation concours professionnels',
 
@@ -1323,7 +1323,7 @@ export const getNiveauxPreparationConcours = (): string[] => {
         'Cours particuliers sur mesure',
         'Formation en ligne / à distance',
 
-        '🆕 Autre format'
+        '\uD83C\uDD95 Autre format'
     ];
 };
 
@@ -1334,27 +1334,27 @@ export const getConcoursParDomaine = (): DomaineConcoursInfo[] => {
     return [
         {
             domaine: 'Écoles d\'Ingénieurs',
-            icon: '🔧',
+            icon: '\uD83D\uDD27',
             concours: TOUS_LES_CONCOURS.filter(c => c.type === 'ingenieur')
         },
         {
             domaine: 'Médecine & Santé',
-            icon: '🩺',
+            icon: '\uD83E\uDE7A',
             concours: TOUS_LES_CONCOURS.filter(c => c.type === 'medecine')
         },
         {
             domaine: 'Écoles Normales (Enseignement)',
-            icon: '🎓',
+            icon: '\uD83C\uDF93',
             concours: TOUS_LES_CONCOURS.filter(c => c.type === 'enseignement')
         },
         {
             domaine: 'Administration & ENA',
-            icon: '🏛️',
+            icon: '\uD83C\uDFDB️',
             concours: TOUS_LES_CONCOURS.filter(c => c.type === 'administration')
         },
         {
             domaine: 'Commerce & Gestion',
-            icon: '💼',
+            icon: '\uD83D\uDCBC',
             concours: TOUS_LES_CONCOURS.filter(c => c.type === 'commerce')
         },
     ];

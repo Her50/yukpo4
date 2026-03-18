@@ -534,7 +534,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         }
     };
 
-    const popularEmojis = ['😊', '😂', '❤️', '👍', '👎', '😍', '🤔', '😢', '😮', '🔥', '💯', '🎉', '👏', '🙏', '💪'];
+    const popularEmojis = ['\uD83D\uDE0A', '\uD83D\uDE02', '❤️', '\uD83D\uDC4D', '\uD83D\uDC4E', '\uD83D\uDE0D', '\uD83E\uDD14', '\uD83D\uDE22', '\uD83D\uDE2E', '\uD83D\uDD25', '\uD83D\uDCAF', '\uD83C\uDF89', '\uD83D\uDC4F', '\uD83D\uDE4F', '\uD83D\uDCAA'];
 
     // Fonction pour convertir fichier en base64 (React Native compatible)
     const convertFileToBase64 = async (uri: string): Promise<string> => {
@@ -953,7 +953,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
                                             // ✅ DEBUG: Logger pour diagnostiquer
                                             if (__DEV__) {
-                                                console.log('[ChatModalMobile] 📱 WhatsApp message debug:', {
+                                                console.log('[ChatModalMobile] \uD83D\uDCF1 WhatsApp message debug:', {
                                                     nomPrestataire,
                                                     serviceName,
                                                     nameInService,
@@ -1115,9 +1115,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                     </Text>
                                                     <Text style={styles.quotedMessageText} numberOfLines={2}>
                                                         {message.reply_to.content_type === 'text' ? message.reply_to.content : null}
-                                                        {message.reply_to.content_type === 'audio' ? '🎤 Message audio' : null}
-                                                        {message.reply_to.content_type === 'image' ? '🖼️ Image' : null}
-                                                        {message.reply_to.content_type === 'file' ? '📄 Fichier' : null}
+                                                        {message.reply_to.content_type === 'audio' ? '\uD83C\uDFA4 Message audio' : null}
+                                                        {message.reply_to.content_type === 'image' ? '\uD83D\uDDBC️ Image' : null}
+                                                        {message.reply_to.content_type === 'file' ? '\uD83D\uDCC4 Fichier' : null}
                                                         {message.reply_to.content_type === 'video' ? t('chatModalMobile.video') : null}
                                                     </Text>
                                                 </View>
@@ -1125,7 +1125,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         )}
 
                                         {/* Afficher le texte pour les messages texte ou avec le texte */}
-                                        {(message.type === 'text' || (message.content && !message.content.match(/^[📷🎤📎]/))) && (
+                                        {(message.type === 'text' || (message.content && !message.content.match(/^[\uD83D\uDCF7\uD83C\uDFA4\uD83D\uDCCE]/))) && (
                                             <LinkableText
                                                 text={message.content}
                                                 style={[
@@ -1576,9 +1576,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 </View>
                                 <Text style={styles.replyText} numberOfLines={2}>
                                     {replyingTo.content_type === 'text' ? replyingTo.content : null}
-                                    {replyingTo.content_type === 'audio' ? '🎤 Message audio' : null}
-                                    {replyingTo.content_type === 'image' ? '🖼️ Image' : null}
-                                    {replyingTo.content_type === 'file' ? '📄 Fichier' : null}
+                                    {replyingTo.content_type === 'audio' ? '\uD83C\uDFA4 Message audio' : null}
+                                    {replyingTo.content_type === 'image' ? '\uD83D\uDDBC️ Image' : null}
+                                    {replyingTo.content_type === 'file' ? '\uD83D\uDCC4 Fichier' : null}
                                     {replyingTo.content_type === 'video' ? t('chatModalMobile.video') : null}
                                 </Text>
                             </View>
@@ -1614,7 +1614,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             onSelectionChange={(event) => {
                                 setCursorPosition(event.nativeEvent.selection.start);
                             }}
-                            placeholder={replyingTo ? t('chatModalMobile.tapezVotreReponse') : "Tapez votre message... (@ pour mentionner, 🤖 pour l'aide)"}
+                            placeholder={replyingTo ? t('chatModalMobile.tapezVotreReponse') : "Tapez votre message... (@ pour mentionner, \uD83E\uDD16 pour l'aide)"}
                             placeholderTextColor={modernColors.textSecondary}
                             multiline
                             maxLength={500}
@@ -1764,7 +1764,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     <View style={styles.participantsContainer}>
                         <View style={styles.participantsHeader}>
                             <Text style={styles.participantsTitle}>
-                                👥 Participants ({participants.length})
+                                \uD83D\uDC65 Participants ({participants.length})
                             </Text>
                             <TouchableOpacity onPress={() => setShowParticipantsList(false)}>
                                 <SafeIcon name="x" size={24} color={modernColors.text} />
@@ -1798,7 +1798,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             <Text style={styles.participantName}>{participant.user_name}</Text>
                                             <Text style={styles.participantRole}>
                                                 {participant.role === 'owner' ? t('chatModalMobile.proprietaire') :
-                                                    participant.invited_by ? t('chatModalMobile.invite') : '👥 Participant'}
+                                                    participant.invited_by ? t('chatModalMobile.invite') : '\uD83D\uDC65 Participant'}
                                             </Text>
                                         </View>
                                     </View>

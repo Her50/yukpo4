@@ -224,7 +224,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
         <SafeNativeView style={styles.container}>
             <LinearGradient colors={modernColors.primaryGradient} style={styles.header}>
                 <View style={styles.headerContent}>
-                    <Text style={styles.headerTitle}>🔥 Configuration Black Friday</Text>
+                    <Text style={styles.headerTitle}>\uD83D\uDD25 Configuration Black Friday</Text>
                     <Text style={styles.headerSubtitle}>{t('globalPromoManager.gestionDesCampagnesGlobales')}</Text>
                 </View>
             </LinearGradient>

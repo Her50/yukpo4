@@ -29,7 +29,7 @@ import PharmacieResultCard from '../specialized/PharmacieResultCard';
 import SafeIcon from '../SafeIcon';
 import SwipeableProductCard from '../SwipeableProductCard';
 import TaxiResultCard from '../specialized/TaxiResultCard';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 

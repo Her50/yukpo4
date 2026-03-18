@@ -128,7 +128,7 @@ const GlobalPromoCatalogScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Text style={styles.backButtonText}>{t('globalPromoCatalog.retour')}</Text>
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>🛍️ Black Friday</Text>
+                <Text style={styles.headerTitle}>\uD83D\uDECD️ Black Friday</Text>
                 <View style={styles.placeholder} />
             </View>
 

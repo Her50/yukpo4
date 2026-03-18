@@ -231,7 +231,7 @@ export async function generateMenuHTML(menuData: MenuPdfData): Promise<string> {
     <div class="menu-container">
         <!-- Header -->
         <div class="menu-header">
-            <div class="menu-title">🍽️ MENU DE LA SEMAINE</div>
+            <div class="menu-title">\uD83C\uDF7D️ MENU DE LA SEMAINE</div>
             <div class="menu-subtitle">Planification des repas</div>
             <div class="menu-period">
                 ${new Date(menuData.weekStart).toLocaleDateString('fr-FR', {
@@ -252,11 +252,11 @@ export async function generateMenuHTML(menuData: MenuPdfData): Promise<string> {
             ${menuData.familyProfile ? `
             <div class="info-section">
                 <div class="info-item">
-                    <div class="info-label">👥 Membres</div>
+                    <div class="info-label">\uD83D\uDC65 Membres</div>
                     <div class="info-value">${menuData.familyProfile.total_members}</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">💰 Budget Total</div>
+                    <div class="info-label">\uD83D\uDCB0 Budget Total</div>
                     <div class="info-value">${menuData.totalCost.toLocaleString('fr-FR')} ${currency}</div>
                 </div>
             </div>
@@ -267,8 +267,8 @@ export async function generateMenuHTML(menuData: MenuPdfData): Promise<string> {
                 <thead>
                     <tr>
                         <th>Jour</th>
-                        <th>🌅 Petit-déjeuner</th>
-                        <th>🍽️ Repas</th>
+                        <th>\uD83C\uDF05 Petit-déjeuner</th>
+                        <th>\uD83C\uDF7D️ Repas</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -287,7 +287,7 @@ export async function generateMenuHTML(menuData: MenuPdfData): Promise<string> {
                                 </div>
                                 ` : ''}
                                 <div class="meal-price">${(meal.petit_dejeuner.estimated_cost || 0).toLocaleString('fr-FR')} ${currency}</div>
-                                <div class="meal-servings">👥 ${meal.petit_dejeuner.servings} portion${meal.petit_dejeuner.servings > 1 ? 's' : ''}</div>
+                                <div class="meal-servings">\uD83D\uDC65 ${meal.petit_dejeuner.servings} portion${meal.petit_dejeuner.servings > 1 ? 's' : ''}</div>
                                 ` : '<div style="color: #9CA3AF; font-style: italic;">-</div>'}
                             </td>
                             <td class="meal-cell">
@@ -299,7 +299,7 @@ export async function generateMenuHTML(menuData: MenuPdfData): Promise<string> {
                                 </div>
                                 ` : ''}
                                 <div class="meal-price">${(meal.repas_du_jour.estimated_cost || 0).toLocaleString('fr-FR')} ${currency}</div>
-                                <div class="meal-servings">👥 ${meal.repas_du_jour.servings} portion${meal.repas_du_jour.servings > 1 ? 's' : ''}</div>
+                                <div class="meal-servings">\uD83D\uDC65 ${meal.repas_du_jour.servings} portion${meal.repas_du_jour.servings > 1 ? 's' : ''}</div>
                                 <div style="font-size: 10px; color: #9CA3AF; margin-top: 4px; font-style: italic;">
                                     (Midi et soir)
                                 </div>
@@ -323,7 +323,7 @@ export async function generateMenuHTML(menuData: MenuPdfData): Promise<string> {
 
             <!-- Résumé total -->
             <div class="summary-section">
-                <div class="summary-label">💰 Coût Total Estimé</div>
+                <div class="summary-label">\uD83D\uDCB0 Coût Total Estimé</div>
                 <div class="summary-value">${menuData.totalCost.toLocaleString('fr-FR')} ${currency}</div>
             </div>
         </div>
@@ -387,7 +387,7 @@ export async function shareMenuPDF(pdfUri: string, menuTitle: string) {
                 url: `file://${pdfUri}`,
                 type: 'application/pdf',
                 title: `Menu de la Semaine - ${menuTitle}`,
-                message: `🍽️ Voici mon menu de la semaine généré par Yukpo !`,
+                message: `\uD83C\uDF7D️ Voici mon menu de la semaine généré par Yukpo !`,
                 social: Share.Social.WHATSAPP,
             });
         } catch (shareError) {

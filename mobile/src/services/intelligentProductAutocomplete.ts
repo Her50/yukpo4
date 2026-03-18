@@ -1,5 +1,5 @@
 /**
- * 🧠 SERVICE D'AUTOCOMPLETE INTELLIGENT POUR PRODUITS
+ * \uD83E\uDDE0 SERVICE D'AUTOCOMPLETE INTELLIGENT POUR PRODUITS
  * 
  * Système multi-niveaux qui suggère intelligemment les valeurs en fonction :
  * - Des champs précédemment remplis (logique conditionnelle)
@@ -44,7 +44,7 @@ class IntelligentProductAutocomplete {
     private rulesInitialized = false;
 
     // ═══════════════════════════════════════════════════════════
-    // 🎯 NIVEAU 1 : RÈGLES CONDITIONNELLES INTELLIGENTES
+    // \uD83C\uDFAF NIVEAU 1 : RÈGLES CONDITIONNELLES INTELLIGENTES
     // ═══════════════════════════════════════════════════════════
 
     /**
@@ -66,7 +66,7 @@ class IntelligentProductAutocomplete {
      */
     private initializeRules() {
         // ═══════════════════════════════════════════════════════════
-        // 📱 TÉLÉPHONES : Règles marque → modèles (AUTO-GÉNÉRÉES)
+        // \uD83D\uDCF1 TÉLÉPHONES : Règles marque → modèles (AUTO-GÉNÉRÉES)
         // ═══════════════════════════════════════════════════════════
         const telephoneRules: SuggestionRule[] = [];
         const telephoneMapping = MODELES_PAR_MARQUE_AUTO.telephone || {};
@@ -85,7 +85,7 @@ class IntelligentProductAutocomplete {
         console.log(`✅ [IntelligentAutocomplete] ${telephoneRules.length} règles téléphone générées`);
 
         // ═══════════════════════════════════════════════════════════
-        // 🚗 AUTOMOBILES : Règles marque → modèles (AUTO-GÉNÉRÉES)
+        // \uD83D\uDE97 AUTOMOBILES : Règles marque → modèles (AUTO-GÉNÉRÉES)
         // ═══════════════════════════════════════════════════════════
         const autoRules: SuggestionRule[] = [];
         const autoMapping = MODELES_PAR_MARQUE_AUTO.automobile || {};
@@ -104,7 +104,7 @@ class IntelligentProductAutocomplete {
         console.log(`✅ [IntelligentAutocomplete] ${autoRules.length} règles automobile générées`);
 
         // ═══════════════════════════════════════════════════════════
-        // 🌍 COVOITURAGE : Villes proches (RÈGLES STATIQUES)
+        // \uD83C\uDF0D COVOITURAGE : Villes proches (RÈGLES STATIQUES)
         // ═══════════════════════════════════════════════════════════
         this.rules['covoiturage:ville_arrivee'] = [
             {
@@ -125,7 +125,7 @@ class IntelligentProductAutocomplete {
         ];
 
         // ═══════════════════════════════════════════════════════════
-        // 🏠 IMMOBILIER : Type → Nombre de pièces (RÈGLES STATIQUES)
+        // \uD83C\uDFE0 IMMOBILIER : Type → Nombre de pièces (RÈGLES STATIQUES)
         // ═══════════════════════════════════════════════════════════
         this.rules['immobilier:nombre_pieces'] = [
             {
@@ -144,7 +144,7 @@ class IntelligentProductAutocomplete {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // 🔥 NIVEAU 2 : SUGGESTIONS BASÉES SUR LE CONTEXTE
+    // \uD83D\uDD25 NIVEAU 2 : SUGGESTIONS BASÉES SUR LE CONTEXTE
     // ═══════════════════════════════════════════════════════════
 
     async getSuggestions(
@@ -192,7 +192,7 @@ class IntelligentProductAutocomplete {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // 🎯 RÈGLES CONDITIONNELLES
+    // \uD83C\uDFAF RÈGLES CONDITIONNELLES
     // ═══════════════════════════════════════════════════════════
 
     private getRuleBasedSuggestions(
@@ -230,7 +230,7 @@ class IntelligentProductAutocomplete {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // 📊 HISTORIQUE UTILISATEUR
+    // \uD83D\uDCCA HISTORIQUE UTILISATEUR
     // ═══════════════════════════════════════════════════════════
 
     private async getUserHistorySuggestions(
@@ -284,7 +284,7 @@ class IntelligentProductAutocomplete {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // 🔥 SUGGESTIONS POPULAIRES
+    // \uD83D\uDD25 SUGGESTIONS POPULAIRES
     // ═══════════════════════════════════════════════════════════
 
     private async getPopularSuggestions(
@@ -307,7 +307,7 @@ class IntelligentProductAutocomplete {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // 📚 SUGGESTIONS STATIQUES (Votre productModalities.ts existante)
+    // \uD83D\uDCDA SUGGESTIONS STATIQUES (Votre productModalities.ts existante)
     // ═══════════════════════════════════════════════════════════
 
     private async getStaticSuggestions(
@@ -320,8 +320,8 @@ class IntelligentProductAutocomplete {
 
             if (!options || options.length === 0) return [];
 
-            // Filtrer l'option "🆕 Autre (ajouter)"
-            const validOptions = options.filter(opt => !opt.includes('🆕'));
+            // Filtrer l'option "\uD83C\uDD95 Autre (ajouter)"
+            const validOptions = options.filter(opt => !opt.includes('\uD83C\uDD95'));
 
             return validOptions.map(value => ({
                 value,
@@ -336,7 +336,7 @@ class IntelligentProductAutocomplete {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // 🌐 SUGGESTIONS BACKEND
+    // \uD83C\uDF10 SUGGESTIONS BACKEND
     // ═══════════════════════════════════════════════════════════
 
     private async getBackendSuggestions(
@@ -372,7 +372,7 @@ class IntelligentProductAutocomplete {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // 🔧 UTILITAIRES
+    // \uD83D\uDD27 UTILITAIRES
     // ═══════════════════════════════════════════════════════════
 
     private deduplicateAndSort(suggestions: AutocompleteSuggestion[]): AutocompleteSuggestion[] {
@@ -393,7 +393,7 @@ class IntelligentProductAutocomplete {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // 📝 ENREGISTREMENT DE SÉLECTION
+    // \uD83D\uDCDD ENREGISTREMENT DE SÉLECTION
     // ═══════════════════════════════════════════════════════════
 
     async recordSelection(
@@ -411,7 +411,7 @@ class IntelligentProductAutocomplete {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // 🧠 AJOUT DE NOUVELLES RÈGLES (APPRENTISSAGE)
+    // \uD83E\uDDE0 AJOUT DE NOUVELLES RÈGLES (APPRENTISSAGE)
     // ═══════════════════════════════════════════════════════════
 
     async learnFromPattern(
@@ -424,7 +424,7 @@ class IntelligentProductAutocomplete {
         // Exemple: Si 80% des utilisateurs qui sélectionnent "Toyota" choisissent "Corolla",
         // créer une règle automatique
 
-        console.log(`🧠 [IntelligentAutocomplete] Pattern détecté pour apprentissage`);
+        console.log(`\uD83E\uDDE0 [IntelligentAutocomplete] Pattern détecté pour apprentissage`);
     }
 }
 

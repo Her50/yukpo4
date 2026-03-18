@@ -19,7 +19,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { apiPost } from '../services/api';
 import { productsService } from '../services/productsService';
 import { modernColors } from '../theme/modernTheme';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 const DateTimePicker = DateTimePickerOriginal as any;
 
 interface RouteParams {
@@ -45,7 +44,6 @@ const CreateFlashPromoScreen: React.FC = () => {
   const { user } = useAuth();
   const { colors } = useTheme();
   const toaster = useToaster();
-  const { t } = useLanguageSafe();
 
   const params = (route.params || {}) as RouteParams;
   const { serviceId, serviceData, serviceTitle, productIndex } = params;
@@ -111,7 +109,7 @@ const CreateFlashPromoScreen: React.FC = () => {
           serviceId: apiProduct.service_id,
           productIndex: apiProduct.product_index,
           id: `${apiProduct.service_id}_${apiProduct.product_index}`, // Identifiant unique
-          nom: apiProduct.product_name || productData.nom || productData.nom_produit || t('createFlashPromo.produitSansNom'),
+          nom: apiProduct.product_name || productData.nom || productData.nom_produit || 'Produit sans nom',
           description: productData.description || productData.desc || '',
           prix: apiProduct.product_price || productData.prix || productData.prix_produit || 0,
           serviceTitle: productData.titre_service || productData.nom_service || `Service #${apiProduct.service_id}`,
@@ -147,19 +145,19 @@ const CreateFlashPromoScreen: React.FC = () => {
     }
 
     if (selectedProductIds.length === 0) {
-      toaster.error(t('createFlashPromoScreen.veuillezSelectionnerAuMoinsUnProduit'));
+      toaster.error('Veuillez sélectionner au moins un produit');
       return;
     }
 
     if (discountType !== 'free' && !discountValue.trim()) {
-      toaster.error(t('createFlashPromoScreen.veuillezSaisirUneValeurDeReduction'));
+      toaster.error('Veuillez saisir une valeur de réduction');
       return;
     }
 
     if (discountType === 'percentage') {
       const value = parseFloat(discountValue);
       if (isNaN(value) || value < 0 || value > 100) {
-        toaster.error(t('createFlashPromoScreen.lePourcentageDoitEtreEntre0'));
+        toaster.error('Le pourcentage doit être entre 0 et 100');
         return;
       }
     }
@@ -167,18 +165,18 @@ const CreateFlashPromoScreen: React.FC = () => {
     if (discountType === 'fixed') {
       const value = parseFloat(discountValue);
       if (isNaN(value) || value < 0) {
-        toaster.error(t('createFlashPromoScreen.leMontantDoitEtrePositif'));
+        toaster.error('Le montant doit être positif');
         return;
       }
     }
 
     if (endsAt <= startsAt) {
-      toaster.error(t('createFlashPromoScreen.laDateDeFinDoitEtre'));
+      toaster.error('La date de fin doit être postérieure à la date de début');
       return;
     }
 
     if (endsAt < new Date()) {
-      toaster.error(t('createFlashPromoScreen.laDateDeFinNePeut'));
+      toaster.error('La date de fin ne peut pas être dans le passé');
       return;
     }
 
@@ -234,364 +232,364 @@ const CreateFlashPromoScreen: React.FC = () => {
       if (allSuccess) {
         const servicesCount = Object.keys(productIndexesByService).length;
         const productsCount = selectedProductIds.length;
-        toaster.success(t('createFlashPromoScreen.promotionFlashCreeeAvecSuccesGratuit', { productsCount: productsCount, productsCount > 1 ? 's' : '': productsCount > 1 ? 's' : '', productsCount > 1 ? 's' : '': productsCount > 1 ? 's' : '' }));
-      navigation.goBack();
-    } else {
-      const failedCount = responses.filter(r => !r.success).length;
-      toaster.error(t('createFlashPromoScreen.promotionNaPasPuEtreCreee', { failedCount: failedCount, failedCount___1____s_____: failedCount > 1 ? 's' : '', failedCount___1____ont___: failedCount > 1 ? 'ont' : '', failedCount___1____s_____: failedCount > 1 ? 's' : '' }));
+        toaster.success(`⚡ ${productsCount} promotion${productsCount > 1 ? 's' : ''} flash créée${productsCount > 1 ? 's' : ''} avec succès (gratuit) !`);
+        navigation.goBack();
+      } else {
+        const failedCount = responses.filter(r => !r.success).length;
+        toaster.error(`${failedCount} promotion${failedCount > 1 ? 's' : ''} n'a${failedCount > 1 ? 'ont' : ''} pas pu être créée${failedCount > 1 ? 's' : ''}`);
+      }
+    } catch (error: any) {
+      console.error('[CreateFlashPromo] Erreur:', error);
+      toaster.error(error.message || 'Erreur lors de la création du flash promotionnel');
+    } finally {
+      setLoading(false);
     }
-  } catch (error: any) {
-    console.error('[CreateFlashPromo] Erreur:', error);
-    toaster.error(error.message || t('createFlashPromo.erreurLorsDeLaCreation'));
-  } finally {
-    setLoading(false);
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  if (loadingProducts) {
+    return (
+      <View style={[styles.container, { backgroundColor: modernColors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={modernColors.primary} />
+        <Text style={[styles.loadingText, { color: modernColors.textSecondary }]}>Chargement des produits...</Text>
+      </View>
+    );
   }
-};
 
-const formatDate = (date: Date) => {
-  return date.toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
-if (loadingProducts) {
   return (
-    <View style={[styles.container, { backgroundColor: modernColors.background, justifyContent: 'center', alignItems: 'center' }]}>
-      <ActivityIndicator size="large" color={modernColors.primary} />
-      <Text style={[styles.loadingText, { color: modernColors.textSecondary }]}>{t('createFlashPromo.chargementDesProduits')}</Text>
-    </View>
-  );
-}
-
-return (
-  <KeyboardAwareScrollView
-    style={[styles.container, { backgroundColor: modernColors.background }]}
-    contentContainerStyle={styles.scrollContent}
-    showsVerticalScrollIndicator={true}
-    enableOnAndroid={true}
-    enableAutomaticScroll={true}
-    extraHeight={Platform.OS === 'android' ? 200 : 0}
-    extraScrollHeight={Platform.OS === 'ios' ? 200 : 0}
-    keyboardShouldPersistTaps="handled"
-    keyboardDismissMode="none"
-  >
-    <View style={styles.content}>
-      <Text style={[styles.title, { color: modernColors.text }]}>
-        ⚡ Créer un Flash Promotionnel
-      </Text>
-      <Text style={[styles.subtitle, { color: modernColors.textSecondary }]}>
-        Gratuit - Créez une promotion limitée dans le temps pour vos produits
-      </Text>
-
-      <NativeCard style={styles.card}>
-        <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>Service</Text>
-        <Text style={[styles.value, { color: modernColors.text, fontWeight: '600' }]}>
-          {serviceTitle || `Service #${serviceId}`}
+    <KeyboardAwareScrollView
+      style={[styles.container, { backgroundColor: modernColors.background }]}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={true}
+      enableOnAndroid={true}
+      enableAutomaticScroll={true}
+      extraHeight={Platform.OS === 'android' ? 200 : 0}
+      extraScrollHeight={Platform.OS === 'ios' ? 200 : 0}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="none"
+    >
+      <View style={styles.content}>
+        <Text style={[styles.title, { color: modernColors.text }]}>
+          ⚡ Créer un Flash Promotionnel
         </Text>
-      </NativeCard>
+        <Text style={[styles.subtitle, { color: modernColors.textSecondary }]}>
+          Gratuit - Créez une promotion limitée dans le temps pour vos produits
+        </Text>
 
-      {/* ✅ AMÉLIORÉ: Sélection multiple de produits avec meilleure UX */}
-      <NativeCard style={styles.card}>
-        <View style={styles.productHeaderRow}>
-          <View style={styles.productHeaderTitle}>
-            <Text style={[styles.label, { color: modernColors.text, fontWeight: '700', fontSize: 16 }]}>
-              Produits à promouvoir *
-            </Text>
-            {selectedProductIds.length > 0 && (
-              <View style={styles.selectionBadge}>
-                <Text style={styles.selectionBadgeText}>
-                  {selectedProductIds.length} sélectionné{selectedProductIds.length > 1 ? 's' : ''}
+        <NativeCard style={styles.card}>
+          <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>Service</Text>
+          <Text style={[styles.value, { color: modernColors.text, fontWeight: '600' }]}>
+            {serviceTitle || `Service #${serviceId}`}
+          </Text>
+        </NativeCard>
+
+        {/* ✅ AMÉLIORÉ: Sélection multiple de produits avec meilleure UX */}
+        <NativeCard style={styles.card}>
+          <View style={styles.productHeaderRow}>
+            <View style={styles.productHeaderTitle}>
+              <Text style={[styles.label, { color: modernColors.text, fontWeight: '700', fontSize: 16 }]}>
+                Produits à promouvoir *
+              </Text>
+              {selectedProductIds.length > 0 && (
+                <View style={styles.selectionBadge}>
+                  <Text style={styles.selectionBadgeText}>
+                    {selectedProductIds.length} sélectionné{selectedProductIds.length > 1 ? 's' : ''}
+                  </Text>
+                </View>
+              )}
+            </View>
+            {products.length > 0 && (
+              <TouchableOpacity
+                onPress={() => {
+                  if (selectedProductIds.length === products.length) {
+                    setSelectedProductIds([]);
+                  } else {
+                    setSelectedProductIds(products.map(p => p.id));
+                  }
+                }}
+                style={styles.selectAllButton}
+              >
+                <Text style={styles.selectAllText}>
+                  {selectedProductIds.length === products.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                 </Text>
-              </View>
+              </TouchableOpacity>
             )}
           </View>
-          {products.length > 0 && (
-            <TouchableOpacity
-              onPress={() => {
-                if (selectedProductIds.length === products.length) {
-                  setSelectedProductIds([]);
-                } else {
-                  setSelectedProductIds(products.map(p => p.id));
+          {loadingProducts ? (
+            <View style={styles.loadingProductsContainer}>
+              <ActivityIndicator size="small" color={modernColors.primary} />
+              <Text style={[styles.loadingProductsText, { color: modernColors.textSecondary }]}>
+                Chargement des produits...
+              </Text>
+            </View>
+          ) : products.length === 0 ? (
+            <View style={styles.emptyStateContainer}>
+              <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
+              <Text style={[styles.emptyText, { color: modernColors.textSecondary, marginTop: 12 }]}>
+                Aucun produit trouvé
+              </Text>
+              <Text style={[styles.emptySubtext, { color: modernColors.textSecondary }]}>
+                Créez d'abord des produits dans vos services
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.productsContainer}>
+              {products.map((item) => {
+                const isSelected = selectedProductIds.includes(item.id);
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[
+                      styles.productItem,
+                      {
+                        backgroundColor: isSelected ? modernColors.primary + '15' : modernColors.surface,
+                        borderColor: isSelected ? modernColors.primary : modernColors.border,
+                        borderWidth: isSelected ? 2 : 1,
+                      }
+                    ]}
+                    onPress={() => toggleProductSelection(item.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.productCheckbox}>
+                      {isSelected && (
+                        <SafeIcon name="check" size={18} color="#fff" />
+                      )}
+                    </View>
+                    <View style={styles.productContent}>
+                      <View style={styles.productHeader}>
+                        <Text style={[styles.productName, { color: modernColors.text, fontWeight: '700' }]} numberOfLines={1}>
+                          {item.nom}
+                        </Text>
+                      </View>
+                      {item.serviceTitle && (
+                        <Text style={[styles.productService, { color: modernColors.textSecondary }]} numberOfLines={1}>
+                          \uD83D\uDCE6 {item.serviceTitle}
+                        </Text>
+                      )}
+                      {item.description && (
+                        <Text style={[styles.productDescription, { color: modernColors.textSecondary }]} numberOfLines={2}>
+                          {item.description}
+                        </Text>
+                      )}
+                      {item.prix && item.prix > 0 && (
+                        <Text style={[styles.productPrice, { color: modernColors.primary, fontWeight: '700' }]}>
+                          {item.prix.toLocaleString()} FCFA
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </NativeCard>
+
+        <View style={styles.inputWrapper}>
+          <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
+            Titre de la promotion *
+          </Text>
+          <NativeInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Ex: Réduction exceptionnelle -50%"
+            style={styles.input}
+          />
+        </View>
+
+        <View style={styles.inputWrapper}>
+          <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
+            Description (optionnel)
+          </Text>
+          <NativeInput
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Décrivez votre offre promotionnelle"
+            multiline
+            numberOfLines={3}
+            style={styles.input}
+          />
+        </View>
+
+        <NativeCard style={styles.card}>
+          <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>Type de réduction *</Text>
+          <View style={[styles.pickerContainer, { backgroundColor: modernColors.surface, borderWidth: 1, borderColor: modernColors.border }]}>
+            <Picker
+              selectedValue={discountType}
+              onValueChange={(value) => {
+                setDiscountType(value);
+                if (value === 'free') {
+                  setDiscountValue('');
                 }
               }}
-              style={styles.selectAllButton}
+              style={{ color: modernColors.text, fontWeight: '600' }}
+              itemStyle={{ color: modernColors.text, fontWeight: '600' }}
             >
-              <Text style={styles.selectAllText}>
-                {selectedProductIds.length === products.length ? t('createFlashPromoScreen.toutDeselectionner') : t('createFlashPromoScreen.toutSelectionner')}
+              <Picker.Item label="Pourcentage (%)" value="percentage" color={modernColors.text} />
+              <Picker.Item label="Montant fixe (FCFA)" value="fixed" color={modernColors.text} />
+              <Picker.Item label="Gratuit" value="free" color={modernColors.text} />
+            </Picker>
+          </View>
+
+          {discountType !== 'free' && (
+            <View style={styles.inputWrapper}>
+              <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
+                {discountType === 'percentage' ? 'Pourcentage (%) *' : 'Montant (FCFA) *'}
               </Text>
-            </TouchableOpacity>
+              <NativeInput
+                value={discountValue}
+                onChangeText={setDiscountValue}
+                placeholder={discountType === 'percentage' ? 'Ex: 50' : 'Ex: 5000'}
+                keyboardType="numeric"
+                style={styles.input}
+              />
+            </View>
           )}
-        </View>
-        {loadingProducts ? (
-          <View style={styles.loadingProductsContainer}>
-            <ActivityIndicator size="small" color={modernColors.primary} />
-            <Text style={[styles.loadingProductsText, { color: modernColors.textSecondary }]}>
-              Chargement des produits...
-            </Text>
+        </NativeCard>
+
+        {/* ✅ NOUVEAU: Disponibilité (online, live, both) */}
+        <NativeCard style={styles.card}>
+          <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>Disponibilité *</Text>
+          <View style={[styles.pickerContainer, { backgroundColor: modernColors.surface, borderWidth: 1, borderColor: modernColors.border }]}>
+            <Picker
+              selectedValue={availability}
+              onValueChange={(value) => {
+                setAvailability(value);
+                if (value === 'online') {
+                  setLiveSessionId('');
+                }
+              }}
+              style={{ color: modernColors.text, fontWeight: '600' }}
+              itemStyle={{ color: modernColors.text, fontWeight: '600' }}
+            >
+              <Picker.Item label="\uD83D\uDCF1 En ligne uniquement" value="online" color={modernColors.text} />
+              <Picker.Item label="\uD83D\uDCFA Live uniquement" value="live" color={modernColors.text} />
+              <Picker.Item label="\uD83D\uDCF1\uD83D\uDCFA En ligne et Live" value="both" color={modernColors.text} />
+            </Picker>
           </View>
-        ) : products.length === 0 ? (
-          <View style={styles.emptyStateContainer}>
-            <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
-            <Text style={[styles.emptyText, { color: modernColors.textSecondary, marginTop: 12 }]}>
-              Aucun produit trouvé
-            </Text>
-            <Text style={[styles.emptySubtext, { color: modernColors.textSecondary }]}>
-              Créez d'abord des produits dans vos services
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.productsContainer}>
-            {products.map((item) => {
-              const isSelected = selectedProductIds.includes(item.id);
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.productItem,
-                    {
-                      backgroundColor: isSelected ? modernColors.primary + '15' : modernColors.surface,
-                      borderColor: isSelected ? modernColors.primary : modernColors.border,
-                      borderWidth: isSelected ? 2 : 1,
-                    }
-                  ]}
-                  onPress={() => toggleProductSelection(item.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.productCheckbox}>
-                    {isSelected && (
-                      <SafeIcon name="check" size={18} color="#fff" />
-                    )}
-                  </View>
-                  <View style={styles.productContent}>
-                    <View style={styles.productHeader}>
-                      <Text style={[styles.productName, { color: modernColors.text, fontWeight: '700' }]} numberOfLines={1}>
-                        {item.nom}
-                      </Text>
-                    </View>
-                    {item.serviceTitle && (
-                      <Text style={[styles.productService, { color: modernColors.textSecondary }]} numberOfLines={1}>
-                        📦 {item.serviceTitle}
-                      </Text>
-                    )}
-                    {item.description && (
-                      <Text style={[styles.productDescription, { color: modernColors.textSecondary }]} numberOfLines={2}>
-                        {item.description}
-                      </Text>
-                    )}
-                    {item.prix && item.prix > 0 && (
-                      <Text style={[styles.productPrice, { color: modernColors.primary, fontWeight: '700' }]}>
-                        {item.prix.toLocaleString()} FCFA
-                      </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-      </NativeCard>
+          {(availability === 'live' || availability === 'both') && (
+            <View style={styles.inputWrapper}>
+              <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
+                ID Session Live (optionnel)
+              </Text>
+              <NativeInput
+                value={liveSessionId}
+                onChangeText={setLiveSessionId}
+                placeholder="Ex: uuid-de-la-session-live"
+                style={styles.input}
+              />
+            </View>
+          )}
+        </NativeCard>
 
-      <View style={styles.inputWrapper}>
-        <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
-          Titre de la promotion *
-        </Text>
-        <NativeInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder={t('createFlashPromo.exReductionExceptionnelle50')}
-          style={styles.input}
-        />
-      </View>
-
-      <View style={styles.inputWrapper}>
-        <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
-          Description (optionnel)
-        </Text>
-        <NativeInput
-          value={description}
-          onChangeText={setDescription}
-          placeholder={t('createFlashPromo.decrivezVotreOffrePromotionnelle')}
-          multiline
-          numberOfLines={3}
-          style={styles.input}
-        />
-      </View>
-
-      <NativeCard style={styles.card}>
-        <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>{t('createFlashPromo.typeDeReduction')}</Text>
-        <View style={[styles.pickerContainer, { backgroundColor: modernColors.surface, borderWidth: 1, borderColor: modernColors.border }]}>
-          <Picker
-            selectedValue={discountType}
-            onValueChange={(value) => {
-              setDiscountType(value);
-              if (value === 'free') {
-                setDiscountValue('');
-              }
-            }}
-            style={{ color: modernColors.text, fontWeight: '600' }}
-            itemStyle={{ color: modernColors.text, fontWeight: '600' }}
-          >
-            <Picker.Item label="Pourcentage (%)" value="percentage" color={modernColors.text} />
-            <Picker.Item label={t('createFlashPromo.montantFixeFcfa')} value="fixed" color={modernColors.text} />
-            <Picker.Item label={t('createFlashPromo.gratuit')} value="free" color={modernColors.text} />
-          </Picker>
-        </View>
-
-        {discountType !== 'free' && (
-          <View style={styles.inputWrapper}>
-            <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
-              {discountType === 'percentage' ? 'Pourcentage (%) *' : 'Montant (FCFA) *'}
-            </Text>
-            <NativeInput
-              value={discountValue}
-              onChangeText={setDiscountValue}
-              placeholder={discountType === 'percentage' ? 'Ex: 50' : 'Ex: 5000'}
-              keyboardType="numeric"
-              style={styles.input}
-            />
-          </View>
-        )}
-      </NativeCard>
-
-      {/* ✅ NOUVEAU: Disponibilité (online, live, both) */}
-      <NativeCard style={styles.card}>
-        <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>{t('createFlashPromo.disponibilite')}</Text>
-        <View style={[styles.pickerContainer, { backgroundColor: modernColors.surface, borderWidth: 1, borderColor: modernColors.border }]}>
-          <Picker
-            selectedValue={availability}
-            onValueChange={(value) => {
-              setAvailability(value);
-              if (value === 'online') {
-                setLiveSessionId('');
-              }
-            }}
-            style={{ color: modernColors.text, fontWeight: '600' }}
-            itemStyle={{ color: modernColors.text, fontWeight: '600' }}
-          >
-            <Picker.Item label={t('createFlashPromo.enLigneUniquement')} value="online" color={modernColors.text} />
-            <Picker.Item label="📺 Live uniquement" value="live" color={modernColors.text} />
-            <Picker.Item label={t('createFlashPromo.enLigneEtLive')} value="both" color={modernColors.text} />
-          </Picker>
-        </View>
-        {(availability === 'live' || availability === 'both') && (
-          <View style={styles.inputWrapper}>
-            <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
-              ID Session Live (optionnel)
-            </Text>
-            <NativeInput
-              value={liveSessionId}
-              onChangeText={setLiveSessionId}
-              placeholder="Ex: uuid-de-la-session-live"
-              style={styles.input}
-            />
-          </View>
-        )}
-      </NativeCard>
-
-      {/* ✅ NOUVEAU: Limite de stock */}
-      <View style={styles.inputWrapper}>
-        <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
-          Limite de stock (optionnel)
-        </Text>
-        <NativeInput
-          value={stockCap}
-          onChangeText={setStockCap}
-          placeholder={t('createFlashPromoScreen.exUnitsAvailable')}
-          keyboardType="numeric"
-          style={styles.input}
-        />
-      </View>
-
-      <NativeCard style={styles.card}>
-        <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>{t('createFlashPromo.dateDeDebut')}</Text>
-        <NativeButton
-          title={formatDate(startsAt)}
-          onPress={() => setShowStartPicker(true)}
-          variant="outline"
-          style={styles.dateButton}
-        />
-        {showStartPicker && (
-          <DateTimePicker
-            value={startsAt}
-            mode="datetime"
-            is24Hour={true}
-            display="default"
-            onChange={((event: any, selectedDate: any) => {
-              setShowStartPicker(false);
-              if (selectedDate) {
-                setStartsAt(selectedDate);
-              }
-            }) as any}
+        {/* ✅ NOUVEAU: Limite de stock */}
+        <View style={styles.inputWrapper}>
+          <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
+            Limite de stock (optionnel)
+          </Text>
+          <NativeInput
+            value={stockCap}
+            onChangeText={setStockCap}
+            placeholder="Ex: 50 (nombre d'unités disponibles)"
+            keyboardType="numeric"
+            style={styles.input}
           />
-        )}
-      </NativeCard>
-
-      <NativeCard style={styles.card}>
-        <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>{t('createFlashPromo.dateDeFin')}</Text>
-        <NativeButton
-          title={formatDate(endsAt)}
-          onPress={() => setShowEndPicker(true)}
-          variant="outline"
-          style={styles.dateButton}
-        />
-        {showEndPicker && (
-          <DateTimePicker
-            value={endsAt}
-            mode="datetime"
-            is24Hour={true}
-            display="default"
-            onChange={((event: any, selectedDate: any) => {
-              setShowEndPicker(false);
-              if (selectedDate) {
-                setEndsAt(selectedDate);
-              }
-            }) as any}
-          />
-        )}
-      </NativeCard>
-
-      <View style={styles.inputWrapper}>
-        <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
-          Conditions (optionnel)
-        </Text>
-        <NativeInput
-          value={conditions}
-          onChangeText={setConditions}
-          placeholder="Ex: Valable uniquement en magasin, minimum d'achat 10000 FCFA"
-          multiline
-          numberOfLines={2}
-          style={styles.input}
-        />
-      </View>
-
-      <View style={styles.buttonContainer}>
-        <NativeButton
-          title={t('createFlashPromoScreen.annuler')}
-          onPress={() => navigation.goBack()}
-          variant="outline"
-          style={styles.button}
-        />
-        <NativeButton
-          title={loading ? t('createFlashPromoScreen.creation') : t('createFlashPromoScreen.creerGratuit')}
-          onPress={handleCreate}
-          variant="primary"
-          style={styles.button}
-          disabled={loading}
-        />
-      </View>
-
-      {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={modernColors.primary} />
         </View>
-      )}
-    </View>
-  </KeyboardAwareScrollView>
-);
+
+        <NativeCard style={styles.card}>
+          <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>Date de début *</Text>
+          <NativeButton
+            title={formatDate(startsAt)}
+            onPress={() => setShowStartPicker(true)}
+            variant="outline"
+            style={styles.dateButton}
+          />
+          {showStartPicker && (
+            <DateTimePicker
+              value={startsAt}
+              mode="datetime"
+              is24Hour={true}
+              display="default"
+              onChange={((event: any, selectedDate: any) => {
+                setShowStartPicker(false);
+                if (selectedDate) {
+                  setStartsAt(selectedDate);
+                }
+              }) as any}
+            />
+          )}
+        </NativeCard>
+
+        <NativeCard style={styles.card}>
+          <Text style={[styles.label, { color: modernColors.text, fontWeight: '700' }]}>Date de fin *</Text>
+          <NativeButton
+            title={formatDate(endsAt)}
+            onPress={() => setShowEndPicker(true)}
+            variant="outline"
+            style={styles.dateButton}
+          />
+          {showEndPicker && (
+            <DateTimePicker
+              value={endsAt}
+              mode="datetime"
+              is24Hour={true}
+              display="default"
+              onChange={((event: any, selectedDate: any) => {
+                setShowEndPicker(false);
+                if (selectedDate) {
+                  setEndsAt(selectedDate);
+                }
+              }) as any}
+            />
+          )}
+        </NativeCard>
+
+        <View style={styles.inputWrapper}>
+          <Text style={[styles.inputLabel, { color: modernColors.text, fontWeight: '700' }]}>
+            Conditions (optionnel)
+          </Text>
+          <NativeInput
+            value={conditions}
+            onChangeText={setConditions}
+            placeholder="Ex: Valable uniquement en magasin, minimum d'achat 10000 FCFA"
+            multiline
+            numberOfLines={2}
+            style={styles.input}
+          />
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <NativeButton
+            title="Annuler"
+            onPress={() => navigation.goBack()}
+            variant="outline"
+            style={styles.button}
+          />
+          <NativeButton
+            title={loading ? 'Création...' : '⚡ Créer (Gratuit)'}
+            onPress={handleCreate}
+            variant="primary"
+            style={styles.button}
+            disabled={loading}
+          />
+        </View>
+
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={modernColors.primary} />
+          </View>
+        )}
+      </View>
+    </KeyboardAwareScrollView>
+  );
 };
 
 const styles = StyleSheet.create({

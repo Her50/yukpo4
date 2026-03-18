@@ -137,7 +137,7 @@ const [messages, setMessages] = useState<Message[]>([]);
 
                         return {
                             id: String(interaction._id || interaction.id || Date.now()),
-                            content: messageType === 'text' ? content : (messageType === 'image' ? '📷 Image' : messageType === 'audio' ? '🎤 Audio' : `📎 ${fileName || 'Fichier'}`),
+                            content: messageType === 'text' ? content : (messageType === 'image' ? '\uD83D\uDCF7 Image' : messageType === 'audio' ? '\uD83C\uDFA4 Audio' : `\uD83D\uDCCE ${fileName || 'Fichier'}`),
                             from: (interaction.user_id === parseInt(user.id) ? 'client' : 'prestataire') as 'client' | 'prestataire',
                             timestamp: new Date(interaction.created_at || interaction.timestamp || Date.now()),
                             status: 'read' as 'sent' | 'delivered' | 'read',
@@ -209,7 +209,7 @@ const [messages, setMessages] = useState<Message[]>([]);
                         ? { ...msg, status: 'sent' }
                         : msg
                 ));
-                Alert.alert('Erreur', 'Impossible d\t('chatModal.envoyerLeMessageVeuillezReessayer'));
+                Alert.alert('Erreur', 'Impossible d\'envoyer le message. Veuillez réessayer.');
             }
         } catch (error) {
             console.error('[ChatModal] ❌ Erreur envoi message:', error);
@@ -223,7 +223,7 @@ const [messages, setMessages] = useState<Message[]>([]);
             const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
             if (permissionResult.granted === false) {
-                Alert.alert(t('chatModal.permissionRefusee'), 'Permission d\t('chatModal.accesALaGalerieRefusee'));
+                Alert.alert('Permission refusée', 'Permission d\'accès à la galerie refusée');
                 return;
             }
 
@@ -245,7 +245,7 @@ const [messages, setMessages] = useState<Message[]>([]);
             }
         } catch (error) {
             console.error('[ChatModal] Erreur sélection image:', error);
-            Alert.alert('Erreur', t('chatModal.impossibleDeSelectionnerL')image');
+            Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
         }
     };
 
@@ -281,7 +281,7 @@ const [messages, setMessages] = useState<Message[]>([]);
             }
         } catch (error) {
             console.error('[ChatModal] Erreur sélection fichier:', error);
-            Alert.alert('Erreur', t('chatModal.impossibleDeSelectionnerLeFichier'));
+            Alert.alert('Erreur', 'Impossible de sélectionner le fichier');
         }
     };
 
@@ -292,7 +292,7 @@ const [messages, setMessages] = useState<Message[]>([]);
             const permission = await Audio.requestPermissionsAsync();
 
             if (permission.status !== 'granted') {
-                Alert.alert(t('chatModal.permissionRefusee'), 'Permission d\t('chatModal.enregistrementAudioRefusee'));
+                Alert.alert('Permission refusée', 'Permission d\'enregistrement audio refusée');
                 return;
             }
 
@@ -318,7 +318,7 @@ const [messages, setMessages] = useState<Message[]>([]);
             console.log('[ChatModal] ✅ Enregistrement démarré');
         } catch (error) {
             console.error('[ChatModal] Erreur démarrage enregistrement:', error);
-            Alert.alert('Erreur', t('chatModal.impossibleDeDemarrerL')enregistrement');
+            Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement');
         }
     };
 
@@ -370,7 +370,7 @@ const [messages, setMessages] = useState<Message[]>([]);
             setRecordingDuration(0);
         } catch (error) {
             console.error('[ChatModal] Erreur arrêt enregistrement:', error);
-            Alert.alert('Erreur', 'Erreur lors de l\t('chatModal.arretDeL')enregistrement');
+            Alert.alert('Erreur', 'Erreur lors de l\'arrêt de l\'enregistrement');
             setRecording(null);
             setIsRecording(false);
         }
@@ -403,7 +403,7 @@ const [messages, setMessages] = useState<Message[]>([]);
             // Ajouter le message localement avec preview
             const tempMessage: Message = {
                 id: tempId,
-                content: mediaType === 'image' ? '📷 Image' : mediaType === 'audio' ? '🎤 Audio' : `📎 ${fileName || 'Fichier'}`,
+                content: mediaType === 'image' ? '\uD83D\uDCF7 Image' : mediaType === 'audio' ? '\uD83C\uDFA4 Audio' : `\uD83D\uDCCE ${fileName || 'Fichier'}`,
                 from: 'client',
                 timestamp: new Date(),
                 status: 'sent',
@@ -422,7 +422,7 @@ const [messages, setMessages] = useState<Message[]>([]);
                 fileName: fileName
             };
 
-            console.log(`[ChatModal] 📤 Envoi ${mediaType} pour service ${service.id}`);
+            console.log(`[ChatModal] \uD83D\uDCE4 Envoi ${mediaType} pour service ${service.id}`);
 
             const response = await apiPost(`/api/services/${service.id}/message`, payload);
 
@@ -435,7 +435,7 @@ const [messages, setMessages] = useState<Message[]>([]);
                         : msg
                 ));
 
-                Alert.alert(t('chatModal.succes'), t('chatModal.envoyeAvecSucces', { mediaType______image: mediaType === 'image' ? 'Image' : mediaType === 'audio' ? 'Audio' : 'Fichier' }));
+                Alert.alert('Succès', `${mediaType === 'image' ? 'Image' : mediaType === 'audio' ? 'Audio' : 'Fichier'} envoyé avec succès`);
             } else {
                 throw new Error(response.error || t('chat.erreurEnvoiMedia'));
             }

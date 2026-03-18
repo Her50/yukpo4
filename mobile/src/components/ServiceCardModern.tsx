@@ -227,7 +227,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                 )}
                 {service.interactions !== undefined && service.interactions != null && (
                     <View style={styles.infoRow}>
-                        <Text style={styles.infoText}>📊 {String(service.interactions || 0)} interactions</Text>
+                        <Text style={styles.infoText}>\uD83D\uDCCA {String(service.interactions || 0)} interactions</Text>
                     </View>
                 )}
                 {/* Nombre de produits - Cliquable comme statistique */}
@@ -323,7 +323,11 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         activeOpacity={0.7}
                     >
                         <SafeIcon name="trash-2" size={18} color="#EF4444" />
-                        <Text style={[styles.actionLabel, { color: '#EF4444' }]}>{t('serviceCardModern.supprimert('serviceCardModern.textTouchableopacityViewSecondeRangeeD')actions - Bouton vidéo déplacé dans le menu global */}
+                        <Text style={[styles.actionLabel, { color: '#EF4444' }]}>{t('serviceCardModern.supprimer')}</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* ✅ Seconde rangée d'actions - Bouton vidéo déplacé dans le menu global */}
                 <View style={styles.actionsRow}>
                     {/* Promouvoir (publicité) - Retiré car maintenant dans le menu global */}
 
@@ -339,7 +343,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                             color={(service?.status || 'inactive') === 'active' ? '#F97316' : '#10B981'}
                         />
                         <Text style={[styles.actionLabel, { color: (service?.status || 'inactive') === 'active' ? '#F97316' : '#10B981' }]}>
-                            {(service?.status || 'inactive') === 'active' ? t('serviceCardModern.desactiver') : 'Activer'}
+                            {(service?.status || 'inactive') === 'active' ? 'Désactiver' : 'Activer'}
                         </Text>
                     </TouchableOpacity>
                 </View>

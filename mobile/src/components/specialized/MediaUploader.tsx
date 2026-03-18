@@ -20,7 +20,6 @@ import { mediaService } from '../../services/mediaService';
 import { UploadedFile, uploadFiles } from '../../services/uploadApi';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface MediaItem {
     uri: string;
@@ -45,10 +44,9 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
     maxImages = 10,
     maxVideos = 3,
     allowVideos = true,
-    label={t('mediaUploader.photosEtVideos')},
+    label = 'Photos et vidéos',
 }) => {
-        const { t } = useLanguageSafe();
-const [uploading, setUploading] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
     const requestPermissions = async () => {
@@ -58,7 +56,7 @@ const [uploading, setUploading] = useState(false);
         if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
             Alert.alert(
                 'Permissions requises',
-                t('mediaUploader.veuillezAutoriserLaccesALaCameraEtA')
+                'Veuillez autoriser l\'accès à la caméra et à la galerie pour ajouter des photos/vidéos.'
             );
             return false;
         }
@@ -92,12 +90,12 @@ const [uploading, setUploading] = useState(false);
             const newVideos = newMedia.filter(m => m.type === 'video').length;
 
             if (currentImages + newImages > maxImages) {
-                Alert.alert('Limite atteinte', t('mediaUploader.maximumPhotosAutorisees', { maxImages: maxImages }));
+                Alert.alert('Limite atteinte', `Maximum ${maxImages} photos autorisées`);
                 return;
             }
 
             if (currentVideos + newVideos > maxVideos) {
-                Alert.alert('Limite atteinte', t('mediaUploader.maximumVideosAutorisees', { maxVideos: maxVideos }));
+                Alert.alert('Limite atteinte', `Maximum ${maxVideos} vidéos autorisées`);
                 return;
             }
 
@@ -127,7 +125,7 @@ const [uploading, setUploading] = useState(false);
 
             const currentImages = media.filter(m => m.type === 'image').length;
             if (currentImages >= maxImages) {
-                Alert.alert('Limite atteinte', t('mediaUploader.maximumPhotosAutorisees', { maxImages: maxImages }));
+                Alert.alert('Limite atteinte', `Maximum ${maxImages} photos autorisées`);
                 return;
             }
 
@@ -157,7 +155,7 @@ const [uploading, setUploading] = useState(false);
 
             const currentVideos = media.filter(m => m.type === 'video').length;
             if (currentVideos >= maxVideos) {
-                Alert.alert('Limite atteinte', t('mediaUploader.maximumVideosAutorisees', { maxVideos: maxVideos }));
+                Alert.alert('Limite atteinte', `Maximum ${maxVideos} vidéos autorisées`);
                 return;
             }
 
@@ -202,7 +200,7 @@ const [uploading, setUploading] = useState(false);
             onMediaChange([...updatedMedia.filter(m => !itemsToUpload.some(i => i.uri === m.uri)), ...newUploadedItems]);
         } catch (error: any) {
             console.error('[MediaUploader] Erreur upload:', error);
-            Alert.alert('Erreur', 'Impossible d\t('mediaUploader.uploaderLesMediasVeuillezReessayer'));
+            Alert.alert('Erreur', 'Impossible d\'uploader les médias. Veuillez réessayer.');
         } finally {
             setUploading(false);
         }
@@ -254,7 +252,7 @@ const [uploading, setUploading] = useState(false);
                         disabled={uploading}
                     >
                         <SafeIcon name="video" size={20} color={modernColors.primary} type="lucide" />
-                        <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>{t('mediaUploader.video')}</Text>
+                        <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>Vidéo</Text>
                     </TouchableOpacity>
                 )}
             </View>

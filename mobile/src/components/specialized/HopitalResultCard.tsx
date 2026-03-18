@@ -50,7 +50,7 @@ const HopitalResultCard: React.FC<HopitalResultCardProps> = ({ hospital, onPress
         <TouchableOpacity style={styles.card} onPress={handlePress}>
             <View style={styles.header}>
                 <View style={styles.iconContainer}>
-                    <Text style={styles.icon}>🏥</Text>
+                    <Text style={styles.icon}>\uD83C\uDFE5</Text>
                 </View>
                 <View style={styles.titleContainer}>
                     <Text style={styles.title}>{hospital.nom}</Text>
@@ -59,7 +59,7 @@ const HopitalResultCard: React.FC<HopitalResultCardProps> = ({ hospital, onPress
                     )}
                     {hospital.is_available_now && (
                         <View style={styles.badge}>
-                            <Text style={styles.badgeText}>🟢 DISPONIBLE</Text>
+                            <Text style={styles.badgeText}>\uD83D\uDFE2 DISPONIBLE</Text>
                         </View>
                     )}
                 </View>
@@ -76,7 +76,7 @@ const HopitalResultCard: React.FC<HopitalResultCardProps> = ({ hospital, onPress
 
             {hospital.urgences_disponible && (
                 <View style={styles.urgencesBadge}>
-                    <Text style={styles.urgencesText}>🚨 Urgences disponibles</Text>
+                    <Text style={styles.urgencesText}>\uD83D\uDEA8 Urgences disponibles</Text>
                 </View>
             )}
 

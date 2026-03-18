@@ -22,12 +22,12 @@ import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useToaster } from '../../components/ToasterProvider';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { CreateTaxiRequest, SearchTaxisFilters, Taxi, taxiService } from '../../services/taxiService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type ViewMode = 'search' | 'create';
 
@@ -386,7 +386,7 @@ const TaxiHomeScreen: React.FC = () => {
 
         if (!taxiForm.service_id) {
             Alert.alert(
-                'Service requis',
+                t('taxiHome.serviceRequis'),
                 t('taxiHomeScreen.vousDevezDabordCreerUnServiceVoulezvousLe'),
                 [
                     { text: t('common.cancel') },
@@ -459,7 +459,7 @@ const TaxiHomeScreen: React.FC = () => {
 
     const formatPrice = (price?: number) => {
         if (!price) return 'N/A';
-        return `${price.toLocaleString()} FCFA`;
+        return `${price.toLocaleString()} ${detectedCurrency || 'XAF'}`;
     };
 
     const formatDistance = (distance?: number) => {
@@ -486,7 +486,7 @@ const TaxiHomeScreen: React.FC = () => {
                             >
                                 <SafeIcon name="user" size={18} color="#fff" type="lucide" />
                                 <Text style={styles.registerDriverTextLeft} numberOfLines={1} adjustsFontSizeToFit>
-                                    Devenir chauffeur
+                                    {t('taxiHome.devenirChauffeur')}
                                 </Text>
                             </TouchableOpacity>
                         )}
@@ -494,7 +494,7 @@ const TaxiHomeScreen: React.FC = () => {
                             onPress={() => {
                                 hapticPress();
                                 if (!isDriverValidated) {
-                                    toaster.warning('Vous devez d\'abord vous enregistrer comme chauffeur avant de pouvoir publier un service taxi.');
+                                    toaster.warning(t('taxiHome.driverRegistrationRequired'));
                                     return;
                                 }
                                 (navigation as any).navigate('TaxiForm', {
@@ -517,7 +517,7 @@ const TaxiHomeScreen: React.FC = () => {
                                 styles.publishServiceTextRight,
                                 !isDriverValidated && styles.publishServiceTextRightDisabled
                             ]} numberOfLines={1} adjustsFontSizeToFit>
-                                Publier un service
+                                {t('taxiHome.publierUnService')}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -533,7 +533,7 @@ const TaxiHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>
-                                {viewMode === 'search' ? 'Rechercher un taxi' : t('taxiHomeScreen.creerUnServiceTaxi')}
+                                {viewMode === 'search' ? t('taxiHome.rechercherUnTaxi') : t('taxiHomeScreen.creerUnServiceTaxi')}
                             </Text>
                             {viewMode === 'search' && totalResults > 0 && (
                                 <Text style={[styles.headerSubtitle, { color: '#ffffffCC' }]}>
@@ -573,7 +573,7 @@ const TaxiHomeScreen: React.FC = () => {
                                             }, 150);
                                         }
                                     }}
-                                    placeholder={initializingDepart ? "Chargement position..." : "Votre adresse..."}
+                                    placeholder={initializingDepart ? t('taxiHome.chargementPosition') : t('taxiHome.votreAdresse')}
                                     scope="all"
                                     enrichWithBackend={true}
                                 />
@@ -631,7 +631,7 @@ const TaxiHomeScreen: React.FC = () => {
                             ]}>
                                 <View style={styles.labelRow}>
                                     <SafeIcon name="navigation" size={14} color="#06B6D4" type="lucide" />
-                                    <Text style={styles.routeLabel}>Destination *</Text>
+                                    <Text style={styles.routeLabel}>{t('taxiHome.destination')}</Text>
                                 </View>
                                 <LocationSelector
                                     label=""
@@ -671,7 +671,7 @@ const TaxiHomeScreen: React.FC = () => {
                                     type="lucide"
                                 />
                                 <Text style={[styles.filterChipText, availableOnly && styles.filterChipTextActive]}>
-                                    Taxis disponibles uniquement
+                                    {t('taxiHome.taxisDisponiblesUniquement')}
                                 </Text>
                             </TouchableOpacity>
 
@@ -697,7 +697,7 @@ const TaxiHomeScreen: React.FC = () => {
                                             style={[styles.searchButtonText, !canSearch() && styles.searchButtonTextDisabled]}
                                             numberOfLines={1}
                                         >
-                                            {canSearch() ? t('common.search') : "Remplir destination"}
+                                            {canSearch() ? t('common.search') : t('taxiHome.remplirDestination')}
                                         </Text>
                                     </>
                                 )}
@@ -722,7 +722,7 @@ const TaxiHomeScreen: React.FC = () => {
                                         <SafeIcon name="map-pin" size={48} color="#9CA3AF" />
                                         <Text style={styles.emptyText}>{t('taxiHome.selectionnezVotreTrajet')}</Text>
                                         <Text style={[styles.emptySubtext, { marginBottom: 8 }]} numberOfLines={3}>
-                                            Choisissez un point de départ et une destination précise, puis cliquez sur "Rechercher"
+                                            {t('taxiHome.choisissezTrajet')}
                                         </Text>
                                     </View>
 
@@ -746,19 +746,19 @@ const TaxiHomeScreen: React.FC = () => {
                                                             demandPrediction.level === 'low' ? { color: '#059669' } :
                                                                 { color: '#D97706' }
                                                     ]}>
-                                                        {demandPrediction.level === 'high' ? 'Forte demande' :
-                                                            demandPrediction.level === 'low' ? 'Faible demande' : 'Demande normale'}
+                                                        {demandPrediction.level === 'high' ? t('taxiHome.forteDemande') :
+                                                            demandPrediction.level === 'low' ? t('taxiHome.faibleDemande') : t('taxiHome.demandeNormale')}
                                                     </Text>
                                                 </View>
                                                 {demandPrediction.confidence > 0 && (
                                                     <Text style={styles.iaConfidenceText}>
-                                                        Confiance: {Math.round(demandPrediction.confidence * 100)}%
+                                                        {t('taxiHome.confiance')} {Math.round(demandPrediction.confidence * 100)}%
                                                     </Text>
                                                 )}
                                             </View>
                                             {demandPrediction.level === 'high' && (
                                                 <Text style={styles.iaDemandHint}>
-                                                    Les tarifs peuvent être majorés en période de forte demande
+                                                    {t('taxiHome.tarifsAugmentes')}
                                                 </Text>
                                             )}
                                         </View>
@@ -839,8 +839,8 @@ const TaxiHomeScreen: React.FC = () => {
                                         const phone = item.whatsapp || item.telephone;
                                         if (phone) {
                                             const cleanPhone = phone.replace(/[^0-9+]/g, '');
-                                            Linking.openURL(`whatsapp://send?phone=${cleanPhone}&text=Bonjour, je souhaite réserver un taxi.`).catch(() => {
-                                                Linking.openURL(`https://wa.me/${cleanPhone}?text=Bonjour, je souhaite réserver un taxi.`);
+                                            Linking.openURL(`whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(t('taxiHome.whatsappReservation'))}`).catch(() => {
+                                                Linking.openURL(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(t('taxiHome.whatsappReservation'))}`);
                                             });
                                         }
                                     }}
@@ -872,7 +872,7 @@ const TaxiHomeScreen: React.FC = () => {
                                     <SafeIcon name="taxi" size={64} color="#9CA3AF" />
                                     <Text style={styles.emptyText}>{t('taxiHome.aucunTaxiTrouve')}</Text>
                                     <Text style={styles.emptySubtext} numberOfLines={2}>
-                                        Essayez de modifier vos critères de recherche
+                                        {t('taxiHome.modifierCriteres')}
                                     </Text>
                                 </View>
                             }
@@ -963,7 +963,7 @@ const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, onWhatsApp, 
                 {taxi.climatisation && (
                     <View style={styles.featureChip}>
                         <SafeIcon name="wind" size={12} color="#6B7280" type="lucide" />
-                        <Text style={styles.featureChipText}>Climatisation</Text>
+                        <Text style={styles.featureChipText}>{t('taxiHome.climatisation')}</Text>
                     </View>
                 )}
                 {taxi.wifi && (
@@ -981,14 +981,14 @@ const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, onWhatsApp, 
                 {taxi.paiement_mobile_money && (
                     <View style={styles.featureChip}>
                         <SafeIcon name="smartphone" size={12} color="#6B7280" type="lucide" />
-                        <Text style={styles.featureChipText}>Mobile Money</Text>
+                        <Text style={styles.featureChipText}>{t('taxiHome.mobileMoney')}</Text>
                     </View>
                 )}
             </View>
 
             {taxi.tarif_base && (
                 <View style={styles.taxiPricing}>
-                    <Text style={styles.pricingLabel}>Tarif de base:</Text>
+                    <Text style={styles.pricingLabel}>{t('taxiHome.tarifDeBase')}</Text>
                     <Text style={styles.pricingValue}>{formatPrice(taxi.tarif_base)}</Text>
                     {taxi.tarif_par_km && (
                         <Text style={styles.pricingKm}>+ {formatPrice(taxi.tarif_par_km)}/km</Text>
@@ -999,7 +999,7 @@ const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, onWhatsApp, 
             {priceEstimate ? (
                 <View style={[styles.taxiPricing, { backgroundColor: '#ECFDF5', borderColor: '#10B981', borderWidth: 1, borderRadius: 8, padding: 8, marginTop: 6 }]}>
                     <SafeIcon name="calculator" size={14} color="#10B981" type="lucide" />
-                    <Text style={[styles.pricingLabel, { color: '#059669', marginLeft: 6 }]}>Estimation:</Text>
+                    <Text style={[styles.pricingLabel, { color: '#059669', marginLeft: 6 }]}>{t('taxiHome.estimation')}</Text>
                     <Text style={[styles.pricingValue, { color: '#059669', fontWeight: '700' }]}>{priceEstimate}</Text>
                 </View>
             ) : null}
@@ -1083,7 +1083,7 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
                     style={styles.formInput}
                 />
                 <NativeInput
-                    placeholder="WhatsApp (optionnel)"
+                    placeholder={t('taxiHome.whatsappOptional')}
                     value={taxiForm.whatsapp || ''}
                     onChangeText={(text) => onFormChange({ ...taxiForm, whatsapp: text })}
                     keyboardType="phone-pad"
@@ -1106,13 +1106,13 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
                     style={styles.formInput}
                 />
                 <NativeInput
-                    placeholder="Immatriculation"
+                    placeholder={t('taxiHome.immatriculation')}
                     value={taxiForm.immatriculation || ''}
                     onChangeText={(text) => onFormChange({ ...taxiForm, immatriculation: text })}
                     style={styles.formInput}
                 />
                 <NativeInput
-                    placeholder="Couleur"
+                    placeholder={t('taxiHome.couleur')}
                     value={taxiForm.couleur || ''}
                     onChangeText={(text) => onFormChange({ ...taxiForm, couleur: text })}
                     style={styles.formInput}
@@ -1127,16 +1127,16 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
             </View>
 
             <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Tarifs</Text>
+                <Text style={styles.formSectionTitle}>{t('taxiHome.tarifs')}</Text>
                 <NativeInput
-                    placeholder="Tarif de base (FCFA)"
+                    placeholder={t('taxiHome.tarifDeBaseFcfa')}
                     value={taxiForm.tarif_base?.toString() || ''}
                     onChangeText={(text) => onFormChange({ ...taxiForm, tarif_base: parseInt(text) || undefined })}
                     keyboardType="numeric"
                     style={styles.formInput}
                 />
                 <NativeInput
-                    placeholder="Tarif par km (FCFA)"
+                    placeholder={t('taxiHome.tarifParKmFcfa')}
                     value={taxiForm.tarif_par_km?.toString() || ''}
                     onChangeText={(text) => onFormChange({ ...taxiForm, tarif_par_km: parseInt(text) || undefined })}
                     keyboardType="numeric"
@@ -1145,7 +1145,7 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
             </View>
 
             <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Options</Text>
+                <Text style={styles.formSectionTitle}>{t('taxiHome.options')}</Text>
                 <View style={styles.checkboxRow}>
                     <TouchableOpacity
                         style={styles.checkbox}
@@ -1153,7 +1153,7 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
                     >
                         {taxiForm.climatisation && <SafeIcon name="check" size={16} color="#06B6D4" type="lucide" />}
                     </TouchableOpacity>
-                    <Text style={styles.checkboxLabel}>Climatisation</Text>
+                    <Text style={styles.checkboxLabel}>{t('taxiHome.climatisation')}</Text>
                 </View>
                 <View style={styles.checkboxRow}>
                     <TouchableOpacity
@@ -1167,7 +1167,7 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
             </View>
 
             <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Modes de paiement</Text>
+                <Text style={styles.formSectionTitle}>{t('taxiHome.modesDePaiement')}</Text>
                 <View style={styles.checkboxRow}>
                     <TouchableOpacity
                         style={styles.checkbox}
@@ -1184,7 +1184,7 @@ const CreateTaxiForm: React.FC<CreateTaxiFormProps> = ({
                     >
                         {taxiForm.paiement_mobile_money && <SafeIcon name="check" size={16} color="#06B6D4" type="lucide" />}
                     </TouchableOpacity>
-                    <Text style={styles.checkboxLabel}>Mobile Money</Text>
+                    <Text style={styles.checkboxLabel}>{t('taxiHome.mobileMoney')}</Text>
                 </View>
                 <View style={styles.checkboxRow}>
                     <TouchableOpacity

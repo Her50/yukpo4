@@ -25,7 +25,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
     fieldName,
     onSelect,
     required = false,
-    placeholder={t('enhancedModalitySelector.selectionner')},
+    placeholder = 'Sélectionner...',
     customOptions // ✅ NOUVEAU
 }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -85,8 +85,8 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
             const combinedOptions = [...new Set([...staticOptions, ...serverCustomOptions])];
 
             // ✅ Ajouter une option sentinelle pour l'ajout manuel
-            if (!combinedOptions.some(opt => opt.includes('🆕 Autre'))) {
-                combinedOptions.push('🆕 Autre (ajouter)');
+            if (!combinedOptions.some(opt => opt.includes('\uD83C\uDD95 Autre'))) {
+                combinedOptions.push('\uD83C\uDD95 Autre (ajouter)');
             }
 
             setAllOptions(combinedOptions);
@@ -100,7 +100,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
     };
 
     const handleSelect = async (option: string) => {
-        if (option.includes('🆕 Autre')) {
+        if (option.includes('\uD83C\uDD95 Autre')) {
             // Proposer d'ajouter une nouvelle modalité
             Alert.prompt(
                 `Nouveau ${label.toLowerCase()}`,
@@ -119,8 +119,8 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                 // Vérifier si la modalité existe déjà
                                 if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase())) {
                                     Alert.alert(
-                                        t('enhancedModalitySelector.modaliteExistante'),
-                                        t('enhancedModalitySelector.existeDejaDansLaListe', { newModality: newModality }),
+                                        '⚠️ Modalité existante',
+                                        `"${newModality}" existe déjà dans la liste.`,
                                         [{ text: 'OK' }]
                                     );
                                     return;
@@ -141,14 +141,14 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                     onSelect(newModality);
 
                                     Alert.alert(
-                                        t('enhancedModalitySelector.modaliteAjoutee'),
-                                        t('enhancedModalitySelector.aEteAjouteEtSeraVisible', { newModality: newModality }),
+                                        '✅ Modalité ajoutée',
+                                        `"${newModality}" a été ajouté et sera visible pour tous les utilisateurs !`,
                                         [{ text: 'OK' }]
                                     );
                                 } else {
                                     Alert.alert(
                                         '❌ Erreur',
-                                        t('enhancedModalitySelector.impossibleDajouterLaModaliteVeuillezReessayer'),
+                                        'Impossible d\'ajouter la modalité. Veuillez réessayer.',
                                         [{ text: 'OK' }]
                                     );
                                 }
@@ -180,7 +180,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
         if (allOptions.length === 0) {
             Alert.alert(
                 'Aucune option disponible',
-                t('enhancedModalitySelector.aucuneOptionNestDefiniePour', { label_toLowerCase(): label.toLowerCase() }),
+                `Aucune option n'est définie pour ${label.toLowerCase()}.`,
                 [{ text: 'OK' }]
             );
             return;
@@ -268,7 +268,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
             {/* Indicateur du nombre d'options disponibles */}
             {allOptions.length > 0 && !loading && (
                 <Text style={styles.optionsCount}>
-                    {allOptions.length} option{allOptions.length > 1 ? 's' : ''} disponible{allOptions.length > 1 ? 's' : ''}{allOptions.some(opt => !opt.includes('🆕')) ? t('enhancedModalitySelector.inclutLesModalitesPartagees') : ''}
+                    {allOptions.length} option{allOptions.length > 1 ? 's' : ''} disponible{allOptions.length > 1 ? 's' : ''}{allOptions.some(opt => !opt.includes('\uD83C\uDD95')) ? ' (inclut les modalités partagées)' : ''}
                 </Text>
             )}
             {loading && (
@@ -317,7 +317,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                         {searchQuery.trim() && (
                             <View style={styles.searchResultsInfo}>
                                 <Text style={styles.searchResultsText}>
-                                    {filteredOptions.length} résultat{filteredOptions.length > 1 ? 's' : 't('enhancedModalitySelector.trouvefilteredoptionslength1')s' : ''}
+                                    {filteredOptions.length} résultat{filteredOptions.length > 1 ? 's' : ''} trouvé{filteredOptions.length > 1 ? 's' : ''}
                                 </Text>
                                 {/* ✅ NOUVEAU : Proposer d'ajouter si pas de correspondance exacte */}
                                 {!hasExactMatch && searchQuery.trim().length > 2 && (
@@ -325,15 +325,15 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                         style={styles.addCustomButtonCompact}
                                         onPress={() => {
                                             Alert.alert(
-                                                t('enhancedModalitySelector.ajouterUneNouvelleModalite'),
-                                                t('enhancedModalitySelector.voulezvousAjouterCommeNouvelleOptionPour', { searchQuery_trim(): searchQuery.trim(), label_toLowerCase(): label.toLowerCase() }),
+                                                'Ajouter une nouvelle modalité',
+                                                `Voulez-vous ajouter "${searchQuery.trim()}" comme nouvelle option pour ${label.toLowerCase()} ?\n\nCette modalité sera visible pour tous les utilisateurs.`,
                                                 [
                                                     {
                                                         text: t('common.cancel'),
                                                         style: 'cancel'
                                                     },
                                                     {
-                                                        text: t('enhancedModalitySelector.confirmerLajout'),
+                                                        text: 'Confirmer l\'ajout',
                                                         onPress: async () => {
                                                             const newModality = searchQuery.trim();
                                                             const success = await modalityService.addCustomModality(
@@ -348,14 +348,14 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                                                 setIsOpen(false);
                                                                 setSearchQuery('');
                                                                 Alert.alert(
-                                                                    t('enhancedModalitySelector.modaliteAjoutee'),
+                                                                    '✅ Modalité ajoutée',
                                                                     `"${newModality}" est maintenant disponible !`,
                                                                     [{ text: 'OK' }]
                                                                 );
                                                             } else {
                                                                 Alert.alert(
                                                                     '❌ Erreur',
-                                                                    t('enhancedModalitySelector.impossibleDajouterLaModalite'),
+                                                                    'Impossible d\'ajouter la modalité.',
                                                                     [{ text: 'OK' }]
                                                                 );
                                                             }
@@ -388,7 +388,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                         style={styles.addCustomButton}
                                         onPress={() => {
                                             Alert.alert(
-                                                t('enhancedModalitySelector.ajouterUneNouvelleModalite'),
+                                                'Ajouter une nouvelle modalité',
                                                 `Voulez-vous ajouter "${searchQuery.trim()}" comme nouvelle option pour ${label.toLowerCase()} ?`,
                                                 [
                                                     {
@@ -400,7 +400,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                                         }
                                                     },
                                                     {
-                                                        text: t('enhancedModalitySelector.confirmerLajout'),
+                                                        text: 'Confirmer l\'ajout',
                                                         onPress: async () => {
                                                             const newModality = searchQuery.trim();
                                                             const success = await modalityService.addCustomModality(
@@ -415,7 +415,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                                                 setIsOpen(false);
                                                                 setSearchQuery('');
                                                                 Alert.alert(
-                                                                    t('enhancedModalitySelector.modaliteAjoutee'),
+                                                                    '✅ Modalité ajoutée',
                                                                     `"${newModality}" est maintenant disponible !`,
                                                                     [{ text: 'OK' }]
                                                                 );
@@ -461,7 +461,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                             {!searchQuery.trim() && (
                                 <TouchableOpacity
                                     style={styles.addCustomButton}
-                                    onPress={() => handleSelect('🆕 Autre (ajouter)')}
+                                    onPress={() => handleSelect('\uD83C\uDD95 Autre (ajouter)')}
                                 >
                                     <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
                                     <Text style={styles.addCustomButtonText}>
@@ -476,7 +476,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                 style={styles.modalButton}
                                 onPress={() => setIsOpen(false)}
                             >
-                                <Text style={styles.modalButtonText}>{t('enhancedModalitySelector.fermer')}</Text>
+                                <Text style={styles.modalButtonText}>Fermer</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

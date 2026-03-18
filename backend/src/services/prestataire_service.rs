@@ -2,7 +2,7 @@ use crate::core::types::AppResult;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct PrestataireInfo {
     pub id: i32,
     pub nom_complet: Option<String>,
@@ -21,8 +21,7 @@ pub async fn get_prestataire_info(
 ) -> AppResult<Option<PrestataireInfo>> {
     // ✅ CORRIGÉ 2026-02-16: Utiliser nom_complet stocké au lieu de le reconstruire
     // Priorité: nom_complet > prenom + nom > email
-    let result = sqlx::query_as!(
-        PrestataireInfo,
+    let result = sqlx::query_as::<_, PrestataireInfo>(
         r#"
         SELECT 
             id,
@@ -39,12 +38,12 @@ pub async fn get_prestataire_info(
             gps,
             photo_profil,
             avatar_url,
-            created_at AS "created_at: chrono::DateTime<chrono::Utc>"
+            created_at
         FROM users 
         WHERE id = $1
         "#,
-        user_id
     )
+    .bind(user_id)
     .fetch_optional(pool)
     .await?;
 

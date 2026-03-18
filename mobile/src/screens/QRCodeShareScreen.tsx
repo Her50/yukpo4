@@ -89,7 +89,7 @@ const QRCodeShareScreen: React.FC<QRCodeShareScreenProps> = ({
 
         try {
             const shareOptions = {
-                message: `📦 Yukpo - Code de livraison\n\nQR ID: ${qrData.qr_id}\nURL: ${qrData.share_url}\n\nScannez ce code pour valider la livraison.`,
+                message: `\uD83D\uDCE6 Yukpo - Code de livraison\n\nQR ID: ${qrData.qr_id}\nURL: ${qrData.share_url}\n\nScannez ce code pour valider la livraison.`,
                 url: qrData.share_url,
                 title: 'Code de livraison Yukpo',
             };
@@ -187,7 +187,7 @@ const QRCodeShareScreen: React.FC<QRCodeShareScreenProps> = ({
                 } else if (status === 'scanne') {
                     message += '\n✅ Déjà scanné';
                 } else {
-                    message += '\n📍 En attente de scan';
+                    message += '\n\uD83D\uDCCD En attente de scan';
                 }
                 
                 Alert.alert('Statut QR Code', message);
@@ -247,28 +247,28 @@ const QRCodeShareScreen: React.FC<QRCodeShareScreenProps> = ({
 
                             <View style={styles.actions}>
                                 <NativeButton
-                                    title="📤 Partager"
+                                    title="\uD83D\uDCE4 Partager"
                                     onPress={shareQRCode}
                                     variant="primary"
                                     style={styles.actionButton}
                                 />
                                 
                                 <NativeButton
-                                    title="🔗 Copier lien"
+                                    title="\uD83D\uDD17 Copier lien"
                                     onPress={copyLink}
                                     variant="outline"
                                     style={styles.actionButton}
                                 />
                                 
                                 <NativeButton
-                                    title="🌐 Ouvrir"
+                                    title="\uD83C\uDF10 Ouvrir"
                                     onPress={openLink}
                                     variant="outline"
                                     style={styles.actionButton}
                                 />
                                 
                                 <NativeButton
-                                    title="📊 Vérifier statut"
+                                    title="\uD83D\uDCCA Vérifier statut"
                                     onPress={() => checkQRStatus(qrData.qr_id)}
                                     variant="outline"
                                     style={styles.actionButton}

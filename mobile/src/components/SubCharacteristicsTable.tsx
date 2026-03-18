@@ -1,6 +1,8 @@
 /**
  * Composant SubCharacteristicsTable
- * Affiche les sous-caractéristiques dt('subCharacteristicsTable.unProduitSousFormeDeTableau')ajouter, modifier et supprimer des lignes
+ * Affiche les sous-caractéristiques d'un produit sous forme de tableau éditable
+ * Deux colonnes : Label (nom de la caractéristique) et Valeur
+ * Permet d'ajouter, modifier et supprimer des lignes
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -17,7 +19,6 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { useToaster } from './ToasterProvider'; // ✅ NOUVEAU: Pour afficher les toasts de confirmation
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface SubCharacteristicRow {
     label: string;
@@ -45,7 +46,6 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
 }) => {
     // ✅ NOUVEAU: Toast pour les notifications
     const toaster = useToaster();
-    const { t } = useLanguageSafe();
 
     // État du tableau : chaque ligne contient un label et une valeur
     const [rows, setRows] = useState<SubCharacteristicRow[]>([]);
@@ -72,9 +72,9 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             const initialRowsFromIA: SubCharacteristicRow[] = [];
 
             // ✅ DEBUG: Logger les données reçues pour diagnostiquer le problème
-            console.log('[SubCharacteristicsTable] 🔍 sousCaracteristiques reçues:', JSON.stringify(sousCaracteristiques, null, 2));
-            console.log('[SubCharacteristicsTable] 🔍 valeur parsée:', valeur);
-            console.log('[SubCharacteristicsTable] 🔍 productLabels:', productLabels);
+            console.log('[SubCharacteristicsTable] \uD83D\uDD0D sousCaracteristiques reçues:', JSON.stringify(sousCaracteristiques, null, 2));
+            console.log('[SubCharacteristicsTable] \uD83D\uDD0D valeur parsée:', valeur);
+            console.log('[SubCharacteristicsTable] \uD83D\uDD0D productLabels:', productLabels);
 
             // ✅ CORRECTION MAJEURE: Ne PAS utiliser la chaîne valeur pour mapper les valeurs aux labels
             // Car la chaîne valeur peut contenir des valeurs incohérentes ou des valeurs supplémentaires
@@ -121,12 +121,12 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             if (orderedLabels.length === 0) {
                 const allKeys = Object.keys(sousCaracteristiques);
                 orderedLabels = Array.from(new Set(allKeys));
-                console.log('[SubCharacteristicsTable] 🔍 Aucun label valide dans productLabels, utilisation des clés de sousCaracteristiques (sans doublons):', orderedLabels);
+                console.log('[SubCharacteristicsTable] \uD83D\uDD0D Aucun label valide dans productLabels, utilisation des clés de sousCaracteristiques (sans doublons):', orderedLabels);
                 console.warn('[SubCharacteristicsTable] ⚠️ ATTENTION: productLabels non disponible ou sans correspondance, utilisation de Object.keys() comme fallback.');
             }
 
-            console.log('[SubCharacteristicsTable] 🔍 Labels ordonnés depuis productLabels:', orderedLabels);
-            console.log('[SubCharacteristicsTable] 🔍 Clés dans sousCaracteristiques:', Object.keys(sousCaracteristiques));
+            console.log('[SubCharacteristicsTable] \uD83D\uDD0D Labels ordonnés depuis productLabels:', orderedLabels);
+            console.log('[SubCharacteristicsTable] \uD83D\uDD0D Clés dans sousCaracteristiques:', Object.keys(sousCaracteristiques));
 
             // ✅ CORRECTION CRITIQUE: Vérifier que tous les labels ordonnés existent dans sousCaracteristiques
             // et que toutes les clés de sousCaracteristiques sont présentes dans orderedLabels
@@ -148,9 +148,9 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             let parsedValues: string[] = [];
             if (valeur && valeur.trim().length > 0) {
                 parsedValues = valeur.split(separateur).map(v => v.trim()).filter(v => v.length > 0);
-                console.log('[SubCharacteristicsTable] 🔍 Valeurs parsées depuis valeur:', parsedValues);
-                console.log('[SubCharacteristicsTable] 🔍 Nombre de valeurs parsées:', parsedValues.length);
-                console.log('[SubCharacteristicsTable] 🔍 Nombre de labels ordonnés:', orderedLabels.length);
+                console.log('[SubCharacteristicsTable] \uD83D\uDD0D Valeurs parsées depuis valeur:', parsedValues);
+                console.log('[SubCharacteristicsTable] \uD83D\uDD0D Nombre de valeurs parsées:', parsedValues.length);
+                console.log('[SubCharacteristicsTable] \uD83D\uDD0D Nombre de labels ordonnés:', orderedLabels.length);
 
                 // Vérifier si la valeur parsée est cohérente (même nombre de valeurs que de labels)
                 if (parsedValues.length !== orderedLabels.length) {
@@ -257,7 +257,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                 // Les lignes ont changé, réactiver le bouton
                 setIsValidated(false);
                 setValidatedRowsSnapshot([]);
-                console.log('[SubCharacteristicsTable] 🔄 Changements détectés, réactivation du bouton Valider');
+                console.log('[SubCharacteristicsTable] \uD83D\uDD04 Changements détectés, réactivation du bouton Valider');
             }
         }
     }, [rows, isValidated, validatedRowsSnapshot]);
@@ -290,7 +290,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
 
         // ✅ NOUVEAU: Feedback visuel pour la modification
         if (toaster) {
-            toaster.success(t('subCharacteristicsTable.modificationEnregistree'));
+            toaster.success('Modification enregistrée');
         }
 
         // ✅ NOUVEAU: Mettre à jour le compteur pour le feedback
@@ -327,7 +327,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
 
         // ✅ NOUVEAU: Feedback visuel pour la suppression
         if (toaster) {
-            toaster.info(t('subCharacteristicsTable.ligneSupprimee'));
+            toaster.info('Ligne supprimée');
         }
 
         // ✅ NOUVEAU: Réactiver le bouton si on supprime après validation
@@ -354,7 +354,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
 
         // ✅ NOUVEAU: Feedback visuel pour l'ajout
         if (toaster) {
-            toaster.info(t('subCharacteristicsTable.nouvelleLigneAjoutee'));
+            toaster.info('Nouvelle ligne ajoutée');
         }
 
         // ✅ NOUVEAU: Réactiver le bouton si on ajoute après validation
@@ -431,7 +431,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             // ✅ NOUVEAU: Afficher un toast de confirmation
             const nbCaracteristiques = validRows.length;
             toaster.success(
-                t('subCharacteristicsTable.souscaracteristiqueValideeAvecSucces', { nbCaracteristiques: nbCaracteristiques, nbCaracteristiques > 1 ? 's' : '': nbCaracteristiques > 1 ? 's' : '', nbCaracteristiques > 1 ? 's' : '': nbCaracteristiques > 1 ? 's' : '' })
+                `✅ ${nbCaracteristiques} sous-caractéristique${nbCaracteristiques > 1 ? 's' : ''} validée${nbCaracteristiques > 1 ? 's' : ''} avec succès !`
             );
 
             // ✅ NOUVEAU: Animation de la bordure verte pour feedback visuel clair
@@ -451,7 +451,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             // ✅ NOTE: On ne remet plus setIsValidated(false) automatiquement pour garder le bouton grisé
         } catch (error) {
             console.error('[SubCharacteristicsTable] ❌ Erreur validation:', error);
-            toaster.error(t('subCharacteristicsTable.erreurLorsDeLaValidationVeuillez'));
+            toaster.error('❌ Erreur lors de la validation. Veuillez réessayer.');
             // ✅ Afficher un message d'erreur (sera géré par le parent si nécessaire)
         } finally {
             setIsValidating(false);
@@ -572,7 +572,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                     onPress={addRow}
                 >
                     <SafeIcon name="plus" size={18} color="#FFFFFF" />
-                    <Text style={styles.addButtonText}>{t('subCharacteristicsTable.ajouter')}</Text>
+                    <Text style={styles.addButtonText}>Ajouter</Text>
                 </TouchableOpacity>
                 <Animated.View style={{ flex: 1, transform: [{ scale: scaleAnim }] }}>
                     <TouchableOpacity
@@ -593,12 +593,12 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                         ) : isValidated ? (
                             <>
                                 <SafeIcon name="check-circle" size={20} color="#FFFFFF" />
-                                <Text style={[styles.validateButtonText, styles.validateButtonTextSuccess]}>{t('subCharacteristicsTable.sauvegarde')}</Text>
+                                <Text style={[styles.validateButtonText, styles.validateButtonTextSuccess]}>✓ Sauvegardé !</Text>
                             </>
                         ) : (
                             <>
                                 <SafeIcon name="check-circle" size={18} color="#FFFFFF" />
-                                <Text style={styles.validateButtonText}>{t('subCharacteristicsTable.valider')}</Text>
+                                <Text style={styles.validateButtonText}>Valider</Text>
                             </>
                         )}
                     </TouchableOpacity>
@@ -609,7 +609,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             {isValidated && (
                 <View style={styles.successBadge}>
                     <SafeIcon name="check-circle" size={16} color="#10B981" />
-                    <Text style={styles.successBadgeText}>{t('subCharacteristicsTable.validationReussie')}</Text>
+                    <Text style={styles.successBadgeText}>Validation réussie</Text>
                 </View>
             )}
         </Animated.View>

@@ -1,4 +1,4 @@
-// 🌍 Context de Langue - Gestion globale de la langue de l'application
+// \uD83C\uDF0D Context de Langue - Gestion globale de la langue de l'application
 // ✅ Propulsé par i18next + react-i18next (standard industriel)
 // ✅ Rétrocompatible : useLanguage(), useLanguageSafe(), t() fonctionnent comme avant
 import * as React from 'react';

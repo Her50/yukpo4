@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import ImmobilierResultCard from '../../components/specialized/ImmobilierResultCard';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { immobilierService, PropertySearchFilters, RealEstateProperty } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type RouteParams = {
     filters: PropertySearchFilters;
@@ -44,7 +44,7 @@ const ImmobilierListScreen: React.FC = () => {
             }
         } catch (err: any) {
             console.error('[ImmobilierListScreen] Erreur chargement:', err);
-            setError(err.message || 'Erreur lors du chargement');
+            setError(err.message || t('immobilierList.erreurChargement') || 'Erreur lors du chargement');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -72,7 +72,7 @@ const ImmobilierListScreen: React.FC = () => {
             newSelection.delete(propertyId);
         } else {
             if (newSelection.size >= 5) {
-                Alert.alert('Limite atteinte', 'Vous pouvez comparer jusqu\t('immobilierListScreen.a5BiensMaximum'));
+                Alert.alert(t('immobilierList.limiteAtteinte') || 'Limite atteinte', t('immobilierList.comparerMax5') || 'Vous pouvez comparer jusqu\'à 5 biens maximum');
                 return;
             }
             newSelection.add(propertyId);
@@ -82,7 +82,7 @@ const ImmobilierListScreen: React.FC = () => {
 
     const handleCompare = () => {
         if (selectedProperties.size < 2) {
-            Alert.alert(t('immobilierListScreen.selectionRequise'), t('immobilierListScreen.selectionnezAuMoins2BiensPour'));
+            Alert.alert(t('immobilierList.selectionRequise') || 'Sélection requise', t('immobilierList.auMoins2Biens') || 'Sélectionnez au moins 2 biens pour comparer');
             return;
         }
         (navigation as any).navigate('ImmobilierCompare', {
@@ -105,7 +105,7 @@ const ImmobilierListScreen: React.FC = () => {
                 <SafeIcon name="alert-circle" size={48} color="#EF4444" />
                 <Text style={styles.errorText}>{error}</Text>
                 <Text style={styles.errorSubtext}>
-                    Aucun bien immobilier trouvé avec ces critères
+                    {t('immobilierList.aucunBienAvecCriteres') || 'Aucun bien immobilier trouvé avec ces critères'}
                 </Text>
             </View>
         );
@@ -116,11 +116,11 @@ const ImmobilierListScreen: React.FC = () => {
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
                     <Text style={styles.headerTitle}>
-                        {properties.length} bien{properties.length > 1 ? 's' : 't('immobilierListScreen.trouvepropertieslength1')s' : ''}
+                        {t('immobilierList.biensTrouves', { count: properties.length }) || `${properties.length} bien${properties.length > 1 ? 's' : ''} trouvé${properties.length > 1 ? 's' : ''}`}
                     </Text>
                     {selectedProperties.size > 0 && (
                         <Text style={styles.selectionCount}>
-                            {selectedProperties.size} sélectionné{selectedProperties.size > 1 ? 's' : ''}
+                            {t('immobilierList.selectionnes', { count: selectedProperties.size }) || `${selectedProperties.size} sélectionné${selectedProperties.size > 1 ? 's' : ''}`}
                         </Text>
                     )}
                 </View>
@@ -130,7 +130,7 @@ const ImmobilierListScreen: React.FC = () => {
                         onPress={handleCompare}
                     >
                         <SafeIcon name="git-compare" size={20} color="#fff" />
-                        <Text style={styles.compareButtonText}>Comparer</Text>
+                        <Text style={styles.compareButtonText}>{t('immobilierList.comparer') || 'Comparer'}</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -178,7 +178,7 @@ const ImmobilierListScreen: React.FC = () => {
                         <SafeIcon name="home" size={64} color="#9CA3AF" />
                         <Text style={styles.emptyText}>{t('immobilierList.aucunBienTrouve')}</Text>
                         <Text style={styles.emptySubtext}>
-                            Essayez de modifier vos critères de recherche
+                            {t('immobilierList.essayezModifierCriteres') || 'Essayez de modifier vos critères de recherche'}
                         </Text>
                     </View>
                 }

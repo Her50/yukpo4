@@ -23,7 +23,7 @@ import {
 } from '../../data/stickersLibrary';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface StickerPickerModalProps {
     visible: boolean;

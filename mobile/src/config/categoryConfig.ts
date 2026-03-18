@@ -57,7 +57,7 @@ export interface CategoryConfig {
 
 // Configuration par catégorie
 export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
-  // 🏢 IMMOBILIER - BÂTIMENTS
+  // \uD83C\uDFE2 IMMOBILIER - BÂTIMENTS
   immobilier_batiment: {
     terminology: {
       productLabel: 'Bien immobilier',
@@ -278,7 +278,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#3B82F6',
       gradientColors: ['#3B82F6', '#1D4ED8'],
-      icon: '🏢',
+      icon: '\uD83C\uDFE2',
       badgeColor: '#EFF6FF',
       accentColor: '#2563EB',
     },
@@ -289,7 +289,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'horizontal',
   },
 
-  // 🏠 LOCATION COURTE DURÉE (Type Airbnb)
+  // \uD83C\uDFE0 LOCATION COURTE DURÉE (Type Airbnb)
   // Réutilise la même configuration qu'immobilier_batiment avec des filtres additionnels
   immobilier_location_courte: {
     terminology: {
@@ -491,7 +491,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#F59E0B',
       gradientColors: ['#F59E0B', '#D97706'],
-      icon: '🏠',
+      icon: '\uD83C\uDFE0',
       badgeColor: '#FEF3C7',
       accentColor: '#D97706',
     },
@@ -502,7 +502,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'grid',
   },
 
-  // 🏞️ IMMOBILIER - TERRAINS (✅ FILTRES ENRICHIS V2)
+  // \uD83C\uDFDE️ IMMOBILIER - TERRAINS (✅ FILTRES ENRICHIS V2)
   immobilier_terrain: {
     terminology: {
       productLabel: 'Terrain',
@@ -700,7 +700,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#10B981',
       gradientColors: ['#10B981', '#059669'],
-      icon: '🏞️',
+      icon: '\uD83C\uDFDE️',
       badgeColor: '#D1FAE5',
       accentColor: '#059669',
     },
@@ -711,7 +711,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'horizontal',
   },
 
-  // 🚗 AUTOMOBILE
+  // \uD83D\uDE97 AUTOMOBILE
   automobile: {
     terminology: {
       productLabel: 'Véhicule',
@@ -898,7 +898,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#EF4444',
       gradientColors: ['#EF4444', '#DC2626'],
-      icon: '🚗',
+      icon: '\uD83D\uDE97',
       badgeColor: '#FEE2E2',
       accentColor: '#DC2626',
     },
@@ -912,34 +912,34 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
       // Noms standards
       'voiture', 'auto', 'automobile', 'véhicule', 'vehicule', 'moto', 'scooter',
       'camion', 'pick-up', 'pickup', '4x4', 'suv', 'bus', 'minibus',
-      // 🇨🇲 CAMEROUN
+      // \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN
       'tête de cochon', 'tete de cochon', 'r4', 'renault 4',
       '504 bâchée', '504 bachee', 'bâchée', 'bachee',
       'bendskin', 'bend skin', 'moto taxi', 'mototaxi',
       'clandos', 'clando', 'taxi clando',
       'corolla 88', 'corolla e90', 'toyota 88',
       'hiace', 'hi-ace', 'hiace bus',
-      // 🇨🇮 CÔTE D'IVOIRE
+      // \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE
       'gbaka', 'gbakas',
       'wôrô-wôrô', 'woro woro', 'woro-woro', 'wôrô wôrô', 'taxi collectif',
       'pinasse', 'pirogue motorisée',
-      // 🇸🇳 SÉNÉGAL
+      // \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL
       'car rapide', 'cars rapides',
       'ndiaga ndiaye', 'ndiaga-ndiaye',
       'sept-places', '7 places', 'sept places', 'taxi brousse',
       'jakarta', 'jakarta moto',
-      // 🇨🇩🇨🇬 CONGO RDC/RC
+      // \uD83C\uDDE8\uD83C\uDDE9\uD83C\uDDE8\uD83C\uDDEC CONGO RDC/RC
       'fula-fula', 'fula fula', 'fullah-fullah',
       'esprit de mort', 'esprit-de-mort', 'moto dangereuse',
       '100kg', '100 kg', 'cent kilo', 'moto livraison',
       'taxi-bus', 'taxi bus', 'bus taxi',
-      // 🇧🇯🇹🇬 BÉNIN/TOGO
+      // \uD83C\uDDE7\uD83C\uDDEF\uD83C\uDDF9\uD83C\uDDEC BÉNIN/TOGO
       'zémidjan', 'zemidjan', 'zem',
       'oléya', 'oleya',
-      // 🇲🇱 MALI
+      // \uD83C\uDDF2\uD83C\uDDF1 MALI
       'sotrama', 'sotrama bus',
       'djan-djan', 'djan djan', 'djandjan',
-      // 🇬🇦 GABON
+      // \uD83C\uDDEC\uD83C\uDDE6 GABON
       'clandos gabon', 'taxi gabon',
       // Marques populaires en Afrique
       'toyota', 'peugeot', 'nissan', 'honda', 'hyundai', 'kia',
@@ -953,7 +953,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 🔧 MÉCANICIEN / GARAGE AUTOMOBILE
+  // \uD83D\uDD27 MÉCANICIEN / GARAGE AUTOMOBILE
   mecanicien: {
     terminology: {
       productLabel: 'Garage',
@@ -1118,7 +1118,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#0EA5E9',
       gradientColors: ['#0EA5E9', '#0284C7'],
-      icon: '🔧',
+      icon: '\uD83D\uDD27',
       badgeColor: '#E0F2FE',
       accentColor: '#0284C7',
     },
@@ -1166,7 +1166,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 🏍️ MÉCANICIEN MOTO/TRICYCLE SPÉCIALISÉ
+  // \uD83C\uDFCD️ MÉCANICIEN MOTO/TRICYCLE SPÉCIALISÉ
   mecanicien_moto: {
     terminology: {
       productLabel: 'Garage Moto',
@@ -1373,7 +1373,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#F59E0B',
       gradientColors: ['#F59E0B', '#D97706'],
-      icon: '🏍️',
+      icon: '\uD83C\uDFCD️',
       badgeColor: '#FEF3C7',
       accentColor: '#D97706',
     },
@@ -1430,7 +1430,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 🎫 TICKET VOYAGE
+  // \uD83C\uDFAB TICKET VOYAGE
   ticket_voyage: {
     terminology: {
       productLabel: 'Billet',
@@ -1454,16 +1454,16 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Compagnie de transport',
         type: 'select',
         options: [
-          // 🇨🇲 COMPAGNIES BUS CAMEROUN
-          { value: 'touristique_express', label: '🚌 Touristique Express' },
-          { value: 'centrale_voyage', label: '🚌 Centrale Voyage' },
-          { value: 'express_voyage', label: '🚌 Express Voyage' },
-          { value: 'express_ferry', label: '🚌 Express Ferry' },
-          { value: 'tgm_transport', label: '🚌 TGM Transport' },
-          { value: 'achille_talon', label: '🚌 Achille Talon' },
-          { value: 'trans_cameroun', label: '🚌 Trans Cameroun' },
-          { value: 'gazelle_voyages', label: '🚌 Gazelle Voyages' },
-          { value: 'voyages_safari', label: '🚌 Voyages Safari' },
+          // \uD83C\uDDE8\uD83C\uDDF2 COMPAGNIES BUS CAMEROUN
+          { value: 'touristique_express', label: '\uD83D\uDE8C Touristique Express' },
+          { value: 'centrale_voyage', label: '\uD83D\uDE8C Centrale Voyage' },
+          { value: 'express_voyage', label: '\uD83D\uDE8C Express Voyage' },
+          { value: 'express_ferry', label: '\uD83D\uDE8C Express Ferry' },
+          { value: 'tgm_transport', label: '\uD83D\uDE8C TGM Transport' },
+          { value: 'achille_talon', label: '\uD83D\uDE8C Achille Talon' },
+          { value: 'trans_cameroun', label: '\uD83D\uDE8C Trans Cameroun' },
+          { value: 'gazelle_voyages', label: '\uD83D\uDE8C Gazelle Voyages' },
+          { value: 'voyages_safari', label: '\uD83D\uDE8C Voyages Safari' },
           // ✈️ COMPAGNIES AÉRIENNES
           { value: 'camair_co', label: '✈️ Camair-Co' },
           { value: 'asky_airlines', label: '✈️ Asky Airlines' },
@@ -1472,8 +1472,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'air_france', label: '✈️ Air France' },
           { value: 'turkey_airlines', label: '✈️ Turkish Airlines' },
           { value: 'royal_air_maroc', label: '✈️ Royal Air Maroc' },
-          // 🚂 TRAINS
-          { value: 'camrail', label: '🚂 Camrail' },
+          // \uD83D\uDE82 TRAINS
+          { value: 'camrail', label: '\uD83D\uDE82 Camrail' },
           // Autres
           { value: 'autre', label: 'Autre compagnie' },
         ],
@@ -1483,12 +1483,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de transport',
         type: 'select',
         options: [
-          { value: 'bus', label: '🚌 Bus' },
-          { value: 'minibus', label: '🚐 Minibus' },
-          { value: 'van', label: '🚐 Van climatisé' },
-          { value: 'train', label: '🚂 Train' },
+          { value: 'bus', label: '\uD83D\uDE8C Bus' },
+          { value: 'minibus', label: '\uD83D\uDE90 Minibus' },
+          { value: 'van', label: '\uD83D\uDE90 Van climatisé' },
+          { value: 'train', label: '\uD83D\uDE82 Train' },
           { value: 'avion', label: '✈️ Avion' },
-          { value: 'bateau', label: '🚢 Bateau' },
+          { value: 'bateau', label: '\uD83D\uDEA2 Bateau' },
         ],
       },
       {
@@ -1568,7 +1568,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#8B5CF6',
       gradientColors: ['#8B5CF6', '#7C3AED'],
-      icon: '🎫',
+      icon: '\uD83C\uDFAB',
       badgeColor: '#F3E8FF',
       accentColor: '#7C3AED',
     },
@@ -1579,7 +1579,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 🎯 PRESTATION SERVICE - ULTRA-ENRICHI CONTEXTE AFRIQUE FRANCOPHONE
+  // \uD83C\uDFAF PRESTATION SERVICE - ULTRA-ENRICHI CONTEXTE AFRIQUE FRANCOPHONE
   prestation_service: {
     terminology: {
       productLabel: 'Prestation',
@@ -1604,71 +1604,71 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           // Bâtiment & Construction
-          { value: '🏗️ Maçonnerie & Béton', label: 'Maçonnerie & Béton' },
-          { value: '🏗️ Menuiserie Bois', label: 'Menuiserie Bois' },
-          { value: '🏗️ Menuiserie Aluminium', label: 'Menuiserie Aluminium' },
-          { value: '🏗️ Plomberie & Sanitaire', label: 'Plomberie & Sanitaire' },
-          { value: '🏗️ Électricité Bâtiment', label: 'Électricité Bâtiment' },
-          { value: '🏗️ Peinture & Décoration', label: 'Peinture & Décoration' },
-          { value: '🏗️ Carrelage & Revêtement', label: 'Carrelage & Revêtement' },
-          { value: '🏗️ Climatisation', label: 'Climatisation' },
+          { value: '\uD83C\uDFD7️ Maçonnerie & Béton', label: 'Maçonnerie & Béton' },
+          { value: '\uD83C\uDFD7️ Menuiserie Bois', label: 'Menuiserie Bois' },
+          { value: '\uD83C\uDFD7️ Menuiserie Aluminium', label: 'Menuiserie Aluminium' },
+          { value: '\uD83C\uDFD7️ Plomberie & Sanitaire', label: 'Plomberie & Sanitaire' },
+          { value: '\uD83C\uDFD7️ Électricité Bâtiment', label: 'Électricité Bâtiment' },
+          { value: '\uD83C\uDFD7️ Peinture & Décoration', label: 'Peinture & Décoration' },
+          { value: '\uD83C\uDFD7️ Carrelage & Revêtement', label: 'Carrelage & Revêtement' },
+          { value: '\uD83C\uDFD7️ Climatisation', label: 'Climatisation' },
           // Beauté & Coiffure
-          { value: '💇 Coiffure Femme', label: 'Coiffure Femme' },
-          { value: '💇 Coiffure Homme (Barbier)', label: 'Barbier' },
-          { value: '💇 Tresses & Nattes', label: 'Tresses & Nattes' },
-          { value: '💇 Pose de Mèches', label: 'Pose de Mèches' },
-          { value: '💇 Manucure & Pédicure', label: 'Manucure & Pédicure' },
-          { value: '💇 Maquillage', label: 'Maquillage' },
+          { value: '\uD83D\uDC87 Coiffure Femme', label: 'Coiffure Femme' },
+          { value: '\uD83D\uDC87 Coiffure Homme (Barbier)', label: 'Barbier' },
+          { value: '\uD83D\uDC87 Tresses & Nattes', label: 'Tresses & Nattes' },
+          { value: '\uD83D\uDC87 Pose de Mèches', label: 'Pose de Mèches' },
+          { value: '\uD83D\uDC87 Manucure & Pédicure', label: 'Manucure & Pédicure' },
+          { value: '\uD83D\uDC87 Maquillage', label: 'Maquillage' },
           // Mécanique & Automobile
-          { value: '🔧 Mécanique Auto', label: 'Mécanique Auto' },
-          { value: '🔧 Mécanique Moto', label: 'Mécanique Moto' },
-          { value: '🔧 Électricité Auto', label: 'Électricité Auto' },
-          { value: '🔧 Carrosserie & Peinture', label: 'Carrosserie' },
-          { value: '🔧 Vulcanisation (Pneus)', label: 'Vulcanisation' },
-          { value: '🔧 Lavage Auto', label: 'Lavage Auto' },
+          { value: '\uD83D\uDD27 Mécanique Auto', label: 'Mécanique Auto' },
+          { value: '\uD83D\uDD27 Mécanique Moto', label: 'Mécanique Moto' },
+          { value: '\uD83D\uDD27 Électricité Auto', label: 'Électricité Auto' },
+          { value: '\uD83D\uDD27 Carrosserie & Peinture', label: 'Carrosserie' },
+          { value: '\uD83D\uDD27 Vulcanisation (Pneus)', label: 'Vulcanisation' },
+          { value: '\uD83D\uDD27 Lavage Auto', label: 'Lavage Auto' },
           // Informatique & Tech
-          { value: '💻 Réparation Téléphone', label: 'Réparation Téléphone' },
-          { value: '💻 Réparation Ordinateur', label: 'Réparation Ordinateur' },
-          { value: '💻 Développement Web', label: 'Développement Web' },
-          { value: '💻 Graphisme & Design', label: 'Graphisme & Design' },
+          { value: '\uD83D\uDCBB Réparation Téléphone', label: 'Réparation Téléphone' },
+          { value: '\uD83D\uDCBB Réparation Ordinateur', label: 'Réparation Ordinateur' },
+          { value: '\uD83D\uDCBB Développement Web', label: 'Développement Web' },
+          { value: '\uD83D\uDCBB Graphisme & Design', label: 'Graphisme & Design' },
           // Ménage & Entretien
-          { value: '🏠 Ménage à Domicile', label: 'Ménage à Domicile' },
-          { value: '🏠 Repassage', label: 'Repassage' },
-          { value: '🏠 Jardinage', label: 'Jardinage' },
+          { value: '\uD83C\uDFE0 Ménage à Domicile', label: 'Ménage à Domicile' },
+          { value: '\uD83C\uDFE0 Repassage', label: 'Repassage' },
+          { value: '\uD83C\uDFE0 Jardinage', label: 'Jardinage' },
           // Cuisine & Restauration
-          { value: '👨‍🍳 Cuisinier à Domicile', label: 'Cuisinier à Domicile' },
-          { value: '👨‍🍳 Traiteur Événements', label: 'Traiteur' },
-          { value: '👨‍🍳 Pâtisserie', label: 'Pâtisserie' },
+          { value: '\uD83D\uDC68‍\uD83C\uDF73 Cuisinier à Domicile', label: 'Cuisinier à Domicile' },
+          { value: '\uD83D\uDC68‍\uD83C\uDF73 Traiteur Événements', label: 'Traiteur' },
+          { value: '\uD83D\uDC68‍\uD83C\uDF73 Pâtisserie', label: 'Pâtisserie' },
           // Éducation
-          { value: '📚 Cours Particuliers Maths', label: 'Cours Maths' },
-          { value: '📚 Cours Particuliers Français', label: 'Cours Français' },
-          { value: '📚 Cours Particuliers Anglais', label: 'Cours Anglais' },
-          { value: '📚 Soutien Scolaire', label: 'Soutien Scolaire' },
+          { value: '\uD83D\uDCDA Cours Particuliers Maths', label: 'Cours Maths' },
+          { value: '\uD83D\uDCDA Cours Particuliers Français', label: 'Cours Français' },
+          { value: '\uD83D\uDCDA Cours Particuliers Anglais', label: 'Cours Anglais' },
+          { value: '\uD83D\uDCDA Soutien Scolaire', label: 'Soutien Scolaire' },
           // Santé & Bien-être
-          { value: '🩺 Soins Infirmiers', label: 'Soins Infirmiers' },
-          { value: '🩺 Kinésithérapie', label: 'Kinésithérapie' },
-          { value: '🩺 Aide-Soignant', label: 'Aide-Soignant' },
+          { value: '\uD83E\uDE7A Soins Infirmiers', label: 'Soins Infirmiers' },
+          { value: '\uD83E\uDE7A Kinésithérapie', label: 'Kinésithérapie' },
+          { value: '\uD83E\uDE7A Aide-Soignant', label: 'Aide-Soignant' },
           // Garde & Assistance
-          { value: '👶 Garde d\'Enfants', label: 'Garde d\'Enfants' },
-          { value: '👶 Baby-sitting', label: 'Baby-sitting' },
+          { value: '\uD83D\uDC76 Garde d\'Enfants', label: 'Garde d\'Enfants' },
+          { value: '\uD83D\uDC76 Baby-sitting', label: 'Baby-sitting' },
           // Événementiel
-          { value: '📸 Photographie', label: 'Photographie' },
-          { value: '📸 Vidéographie', label: 'Vidéographie' },
-          { value: '📸 DJ & Sonorisation', label: 'DJ & Sonorisation' },
+          { value: '\uD83D\uDCF8 Photographie', label: 'Photographie' },
+          { value: '\uD83D\uDCF8 Vidéographie', label: 'Vidéographie' },
+          { value: '\uD83D\uDCF8 DJ & Sonorisation', label: 'DJ & Sonorisation' },
           // Transport
-          { value: '🚚 Déménagement', label: 'Déménagement' },
-          { value: '🚚 Transport Marchandise', label: 'Transport Marchandise' },
-          { value: '🚚 Coursier/Livreur', label: 'Coursier/Livreur' },
+          { value: '\uD83D\uDE9A Déménagement', label: 'Déménagement' },
+          { value: '\uD83D\uDE9A Transport Marchandise', label: 'Transport Marchandise' },
+          { value: '\uD83D\uDE9A Coursier/Livreur', label: 'Coursier/Livreur' },
           // Sécurité
-          { value: '🔐 Agent de Sécurité', label: 'Agent de Sécurité' },
-          { value: '🔐 Gardiennage', label: 'Gardiennage' },
+          { value: '\uD83D\uDD10 Agent de Sécurité', label: 'Agent de Sécurité' },
+          { value: '\uD83D\uDD10 Gardiennage', label: 'Gardiennage' },
           // Couture
-          { value: '🪡 Couture sur Mesure', label: 'Couture sur Mesure' },
-          { value: '🪡 Retouches Vêtements', label: 'Retouches' },
+          { value: '\uD83E\uDEA1 Couture sur Mesure', label: 'Couture sur Mesure' },
+          { value: '\uD83E\uDEA1 Retouches Vêtements', label: 'Retouches' },
           // Autres
           { value: '⚡ Réparation Électroménager', label: 'Réparation Électroménager' },
-          { value: '📄 Saisie & Frappe', label: 'Saisie & Frappe' },
-          { value: '📄 Traduction', label: 'Traduction' },
+          { value: '\uD83D\uDCC4 Saisie & Frappe', label: 'Saisie & Frappe' },
+          { value: '\uD83D\uDCC4 Traduction', label: 'Traduction' },
         ],
       },
       {
@@ -1693,47 +1693,47 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           // ✅ NIVEAU 1: Zones larges (choix rapide)
-          { value: '🌍 Toute l\'Afrique francophone', label: 'Toute l\'Afrique francophone' },
-          { value: '🇨🇲 Tout le Cameroun', label: 'Tout le Cameroun' },
-          { value: '🇨🇩 Tout le RDC', label: 'Toute la RDC' },
-          { value: '🇨🇮 Tout le Côte d\'Ivoire', label: 'Toute la Côte d\'Ivoire' },
-          { value: '🇸🇳 Tout le Sénégal', label: 'Tout le Sénégal' },
-          { value: '🇲🇱 Tout le Mali', label: 'Tout le Mali' },
-          { value: '🇬🇦 Tout le Gabon', label: 'Tout le Gabon' },
-          { value: '🇨🇬 Tout le Congo-Brazzaville', label: 'Tout le Congo' },
+          { value: '\uD83C\uDF0D Toute l\'Afrique francophone', label: 'Toute l\'Afrique francophone' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Tout le Cameroun', label: 'Tout le Cameroun' },
+          { value: '\uD83C\uDDE8\uD83C\uDDE9 Tout le RDC', label: 'Toute la RDC' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Tout le Côte d\'Ivoire', label: 'Toute la Côte d\'Ivoire' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Tout le Sénégal', label: 'Tout le Sénégal' },
+          { value: '\uD83C\uDDF2\uD83C\uDDF1 Tout le Mali', label: 'Tout le Mali' },
+          { value: '\uD83C\uDDEC\uD83C\uDDE6 Tout le Gabon', label: 'Tout le Gabon' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEC Tout le Congo-Brazzaville', label: 'Tout le Congo' },
 
           // ✅ NIVEAU 2: Grandes villes Cameroun
-          { value: '🇨🇲 Douala (toute la ville)', label: 'Douala (toute la ville)' },
-          { value: '🇨🇲 Yaoundé (toute la ville)', label: 'Yaoundé (toute la ville)' },
-          { value: '🇨🇲 Garoua', label: 'Garoua' },
-          { value: '🇨🇲 Bafoussam', label: 'Bafoussam' },
-          { value: '🇨🇲 Bamenda', label: 'Bamenda' },
-          { value: '🇨🇲 Maroua', label: 'Maroua' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala (toute la ville)', label: 'Douala (toute la ville)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé (toute la ville)', label: 'Yaoundé (toute la ville)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Garoua', label: 'Garoua' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Bafoussam', label: 'Bafoussam' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Bamenda', label: 'Bamenda' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Maroua', label: 'Maroua' },
 
           // ✅ Quartiers Douala (top 5)
-          { value: '🇨🇲 Douala - Akwa', label: 'Douala Akwa' },
-          { value: '🇨🇲 Douala - Bonanjo', label: 'Douala Bonanjo' },
-          { value: '🇨🇲 Douala - Bonapriso', label: 'Douala Bonapriso' },
-          { value: '🇨🇲 Douala - Makepe', label: 'Douala Makepe' },
-          { value: '🇨🇲 Douala - PK8-PK17', label: 'Douala PK8-17' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Akwa', label: 'Douala Akwa' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Bonanjo', label: 'Douala Bonanjo' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Bonapriso', label: 'Douala Bonapriso' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Makepe', label: 'Douala Makepe' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - PK8-PK17', label: 'Douala PK8-17' },
 
           // ✅ Quartiers Yaoundé (top 5)
-          { value: '🇨🇲 Yaoundé - Bastos', label: 'Yaoundé Bastos' },
-          { value: '🇨🇲 Yaoundé - Centre-ville', label: 'Yaoundé Centre' },
-          { value: '🇨🇲 Yaoundé - Nlongkak', label: 'Yaoundé Nlongkak' },
-          { value: '🇨🇲 Yaoundé - Odza', label: 'Yaoundé Odza' },
-          { value: '🇨🇲 Yaoundé - Mvan', label: 'Yaoundé Mvan' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Bastos', label: 'Yaoundé Bastos' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Centre-ville', label: 'Yaoundé Centre' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Nlongkak', label: 'Yaoundé Nlongkak' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Odza', label: 'Yaoundé Odza' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Mvan', label: 'Yaoundé Mvan' },
 
           // ✅ Autres grandes villes Afrique francophone
-          { value: '🇨🇩 Kinshasa', label: 'Kinshasa (RDC)' },
-          { value: '🇨🇩 Lubumbashi', label: 'Lubumbashi (RDC)' },
-          { value: '🇨🇮 Abidjan', label: 'Abidjan (CI)' },
-          { value: '🇸🇳 Dakar', label: 'Dakar (SN)' },
-          { value: '🇲🇱 Bamako', label: 'Bamako (ML)' },
-          { value: '🇬🇦 Libreville', label: 'Libreville (GA)' },
-          { value: '🇨🇬 Brazzaville', label: 'Brazzaville (CG)' },
-          { value: '🇧🇯 Cotonou', label: 'Cotonou (BJ)' },
-          { value: '🇹🇬 Lomé', label: 'Lomé (TG)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDE9 Kinshasa', label: 'Kinshasa (RDC)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDE9 Lubumbashi', label: 'Lubumbashi (RDC)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Abidjan', label: 'Abidjan (CI)' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Dakar', label: 'Dakar (SN)' },
+          { value: '\uD83C\uDDF2\uD83C\uDDF1 Bamako', label: 'Bamako (ML)' },
+          { value: '\uD83C\uDDEC\uD83C\uDDE6 Libreville', label: 'Libreville (GA)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEC Brazzaville', label: 'Brazzaville (CG)' },
+          { value: '\uD83C\uDDE7\uD83C\uDDEF Cotonou', label: 'Cotonou (BJ)' },
+          { value: '\uD83C\uDDF9\uD83C\uDDEC Lomé', label: 'Lomé (TG)' },
         ],
       },
       {
@@ -1866,7 +1866,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#8B5CF6',
       gradientColors: ['#8B5CF6', '#7C3AED'],
-      icon: '🎯',
+      icon: '\uD83C\uDFAF',
       badgeColor: '#F3E8FF',
       accentColor: '#7C3AED',
     },
@@ -1879,10 +1879,10 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
 
 
   // ✅ CATÉGORIE OBSOLÈTE SUPPRIMÉE
-  // 🍎 "aliments" a été fusionnée avec "agroalimentaire" (version enrichie avec 120+ marques et 400+ produits)
+  // \uD83C\uDF4E "aliments" a été fusionnée avec "agroalimentaire" (version enrichie avec 120+ marques et 400+ produits)
   // ➡️ Utiliser la catégorie "agroalimentaire" à la place
 
-  // 👕 VÊTEMENT
+  // \uD83D\uDC55 VÊTEMENT
   vetement: {
     terminology: {
       productLabel: 'Vêtement',
@@ -2163,7 +2163,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#EC4899',
       gradientColors: ['#EC4899', '#DB2777'],
-      icon: '👕',
+      icon: '\uD83D\uDC55',
       badgeColor: '#FCE7F3',
       accentColor: '#DB2777',
     },
@@ -2212,7 +2212,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 🔌 ÉLECTROMÉNAGER
+  // \uD83D\uDD0C ÉLECTROMÉNAGER
   electromenager: {
     terminology: {
       productLabel: 'Appareil électroménager',
@@ -2389,7 +2389,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#14B8A6',
       gradientColors: ['#14B8A6', '#0D9488'],
-      icon: '🔌',
+      icon: '\uD83D\uDD0C',
       badgeColor: '#CCFBF1',
       accentColor: '#0D9488',
     },
@@ -2401,8 +2401,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     supportsVariants: false,
   },
 
-  // 📺 IMAGE & SON
-  // 📺 IMAGE & SON - ✅ REFONTE COMPLÈTE (14 filtres)
+  // \uD83D\uDCFA IMAGE & SON
+  // \uD83D\uDCFA IMAGE & SON - ✅ REFONTE COMPLÈTE (14 filtres)
   image_son: {
     terminology: {
       productLabel: 'Équipement image/son',
@@ -2611,7 +2611,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#9C27B0',
       gradientColors: ['#9C27B0', '#7B1FA2'],
-      icon: '📺',
+      icon: '\uD83D\uDCFA',
       badgeColor: '#F3E5F5',
       accentColor: '#7B1FA2',
     },
@@ -2643,7 +2643,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 💻 ORDINATEUR - 🌍 ENRICHI CONTEXTE AFRIQUE (18 filtres)
+  // \uD83D\uDCBB ORDINATEUR - \uD83C\uDF0D ENRICHI CONTEXTE AFRIQUE (18 filtres)
   ordinateur: {
     terminology: {
       productLabel: 'Ordinateur',
@@ -2666,19 +2666,19 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type',
         type: 'select',
         options: [
-          { value: 'PC Portable', label: '💼 PC Portable' },
-          { value: 'PC de bureau', label: '🖥️ PC de bureau' },
-          { value: 'Laptop Gaming', label: '🎮 Laptop Gaming' },
+          { value: 'PC Portable', label: '\uD83D\uDCBC PC Portable' },
+          { value: 'PC de bureau', label: '\uD83D\uDDA5️ PC de bureau' },
+          { value: 'Laptop Gaming', label: '\uD83C\uDFAE Laptop Gaming' },
           { value: 'Ultrabook', label: '✈️ Ultrabook' },
-          { value: 'MacBook Air', label: '🍎 MacBook Air' },
-          { value: 'MacBook Pro', label: '🍎 MacBook Pro' },
-          { value: 'iMac', label: '🍎 iMac' },
-          { value: 'iPad', label: '📱 iPad' },
-          { value: 'Tablette Android', label: '📱 Tablette' },
-          { value: 'Surface Pro', label: '📱 Surface Pro' },
-          { value: 'Workstation', label: '🏢 Workstation' },
-          { value: 'Chromebook', label: '🎓 Chromebook' },
-          { value: 'All-in-One', label: '🖥️ All-in-One' },
+          { value: 'MacBook Air', label: '\uD83C\uDF4E MacBook Air' },
+          { value: 'MacBook Pro', label: '\uD83C\uDF4E MacBook Pro' },
+          { value: 'iMac', label: '\uD83C\uDF4E iMac' },
+          { value: 'iPad', label: '\uD83D\uDCF1 iPad' },
+          { value: 'Tablette Android', label: '\uD83D\uDCF1 Tablette' },
+          { value: 'Surface Pro', label: '\uD83D\uDCF1 Surface Pro' },
+          { value: 'Workstation', label: '\uD83C\uDFE2 Workstation' },
+          { value: 'Chromebook', label: '\uD83C\uDF93 Chromebook' },
+          { value: 'All-in-One', label: '\uD83D\uDDA5️ All-in-One' },
         ],
       },
       {
@@ -2686,7 +2686,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Marque',
         type: 'select',
         options: [
-          // 🔥 TOP 3 Afrique
+          // \uD83D\uDD25 TOP 3 Afrique
           { value: 'HP', label: 'HP' },
           { value: 'Dell', label: 'Dell' },
           { value: 'Lenovo', label: 'Lenovo' },
@@ -2704,7 +2704,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           // Autres
           { value: 'Samsung', label: 'Samsung' },
           { value: 'Huawei', label: 'Huawei' },
-          { value: 'PC Assemblé local', label: '🇨🇲 PC Assemblé local' },
+          { value: 'PC Assemblé local', label: '\uD83C\uDDE8\uD83C\uDDF2 PC Assemblé local' },
         ],
       },
       {
@@ -2712,16 +2712,16 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'État',
         type: 'select',
         options: [
-          { value: 'Neuf scellé sous garantie internationale', label: '🆕 Neuf garantie internationale' },
-          { value: 'Neuf sous garantie locale', label: '🆕 Neuf garantie locale' },
-          { value: 'Neuf sans garantie', label: '🆕 Neuf sans garantie' },
+          { value: 'Neuf scellé sous garantie internationale', label: '\uD83C\uDD95 Neuf garantie internationale' },
+          { value: 'Neuf sous garantie locale', label: '\uD83C\uDD95 Neuf garantie locale' },
+          { value: 'Neuf sans garantie', label: '\uD83C\uDD95 Neuf sans garantie' },
           { value: 'Reconditionné grade A+ (comme neuf)', label: '♻️ Reconditionné A+' },
           { value: 'Reconditionné grade A', label: '♻️ Reconditionné A' },
           { value: 'Reconditionné grade B', label: '♻️ Reconditionné B' },
-          { value: 'Occasion - Excellent état', label: '💼 Occasion - Excellent' },
-          { value: 'Occasion - Très bon état', label: '💼 Occasion - Très bon' },
-          { value: 'Occasion - Bon état', label: '💼 Occasion - Bon' },
-          { value: 'Occasion - État correct', label: '💼 Occasion - Correct' },
+          { value: 'Occasion - Excellent état', label: '\uD83D\uDCBC Occasion - Excellent' },
+          { value: 'Occasion - Très bon état', label: '\uD83D\uDCBC Occasion - Très bon' },
+          { value: 'Occasion - Bon état', label: '\uD83D\uDCBC Occasion - Bon' },
+          { value: 'Occasion - État correct', label: '\uD83D\uDCBC Occasion - Correct' },
         ],
       },
       {
@@ -2730,23 +2730,23 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           // Budget
-          { value: 'Intel Celeron', label: '💰 Intel Celeron' },
-          { value: 'Intel Pentium', label: '💰 Intel Pentium' },
-          { value: 'AMD Athlon', label: '💰 AMD Athlon' },
+          { value: 'Intel Celeron', label: '\uD83D\uDCB0 Intel Celeron' },
+          { value: 'Intel Pentium', label: '\uD83D\uDCB0 Intel Pentium' },
+          { value: 'AMD Athlon', label: '\uD83D\uDCB0 AMD Athlon' },
           // Milieu de gamme
           { value: 'Intel Core i3', label: 'Intel Core i3' },
-          { value: 'Intel Core i5', label: '🔥 Intel Core i5' },
+          { value: 'Intel Core i5', label: '\uD83D\uDD25 Intel Core i5' },
           { value: 'AMD Ryzen 3', label: 'AMD Ryzen 3' },
-          { value: 'AMD Ryzen 5', label: '🔥 AMD Ryzen 5' },
+          { value: 'AMD Ryzen 5', label: '\uD83D\uDD25 AMD Ryzen 5' },
           // Haut de gamme
-          { value: 'Intel Core i7', label: '💎 Intel Core i7' },
-          { value: 'AMD Ryzen 7', label: '💎 AMD Ryzen 7' },
-          { value: 'Intel Core i9', label: '💎 Intel Core i9' },
-          { value: 'AMD Ryzen 9', label: '💎 AMD Ryzen 9' },
+          { value: 'Intel Core i7', label: '\uD83D\uDC8E Intel Core i7' },
+          { value: 'AMD Ryzen 7', label: '\uD83D\uDC8E AMD Ryzen 7' },
+          { value: 'Intel Core i9', label: '\uD83D\uDC8E Intel Core i9' },
+          { value: 'AMD Ryzen 9', label: '\uD83D\uDC8E AMD Ryzen 9' },
           // Apple Silicon
-          { value: 'Apple M1', label: '🍎 Apple M1' },
-          { value: 'Apple M2', label: '🍎 Apple M2' },
-          { value: 'Apple M3', label: '🍎 Apple M3' },
+          { value: 'Apple M1', label: '\uD83C\uDF4E Apple M1' },
+          { value: 'Apple M2', label: '\uD83C\uDF4E Apple M2' },
+          { value: 'Apple M3', label: '\uD83C\uDF4E Apple M3' },
           // Nouveau
           { value: 'Intel Core Ultra 5', label: 'Intel Core Ultra 5' },
           { value: 'Intel Core Ultra 7', label: 'Intel Core Ultra 7' },
@@ -2759,8 +2759,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         options: [
           { value: '2GB', label: '2 GB' },
           { value: '4GB', label: '4 GB' },
-          { value: '8GB', label: '🔥 8 GB' },
-          { value: '16GB', label: '💎 16 GB' },
+          { value: '8GB', label: '\uD83D\uDD25 8 GB' },
+          { value: '16GB', label: '\uD83D\uDC8E 16 GB' },
           { value: '32GB', label: '32 GB' },
           { value: '64GB', label: '64 GB' },
         ],
@@ -2771,9 +2771,9 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           // HDD
-          { value: '500GB HDD', label: '💾 500 GB HDD' },
-          { value: '1TB HDD', label: '💾 1 TB HDD' },
-          { value: '2TB HDD', label: '💾 2 TB HDD' },
+          { value: '500GB HDD', label: '\uD83D\uDCBE 500 GB HDD' },
+          { value: '1TB HDD', label: '\uD83D\uDCBE 1 TB HDD' },
+          { value: '2TB HDD', label: '\uD83D\uDCBE 2 TB HDD' },
           // SSD
           { value: '128GB SSD', label: '⚡ 128 GB SSD' },
           { value: '256GB SSD', label: '⚡ 256 GB SSD' },
@@ -2781,8 +2781,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: '1TB SSD', label: '⚡ 1 TB SSD' },
           { value: '2TB SSD', label: '⚡ 2 TB SSD' },
           // Dual Storage
-          { value: '256GB SSD + 1TB HDD', label: '🎯 256 SSD + 1TB HDD' },
-          { value: '512GB SSD + 1TB HDD', label: '🎯 512 SSD + 1TB HDD' },
+          { value: '256GB SSD + 1TB HDD', label: '\uD83C\uDFAF 256 SSD + 1TB HDD' },
+          { value: '512GB SSD + 1TB HDD', label: '\uD83C\uDFAF 512 SSD + 1TB HDD' },
         ],
       },
       {
@@ -2797,10 +2797,10 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Apple GPU intégrée', label: 'Apple GPU' },
           { value: 'NVIDIA GeForce MX150', label: 'NVIDIA MX150' },
           { value: 'NVIDIA GeForce MX250', label: 'NVIDIA MX250' },
-          { value: 'NVIDIA GeForce GTX 1650', label: '🎮 NVIDIA GTX 1650' },
-          { value: 'NVIDIA GeForce RTX 3050', label: '🎮 NVIDIA RTX 3050' },
-          { value: 'NVIDIA GeForce RTX 3060', label: '🎮 NVIDIA RTX 3060' },
-          { value: 'NVIDIA GeForce RTX 4060', label: '🎮 NVIDIA RTX 4060' },
+          { value: 'NVIDIA GeForce GTX 1650', label: '\uD83C\uDFAE NVIDIA GTX 1650' },
+          { value: 'NVIDIA GeForce RTX 3050', label: '\uD83C\uDFAE NVIDIA RTX 3050' },
+          { value: 'NVIDIA GeForce RTX 3060', label: '\uD83C\uDFAE NVIDIA RTX 3060' },
+          { value: 'NVIDIA GeForce RTX 4060', label: '\uD83C\uDFAE NVIDIA RTX 4060' },
           { value: 'AMD Radeon RX 6600M', label: 'AMD RX 6600M' },
         ],
       },
@@ -2809,18 +2809,18 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Usage',
         type: 'multiselect',
         options: [
-          { value: 'Bureautique', label: '📊 Bureautique' },
-          { value: 'Étudiant', label: '🎓 Étudiant' },
-          { value: 'Télétravail', label: '🏠 Télétravail' },
-          { value: 'Comptabilité/Gestion', label: '💼 Comptabilité/Gestion' },
-          { value: 'Gaming', label: '🎮 Gaming' },
-          { value: 'Développement web', label: '💻 Développement web' },
-          { value: 'Développement logiciel', label: '💻 Développement' },
-          { value: 'Design graphique', label: '🎨 Design graphique' },
-          { value: 'Montage vidéo', label: '🎬 Montage vidéo' },
-          { value: 'Architecture/CAO', label: '🏗️ Architecture/CAO' },
-          { value: 'Cyber-café', label: '🇨🇲 Cyber-café' },
-          { value: 'Polyvalent', label: '🎯 Polyvalent' },
+          { value: 'Bureautique', label: '\uD83D\uDCCA Bureautique' },
+          { value: 'Étudiant', label: '\uD83C\uDF93 Étudiant' },
+          { value: 'Télétravail', label: '\uD83C\uDFE0 Télétravail' },
+          { value: 'Comptabilité/Gestion', label: '\uD83D\uDCBC Comptabilité/Gestion' },
+          { value: 'Gaming', label: '\uD83C\uDFAE Gaming' },
+          { value: 'Développement web', label: '\uD83D\uDCBB Développement web' },
+          { value: 'Développement logiciel', label: '\uD83D\uDCBB Développement' },
+          { value: 'Design graphique', label: '\uD83C\uDFA8 Design graphique' },
+          { value: 'Montage vidéo', label: '\uD83C\uDFAC Montage vidéo' },
+          { value: 'Architecture/CAO', label: '\uD83C\uDFD7️ Architecture/CAO' },
+          { value: 'Cyber-café', label: '\uD83C\uDDE8\uD83C\uDDF2 Cyber-café' },
+          { value: 'Polyvalent', label: '\uD83C\uDFAF Polyvalent' },
         ],
       },
       {
@@ -2828,15 +2828,15 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Système d\'exploitation',
         type: 'select',
         options: [
-          { value: 'Windows 11 Pro', label: '🪟 Windows 11 Pro' },
-          { value: 'Windows 11 Home', label: '🪟 Windows 11 Home' },
-          { value: 'Windows 10 Pro', label: '🪟 Windows 10 Pro' },
-          { value: 'Windows 10 Home', label: '🪟 Windows 10 Home' },
-          { value: 'Windows 7', label: '🪟 Windows 7' },
-          { value: 'macOS Sonoma', label: '🍎 macOS Sonoma' },
-          { value: 'macOS Ventura', label: '🍎 macOS Ventura' },
-          { value: 'macOS Monterey', label: '🍎 macOS Monterey' },
-          { value: 'Linux Ubuntu', label: '🐧 Linux Ubuntu' },
+          { value: 'Windows 11 Pro', label: '\uD83E\uDE9F Windows 11 Pro' },
+          { value: 'Windows 11 Home', label: '\uD83E\uDE9F Windows 11 Home' },
+          { value: 'Windows 10 Pro', label: '\uD83E\uDE9F Windows 10 Pro' },
+          { value: 'Windows 10 Home', label: '\uD83E\uDE9F Windows 10 Home' },
+          { value: 'Windows 7', label: '\uD83E\uDE9F Windows 7' },
+          { value: 'macOS Sonoma', label: '\uD83C\uDF4E macOS Sonoma' },
+          { value: 'macOS Ventura', label: '\uD83C\uDF4E macOS Ventura' },
+          { value: 'macOS Monterey', label: '\uD83C\uDF4E macOS Monterey' },
+          { value: 'Linux Ubuntu', label: '\uD83D\uDC27 Linux Ubuntu' },
           { value: 'ChromeOS', label: 'ChromeOS' },
           { value: 'FreeDOS', label: 'FreeDOS (sans OS)' },
         ],
@@ -2849,7 +2849,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: '11.6"', label: '11.6"' },
           { value: '13.3"', label: '13.3"' },
           { value: '14"', label: '14"' },
-          { value: '15.6"', label: '🔥 15.6"' },
+          { value: '15.6"', label: '\uD83D\uDD25 15.6"' },
           { value: '17.3"', label: '17.3"' },
           { value: '21.5"', label: '21.5"' },
           { value: '24"', label: '24"' },
@@ -2903,7 +2903,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#00BCD4',
       gradientColors: ['#00BCD4', '#0097A7'],
-      icon: '💻',
+      icon: '\uD83D\uDCBB',
       badgeColor: '#E0F7FA',
       accentColor: '#0097A7',
     },
@@ -2914,7 +2914,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'horizontal',
   },
 
-  // 🪑 MOBILIER - ✅ REFONTE COMPLÈTE
+  // \uD83E\uDE91 MOBILIER - ✅ REFONTE COMPLÈTE
   mobilier: {
     terminology: {
       productLabel: 'Meuble',
@@ -3159,7 +3159,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#F97316',
       gradientColors: ['#F97316', '#EA580C'],
-      icon: '🪑',
+      icon: '\uD83E\uDE91',
       badgeColor: '#FFEDD5',
       accentColor: '#EA580C',
     },
@@ -3172,8 +3172,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     searchKeywords: ['canapé', 'lit', 'table', 'chaise', 'armoire', 'commode', 'meuble TV', 'buffet', 'bibliothèque', 'étagère', 'pouf', 'fauteuil', 'tabouret', 'coiffeuse', 'console'],
   },
 
-  // 🖼️ DÉCORATION
-  // 🍴 USTENSILES CUISINE
+  // \uD83D\uDDBC️ DÉCORATION
+  // \uD83C\uDF74 USTENSILES CUISINE
   ustensiles_cuisine: {
     terminology: {
       productLabel: 'Ustensile de cuisine',
@@ -3197,16 +3197,16 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Catégorie',
         type: 'select',
         options: [
-          { value: '🌍 Ustensiles traditionnels africains', label: '🌍 Traditionnel africain' },
-          { value: '🍳 Batteries de cuisine (sets)', label: '🍳 Batteries (sets)' },
-          { value: '🔥 Ustensiles de cuisson (casseroles, poêles)', label: '🔥 Cuisson' },
-          { value: '🍽️ Vaisselle & Service (assiettes, verres)', label: '🍽️ Vaisselle' },
-          { value: '🔪 Ustensiles de préparation (couteaux, râpes)', label: '🔪 Préparation' },
+          { value: '\uD83C\uDF0D Ustensiles traditionnels africains', label: '\uD83C\uDF0D Traditionnel africain' },
+          { value: '\uD83C\uDF73 Batteries de cuisine (sets)', label: '\uD83C\uDF73 Batteries (sets)' },
+          { value: '\uD83D\uDD25 Ustensiles de cuisson (casseroles, poêles)', label: '\uD83D\uDD25 Cuisson' },
+          { value: '\uD83C\uDF7D️ Vaisselle & Service (assiettes, verres)', label: '\uD83C\uDF7D️ Vaisselle' },
+          { value: '\uD83D\uDD2A Ustensiles de préparation (couteaux, râpes)', label: '\uD83D\uDD2A Préparation' },
           { value: '⚡ Petits électroménagers (mixeur, blender)', label: '⚡ Électroménager' },
-          { value: '📦 Conservation & Stockage', label: '📦 Conservation' },
+          { value: '\uD83D\uDCE6 Conservation & Stockage', label: '\uD83D\uDCE6 Conservation' },
           { value: '⚖️ Accessoires (balance, minuteur)', label: '⚖️ Accessoires' },
-          { value: '🎪 Événementiel (jetable, location)', label: '🎪 Événementiel' },
-          { value: '👨‍🍳 Professionnel / Restaurant', label: '👨‍🍳 Professionnel' },
+          { value: '\uD83C\uDFAA Événementiel (jetable, location)', label: '\uD83C\uDFAA Événementiel' },
+          { value: '\uD83D\uDC68‍\uD83C\uDF73 Professionnel / Restaurant', label: '\uD83D\uDC68‍\uD83C\uDF73 Professionnel' },
         ],
       },
       // ✅ Type (ENRICHI : 40+ options)
@@ -3216,10 +3216,10 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           // Traditionnel africain
-          { value: 'Mortier et pilon', label: '🌍 Mortier et pilon' },
-          { value: 'Canari', label: '🏺 Canari' },
-          { value: 'Calebasse', label: '🌰 Calebasse' },
-          { value: 'Marmite en terre', label: '🏺 Marmite en terre' },
+          { value: 'Mortier et pilon', label: '\uD83C\uDF0D Mortier et pilon' },
+          { value: 'Canari', label: '\uD83C\uDFFA Canari' },
+          { value: 'Calebasse', label: '\uD83C\uDF30 Calebasse' },
+          { value: 'Marmite en terre', label: '\uD83C\uDFFA Marmite en terre' },
 
           // Cuisson
           { value: 'Casserole', label: 'Casserole' },
@@ -3299,11 +3299,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Pierre (granite coating)', label: 'Pierre (granite)' },
 
           // Naturels (africain)
-          { value: 'Bois', label: '🌍 Bois' },
-          { value: 'Bambou', label: '🌍 Bambou' },
-          { value: 'Terre cuite', label: '🏺 Terre cuite' },
-          { value: 'Pierre naturelle', label: '🌍 Pierre naturelle' },
-          { value: 'Argile', label: '🏺 Argile' },
+          { value: 'Bois', label: '\uD83C\uDF0D Bois' },
+          { value: 'Bambou', label: '\uD83C\uDF0D Bambou' },
+          { value: 'Terre cuite', label: '\uD83C\uDFFA Terre cuite' },
+          { value: 'Pierre naturelle', label: '\uD83C\uDF0D Pierre naturelle' },
+          { value: 'Argile', label: '\uD83C\uDFFA Argile' },
 
           // Plastique & Silicone
           { value: 'Plastique alimentaire', label: 'Plastique' },
@@ -3326,14 +3326,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           // Marques chinoises populaires en Afrique
-          { value: 'Binatone', label: '🌏 Binatone' },
-          { value: 'Sokany', label: '🌏 Sokany' },
-          { value: 'Lontor', label: '🌏 Lontor' },
-          { value: 'Qasa', label: '🌏 Qasa' },
-          { value: 'Century', label: '🌏 Century' },
-          { value: 'Master Chef', label: '🌏 Master Chef' },
-          { value: 'Scarlett', label: '🌏 Scarlett' },
-          { value: 'Xiaomi', label: '🌏 Xiaomi' },
+          { value: 'Binatone', label: '\uD83C\uDF0F Binatone' },
+          { value: 'Sokany', label: '\uD83C\uDF0F Sokany' },
+          { value: 'Lontor', label: '\uD83C\uDF0F Lontor' },
+          { value: 'Qasa', label: '\uD83C\uDF0F Qasa' },
+          { value: 'Century', label: '\uD83C\uDF0F Century' },
+          { value: 'Master Chef', label: '\uD83C\uDF0F Master Chef' },
+          { value: 'Scarlett', label: '\uD83C\uDF0F Scarlett' },
+          { value: 'Xiaomi', label: '\uD83C\uDF0F Xiaomi' },
 
           // Marques européennes/turques
           { value: 'Tefal', label: 'Tefal' },
@@ -3353,9 +3353,9 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Le Creuset', label: 'Le Creuset' },
 
           // Locales
-          { value: 'Marque locale', label: '🌍 Marque locale' },
-          { value: 'Artisan local', label: '🌍 Artisan local' },
-          { value: 'Fabrication artisanale', label: '🌍 Fabrication artisanale' },
+          { value: 'Marque locale', label: '\uD83C\uDF0D Marque locale' },
+          { value: 'Artisan local', label: '\uD83C\uDF0D Artisan local' },
+          { value: 'Fabrication artisanale', label: '\uD83C\uDF0D Fabrication artisanale' },
           { value: 'Sans marque', label: 'Sans marque' },
         ],
       },
@@ -3365,11 +3365,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'État',
         type: 'select',
         options: [
-          { value: 'Neuf scellé', label: '🆕 Neuf scellé' },
-          { value: 'Neuf sans emballage', label: '📦 Neuf sans emballage' },
+          { value: 'Neuf scellé', label: '\uD83C\uDD95 Neuf scellé' },
+          { value: 'Neuf sans emballage', label: '\uD83D\uDCE6 Neuf sans emballage' },
           { value: 'Excellent état (comme neuf)', label: '⭐ Excellent état' },
           { value: 'Bon état', label: '✔️ Bon état' },
-          { value: 'État correct', label: '👌 État correct' },
+          { value: 'État correct', label: '\uD83D\uDC4C État correct' },
           { value: 'Occasion (usure visible)', label: '♻️ Occasion' },
         ],
       },
@@ -3379,13 +3379,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Usage',
         type: 'select',
         options: [
-          { value: 'Cuisine quotidienne / Domestique', label: '🏠 Domestique' },
-          { value: 'Professionnel / Restaurant', label: '👨‍🍳 Professionnel' },
-          { value: 'Événementiel (mariage, fête)', label: '🎪 Événementiel' },
+          { value: 'Cuisine quotidienne / Domestique', label: '\uD83C\uDFE0 Domestique' },
+          { value: 'Professionnel / Restaurant', label: '\uD83D\uDC68‍\uD83C\uDF73 Professionnel' },
+          { value: 'Événementiel (mariage, fête)', label: '\uD83C\uDFAA Événementiel' },
           { value: 'Camping / Extérieur', label: '⛺ Camping' },
-          { value: 'Cuisine traditionnelle africaine', label: '🌍 Cuisine traditionnelle' },
-          { value: 'Pâtisserie', label: '🎂 Pâtisserie' },
-          { value: 'Location pour événements', label: '🎪 Location' },
+          { value: 'Cuisine traditionnelle africaine', label: '\uD83C\uDF0D Cuisine traditionnelle' },
+          { value: 'Pâtisserie', label: '\uD83C\uDF82 Pâtisserie' },
+          { value: 'Location pour événements', label: '\uD83C\uDFAA Location' },
         ],
       },
       // ✅ Nombre de pièces (NOUVEAU)
@@ -3433,7 +3433,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#FF5722',
       gradientColors: ['#FF5722', '#E64A19'],
-      icon: '🍴',
+      icon: '\uD83C\uDF74',
       badgeColor: '#FFEBEE',
       accentColor: '#E64A19',
     },
@@ -3509,7 +3509,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 🍷 VIN ET LIQUEUR (COMMERCIALISATION)
+  // \uD83C\uDF77 VIN ET LIQUEUR (COMMERCIALISATION)
   vin_liqueur: {
     terminology: {
       productLabel: 'Produit',
@@ -3664,7 +3664,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#7C2D12',
       gradientColors: ['#7C2D12', '#991B1B'],
-      icon: '🍷',
+      icon: '\uD83C\uDF77',
       badgeColor: '#FEE2E2',
       accentColor: '#991B1B',
     },
@@ -3675,7 +3675,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'grid',
   },
 
-  // 📚 LIVRES & FOURNITURES
+  // \uD83D\uDCDA LIVRES & FOURNITURES
   livres_fournitures: {
     terminology: {
       productLabel: 'Article scolaire',
@@ -3841,7 +3841,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         options: [
           { value: 'Français (uniquement)', label: 'Français' },
           { value: 'Anglais (uniquement)', label: 'Anglais' },
-          { value: 'Bilingue (Français-Anglais)', label: 'Bilingue 🇨🇲' },
+          { value: 'Bilingue (Français-Anglais)', label: 'Bilingue \uD83C\uDDE8\uD83C\uDDF2' },
           { value: 'Espagnol', label: 'Espagnol' },
           { value: 'Allemand', label: 'Allemand' },
           { value: 'Langues nationales (Duala, Ewondo, etc.)', label: 'Langues nationales' },
@@ -3905,7 +3905,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#7C3AED',
       gradientColors: ['#7C3AED', '#6D28D9'],
-      icon: '📚',
+      icon: '\uD83D\uDCDA',
       badgeColor: '#EDE9FE',
       accentColor: '#6D28D9',
     },
@@ -3916,8 +3916,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'grid',
   },
 
-  // 🔨 QUINCAILLERIE - REFONTE COMPLÈTE
-  // 🎯 Focus: Visserie, Outils, Matériaux, Peinture, Serrurerie (SANS électricité ni sanitaire)
+  // \uD83D\uDD28 QUINCAILLERIE - REFONTE COMPLÈTE
+  // \uD83C\uDFAF Focus: Visserie, Outils, Matériaux, Peinture, Serrurerie (SANS électricité ni sanitaire)
   quincaillerie: {
     terminology: {
       productLabel: 'Article de quincaillerie',
@@ -4112,17 +4112,17 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           // Les villes s'adaptent au pays de l'utilisateur via africanLocations.ts
-          { value: 'Douala', label: '🇨🇲 Douala' },
-          { value: 'Yaoundé', label: '🇨🇲 Yaoundé' },
-          { value: 'Bafoussam', label: '🇨🇲 Bafoussam' },
-          { value: 'Garoua', label: '🇨🇲 Garoua' },
-          { value: 'Bamenda', label: '🇨🇲 Bamenda' },
+          { value: 'Douala', label: '\uD83C\uDDE8\uD83C\uDDF2 Douala' },
+          { value: 'Yaoundé', label: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé' },
+          { value: 'Bafoussam', label: '\uD83C\uDDE8\uD83C\uDDF2 Bafoussam' },
+          { value: 'Garoua', label: '\uD83C\uDDE8\uD83C\uDDF2 Garoua' },
+          { value: 'Bamenda', label: '\uD83C\uDDE8\uD83C\uDDF2 Bamenda' },
           // Autres pays prioritaires
-          { value: 'Kinshasa', label: '🇨🇩 Kinshasa' },
-          { value: 'Lubumbashi', label: '🇨🇩 Lubumbashi' },
-          { value: 'Abidjan', label: '🇨🇮 Abidjan' },
-          { value: 'Dakar', label: '🇸🇳 Dakar' },
-          { value: 'Bamako', label: '🇲🇱 Bamako' },
+          { value: 'Kinshasa', label: '\uD83C\uDDE8\uD83C\uDDE9 Kinshasa' },
+          { value: 'Lubumbashi', label: '\uD83C\uDDE8\uD83C\uDDE9 Lubumbashi' },
+          { value: 'Abidjan', label: '\uD83C\uDDE8\uD83C\uDDEE Abidjan' },
+          { value: 'Dakar', label: '\uD83C\uDDF8\uD83C\uDDF3 Dakar' },
+          { value: 'Bamako', label: '\uD83C\uDDF2\uD83C\uDDF1 Bamako' },
         ],
       },
       // ✅ FILTRE 14 : Localisation - Quartier (système intelligent)
@@ -4161,7 +4161,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#64748B',
       gradientColors: ['#64748B', '#475569'],
-      icon: '🔨',
+      icon: '\uD83D\uDD28',
       badgeColor: '#F1F5F9',
       accentColor: '#475569',
     },
@@ -4173,7 +4173,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
   },
 
 
-  // 🛡️ ASSURANCE
+  // \uD83D\uDEE1️ ASSURANCE
   assurance: {
     terminology: {
       productLabel: 'Assurance',
@@ -4277,7 +4277,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#14B8A6',
       gradientColors: ['#14B8A6', '#0D9488'],
-      icon: '🛡️',
+      icon: '\uD83D\uDEE1️',
       badgeColor: '#CCFBF1',
       accentColor: '#0D9488',
     },
@@ -4288,7 +4288,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 🚚 DÉMÉNAGEMENT - REFONTE COMPLÈTE CONTEXTE AFRIQUE
+  // \uD83D\uDE9A DÉMÉNAGEMENT - REFONTE COMPLÈTE CONTEXTE AFRIQUE
   demenagement: {
     terminology: {
       productLabel: 'Service de déménagement',
@@ -4343,45 +4343,45 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Trajet populaire',
         type: 'select',
         options: [
-          // 🇨🇲 CAMEROUN
-          { value: 'Douala → Yaoundé (250 km)', label: '🇨🇲 Douala → Yaoundé' },
-          { value: 'Yaoundé → Douala (250 km)', label: '🇨🇲 Yaoundé → Douala' },
-          { value: 'Douala → Bafoussam (280 km)', label: '🇨🇲 Douala → Bafoussam' },
-          { value: 'Yaoundé → Bafoussam (290 km)', label: '🇨🇲 Yaoundé → Bafoussam' },
-          { value: 'Douala → Kribi (150 km)', label: '🇨🇲 Douala → Kribi' },
-          { value: 'Douala → Limbé (80 km)', label: '🇨🇲 Douala → Limbé' },
-          { value: 'Yaoundé → Garoua (1165 km)', label: '🇨🇲 Yaoundé → Garoua' },
-          { value: 'Douala → Bamenda (280 km)', label: '🇨🇲 Douala → Bamenda' },
+          // \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN
+          { value: 'Douala → Yaoundé (250 km)', label: '\uD83C\uDDE8\uD83C\uDDF2 Douala → Yaoundé' },
+          { value: 'Yaoundé → Douala (250 km)', label: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé → Douala' },
+          { value: 'Douala → Bafoussam (280 km)', label: '\uD83C\uDDE8\uD83C\uDDF2 Douala → Bafoussam' },
+          { value: 'Yaoundé → Bafoussam (290 km)', label: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé → Bafoussam' },
+          { value: 'Douala → Kribi (150 km)', label: '\uD83C\uDDE8\uD83C\uDDF2 Douala → Kribi' },
+          { value: 'Douala → Limbé (80 km)', label: '\uD83C\uDDE8\uD83C\uDDF2 Douala → Limbé' },
+          { value: 'Yaoundé → Garoua (1165 km)', label: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé → Garoua' },
+          { value: 'Douala → Bamenda (280 km)', label: '\uD83C\uDDE8\uD83C\uDDF2 Douala → Bamenda' },
 
-          // 🇨🇮 CÔTE D'IVOIRE
-          { value: 'Abidjan → Yamoussoukro (240 km)', label: '🇨🇮 Abidjan → Yamoussoukro' },
-          { value: 'Abidjan → San-Pédro (350 km)', label: '🇨🇮 Abidjan → San-Pédro' },
-          { value: 'Abidjan → Bouaké (340 km)', label: '🇨🇮 Abidjan → Bouaké' },
+          // \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE
+          { value: 'Abidjan → Yamoussoukro (240 km)', label: '\uD83C\uDDE8\uD83C\uDDEE Abidjan → Yamoussoukro' },
+          { value: 'Abidjan → San-Pédro (350 km)', label: '\uD83C\uDDE8\uD83C\uDDEE Abidjan → San-Pédro' },
+          { value: 'Abidjan → Bouaké (340 km)', label: '\uD83C\uDDE8\uD83C\uDDEE Abidjan → Bouaké' },
 
-          // 🇸🇳 SÉNÉGAL
-          { value: 'Dakar → Thiès (70 km)', label: '🇸🇳 Dakar → Thiès' },
-          { value: 'Dakar → Saint-Louis (280 km)', label: '🇸🇳 Dakar → Saint-Louis' },
-          { value: 'Dakar → Kaolack (200 km)', label: '🇸🇳 Dakar → Kaolack' },
+          // \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL
+          { value: 'Dakar → Thiès (70 km)', label: '\uD83C\uDDF8\uD83C\uDDF3 Dakar → Thiès' },
+          { value: 'Dakar → Saint-Louis (280 km)', label: '\uD83C\uDDF8\uD83C\uDDF3 Dakar → Saint-Louis' },
+          { value: 'Dakar → Kaolack (200 km)', label: '\uD83C\uDDF8\uD83C\uDDF3 Dakar → Kaolack' },
 
-          // 🇲🇱 MALI
-          { value: 'Bamako → Sikasso (375 km)', label: '🇲🇱 Bamako → Sikasso' },
-          { value: 'Bamako → Ségou (240 km)', label: '🇲🇱 Bamako → Ségou' },
-          { value: 'Bamako → Tombouctou (900 km)', label: '🇲🇱 Bamako → Tombouctou' },
+          // \uD83C\uDDF2\uD83C\uDDF1 MALI
+          { value: 'Bamako → Sikasso (375 km)', label: '\uD83C\uDDF2\uD83C\uDDF1 Bamako → Sikasso' },
+          { value: 'Bamako → Ségou (240 km)', label: '\uD83C\uDDF2\uD83C\uDDF1 Bamako → Ségou' },
+          { value: 'Bamako → Tombouctou (900 km)', label: '\uD83C\uDDF2\uD83C\uDDF1 Bamako → Tombouctou' },
 
-          // 🇬🇦 GABON
-          { value: 'Libreville → Port-Gentil (350 km)', label: '🇬🇦 Libreville → Port-Gentil' },
-          { value: 'Libreville → Franceville (650 km)', label: '🇬🇦 Libreville → Franceville' },
+          // \uD83C\uDDEC\uD83C\uDDE6 GABON
+          { value: 'Libreville → Port-Gentil (350 km)', label: '\uD83C\uDDEC\uD83C\uDDE6 Libreville → Port-Gentil' },
+          { value: 'Libreville → Franceville (650 km)', label: '\uD83C\uDDEC\uD83C\uDDE6 Libreville → Franceville' },
 
-          // 🇨🇬 CONGO
-          { value: 'Brazzaville → Pointe-Noire (550 km)', label: '🇨🇬 Brazzaville → Pointe-Noire' },
+          // \uD83C\uDDE8\uD83C\uDDEC CONGO
+          { value: 'Brazzaville → Pointe-Noire (550 km)', label: '\uD83C\uDDE8\uD83C\uDDEC Brazzaville → Pointe-Noire' },
 
-          // 🇨🇩 RDC
-          { value: 'Kinshasa → Lubumbashi (1800 km)', label: '🇨🇩 Kinshasa → Lubumbashi' },
-          { value: 'Kinshasa → Goma (1600 km)', label: '🇨🇩 Kinshasa → Goma' },
+          // \uD83C\uDDE8\uD83C\uDDE9 RDC
+          { value: 'Kinshasa → Lubumbashi (1800 km)', label: '\uD83C\uDDE8\uD83C\uDDE9 Kinshasa → Lubumbashi' },
+          { value: 'Kinshasa → Goma (1600 km)', label: '\uD83C\uDDE8\uD83C\uDDE9 Kinshasa → Goma' },
 
-          // 🇲🇬 MADAGASCAR
-          { value: 'Antananarivo → Toamasina (215 km)', label: '🇲🇬 Antananarivo → Toamasina' },
-          { value: 'Antananarivo → Antsirabe (170 km)', label: '🇲🇬 Antananarivo → Antsirabe' },
+          // \uD83C\uDDF2\uD83C\uDDEC MADAGASCAR
+          { value: 'Antananarivo → Toamasina (215 km)', label: '\uD83C\uDDF2\uD83C\uDDEC Antananarivo → Toamasina' },
+          { value: 'Antananarivo → Antsirabe (170 km)', label: '\uD83C\uDDF2\uD83C\uDDEC Antananarivo → Antsirabe' },
         ],
       },
       {
@@ -4432,33 +4432,33 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Compagnie',
         type: 'select',
         options: [
-          // 🇨🇲 CAMEROUN
-          { value: 'Africa Déménagement Services', label: '🇨🇲 Africa Déménagement' },
-          { value: 'Camtrans Déménagement', label: '🇨🇲 Camtrans' },
-          { value: 'Express Déménagement Cameroun', label: '🇨🇲 Express Déménagement' },
-          { value: 'Global Moving Cameroun', label: '🇨🇲 Global Moving' },
-          { value: 'Move Masters Cameroun', label: '🇨🇲 Move Masters' },
-          { value: 'Yukpo Moving', label: '🇨🇲 Yukpo Moving' },
+          // \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN
+          { value: 'Africa Déménagement Services', label: '\uD83C\uDDE8\uD83C\uDDF2 Africa Déménagement' },
+          { value: 'Camtrans Déménagement', label: '\uD83C\uDDE8\uD83C\uDDF2 Camtrans' },
+          { value: 'Express Déménagement Cameroun', label: '\uD83C\uDDE8\uD83C\uDDF2 Express Déménagement' },
+          { value: 'Global Moving Cameroun', label: '\uD83C\uDDE8\uD83C\uDDF2 Global Moving' },
+          { value: 'Move Masters Cameroun', label: '\uD83C\uDDE8\uD83C\uDDF2 Move Masters' },
+          { value: 'Yukpo Moving', label: '\uD83C\uDDE8\uD83C\uDDF2 Yukpo Moving' },
 
-          // 🇨🇮 CÔTE D'IVOIRE
-          { value: 'Abidjan Transports Express', label: '🇨🇮 Abidjan Transports' },
-          { value: 'Yopougon Déménagement', label: '🇨🇮 Yopougon Moving' },
+          // \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE
+          { value: 'Abidjan Transports Express', label: '\uD83C\uDDE8\uD83C\uDDEE Abidjan Transports' },
+          { value: 'Yopougon Déménagement', label: '\uD83C\uDDE8\uD83C\uDDEE Yopougon Moving' },
 
-          // 🇸🇳 SÉNÉGAL
-          { value: 'Dakar Transports Rapides', label: '🇸🇳 Dakar Transports' },
-          { value: 'Pikine Déménagement', label: '🇸🇳 Pikine Moving' },
+          // \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL
+          { value: 'Dakar Transports Rapides', label: '\uD83C\uDDF8\uD83C\uDDF3 Dakar Transports' },
+          { value: 'Pikine Déménagement', label: '\uD83C\uDDF8\uD83C\uDDF3 Pikine Moving' },
 
-          // 🇲🇱 MALI
-          { value: 'Bamako Transports Express', label: '🇲🇱 Bamako Transports' },
+          // \uD83C\uDDF2\uD83C\uDDF1 MALI
+          { value: 'Bamako Transports Express', label: '\uD83C\uDDF2\uD83C\uDDF1 Bamako Transports' },
 
-          // 🇬🇦 GABON
-          { value: 'Libreville Moving Express', label: '🇬🇦 Libreville Moving' },
+          // \uD83C\uDDEC\uD83C\uDDE6 GABON
+          { value: 'Libreville Moving Express', label: '\uD83C\uDDEC\uD83C\uDDE6 Libreville Moving' },
 
-          // 🇨🇬 CONGO
-          { value: 'Brazzaville Moving Services', label: '🇨🇬 Brazzaville Moving' },
+          // \uD83C\uDDE8\uD83C\uDDEC CONGO
+          { value: 'Brazzaville Moving Services', label: '\uD83C\uDDE8\uD83C\uDDEC Brazzaville Moving' },
 
-          // 🇨🇩 RDC
-          { value: 'Kinshasa Moving Express', label: '🇨🇩 Kinshasa Moving' },
+          // \uD83C\uDDE8\uD83C\uDDE9 RDC
+          { value: 'Kinshasa Moving Express', label: '\uD83C\uDDE8\uD83C\uDDE9 Kinshasa Moving' },
 
           // Génériques
           { value: 'Déménageur indépendant certifié', label: 'Indépendant certifié' },
@@ -4531,7 +4531,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#F97316',
       gradientColors: ['#F97316', '#EA580C'],
-      icon: '🚚',
+      icon: '\uD83D\uDE9A',
       badgeColor: '#FFEDD5',
       accentColor: '#EA580C',
     },
@@ -4542,7 +4542,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // ✨ COSMÉTIQUE & PARFUM - 🌍 ENRICHI CONTEXTE AFRIQUE FRANCOPHONE
+  // ✨ COSMÉTIQUE & PARFUM - \uD83C\uDF0D ENRICHI CONTEXTE AFRIQUE FRANCOPHONE
   cosmetique_parfum: {
     terminology: {
       productLabel: 'Produit cosmétique',
@@ -4794,7 +4794,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 💎 BIJOUX
+  // \uD83D\uDC8E BIJOUX
   bijoux: {
     terminology: {
       productLabel: 'Bijou',
@@ -4857,7 +4857,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#FFD700',
       gradientColors: ['#FFD700', '#FFA500'],
-      icon: '💎',
+      icon: '\uD83D\uDC8E',
       badgeColor: '#FFFACD',
       accentColor: '#FFA500',
     },
@@ -4868,7 +4868,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'grid',
   },
 
-  // 🔨 FORGERON / FERRONNERIE D'ART - 🌍 AFRIQUE FRANCOPHONE
+  // \uD83D\uDD28 FORGERON / FERRONNERIE D'ART - \uD83C\uDF0D AFRIQUE FRANCOPHONE
   forgeron: {
     terminology: {
       productLabel: 'Réalisation',
@@ -4893,27 +4893,27 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           // Sécurité
-          { value: 'grille_fenetre', label: '🔒 Grilles de fenêtre anti-vol' },
-          { value: 'grille_porte', label: '🔒 Grilles de porte anti-vol' },
-          { value: 'barreaux_securite', label: '🔒 Barreaux de sécurité' },
-          { value: 'rideau_metallique', label: '🔒 Rideau métallique' },
-          { value: 'porte_blindee', label: '🔒 Porte blindée' },
+          { value: 'grille_fenetre', label: '\uD83D\uDD12 Grilles de fenêtre anti-vol' },
+          { value: 'grille_porte', label: '\uD83D\uDD12 Grilles de porte anti-vol' },
+          { value: 'barreaux_securite', label: '\uD83D\uDD12 Barreaux de sécurité' },
+          { value: 'rideau_metallique', label: '\uD83D\uDD12 Rideau métallique' },
+          { value: 'porte_blindee', label: '\uD83D\uDD12 Porte blindée' },
           // Portails
-          { value: 'portail_coulissant', label: '🚪 Portail coulissant' },
-          { value: 'portail_battant', label: '🚪 Portail battant' },
-          { value: 'portail_motorise', label: '🚪 Portail motorisé' },
-          { value: 'portillon', label: '🚪 Portillon / Porte piétonne' },
+          { value: 'portail_coulissant', label: '\uD83D\uDEAA Portail coulissant' },
+          { value: 'portail_battant', label: '\uD83D\uDEAA Portail battant' },
+          { value: 'portail_motorise', label: '\uD83D\uDEAA Portail motorisé' },
+          { value: 'portillon', label: '\uD83D\uDEAA Portillon / Porte piétonne' },
           // Balcons & Garde-corps
-          { value: 'garde_corps_balcon', label: '🏠 Garde-corps de balcon' },
-          { value: 'rampe_escalier', label: '🏠 Rampe d\'escalier' },
-          { value: 'balustrade', label: '🏠 Balustrade décorative' },
+          { value: 'garde_corps_balcon', label: '\uD83C\uDFE0 Garde-corps de balcon' },
+          { value: 'rampe_escalier', label: '\uD83C\uDFE0 Rampe d\'escalier' },
+          { value: 'balustrade', label: '\uD83C\uDFE0 Balustrade décorative' },
           // Clôtures
-          { value: 'cloture_fer', label: '🏗️ Clôture en fer forgé' },
-          { value: 'grillage', label: '🏗️ Grillage rigide/souple' },
+          { value: 'cloture_fer', label: '\uD83C\uDFD7️ Clôture en fer forgé' },
+          { value: 'grillage', label: '\uD83C\uDFD7️ Grillage rigide/souple' },
           // Décoration
-          { value: 'pergola', label: '🎨 Pergola métallique' },
-          { value: 'marquise', label: '🎨 Marquise de porte' },
-          { value: 'mobilier_fer', label: '🪑 Mobilier en fer forgé' },
+          { value: 'pergola', label: '\uD83C\uDFA8 Pergola métallique' },
+          { value: 'marquise', label: '\uD83C\uDFA8 Marquise de porte' },
+          { value: 'mobilier_fer', label: '\uD83E\uDE91 Mobilier en fer forgé' },
         ],
       },
       // ✅ FILTRE 2 : Matériaux
@@ -4937,14 +4937,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Style',
         type: 'select',
         options: [
-          { value: 'moderne', label: '🎨 Moderne épuré' },
-          { value: 'classique', label: '🎨 Classique élégant' },
-          { value: 'artistique', label: '🎨 Fer forgé artistique' },
-          { value: 'minimaliste', label: '🎨 Minimaliste contemporain' },
-          { value: 'traditionnel', label: '🎨 Traditionnel africain' },
-          { value: 'baroque', label: '🎨 Baroque orné' },
-          { value: 'industriel', label: '🎨 Industriel brut' },
-          { value: 'personnalise', label: '🎨 Personnalisé sur-mesure' },
+          { value: 'moderne', label: '\uD83C\uDFA8 Moderne épuré' },
+          { value: 'classique', label: '\uD83C\uDFA8 Classique élégant' },
+          { value: 'artistique', label: '\uD83C\uDFA8 Fer forgé artistique' },
+          { value: 'minimaliste', label: '\uD83C\uDFA8 Minimaliste contemporain' },
+          { value: 'traditionnel', label: '\uD83C\uDFA8 Traditionnel africain' },
+          { value: 'baroque', label: '\uD83C\uDFA8 Baroque orné' },
+          { value: 'industriel', label: '\uD83C\uDFA8 Industriel brut' },
+          { value: 'personnalise', label: '\uD83C\uDFA8 Personnalisé sur-mesure' },
         ],
       },
       // ✅ FILTRE 4 : Finition
@@ -4998,13 +4998,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Services inclus',
         type: 'multiselect',
         options: [
-          { value: 'mesures_gratuites', label: '📐 Prise de mesures gratuite' },
-          { value: 'devis_gratuit', label: '💰 Devis détaillé gratuit' },
-          { value: 'conception_incluse', label: '🎨 Conception/Design inclus' },
-          { value: 'livraison_incluse', label: '🚚 Livraison incluse' },
-          { value: 'installation_incluse', label: '🔧 Installation incluse' },
-          { value: 'peinture_incluse', label: '🎨 Peinture antirouille incluse' },
-          { value: 'sav_inclus', label: '📞 SAV et maintenance' },
+          { value: 'mesures_gratuites', label: '\uD83D\uDCD0 Prise de mesures gratuite' },
+          { value: 'devis_gratuit', label: '\uD83D\uDCB0 Devis détaillé gratuit' },
+          { value: 'conception_incluse', label: '\uD83C\uDFA8 Conception/Design inclus' },
+          { value: 'livraison_incluse', label: '\uD83D\uDE9A Livraison incluse' },
+          { value: 'installation_incluse', label: '\uD83D\uDD27 Installation incluse' },
+          { value: 'peinture_incluse', label: '\uD83C\uDFA8 Peinture antirouille incluse' },
+          { value: 'sav_inclus', label: '\uD83D\uDCDE SAV et maintenance' },
         ],
       },
       // ✅ FILTRE 8 : Motorisation (pour portails)
@@ -5028,14 +5028,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Certifications & Compétences',
         type: 'multiselect',
         options: [
-          { value: 'artisan_agree', label: '🎓 Artisan professionnel agréé' },
-          { value: 'soudure_certifiee', label: '🎓 Formation soudure certifiée' },
-          { value: 'plus_5_ans', label: '🏆 +5 ans d\'expérience' },
-          { value: 'plus_10_ans', label: '🏆 +10 ans d\'expérience' },
-          { value: 'plus_15_ans', label: '🏆 +15 ans d\'expérience' },
-          { value: 'specialiste_portails', label: '🛠️ Spécialiste portails motorisés' },
-          { value: 'specialiste_artistique', label: '🛠️ Spécialiste fer forgé artistique' },
-          { value: 'specialiste_securite', label: '🛠️ Spécialiste sécurité (anti-vol)' },
+          { value: 'artisan_agree', label: '\uD83C\uDF93 Artisan professionnel agréé' },
+          { value: 'soudure_certifiee', label: '\uD83C\uDF93 Formation soudure certifiée' },
+          { value: 'plus_5_ans', label: '\uD83C\uDFC6 +5 ans d\'expérience' },
+          { value: 'plus_10_ans', label: '\uD83C\uDFC6 +10 ans d\'expérience' },
+          { value: 'plus_15_ans', label: '\uD83C\uDFC6 +15 ans d\'expérience' },
+          { value: 'specialiste_portails', label: '\uD83D\uDEE0️ Spécialiste portails motorisés' },
+          { value: 'specialiste_artistique', label: '\uD83D\uDEE0️ Spécialiste fer forgé artistique' },
+          { value: 'specialiste_securite', label: '\uD83D\uDEE0️ Spécialiste sécurité (anti-vol)' },
         ],
       },
       // ✅ FILTRE 10 : Types de clients
@@ -5044,11 +5044,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Types de clients',
         type: 'multiselect',
         options: [
-          { value: 'particuliers', label: '🏠 Particuliers' },
-          { value: 'entreprises', label: '🏢 Entreprises et commerces' },
-          { value: 'promoteurs', label: '🏗️ Promoteurs immobiliers' },
-          { value: 'hotels', label: '🏨 Hôtels et résidences' },
-          { value: 'administrations', label: '🏛️ Administrations publiques' },
+          { value: 'particuliers', label: '\uD83C\uDFE0 Particuliers' },
+          { value: 'entreprises', label: '\uD83C\uDFE2 Entreprises et commerces' },
+          { value: 'promoteurs', label: '\uD83C\uDFD7️ Promoteurs immobiliers' },
+          { value: 'hotels', label: '\uD83C\uDFE8 Hôtels et résidences' },
+          { value: 'administrations', label: '\uD83C\uDFDB️ Administrations publiques' },
         ],
       },
       // ✅ FILTRE 11 : Motorisation disponible (toggle)
@@ -5079,7 +5079,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#78909C',
       gradientColors: ['#78909C', '#546E7A'],
-      icon: '🔨',
+      icon: '\uD83D\uDD28',
       badgeColor: '#CFD8DC',
       accentColor: '#455A64',
     },
@@ -5129,7 +5129,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 🪟 MENUISIER ALUMINIUM - ✅ ENRICHI AFRIQUE FRANCOPHONE
+  // \uD83E\uDE9F MENUISIER ALUMINIUM - ✅ ENRICHI AFRIQUE FRANCOPHONE
   menuisier_aluminium: {
     terminology: {
       productLabel: 'Réalisation',
@@ -5358,7 +5358,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#607D8B', // Gris-bleu aluminium
       gradientColors: ['#607D8B', '#455A64'],
-      icon: '🪟', // Fenêtre
+      icon: '\uD83E\uDE9F', // Fenêtre
       badgeColor: '#CFD8DC',
       accentColor: '#37474F',
     },
@@ -5461,7 +5461,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 💇‍♀️ COIFFURE & BEAUTÉ - 🌍 ENRICHI CONTEXTE AFRIQUE
+  // \uD83D\uDC87‍♀️ COIFFURE & BEAUTÉ - \uD83C\uDF0D ENRICHI CONTEXTE AFRIQUE
   coiffure_beaute: {
     terminology: {
       productLabel: 'Article de coiffure',
@@ -5484,8 +5484,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type',
         type: 'select',
         options: [
-          // 💇‍♀️ PRODUITS
-          { value: '🌟 Mèches naturelles', label: '🌟 Mèches naturelles' },
+          // \uD83D\uDC87‍♀️ PRODUITS
+          { value: '\uD83C\uDF1F Mèches naturelles', label: '\uD83C\uDF1F Mèches naturelles' },
           { value: 'Extensions (tissage)', label: 'Extensions (tissage)' },
           { value: 'Extensions (clips)', label: 'Extensions (clips)' },
           { value: 'Perruque complète', label: 'Perruque complète' },
@@ -5493,8 +5493,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Frontal 13x4', label: 'Frontal 13x4' },
           { value: 'Lace wig', label: 'Lace wig' },
 
-          // 💇‍♀️ SERVICES FEMME
-          { value: '🌟 Tresses africaines (box braids)', label: '🌟 Tresses africaines (box braids)' },
+          // \uD83D\uDC87‍♀️ SERVICES FEMME
+          { value: '\uD83C\uDF1F Tresses africaines (box braids)', label: '\uD83C\uDF1F Tresses africaines (box braids)' },
           { value: 'Nattes collées (cornrows)', label: 'Nattes collées (cornrows)' },
           { value: 'Vanilles (twists)', label: 'Vanilles (twists)' },
           { value: 'Tresses sénégalaises', label: 'Tresses sénégalaises' },
@@ -5504,21 +5504,21 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Coupe femme', label: 'Coupe femme' },
           { value: 'Locks/Dreadlocks', label: 'Locks/Dreadlocks' },
 
-          // 🧔 SERVICES HOMME (BARBIER)
-          { value: '🌟 Coupe homme (dégradé)', label: '🌟 Coupe homme (dégradé)' },
+          // \uD83E\uDDD4 SERVICES HOMME (BARBIER)
+          { value: '\uD83C\uDF1F Coupe homme (dégradé)', label: '\uD83C\uDF1F Coupe homme (dégradé)' },
           { value: 'Coupe afro (fade)', label: 'Coupe afro (fade)' },
           { value: 'Coupe + Barbe', label: 'Coupe + Barbe' },
           { value: 'Taille de barbe', label: 'Taille de barbe' },
           { value: 'Rasage complet', label: 'Rasage' },
           { value: 'Design capillaire (motifs)', label: 'Design capillaire' },
 
-          // 💅 BEAUTÉ
+          // \uD83D\uDC85 BEAUTÉ
           { value: 'Manucure simple', label: 'Manucure' },
           { value: 'Pédicure simple', label: 'Pédicure' },
           { value: 'Maquillage jour', label: 'Maquillage' },
           { value: 'Soin visage complet', label: 'Soin visage' },
 
-          // 🧴 PRODUITS
+          // \uD83E\uDDF4 PRODUITS
           { value: 'Shampooing professionnel', label: 'Shampooing' },
           { value: 'Huile capillaire (karité, coco, argan)', label: 'Huile capillaire' },
           { value: 'Crème défrisante', label: 'Crème défrisante' },
@@ -5531,7 +5531,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         options: [
           { value: '10-12 pouces (25-30cm)', label: '10-12" (25-30cm) Court' },
           { value: '14-16 pouces (35-40cm)', label: '14-16" (35-40cm) Moyen' },
-          { value: '18-20 pouces (45-50cm)', label: '🔥 18-20" (45-50cm) Standard' },
+          { value: '18-20 pouces (45-50cm)', label: '\uD83D\uDD25 18-20" (45-50cm) Standard' },
           { value: '22-24 pouces (55-60cm)', label: '22-24" (55-60cm) Long' },
           { value: '26-28 pouces (65-70cm)', label: '26-28" (65-70cm) Très long' },
           { value: '30 pouces+ (75cm+)', label: '30"+ (75cm+) Extra long' },
@@ -5542,8 +5542,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Texture',
         type: 'select',
         options: [
-          // 🌍 TEXTURES AFRICAINES
-          { value: 'Afro kinky (4C)', label: 'Afro kinky (4C) 🇨🇲' },
+          // \uD83C\uDF0D TEXTURES AFRICAINES
+          { value: 'Afro kinky (4C)', label: 'Afro kinky (4C) \uD83C\uDDE8\uD83C\uDDF2' },
           { value: 'Kinky curly (4A/4B)', label: 'Kinky curly (4A/4B)' },
           { value: 'Curly (3C)', label: 'Curly (3C)' },
 
@@ -5551,12 +5551,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Straight (lisse)', label: 'Straight (lisse)' },
           { value: 'Yaki straight (lisse texturé)', label: 'Yaki straight' },
 
-          // 🌊 ONDULÉES
-          { value: 'Body wave (ondulations douces)', label: '🔥 Body wave' },
+          // \uD83C\uDF0A ONDULÉES
+          { value: 'Body wave (ondulations douces)', label: '\uD83D\uDD25 Body wave' },
           { value: 'Deep wave (ondulations profondes)', label: 'Deep wave' },
           { value: 'Water wave (ondulations naturelles)', label: 'Water wave' },
 
-          // 💫 BOUCLÉES
+          // \uD83D\uDCAB BOUCLÉES
           { value: 'Curly (bouclée)', label: 'Curly (bouclée)' },
           { value: 'Deep curly (très bouclée)', label: 'Deep curly' },
           { value: 'Kinky curly (afro bouclée)', label: 'Kinky curly' },
@@ -5567,19 +5567,19 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de cheveux',
         type: 'select',
         options: [
-          // 🌟 NATURELS
+          // \uD83C\uDF1F NATURELS
           { value: 'Virgin hair (vierge 100%)', label: 'Virgin hair (vierge 100%)' },
           { value: 'Remy hair (cuticules alignées)', label: 'Remy hair' },
-          { value: 'Brazilian hair (brésilien)', label: '🔥 Brazilian hair' },
+          { value: 'Brazilian hair (brésilien)', label: '\uD83D\uDD25 Brazilian hair' },
           { value: 'Peruvian hair (péruvien)', label: 'Peruvian hair' },
           { value: 'Indian hair (indien)', label: 'Indian hair' },
 
-          // 🎨 SYNTHÉTIQUES
+          // \uD83C\uDFA8 SYNTHÉTIQUES
           { value: 'Cheveux synthétiques premium', label: 'Synthétique premium' },
-          { value: 'Kanekalon (tresses africaines)', label: '🔥 Kanekalon (tresses)' },
+          { value: 'Kanekalon (tresses africaines)', label: '\uD83D\uDD25 Kanekalon (tresses)' },
           { value: 'X-pression (tresses)', label: 'X-pression (tresses)' },
 
-          // 🌈 AUTRES
+          // \uD83C\uDF08 AUTRES
           { value: 'Cheveux mixtes (naturel + synthétique)', label: 'Mixte' },
         ],
       },
@@ -5588,7 +5588,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Origine',
         type: 'select',
         options: [
-          { value: 'Brésilien', label: '🔥 Brésilien' },
+          { value: 'Brésilien', label: '\uD83D\uDD25 Brésilien' },
           { value: 'Péruvien', label: 'Péruvien' },
           { value: 'Indien', label: 'Indien' },
           { value: 'Malaisien', label: 'Malaisien' },
@@ -5602,19 +5602,19 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Marque',
         type: 'select',
         options: [
-          // 🌍 MARQUES AFRICAINES
-          { value: 'Darling (Nigeria)', label: '🇨🇲 Darling (Nigeria)' },
+          // \uD83C\uDF0D MARQUES AFRICAINES
+          { value: 'Darling (Nigeria)', label: '\uD83C\uDDE8\uD83C\uDDF2 Darling (Nigeria)' },
           { value: 'X-pression (tresses)', label: 'X-pression' },
           { value: 'Kanekalon', label: 'Kanekalon' },
 
-          // 🌟 MARQUES INTERNATIONALES AFRIQUE
+          // \uD83C\uDF1F MARQUES INTERNATIONALES AFRIQUE
           { value: 'Dark & Lovely', label: 'Dark & Lovely' },
           { value: 'Cantu', label: 'Cantu' },
           { value: 'Shea Moisture', label: 'Shea Moisture' },
           { value: 'Africa\'s Best', label: 'Africa\'s Best' },
           { value: 'Olive Oil (ORS)', label: 'Olive Oil (ORS)' },
 
-          // 💎 PREMIUM
+          // \uD83D\uDC8E PREMIUM
           { value: 'Sensationnel', label: 'Sensationnel' },
           { value: 'Outre', label: 'Outre' },
           { value: 'Freetress', label: 'Freetress' },
@@ -5625,7 +5625,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Couleur',
         type: 'select',
         options: [
-          { value: 'Noir naturel (1B)', label: '🔥 Noir naturel (1B)' },
+          { value: 'Noir naturel (1B)', label: '\uD83D\uDD25 Noir naturel (1B)' },
           { value: 'Noir pur (Jet black 1)', label: 'Noir pur (1)' },
           { value: 'Brun très foncé (2)', label: 'Brun très foncé (2)' },
           { value: 'Brun foncé (4)', label: 'Brun foncé (4)' },
@@ -5644,8 +5644,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de pose',
         type: 'select',
         options: [
-          { value: 'Tissage cousu (sew-in)', label: '🇨🇲 Tissage cousu' },
-          { value: 'Tresse africaine (crochet)', label: '🔥 Crochet (tresses)' },
+          { value: 'Tissage cousu (sew-in)', label: '\uD83C\uDDE8\uD83C\uDDF2 Tissage cousu' },
+          { value: 'Tresse africaine (crochet)', label: '\uD83D\uDD25 Crochet (tresses)' },
           { value: 'Clip-in (amovible)', label: 'Clip-in (amovible)' },
           { value: 'Bonding (colle)', label: 'Bonding (colle)' },
           { value: 'Lace closure (collage/couture)', label: 'Lace closure' },
@@ -5659,7 +5659,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           { value: '1-2 mois (synthétique tresses)', label: '1-2 mois (synthétique)' },
-          { value: '3-6 mois (naturel entretien moyen)', label: '🔥 3-6 mois (naturel)' },
+          { value: '3-6 mois (naturel entretien moyen)', label: '\uD83D\uDD25 3-6 mois (naturel)' },
           { value: '6-12 mois (naturel bien entretenu)', label: '6-12 mois' },
           { value: '1-2 ans (virgin hair premium)', label: '1-2 ans (premium)' },
         ],
@@ -5670,7 +5670,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           { value: '130% (naturelle légère)', label: '130% (légère)' },
-          { value: '150% (naturelle moyenne)', label: '🔥 150% (standard)' },
+          { value: '150% (naturelle moyenne)', label: '\uD83D\uDD25 150% (standard)' },
           { value: '180% (volumineuse)', label: '180% (volumineuse)' },
           { value: '200% (très volumineuse)', label: '200%' },
         ],
@@ -5679,7 +5679,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#E91E63',
       gradientColors: ['#E91E63', '#C2185B'],
-      icon: '💇‍♀️',
+      icon: '\uD83D\uDC87‍♀️',
       badgeColor: '#FCE4EC',
       accentColor: '#C2185B',
     },
@@ -5690,7 +5690,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'grid',
   },
 
-  // 🪡 COUTURIER - 🌍 CONTEXTE AFRIQUE FRANCOPHONE
+  // \uD83E\uDEA1 COUTURIER - \uD83C\uDF0D CONTEXTE AFRIQUE FRANCOPHONE
   couturier: {
     terminology: {
       productLabel: 'Service de couture',
@@ -5713,19 +5713,19 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de service',
         type: 'select',
         options: [
-          // 🪡 CONFECTION SUR MESURE
-          { value: '🌟 Robe sur mesure', label: '🌟 Robe sur mesure' },
-          { value: '🌟 Costume/Tailleur sur mesure', label: '🌟 Costume/Tailleur' },
-          { value: '🌟 Boubou/Kaftan sur mesure', label: '🌟 Boubou/Kaftan' },
+          // \uD83E\uDEA1 CONFECTION SUR MESURE
+          { value: '\uD83C\uDF1F Robe sur mesure', label: '\uD83C\uDF1F Robe sur mesure' },
+          { value: '\uD83C\uDF1F Costume/Tailleur sur mesure', label: '\uD83C\uDF1F Costume/Tailleur' },
+          { value: '\uD83C\uDF1F Boubou/Kaftan sur mesure', label: '\uD83C\uDF1F Boubou/Kaftan' },
           { value: 'Robe de mariée complète', label: 'Robe de mariée' },
           { value: 'Robe de soirée sur mesure', label: 'Robe de soirée' },
           { value: 'Ensemble pagne complet', label: 'Ensemble pagne' },
           { value: 'Chemise/Chemisier sur mesure', label: 'Chemise/Chemisier' },
           { value: 'Pantalon/Jupe sur mesure', label: 'Pantalon/Jupe' },
 
-          // 👔 TENUES AFRICAINES
-          { value: '🌟 Boubou grand bazin', label: 'Boubou grand bazin' },
-          { value: '🌟 Agbada (3 pièces)', label: 'Agbada (3 pièces)' },
+          // \uD83D\uDC54 TENUES AFRICAINES
+          { value: '\uD83C\uDF1F Boubou grand bazin', label: 'Boubou grand bazin' },
+          { value: '\uD83C\uDF1F Agbada (3 pièces)', label: 'Agbada (3 pièces)' },
           { value: 'Dashiki sur mesure', label: 'Dashiki' },
           { value: 'Kaftan brodé', label: 'Kaftan brodé' },
           { value: 'Ensemble wax complet', label: 'Ensemble wax' },
@@ -5736,7 +5736,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Retouche complexe (transformation)', label: 'Retouche complexe' },
           { value: 'Ajustement taille/longueur', label: 'Ajustement' },
 
-          // 🎨 BRODERIE
+          // \uD83C\uDFA8 BRODERIE
           { value: 'Broderie main traditionnelle', label: 'Broderie main' },
           { value: 'Broderie machine', label: 'Broderie machine' },
           { value: 'Broderie perles', label: 'Broderie perles' },
@@ -5747,18 +5747,18 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Tissu',
         type: 'select',
         options: [
-          // 🌟 TISSUS AFRICAINS
-          { value: '🌟 Bazin riche (brodé)', label: '🌟 Bazin riche (brodé)' },
-          { value: '🌟 Bazin riche (uni)', label: 'Bazin riche (uni)' },
-          { value: '🌟 Wax hollandais (Vlisco)', label: '🌟 Wax hollandais (Vlisco)' },
-          { value: '🌟 Super wax (premium)', label: 'Super wax' },
+          // \uD83C\uDF1F TISSUS AFRICAINS
+          { value: '\uD83C\uDF1F Bazin riche (brodé)', label: '\uD83C\uDF1F Bazin riche (brodé)' },
+          { value: '\uD83C\uDF1F Bazin riche (uni)', label: 'Bazin riche (uni)' },
+          { value: '\uD83C\uDF1F Wax hollandais (Vlisco)', label: '\uD83C\uDF1F Wax hollandais (Vlisco)' },
+          { value: '\uD83C\uDF1F Super wax (premium)', label: 'Super wax' },
           { value: 'Wax classique', label: 'Wax classique' },
           { value: 'Fancy print (java)', label: 'Fancy print' },
           { value: 'Pagne traditionnel', label: 'Pagne traditionnel' },
           { value: 'Kente (Ghana)', label: 'Kente (Ghana)' },
           { value: 'Ankara (imprimé africain)', label: 'Ankara' },
 
-          // 👔 TISSUS CLASSIQUES
+          // \uD83D\uDC54 TISSUS CLASSIQUES
           { value: 'Coton', label: 'Coton' },
           { value: 'Lin', label: 'Lin' },
           { value: 'Soie', label: 'Soie' },
@@ -5775,8 +5775,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           // Africain
-          { value: '🌟 Traditionnel africain', label: '🌟 Traditionnel africain' },
-          { value: '🌟 Afro-fusion (moderne)', label: '🌟 Afro-fusion' },
+          { value: '\uD83C\uDF1F Traditionnel africain', label: '\uD83C\uDF1F Traditionnel africain' },
+          { value: '\uD83C\uDF1F Afro-fusion (moderne)', label: '\uD83C\uDF1F Afro-fusion' },
           { value: 'Wax moderne chic', label: 'Wax moderne chic' },
           { value: 'Pagne élégant', label: 'Pagne élégant' },
 
@@ -5811,8 +5811,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           // Mariages
-          { value: '🌟 Mariage (mariée)', label: '🌟 Mariage (mariée)' },
-          { value: '🌟 Mariage (marié)', label: '🌟 Mariage (marié)' },
+          { value: '\uD83C\uDF1F Mariage (mariée)', label: '\uD83C\uDF1F Mariage (mariée)' },
+          { value: '\uD83C\uDF1F Mariage (marié)', label: '\uD83C\uDF1F Mariage (marié)' },
           { value: 'Mariage traditionnel', label: 'Mariage traditionnel' },
           { value: 'Dot (cérémonie)', label: 'Dot (cérémonie)' },
           { value: 'Demoiselle d\'honneur', label: 'Demoiselle d\'honneur' },
@@ -5855,8 +5855,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Spécialiste vêtements enfants', label: 'Spécialiste enfants' },
 
           // Africain
-          { value: '🌟 Spécialiste tenues africaines', label: '🌟 Tenues africaines' },
-          { value: '🌟 Spécialiste bazin', label: '🌟 Spécialiste bazin' },
+          { value: '\uD83C\uDF1F Spécialiste tenues africaines', label: '\uD83C\uDF1F Tenues africaines' },
+          { value: '\uD83C\uDF1F Spécialiste bazin', label: '\uD83C\uDF1F Spécialiste bazin' },
           { value: 'Spécialiste wax/pagne', label: 'Spécialiste wax/pagne' },
           { value: 'Spécialiste boubou', label: 'Spécialiste boubou' },
 
@@ -5884,7 +5884,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Finition',
         type: 'select',
         options: [
-          { value: '🌟 Haute couture', label: '🌟 Haute couture' },
+          { value: '\uD83C\uDF1F Haute couture', label: '\uD83C\uDF1F Haute couture' },
           { value: 'Finition soignée (premium)', label: 'Finition soignée' },
           { value: 'Finition standard', label: 'Finition standard' },
           { value: 'Avec doublure complète', label: 'Avec doublure' },
@@ -5909,7 +5909,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#9C27B0',
       gradientColors: ['#9C27B0', '#7B1FA2'],
-      icon: '🪡',
+      icon: '\uD83E\uDEA1',
       badgeColor: '#F3E5F5',
       accentColor: '#7B1FA2',
     },
@@ -5937,7 +5937,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 🏨 HÔTELLERIE
+  // \uD83C\uDFE8 HÔTELLERIE
   hotellerie: {
     terminology: {
       productLabel: 'Établissement',
@@ -6141,7 +6141,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#EC4899',
       gradientColors: ['#EC4899', '#DB2777'],
-      icon: '🏨',
+      icon: '\uD83C\uDFE8',
       badgeColor: '#FCE7F3',
       accentColor: '#DB2777',
     },
@@ -6153,7 +6153,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     supportsVariants: true, // ✅ Support des variantes de chambres
   },
 
-  // 🍽️ RESTAURATION & TRAITEUR - ULTRA-COMPLET AFRIQUE FRANCOPHONE
+  // \uD83C\uDF7D️ RESTAURATION & TRAITEUR - ULTRA-COMPLET AFRIQUE FRANCOPHONE
   restauration: {
     terminology: {
       productLabel: 'Établissement',
@@ -6178,20 +6178,20 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type d\'établissement',
         type: 'multiselect',
         options: [
-          { value: '🏠 Maquis traditionnel', label: 'Maquis traditionnel' },
-          { value: '🏠 Restaurant africain', label: 'Restaurant africain' },
-          { value: '🍖 Braiserie / Grillades', label: 'Braiserie / Grillades' },
-          { value: '🍗 Poulet braisé / Rôtisserie', label: 'Poulet braisé' },
-          { value: '🐟 Poissonnerie / Poisson braisé', label: 'Poissonnerie' },
-          { value: '🥘 Traiteur événementiel', label: 'Traiteur événementiel' },
+          { value: '\uD83C\uDFE0 Maquis traditionnel', label: 'Maquis traditionnel' },
+          { value: '\uD83C\uDFE0 Restaurant africain', label: 'Restaurant africain' },
+          { value: '\uD83C\uDF56 Braiserie / Grillades', label: 'Braiserie / Grillades' },
+          { value: '\uD83C\uDF57 Poulet braisé / Rôtisserie', label: 'Poulet braisé' },
+          { value: '\uD83D\uDC1F Poissonnerie / Poisson braisé', label: 'Poissonnerie' },
+          { value: '\uD83E\uDD58 Traiteur événementiel', label: 'Traiteur événementiel' },
           { value: '☕ Cafétéria / Snack', label: 'Cafétéria / Snack' },
-          { value: '🍕 Pizzeria', label: 'Pizzeria' },
-          { value: '🍔 Fast-food / Burger', label: 'Fast-food' },
-          { value: '🍝 Restaurant italien', label: 'Restaurant italien' },
-          { value: '🍜 Restaurant asiatique (chinois, japonais)', label: 'Restaurant asiatique' },
-          { value: '🥙 Restaurant libanais / Moyen-Orient', label: 'Restaurant libanais' },
-          { value: '🥖 Boulangerie-pâtisserie', label: 'Boulangerie-pâtisserie' },
-          { value: '🚚 Food truck', label: 'Food truck' },
+          { value: '\uD83C\uDF55 Pizzeria', label: 'Pizzeria' },
+          { value: '\uD83C\uDF54 Fast-food / Burger', label: 'Fast-food' },
+          { value: '\uD83C\uDF5D Restaurant italien', label: 'Restaurant italien' },
+          { value: '\uD83C\uDF5C Restaurant asiatique (chinois, japonais)', label: 'Restaurant asiatique' },
+          { value: '\uD83E\uDD59 Restaurant libanais / Moyen-Orient', label: 'Restaurant libanais' },
+          { value: '\uD83E\uDD56 Boulangerie-pâtisserie', label: 'Boulangerie-pâtisserie' },
+          { value: '\uD83D\uDE9A Food truck', label: 'Food truck' },
         ],
       },
 
@@ -6201,22 +6201,22 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de cuisine',
         type: 'multiselect',
         options: [
-          { value: '🇨🇲 Cuisine camerounaise', label: 'Camerounaise' },
-          { value: '🇨🇮 Cuisine ivoirienne', label: 'Ivoirienne' },
-          { value: '🇸🇳 Cuisine sénégalaise', label: 'Sénégalaise' },
-          { value: '🇲🇱 Cuisine malienne', label: 'Malienne' },
-          { value: '🇬🇦 Cuisine gabonaise', label: 'Gabonaise' },
-          { value: '🇨🇬 Cuisine congolaise', label: 'Congolaise' },
-          { value: '🇧🇫 Cuisine burkinabè', label: 'Burkinabè' },
-          { value: '🌍 Cuisine africaine (générale)', label: 'Africaine générale' },
-          { value: '🇫🇷 Cuisine française', label: 'Française' },
-          { value: '🇮🇹 Cuisine italienne', label: 'Italienne' },
-          { value: '🇨🇳 Cuisine chinoise', label: 'Chinoise' },
-          { value: '🇯🇵 Cuisine japonaise', label: 'Japonaise' },
-          { value: '🇱🇧 Cuisine libanaise', label: 'Libanaise' },
-          { value: '🍔 Fast-food', label: 'Fast-food' },
-          { value: '🍖 Grillades / BBQ', label: 'Grillades / BBQ' },
-          { value: '🐟 Poissons & fruits de mer', label: 'Poissons & fruits de mer' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Cuisine camerounaise', label: 'Camerounaise' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Cuisine ivoirienne', label: 'Ivoirienne' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Cuisine sénégalaise', label: 'Sénégalaise' },
+          { value: '\uD83C\uDDF2\uD83C\uDDF1 Cuisine malienne', label: 'Malienne' },
+          { value: '\uD83C\uDDEC\uD83C\uDDE6 Cuisine gabonaise', label: 'Gabonaise' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEC Cuisine congolaise', label: 'Congolaise' },
+          { value: '\uD83C\uDDE7\uD83C\uDDEB Cuisine burkinabè', label: 'Burkinabè' },
+          { value: '\uD83C\uDF0D Cuisine africaine (générale)', label: 'Africaine générale' },
+          { value: '\uD83C\uDDEB\uD83C\uDDF7 Cuisine française', label: 'Française' },
+          { value: '\uD83C\uDDEE\uD83C\uDDF9 Cuisine italienne', label: 'Italienne' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF3 Cuisine chinoise', label: 'Chinoise' },
+          { value: '\uD83C\uDDEF\uD83C\uDDF5 Cuisine japonaise', label: 'Japonaise' },
+          { value: '\uD83C\uDDF1\uD83C\uDDE7 Cuisine libanaise', label: 'Libanaise' },
+          { value: '\uD83C\uDF54 Fast-food', label: 'Fast-food' },
+          { value: '\uD83C\uDF56 Grillades / BBQ', label: 'Grillades / BBQ' },
+          { value: '\uD83D\uDC1F Poissons & fruits de mer', label: 'Poissons & fruits de mer' },
         ],
       },
 
@@ -6227,34 +6227,34 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           // Cameroun
-          { value: '🇨🇲 Ndolé', label: 'Ndolé (Cameroun)' },
-          { value: '🇨🇲 Eru / Okok', label: 'Eru / Okok (Cameroun)' },
-          { value: '🇨🇲 Poulet DG', label: 'Poulet DG (Cameroun)' },
-          { value: '🇨🇲 Koki', label: 'Koki (Cameroun)' },
-          { value: '🇨🇲 Poulet braisé / Kati-kati', label: 'Poulet braisé (Cameroun)' },
-          { value: '🇨🇲 Poisson braisé', label: 'Poisson braisé (Cameroun)' },
-          { value: '🇨🇲 Soya / Khebabs', label: 'Soya / Khebabs (Cameroun)' },
-          { value: '🇨🇲 Mbongo tchobi', label: 'Mbongo tchobi (Cameroun)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Ndolé', label: 'Ndolé (Cameroun)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Eru / Okok', label: 'Eru / Okok (Cameroun)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Poulet DG', label: 'Poulet DG (Cameroun)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Koki', label: 'Koki (Cameroun)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Poulet braisé / Kati-kati', label: 'Poulet braisé (Cameroun)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Poisson braisé', label: 'Poisson braisé (Cameroun)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Soya / Khebabs', label: 'Soya / Khebabs (Cameroun)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Mbongo tchobi', label: 'Mbongo tchobi (Cameroun)' },
           // Côte d'Ivoire
-          { value: '🇨🇮 Attiéké-poisson', label: 'Attiéké-poisson (Côte d\'Ivoire)' },
-          { value: '🇨🇮 Aloco', label: 'Aloco (Côte d\'Ivoire)' },
-          { value: '🇨🇮 Garba', label: 'Garba (Côte d\'Ivoire)' },
-          { value: '🇨🇮 Kedjenou', label: 'Kedjenou (Côte d\'Ivoire)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Attiéké-poisson', label: 'Attiéké-poisson (Côte d\'Ivoire)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Aloco', label: 'Aloco (Côte d\'Ivoire)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Garba', label: 'Garba (Côte d\'Ivoire)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Kedjenou', label: 'Kedjenou (Côte d\'Ivoire)' },
           // Sénégal
-          { value: '🇸🇳 Thiéboudienne', label: 'Thiéboudienne (Sénégal)' },
-          { value: '🇸🇳 Yassa poulet', label: 'Yassa poulet (Sénégal)' },
-          { value: '🇸🇳 Mafé', label: 'Mafé (Sénégal)' },
-          { value: '🇸🇳 Dibi (mouton grillé)', label: 'Dibi (Sénégal)' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Thiéboudienne', label: 'Thiéboudienne (Sénégal)' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Yassa poulet', label: 'Yassa poulet (Sénégal)' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Mafé', label: 'Mafé (Sénégal)' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Dibi (mouton grillé)', label: 'Dibi (Sénégal)' },
           // Congo/Gabon
-          { value: '🇨🇬 Pondu / Saka-saka', label: 'Pondu / Saka-saka (Congo)' },
-          { value: '🇨🇬 Liboke', label: 'Liboke (Congo)' },
-          { value: '🇬🇦 Nyembwé', label: 'Nyembwé (Gabon)' },
-          { value: '🇬🇦 Moambe chicken', label: 'Moambe chicken (Gabon/Congo)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEC Pondu / Saka-saka', label: 'Pondu / Saka-saka (Congo)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEC Liboke', label: 'Liboke (Congo)' },
+          { value: '\uD83C\uDDEC\uD83C\uDDE6 Nyembwé', label: 'Nyembwé (Gabon)' },
+          { value: '\uD83C\uDDEC\uD83C\uDDE6 Moambe chicken', label: 'Moambe chicken (Gabon/Congo)' },
           // International
-          { value: '🍕 Pizza', label: 'Pizza' },
-          { value: '🍔 Burger', label: 'Burger' },
-          { value: '🍜 Riz cantonnais / Nouilles', label: 'Riz cantonnais / Nouilles' },
-          { value: '🥙 Chawarma', label: 'Chawarma' },
+          { value: '\uD83C\uDF55 Pizza', label: 'Pizza' },
+          { value: '\uD83C\uDF54 Burger', label: 'Burger' },
+          { value: '\uD83C\uDF5C Riz cantonnais / Nouilles', label: 'Riz cantonnais / Nouilles' },
+          { value: '\uD83E\uDD59 Chawarma', label: 'Chawarma' },
         ],
       },
 
@@ -6264,12 +6264,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Services proposés',
         type: 'multiselect',
         options: [
-          { value: '🍽️ Service sur place', label: 'Sur place' },
-          { value: '📦 Plats à emporter', label: 'À emporter' },
-          { value: '🚗 Livraison à domicile', label: 'Livraison' },
-          { value: '🎉 Traiteur événementiel (mariages, baptêmes)', label: 'Traiteur événementiel' },
-          { value: '🏢 Traiteur entreprise (séminaires, pause-café)', label: 'Traiteur entreprise' },
-          { value: '🍱 Buffet sur mesure', label: 'Buffet' },
+          { value: '\uD83C\uDF7D️ Service sur place', label: 'Sur place' },
+          { value: '\uD83D\uDCE6 Plats à emporter', label: 'À emporter' },
+          { value: '\uD83D\uDE97 Livraison à domicile', label: 'Livraison' },
+          { value: '\uD83C\uDF89 Traiteur événementiel (mariages, baptêmes)', label: 'Traiteur événementiel' },
+          { value: '\uD83C\uDFE2 Traiteur entreprise (séminaires, pause-café)', label: 'Traiteur entreprise' },
+          { value: '\uD83C\uDF71 Buffet sur mesure', label: 'Buffet' },
         ],
       },
 
@@ -6279,11 +6279,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Gamme de prix',
         type: 'select',
         options: [
-          { value: '💰 Économique (500-1500 FCFA)', label: 'Économique (500-1500 FCFA)' },
-          { value: '💰💰 Abordable (1500-3000 FCFA)', label: 'Abordable (1500-3000 FCFA)' },
-          { value: '💰💰💰 Moyen (3000-6000 FCFA)', label: 'Moyen (3000-6000 FCFA)' },
-          { value: '💰💰💰💰 Élevé (6000-12000 FCFA)', label: 'Élevé (6000-12000 FCFA)' },
-          { value: '💰💰💰💰💰 Premium (> 12000 FCFA)', label: 'Premium (> 12000 FCFA)' },
+          { value: '\uD83D\uDCB0 Économique (500-1500 FCFA)', label: 'Économique (500-1500 FCFA)' },
+          { value: '\uD83D\uDCB0\uD83D\uDCB0 Abordable (1500-3000 FCFA)', label: 'Abordable (1500-3000 FCFA)' },
+          { value: '\uD83D\uDCB0\uD83D\uDCB0\uD83D\uDCB0 Moyen (3000-6000 FCFA)', label: 'Moyen (3000-6000 FCFA)' },
+          { value: '\uD83D\uDCB0\uD83D\uDCB0\uD83D\uDCB0\uD83D\uDCB0 Élevé (6000-12000 FCFA)', label: 'Élevé (6000-12000 FCFA)' },
+          { value: '\uD83D\uDCB0\uD83D\uDCB0\uD83D\uDCB0\uD83D\uDCB0\uD83D\uDCB0 Premium (> 12000 FCFA)', label: 'Premium (> 12000 FCFA)' },
         ],
       },
 
@@ -6295,11 +6295,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         options: [
           { value: '☪️ Halal certifié', label: 'Halal certifié' },
           { value: '✡️ Kasher', label: 'Kasher' },
-          { value: '🌱 Végétarien', label: 'Végétarien' },
-          { value: '🌿 Vegan (100% végétal)', label: 'Vegan' },
-          { value: '🌾 Sans gluten', label: 'Sans gluten' },
-          { value: '🥛 Sans lactose', label: 'Sans lactose' },
-          { value: '🥗 Bio / Produits locaux', label: 'Bio / Produits locaux' },
+          { value: '\uD83C\uDF31 Végétarien', label: 'Végétarien' },
+          { value: '\uD83C\uDF3F Vegan (100% végétal)', label: 'Vegan' },
+          { value: '\uD83C\uDF3E Sans gluten', label: 'Sans gluten' },
+          { value: '\uD83E\uDD5B Sans lactose', label: 'Sans lactose' },
+          { value: '\uD83E\uDD57 Bio / Produits locaux', label: 'Bio / Produits locaux' },
         ],
       },
 
@@ -6309,11 +6309,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Horaires de service',
         type: 'multiselect',
         options: [
-          { value: '🌅 Petit-déjeuner (6h-11h)', label: 'Petit-déjeuner' },
+          { value: '\uD83C\uDF05 Petit-déjeuner (6h-11h)', label: 'Petit-déjeuner' },
           { value: '☀️ Déjeuner (11h-16h)', label: 'Déjeuner' },
-          { value: '🌆 Dîner (18h-23h)', label: 'Dîner' },
-          { value: '🍽️ Service continu (11h-23h)', label: 'Service continu' },
-          { value: '🌙 Service nocturne (20h-4h)', label: 'Service nocturne' },
+          { value: '\uD83C\uDF06 Dîner (18h-23h)', label: 'Dîner' },
+          { value: '\uD83C\uDF7D️ Service continu (11h-23h)', label: 'Service continu' },
+          { value: '\uD83C\uDF19 Service nocturne (20h-4h)', label: 'Service nocturne' },
           { value: '⏰ 24h/24', label: '24h/24' },
         ],
       },
@@ -6324,16 +6324,16 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Ambiance & Équipements',
         type: 'multiselect',
         options: [
-          { value: '👨‍👩‍👧‍👦 Familial', label: 'Familial' },
-          { value: '💑 Romantique', label: 'Romantique' },
-          { value: '👔 Professionnel / Business', label: 'Professionnel' },
-          { value: '🎉 Festif / Événementiel', label: 'Festif' },
-          { value: '🌳 Terrasse / Jardin', label: 'Terrasse / Jardin' },
+          { value: '\uD83D\uDC68‍\uD83D\uDC69‍\uD83D\uDC67‍\uD83D\uDC66 Familial', label: 'Familial' },
+          { value: '\uD83D\uDC91 Romantique', label: 'Romantique' },
+          { value: '\uD83D\uDC54 Professionnel / Business', label: 'Professionnel' },
+          { value: '\uD83C\uDF89 Festif / Événementiel', label: 'Festif' },
+          { value: '\uD83C\uDF33 Terrasse / Jardin', label: 'Terrasse / Jardin' },
           { value: '❄️ Climatisé', label: 'Climatisé' },
-          { value: '📶 Wi-Fi gratuit', label: 'Wi-Fi gratuit' },
-          { value: '🚗 Parking disponible', label: 'Parking' },
-          { value: '🎵 Musique live', label: 'Musique live' },
-          { value: '📺 Écrans TV / Sports', label: 'Écrans TV / Sports' },
+          { value: '\uD83D\uDCF6 Wi-Fi gratuit', label: 'Wi-Fi gratuit' },
+          { value: '\uD83D\uDE97 Parking disponible', label: 'Parking' },
+          { value: '\uD83C\uDFB5 Musique live', label: 'Musique live' },
+          { value: '\uD83D\uDCFA Écrans TV / Sports', label: 'Écrans TV / Sports' },
         ],
       },
 
@@ -6343,11 +6343,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Capacité d\'accueil',
         type: 'select',
         options: [
-          { value: '👥 Petit (1-20 personnes)', label: 'Petit (1-20 pers.)' },
-          { value: '👥 Moyen (20-50 personnes)', label: 'Moyen (20-50 pers.)' },
-          { value: '👥 Grand (50-100 personnes)', label: 'Grand (50-100 pers.)' },
-          { value: '👥 Très grand (100-200 personnes)', label: 'Très grand (100-200 pers.)' },
-          { value: '👥 Événementiel (200-500+ personnes)', label: 'Événementiel (200+ pers.)' },
+          { value: '\uD83D\uDC65 Petit (1-20 personnes)', label: 'Petit (1-20 pers.)' },
+          { value: '\uD83D\uDC65 Moyen (20-50 personnes)', label: 'Moyen (20-50 pers.)' },
+          { value: '\uD83D\uDC65 Grand (50-100 personnes)', label: 'Grand (50-100 pers.)' },
+          { value: '\uD83D\uDC65 Très grand (100-200 personnes)', label: 'Très grand (100-200 pers.)' },
+          { value: '\uD83D\uDC65 Événementiel (200-500+ personnes)', label: 'Événementiel (200+ pers.)' },
         ],
       },
 
@@ -6360,8 +6360,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: '✅ Agréé par le Ministère de la Santé', label: 'Agréé Ministère Santé' },
           { value: '✅ Certification Halal', label: 'Certification Halal' },
           { value: '✅ Hygiène HACCP', label: 'Hygiène HACCP' },
-          { value: '🏆 Restaurant recommandé', label: 'Restaurant recommandé' },
-          { value: '🌱 Produits bio certifiés', label: 'Produits bio' },
+          { value: '\uD83C\uDFC6 Restaurant recommandé', label: 'Restaurant recommandé' },
+          { value: '\uD83C\uDF31 Produits bio certifiés', label: 'Produits bio' },
         ],
       },
 
@@ -6371,12 +6371,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Promotions & Avantages',
         type: 'multiselect',
         options: [
-          { value: '🎉 Promotion du jour', label: 'Promotion du jour' },
-          { value: '📅 Menu du midi réduit', label: 'Menu du midi réduit' },
-          { value: '👨‍👩‍👧‍👦 Offre famille', label: 'Offre famille' },
-          { value: '🥤 Boisson offerte', label: 'Boisson offerte' },
-          { value: '📦 Livraison gratuite (à partir de...)', label: 'Livraison gratuite' },
-          { value: '💳 Carte de fidélité', label: 'Carte de fidélité' },
+          { value: '\uD83C\uDF89 Promotion du jour', label: 'Promotion du jour' },
+          { value: '\uD83D\uDCC5 Menu du midi réduit', label: 'Menu du midi réduit' },
+          { value: '\uD83D\uDC68‍\uD83D\uDC69‍\uD83D\uDC67‍\uD83D\uDC66 Offre famille', label: 'Offre famille' },
+          { value: '\uD83E\uDD64 Boisson offerte', label: 'Boisson offerte' },
+          { value: '\uD83D\uDCE6 Livraison gratuite (à partir de...)', label: 'Livraison gratuite' },
+          { value: '\uD83D\uDCB3 Carte de fidélité', label: 'Carte de fidélité' },
         ],
       },
 
@@ -6390,7 +6390,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#F97316',
       gradientColors: ['#F97316', '#EA580C'],
-      icon: '🍽️',
+      icon: '\uD83C\uDF7D️',
       badgeColor: '#FFEDD5',
       accentColor: '#EA580C',
     },
@@ -6401,7 +6401,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 💪 SPORT & FITNESS
+  // \uD83D\uDCAA SPORT & FITNESS
   sport_fitness: {
     terminology: {
       productLabel: 'Activité sportive',
@@ -6679,7 +6679,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#EF4444',
       gradientColors: ['#EF4444', '#DC2626'],
-      icon: '💪',
+      icon: '\uD83D\uDCAA',
       badgeColor: '#FEE2E2',
       accentColor: '#DC2626',
     },
@@ -6691,10 +6691,10 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
   },
 
   // ════════════════════════════════════════════════════════════
-  // 💼 EMPLOI & RECRUTEMENT - ULTRA-ENRICHI AFRIQUE + INTERNATIONAL
+  // \uD83D\uDCBC EMPLOI & RECRUTEMENT - ULTRA-ENRICHI AFRIQUE + INTERNATIONAL
   // ════════════════════════════════════════════════════════════
-  // 🎯 Objectif : Référence absolue pour RECRUTER et trouver un emploi
-  // 📊 Contenu : 500+ métiers, 100+ secteurs, spécificités africaines
+  // \uD83C\uDFAF Objectif : Référence absolue pour RECRUTER et trouver un emploi
+  // \uD83D\uDCCA Contenu : 500+ métiers, 100+ secteurs, spécificités africaines
   // ⚠️ DISTINCTION : Cette catégorie = OFFRES de recrutement (entreprises qui recrutent)
   //                  ≠ nettoyage_entretien (prestataires individuels qui proposent services)
   // ════════════════════════════════════════════════════════════
@@ -6722,8 +6722,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Secteur d\'activité',
         type: 'select',
         options: [
-          // ═══ 🌍 SECTEURS CLÉS AFRIQUE ═══
-          { value: '─── 🌍 SECTEURS CLÉS AFRIQUE ───', label: '─── 🌍 SECTEURS CLÉS AFRIQUE ───' },
+          // ═══ \uD83C\uDF0D SECTEURS CLÉS AFRIQUE ═══
+          { value: '─── \uD83C\uDF0D SECTEURS CLÉS AFRIQUE ───', label: '─── \uD83C\uDF0D SECTEURS CLÉS AFRIQUE ───' },
           { value: 'Agriculture/Agro-industrie', label: 'Agriculture/Agro-industrie' },
           { value: 'Mines/Pétrole/Gaz', label: 'Mines/Pétrole/Gaz' },
           { value: 'Télécommunications', label: 'Télécommunications' },
@@ -6739,8 +6739,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'BTP/Construction/Génie civil', label: 'BTP/Construction' },
           { value: 'Sécurité/Gardiennage', label: 'Sécurité/Gardiennage' },
 
-          // ═══ 💼 SECTEURS TRADITIONNELS ═══
-          { value: '─── 💼 SECTEURS TRADITIONNELS ───', label: '─── 💼 SECTEURS TRADITIONNELS ───' },
+          // ═══ \uD83D\uDCBC SECTEURS TRADITIONNELS ═══
+          { value: '─── \uD83D\uDCBC SECTEURS TRADITIONNELS ───', label: '─── \uD83D\uDCBC SECTEURS TRADITIONNELS ───' },
           { value: 'Informatique/IT/Tech', label: 'Informatique/IT/Tech' },
           { value: 'Développement web/mobile', label: 'Développement web/mobile' },
           { value: 'Data Science/IA', label: 'Data Science/IA' },
@@ -6755,8 +6755,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Administration/Secrétariat', label: 'Administration/Secrétariat' },
           { value: 'Gestion de projet/PMO', label: 'Gestion de projet/PMO' },
 
-          // ═══ 🏭 INDUSTRIE & PRODUCTION ═══
-          { value: '─── 🏭 INDUSTRIE & PRODUCTION ───', label: '─── 🏭 INDUSTRIE & PRODUCTION ───' },
+          // ═══ \uD83C\uDFED INDUSTRIE & PRODUCTION ═══
+          { value: '─── \uD83C\uDFED INDUSTRIE & PRODUCTION ───', label: '─── \uD83C\uDFED INDUSTRIE & PRODUCTION ───' },
           { value: 'Industrie manufacturière', label: 'Industrie manufacturière' },
           { value: 'Agroalimentaire/Transformation', label: 'Agroalimentaire' },
           { value: 'Textile/Confection', label: 'Textile/Confection' },
@@ -6768,8 +6768,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Maintenance industrielle', label: 'Maintenance industrielle' },
           { value: 'Qualité/QHSE', label: 'Qualité/QHSE' },
 
-          // ═══ 🏗️ BTP & INFRASTRUCTURE ═══
-          { value: '─── 🏗️ BTP & INFRASTRUCTURE ───', label: '─── 🏗️ BTP & INFRASTRUCTURE ───' },
+          // ═══ \uD83C\uDFD7️ BTP & INFRASTRUCTURE ═══
+          { value: '─── \uD83C\uDFD7️ BTP & INFRASTRUCTURE ───', label: '─── \uD83C\uDFD7️ BTP & INFRASTRUCTURE ───' },
           { value: 'Architecture/Urbanisme', label: 'Architecture/Urbanisme' },
           { value: 'Génie civil/Travaux publics', label: 'Génie civil/TP' },
           { value: 'Électricité bâtiment', label: 'Électricité bâtiment' },
@@ -6781,8 +6781,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Topographie/Géomètre', label: 'Topographie/Géomètre' },
           { value: 'Études de prix/Métreur', label: 'Métreur/Études prix' },
 
-          // ═══ 🍽️ HÔTELLERIE & RESTAURATION ═══
-          { value: '─── 🍽️ HÔTELLERIE & RESTAURATION ───', label: '─── 🍽️ HÔTELLERIE & RESTAURATION ───' },
+          // ═══ \uD83C\uDF7D️ HÔTELLERIE & RESTAURATION ═══
+          { value: '─── \uD83C\uDF7D️ HÔTELLERIE & RESTAURATION ───', label: '─── \uD83C\uDF7D️ HÔTELLERIE & RESTAURATION ───' },
           { value: 'Hôtellerie', label: 'Hôtellerie' },
           { value: 'Restauration/Cuisine', label: 'Restauration/Cuisine' },
           { value: 'Boulangerie/Pâtisserie', label: 'Boulangerie/Pâtisserie' },
@@ -6790,8 +6790,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Traiteur/Événementiel', label: 'Traiteur/Événementiel' },
           { value: 'Réception/Accueil', label: 'Réception/Accueil' },
 
-          // ═══ 🎨 CRÉATION & MÉDIAS ═══
-          { value: '─── 🎨 CRÉATION & MÉDIAS ───', label: '─── 🎨 CRÉATION & MÉDIAS ───' },
+          // ═══ \uD83C\uDFA8 CRÉATION & MÉDIAS ═══
+          { value: '─── \uD83C\uDFA8 CRÉATION & MÉDIAS ───', label: '─── \uD83C\uDFA8 CRÉATION & MÉDIAS ───' },
           { value: 'Design graphique/UI-UX', label: 'Design graphique/UI-UX' },
           { value: 'Photographie/Vidéographie', label: 'Photo/Vidéo' },
           { value: 'Journalisme/Presse', label: 'Journalisme/Presse' },
@@ -6800,8 +6800,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Arts/Culture/Spectacle', label: 'Arts/Culture' },
           { value: 'Impression/Imprimerie', label: 'Impression/Imprimerie' },
 
-          // ═══ 🛒 COMMERCE & DISTRIBUTION ═══
-          { value: '─── 🛒 COMMERCE & DISTRIBUTION ───', label: '─── 🛒 COMMERCE & DISTRIBUTION ───' },
+          // ═══ \uD83D\uDED2 COMMERCE & DISTRIBUTION ═══
+          { value: '─── \uD83D\uDED2 COMMERCE & DISTRIBUTION ───', label: '─── \uD83D\uDED2 COMMERCE & DISTRIBUTION ───' },
           { value: 'Grande distribution/Supermarché', label: 'Grande distribution' },
           { value: 'Commerce de détail', label: 'Commerce de détail' },
           { value: 'Commerce de gros', label: 'Commerce de gros' },
@@ -6809,8 +6809,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Pharmacie/Parapharmacie', label: 'Pharmacie' },
           { value: 'Librairie/Papeterie', label: 'Librairie/Papeterie' },
 
-          // ═══ 🌐 SERVICES AUX ENTREPRISES ═══
-          { value: '─── 🌐 SERVICES AUX ENTREPRISES ───', label: '─── 🌐 SERVICES AUX ENTREPRISES ───' },
+          // ═══ \uD83C\uDF10 SERVICES AUX ENTREPRISES ═══
+          { value: '─── \uD83C\uDF10 SERVICES AUX ENTREPRISES ───', label: '─── \uD83C\uDF10 SERVICES AUX ENTREPRISES ───' },
           { value: 'Conseil/Consulting', label: 'Conseil/Consulting' },
           { value: 'Formation professionnelle', label: 'Formation professionnelle' },
           { value: 'Nettoyage/Propreté', label: 'Nettoyage/Propreté' },
@@ -6819,8 +6819,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Traduction/Interprétariat', label: 'Traduction' },
           { value: 'Recrutement/Intérim', label: 'Recrutement/Intérim' },
 
-          // ═══ 🚗 TRANSPORT & LOGISTIQUE ═══
-          { value: '─── 🚗 TRANSPORT & LOGISTIQUE ───', label: '─── 🚗 TRANSPORT & LOGISTIQUE ───' },
+          // ═══ \uD83D\uDE97 TRANSPORT & LOGISTIQUE ═══
+          { value: '─── \uD83D\uDE97 TRANSPORT & LOGISTIQUE ───', label: '─── \uD83D\uDE97 TRANSPORT & LOGISTIQUE ───' },
           { value: 'Transport routier', label: 'Transport routier' },
           { value: 'Transport urbain/Taxi', label: 'Transport urbain/Taxi' },
           { value: 'Livraison/Coursier', label: 'Livraison/Coursier' },
@@ -6829,8 +6829,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Fret/Maritime/Aérien', label: 'Fret/Maritime/Aérien' },
           { value: 'Entreposage/Stockage', label: 'Entreposage' },
 
-          // ═══ 🏥 SANTÉ & SOCIAL ═══
-          { value: '─── 🏥 SANTÉ & SOCIAL ───', label: '─── 🏥 SANTÉ & SOCIAL ───' },
+          // ═══ \uD83C\uDFE5 SANTÉ & SOCIAL ═══
+          { value: '─── \uD83C\uDFE5 SANTÉ & SOCIAL ───', label: '─── \uD83C\uDFE5 SANTÉ & SOCIAL ───' },
           { value: 'Médecine/Médecin', label: 'Médecine/Médecin' },
           { value: 'Soins infirmiers', label: 'Soins infirmiers' },
           { value: 'Paramédical', label: 'Paramédical' },
@@ -6841,8 +6841,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Aide à domicile/Care', label: 'Aide à domicile' },
           { value: 'Action sociale/ONG', label: 'Action sociale/ONG' },
 
-          // ═══ 🌾 AGRICULTURE & ENVIRONNEMENT ═══
-          { value: '─── 🌾 AGRICULTURE & ENVIRONNEMENT ───', label: '─── 🌾 AGRICULTURE & ENVIRONNEMENT ───' },
+          // ═══ \uD83C\uDF3E AGRICULTURE & ENVIRONNEMENT ═══
+          { value: '─── \uD83C\uDF3E AGRICULTURE & ENVIRONNEMENT ───', label: '─── \uD83C\uDF3E AGRICULTURE & ENVIRONNEMENT ───' },
           { value: 'Agriculture/Élevage', label: 'Agriculture/Élevage' },
           { value: 'Agro-pastoral', label: 'Agro-pastoral' },
           { value: 'Pêche/Aquaculture', label: 'Pêche/Aquaculture' },
@@ -6853,7 +6853,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Eau/Assainissement', label: 'Eau/Assainissement' },
           { value: 'Gestion des déchets/Recyclage', label: 'Déchets/Recyclage' },
 
-          // ═══ 📚 AUTRE ═══
+          // ═══ \uD83D\uDCDA AUTRE ═══
           { value: 'Fonction publique', label: 'Fonction publique' },
           { value: 'Défense/Armée/Police', label: 'Défense/Armée/Police' },
           { value: 'Sport/Fitness/Coaching', label: 'Sport/Fitness' },
@@ -6870,8 +6870,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Métier / Poste',
         type: 'select',
         options: [
-          // ═══ 💻 INFORMATIQUE & TECH (80+ métiers) ═══
-          { value: '─── 💻 INFORMATIQUE & TECH ───', label: '─── 💻 INFORMATIQUE & TECH ───' },
+          // ═══ \uD83D\uDCBB INFORMATIQUE & TECH (80+ métiers) ═══
+          { value: '─── \uD83D\uDCBB INFORMATIQUE & TECH ───', label: '─── \uD83D\uDCBB INFORMATIQUE & TECH ───' },
           { value: 'Développeur Full Stack', label: 'Développeur Full Stack' },
           { value: 'Développeur Front-end (React, Vue, Angular)', label: 'Développeur Front-end' },
           { value: 'Développeur Back-end (Node.js, PHP, Python)', label: 'Développeur Back-end' },
@@ -6915,8 +6915,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Architecte réseau', label: 'Architecte réseau' },
           { value: 'Ingénieur télécom', label: 'Ingénieur télécom' },
 
-          // ═══ 💼 FINANCE & COMPTABILITÉ (50+ métiers) ═══
-          { value: '─── 💼 FINANCE & COMPTABILITÉ ───', label: '─── 💼 FINANCE & COMPTABILITÉ ───' },
+          // ═══ \uD83D\uDCBC FINANCE & COMPTABILITÉ (50+ métiers) ═══
+          { value: '─── \uD83D\uDCBC FINANCE & COMPTABILITÉ ───', label: '─── \uD83D\uDCBC FINANCE & COMPTABILITÉ ───' },
           { value: 'Comptable', label: 'Comptable' },
           { value: 'Assistant comptable', label: 'Assistant comptable' },
           { value: 'Aide-comptable', label: 'Aide-comptable' },
@@ -6949,8 +6949,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Contrôleur budgétaire', label: 'Contrôleur budgétaire' },
           { value: 'Responsable consolidation', label: 'Responsable consolidation' },
 
-          // ═══ 📊 COMMERCE & VENTE (60+ métiers) ═══
-          { value: '─── 📊 COMMERCE & VENTE ───', label: '─── 📊 COMMERCE & VENTE ───' },
+          // ═══ \uD83D\uDCCA COMMERCE & VENTE (60+ métiers) ═══
+          { value: '─── \uD83D\uDCCA COMMERCE & VENTE ───', label: '─── \uD83D\uDCCA COMMERCE & VENTE ───' },
           { value: 'Commercial / Attaché commercial', label: 'Commercial' },
           { value: 'Vendeur / Vendeuse', label: 'Vendeur' },
           { value: 'Conseiller de vente', label: 'Conseiller de vente' },
@@ -6988,8 +6988,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Négociateur immobilier', label: 'Négociateur immobilier' },
           { value: 'Agent immobilier', label: 'Agent immobilier' },
 
-          // ═══ 📢 MARKETING & COMMUNICATION (40+ métiers) ═══
-          { value: '─── 📢 MARKETING & COMMUNICATION ───', label: '─── 📢 MARKETING & COMMUNICATION ───' },
+          // ═══ \uD83D\uDCE2 MARKETING & COMMUNICATION (40+ métiers) ═══
+          { value: '─── \uD83D\uDCE2 MARKETING & COMMUNICATION ───', label: '─── \uD83D\uDCE2 MARKETING & COMMUNICATION ───' },
           { value: 'Chargé de marketing', label: 'Chargé de marketing' },
           { value: 'Chef de produit / Product Manager', label: 'Chef de produit' },
           { value: 'Responsable marketing', label: 'Responsable marketing' },
@@ -7229,7 +7229,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#3B82F6',
       gradientColors: ['#3B82F6', '#2563EB'],
-      icon: '💼',
+      icon: '\uD83D\uDCBC',
       badgeColor: '#DBEAFE',
       accentColor: '#2563EB',
     },
@@ -7249,7 +7249,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
   },
 
   // ════════════════════════════════════════════════════════════
-  // 📚 SOUTIEN SCOLAIRE / RÉPÉTITEUR - AFRIQUE FRANCOPHONE
+  // \uD83D\uDCDA SOUTIEN SCOLAIRE / RÉPÉTITEUR - AFRIQUE FRANCOPHONE
   // ════════════════════════════════════════════════════════════
   // Cours particuliers primaire/secondaire, Aide aux devoirs,
   // Rattrapage scolaire, Répétiteur niveau Maternelle → Terminale
@@ -7307,7 +7307,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Seconde', label: 'Seconde' },
           { value: 'Première', label: 'Première' },
           { value: 'Terminale', label: 'Terminale' },
-          { value: '📚 Tous niveaux (Maternelle → Terminale)', label: 'Tous niveaux' },
+          { value: '\uD83D\uDCDA Tous niveaux (Maternelle → Terminale)', label: 'Tous niveaux' },
         ],
       },
 
@@ -7417,7 +7417,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#10B981',
       gradientColors: ['#10B981', '#059669'],
-      icon: '📚',
+      icon: '\uD83D\uDCDA',
       badgeColor: '#D1FAE5',
       accentColor: '#059669',
     },
@@ -7430,7 +7430,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
   },
 
   // ════════════════════════════════════════════════════════════
-  // 🎓 FORMATION & ÉDUCATION - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
+  // \uD83C\uDF93 FORMATION & ÉDUCATION - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
   // ════════════════════════════════════════════════════════════
   // Formation professionnelle, Préparation concours grandes écoles,
   // Langues, Informatique, Métiers techniques
@@ -7722,7 +7722,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#7C3AED',
       gradientColors: ['#7C3AED', '#6D28D9'],
-      icon: '🎓',
+      icon: '\uD83C\uDF93',
       badgeColor: '#EDE9FE',
       accentColor: '#6D28D9',
     },
@@ -7734,7 +7734,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
   },
 
   // ════════════════════════════════════════════════════════════
-  // 👶 CRÈCHE & GARDERIE D'ENFANTS - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
+  // \uD83D\uDC76 CRÈCHE & GARDERIE D'ENFANTS - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
   // ════════════════════════════════════════════════════════════
   // Accueil petite enfance (0-6 ans), Garde quotidienne, Éveil éducatif
   // Focus: Sécurité, Hygiène, Encadrement qualifié, Activités adaptées
@@ -7764,16 +7764,16 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type d\'établissement',
         type: 'multiselect',
         options: [
-          { value: '🏠 Crèche privée (accueil journée complète)', label: 'Crèche privée' },
-          { value: '🏠 Garderie familiale (petit effectif)', label: 'Garderie familiale' },
-          { value: '🏠 Micro-crèche (< 12 enfants)', label: 'Micro-crèche' },
-          { value: '🏠 Halte-garderie (accueil occasionnel)', label: 'Halte-garderie' },
-          { value: '🏠 Jardin d\'enfants', label: 'Jardin d\'enfants' },
-          { value: '🏢 Crèche d\'entreprise', label: 'Crèche d\'entreprise' },
-          { value: '🏢 Garderie inter-entreprises', label: 'Garderie inter-entreprises' },
-          { value: '🏘️ Garderie communautaire', label: 'Garderie communautaire' },
-          { value: '🏘️ Crèche associative', label: 'Crèche associative' },
-          { value: '🎓 Crèche-école (maternelle intégrée)', label: 'Crèche-école' },
+          { value: '\uD83C\uDFE0 Crèche privée (accueil journée complète)', label: 'Crèche privée' },
+          { value: '\uD83C\uDFE0 Garderie familiale (petit effectif)', label: 'Garderie familiale' },
+          { value: '\uD83C\uDFE0 Micro-crèche (< 12 enfants)', label: 'Micro-crèche' },
+          { value: '\uD83C\uDFE0 Halte-garderie (accueil occasionnel)', label: 'Halte-garderie' },
+          { value: '\uD83C\uDFE0 Jardin d\'enfants', label: 'Jardin d\'enfants' },
+          { value: '\uD83C\uDFE2 Crèche d\'entreprise', label: 'Crèche d\'entreprise' },
+          { value: '\uD83C\uDFE2 Garderie inter-entreprises', label: 'Garderie inter-entreprises' },
+          { value: '\uD83C\uDFD8️ Garderie communautaire', label: 'Garderie communautaire' },
+          { value: '\uD83C\uDFD8️ Crèche associative', label: 'Crèche associative' },
+          { value: '\uD83C\uDF93 Crèche-école (maternelle intégrée)', label: 'Crèche-école' },
         ],
       },
 
@@ -7783,13 +7783,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Tranches d\'âge accueillies',
         type: 'multiselect',
         options: [
-          { value: '👶 Bébés (0-6 mois)', label: 'Bébés (0-6 mois)' },
-          { value: '👶 Nourrissons (6-12 mois)', label: 'Nourrissons (6-12 mois)' },
-          { value: '🧒 Enfants (1-2 ans)', label: 'Enfants (1-2 ans)' },
-          { value: '🧒 Enfants (2-3 ans)', label: 'Enfants (2-3 ans)' },
-          { value: '🧒 Enfants (3-4 ans)', label: 'Enfants (3-4 ans)' },
-          { value: '👧 Grands (4-6 ans)', label: 'Grands (4-6 ans)' },
-          { value: '👨‍👩‍👧 Toutes tranches (0-6 ans)', label: 'Toutes tranches (0-6 ans)' },
+          { value: '\uD83D\uDC76 Bébés (0-6 mois)', label: 'Bébés (0-6 mois)' },
+          { value: '\uD83D\uDC76 Nourrissons (6-12 mois)', label: 'Nourrissons (6-12 mois)' },
+          { value: '\uD83E\uDDD2 Enfants (1-2 ans)', label: 'Enfants (1-2 ans)' },
+          { value: '\uD83E\uDDD2 Enfants (2-3 ans)', label: 'Enfants (2-3 ans)' },
+          { value: '\uD83E\uDDD2 Enfants (3-4 ans)', label: 'Enfants (3-4 ans)' },
+          { value: '\uD83D\uDC67 Grands (4-6 ans)', label: 'Grands (4-6 ans)' },
+          { value: '\uD83D\uDC68‍\uD83D\uDC69‍\uD83D\uDC67 Toutes tranches (0-6 ans)', label: 'Toutes tranches (0-6 ans)' },
         ],
       },
 
@@ -7816,11 +7816,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Jours de fonctionnement',
         type: 'select',
         options: [
-          { value: '📅 Lundi à Vendredi (5 jours)', label: 'Lun-Ven (5 jours)' },
-          { value: '📅 Lundi à Samedi (6 jours)', label: 'Lun-Sam (6 jours)' },
-          { value: '📅 Toute la semaine (7j/7)', label: 'Toute la semaine (7j/7)' },
-          { value: '📅 Ouvert jours fériés', label: 'Ouvert jours fériés' },
-          { value: '📅 Ouvert vacances scolaires', label: 'Ouvert vacances' },
+          { value: '\uD83D\uDCC5 Lundi à Vendredi (5 jours)', label: 'Lun-Ven (5 jours)' },
+          { value: '\uD83D\uDCC5 Lundi à Samedi (6 jours)', label: 'Lun-Sam (6 jours)' },
+          { value: '\uD83D\uDCC5 Toute la semaine (7j/7)', label: 'Toute la semaine (7j/7)' },
+          { value: '\uD83D\uDCC5 Ouvert jours fériés', label: 'Ouvert jours fériés' },
+          { value: '\uD83D\uDCC5 Ouvert vacances scolaires', label: 'Ouvert vacances' },
         ],
       },
 
@@ -7830,14 +7830,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Capacité d\'accueil',
         type: 'select',
         options: [
-          { value: '👥 Très petit (1-5 enfants)', label: 'Très petit (1-5)' },
-          { value: '👥 Petit (6-10 enfants)', label: 'Petit (6-10)' },
-          { value: '👥 Moyen (11-20 enfants)', label: 'Moyen (11-20)' },
-          { value: '👥 Grand (21-30 enfants)', label: 'Grand (21-30)' },
-          { value: '👥 Très grand (31-50 enfants)', label: 'Très grand (31-50)' },
-          { value: '👥 Structure importante (51-80 enfants)', label: 'Importante (51-80)' },
-          { value: '👥 Grande structure (81-120 enfants)', label: 'Grande (81-120)' },
-          { value: '👥 Centre petite enfance (120+ enfants)', label: 'Centre (120+)' },
+          { value: '\uD83D\uDC65 Très petit (1-5 enfants)', label: 'Très petit (1-5)' },
+          { value: '\uD83D\uDC65 Petit (6-10 enfants)', label: 'Petit (6-10)' },
+          { value: '\uD83D\uDC65 Moyen (11-20 enfants)', label: 'Moyen (11-20)' },
+          { value: '\uD83D\uDC65 Grand (21-30 enfants)', label: 'Grand (21-30)' },
+          { value: '\uD83D\uDC65 Très grand (31-50 enfants)', label: 'Très grand (31-50)' },
+          { value: '\uD83D\uDC65 Structure importante (51-80 enfants)', label: 'Importante (51-80)' },
+          { value: '\uD83D\uDC65 Grande structure (81-120 enfants)', label: 'Grande (81-120)' },
+          { value: '\uD83D\uDC65 Centre petite enfance (120+ enfants)', label: 'Centre (120+)' },
         ],
       },
 
@@ -7848,31 +7848,31 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           // Restauration
-          { value: '🍽️ Repas complets (petit-déj + déjeuner + goûter)', label: 'Repas complets' },
-          { value: '🍽️ Repas maison (cuisine sur place)', label: 'Repas maison' },
-          { value: '🍽️ Régimes spéciaux (allergie, religion)', label: 'Régimes spéciaux' },
+          { value: '\uD83C\uDF7D️ Repas complets (petit-déj + déjeuner + goûter)', label: 'Repas complets' },
+          { value: '\uD83C\uDF7D️ Repas maison (cuisine sur place)', label: 'Repas maison' },
+          { value: '\uD83C\uDF7D️ Régimes spéciaux (allergie, religion)', label: 'Régimes spéciaux' },
 
           // Repos & Hygiène
-          { value: '😴 Sieste surveillée', label: 'Sieste surveillée' },
-          { value: '😴 Couches fournies', label: 'Couches fournies' },
+          { value: '\uD83D\uDE34 Sieste surveillée', label: 'Sieste surveillée' },
+          { value: '\uD83D\uDE34 Couches fournies', label: 'Couches fournies' },
 
           // Santé & Sécurité
-          { value: '🏥 Suivi médical régulier', label: 'Suivi médical' },
-          { value: '🏥 Infirmière sur place', label: 'Infirmière sur place' },
-          { value: '🏥 Premiers secours', label: 'Premiers secours' },
+          { value: '\uD83C\uDFE5 Suivi médical régulier', label: 'Suivi médical' },
+          { value: '\uD83C\uDFE5 Infirmière sur place', label: 'Infirmière sur place' },
+          { value: '\uD83C\uDFE5 Premiers secours', label: 'Premiers secours' },
 
           // Transport
-          { value: '🚐 Transport matin + soir (navette)', label: 'Transport (navette)' },
+          { value: '\uD83D\uDE90 Transport matin + soir (navette)', label: 'Transport (navette)' },
 
           // Communication
-          { value: '📱 Suivi quotidien (WhatsApp/SMS)', label: 'Suivi quotidien' },
-          { value: '📱 Photos/vidéos journalières', label: 'Photos/vidéos' },
-          { value: '📱 Caméras surveillance (accès parents)', label: 'Caméras surveillance' },
+          { value: '\uD83D\uDCF1 Suivi quotidien (WhatsApp/SMS)', label: 'Suivi quotidien' },
+          { value: '\uD83D\uDCF1 Photos/vidéos journalières', label: 'Photos/vidéos' },
+          { value: '\uD83D\uDCF1 Caméras surveillance (accès parents)', label: 'Caméras surveillance' },
 
           // Pédagogie
-          { value: '🎓 Programme éducatif structuré', label: 'Programme éducatif' },
-          { value: '🎓 Méthode Montessori', label: 'Méthode Montessori' },
-          { value: '🎓 Préparation maternelle', label: 'Préparation maternelle' },
+          { value: '\uD83C\uDF93 Programme éducatif structuré', label: 'Programme éducatif' },
+          { value: '\uD83C\uDF93 Méthode Montessori', label: 'Méthode Montessori' },
+          { value: '\uD83C\uDF93 Préparation maternelle', label: 'Préparation maternelle' },
         ],
       },
 
@@ -7883,21 +7883,21 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           // Créativité & Arts
-          { value: '🎨 Dessin & peinture', label: 'Dessin & peinture' },
-          { value: '🎨 Bricolage & collage', label: 'Bricolage & collage' },
+          { value: '\uD83C\uDFA8 Dessin & peinture', label: 'Dessin & peinture' },
+          { value: '\uD83C\uDFA8 Bricolage & collage', label: 'Bricolage & collage' },
 
           // Musique & Danse
-          { value: '🎵 Éveil musical', label: 'Éveil musical' },
-          { value: '🎵 Comptines africaines', label: 'Comptines africaines' },
-          { value: '🎵 Danse & mouvement', label: 'Danse & mouvement' },
+          { value: '\uD83C\uDFB5 Éveil musical', label: 'Éveil musical' },
+          { value: '\uD83C\uDFB5 Comptines africaines', label: 'Comptines africaines' },
+          { value: '\uD83C\uDFB5 Danse & mouvement', label: 'Danse & mouvement' },
 
           // Langue & Communication
-          { value: '📚 Contes & histoires', label: 'Contes & histoires' },
-          { value: '📚 Éveil langues (français, anglais, langues locales)', label: 'Éveil langues' },
+          { value: '\uD83D\uDCDA Contes & histoires', label: 'Contes & histoires' },
+          { value: '\uD83D\uDCDA Éveil langues (français, anglais, langues locales)', label: 'Éveil langues' },
 
           // Jeux & Apprentissage
-          { value: '🧩 Jeux éducatifs', label: 'Jeux éducatifs' },
-          { value: '🧩 Jeux de construction (Lego, Kapla)', label: 'Jeux de construction' },
+          { value: '\uD83E\uDDE9 Jeux éducatifs', label: 'Jeux éducatifs' },
+          { value: '\uD83E\uDDE9 Jeux de construction (Lego, Kapla)', label: 'Jeux de construction' },
 
           // Sport & Motricité
           { value: '⚽ Motricité globale', label: 'Motricité globale' },
@@ -7905,13 +7905,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: '⚽ Activités extérieures quotidiennes', label: 'Activités extérieures' },
 
           // Culture Africaine
-          { value: '🌍 Contes africains traditionnels', label: 'Contes africains' },
-          { value: '🌍 Initiation langues maternelles', label: 'Langues maternelles' },
-          { value: '🌍 Danses traditionnelles', label: 'Danses traditionnelles' },
+          { value: '\uD83C\uDF0D Contes africains traditionnels', label: 'Contes africains' },
+          { value: '\uD83C\uDF0D Initiation langues maternelles', label: 'Langues maternelles' },
+          { value: '\uD83C\uDF0D Danses traditionnelles', label: 'Danses traditionnelles' },
 
           // Découverte Environnement
-          { value: '🌳 Jardin potager', label: 'Jardin potager' },
-          { value: '🌳 Découverte nature', label: 'Découverte nature' },
+          { value: '\uD83C\uDF33 Jardin potager', label: 'Jardin potager' },
+          { value: '\uD83C\uDF33 Découverte nature', label: 'Découverte nature' },
         ],
       },
 
@@ -7921,16 +7921,16 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Langues parlées',
         type: 'multiselect',
         options: [
-          { value: '🗣️ Français', label: 'Français' },
-          { value: '🗣️ Anglais', label: 'Anglais' },
-          { value: '🗣️ Douala (Cameroun Littoral)', label: 'Douala' },
-          { value: '🗣️ Ewondo (Cameroun Centre)', label: 'Ewondo' },
-          { value: '🗣️ Bamiléké / Medumba (Ouest)', label: 'Bamiléké' },
-          { value: '🗣️ Fulfuldé (Nord)', label: 'Fulfuldé' },
-          { value: '🗣️ Pidgin English (Sud-Ouest)', label: 'Pidgin' },
-          { value: '🗣️ Wolof (Sénégal)', label: 'Wolof' },
-          { value: '🗣️ Lingala (Congo/RDC)', label: 'Lingala' },
-          { value: '🗣️ Plusieurs langues locales', label: 'Plusieurs langues locales' },
+          { value: '\uD83D\uDDE3️ Français', label: 'Français' },
+          { value: '\uD83D\uDDE3️ Anglais', label: 'Anglais' },
+          { value: '\uD83D\uDDE3️ Douala (Cameroun Littoral)', label: 'Douala' },
+          { value: '\uD83D\uDDE3️ Ewondo (Cameroun Centre)', label: 'Ewondo' },
+          { value: '\uD83D\uDDE3️ Bamiléké / Medumba (Ouest)', label: 'Bamiléké' },
+          { value: '\uD83D\uDDE3️ Fulfuldé (Nord)', label: 'Fulfuldé' },
+          { value: '\uD83D\uDDE3️ Pidgin English (Sud-Ouest)', label: 'Pidgin' },
+          { value: '\uD83D\uDDE3️ Wolof (Sénégal)', label: 'Wolof' },
+          { value: '\uD83D\uDDE3️ Lingala (Congo/RDC)', label: 'Lingala' },
+          { value: '\uD83D\uDDE3️ Plusieurs langues locales', label: 'Plusieurs langues locales' },
         ],
       },
 
@@ -7940,12 +7940,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Encadrement & Personnel',
         type: 'multiselect',
         options: [
-          { value: '👩‍🏫 Éducateurs diplômés petite enfance', label: 'Éducateurs diplômés' },
-          { value: '👩‍🏫 Puéricultrices diplômées', label: 'Puéricultrices' },
-          { value: '👩‍🏫 Personnel formé premiers secours', label: 'Formé premiers secours' },
-          { value: '👨‍⚕️ Infirmière sur place', label: 'Infirmière sur place' },
-          { value: '👥 Ratio adulte/enfant: 1 pour 5 enfants', label: 'Ratio 1/5' },
-          { value: '👥 Ratio adulte/enfant: 1 pour 8 enfants', label: 'Ratio 1/8' },
+          { value: '\uD83D\uDC69‍\uD83C\uDFEB Éducateurs diplômés petite enfance', label: 'Éducateurs diplômés' },
+          { value: '\uD83D\uDC69‍\uD83C\uDFEB Puéricultrices diplômées', label: 'Puéricultrices' },
+          { value: '\uD83D\uDC69‍\uD83C\uDFEB Personnel formé premiers secours', label: 'Formé premiers secours' },
+          { value: '\uD83D\uDC68‍⚕️ Infirmière sur place', label: 'Infirmière sur place' },
+          { value: '\uD83D\uDC65 Ratio adulte/enfant: 1 pour 5 enfants', label: 'Ratio 1/5' },
+          { value: '\uD83D\uDC65 Ratio adulte/enfant: 1 pour 8 enfants', label: 'Ratio 1/8' },
         ],
       },
 
@@ -7956,27 +7956,27 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           // Locaux
-          { value: '🏠 Locaux climatisés', label: 'Climatisés' },
-          { value: '🏠 Salles de jeux spacieuses', label: 'Salles spacieuses' },
-          { value: '🏠 Dortoir séparé', label: 'Dortoir séparé' },
-          { value: '🏠 Cuisine équipée', label: 'Cuisine équipée' },
-          { value: '🏠 Espace extérieur sécurisé', label: 'Espace extérieur' },
-          { value: '🏠 Jardin / Cour de jeux', label: 'Jardin / Cour' },
+          { value: '\uD83C\uDFE0 Locaux climatisés', label: 'Climatisés' },
+          { value: '\uD83C\uDFE0 Salles de jeux spacieuses', label: 'Salles spacieuses' },
+          { value: '\uD83C\uDFE0 Dortoir séparé', label: 'Dortoir séparé' },
+          { value: '\uD83C\uDFE0 Cuisine équipée', label: 'Cuisine équipée' },
+          { value: '\uD83C\uDFE0 Espace extérieur sécurisé', label: 'Espace extérieur' },
+          { value: '\uD83C\uDFE0 Jardin / Cour de jeux', label: 'Jardin / Cour' },
 
           // Sécurité
-          { value: '🛡️ Portail sécurisé', label: 'Portail sécurisé' },
-          { value: '🛡️ Gardien à l\'entrée', label: 'Gardien' },
-          { value: '🛡️ Caméras de surveillance', label: 'Caméras' },
-          { value: '🛡️ Clôture sécurisée', label: 'Clôture' },
+          { value: '\uD83D\uDEE1️ Portail sécurisé', label: 'Portail sécurisé' },
+          { value: '\uD83D\uDEE1️ Gardien à l\'entrée', label: 'Gardien' },
+          { value: '\uD83D\uDEE1️ Caméras de surveillance', label: 'Caméras' },
+          { value: '\uD83D\uDEE1️ Clôture sécurisée', label: 'Clôture' },
 
           // Confort
           { value: '⚡ Groupe électrogène', label: 'Groupe électrogène' },
           { value: '⚡ Eau courante 24h/24', label: 'Eau 24h/24' },
 
           // Équipements Ludiques
-          { value: '🎮 Jeux d\'extérieur (toboggan, balançoire)', label: 'Jeux d\'extérieur' },
-          { value: '🎮 Aire de jeux couverte', label: 'Aire couverte' },
-          { value: '🎮 Bibliothèque enfantine', label: 'Bibliothèque' },
+          { value: '\uD83C\uDFAE Jeux d\'extérieur (toboggan, balançoire)', label: 'Jeux d\'extérieur' },
+          { value: '\uD83C\uDFAE Aire de jeux couverte', label: 'Aire couverte' },
+          { value: '\uD83C\uDFAE Bibliothèque enfantine', label: 'Bibliothèque' },
         ],
       },
 
@@ -8001,13 +8001,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Modèle de tarification',
         type: 'multiselect',
         options: [
-          { value: '💰 Tarif mensuel (forfait)', label: 'Mensuel (forfait)' },
-          { value: '💰 Tarif hebdomadaire', label: 'Hebdomadaire' },
-          { value: '💰 Tarif journalier', label: 'Journalier' },
-          { value: '💰 Tarif horaire (garde occasionnelle)', label: 'Horaire' },
-          { value: '💰 Forfait 2-3 jours/semaine', label: 'Forfait 2-3 jours' },
-          { value: '💰 Réduction 2ème enfant (-10%)', label: 'Réduction 2ème enfant' },
-          { value: '💰 Facilités de paiement', label: 'Facilités paiement' },
+          { value: '\uD83D\uDCB0 Tarif mensuel (forfait)', label: 'Mensuel (forfait)' },
+          { value: '\uD83D\uDCB0 Tarif hebdomadaire', label: 'Hebdomadaire' },
+          { value: '\uD83D\uDCB0 Tarif journalier', label: 'Journalier' },
+          { value: '\uD83D\uDCB0 Tarif horaire (garde occasionnelle)', label: 'Horaire' },
+          { value: '\uD83D\uDCB0 Forfait 2-3 jours/semaine', label: 'Forfait 2-3 jours' },
+          { value: '\uD83D\uDCB0 Réduction 2ème enfant (-10%)', label: 'Réduction 2ème enfant' },
+          { value: '\uD83D\uDCB0 Facilités de paiement', label: 'Facilités paiement' },
         ],
       },
 
@@ -8017,12 +8017,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Gamme de prix',
         type: 'select',
         options: [
-          { value: '💵 Économique (15 000 - 35 000 FCFA/mois)', label: 'Économique (15-35k)' },
-          { value: '💵 Accessible (35 000 - 60 000 FCFA/mois)', label: 'Accessible (35-60k)' },
-          { value: '💵 Standard (60 000 - 100 000 FCFA/mois)', label: 'Standard (60-100k)' },
-          { value: '💵 Confort (100 000 - 150 000 FCFA/mois)', label: 'Confort (100-150k)' },
-          { value: '💵 Premium (150 000 - 250 000 FCFA/mois)', label: 'Premium (150-250k)' },
-          { value: '💵 Haut de gamme (250 000+ FCFA/mois)', label: 'Haut de gamme (250k+)' },
+          { value: '\uD83D\uDCB5 Économique (15 000 - 35 000 FCFA/mois)', label: 'Économique (15-35k)' },
+          { value: '\uD83D\uDCB5 Accessible (35 000 - 60 000 FCFA/mois)', label: 'Accessible (35-60k)' },
+          { value: '\uD83D\uDCB5 Standard (60 000 - 100 000 FCFA/mois)', label: 'Standard (60-100k)' },
+          { value: '\uD83D\uDCB5 Confort (100 000 - 150 000 FCFA/mois)', label: 'Confort (100-150k)' },
+          { value: '\uD83D\uDCB5 Premium (150 000 - 250 000 FCFA/mois)', label: 'Premium (150-250k)' },
+          { value: '\uD83D\uDCB5 Haut de gamme (250 000+ FCFA/mois)', label: 'Haut de gamme (250k+)' },
         ],
       },
 
@@ -8054,10 +8054,10 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Périodes d\'inscription',
         type: 'multiselect',
         options: [
-          { value: '📝 Inscriptions ouvertes toute l\'année', label: 'Ouvert toute l\'année' },
-          { value: '📝 Rentrée septembre (année scolaire)', label: 'Rentrée septembre' },
-          { value: '📝 Places disponibles immédiatement', label: 'Places immédiates' },
-          { value: '📝 Visite & test d\'adaptation proposés', label: 'Visite & test adaptation' },
+          { value: '\uD83D\uDCDD Inscriptions ouvertes toute l\'année', label: 'Ouvert toute l\'année' },
+          { value: '\uD83D\uDCDD Rentrée septembre (année scolaire)', label: 'Rentrée septembre' },
+          { value: '\uD83D\uDCDD Places disponibles immédiatement', label: 'Places immédiates' },
+          { value: '\uD83D\uDCDD Visite & test d\'adaptation proposés', label: 'Visite & test adaptation' },
         ],
       },
 
@@ -8067,11 +8067,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Types de contrat',
         type: 'multiselect',
         options: [
-          { value: '📄 Contrat annuel (année scolaire)', label: 'Annuel' },
-          { value: '📄 Contrat mensuel renouvelable', label: 'Mensuel' },
-          { value: '📄 Contrat à la carte (jours choisis)', label: 'À la carte' },
-          { value: '📄 Contrat occasionnel (sans engagement)', label: 'Occasionnel' },
-          { value: '📄 Période d\'essai (1 mois)', label: 'Période d\'essai' },
+          { value: '\uD83D\uDCC4 Contrat annuel (année scolaire)', label: 'Annuel' },
+          { value: '\uD83D\uDCC4 Contrat mensuel renouvelable', label: 'Mensuel' },
+          { value: '\uD83D\uDCC4 Contrat à la carte (jours choisis)', label: 'À la carte' },
+          { value: '\uD83D\uDCC4 Contrat occasionnel (sans engagement)', label: 'Occasionnel' },
+          { value: '\uD83D\uDCC4 Période d\'essai (1 mois)', label: 'Période d\'essai' },
         ],
       },
 
@@ -8095,7 +8095,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#F472B6',
       gradientColors: ['#F472B6', '#EC4899'],
-      icon: '👶',
+      icon: '\uD83D\uDC76',
       badgeColor: '#FCE7F3',
       accentColor: '#EC4899',
     },
@@ -8120,7 +8120,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 🎉 ÉVÉNEMENTIEL
+  // \uD83C\uDF89 ÉVÉNEMENTIEL
   evenementiel: {
     terminology: {
       productLabel: 'Prestation événementielle',
@@ -8214,7 +8214,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#EC4899',
       gradientColors: ['#EC4899', '#DB2777'],
-      icon: '🎉',
+      icon: '\uD83C\uDF89',
       badgeColor: '#FCE7F3',
       accentColor: '#DB2777',
     },
@@ -8485,17 +8485,17 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           // Les villes s'adaptent au pays de l'utilisateur via africanLocations.ts
-          { value: 'Douala', label: '🇨🇲 Douala' },
-          { value: 'Yaoundé', label: '🇨🇲 Yaoundé' },
-          { value: 'Bafoussam', label: '🇨🇲 Bafoussam' },
-          { value: 'Garoua', label: '🇨🇲 Garoua' },
-          { value: 'Bamenda', label: '🇨🇲 Bamenda' },
+          { value: 'Douala', label: '\uD83C\uDDE8\uD83C\uDDF2 Douala' },
+          { value: 'Yaoundé', label: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé' },
+          { value: 'Bafoussam', label: '\uD83C\uDDE8\uD83C\uDDF2 Bafoussam' },
+          { value: 'Garoua', label: '\uD83C\uDDE8\uD83C\uDDF2 Garoua' },
+          { value: 'Bamenda', label: '\uD83C\uDDE8\uD83C\uDDF2 Bamenda' },
           // Autres pays prioritaires
-          { value: 'Kinshasa', label: '🇨🇩 Kinshasa' },
-          { value: 'Lubumbashi', label: '🇨🇩 Lubumbashi' },
-          { value: 'Abidjan', label: '🇨🇮 Abidjan' },
-          { value: 'Dakar', label: '🇸🇳 Dakar' },
-          { value: 'Bamako', label: '🇲🇱 Bamako' },
+          { value: 'Kinshasa', label: '\uD83C\uDDE8\uD83C\uDDE9 Kinshasa' },
+          { value: 'Lubumbashi', label: '\uD83C\uDDE8\uD83C\uDDE9 Lubumbashi' },
+          { value: 'Abidjan', label: '\uD83C\uDDE8\uD83C\uDDEE Abidjan' },
+          { value: 'Dakar', label: '\uD83C\uDDF8\uD83C\uDDF3 Dakar' },
+          { value: 'Bamako', label: '\uD83C\uDDF2\uD83C\uDDF1 Bamako' },
         ],
       },
       // ✅ LOCALISATION - Quartier (système intelligent)
@@ -8534,7 +8534,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     supportsVariants: false,
   },
 
-  // 🔧 PLOMBIER (SERVICE)
+  // \uD83D\uDD27 PLOMBIER (SERVICE)
   plombier: {
     terminology: {
       productLabel: 'Prestation plombier',
@@ -8666,7 +8666,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#00BCD4',
       gradientColors: ['#00BCD4', '#0097A7'],
-      icon: '🚰',
+      icon: '\uD83D\uDEB0',
       badgeColor: '#E0F7FA',
       accentColor: '#0097A7',
     },
@@ -8796,7 +8796,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 🔋 ÉLECTRICIEN AUTOMOBILE (SERVICE)
+  // \uD83D\uDD0B ÉLECTRICIEN AUTOMOBILE (SERVICE)
   electricien_auto: {
     terminology: {
       productLabel: 'Prestation électricien auto',
@@ -8905,7 +8905,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#FF6B35',
       gradientColors: ['#FF6B35', '#FF8C42'],
-      icon: '🔋',
+      icon: '\uD83D\uDD0B',
       badgeColor: '#FFEDD5',
       accentColor: '#F97316',
     },
@@ -8916,7 +8916,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 🧱 MAÇON (SERVICE)
+  // \uD83E\uDDF1 MAÇON (SERVICE)
   macon: {
     terminology: {
       productLabel: 'Prestation maçonnerie',
@@ -9008,7 +9008,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#78716C',
       gradientColors: ['#78716C', '#57534E'],
-      icon: '🧱',
+      icon: '\uD83E\uDDF1',
       badgeColor: '#E7E5E4',
       accentColor: '#A8A29E',
     },
@@ -9019,7 +9019,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 📐 INGÉNIEUR / ARCHITECTE (SERVICE)
+  // \uD83D\uDCD0 INGÉNIEUR / ARCHITECTE (SERVICE)
   ingenieur_archi: {
     terminology: {
       productLabel: 'Prestation ingénieur/architecte',
@@ -9126,7 +9126,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#0891B2',
       gradientColors: ['#0891B2', '#06B6D4'],
-      icon: '📐',
+      icon: '\uD83D\uDCD0',
       badgeColor: '#CFFAFE',
       accentColor: '#0E7490',
     },
@@ -9137,7 +9137,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 🚰 PLOMBERIE & SANITAIRE (PRODUIT - VENTE MATÉRIEL)
+  // \uD83D\uDEB0 PLOMBERIE & SANITAIRE (PRODUIT - VENTE MATÉRIEL)
   plomberie_sanitaire: {
     terminology: {
       productLabel: 'Matériel plomberie',
@@ -9161,14 +9161,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Catégorie',
         type: 'select',
         options: [
-          { value: '🚰 Robinetterie', label: 'Robinetterie' },
-          { value: '🚰 Lavabo & Évier', label: 'Lavabo & Évier' },
-          { value: '🚰 WC & Toilettes', label: 'WC & Toilettes' },
-          { value: '🚰 Douche & Baignoire', label: 'Douche & Baignoire' },
-          { value: '🚰 Chauffe-eau', label: 'Chauffe-eau' },
-          { value: '🚰 Tuyauterie', label: 'Tuyauterie' },
-          { value: '🚰 Accessoires', label: 'Accessoires' },
-          { value: '🚰 Outils plomberie', label: 'Outils' },
+          { value: '\uD83D\uDEB0 Robinetterie', label: 'Robinetterie' },
+          { value: '\uD83D\uDEB0 Lavabo & Évier', label: 'Lavabo & Évier' },
+          { value: '\uD83D\uDEB0 WC & Toilettes', label: 'WC & Toilettes' },
+          { value: '\uD83D\uDEB0 Douche & Baignoire', label: 'Douche & Baignoire' },
+          { value: '\uD83D\uDEB0 Chauffe-eau', label: 'Chauffe-eau' },
+          { value: '\uD83D\uDEB0 Tuyauterie', label: 'Tuyauterie' },
+          { value: '\uD83D\uDEB0 Accessoires', label: 'Accessoires' },
+          { value: '\uD83D\uDEB0 Outils plomberie', label: 'Outils' },
         ],
       },
       {
@@ -9282,17 +9282,17 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           // Les villes s'adaptent au pays de l'utilisateur via africanLocations.ts
-          { value: 'Douala', label: '🇨🇲 Douala' },
-          { value: 'Yaoundé', label: '🇨🇲 Yaoundé' },
-          { value: 'Bafoussam', label: '🇨🇲 Bafoussam' },
-          { value: 'Garoua', label: '🇨🇲 Garoua' },
-          { value: 'Bamenda', label: '🇨🇲 Bamenda' },
+          { value: 'Douala', label: '\uD83C\uDDE8\uD83C\uDDF2 Douala' },
+          { value: 'Yaoundé', label: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé' },
+          { value: 'Bafoussam', label: '\uD83C\uDDE8\uD83C\uDDF2 Bafoussam' },
+          { value: 'Garoua', label: '\uD83C\uDDE8\uD83C\uDDF2 Garoua' },
+          { value: 'Bamenda', label: '\uD83C\uDDE8\uD83C\uDDF2 Bamenda' },
           // Autres pays prioritaires
-          { value: 'Kinshasa', label: '🇨🇩 Kinshasa' },
-          { value: 'Lubumbashi', label: '🇨🇩 Lubumbashi' },
-          { value: 'Abidjan', label: '🇨🇮 Abidjan' },
-          { value: 'Dakar', label: '🇸🇳 Dakar' },
-          { value: 'Bamako', label: '🇲🇱 Bamako' },
+          { value: 'Kinshasa', label: '\uD83C\uDDE8\uD83C\uDDE9 Kinshasa' },
+          { value: 'Lubumbashi', label: '\uD83C\uDDE8\uD83C\uDDE9 Lubumbashi' },
+          { value: 'Abidjan', label: '\uD83C\uDDE8\uD83C\uDDEE Abidjan' },
+          { value: 'Dakar', label: '\uD83C\uDDF8\uD83C\uDDF3 Dakar' },
+          { value: 'Bamako', label: '\uD83C\uDDF2\uD83C\uDDF1 Bamako' },
         ],
       },
       // ✅ FILTRE 11 : Localisation - Quartier (système intelligent)
@@ -9319,7 +9319,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#00BCD4',
       gradientColors: ['#00BCD4', '#0097A7'],
-      icon: '🚰',
+      icon: '\uD83D\uDEB0',
       badgeColor: '#E0F7FA',
       accentColor: '#0097A7',
     },
@@ -9331,7 +9331,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     supportsVariants: true,
   },
 
-  // 🧹 NETTOYAGE
+  // \uD83E\uDDF9 NETTOYAGE
   nettoyage: {
     terminology: {
       productLabel: 'Service de nettoyage',
@@ -9425,7 +9425,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#10B981',
       gradientColors: ['#10B981', '#059669'],
-      icon: '🧹',
+      icon: '\uD83E\uDDF9',
       badgeColor: '#D1FAE5',
       accentColor: '#059669',
     },
@@ -9436,7 +9436,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 🛠️ RÉPARATION
+  // \uD83D\uDEE0️ RÉPARATION
   reparation: {
     terminology: {
       productLabel: 'Service de réparation',
@@ -9534,7 +9534,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#F97316',
       gradientColors: ['#F97316', '#EA580C'],
-      icon: '🛠️',
+      icon: '\uD83D\uDEE0️',
       badgeColor: '#FED7AA',
       accentColor: '#EA580C',
     },
@@ -9545,8 +9545,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 🪵 MENUISERIE
-  // 🪵 MENUISERIE & ARTISAN - 🌍 CONTEXTE AFRIQUE FRANCOPHONE
+  // \uD83E\uDEB5 MENUISERIE
+  // \uD83E\uDEB5 MENUISERIE & ARTISAN - \uD83C\uDF0D CONTEXTE AFRIQUE FRANCOPHONE
   menuiserie: {
     terminology: {
       productLabel: 'Prestation menuiserie',
@@ -9571,42 +9571,42 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           // Meubles
-          { value: '🪑 Fabrication salon complet (canapé, fauteuils, table basse)', label: 'Salon complet' },
-          { value: '🪑 Fabrication chambre à coucher (lit, armoire, coiffeuse)', label: 'Chambre à coucher' },
-          { value: '🪑 Fabrication salle à manger (table, chaises, buffet)', label: 'Salle à manger' },
-          { value: '🪑 Fabrication bureau (table bureau, bibliothèque, étagères)', label: 'Bureau/Bibliothèque' },
-          { value: '🪑 Fabrication placard mural/encastré', label: 'Placard sur mesure' },
-          { value: '🪑 Fabrication cuisine équipée/aménagée', label: 'Cuisine aménagée' },
-          { value: '🪑 Fabrication mobilier restaurant/maquis', label: 'Mobilier commercial' },
+          { value: '\uD83E\uDE91 Fabrication salon complet (canapé, fauteuils, table basse)', label: 'Salon complet' },
+          { value: '\uD83E\uDE91 Fabrication chambre à coucher (lit, armoire, coiffeuse)', label: 'Chambre à coucher' },
+          { value: '\uD83E\uDE91 Fabrication salle à manger (table, chaises, buffet)', label: 'Salle à manger' },
+          { value: '\uD83E\uDE91 Fabrication bureau (table bureau, bibliothèque, étagères)', label: 'Bureau/Bibliothèque' },
+          { value: '\uD83E\uDE91 Fabrication placard mural/encastré', label: 'Placard sur mesure' },
+          { value: '\uD83E\uDE91 Fabrication cuisine équipée/aménagée', label: 'Cuisine aménagée' },
+          { value: '\uD83E\uDE91 Fabrication mobilier restaurant/maquis', label: 'Mobilier commercial' },
 
           // Portes & Fenêtres
-          { value: '🚪 Fabrication & pose porte d\'entrée bois massif', label: 'Porte d\'entrée' },
-          { value: '🚪 Fabrication & pose porte intérieure bois', label: 'Porte intérieure' },
-          { value: '🚪 Fabrication & pose portail bois', label: 'Portail bois' },
-          { value: '🪟 Fabrication & pose fenêtres bois', label: 'Fenêtres' },
-          { value: '🪟 Fabrication & pose volets bois', label: 'Volets' },
+          { value: '\uD83D\uDEAA Fabrication & pose porte d\'entrée bois massif', label: 'Porte d\'entrée' },
+          { value: '\uD83D\uDEAA Fabrication & pose porte intérieure bois', label: 'Porte intérieure' },
+          { value: '\uD83D\uDEAA Fabrication & pose portail bois', label: 'Portail bois' },
+          { value: '\uD83E\uDE9F Fabrication & pose fenêtres bois', label: 'Fenêtres' },
+          { value: '\uD83E\uDE9F Fabrication & pose volets bois', label: 'Volets' },
 
           // Intérieur
-          { value: '🏠 Pose parquet massif/flottant', label: 'Parquet' },
-          { value: '🏠 Fabrication & pose escalier bois intérieur', label: 'Escalier' },
-          { value: '🏠 Dressing/penderie sur mesure', label: 'Dressing' },
-          { value: '🏠 Pose lambris mural/plafond', label: 'Lambris' },
+          { value: '\uD83C\uDFE0 Pose parquet massif/flottant', label: 'Parquet' },
+          { value: '\uD83C\uDFE0 Fabrication & pose escalier bois intérieur', label: 'Escalier' },
+          { value: '\uD83C\uDFE0 Dressing/penderie sur mesure', label: 'Dressing' },
+          { value: '\uD83C\uDFE0 Pose lambris mural/plafond', label: 'Lambris' },
 
           // Extérieur
-          { value: '🌳 Terrasse/plancher extérieur bois', label: 'Terrasse bois' },
-          { value: '🌳 Pergola/tonnelle bois', label: 'Pergola' },
-          { value: '🌳 Clôture/palissade bois', label: 'Clôture' },
-          { value: '🌳 Charpente bois/toiture', label: 'Charpente' },
+          { value: '\uD83C\uDF33 Terrasse/plancher extérieur bois', label: 'Terrasse bois' },
+          { value: '\uD83C\uDF33 Pergola/tonnelle bois', label: 'Pergola' },
+          { value: '\uD83C\uDF33 Clôture/palissade bois', label: 'Clôture' },
+          { value: '\uD83C\uDF33 Charpente bois/toiture', label: 'Charpente' },
 
           // Réparations
-          { value: '🔨 Réparation meubles anciens/endommagés', label: 'Réparation meubles' },
-          { value: '🔨 Restauration meubles (antiquité, héritage)', label: 'Restauration' },
-          { value: '🔨 Traitement bois (anti-termites, anti-humidité)', label: 'Traitement anti-termites' },
+          { value: '\uD83D\uDD28 Réparation meubles anciens/endommagés', label: 'Réparation meubles' },
+          { value: '\uD83D\uDD28 Restauration meubles (antiquité, héritage)', label: 'Restauration' },
+          { value: '\uD83D\uDD28 Traitement bois (anti-termites, anti-humidité)', label: 'Traitement anti-termites' },
 
           // Ébénisterie artistique
-          { value: '🎨 Ébénisterie artistique/sculpture bois', label: 'Ébénisterie d\'art' },
-          { value: '🎨 Mobilier traditionnel africain', label: 'Mobilier africain' },
-          { value: '🎨 Portes sculptées traditionnelles', label: 'Portes sculptées' },
+          { value: '\uD83C\uDFA8 Ébénisterie artistique/sculpture bois', label: 'Ébénisterie d\'art' },
+          { value: '\uD83C\uDFA8 Mobilier traditionnel africain', label: 'Mobilier africain' },
+          { value: '\uD83C\uDFA8 Portes sculptées traditionnelles', label: 'Portes sculptées' },
         ],
       },
 
@@ -9617,34 +9617,34 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           // Bois africains nobles
-          { value: '🇨🇲 Acajou d\'Afrique (Khaya)', label: '🇨🇲 Acajou Afrique' },
-          { value: '🇨🇲 Sapelli (Acajou africain)', label: '🇨🇲 Sapelli' },
-          { value: '🇨🇲 Iroko (Teck africain)', label: '🇨🇲 Iroko' },
-          { value: '🇨🇲 Doussié/Afzelia', label: '🇨🇲 Doussié' },
-          { value: '🇨🇲 Moabi', label: '🇨🇲 Moabi' },
-          { value: '🇨🇲 Padouk rouge d\'Afrique', label: '🇨🇲 Padouk rouge' },
-          { value: '🇨🇲 Wengé', label: '🇨🇲 Wengé' },
-          { value: '🇨🇲 Bubinga/Kevazingo', label: '🇨🇲 Bubinga' },
-          { value: '🇨🇲 Ebène d\'Afrique', label: '🇨🇲 Ébène' },
-          { value: '🇨🇲 Azobé/Bongossi', label: '🇨🇲 Azobé (extérieur)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Acajou d\'Afrique (Khaya)', label: '\uD83C\uDDE8\uD83C\uDDF2 Acajou Afrique' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Sapelli (Acajou africain)', label: '\uD83C\uDDE8\uD83C\uDDF2 Sapelli' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Iroko (Teck africain)', label: '\uD83C\uDDE8\uD83C\uDDF2 Iroko' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Doussié/Afzelia', label: '\uD83C\uDDE8\uD83C\uDDF2 Doussié' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Moabi', label: '\uD83C\uDDE8\uD83C\uDDF2 Moabi' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Padouk rouge d\'Afrique', label: '\uD83C\uDDE8\uD83C\uDDF2 Padouk rouge' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Wengé', label: '\uD83C\uDDE8\uD83C\uDDF2 Wengé' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Bubinga/Kevazingo', label: '\uD83C\uDDE8\uD83C\uDDF2 Bubinga' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Ebène d\'Afrique', label: '\uD83C\uDDE8\uD83C\uDDF2 Ébène' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Azobé/Bongossi', label: '\uD83C\uDDE8\uD83C\uDDF2 Azobé (extérieur)' },
 
           // Bois économiques locaux
-          { value: '🇨🇲 Ayous/Obeche/Samba', label: '🇨🇲 Ayous (économique)' },
-          { value: '🇨🇲 Dibétou', label: '🇨🇲 Dibétou' },
-          { value: '🇨🇲 Teck d\'Afrique (plantation)', label: '🇨🇲 Teck Afrique' },
-          { value: '🇨🇲 Eucalyptus (plantation locale)', label: '🇨🇲 Eucalyptus' },
-          { value: '🇨🇲 Bambou africain', label: '🇨🇲 Bambou' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Ayous/Obeche/Samba', label: '\uD83C\uDDE8\uD83C\uDDF2 Ayous (économique)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Dibétou', label: '\uD83C\uDDE8\uD83C\uDDF2 Dibétou' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Teck d\'Afrique (plantation)', label: '\uD83C\uDDE8\uD83C\uDDF2 Teck Afrique' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Eucalyptus (plantation locale)', label: '\uD83C\uDDE8\uD83C\uDDF2 Eucalyptus' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Bambou africain', label: '\uD83C\uDDE8\uD83C\uDDF2 Bambou' },
 
           // Bois importés
-          { value: '🌍 Chêne européen', label: '🌍 Chêne (importé)' },
-          { value: '🌍 Hêtre', label: '🌍 Hêtre' },
-          { value: '🌍 Pin maritime', label: '🌍 Pin' },
-          { value: '🌍 Teck d\'Asie (Thaïlande, Birmanie)', label: '🌍 Teck Asie' },
+          { value: '\uD83C\uDF0D Chêne européen', label: '\uD83C\uDF0D Chêne (importé)' },
+          { value: '\uD83C\uDF0D Hêtre', label: '\uD83C\uDF0D Hêtre' },
+          { value: '\uD83C\uDF0D Pin maritime', label: '\uD83C\uDF0D Pin' },
+          { value: '\uD83C\uDF0D Teck d\'Asie (Thaïlande, Birmanie)', label: '\uD83C\uDF0D Teck Asie' },
 
           // Panneaux
-          { value: '🏭 Contreplaqué okoumé (production locale)', label: '🏭 Contreplaqué' },
-          { value: '🏭 MDF (Medium Density Fiberboard)', label: '🏭 MDF' },
-          { value: '🏭 Aggloméré/Particules', label: '🏭 Aggloméré' },
+          { value: '\uD83C\uDFED Contreplaqué okoumé (production locale)', label: '\uD83C\uDFED Contreplaqué' },
+          { value: '\uD83C\uDFED MDF (Medium Density Fiberboard)', label: '\uD83C\uDFED MDF' },
+          { value: '\uD83C\uDFED Aggloméré/Particules', label: '\uD83C\uDFED Aggloméré' },
         ],
       },
 
@@ -9678,9 +9678,9 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Classique français', label: 'Classique' },
           { value: 'Colonial français', label: 'Colonial' },
           { value: 'Rustique/Campagnard', label: 'Rustique' },
-          { value: 'Traditionnel africain', label: '🇨🇲 Traditionnel africain' },
-          { value: 'Afro-contemporain (fusion)', label: '🇨🇲 Afro-contemporain' },
-          { value: 'Artisanal camerounais', label: '🇨🇲 Artisanal local' },
+          { value: 'Traditionnel africain', label: '\uD83C\uDDE8\uD83C\uDDF2 Traditionnel africain' },
+          { value: 'Afro-contemporain (fusion)', label: '\uD83C\uDDE8\uD83C\uDDF2 Afro-contemporain' },
+          { value: 'Artisanal camerounais', label: '\uD83C\uDDE8\uD83C\uDDF2 Artisanal local' },
           { value: 'Industriel', label: 'Industriel' },
           { value: 'Scandinave', label: 'Scandinave' },
         ],
@@ -9709,15 +9709,15 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Certification',
         type: 'multiselect',
         options: [
-          { value: 'CAP Menuiserie (Cameroun)', label: '🇨🇲 CAP Menuiserie' },
-          { value: 'BP Menuisier (Cameroun)', label: '🇨🇲 BP Menuisier' },
-          { value: 'BTS Menuiserie (ENSET, Universités)', label: '🇨🇲 BTS Menuiserie' },
-          { value: 'Certificat MINEFOP Menuiserie', label: '🇨🇲 MINEFOP' },
-          { value: 'Formation CEFAM (Centre Formation Artisanale)', label: '🇨🇲 CEFAM' },
+          { value: 'CAP Menuiserie (Cameroun)', label: '\uD83C\uDDE8\uD83C\uDDF2 CAP Menuiserie' },
+          { value: 'BP Menuisier (Cameroun)', label: '\uD83C\uDDE8\uD83C\uDDF2 BP Menuisier' },
+          { value: 'BTS Menuiserie (ENSET, Universités)', label: '\uD83C\uDDE8\uD83C\uDDF2 BTS Menuiserie' },
+          { value: 'Certificat MINEFOP Menuiserie', label: '\uD83C\uDDE8\uD83C\uDDF2 MINEFOP' },
+          { value: 'Formation CEFAM (Centre Formation Artisanale)', label: '\uD83C\uDDE8\uD83C\uDDF2 CEFAM' },
           { value: 'Apprentissage traditionnel (maître artisan)', label: 'Apprentissage traditionnel' },
           { value: 'Certification qualité artisan', label: 'Certifié qualité' },
-          { value: 'Label Artisan Cameroun', label: '🇨🇲 Label Artisan' },
-          { value: 'CAP Menuisier France/Europe', label: '🌍 CAP France/Europe' },
+          { value: 'Label Artisan Cameroun', label: '\uD83C\uDDE8\uD83C\uDDF2 Label Artisan' },
+          { value: 'CAP Menuisier France/Europe', label: '\uD83C\uDF0D CAP France/Europe' },
           { value: 'Autodidacte/Expérience terrain', label: 'Autodidacte' },
         ],
       },
@@ -9744,12 +9744,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type d\'atelier',
         type: 'select',
         options: [
-          { value: '🇨🇲 Atelier artisanal Bonabéri (Douala)', label: 'Bonabéri (Douala)' },
-          { value: '🇨🇲 Marché bois Mboppi (Douala)', label: 'Mboppi (Douala)' },
-          { value: '🇨🇲 Menuisiers Deido (Douala)', label: 'Deido (Douala)' },
-          { value: '🇨🇲 Atelier Mvog-Ada (Yaoundé)', label: 'Mvog-Ada (Yaoundé)' },
-          { value: '🇨🇲 Menuisiers Mokolo (Yaoundé)', label: 'Mokolo (Yaoundé)' },
-          { value: '🇨🇲 Ébénistes Bafoussam', label: 'Bafoussam' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Atelier artisanal Bonabéri (Douala)', label: 'Bonabéri (Douala)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Marché bois Mboppi (Douala)', label: 'Mboppi (Douala)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Menuisiers Deido (Douala)', label: 'Deido (Douala)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Atelier Mvog-Ada (Yaoundé)', label: 'Mvog-Ada (Yaoundé)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Menuisiers Mokolo (Yaoundé)', label: 'Mokolo (Yaoundé)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Ébénistes Bafoussam', label: 'Bafoussam' },
           { value: 'Menuisier indépendant local', label: 'Indépendant local' },
           { value: 'Atelier familial traditionnel', label: 'Atelier familial' },
           { value: 'Coopérative artisans menuisiers', label: 'Coopérative' },
@@ -9803,7 +9803,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#F97316',
       gradientColors: ['#F97316', '#EA580C'],
-      icon: '🪵',
+      icon: '\uD83E\uDEB5',
       badgeColor: '#FFEDD5',
       accentColor: '#EA580C',
     },
@@ -9814,7 +9814,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // ❄️ RÉPARATEUR CLIMATISEUR - 🌍 CONTEXTE AFRIQUE FRANCOPHONE
+  // ❄️ RÉPARATEUR CLIMATISEUR - \uD83C\uDF0D CONTEXTE AFRIQUE FRANCOPHONE
   reparateur_climatiseur: {
     terminology: {
       productLabel: 'Service climatisation',
@@ -9844,9 +9844,9 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: '❄️ Nettoyage complet climatiseur (intérieur + extérieur)', label: 'Nettoyage complet' },
           { value: '❄️ Recharge gaz réfrigérant (R22, R410A, R32)', label: 'Recharge gaz' },
           { value: '❄️ Détection et réparation fuite de gaz', label: 'Réparation fuite gaz' },
-          { value: '🏢 Dépannage urgence 24h/24', label: '🚨 Urgence 24h/24' },
-          { value: '🏢 Contrat maintenance annuel', label: 'Contrat maintenance' },
-          { value: '🏢 Désinstallation/Réinstallation (déménagement)', label: 'Désinstallation/Réinstallation' },
+          { value: '\uD83C\uDFE2 Dépannage urgence 24h/24', label: '\uD83D\uDEA8 Urgence 24h/24' },
+          { value: '\uD83C\uDFE2 Contrat maintenance annuel', label: 'Contrat maintenance' },
+          { value: '\uD83C\uDFE2 Désinstallation/Réinstallation (déménagement)', label: 'Désinstallation/Réinstallation' },
           { value: '❄️ Diagnostic panne/Devis gratuit', label: 'Diagnostic gratuit' },
         ],
       },
@@ -9858,23 +9858,23 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           // Chinoises (top Afrique)
-          { value: '🇨🇳 Midea', label: '🇨🇳 Midea (leader)' },
-          { value: '🇨🇳 Gree', label: '🇨🇳 Gree' },
-          { value: '🇨🇳 Haier', label: '🇨🇳 Haier' },
-          { value: '🇨🇳 Hisense', label: '🇨🇳 Hisense' },
-          { value: '🇨🇳 TCL', label: '🇨🇳 TCL' },
-          { value: '🇨🇳 Aux', label: '🇨🇳 Aux' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF3 Midea', label: '\uD83C\uDDE8\uD83C\uDDF3 Midea (leader)' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF3 Gree', label: '\uD83C\uDDE8\uD83C\uDDF3 Gree' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF3 Haier', label: '\uD83C\uDDE8\uD83C\uDDF3 Haier' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF3 Hisense', label: '\uD83C\uDDE8\uD83C\uDDF3 Hisense' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF3 TCL', label: '\uD83C\uDDE8\uD83C\uDDF3 TCL' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF3 Aux', label: '\uD83C\uDDE8\uD83C\uDDF3 Aux' },
 
           // Coréennes
-          { value: '🇰🇷 LG', label: '🇰🇷 LG' },
-          { value: '🇰🇷 Samsung', label: '🇰🇷 Samsung' },
+          { value: '\uD83C\uDDF0\uD83C\uDDF7 LG', label: '\uD83C\uDDF0\uD83C\uDDF7 LG' },
+          { value: '\uD83C\uDDF0\uD83C\uDDF7 Samsung', label: '\uD83C\uDDF0\uD83C\uDDF7 Samsung' },
 
           // Japonaises (haut de gamme)
-          { value: '🇯🇵 Daikin', label: '🇯🇵 Daikin (premium)' },
-          { value: '🇯🇵 Mitsubishi Electric', label: '🇯🇵 Mitsubishi' },
-          { value: '🇯🇵 Fujitsu', label: '🇯🇵 Fujitsu' },
-          { value: '🇯🇵 Toshiba', label: '🇯🇵 Toshiba' },
-          { value: '🇯🇵 Panasonic', label: '🇯🇵 Panasonic' },
+          { value: '\uD83C\uDDEF\uD83C\uDDF5 Daikin', label: '\uD83C\uDDEF\uD83C\uDDF5 Daikin (premium)' },
+          { value: '\uD83C\uDDEF\uD83C\uDDF5 Mitsubishi Electric', label: '\uD83C\uDDEF\uD83C\uDDF5 Mitsubishi' },
+          { value: '\uD83C\uDDEF\uD83C\uDDF5 Fujitsu', label: '\uD83C\uDDEF\uD83C\uDDF5 Fujitsu' },
+          { value: '\uD83C\uDDEF\uD83C\uDDF5 Toshiba', label: '\uD83C\uDDEF\uD83C\uDDF5 Toshiba' },
+          { value: '\uD83C\uDDEF\uD83C\uDDF5 Panasonic', label: '\uD83C\uDDEF\uD83C\uDDF5 Panasonic' },
 
           { value: 'Toutes marques', label: 'Toutes marques' },
         ],
@@ -9917,12 +9917,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Certification',
         type: 'multiselect',
         options: [
-          { value: '🎓 Certificat FROID (Frigoriste qualifié)', label: '🎓 Certificat FROID' },
-          { value: '🎓 Habilitation manipulation fluides frigorigènes', label: '🎓 Habilitation fluides' },
-          { value: '🎓 CAP Froid et Climatisation', label: '🎓 CAP Froid' },
-          { value: '🎓 BTS Fluides Énergies Domotique', label: '🎓 BTS Fluides' },
-          { value: '🎓 Formation constructeur (Daikin, Mitsubishi...)', label: '🎓 Formation constructeur' },
-          { value: '🎓 Technicien certifié constructeur', label: '🎓 Certifié constructeur' },
+          { value: '\uD83C\uDF93 Certificat FROID (Frigoriste qualifié)', label: '\uD83C\uDF93 Certificat FROID' },
+          { value: '\uD83C\uDF93 Habilitation manipulation fluides frigorigènes', label: '\uD83C\uDF93 Habilitation fluides' },
+          { value: '\uD83C\uDF93 CAP Froid et Climatisation', label: '\uD83C\uDF93 CAP Froid' },
+          { value: '\uD83C\uDF93 BTS Fluides Énergies Domotique', label: '\uD83C\uDF93 BTS Fluides' },
+          { value: '\uD83C\uDF93 Formation constructeur (Daikin, Mitsubishi...)', label: '\uD83C\uDF93 Formation constructeur' },
+          { value: '\uD83C\uDF93 Technicien certifié constructeur', label: '\uD83C\uDF93 Certifié constructeur' },
           { value: 'Autodidacte/Expérience terrain', label: 'Autodidacte' },
         ],
       },
@@ -9933,13 +9933,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Disponibilité',
         type: 'select',
         options: [
-          { value: '🚨 Urgence 24h/24 - 7j/7', label: '🚨 Urgence 24h/24' },
-          { value: '🚨 Dépannage urgence (même jour)', label: 'Même jour' },
+          { value: '\uD83D\uDEA8 Urgence 24h/24 - 7j/7', label: '\uD83D\uDEA8 Urgence 24h/24' },
+          { value: '\uD83D\uDEA8 Dépannage urgence (même jour)', label: 'Même jour' },
           { value: '⏰ Intervention sous 2-4h', label: 'Sous 2-4h' },
           { value: '⏰ Intervention sous 24h', label: 'Sous 24h' },
           { value: '⏰ Rendez-vous sous 48h', label: 'Sous 48h' },
-          { value: '📅 Week-end disponible', label: 'Week-end' },
-          { value: '📅 Jours ouvrables uniquement (Lun-Ven)', label: 'Lun-Ven uniquement' },
+          { value: '\uD83D\uDCC5 Week-end disponible', label: 'Week-end' },
+          { value: '\uD83D\uDCC5 Jours ouvrables uniquement (Lun-Ven)', label: 'Lun-Ven uniquement' },
         ],
       },
 
@@ -9967,12 +9967,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de clientèle',
         type: 'multiselect',
         options: [
-          { value: '🏠 Particuliers/Résidentiel', label: 'Particuliers' },
-          { value: '🏢 Entreprises/Bureaux', label: 'Entreprises/Bureaux' },
-          { value: '🏨 Hôtels/Hébergements', label: 'Hôtels' },
-          { value: '🏪 Commerces/Boutiques', label: 'Commerces' },
-          { value: '🏥 Hôpitaux/Cliniques', label: 'Santé' },
-          { value: '🏫 Écoles/Universités', label: 'Éducation' },
+          { value: '\uD83C\uDFE0 Particuliers/Résidentiel', label: 'Particuliers' },
+          { value: '\uD83C\uDFE2 Entreprises/Bureaux', label: 'Entreprises/Bureaux' },
+          { value: '\uD83C\uDFE8 Hôtels/Hébergements', label: 'Hôtels' },
+          { value: '\uD83C\uDFEA Commerces/Boutiques', label: 'Commerces' },
+          { value: '\uD83C\uDFE5 Hôpitaux/Cliniques', label: 'Santé' },
+          { value: '\uD83C\uDFEB Écoles/Universités', label: 'Éducation' },
         ],
       },
 
@@ -9982,11 +9982,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Équipement',
         type: 'select',
         options: [
-          { value: '🛠️ Outillage complet professionnel', label: 'Outillage complet pro' },
-          { value: '🛠️ Pompe à vide', label: 'Pompe à vide' },
-          { value: '🛠️ Manomètres (groupe froid)', label: 'Manomètres' },
-          { value: '🛠️ Détecteur de fuite électronique', label: 'Détecteur fuite' },
-          { value: '🛠️ Stock pièces détachées', label: 'Stock pièces' },
+          { value: '\uD83D\uDEE0️ Outillage complet professionnel', label: 'Outillage complet pro' },
+          { value: '\uD83D\uDEE0️ Pompe à vide', label: 'Pompe à vide' },
+          { value: '\uD83D\uDEE0️ Manomètres (groupe froid)', label: 'Manomètres' },
+          { value: '\uD83D\uDEE0️ Détecteur de fuite électronique', label: 'Détecteur fuite' },
+          { value: '\uD83D\uDEE0️ Stock pièces détachées', label: 'Stock pièces' },
           { value: 'Équipement de base', label: 'Équipement basique' },
         ],
       },
@@ -10011,12 +10011,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Mode de paiement',
         type: 'multiselect',
         options: [
-          { value: '💳 Espèces (FCFA)', label: 'Espèces (FCFA)' },
-          { value: '💳 Mobile Money (MTN, Orange)', label: 'Mobile Money' },
-          { value: '💳 Virement bancaire', label: 'Virement' },
-          { value: '💳 Paiement échelonné possible', label: 'Échelonné' },
-          { value: '💳 Facture entreprise acceptée', label: 'Facture entreprise' },
-          { value: '💵 Diagnostic/Devis gratuit', label: 'Devis gratuit' },
+          { value: '\uD83D\uDCB3 Espèces (FCFA)', label: 'Espèces (FCFA)' },
+          { value: '\uD83D\uDCB3 Mobile Money (MTN, Orange)', label: 'Mobile Money' },
+          { value: '\uD83D\uDCB3 Virement bancaire', label: 'Virement' },
+          { value: '\uD83D\uDCB3 Paiement échelonné possible', label: 'Échelonné' },
+          { value: '\uD83D\uDCB3 Facture entreprise acceptée', label: 'Facture entreprise' },
+          { value: '\uD83D\uDCB5 Diagnostic/Devis gratuit', label: 'Devis gratuit' },
         ],
       },
     ],
@@ -10035,7 +10035,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
   },
 
   // ════════════════════════════════════════════════════════════
-  // 🌳 JARDINAGE & PAYSAGISME - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
+  // \uD83C\uDF33 JARDINAGE & PAYSAGISME - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
   // ════════════════════════════════════════════════════════════
   // Services: Élagage palmiers, arbres fruitiers tropicaux, potagers africains,
   // irrigation saison sèche, espaces verts entreprises/hôtels
@@ -10064,29 +10064,29 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           // Services populaires
-          { value: '🌴 Élagage palmiers (royal, cocotier, dattier)', label: '🌴 Élagage palmiers' },
-          { value: '🥭 Entretien arbres fruitiers (manguier, avocatier, papayer)', label: '🥭 Arbres fruitiers' },
-          { value: '🏡 Tonte pelouse/gazon (résidentiel)', label: '🏡 Tonte pelouse' },
+          { value: '\uD83C\uDF34 Élagage palmiers (royal, cocotier, dattier)', label: '\uD83C\uDF34 Élagage palmiers' },
+          { value: '\uD83E\uDD6D Entretien arbres fruitiers (manguier, avocatier, papayer)', label: '\uD83E\uDD6D Arbres fruitiers' },
+          { value: '\uD83C\uDFE1 Tonte pelouse/gazon (résidentiel)', label: '\uD83C\uDFE1 Tonte pelouse' },
           { value: '✂️ Taille de haies et arbustes', label: '✂️ Taille haies' },
-          { value: '🌾 Désherbage manuel et chimique', label: '🌾 Désherbage' },
-          { value: '💧 Installation système arrosage automatique', label: '💧 Arrosage automatique' },
-          { value: '🏢 Entretien espaces verts (entreprise/hôtel)', label: '🏢 Espaces verts pro' },
-          { value: '🌱 Création et entretien potager', label: '🌱 Potager' },
+          { value: '\uD83C\uDF3E Désherbage manuel et chimique', label: '\uD83C\uDF3E Désherbage' },
+          { value: '\uD83D\uDCA7 Installation système arrosage automatique', label: '\uD83D\uDCA7 Arrosage automatique' },
+          { value: '\uD83C\uDFE2 Entretien espaces verts (entreprise/hôtel)', label: '\uD83C\uDFE2 Espaces verts pro' },
+          { value: '\uD83C\uDF31 Création et entretien potager', label: '\uD83C\uDF31 Potager' },
           // Aménagement
-          { value: '🏗️ Aménagement paysager complet', label: '🏗️ Aménagement complet' },
-          { value: '🌿 Création jardin tropical', label: '🌿 Jardin tropical' },
-          { value: '🌸 Plantation massifs floraux', label: '🌸 Massifs floraux' },
-          { value: '🌳 Plantation d\'arbres et arbustes', label: '🌳 Plantation arbres' },
-          { value: '🏞️ Création allées et bordures', label: '🏞️ Allées/bordures' },
-          { value: '🪨 Dallage et pavage jardin', label: '🪨 Dallage' },
-          { value: '🏗️ Construction terrasse en bois', label: '🏗️ Terrasse' },
+          { value: '\uD83C\uDFD7️ Aménagement paysager complet', label: '\uD83C\uDFD7️ Aménagement complet' },
+          { value: '\uD83C\uDF3F Création jardin tropical', label: '\uD83C\uDF3F Jardin tropical' },
+          { value: '\uD83C\uDF38 Plantation massifs floraux', label: '\uD83C\uDF38 Massifs floraux' },
+          { value: '\uD83C\uDF33 Plantation d\'arbres et arbustes', label: '\uD83C\uDF33 Plantation arbres' },
+          { value: '\uD83C\uDFDE️ Création allées et bordures', label: '\uD83C\uDFDE️ Allées/bordures' },
+          { value: '\uD83E\uDEA8 Dallage et pavage jardin', label: '\uD83E\uDEA8 Dallage' },
+          { value: '\uD83C\uDFD7️ Construction terrasse en bois', label: '\uD83C\uDFD7️ Terrasse' },
           // Entretien
-          { value: '📅 Contrat entretien mensuel', label: '📅 Contrat mensuel' },
-          { value: '💧 Arrosage régulier (saison sèche)', label: '💧 Arrosage régulier' },
-          { value: '🌱 Traitement phytosanitaire (anti-insectes)', label: '🌱 Traitement phyto' },
+          { value: '\uD83D\uDCC5 Contrat entretien mensuel', label: '\uD83D\uDCC5 Contrat mensuel' },
+          { value: '\uD83D\uDCA7 Arrosage régulier (saison sèche)', label: '\uD83D\uDCA7 Arrosage régulier' },
+          { value: '\uD83C\uDF31 Traitement phytosanitaire (anti-insectes)', label: '\uD83C\uDF31 Traitement phyto' },
           // Gros travaux
-          { value: '🪓 Abattage d\'arbres', label: '🪓 Abattage' },
-          { value: '🚜 Défrichage terrain', label: '🚜 Défrichage' },
+          { value: '\uD83E\uDE93 Abattage d\'arbres', label: '\uD83E\uDE93 Abattage' },
+          { value: '\uD83D\uDE9C Défrichage terrain', label: '\uD83D\uDE9C Défrichage' },
         ],
       },
 
@@ -10097,31 +10097,31 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           // Palmiers
-          { value: '🌴 Palmier royal', label: '🌴 Palmier royal' },
-          { value: '🥥 Cocotier', label: '🥥 Cocotier' },
-          { value: '🌴 Palmier dattier', label: '🌴 Palmier dattier' },
+          { value: '\uD83C\uDF34 Palmier royal', label: '\uD83C\uDF34 Palmier royal' },
+          { value: '\uD83E\uDD65 Cocotier', label: '\uD83E\uDD65 Cocotier' },
+          { value: '\uD83C\uDF34 Palmier dattier', label: '\uD83C\uDF34 Palmier dattier' },
           // Arbres fruitiers
-          { value: '🥭 Manguier', label: '🥭 Manguier' },
-          { value: '🥑 Avocatier', label: '🥑 Avocatier' },
-          { value: '🍈 Papayer', label: '🍈 Papayer' },
-          { value: '🍊 Oranger', label: '🍊 Oranger' },
-          { value: '🍋 Citronnier', label: '🍋 Citronnier' },
-          { value: '🥭 Goyavier', label: '🥭 Goyavier' },
+          { value: '\uD83E\uDD6D Manguier', label: '\uD83E\uDD6D Manguier' },
+          { value: '\uD83E\uDD51 Avocatier', label: '\uD83E\uDD51 Avocatier' },
+          { value: '\uD83C\uDF48 Papayer', label: '\uD83C\uDF48 Papayer' },
+          { value: '\uD83C\uDF4A Oranger', label: '\uD83C\uDF4A Oranger' },
+          { value: '\uD83C\uDF4B Citronnier', label: '\uD83C\uDF4B Citronnier' },
+          { value: '\uD83E\uDD6D Goyavier', label: '\uD83E\uDD6D Goyavier' },
           // Fleurs tropicales
-          { value: '🌺 Hibiscus (rose de Chine)', label: '🌺 Hibiscus' },
-          { value: '🌸 Bougainvilliers', label: '🌸 Bougainvilliers' },
-          { value: '🌺 Frangipanier', label: '🌺 Frangipanier' },
+          { value: '\uD83C\uDF3A Hibiscus (rose de Chine)', label: '\uD83C\uDF3A Hibiscus' },
+          { value: '\uD83C\uDF38 Bougainvilliers', label: '\uD83C\uDF38 Bougainvilliers' },
+          { value: '\uD83C\uDF3A Frangipanier', label: '\uD83C\uDF3A Frangipanier' },
           // Plantes ornementales
-          { value: '🌿 Croton (codiaeum)', label: '🌿 Croton' },
-          { value: '🌿 Dracaena (dragonnier)', label: '🌿 Dracaena' },
+          { value: '\uD83C\uDF3F Croton (codiaeum)', label: '\uD83C\uDF3F Croton' },
+          { value: '\uD83C\uDF3F Dracaena (dragonnier)', label: '\uD83C\uDF3F Dracaena' },
           // Potager
-          { value: '🌶️ Piment', label: '🌶️ Piment' },
-          { value: '🍅 Tomate', label: '🍅 Tomate' },
-          { value: '🫛 Gombo (okra)', label: '🫛 Gombo' },
-          { value: '🥬 Feuilles de manioc', label: '🥬 Manioc' },
-          { value: '🥬 Épinards africains (ndolé)', label: '🥬 Ndolé' },
+          { value: '\uD83C\uDF36️ Piment', label: '\uD83C\uDF36️ Piment' },
+          { value: '\uD83C\uDF45 Tomate', label: '\uD83C\uDF45 Tomate' },
+          { value: '\uD83E\uDEDB Gombo (okra)', label: '\uD83E\uDEDB Gombo' },
+          { value: '\uD83E\uDD6C Feuilles de manioc', label: '\uD83E\uDD6C Manioc' },
+          { value: '\uD83E\uDD6C Épinards africains (ndolé)', label: '\uD83E\uDD6C Ndolé' },
           // Gazon
-          { value: '🌾 Gazon tropical résistant', label: '🌾 Gazon tropical' },
+          { value: '\uD83C\uDF3E Gazon tropical résistant', label: '\uD83C\uDF3E Gazon tropical' },
         ],
       },
 
@@ -10131,14 +10131,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Fréquence',
         type: 'select',
         options: [
-          { value: '📅 Hebdomadaire (toutes les semaines)', label: '📅 Hebdomadaire' },
-          { value: '📅 Bi-hebdomadaire (2 fois/semaine)', label: '📅 2 fois/semaine' },
-          { value: '📅 Mensuel (1 fois/mois)', label: '📅 Mensuel' },
-          { value: '📅 Bi-mensuel (2 fois/mois)', label: '📅 2 fois/mois' },
-          { value: '📅 Trimestriel (tous les 3 mois)', label: '📅 Trimestriel' },
-          { value: '🌧️ Début saison des pluies (mars-avril)', label: '🌧️ Saison des pluies' },
+          { value: '\uD83D\uDCC5 Hebdomadaire (toutes les semaines)', label: '\uD83D\uDCC5 Hebdomadaire' },
+          { value: '\uD83D\uDCC5 Bi-hebdomadaire (2 fois/semaine)', label: '\uD83D\uDCC5 2 fois/semaine' },
+          { value: '\uD83D\uDCC5 Mensuel (1 fois/mois)', label: '\uD83D\uDCC5 Mensuel' },
+          { value: '\uD83D\uDCC5 Bi-mensuel (2 fois/mois)', label: '\uD83D\uDCC5 2 fois/mois' },
+          { value: '\uD83D\uDCC5 Trimestriel (tous les 3 mois)', label: '\uD83D\uDCC5 Trimestriel' },
+          { value: '\uD83C\uDF27️ Début saison des pluies (mars-avril)', label: '\uD83C\uDF27️ Saison des pluies' },
           { value: '☀️ Milieu saison sèche (décembre-janvier)', label: '☀️ Saison sèche' },
-          { value: '🌿 Intervention ponctuelle unique', label: '🌿 Ponctuel' },
+          { value: '\uD83C\uDF3F Intervention ponctuelle unique', label: '\uD83C\uDF3F Ponctuel' },
         ],
       },
 
@@ -10148,15 +10148,15 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de terrain',
         type: 'select',
         options: [
-          { value: '🏡 Jardin résidentiel (villa)', label: '🏡 Jardin villa' },
-          { value: '🏘️ Cour maison (petit jardin)', label: '🏘️ Petite cour' },
-          { value: '🏢 Espace vert entreprise/bureau', label: '🏢 Entreprise' },
-          { value: '🏨 Jardin hôtel/résidence', label: '🏨 Hôtel' },
-          { value: '🏫 Espace vert école/université', label: '🏫 École/Université' },
-          { value: '🏥 Jardin clinique/hôpital', label: '🏥 Clinique' },
+          { value: '\uD83C\uDFE1 Jardin résidentiel (villa)', label: '\uD83C\uDFE1 Jardin villa' },
+          { value: '\uD83C\uDFD8️ Cour maison (petit jardin)', label: '\uD83C\uDFD8️ Petite cour' },
+          { value: '\uD83C\uDFE2 Espace vert entreprise/bureau', label: '\uD83C\uDFE2 Entreprise' },
+          { value: '\uD83C\uDFE8 Jardin hôtel/résidence', label: '\uD83C\uDFE8 Hôtel' },
+          { value: '\uD83C\uDFEB Espace vert école/université', label: '\uD83C\uDFEB École/Université' },
+          { value: '\uD83C\uDFE5 Jardin clinique/hôpital', label: '\uD83C\uDFE5 Clinique' },
           { value: '⛪ Jardin église/mosquée', label: '⛪ Lieu de culte' },
-          { value: '🏞️ Parc public', label: '🏞️ Parc public' },
-          { value: '🌴 Plantation (grande surface)', label: '🌴 Plantation' },
+          { value: '\uD83C\uDFDE️ Parc public', label: '\uD83C\uDFDE️ Parc public' },
+          { value: '\uD83C\uDF34 Plantation (grande surface)', label: '\uD83C\uDF34 Plantation' },
         ],
       },
 
@@ -10166,13 +10166,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Surface terrain',
         type: 'select',
         options: [
-          { value: '📏 Moins de 50 m² (petite cour)', label: '< 50 m²' },
-          { value: '📏 50 à 100 m² (jardin moyen)', label: '50-100 m²' },
-          { value: '📏 100 à 200 m² (grand jardin)', label: '100-200 m²' },
-          { value: '📏 200 à 500 m² (très grand jardin)', label: '200-500 m²' },
-          { value: '📏 500 à 1000 m² (petit espace vert)', label: '500-1000 m²' },
-          { value: '📏 1000 à 3000 m² (grand espace vert)', label: '1000-3000 m²' },
-          { value: '📏 Plus de 5000 m² (grande plantation)', label: '> 5000 m²' },
+          { value: '\uD83D\uDCCF Moins de 50 m² (petite cour)', label: '< 50 m²' },
+          { value: '\uD83D\uDCCF 50 à 100 m² (jardin moyen)', label: '50-100 m²' },
+          { value: '\uD83D\uDCCF 100 à 200 m² (grand jardin)', label: '100-200 m²' },
+          { value: '\uD83D\uDCCF 200 à 500 m² (très grand jardin)', label: '200-500 m²' },
+          { value: '\uD83D\uDCCF 500 à 1000 m² (petit espace vert)', label: '500-1000 m²' },
+          { value: '\uD83D\uDCCF 1000 à 3000 m² (grand espace vert)', label: '1000-3000 m²' },
+          { value: '\uD83D\uDCCF Plus de 5000 m² (grande plantation)', label: '> 5000 m²' },
         ],
       },
 
@@ -10182,12 +10182,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Matériel disponible',
         type: 'multiselect',
         options: [
-          { value: '🚜 Tondeuse à essence', label: '🚜 Tondeuse essence' },
+          { value: '\uD83D\uDE9C Tondeuse à essence', label: '\uD83D\uDE9C Tondeuse essence' },
           { value: '✂️ Taille-haie motorisé', label: '✂️ Taille-haie' },
-          { value: '🌾 Débroussailleuse thermique', label: '🌾 Débroussailleuse' },
-          { value: '🪓 Tronçonneuse', label: '🪓 Tronçonneuse' },
-          { value: '💧 Système arrosage automatique', label: '💧 Arrosage auto' },
-          { value: '🪓 Coupe-coupe (machette africaine)', label: '🪓 Coupe-coupe' },
+          { value: '\uD83C\uDF3E Débroussailleuse thermique', label: '\uD83C\uDF3E Débroussailleuse' },
+          { value: '\uD83E\uDE93 Tronçonneuse', label: '\uD83E\uDE93 Tronçonneuse' },
+          { value: '\uD83D\uDCA7 Système arrosage automatique', label: '\uD83D\uDCA7 Arrosage auto' },
+          { value: '\uD83E\uDE93 Coupe-coupe (machette africaine)', label: '\uD83E\uDE93 Coupe-coupe' },
           { value: '⚒️ Houe (daba)', label: '⚒️ Houe/Daba' },
         ],
       },
@@ -10198,12 +10198,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Mode de tarification',
         type: 'select',
         options: [
-          { value: '💰 Forfait intervention unique', label: '💰 Forfait unique' },
-          { value: '💰 Tarif horaire (par heure)', label: '💰 Tarif horaire' },
-          { value: '💰 Forfait mensuel (abonnement)', label: '💰 Abonnement mensuel' },
-          { value: '💰 Forfait trimestriel', label: '💰 Forfait trimestriel' },
-          { value: '💰 Prix au m² (grande surface)', label: '💰 Prix au m²' },
-          { value: '💰 Devis sur mesure', label: '💰 Devis personnalisé' },
+          { value: '\uD83D\uDCB0 Forfait intervention unique', label: '\uD83D\uDCB0 Forfait unique' },
+          { value: '\uD83D\uDCB0 Tarif horaire (par heure)', label: '\uD83D\uDCB0 Tarif horaire' },
+          { value: '\uD83D\uDCB0 Forfait mensuel (abonnement)', label: '\uD83D\uDCB0 Abonnement mensuel' },
+          { value: '\uD83D\uDCB0 Forfait trimestriel', label: '\uD83D\uDCB0 Forfait trimestriel' },
+          { value: '\uD83D\uDCB0 Prix au m² (grande surface)', label: '\uD83D\uDCB0 Prix au m²' },
+          { value: '\uD83D\uDCB0 Devis sur mesure', label: '\uD83D\uDCB0 Devis personnalisé' },
         ],
       },
 
@@ -10213,10 +10213,10 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Niveau d\'expérience',
         type: 'select',
         options: [
-          { value: '👨‍🌾 Jardinier professionnel (5+ ans)', label: '👨‍🌾 Professionnel (5+ ans)' },
-          { value: '🎓 Paysagiste diplômé', label: '🎓 Paysagiste diplômé' },
-          { value: '🏢 Entreprise de paysagisme', label: '🏢 Entreprise' },
-          { value: '🌱 Jardinier indépendant', label: '🌱 Indépendant' },
+          { value: '\uD83D\uDC68‍\uD83C\uDF3E Jardinier professionnel (5+ ans)', label: '\uD83D\uDC68‍\uD83C\uDF3E Professionnel (5+ ans)' },
+          { value: '\uD83C\uDF93 Paysagiste diplômé', label: '\uD83C\uDF93 Paysagiste diplômé' },
+          { value: '\uD83C\uDFE2 Entreprise de paysagisme', label: '\uD83C\uDFE2 Entreprise' },
+          { value: '\uD83C\uDF31 Jardinier indépendant', label: '\uD83C\uDF31 Indépendant' },
         ],
       },
 
@@ -10293,7 +10293,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Urgence',
         type: 'select',
         options: [
-          { value: 'oui', label: '🚨 Intervention urgente uniquement' },
+          { value: 'oui', label: '\uD83D\uDEA8 Intervention urgente uniquement' },
           { value: 'non', label: 'Toutes interventions' },
         ],
       },
@@ -10312,7 +10312,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#059669',
       gradientColors: ['#059669', '#047857'],
-      icon: '🌳',
+      icon: '\uD83C\uDF33',
       badgeColor: '#D1FAE5',
       accentColor: '#047857',
     },
@@ -10323,9 +10323,9 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 🧹 NETTOYAGE & ENTRETIEN
+  // \uD83E\uDDF9 NETTOYAGE & ENTRETIEN
   // ════════════════════════════════════════════════════════════
-  // 🧹 NETTOYAGE & ENTRETIEN - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
+  // \uD83E\uDDF9 NETTOYAGE & ENTRETIEN - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
   // ════════════════════════════════════════════════════════════
   // Femme de ménage (Bonne, Aide ménagère, House girl, Boy domestique),
   // Nounou/Baby-sitter (Nanny, Gardienne d'enfants, Bébé sitter),
@@ -10661,122 +10661,122 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         options: [
           // ═══ CAMEROUN ═══
           // Douala (20 quartiers principaux)
-          { value: '🇨🇲 Douala - Akwa', label: 'Douala Akwa' },
-          { value: '🇨🇲 Douala - Bonanjo (Centre affaires)', label: 'Douala Bonanjo' },
-          { value: '🇨🇲 Douala - Bonapriso (Résidentiel)', label: 'Douala Bonapriso' },
-          { value: '🇨🇲 Douala - Deido', label: 'Douala Deido' },
-          { value: '🇨🇲 Douala - Makepe', label: 'Douala Makepe' },
-          { value: '🇨🇲 Douala - PK8-PK17 (Route Yaoundé)', label: 'Douala PK8-17' },
-          { value: '🇨🇲 Douala - Logpom', label: 'Douala Logpom' },
-          { value: '🇨🇲 Douala - Bassa', label: 'Douala Bassa' },
-          { value: '🇨🇲 Douala - Ndogpassi', label: 'Douala Ndogpassi' },
-          { value: '🇨🇲 Douala - New Bell', label: 'Douala New Bell' },
-          { value: '🇨🇲 Douala - Bonabéri', label: 'Douala Bonabéri' },
-          { value: '🇨🇲 Douala - Kotto', label: 'Douala Kotto' },
-          { value: '🇨🇲 Douala - Cité SIC', label: 'Douala Cité SIC' },
-          { value: '🇨🇲 Douala - Bépanda', label: 'Douala Bépanda' },
-          { value: '🇨🇲 Douala - Bonamoussadi', label: 'Douala Bonamoussadi' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Akwa', label: 'Douala Akwa' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Bonanjo (Centre affaires)', label: 'Douala Bonanjo' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Bonapriso (Résidentiel)', label: 'Douala Bonapriso' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Deido', label: 'Douala Deido' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Makepe', label: 'Douala Makepe' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - PK8-PK17 (Route Yaoundé)', label: 'Douala PK8-17' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Logpom', label: 'Douala Logpom' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Bassa', label: 'Douala Bassa' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Ndogpassi', label: 'Douala Ndogpassi' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - New Bell', label: 'Douala New Bell' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Bonabéri', label: 'Douala Bonabéri' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Kotto', label: 'Douala Kotto' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Cité SIC', label: 'Douala Cité SIC' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Bépanda', label: 'Douala Bépanda' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Douala - Bonamoussadi', label: 'Douala Bonamoussadi' },
 
           // Yaoundé (20 quartiers principaux)
-          { value: '🇨🇲 Yaoundé - Bastos (Quartier diplomates)', label: 'Yaoundé Bastos' },
-          { value: '🇨🇲 Yaoundé - Centre-ville', label: 'Yaoundé Centre' },
-          { value: '🇨🇲 Yaoundé - Nlongkak', label: 'Yaoundé Nlongkak' },
-          { value: '🇨🇲 Yaoundé - Odza', label: 'Yaoundé Odza' },
-          { value: '🇨🇲 Yaoundé - Mvan', label: 'Yaoundé Mvan' },
-          { value: '🇨🇲 Yaoundé - Omnisport', label: 'Yaoundé Omnisport' },
-          { value: '🇨🇲 Yaoundé - Elig-Edzoa', label: 'Yaoundé Elig-Edzoa' },
-          { value: '🇨🇲 Yaoundé - Mokolo', label: 'Yaoundé Mokolo' },
-          { value: '🇨🇲 Yaoundé - Tsinga', label: 'Yaoundé Tsinga' },
-          { value: '🇨🇲 Yaoundé - Obili', label: 'Yaoundé Obili' },
-          { value: '🇨🇲 Yaoundé - Essos', label: 'Yaoundé Essos' },
-          { value: '🇨🇲 Yaoundé - Emana', label: 'Yaoundé Emana' },
-          { value: '🇨🇲 Yaoundé - Ekounou', label: 'Yaoundé Ekounou' },
-          { value: '🇨🇲 Yaoundé - Ngousso', label: 'Yaoundé Ngousso' },
-          { value: '🇨🇲 Yaoundé - Mendong', label: 'Yaoundé Mendong' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Bastos (Quartier diplomates)', label: 'Yaoundé Bastos' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Centre-ville', label: 'Yaoundé Centre' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Nlongkak', label: 'Yaoundé Nlongkak' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Odza', label: 'Yaoundé Odza' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Mvan', label: 'Yaoundé Mvan' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Omnisport', label: 'Yaoundé Omnisport' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Elig-Edzoa', label: 'Yaoundé Elig-Edzoa' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Mokolo', label: 'Yaoundé Mokolo' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Tsinga', label: 'Yaoundé Tsinga' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Obili', label: 'Yaoundé Obili' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Essos', label: 'Yaoundé Essos' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Emana', label: 'Yaoundé Emana' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Ekounou', label: 'Yaoundé Ekounou' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Ngousso', label: 'Yaoundé Ngousso' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Yaoundé - Mendong', label: 'Yaoundé Mendong' },
 
           // Autres villes Cameroun
-          { value: '🇨🇲 Bafoussam', label: 'Bafoussam' },
-          { value: '🇨🇲 Garoua', label: 'Garoua' },
-          { value: '🇨🇲 Bamenda', label: 'Bamenda' },
-          { value: '🇨🇲 Maroua', label: 'Maroua' },
-          { value: '🇨🇲 Ngaoundéré', label: 'Ngaoundéré' },
-          { value: '🇨🇲 Limbé', label: 'Limbé' },
-          { value: '🇨🇲 Kribi', label: 'Kribi' },
-          { value: '🇨🇲 Bertoua', label: 'Bertoua' },
-          { value: '🇨🇲 Ebolowa', label: 'Ebolowa' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Bafoussam', label: 'Bafoussam' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Garoua', label: 'Garoua' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Bamenda', label: 'Bamenda' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Maroua', label: 'Maroua' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Ngaoundéré', label: 'Ngaoundéré' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Limbé', label: 'Limbé' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Kribi', label: 'Kribi' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Bertoua', label: 'Bertoua' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Ebolowa', label: 'Ebolowa' },
 
           // ═══ CÔTE D'IVOIRE ═══
-          { value: '🇨🇮 Abidjan - Plateau', label: 'Abidjan Plateau' },
-          { value: '🇨🇮 Abidjan - Cocody (Résidentiel)', label: 'Abidjan Cocody' },
-          { value: '🇨🇮 Abidjan - Marcory', label: 'Abidjan Marcory' },
-          { value: '🇨🇮 Abidjan - Yopougon', label: 'Abidjan Yopougon' },
-          { value: '🇨🇮 Abidjan - Adjamé', label: 'Abidjan Adjamé' },
-          { value: '🇨🇮 Abidjan - Treichville', label: 'Abidjan Treichville' },
-          { value: '🇨🇮 Abidjan - Koumassi', label: 'Abidjan Koumassi' },
-          { value: '🇨🇮 Abidjan - Abobo', label: 'Abidjan Abobo' },
-          { value: '🇨🇮 Abidjan - Riviera (Résidentiel)', label: 'Abidjan Riviera' },
-          { value: '🇨🇮 Abidjan - Angré', label: 'Abidjan Angré' },
-          { value: '🇨🇮 Yamoussoukro', label: 'Yamoussoukro' },
-          { value: '🇨🇮 Bouaké', label: 'Bouaké' },
-          { value: '🇨🇮 San Pedro', label: 'San Pedro' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Abidjan - Plateau', label: 'Abidjan Plateau' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Abidjan - Cocody (Résidentiel)', label: 'Abidjan Cocody' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Abidjan - Marcory', label: 'Abidjan Marcory' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Abidjan - Yopougon', label: 'Abidjan Yopougon' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Abidjan - Adjamé', label: 'Abidjan Adjamé' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Abidjan - Treichville', label: 'Abidjan Treichville' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Abidjan - Koumassi', label: 'Abidjan Koumassi' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Abidjan - Abobo', label: 'Abidjan Abobo' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Abidjan - Riviera (Résidentiel)', label: 'Abidjan Riviera' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Abidjan - Angré', label: 'Abidjan Angré' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Yamoussoukro', label: 'Yamoussoukro' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Bouaké', label: 'Bouaké' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE San Pedro', label: 'San Pedro' },
 
           // ═══ RDC ═══
-          { value: '🇨🇩 Kinshasa - Gombe (Centre)', label: 'Kinshasa Gombe' },
-          { value: '🇨🇩 Kinshasa - Ngaliema', label: 'Kinshasa Ngaliema' },
-          { value: '🇨🇩 Kinshasa - Limete', label: 'Kinshasa Limete' },
-          { value: '🇨🇩 Kinshasa - Kalamu', label: 'Kinshasa Kalamu' },
-          { value: '🇨🇩 Kinshasa - Bandalungwa', label: 'Kinshasa Bandalungwa' },
-          { value: '🇨🇩 Kinshasa - Matete', label: 'Kinshasa Matete' },
-          { value: '🇨🇩 Lubumbashi', label: 'Lubumbashi' },
-          { value: '🇨🇩 Mbuji-Mayi', label: 'Mbuji-Mayi' },
+          { value: '\uD83C\uDDE8\uD83C\uDDE9 Kinshasa - Gombe (Centre)', label: 'Kinshasa Gombe' },
+          { value: '\uD83C\uDDE8\uD83C\uDDE9 Kinshasa - Ngaliema', label: 'Kinshasa Ngaliema' },
+          { value: '\uD83C\uDDE8\uD83C\uDDE9 Kinshasa - Limete', label: 'Kinshasa Limete' },
+          { value: '\uD83C\uDDE8\uD83C\uDDE9 Kinshasa - Kalamu', label: 'Kinshasa Kalamu' },
+          { value: '\uD83C\uDDE8\uD83C\uDDE9 Kinshasa - Bandalungwa', label: 'Kinshasa Bandalungwa' },
+          { value: '\uD83C\uDDE8\uD83C\uDDE9 Kinshasa - Matete', label: 'Kinshasa Matete' },
+          { value: '\uD83C\uDDE8\uD83C\uDDE9 Lubumbashi', label: 'Lubumbashi' },
+          { value: '\uD83C\uDDE8\uD83C\uDDE9 Mbuji-Mayi', label: 'Mbuji-Mayi' },
 
           // ═══ SÉNÉGAL ═══
-          { value: '🇸🇳 Dakar - Plateau', label: 'Dakar Plateau' },
-          { value: '🇸🇳 Dakar - Almadies (Résidentiel)', label: 'Dakar Almadies' },
-          { value: '🇸🇳 Dakar - Mermoz', label: 'Dakar Mermoz' },
-          { value: '🇸🇳 Dakar - Parcelles Assainies', label: 'Dakar Parcelles' },
-          { value: '🇸🇳 Dakar - Grand Yoff', label: 'Dakar Grand Yoff' },
-          { value: '🇸🇳 Dakar - Ouakam', label: 'Dakar Ouakam' },
-          { value: '🇸🇳 Dakar - Point E', label: 'Dakar Point E' },
-          { value: '🇸🇳 Thiès', label: 'Thiès' },
-          { value: '🇸🇳 Saint-Louis', label: 'Saint-Louis' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Dakar - Plateau', label: 'Dakar Plateau' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Dakar - Almadies (Résidentiel)', label: 'Dakar Almadies' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Dakar - Mermoz', label: 'Dakar Mermoz' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Dakar - Parcelles Assainies', label: 'Dakar Parcelles' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Dakar - Grand Yoff', label: 'Dakar Grand Yoff' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Dakar - Ouakam', label: 'Dakar Ouakam' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Dakar - Point E', label: 'Dakar Point E' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Thiès', label: 'Thiès' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Saint-Louis', label: 'Saint-Louis' },
 
           // ═══ GABON ═══
-          { value: '🇬🇦 Libreville - Centre-ville', label: 'Libreville Centre' },
-          { value: '🇬🇦 Libreville - Louis (Quartier résidentiel)', label: 'Libreville Louis' },
-          { value: '🇬🇦 Libreville - Batterie IV', label: 'Libreville Batterie IV' },
-          { value: '🇬🇦 Port-Gentil', label: 'Port-Gentil' },
+          { value: '\uD83C\uDDEC\uD83C\uDDE6 Libreville - Centre-ville', label: 'Libreville Centre' },
+          { value: '\uD83C\uDDEC\uD83C\uDDE6 Libreville - Louis (Quartier résidentiel)', label: 'Libreville Louis' },
+          { value: '\uD83C\uDDEC\uD83C\uDDE6 Libreville - Batterie IV', label: 'Libreville Batterie IV' },
+          { value: '\uD83C\uDDEC\uD83C\uDDE6 Port-Gentil', label: 'Port-Gentil' },
 
           // ═══ CONGO-BRAZZAVILLE ═══
-          { value: '🇨🇬 Brazzaville - Centre-ville', label: 'Brazzaville Centre' },
-          { value: '🇨🇬 Brazzaville - Poto-Poto', label: 'Brazzaville Poto-Poto' },
-          { value: '🇨🇬 Brazzaville - Bacongo', label: 'Brazzaville Bacongo' },
-          { value: '🇨🇬 Pointe-Noire', label: 'Pointe-Noire' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEC Brazzaville - Centre-ville', label: 'Brazzaville Centre' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEC Brazzaville - Poto-Poto', label: 'Brazzaville Poto-Poto' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEC Brazzaville - Bacongo', label: 'Brazzaville Bacongo' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEC Pointe-Noire', label: 'Pointe-Noire' },
 
           // ═══ MALI ═══
-          { value: '🇲🇱 Bamako - Centre', label: 'Bamako Centre' },
-          { value: '🇲🇱 Bamako - Hippodrome', label: 'Bamako Hippodrome' },
-          { value: '🇲🇱 Bamako - Badalabougou', label: 'Bamako Badalabougou' },
-          { value: '🇲🇱 Sikasso', label: 'Sikasso' },
+          { value: '\uD83C\uDDF2\uD83C\uDDF1 Bamako - Centre', label: 'Bamako Centre' },
+          { value: '\uD83C\uDDF2\uD83C\uDDF1 Bamako - Hippodrome', label: 'Bamako Hippodrome' },
+          { value: '\uD83C\uDDF2\uD83C\uDDF1 Bamako - Badalabougou', label: 'Bamako Badalabougou' },
+          { value: '\uD83C\uDDF2\uD83C\uDDF1 Sikasso', label: 'Sikasso' },
 
           // ═══ BÉNIN ═══
-          { value: '🇧🇯 Cotonou - Centre', label: 'Cotonou Centre' },
-          { value: '🇧🇯 Cotonou - Cadjèhoun', label: 'Cotonou Cadjèhoun' },
-          { value: '🇧🇯 Porto-Novo', label: 'Porto-Novo' },
+          { value: '\uD83C\uDDE7\uD83C\uDDEF Cotonou - Centre', label: 'Cotonou Centre' },
+          { value: '\uD83C\uDDE7\uD83C\uDDEF Cotonou - Cadjèhoun', label: 'Cotonou Cadjèhoun' },
+          { value: '\uD83C\uDDE7\uD83C\uDDEF Porto-Novo', label: 'Porto-Novo' },
 
           // ═══ TOGO ═══
-          { value: '🇹🇬 Lomé - Centre', label: 'Lomé Centre' },
-          { value: '🇹🇬 Lomé - Kodjoviakopé', label: 'Lomé Kodjoviakopé' },
+          { value: '\uD83C\uDDF9\uD83C\uDDEC Lomé - Centre', label: 'Lomé Centre' },
+          { value: '\uD83C\uDDF9\uD83C\uDDEC Lomé - Kodjoviakopé', label: 'Lomé Kodjoviakopé' },
 
           // ═══ NIGER ═══
-          { value: '🇳🇪 Niamey', label: 'Niamey' },
+          { value: '\uD83C\uDDF3\uD83C\uDDEA Niamey', label: 'Niamey' },
 
           // ═══ TCHAD ═══
-          { value: '🇹🇩 N\'Djamena', label: 'N\'Djamena' },
+          { value: '\uD83C\uDDF9\uD83C\uDDE9 N\'Djamena', label: 'N\'Djamena' },
 
           // Zone large
-          { value: '🌍 Toute la ville', label: 'Toute la ville' },
-          { value: '🌍 Toute l\'Afrique francophone', label: 'Toute l\'Afrique francophone' },
+          { value: '\uD83C\uDF0D Toute la ville', label: 'Toute la ville' },
+          { value: '\uD83C\uDF0D Toute l\'Afrique francophone', label: 'Toute l\'Afrique francophone' },
         ],
       },
 
@@ -10822,7 +10822,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#10B981',
       gradientColors: ['#10B981', '#059669'],
-      icon: '🧹',
+      icon: '\uD83E\uDDF9',
       badgeColor: '#D1FAE5',
       accentColor: '#059669',
     },
@@ -10852,7 +10852,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
   },
 
   // ════════════════════════════════════════════════════════════
-  // 🧘 BIEN-ÊTRE & SPA - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
+  // \uD83E\uDDD8 BIEN-ÊTRE & SPA - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
   // ════════════════════════════════════════════════════════════
   // Massages (Suédois, Thai, Californien, Ayurvédique, Africain),
   // Spa (Hammam, Sauna, Jacuzzi, Balnéothérapie, Thalasso),
@@ -11162,35 +11162,35 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           // Cameroun
-          { value: '🇨🇲 La Source du Nil (Yaoundé)', label: '🇨🇲 La Source du Nil' },
-          { value: '🇨🇲 Hilton Spa Yaoundé', label: '🇨🇲 Hilton Spa Yaoundé' },
-          { value: '🇨🇲 Merina Hotel Spa (Yaoundé)', label: '🇨🇲 Merina Hotel Spa' },
-          { value: '🇨🇲 Pullman Douala Spa', label: '🇨🇲 Pullman Douala Spa' },
-          { value: '🇨🇲 Sawa Hotel Spa (Douala)', label: '🇨🇲 Sawa Hotel Spa' },
-          { value: '🇨🇲 Azur Bien-Être (Douala)', label: '🇨🇲 Azur Bien-Être' },
-          { value: '🇨🇲 Zen Attitude Spa (Yaoundé)', label: '🇨🇲 Zen Attitude' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 La Source du Nil (Yaoundé)', label: '\uD83C\uDDE8\uD83C\uDDF2 La Source du Nil' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Hilton Spa Yaoundé', label: '\uD83C\uDDE8\uD83C\uDDF2 Hilton Spa Yaoundé' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Merina Hotel Spa (Yaoundé)', label: '\uD83C\uDDE8\uD83C\uDDF2 Merina Hotel Spa' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Pullman Douala Spa', label: '\uD83C\uDDE8\uD83C\uDDF2 Pullman Douala Spa' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Sawa Hotel Spa (Douala)', label: '\uD83C\uDDE8\uD83C\uDDF2 Sawa Hotel Spa' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Azur Bien-Être (Douala)', label: '\uD83C\uDDE8\uD83C\uDDF2 Azur Bien-Être' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Zen Attitude Spa (Yaoundé)', label: '\uD83C\uDDE8\uD83C\uDDF2 Zen Attitude' },
 
           // Côte d\'Ivoire
-          { value: '🇨🇮 Sofitel Abidjan Spa', label: '🇨🇮 Sofitel Abidjan' },
-          { value: '🇨🇮 Ivoire Hotel Spa', label: '🇨🇮 Ivoire Hotel Spa' },
-          { value: '🇨🇮 Azalaï Spa (Abidjan)', label: '🇨🇮 Azalaï Spa' },
-          { value: '🇨🇮 Wellness Center Abidjan', label: '🇨🇮 Wellness Center' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Sofitel Abidjan Spa', label: '\uD83C\uDDE8\uD83C\uDDEE Sofitel Abidjan' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Ivoire Hotel Spa', label: '\uD83C\uDDE8\uD83C\uDDEE Ivoire Hotel Spa' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Azalaï Spa (Abidjan)', label: '\uD83C\uDDE8\uD83C\uDDEE Azalaï Spa' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Wellness Center Abidjan', label: '\uD83C\uDDE8\uD83C\uDDEE Wellness Center' },
 
           // Sénégal
-          { value: '🇸🇳 Terrou-Bi Spa (Dakar)', label: '🇸🇳 Terrou-Bi Spa' },
-          { value: '🇸🇳 Radisson Blu Spa Dakar', label: '🇸🇳 Radisson Blu Spa' },
-          { value: '🇸🇳 King Fahd Palace Spa', label: '🇸🇳 King Fahd Palace' },
-          { value: '🇸🇳 Spa Djoloff (Dakar)', label: '🇸🇳 Spa Djoloff' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Terrou-Bi Spa (Dakar)', label: '\uD83C\uDDF8\uD83C\uDDF3 Terrou-Bi Spa' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Radisson Blu Spa Dakar', label: '\uD83C\uDDF8\uD83C\uDDF3 Radisson Blu Spa' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 King Fahd Palace Spa', label: '\uD83C\uDDF8\uD83C\uDDF3 King Fahd Palace' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Spa Djoloff (Dakar)', label: '\uD83C\uDDF8\uD83C\uDDF3 Spa Djoloff' },
 
           // Gabon
-          { value: '🇬🇦 Radisson Blu Spa Libreville', label: '🇬🇦 Radisson Blu Libreville' },
-          { value: '🇬🇦 Hibiscus Spa (Libreville)', label: '🇬🇦 Hibiscus Spa' },
+          { value: '\uD83C\uDDEC\uD83C\uDDE6 Radisson Blu Spa Libreville', label: '\uD83C\uDDEC\uD83C\uDDE6 Radisson Blu Libreville' },
+          { value: '\uD83C\uDDEC\uD83C\uDDE6 Hibiscus Spa (Libreville)', label: '\uD83C\uDDEC\uD83C\uDDE6 Hibiscus Spa' },
 
           // Congo
-          { value: '🇨🇬 Pefaco Spa (Brazzaville)', label: '🇨🇬 Pefaco Spa' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEC Pefaco Spa (Brazzaville)', label: '\uD83C\uDDE8\uD83C\uDDEC Pefaco Spa' },
 
           // Autres
-          { value: '🆕 Autre spa (ajouter)', label: '🆕 Autre (ajouter)' },
+          { value: '\uD83C\uDD95 Autre spa (ajouter)', label: '\uD83C\uDD95 Autre (ajouter)' },
         ],
       },
 
@@ -11213,7 +11213,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#14B8A6',
       gradientColors: ['#14B8A6', '#0D9488'],
-      icon: '🧘',
+      icon: '\uD83E\uDDD8',
       badgeColor: '#CCFBF1',
       accentColor: '#0D9488',
     },
@@ -11226,7 +11226,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     searchKeywords: ['spa', 'massage', 'bien-être', 'détente', 'relaxation', 'hammam', 'sauna', 'jacuzzi', 'balnéo', 'thalasso', 'soin', 'visage', 'corporel', 'gommage', 'réflexologie', 'aromathérapie', 'reiki', 'yoga', 'méditation', 'sophrologie', 'anti-stress', 'détox', 'minceur', 'drainage', 'thérapeute', 'masseur', 'esthétique', 'karité', 'argan', 'huile', 'pierre chaude', 'thai', 'suédois', 'californien', 'ayurvédique', 'shiatsu', 'balinais', 'sportif', 'prénatal'],
   },
 
-  // 🌱 PRODUCTEURS LOCAUX (Agriculture & Élevage)
+  // \uD83C\uDF31 PRODUCTEURS LOCAUX (Agriculture & Élevage)
   // ✅ RENOMMÉ de "agriculture" → "producteurs_locaux" pour mieux refléter le contenu
   producteurs_locaux: {
     terminology: {
@@ -11251,11 +11251,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Catégorie',
         type: 'select',
         options: [
-          { value: '🌾 Agriculture (Plantes, Fruits, Légumes)', label: '🌾 Agriculture' },
-          { value: '🐄 Élevage (Animaux, Viande, Lait)', label: '🐄 Élevage' },
-          { value: '🐟 Pêche & Aquaculture', label: '🐟 Pêche/Aquaculture' },
-          { value: '🐝 Apiculture (Miel, Cire, Gelée royale)', label: '🐝 Apiculture' },
-          { value: '🌿 Cultures de rente (Cacao, Café, Thé)', label: '🌿 Cultures de rente' },
+          { value: '\uD83C\uDF3E Agriculture (Plantes, Fruits, Légumes)', label: '\uD83C\uDF3E Agriculture' },
+          { value: '\uD83D\uDC04 Élevage (Animaux, Viande, Lait)', label: '\uD83D\uDC04 Élevage' },
+          { value: '\uD83D\uDC1F Pêche & Aquaculture', label: '\uD83D\uDC1F Pêche/Aquaculture' },
+          { value: '\uD83D\uDC1D Apiculture (Miel, Cire, Gelée royale)', label: '\uD83D\uDC1D Apiculture' },
+          { value: '\uD83C\uDF3F Cultures de rente (Cacao, Café, Thé)', label: '\uD83C\uDF3F Cultures de rente' },
           { value: '⚒️ Matériel agricole (Outil, Intrants)', label: '⚒️ Matériel agricole' },
         ],
       },
@@ -11266,33 +11266,33 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           // Céréales
-          { value: '🌾 Maïs (grain, épi, blanc, jaune)', label: '🌾 Maïs' },
-          { value: '🌾 Riz (paddy, cargo, blanc, parfumé)', label: '🌾 Riz' },
-          { value: '🌾 Mil (petit mil, sorgho)', label: '🌾 Mil/Sorgho' },
+          { value: '\uD83C\uDF3E Maïs (grain, épi, blanc, jaune)', label: '\uD83C\uDF3E Maïs' },
+          { value: '\uD83C\uDF3E Riz (paddy, cargo, blanc, parfumé)', label: '\uD83C\uDF3E Riz' },
+          { value: '\uD83C\uDF3E Mil (petit mil, sorgho)', label: '\uD83C\uDF3E Mil/Sorgho' },
           // Tubercules
-          { value: '🥔 Manioc (frais, amer, doux)', label: '🥔 Manioc' },
-          { value: '🍠 Igname (blanche, jaune, locale)', label: '🍠 Igname' },
-          { value: '🍠 Patate douce (orange, blanche, violette)', label: '🍠 Patate douce' },
+          { value: '\uD83E\uDD54 Manioc (frais, amer, doux)', label: '\uD83E\uDD54 Manioc' },
+          { value: '\uD83C\uDF60 Igname (blanche, jaune, locale)', label: '\uD83C\uDF60 Igname' },
+          { value: '\uD83C\uDF60 Patate douce (orange, blanche, violette)', label: '\uD83C\uDF60 Patate douce' },
           // Légumes
-          { value: '🥬 Légumes feuilles (Sauce, Mbongo, Ndolé)', label: '🥬 Légumes feuilles' },
-          { value: '🍅 Tomate locale', label: '🍅 Tomate' },
-          { value: '🥒 Courgette/Aubergine', label: '🥒 Courgette' },
+          { value: '\uD83E\uDD6C Légumes feuilles (Sauce, Mbongo, Ndolé)', label: '\uD83E\uDD6C Légumes feuilles' },
+          { value: '\uD83C\uDF45 Tomate locale', label: '\uD83C\uDF45 Tomate' },
+          { value: '\uD83E\uDD52 Courgette/Aubergine', label: '\uD83E\uDD52 Courgette' },
           // Fruits
-          { value: '🍌 Banane plantain', label: '🍌 Banane plantain' },
-          { value: '🍌 Banane douce', label: '🍌 Banane douce' },
-          { value: '🥭 Mange', label: '🥭 Mange' },
-          { value: '🥑 Avocat', label: '🥑 Avocat' },
-          { value: '🍍 Ananas', label: '🍍 Ananas' },
+          { value: '\uD83C\uDF4C Banane plantain', label: '\uD83C\uDF4C Banane plantain' },
+          { value: '\uD83C\uDF4C Banane douce', label: '\uD83C\uDF4C Banane douce' },
+          { value: '\uD83E\uDD6D Mange', label: '\uD83E\uDD6D Mange' },
+          { value: '\uD83E\uDD51 Avocat', label: '\uD83E\uDD51 Avocat' },
+          { value: '\uD83C\uDF4D Ananas', label: '\uD83C\uDF4D Ananas' },
           // Légumineuses
-          { value: '🫘 Niébé (haricot blanc local)', label: '🫘 Niébé' },
-          { value: '🫘 Arachide (coque, décortiquée)', label: '🫘 Arachide' },
+          { value: '\uD83E\uDED8 Niébé (haricot blanc local)', label: '\uD83E\uDED8 Niébé' },
+          { value: '\uD83E\uDED8 Arachide (coque, décortiquée)', label: '\uD83E\uDED8 Arachide' },
           // Épices
-          { value: '🌶️ Piment (rouge, vert, séché)', label: '🌶️ Piment' },
-          { value: '🌶️ Poivre de Penja (Cameroun)', label: '🌶️ Poivre Penja' },
+          { value: '\uD83C\uDF36️ Piment (rouge, vert, séché)', label: '\uD83C\uDF36️ Piment' },
+          { value: '\uD83C\uDF36️ Poivre de Penja (Cameroun)', label: '\uD83C\uDF36️ Poivre Penja' },
           // Cultures de rente
           { value: '☕ Café (arabica, robusta)', label: '☕ Café' },
-          { value: '🍫 Cacao (fève, marchand, fin)', label: '🍫 Cacao' },
-          { value: '🍵 Thé (vert, noir)', label: '🍵 Thé' },
+          { value: '\uD83C\uDF6B Cacao (fève, marchand, fin)', label: '\uD83C\uDF6B Cacao' },
+          { value: '\uD83C\uDF75 Thé (vert, noir)', label: '\uD83C\uDF75 Thé' },
         ],
       },
       // ✅ FILTRE 3 : Animaux d'élevage
@@ -11302,31 +11302,31 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           // Bovins
-          { value: '🐄 Bœuf (adulte, race locale)', label: '🐄 Bœuf' },
-          { value: '🐄 Vache (laitière, allaitante)', label: '🐄 Vache' },
-          { value: '🐂 Zébu (Foulbé, Bororo)', label: '🐂 Zébu' },
-          { value: '🐂 Goudali (race camerounaise)', label: '🐂 Goudali' },
-          { value: '🐮 Veau de lait', label: '🐮 Veau' },
+          { value: '\uD83D\uDC04 Bœuf (adulte, race locale)', label: '\uD83D\uDC04 Bœuf' },
+          { value: '\uD83D\uDC04 Vache (laitière, allaitante)', label: '\uD83D\uDC04 Vache' },
+          { value: '\uD83D\uDC02 Zébu (Foulbé, Bororo)', label: '\uD83D\uDC02 Zébu' },
+          { value: '\uD83D\uDC02 Goudali (race camerounaise)', label: '\uD83D\uDC02 Goudali' },
+          { value: '\uD83D\uDC2E Veau de lait', label: '\uD83D\uDC2E Veau' },
           // Ovins
-          { value: '🐏 Mouton Djallonké (race locale)', label: '🐏 Mouton Djallonké' },
-          { value: '🐑 Agneau (de lait, sevré)', label: '🐑 Agneau' },
+          { value: '\uD83D\uDC0F Mouton Djallonké (race locale)', label: '\uD83D\uDC0F Mouton Djallonké' },
+          { value: '\uD83D\uDC11 Agneau (de lait, sevré)', label: '\uD83D\uDC11 Agneau' },
           // Caprins
-          { value: '🐐 Chèvre (naine, sahélienne)', label: '🐐 Chèvre' },
-          { value: '🐐 Cabri (chevreau)', label: '🐐 Cabri' },
+          { value: '\uD83D\uDC10 Chèvre (naine, sahélienne)', label: '\uD83D\uDC10 Chèvre' },
+          { value: '\uD83D\uDC10 Cabri (chevreau)', label: '\uD83D\uDC10 Cabri' },
           // Porcins
-          { value: '🐖 Porc (local, amélioré, d\'embouche)', label: '🐖 Porc' },
-          { value: '🐷 Porcelet (sevré, de lait)', label: '🐷 Porcelet' },
+          { value: '\uD83D\uDC16 Porc (local, amélioré, d\'embouche)', label: '\uD83D\uDC16 Porc' },
+          { value: '\uD83D\uDC37 Porcelet (sevré, de lait)', label: '\uD83D\uDC37 Porcelet' },
           // Volailles
-          { value: '🐔 Poulet (de chair, fermier, local)', label: '🐔 Poulet' },
-          { value: '🐔 Poule pondeuse', label: '🐔 Poule pondeuse' },
-          { value: '🐥 Poussin (1 jour, démarré, 21 jours)', label: '🐥 Poussin' },
-          { value: '🦆 Canard (de Barbarie, mulard)', label: '🦆 Canard' },
-          { value: '🦃 Dinde (locale, dindonneau)', label: '🦃 Dinde' },
-          { value: '🐦 Pintade (locale, pintadeaux)', label: '🐦 Pintade' },
+          { value: '\uD83D\uDC14 Poulet (de chair, fermier, local)', label: '\uD83D\uDC14 Poulet' },
+          { value: '\uD83D\uDC14 Poule pondeuse', label: '\uD83D\uDC14 Poule pondeuse' },
+          { value: '\uD83D\uDC25 Poussin (1 jour, démarré, 21 jours)', label: '\uD83D\uDC25 Poussin' },
+          { value: '\uD83E\uDD86 Canard (de Barbarie, mulard)', label: '\uD83E\uDD86 Canard' },
+          { value: '\uD83E\uDD83 Dinde (locale, dindonneau)', label: '\uD83E\uDD83 Dinde' },
+          { value: '\uD83D\uDC26 Pintade (locale, pintadeaux)', label: '\uD83D\uDC26 Pintade' },
           // Autres
-          { value: '🐰 Lapin (fermier, géant)', label: '🐰 Lapin' },
-          { value: '🐟 Tilapia (alevins, poisson table)', label: '🐟 Tilapia' },
-          { value: '🐟 Poisson-chat (Clarias)', label: '🐟 Poisson-chat' },
+          { value: '\uD83D\uDC30 Lapin (fermier, géant)', label: '\uD83D\uDC30 Lapin' },
+          { value: '\uD83D\uDC1F Tilapia (alevins, poisson table)', label: '\uD83D\uDC1F Tilapia' },
+          { value: '\uD83D\uDC1F Poisson-chat (Clarias)', label: '\uD83D\uDC1F Poisson-chat' },
         ],
       },
       // ✅ FILTRE 4 : Unité de mesure africaine
@@ -11340,24 +11340,24 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: '⚖️ Quintal (100 kg)', label: '⚖️ Quintal' },
           { value: '⚖️ Tonne (1000 kg)', label: '⚖️ Tonne' },
           // Seaux (très utilisé en Afrique!)
-          { value: '🪣 Seau 5L', label: '🪣 Seau 5L' },
-          { value: '🪣 Seau 10L', label: '🪣 Seau 10L' },
-          { value: '🪣 Seau 15L (standard)', label: '🪣 Seau 15L' },
-          { value: '🪣 Seau 20L', label: '🪣 Seau 20L' },
+          { value: '\uD83E\uDEA3 Seau 5L', label: '\uD83E\uDEA3 Seau 5L' },
+          { value: '\uD83E\uDEA3 Seau 10L', label: '\uD83E\uDEA3 Seau 10L' },
+          { value: '\uD83E\uDEA3 Seau 15L (standard)', label: '\uD83E\uDEA3 Seau 15L' },
+          { value: '\uD83E\uDEA3 Seau 20L', label: '\uD83E\uDEA3 Seau 20L' },
           // Sacs
-          { value: '💼 Sac 25 kg (standard)', label: '💼 Sac 25kg' },
-          { value: '💼 Sac 50 kg', label: '💼 Sac 50kg' },
-          { value: '💼 Sac 100 kg', label: '💼 Sac 100kg' },
+          { value: '\uD83D\uDCBC Sac 25 kg (standard)', label: '\uD83D\uDCBC Sac 25kg' },
+          { value: '\uD83D\uDCBC Sac 50 kg', label: '\uD83D\uDCBC Sac 50kg' },
+          { value: '\uD83D\uDCBC Sac 100 kg', label: '\uD83D\uDCBC Sac 100kg' },
           // Cagio/Cageot
-          { value: '🧺 Cagio (petit, moyen, grand)', label: '🧺 Cagio/Cageot' },
+          { value: '\uD83E\uDDFA Cagio (petit, moyen, grand)', label: '\uD83E\uDDFA Cagio/Cageot' },
           // Tas (pour ignames, manioc)
-          { value: '🥔 Tas (10-20 tubercules)', label: '🥔 Tas (tubercules)' },
+          { value: '\uD83E\uDD54 Tas (10-20 tubercules)', label: '\uD83E\uDD54 Tas (tubercules)' },
           // Liasse/Botte (légumes feuilles)
-          { value: '🥬 Liasse (petite, moyenne, grande)', label: '🥬 Liasse/Botte' },
+          { value: '\uD83E\uDD6C Liasse (petite, moyenne, grande)', label: '\uD83E\uDD6C Liasse/Botte' },
           // Alvéole (œufs)
-          { value: '🥚 Alvéole 12 œufs (1 douzaine)', label: '🥚 Douzaine d\'œufs' },
+          { value: '\uD83E\uDD5A Alvéole 12 œufs (1 douzaine)', label: '\uD83E\uDD5A Douzaine d\'œufs' },
           // Régime (bananes, plantains)
-          { value: '🍌 Régime complet (bananes)', label: '🍌 Régime (bananes)' },
+          { value: '\uD83C\uDF4C Régime complet (bananes)', label: '\uD83C\uDF4C Régime (bananes)' },
           // Unité/Pièce
           { value: '1️⃣ Tête (animal sur pied)', label: '1️⃣ Tête (animal)' },
           { value: '1️⃣ Unité/Pièce', label: '1️⃣ Unité' },
@@ -11369,19 +11369,19 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de vente',
         type: 'multiselect',
         options: [
-          { value: '🛒 Vente directe producteur', label: '🛒 Direct producteur' },
-          { value: '🛒 Circuit court', label: '🛒 Circuit court' },
-          { value: '🏪 Vente au détail', label: '🏪 Détail' },
-          { value: '🏪 Vente en gros', label: '🏪 Gros' },
-          { value: '🏪 Vente au marché', label: '🏪 Au marché' },
-          { value: '🏪 Vente à domicile', label: '🏪 À domicile' },
-          { value: '🚚 Livraison possible', label: '🚚 Livraison' },
-          { value: '💰 Prix négociable', label: '💰 Prix négociable' },
-          { value: '📞 Sur commande', label: '📞 Sur commande' },
-          { value: '📞 Stock disponible', label: '📞 En stock' },
+          { value: '\uD83D\uDED2 Vente directe producteur', label: '\uD83D\uDED2 Direct producteur' },
+          { value: '\uD83D\uDED2 Circuit court', label: '\uD83D\uDED2 Circuit court' },
+          { value: '\uD83C\uDFEA Vente au détail', label: '\uD83C\uDFEA Détail' },
+          { value: '\uD83C\uDFEA Vente en gros', label: '\uD83C\uDFEA Gros' },
+          { value: '\uD83C\uDFEA Vente au marché', label: '\uD83C\uDFEA Au marché' },
+          { value: '\uD83C\uDFEA Vente à domicile', label: '\uD83C\uDFEA À domicile' },
+          { value: '\uD83D\uDE9A Livraison possible', label: '\uD83D\uDE9A Livraison' },
+          { value: '\uD83D\uDCB0 Prix négociable', label: '\uD83D\uDCB0 Prix négociable' },
+          { value: '\uD83D\uDCDE Sur commande', label: '\uD83D\uDCDE Sur commande' },
+          { value: '\uD83D\uDCDE Stock disponible', label: '\uD83D\uDCDE En stock' },
           // ✅ TERMES LOCAUX
-          { value: '🏪 Bayam-Selam (Cameroun)', label: '🏪 Bayam-Selam (CM)' },
-          { value: '🏪 Boulot (révendeur)', label: '🏪 Boulot (révendeur)' },
+          { value: '\uD83C\uDFEA Bayam-Selam (Cameroun)', label: '\uD83C\uDFEA Bayam-Selam (CM)' },
+          { value: '\uD83C\uDFEA Boulot (révendeur)', label: '\uD83C\uDFEA Boulot (révendeur)' },
         ],
       },
       // ✅ FILTRE 6 : Origine/Géographique
@@ -11391,19 +11391,19 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           // Cameroun (Focus)
-          { value: '🇨🇲 Cameroun - Littoral (Douala, Édéa)', label: '🇨🇲 Littoral' },
-          { value: '🇨🇲 Cameroun - Centre (Yaoundé, Mbalmayo)', label: '🇨🇲 Centre' },
-          { value: '🇨🇲 Cameroun - Ouest (Bafoussam, Dschang)', label: '🇨🇲 Ouest' },
-          { value: '🇨🇲 Cameroun - Nord (Garoua)', label: '🇨🇲 Nord' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Cameroun - Littoral (Douala, Édéa)', label: '\uD83C\uDDE8\uD83C\uDDF2 Littoral' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Cameroun - Centre (Yaoundé, Mbalmayo)', label: '\uD83C\uDDE8\uD83C\uDDF2 Centre' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Cameroun - Ouest (Bafoussam, Dschang)', label: '\uD83C\uDDE8\uD83C\uDDF2 Ouest' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Cameroun - Nord (Garoua)', label: '\uD83C\uDDE8\uD83C\uDDF2 Nord' },
           // Autres pays
-          { value: '🇨🇮 Côte d\'Ivoire', label: '🇨🇮 Côte d\'Ivoire' },
-          { value: '🇸🇳 Sénégal', label: '🇸🇳 Sénégal' },
-          { value: '🇲🇱 Mali', label: '🇲🇱 Mali' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Côte d\'Ivoire', label: '\uD83C\uDDE8\uD83C\uDDEE Côte d\'Ivoire' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Sénégal', label: '\uD83C\uDDF8\uD83C\uDDF3 Sénégal' },
+          { value: '\uD83C\uDDF2\uD83C\uDDF1 Mali', label: '\uD83C\uDDF2\uD83C\uDDF1 Mali' },
           // Production locale
-          { value: '🏡 Production locale (village)', label: '🏡 Production locale' },
-          { value: '🏡 Exploitation familiale', label: '🏡 Exploitation familiale' },
+          { value: '\uD83C\uDFE1 Production locale (village)', label: '\uD83C\uDFE1 Production locale' },
+          { value: '\uD83C\uDFE1 Exploitation familiale', label: '\uD83C\uDFE1 Exploitation familiale' },
           // Importation
-          { value: '🌍 Importé Europe', label: '🌍 Importé Europe' },
+          { value: '\uD83C\uDF0D Importé Europe', label: '\uD83C\uDF0D Importé Europe' },
         ],
       },
       // ✅ FILTRE 7 : Méthode de production
@@ -11412,15 +11412,15 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Méthode de production',
         type: 'multiselect',
         options: [
-          { value: '🌱 Agriculture biologique', label: '🌱 Bio' },
-          { value: '🌱 Agriculture raisonnée', label: '🌱 Raisonné' },
-          { value: '🌱 Permaculture', label: '🌱 Permaculture' },
-          { value: '🌱 Culture traditionnelle', label: '🌱 Traditionnel' },
-          { value: '🌱 Culture en serre', label: '🌱 Serre' },
-          { value: '🌱 Plein champ', label: '🌱 Plein champ' },
-          { value: '🐄 Élevage extensif (pâturage)', label: '🐄 Extensif' },
-          { value: '🐄 Élevage fermier', label: '🐄 Fermier' },
-          { value: '🐄 Embouche (engraissement)', label: '🐄 Embouche' },
+          { value: '\uD83C\uDF31 Agriculture biologique', label: '\uD83C\uDF31 Bio' },
+          { value: '\uD83C\uDF31 Agriculture raisonnée', label: '\uD83C\uDF31 Raisonné' },
+          { value: '\uD83C\uDF31 Permaculture', label: '\uD83C\uDF31 Permaculture' },
+          { value: '\uD83C\uDF31 Culture traditionnelle', label: '\uD83C\uDF31 Traditionnel' },
+          { value: '\uD83C\uDF31 Culture en serre', label: '\uD83C\uDF31 Serre' },
+          { value: '\uD83C\uDF31 Plein champ', label: '\uD83C\uDF31 Plein champ' },
+          { value: '\uD83D\uDC04 Élevage extensif (pâturage)', label: '\uD83D\uDC04 Extensif' },
+          { value: '\uD83D\uDC04 Élevage fermier', label: '\uD83D\uDC04 Fermier' },
+          { value: '\uD83D\uDC04 Embouche (engraissement)', label: '\uD83D\uDC04 Embouche' },
         ],
       },
       // ✅ FILTRE 8 : Qualité & Labels
@@ -11434,9 +11434,9 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: '✅ Sans pesticides', label: '✅ Sans pesticides' },
           { value: '✅ Sans OGM', label: '✅ Sans OGM' },
           { value: '✅ Halal', label: '✅ Halal' },
-          { value: '🌟 Qualité premium', label: '🌟 Premium' },
-          { value: '🌟 Produit frais du jour', label: '🌟 Frais du jour' },
-          { value: '🌟 Production locale', label: '🌟 Local' },
+          { value: '\uD83C\uDF1F Qualité premium', label: '\uD83C\uDF1F Premium' },
+          { value: '\uD83C\uDF1F Produit frais du jour', label: '\uD83C\uDF1F Frais du jour' },
+          { value: '\uD83C\uDF1F Production locale', label: '\uD83C\uDF1F Local' },
         ],
       },
       // ✅ FILTRE 9 : Saison & Disponibilité
@@ -11445,10 +11445,10 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Saison',
         type: 'select',
         options: [
-          { value: '🌞 Toute l\'année', label: '🌞 Toute l\'année' },
+          { value: '\uD83C\uDF1E Toute l\'année', label: '\uD83C\uDF1E Toute l\'année' },
           { value: '☔ Saison des pluies (Mars-Octobre)', label: '☔ Saison pluies' },
           { value: '☀️ Saison sèche (Novembre-Février)', label: '☀️ Saison sèche' },
-          { value: '🌾 Période de récolte', label: '🌾 Récolte' },
+          { value: '\uD83C\uDF3E Période de récolte', label: '\uD83C\uDF3E Récolte' },
           { value: '⏰ Sur commande uniquement', label: '⏰ Sur commande' },
         ],
       },
@@ -11460,17 +11460,17 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         options: [
           { value: '✨ Ultra-frais (récolte jour même)', label: '✨ Ultra-frais' },
           { value: '✨ Très frais (récolte veille)', label: '✨ Très frais' },
-          { value: '🐄 Animal vivant sur pied', label: '🐄 Vivant' },
-          { value: '🐄 Bonne santé, vacciné', label: '🐄 Bonne santé' },
-          { value: '📦 Produit brut', label: '📦 Brut' },
-          { value: '📦 Nettoyé, lavé', label: '📦 Nettoyé' },
+          { value: '\uD83D\uDC04 Animal vivant sur pied', label: '\uD83D\uDC04 Vivant' },
+          { value: '\uD83D\uDC04 Bonne santé, vacciné', label: '\uD83D\uDC04 Bonne santé' },
+          { value: '\uD83D\uDCE6 Produit brut', label: '\uD83D\uDCE6 Brut' },
+          { value: '\uD83D\uDCE6 Nettoyé, lavé', label: '\uD83D\uDCE6 Nettoyé' },
         ],
       },
     ],
     style: {
       primaryColor: '#10B981',
       gradientColors: ['#10B981', '#059669'],
-      icon: '🌱',
+      icon: '\uD83C\uDF31',
       badgeColor: '#D1FAE5',
       accentColor: '#059669',
     },
@@ -11486,13 +11486,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
       'maïs', 'riz', 'manioc', 'igname', 'banane', 'plantain', 'tomate', 'oignon',
       'bœuf', 'mouton', 'chèvre', 'porc', 'poulet', 'canard', 'dinde', 'pintade',
       'cacao', 'café', 'thé', 'arachide', 'haricot', 'niébé',
-      // 🇨🇲 Termes Camerounais
+      // \uD83C\uDDE8\uD83C\uDDF2 Termes Camerounais
       'bayam-selam', 'bayamselam', 'boulot', 'bicycle', 'poulet bicycle', 'poulet local',
       'goudali', 'zébu', 'djallonké', 'mbongo', 'ndolé', 'poulet bicyclette',
       'fournisseur', 'ferme', 'marché', 'cout circuit', 'agroforestier',
-      // 🇨🇮 Termes Ivoiriens
+      // \uD83C\uDDE8\uD83C\uDDEE Termes Ivoiriens
       'pla pla', 'agouti', 'nga kabobé',
-      // 🇸🇳 Termes Sénégalais
+      // \uD83C\uDDF8\uD83C\uDDF3 Termes Sénégalais
       'thiouray', 'women food', 'alimentation locale',
       // Unités locales
       'seau', 'cagio', 'cageot', 'tas', 'liasse', 'botte', 'alvéole', 'douzaine',
@@ -11501,7 +11501,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 🧸 JOUETS & ENFANTS (✅ FILTRES ENRICHIS V2)
+  // \uD83E\uDDF8 JOUETS & ENFANTS (✅ FILTRES ENRICHIS V2)
   jouets_enfants: {
     terminology: {
       productLabel: 'Jouet',
@@ -11689,7 +11689,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#FF69B4',
       gradientColors: ['#FF69B4', '#FF1493'],
-      icon: '🧸',
+      icon: '\uD83E\uDDF8',
       badgeColor: '#FFE4E1',
       accentColor: '#FF1493',
     },
@@ -11700,7 +11700,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'grid',
   },
 
-  // 🔧 PIÈCES AUTO - REFONTE COMPLÈTE
+  // \uD83D\uDD27 PIÈCES AUTO - REFONTE COMPLÈTE
   pieces_auto: {
     terminology: {
       productLabel: 'Pièce auto',
@@ -11903,7 +11903,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#607D8B',
       gradientColors: ['#607D8B', '#455A64'],
-      icon: '🔧',
+      icon: '\uD83D\uDD27',
       badgeColor: '#CFD8DC',
       accentColor: '#455A64',
     },
@@ -11914,7 +11914,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'horizontal',
   },
 
-  // 📱 TÉLÉPHONES & ACCESSOIRES - ✅ ENRICHI AFRIQUE FRANCOPHONE
+  // \uD83D\uDCF1 TÉLÉPHONES & ACCESSOIRES - ✅ ENRICHI AFRIQUE FRANCOPHONE
   telephone: {
     terminology: {
       productLabel: 'Smartphone',
@@ -12139,7 +12139,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#FF9800',
       gradientColors: ['#FF9800', '#F57C00'],
-      icon: '📱',
+      icon: '\uD83D\uDCF1',
       badgeColor: '#FFF3E0',
       accentColor: '#E65100',
     },
@@ -12182,7 +12182,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 🔧 RÉPARATEUR TÉLÉPHONE/SMARTPHONE & TABLETTES - ✅ AFRIQUE FRANCOPHONE
+  // \uD83D\uDD27 RÉPARATEUR TÉLÉPHONE/SMARTPHONE & TABLETTES - ✅ AFRIQUE FRANCOPHONE
   reparateur_telephone_tablette: {
     terminology: {
       productLabel: 'Service de réparation',
@@ -12206,21 +12206,21 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de réparation',
         type: 'multiselect',
         options: [
-          { value: 'Remplacement écran', label: '📱 Remplacement écran' },
-          { value: 'Réparation écran fissuré', label: '📱 Réparation écran fissuré' },
-          { value: 'Remplacement batterie', label: '🔋 Remplacement batterie' },
-          { value: 'Réparation port de charge', label: '🔌 Réparation port de charge' },
-          { value: 'Réparation haut-parleur', label: '🔊 Réparation haut-parleur' },
-          { value: 'Réparation microphone', label: '🎤 Réparation microphone' },
-          { value: 'Réparation caméra', label: '📸 Réparation caméra' },
-          { value: 'Déblocage opérateur', label: '🔓 Déblocage opérateur' },
-          { value: 'Déblocage iCloud/Google', label: '🔓 Déblocage iCloud/Google' },
-          { value: 'Flash/Réinstallation système', label: '💾 Flash/Réinstallation' },
-          { value: 'Réparation dégâts eau', label: '💧 Réparation dégâts eau' },
-          { value: 'Remplacement carte mère', label: '🔧 Remplacement carte mère' },
-          { value: 'Micro-soudure', label: '🔧 Micro-soudure' },
-          { value: 'Récupération données', label: '🗑️ Récupération données' },
-          { value: 'Pose film protecteur', label: '🛡️ Pose film protecteur' },
+          { value: 'Remplacement écran', label: '\uD83D\uDCF1 Remplacement écran' },
+          { value: 'Réparation écran fissuré', label: '\uD83D\uDCF1 Réparation écran fissuré' },
+          { value: 'Remplacement batterie', label: '\uD83D\uDD0B Remplacement batterie' },
+          { value: 'Réparation port de charge', label: '\uD83D\uDD0C Réparation port de charge' },
+          { value: 'Réparation haut-parleur', label: '\uD83D\uDD0A Réparation haut-parleur' },
+          { value: 'Réparation microphone', label: '\uD83C\uDFA4 Réparation microphone' },
+          { value: 'Réparation caméra', label: '\uD83D\uDCF8 Réparation caméra' },
+          { value: 'Déblocage opérateur', label: '\uD83D\uDD13 Déblocage opérateur' },
+          { value: 'Déblocage iCloud/Google', label: '\uD83D\uDD13 Déblocage iCloud/Google' },
+          { value: 'Flash/Réinstallation système', label: '\uD83D\uDCBE Flash/Réinstallation' },
+          { value: 'Réparation dégâts eau', label: '\uD83D\uDCA7 Réparation dégâts eau' },
+          { value: 'Remplacement carte mère', label: '\uD83D\uDD27 Remplacement carte mère' },
+          { value: 'Micro-soudure', label: '\uD83D\uDD27 Micro-soudure' },
+          { value: 'Récupération données', label: '\uD83D\uDDD1️ Récupération données' },
+          { value: 'Pose film protecteur', label: '\uD83D\uDEE1️ Pose film protecteur' },
         ],
       },
       // ✅ FILTRE 2 : Marques supportées
@@ -12258,12 +12258,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           { value: 'Express (1-2h)', label: '⚡ Express (1-2h)' },
-          { value: 'Rapide (3-6h)', label: '🚀 Rapide (3-6h)' },
-          { value: 'Jour même', label: '📅 Jour même' },
-          { value: '24-48h', label: '📅 24-48h' },
-          { value: '2-3 jours', label: '📅 2-3 jours' },
-          { value: '3-5 jours', label: '📅 3-5 jours' },
-          { value: '5-7 jours', label: '📅 5-7 jours' },
+          { value: 'Rapide (3-6h)', label: '\uD83D\uDE80 Rapide (3-6h)' },
+          { value: 'Jour même', label: '\uD83D\uDCC5 Jour même' },
+          { value: '24-48h', label: '\uD83D\uDCC5 24-48h' },
+          { value: '2-3 jours', label: '\uD83D\uDCC5 2-3 jours' },
+          { value: '3-5 jours', label: '\uD83D\uDCC5 3-5 jours' },
+          { value: '5-7 jours', label: '\uD83D\uDCC5 5-7 jours' },
         ],
       },
       // ✅ FILTRE 4 : Garantie réparation
@@ -12292,7 +12292,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Pièces compatibles AAA+', label: '✅ Compatibles premium (AAA+)' },
           { value: 'Pièces compatibles AAA', label: '✅ Compatibles supérieure (AAA)' },
           { value: 'Pièces compatibles AA', label: '✅ Compatibles standard (AA)' },
-          { value: 'Choix client', label: '🎁 Choix client (original ou compatible)' },
+          { value: 'Choix client', label: '\uD83C\uDF81 Choix client (original ou compatible)' },
         ],
       },
       // ✅ FILTRE 6 : Type d'intervention
@@ -12301,11 +12301,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type d\'intervention',
         type: 'multiselect',
         options: [
-          { value: 'En boutique', label: '🏪 En boutique/atelier' },
-          { value: 'À domicile', label: '🏠 À domicile' },
-          { value: 'En entreprise', label: '🏢 En entreprise' },
+          { value: 'En boutique', label: '\uD83C\uDFEA En boutique/atelier' },
+          { value: 'À domicile', label: '\uD83C\uDFE0 À domicile' },
+          { value: 'En entreprise', label: '\uD83C\uDFE2 En entreprise' },
           { value: 'Service express', label: '⚡ Service express' },
-          { value: 'Service mobile', label: '🚗 Atelier mobile' },
+          { value: 'Service mobile', label: '\uD83D\uDE97 Atelier mobile' },
         ],
       },
       // ✅ FILTRE 7 : Certifications
@@ -12314,14 +12314,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Certifications',
         type: 'multiselect',
         options: [
-          { value: 'Certifié Apple', label: '🎓 Technicien certifié Apple (ACMT)' },
-          { value: 'Certifié Samsung', label: '🎓 Technicien certifié Samsung' },
-          { value: 'Certifié micro-soudure', label: '🎓 Certifié micro-soudure' },
-          { value: '+5 ans expérience', label: '🏆 +5 ans d\'expérience' },
-          { value: '+10 ans expérience', label: '🏆 +10 ans d\'expérience' },
-          { value: 'Spécialiste iPhone', label: '🛠️ Spécialiste iPhone' },
-          { value: 'Spécialiste Samsung', label: '🛠️ Spécialiste Samsung' },
-          { value: 'Boutique physique', label: '📱 Boutique physique' },
+          { value: 'Certifié Apple', label: '\uD83C\uDF93 Technicien certifié Apple (ACMT)' },
+          { value: 'Certifié Samsung', label: '\uD83C\uDF93 Technicien certifié Samsung' },
+          { value: 'Certifié micro-soudure', label: '\uD83C\uDF93 Certifié micro-soudure' },
+          { value: '+5 ans expérience', label: '\uD83C\uDFC6 +5 ans d\'expérience' },
+          { value: '+10 ans expérience', label: '\uD83C\uDFC6 +10 ans d\'expérience' },
+          { value: 'Spécialiste iPhone', label: '\uD83D\uDEE0️ Spécialiste iPhone' },
+          { value: 'Spécialiste Samsung', label: '\uD83D\uDEE0️ Spécialiste Samsung' },
+          { value: 'Boutique physique', label: '\uD83D\uDCF1 Boutique physique' },
         ],
       },
       // ✅ FILTRE 8 : Services additionnels
@@ -12330,15 +12330,15 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Services additionnels',
         type: 'multiselect',
         options: [
-          { value: 'Diagnostic gratuit', label: '🔍 Diagnostic gratuit' },
-          { value: 'Devis gratuit', label: '🎁 Devis gratuit' },
-          { value: 'Récupération domicile', label: '📦 Récupération domicile gratuite' },
-          { value: 'Livraison domicile', label: '🚗 Livraison domicile gratuite' },
-          { value: 'Paiement mobile money', label: '💳 Paiement mobile money' },
-          { value: 'Paiement plusieurs fois', label: '💳 Paiement en plusieurs fois' },
-          { value: 'Prêt téléphone', label: '🔄 Prêt de téléphone' },
-          { value: 'Support WhatsApp 24/7', label: '💬 Support WhatsApp 24/7' },
-          { value: 'Rachat ancien téléphone', label: '📱 Rachat ancien téléphone' },
+          { value: 'Diagnostic gratuit', label: '\uD83D\uDD0D Diagnostic gratuit' },
+          { value: 'Devis gratuit', label: '\uD83C\uDF81 Devis gratuit' },
+          { value: 'Récupération domicile', label: '\uD83D\uDCE6 Récupération domicile gratuite' },
+          { value: 'Livraison domicile', label: '\uD83D\uDE97 Livraison domicile gratuite' },
+          { value: 'Paiement mobile money', label: '\uD83D\uDCB3 Paiement mobile money' },
+          { value: 'Paiement plusieurs fois', label: '\uD83D\uDCB3 Paiement en plusieurs fois' },
+          { value: 'Prêt téléphone', label: '\uD83D\uDD04 Prêt de téléphone' },
+          { value: 'Support WhatsApp 24/7', label: '\uD83D\uDCAC Support WhatsApp 24/7' },
+          { value: 'Rachat ancien téléphone', label: '\uD83D\uDCF1 Rachat ancien téléphone' },
         ],
       },
       // ✅ FILTRE 9 : États appareils acceptés
@@ -12382,7 +12382,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#10B981',
       gradientColors: ['#10B981', '#059669'],
-      icon: '🔧',
+      icon: '\uD83D\uDD27',
       badgeColor: '#D1FAE5',
       accentColor: '#047857',
     },
@@ -12425,7 +12425,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 💻 RÉPARATEUR INFORMATIQUE (Ordinateurs, Imprimantes, Équipements) - ✅ NOUVEAU 🌍 AFRIQUE
+  // \uD83D\uDCBB RÉPARATEUR INFORMATIQUE (Ordinateurs, Imprimantes, Équipements) - ✅ NOUVEAU \uD83C\uDF0D AFRIQUE
   reparateur_informatique: {
     terminology: {
       productLabel: 'Service de réparation informatique',
@@ -12450,36 +12450,36 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           // Hardware le plus courant
-          { value: 'Réparation écran cassé', label: '💻 Réparation écran cassé' },
-          { value: 'Remplacement batterie', label: '🔋 Remplacement batterie laptop' },
+          { value: 'Réparation écran cassé', label: '\uD83D\uDCBB Réparation écran cassé' },
+          { value: 'Remplacement batterie', label: '\uD83D\uDD0B Remplacement batterie laptop' },
           { value: 'Réparation clavier', label: '⌨️ Réparation/Remplacement clavier' },
-          { value: 'Réparation touchpad', label: '🖱️ Réparation touchpad' },
-          { value: 'Nettoyage ventilateur', label: '🌡️ Nettoyage ventilateur (surchauffe)' },
-          { value: 'Upgrade RAM', label: '🧠 Upgrade RAM (ajout mémoire)' },
-          { value: 'Remplacement SSD', label: '💾 Remplacement/Upgrade SSD' },
-          { value: 'Upgrade HDD vers SSD', label: '💾 Upgrade HDD vers SSD' },
+          { value: 'Réparation touchpad', label: '\uD83D\uDDB1️ Réparation touchpad' },
+          { value: 'Nettoyage ventilateur', label: '\uD83C\uDF21️ Nettoyage ventilateur (surchauffe)' },
+          { value: 'Upgrade RAM', label: '\uD83E\uDDE0 Upgrade RAM (ajout mémoire)' },
+          { value: 'Remplacement SSD', label: '\uD83D\uDCBE Remplacement/Upgrade SSD' },
+          { value: 'Upgrade HDD vers SSD', label: '\uD83D\uDCBE Upgrade HDD vers SSD' },
           // Logiciel très demandé
-          { value: 'Réinstallation Windows', label: '🪟 Réinstallation Windows (10, 11)' },
-          { value: 'Formatage complet', label: '🪟 Formatage complet' },
-          { value: 'Suppression virus', label: '🦠 Suppression virus/malware' },
-          { value: 'Récupération données', label: '🗑️ Récupération de données' },
+          { value: 'Réinstallation Windows', label: '\uD83E\uDE9F Réinstallation Windows (10, 11)' },
+          { value: 'Formatage complet', label: '\uD83E\uDE9F Formatage complet' },
+          { value: 'Suppression virus', label: '\uD83E\uDDA0 Suppression virus/malware' },
+          { value: 'Récupération données', label: '\uD83D\uDDD1️ Récupération de données' },
           { value: 'Optimisation performances', label: '⚡ Optimisation performances (lenteur)' },
-          { value: 'Installation Linux', label: '🐧 Installation Linux Ubuntu/Mint' },
-          { value: 'Dual boot', label: '🔄 Dual boot (Windows + Linux)' },
+          { value: 'Installation Linux', label: '\uD83D\uDC27 Installation Linux Ubuntu/Mint' },
+          { value: 'Dual boot', label: '\uD83D\uDD04 Dual boot (Windows + Linux)' },
           // Imprimantes
-          { value: 'Réparation imprimante jet d\'encre', label: '🖨️ Réparation imprimante jet d\'encre' },
-          { value: 'Réparation imprimante laser', label: '🖨️ Réparation imprimante laser' },
-          { value: 'Déblocage bourrage papier', label: '🖨️ Déblocage bourrage papier' },
-          { value: 'Nettoyage têtes impression', label: '🖨️ Nettoyage têtes d\'impression' },
-          { value: 'Configuration imprimante réseau', label: '🖨️ Configuration imprimante réseau' },
+          { value: 'Réparation imprimante jet d\'encre', label: '\uD83D\uDDA8️ Réparation imprimante jet d\'encre' },
+          { value: 'Réparation imprimante laser', label: '\uD83D\uDDA8️ Réparation imprimante laser' },
+          { value: 'Déblocage bourrage papier', label: '\uD83D\uDDA8️ Déblocage bourrage papier' },
+          { value: 'Nettoyage têtes impression', label: '\uD83D\uDDA8️ Nettoyage têtes d\'impression' },
+          { value: 'Configuration imprimante réseau', label: '\uD83D\uDDA8️ Configuration imprimante réseau' },
           // Réseaux
-          { value: 'Configuration réseau WiFi', label: '📶 Configuration réseau WiFi' },
-          { value: 'Réparation connexion Internet', label: '📶 Réparation connexion Internet' },
-          { value: 'Configuration VPN', label: '🔐 Configuration VPN' },
+          { value: 'Configuration réseau WiFi', label: '\uD83D\uDCF6 Configuration réseau WiFi' },
+          { value: 'Réparation connexion Internet', label: '\uD83D\uDCF6 Réparation connexion Internet' },
+          { value: 'Configuration VPN', label: '\uD83D\uDD10 Configuration VPN' },
           // Avancé
-          { value: 'Réparation carte mère', label: '🔧 Réparation carte mère' },
-          { value: 'Micro-soudure', label: '🔧 Micro-soudure composants' },
-          { value: 'Réparation dégâts liquides', label: '💧 Réparation dégâts liquides' },
+          { value: 'Réparation carte mère', label: '\uD83D\uDD27 Réparation carte mère' },
+          { value: 'Micro-soudure', label: '\uD83D\uDD27 Micro-soudure composants' },
+          { value: 'Réparation dégâts liquides', label: '\uD83D\uDCA7 Réparation dégâts liquides' },
         ],
       },
       // ✅ FILTRE 2 : Marques ordinateurs supportées
@@ -12540,18 +12540,18 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         options: [
           { value: 'Panne logicielle', label: '⚡ Panne logicielle (système)' },
           { value: 'Panne hardware', label: '⚡ Panne hardware (composants)' },
-          { value: 'Virus/Malware', label: '🦠 Virus/Malware/Ransomware' },
-          { value: 'Ordinateur très lent', label: '🐢 Ordinateur très lent' },
-          { value: 'Écran cassé', label: '💻 Écran cassé/défectueux' },
-          { value: 'Surchauffe', label: '🔥 Surchauffe chronique' },
+          { value: 'Virus/Malware', label: '\uD83E\uDDA0 Virus/Malware/Ransomware' },
+          { value: 'Ordinateur très lent', label: '\uD83D\uDC22 Ordinateur très lent' },
+          { value: 'Écran cassé', label: '\uD83D\uDCBB Écran cassé/défectueux' },
+          { value: 'Surchauffe', label: '\uD83D\uDD25 Surchauffe chronique' },
           { value: 'Ne s\'allume plus', label: '❌ Ne s\'allume plus' },
-          { value: 'Problème batterie', label: '🔋 Problème batterie/alimentation' },
-          { value: 'Problème réseau WiFi', label: '📶 Problème réseau/WiFi' },
-          { value: 'Disque dur défaillant', label: '💾 Disque dur défaillant' },
-          { value: 'Dégâts liquides', label: '💧 Dégâts liquides/humidité' },
-          { value: 'Écran bleu', label: '🔵 Écran bleu (BSOD)' },
-          { value: 'Imprimante ne fonctionne plus', label: '🖨️ Imprimante ne fonctionne plus' },
-          { value: 'Bourrage papier', label: '🖨️ Bourrage papier récurrent' },
+          { value: 'Problème batterie', label: '\uD83D\uDD0B Problème batterie/alimentation' },
+          { value: 'Problème réseau WiFi', label: '\uD83D\uDCF6 Problème réseau/WiFi' },
+          { value: 'Disque dur défaillant', label: '\uD83D\uDCBE Disque dur défaillant' },
+          { value: 'Dégâts liquides', label: '\uD83D\uDCA7 Dégâts liquides/humidité' },
+          { value: 'Écran bleu', label: '\uD83D\uDD35 Écran bleu (BSOD)' },
+          { value: 'Imprimante ne fonctionne plus', label: '\uD83D\uDDA8️ Imprimante ne fonctionne plus' },
+          { value: 'Bourrage papier', label: '\uD83D\uDDA8️ Bourrage papier récurrent' },
         ],
       },
       // ✅ FILTRE 5 : Délais de réparation
@@ -12561,10 +12561,10 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           { value: 'Express (30 min - 2h)', label: '⚡ Express (30 min - 2h)' },
-          { value: 'Rapide (même jour)', label: '🚀 Rapide (même jour)' },
-          { value: 'Standard (1-3 jours)', label: '📅 Standard (1-3 jours)' },
+          { value: 'Rapide (même jour)', label: '\uD83D\uDE80 Rapide (même jour)' },
+          { value: 'Standard (1-3 jours)', label: '\uD83D\uDCC5 Standard (1-3 jours)' },
           { value: 'Complexe (3-7 jours)', label: '⏰ Complexe (3-7 jours)' },
-          { value: 'Sur commande (7-15 jours)', label: '🛠️ Sur commande pièces (7-15 jours)' },
+          { value: 'Sur commande (7-15 jours)', label: '\uD83D\uDEE0️ Sur commande pièces (7-15 jours)' },
         ],
       },
       // ✅ FILTRE 6 : Garantie réparation
@@ -12586,17 +12586,17 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Certifications',
         type: 'multiselect',
         options: [
-          { value: 'Certifié HP', label: '🏅 Technicien certifié HP' },
-          { value: 'Certifié Dell', label: '🏅 Technicien certifié Dell' },
-          { value: 'Certifié Apple', label: '🏅 Technicien certifié Apple (ACMT)' },
-          { value: 'Certifié Lenovo', label: '🏅 Technicien certifié Lenovo' },
-          { value: 'CompTIA A+', label: '🎓 Certification CompTIA A+' },
-          { value: 'Microsoft Certified', label: '🎓 Certification Microsoft (MCP)' },
-          { value: 'Cisco CCNA', label: '🎓 Certification Cisco (CCNA)' },
-          { value: '+5 ans expérience', label: '🏆 +5 ans d\'expérience' },
-          { value: '+10 ans expérience', label: '🏆 +10 ans d\'expérience' },
-          { value: 'Micro-soudure certifié', label: '🔬 Formation micro-soudure' },
-          { value: 'Récupération données certifié', label: '💾 Formation récupération données' },
+          { value: 'Certifié HP', label: '\uD83C\uDFC5 Technicien certifié HP' },
+          { value: 'Certifié Dell', label: '\uD83C\uDFC5 Technicien certifié Dell' },
+          { value: 'Certifié Apple', label: '\uD83C\uDFC5 Technicien certifié Apple (ACMT)' },
+          { value: 'Certifié Lenovo', label: '\uD83C\uDFC5 Technicien certifié Lenovo' },
+          { value: 'CompTIA A+', label: '\uD83C\uDF93 Certification CompTIA A+' },
+          { value: 'Microsoft Certified', label: '\uD83C\uDF93 Certification Microsoft (MCP)' },
+          { value: 'Cisco CCNA', label: '\uD83C\uDF93 Certification Cisco (CCNA)' },
+          { value: '+5 ans expérience', label: '\uD83C\uDFC6 +5 ans d\'expérience' },
+          { value: '+10 ans expérience', label: '\uD83C\uDFC6 +10 ans d\'expérience' },
+          { value: 'Micro-soudure certifié', label: '\uD83D\uDD2C Formation micro-soudure' },
+          { value: 'Récupération données certifié', label: '\uD83D\uDCBE Formation récupération données' },
         ],
       },
       // ✅ FILTRE 8 : Services additionnels
@@ -12605,17 +12605,17 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Services additionnels',
         type: 'multiselect',
         options: [
-          { value: 'Diagnostic gratuit', label: '🔍 Diagnostic gratuit' },
-          { value: 'Devis gratuit', label: '🎁 Devis gratuit' },
-          { value: 'Déplacement domicile/bureau', label: '🚚 Déplacement domicile/bureau' },
-          { value: 'Récupération et livraison', label: '📦 Récupération et livraison' },
-          { value: 'Support WhatsApp 24/7', label: '💬 Support WhatsApp 24/7' },
-          { value: 'Support technique à distance', label: '📱 Support technique à distance' },
+          { value: 'Diagnostic gratuit', label: '\uD83D\uDD0D Diagnostic gratuit' },
+          { value: 'Devis gratuit', label: '\uD83C\uDF81 Devis gratuit' },
+          { value: 'Déplacement domicile/bureau', label: '\uD83D\uDE9A Déplacement domicile/bureau' },
+          { value: 'Récupération et livraison', label: '\uD83D\uDCE6 Récupération et livraison' },
+          { value: 'Support WhatsApp 24/7', label: '\uD83D\uDCAC Support WhatsApp 24/7' },
+          { value: 'Support technique à distance', label: '\uD83D\uDCF1 Support technique à distance' },
           { value: 'Intervention urgence', label: '⏰ Intervention urgence (week-end/soir)' },
-          { value: 'Contrat maintenance', label: '💼 Contrat maintenance mensuel' },
-          { value: 'Mobile Money accepté', label: '💳 Mobile Money accepté' },
-          { value: 'Paiement échelonné', label: '💰 Paiement échelonné accepté' },
-          { value: 'Sauvegarde données', label: '💾 Sauvegarde données avant réparation' },
+          { value: 'Contrat maintenance', label: '\uD83D\uDCBC Contrat maintenance mensuel' },
+          { value: 'Mobile Money accepté', label: '\uD83D\uDCB3 Mobile Money accepté' },
+          { value: 'Paiement échelonné', label: '\uD83D\uDCB0 Paiement échelonné accepté' },
+          { value: 'Sauvegarde données', label: '\uD83D\uDCBE Sauvegarde données avant réparation' },
         ],
       },
       // ✅ FILTRE 9 : Équipements atelier
@@ -12624,14 +12624,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Équipements atelier',
         type: 'multiselect',
         options: [
-          { value: 'Station micro-soudure', label: '🔬 Station micro-soudure' },
-          { value: 'Station récupération données', label: '💾 Station récupération données' },
-          { value: 'Microscope réparation', label: '🔬 Microscope réparation' },
-          { value: 'Station air chaud', label: '🌡️ Station air chaud (reballing)' },
+          { value: 'Station micro-soudure', label: '\uD83D\uDD2C Station micro-soudure' },
+          { value: 'Station récupération données', label: '\uD83D\uDCBE Station récupération données' },
+          { value: 'Microscope réparation', label: '\uD83D\uDD2C Microscope réparation' },
+          { value: 'Station air chaud', label: '\uD83C\uDF21️ Station air chaud (reballing)' },
           { value: 'Testeur alimentation', label: '⚡ Testeur alimentation' },
-          { value: 'Testeur batterie', label: '🔋 Testeur batterie' },
-          { value: 'Pièces en stock', label: '🔌 Pièces détachées en stock' },
-          { value: 'Pièces imprimantes stock', label: '🖨️ Pièces imprimantes en stock' },
+          { value: 'Testeur batterie', label: '\uD83D\uDD0B Testeur batterie' },
+          { value: 'Pièces en stock', label: '\uD83D\uDD0C Pièces détachées en stock' },
+          { value: 'Pièces imprimantes stock', label: '\uD83D\uDDA8️ Pièces imprimantes en stock' },
         ],
       },
       // ✅ FILTRE 10 : Type d'intervention
@@ -12640,10 +12640,10 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type d\'intervention',
         type: 'multiselect',
         options: [
-          { value: 'En atelier', label: '🏪 En atelier' },
-          { value: 'À domicile', label: '🏠 À domicile' },
-          { value: 'En entreprise', label: '🏢 En entreprise' },
-          { value: 'À distance', label: '📱 Support à distance' },
+          { value: 'En atelier', label: '\uD83C\uDFEA En atelier' },
+          { value: 'À domicile', label: '\uD83C\uDFE0 À domicile' },
+          { value: 'En entreprise', label: '\uD83C\uDFE2 En entreprise' },
+          { value: 'À distance', label: '\uD83D\uDCF1 Support à distance' },
           { value: 'Service express', label: '⚡ Service express' },
         ],
       },
@@ -12681,7 +12681,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#3B82F6',
       gradientColors: ['#3B82F6', '#2563EB'],
-      icon: '💻',
+      icon: '\uD83D\uDCBB',
       badgeColor: '#DBEAFE',
       accentColor: '#1E40AF',
     },
@@ -12774,7 +12774,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // ❄️ RÉPARATEUR ÉLECTROMÉNAGER - ✅ NOUVEAU 🌍 AFRIQUE
+  // ❄️ RÉPARATEUR ÉLECTROMÉNAGER - ✅ NOUVEAU \uD83C\uDF0D AFRIQUE
   reparateur_electromenager: {
     terminology: {
       productLabel: 'Service de réparation électroménager',
@@ -12804,23 +12804,23 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Rechargement gaz réfrigérant', label: '❄️ Rechargement gaz' },
           { value: 'Remplacement compresseur', label: '❄️ Remplacement compresseur' },
           // Cuisinières & Fours
-          { value: 'Réparation cuisinière gaz', label: '🍳 Réparation cuisinière gaz' },
-          { value: 'Réparation four électrique', label: '🍳 Réparation four électrique' },
-          { value: 'Réparation four gaz', label: '🍳 Réparation four gaz' },
-          { value: 'Nettoyage injecteurs gaz', label: '🍳 Nettoyage injecteurs gaz' },
+          { value: 'Réparation cuisinière gaz', label: '\uD83C\uDF73 Réparation cuisinière gaz' },
+          { value: 'Réparation four électrique', label: '\uD83C\uDF73 Réparation four électrique' },
+          { value: 'Réparation four gaz', label: '\uD83C\uDF73 Réparation four gaz' },
+          { value: 'Nettoyage injecteurs gaz', label: '\uD83C\uDF73 Nettoyage injecteurs gaz' },
           // Lave-linge & Lave-vaisselle
-          { value: 'Réparation lave-linge', label: '🧺 Réparation lave-linge' },
-          { value: 'Réparation lave-vaisselle', label: '🧺 Réparation lave-vaisselle' },
-          { value: 'Remplacement pompe vidange', label: '🧺 Remplacement pompe vidange' },
+          { value: 'Réparation lave-linge', label: '\uD83E\uDDFA Réparation lave-linge' },
+          { value: 'Réparation lave-vaisselle', label: '\uD83E\uDDFA Réparation lave-vaisselle' },
+          { value: 'Remplacement pompe vidange', label: '\uD83E\uDDFA Remplacement pompe vidange' },
           // Micro-ondes
-          { value: 'Réparation micro-ondes', label: '🔥 Réparation micro-ondes' },
+          { value: 'Réparation micro-ondes', label: '\uD83D\uDD25 Réparation micro-ondes' },
           // Climatiseurs
-          { value: 'Réparation climatiseur', label: '🌬️ Réparation climatiseur' },
-          { value: 'Installation climatiseur', label: '🌬️ Installation climatiseur' },
+          { value: 'Réparation climatiseur', label: '\uD83C\uDF2C️ Réparation climatiseur' },
+          { value: 'Installation climatiseur', label: '\uD83C\uDF2C️ Installation climatiseur' },
           // Petit électroménager
           { value: 'Réparation machine à café', label: '☕ Réparation machine à café' },
-          { value: 'Réparation mixeur/blender', label: '🌀 Réparation mixeur/blender' },
-          { value: 'Réparation fer à repasser', label: '🔌 Réparation fer à repasser' },
+          { value: 'Réparation mixeur/blender', label: '\uD83C\uDF00 Réparation mixeur/blender' },
+          { value: 'Réparation fer à repasser', label: '\uD83D\uDD0C Réparation fer à repasser' },
         ],
       },
       // ✅ FILTRE 2 : Marques supportées
@@ -12889,13 +12889,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           { value: 'Ne refroidit plus', label: '❄️ Ne refroidit plus' },
-          { value: 'Ne chauffe plus', label: '🔥 Ne chauffe plus' },
+          { value: 'Ne chauffe plus', label: '\uD83D\uDD25 Ne chauffe plus' },
           { value: 'Ne s\'allume plus', label: '⚡ Ne s\'allume plus' },
-          { value: 'Fuite d\'eau', label: '💧 Fuite d\'eau' },
-          { value: 'Fuite de gaz', label: '💨 Fuite de gaz' },
-          { value: 'Bruit anormal', label: '🔊 Bruit anormal' },
-          { value: 'Ne tourne plus', label: '🚫 Ne tourne plus' },
-          { value: 'Ne vidange plus', label: '🌊 Ne vidange plus' },
+          { value: 'Fuite d\'eau', label: '\uD83D\uDCA7 Fuite d\'eau' },
+          { value: 'Fuite de gaz', label: '\uD83D\uDCA8 Fuite de gaz' },
+          { value: 'Bruit anormal', label: '\uD83D\uDD0A Bruit anormal' },
+          { value: 'Ne tourne plus', label: '\uD83D\uDEAB Ne tourne plus' },
+          { value: 'Ne vidange plus', label: '\uD83C\uDF0A Ne vidange plus' },
         ],
       },
       // ✅ FILTRE 5 : Délai de réparation
@@ -12905,9 +12905,9 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           { value: 'Express (même jour)', label: '⚡ Express (même jour)' },
-          { value: 'Rapide (24-48h)', label: '🚀 Rapide (24-48h)' },
-          { value: 'Standard (2-5 jours)', label: '📅 Standard (2-5 jours)' },
-          { value: 'Sur commande (5-10 jours)', label: '🛠️ Sur commande pièces' },
+          { value: 'Rapide (24-48h)', label: '\uD83D\uDE80 Rapide (24-48h)' },
+          { value: 'Standard (2-5 jours)', label: '\uD83D\uDCC5 Standard (2-5 jours)' },
+          { value: 'Sur commande (5-10 jours)', label: '\uD83D\uDEE0️ Sur commande pièces' },
         ],
       },
       // ✅ FILTRE 6 : Garantie
@@ -12928,14 +12928,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Certifications',
         type: 'multiselect',
         options: [
-          { value: 'Frigoriste certifié', label: '🏅 Frigoriste certifié' },
-          { value: 'Certification gaz', label: '🏅 Certification gaz' },
-          { value: 'Agrément constructeur', label: '🏅 Agrément constructeur' },
-          { value: '+10 ans expérience', label: '🏆 +10 ans d\'expérience' },
-          { value: '+5 ans expérience', label: '🏆 +5 ans d\'expérience' },
-          { value: 'Spécialiste froid', label: '🔧 Spécialiste froid' },
-          { value: 'Spécialiste lavage', label: '🔧 Spécialiste lavage' },
-          { value: 'Spécialiste cuisson', label: '🔧 Spécialiste cuisson' },
+          { value: 'Frigoriste certifié', label: '\uD83C\uDFC5 Frigoriste certifié' },
+          { value: 'Certification gaz', label: '\uD83C\uDFC5 Certification gaz' },
+          { value: 'Agrément constructeur', label: '\uD83C\uDFC5 Agrément constructeur' },
+          { value: '+10 ans expérience', label: '\uD83C\uDFC6 +10 ans d\'expérience' },
+          { value: '+5 ans expérience', label: '\uD83C\uDFC6 +5 ans d\'expérience' },
+          { value: 'Spécialiste froid', label: '\uD83D\uDD27 Spécialiste froid' },
+          { value: 'Spécialiste lavage', label: '\uD83D\uDD27 Spécialiste lavage' },
+          { value: 'Spécialiste cuisson', label: '\uD83D\uDD27 Spécialiste cuisson' },
         ],
       },
       // ✅ FILTRE 8 : Services additionnels
@@ -12944,13 +12944,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Services additionnels',
         type: 'multiselect',
         options: [
-          { value: 'Diagnostic gratuit', label: '🔍 Diagnostic gratuit' },
-          { value: 'Devis gratuit', label: '🎁 Devis gratuit' },
-          { value: 'Déplacement gratuit', label: '🚚 Déplacement gratuit' },
+          { value: 'Diagnostic gratuit', label: '\uD83D\uDD0D Diagnostic gratuit' },
+          { value: 'Devis gratuit', label: '\uD83C\uDF81 Devis gratuit' },
+          { value: 'Déplacement gratuit', label: '\uD83D\uDE9A Déplacement gratuit' },
           { value: 'Urgence 24/7', label: '⏰ Urgence 24/7' },
-          { value: 'Mobile Money', label: '💳 Mobile Money' },
-          { value: 'Paiement échelonné', label: '💰 Paiement échelonné' },
-          { value: 'Installation incluse', label: '🔧 Installation incluse' },
+          { value: 'Mobile Money', label: '\uD83D\uDCB3 Mobile Money' },
+          { value: 'Paiement échelonné', label: '\uD83D\uDCB0 Paiement échelonné' },
+          { value: 'Installation incluse', label: '\uD83D\uDD27 Installation incluse' },
         ],
       },
       // ✅ FILTRE 9 : Intervention à domicile (toggle)
@@ -12983,17 +12983,17 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Spécialiste lavage (lave-linge, lave-vaisselle)',
         type: 'toggle',
       },
-      // ✅ FILTRE 14 : Distance maximale (select) - 🆕 AMÉLIORATION PRODUCTION
+      // ✅ FILTRE 14 : Distance maximale (select) - \uD83C\uDD95 AMÉLIORATION PRODUCTION
       {
         id: 'distanceMaxElectro',
         label: 'Distance maximale',
         type: 'select',
         options: [
           { value: 'all', label: 'Toutes distances' },
-          { value: '5', label: '📍 À moins de 5 km' },
-          { value: '10', label: '📍 À moins de 10 km' },
-          { value: '20', label: '📍 À moins de 20 km' },
-          { value: '50', label: '📍 À moins de 50 km' },
+          { value: '5', label: '\uD83D\uDCCD À moins de 5 km' },
+          { value: '10', label: '\uD83D\uDCCD À moins de 10 km' },
+          { value: '20', label: '\uD83D\uDCCD À moins de 20 km' },
+          { value: '50', label: '\uD83D\uDCCD À moins de 50 km' },
         ],
       },
     ],
@@ -13320,7 +13320,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'horizontal',
   },
 
-  // 📟 ÉLECTRONIQUE & HIGH-TECH
+  // \uD83D\uDCDF ÉLECTRONIQUE & HIGH-TECH
   electronique: {
     terminology: {
       productLabel: 'Appareil électronique',
@@ -13343,22 +13343,22 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type d\'appareil',
         type: 'multiselect',
         options: [
-          { value: 'Smartphone', label: '📱 Smartphone' },
-          { value: 'Tablette', label: '📱 Tablette' },
-          { value: 'Ordinateur portable', label: '💻 Ordinateur portable' },
-          { value: 'PC de bureau', label: '🖥️ PC de bureau' },
-          { value: 'Télévision', label: '📺 Télévision' },
-          { value: 'Console de jeux', label: '🎮 Console de jeux' },
-          { value: 'Appareil photo', label: '📷 Appareil photo' },
-          { value: 'Caméra', label: '📹 Caméra' },
-          { value: 'Drone', label: '🚁 Drone' },
+          { value: 'Smartphone', label: '\uD83D\uDCF1 Smartphone' },
+          { value: 'Tablette', label: '\uD83D\uDCF1 Tablette' },
+          { value: 'Ordinateur portable', label: '\uD83D\uDCBB Ordinateur portable' },
+          { value: 'PC de bureau', label: '\uD83D\uDDA5️ PC de bureau' },
+          { value: 'Télévision', label: '\uD83D\uDCFA Télévision' },
+          { value: 'Console de jeux', label: '\uD83C\uDFAE Console de jeux' },
+          { value: 'Appareil photo', label: '\uD83D\uDCF7 Appareil photo' },
+          { value: 'Caméra', label: '\uD83D\uDCF9 Caméra' },
+          { value: 'Drone', label: '\uD83D\uDE81 Drone' },
           { value: 'Montre connectée', label: '⌚ Montre connectée' },
-          { value: 'Écouteurs', label: '🎧 Écouteurs' },
-          { value: 'Casque audio', label: '🎧 Casque audio' },
-          { value: 'Enceinte', label: '🔊 Enceinte' },
-          { value: 'Chargeur', label: '🔌 Chargeur' },
-          { value: 'Batterie externe', label: '🔋 Batterie externe' },
-          { value: 'Accessoires', label: '📦 Accessoires' },
+          { value: 'Écouteurs', label: '\uD83C\uDFA7 Écouteurs' },
+          { value: 'Casque audio', label: '\uD83C\uDFA7 Casque audio' },
+          { value: 'Enceinte', label: '\uD83D\uDD0A Enceinte' },
+          { value: 'Chargeur', label: '\uD83D\uDD0C Chargeur' },
+          { value: 'Batterie externe', label: '\uD83D\uDD0B Batterie externe' },
+          { value: 'Accessoires', label: '\uD83D\uDCE6 Accessoires' },
         ],
       },
       {
@@ -13366,7 +13366,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Marque',
         type: 'multiselect',
         options: [
-          { value: 'Apple', label: '🍎 Apple' },
+          { value: 'Apple', label: '\uD83C\uDF4E Apple' },
           { value: 'Samsung', label: 'Samsung' },
           { value: 'Huawei', label: 'Huawei' },
           { value: 'Xiaomi', label: 'Xiaomi' },
@@ -13388,13 +13388,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'État',
         type: 'select',
         options: [
-          { value: 'Neuf sous garantie', label: '🆕 Neuf sous garantie' },
-          { value: 'Neuf sans garantie', label: '🆕 Neuf sans garantie' },
+          { value: 'Neuf sous garantie', label: '\uD83C\uDD95 Neuf sous garantie' },
+          { value: 'Neuf sans garantie', label: '\uD83C\uDD95 Neuf sans garantie' },
           { value: 'Reconditionné', label: '♻️ Reconditionné' },
           { value: 'Occasion - Excellent', label: '✨ Occasion - Excellent' },
-          { value: 'Occasion - Bon', label: '👍 Occasion - Bon' },
+          { value: 'Occasion - Bon', label: '\uD83D\uDC4D Occasion - Bon' },
           { value: 'Occasion - Moyen', label: '⚠️ Occasion - Moyen' },
-          { value: 'Pour pièces', label: '🔧 Pour pièces' },
+          { value: 'Pour pièces', label: '\uD83D\uDD27 Pour pièces' },
         ],
       },
       {
@@ -13402,24 +13402,24 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Connectivité',
         type: 'multiselect',
         options: [
-          { value: 'Wi-Fi', label: '📶 Wi-Fi' },
-          { value: 'Bluetooth', label: '🔵 Bluetooth' },
-          { value: '4G', label: '📱 4G' },
-          { value: '5G', label: '📱 5G' },
-          { value: 'NFC', label: '💳 NFC' },
-          { value: 'USB-C', label: '🔌 USB-C' },
+          { value: 'Wi-Fi', label: '\uD83D\uDCF6 Wi-Fi' },
+          { value: 'Bluetooth', label: '\uD83D\uDD35 Bluetooth' },
+          { value: '4G', label: '\uD83D\uDCF1 4G' },
+          { value: '5G', label: '\uD83D\uDCF1 5G' },
+          { value: 'NFC', label: '\uD83D\uDCB3 NFC' },
+          { value: 'USB-C', label: '\uD83D\uDD0C USB-C' },
           { value: 'Lightning', label: '⚡ Lightning' },
-          { value: 'HDMI', label: '🎬 HDMI' },
-          { value: 'Jack 3.5mm', label: '🎧 Jack 3.5mm' },
-          { value: 'USB', label: '🔌 USB' },
-          { value: 'Ethernet', label: '🌐 Ethernet' },
+          { value: 'HDMI', label: '\uD83C\uDFAC HDMI' },
+          { value: 'Jack 3.5mm', label: '\uD83C\uDFA7 Jack 3.5mm' },
+          { value: 'USB', label: '\uD83D\uDD0C USB' },
+          { value: 'Ethernet', label: '\uD83C\uDF10 Ethernet' },
         ],
       },
     ],
     style: {
       primaryColor: '#00BCD4',
       gradientColors: ['#00BCD4', '#0097A7'],
-      icon: '📟',
+      icon: '\uD83D\uDCDF',
       badgeColor: '#E0F7FA',
       accentColor: '#0097A7',
     },
@@ -13458,7 +13458,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 🎸 MUSIQUE & INSTRUMENTS
+  // \uD83C\uDFB8 MUSIQUE & INSTRUMENTS
   musique_instruments: {
     terminology: {
       productLabel: 'Instrument de musique',
@@ -13482,12 +13482,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Catégorie',
         type: 'select',
         options: [
-          { value: 'Instrument de musique', label: '🎵 Instrument de musique' },
-          { value: 'Instrument traditionnel africain', label: '🥁 Instrument africain' },
-          { value: 'Sonorisation & Sono', label: '🔊 Sonorisation' },
-          { value: 'Matériel DJ', label: '🎧 Matériel DJ' },
-          { value: 'Studio & Enregistrement', label: '🎙️ Studio' },
-          { value: 'Accessoire musical', label: '🎸 Accessoires' },
+          { value: 'Instrument de musique', label: '\uD83C\uDFB5 Instrument de musique' },
+          { value: 'Instrument traditionnel africain', label: '\uD83E\uDD41 Instrument africain' },
+          { value: 'Sonorisation & Sono', label: '\uD83D\uDD0A Sonorisation' },
+          { value: 'Matériel DJ', label: '\uD83C\uDFA7 Matériel DJ' },
+          { value: 'Studio & Enregistrement', label: '\uD83C\uDF99️ Studio' },
+          { value: 'Accessoire musical', label: '\uD83C\uDFB8 Accessoires' },
         ],
       },
 
@@ -13522,14 +13522,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Trompette', label: 'Trompette' },
           { value: 'Flûte traversière', label: 'Flûte traversière' },
           { value: 'Clarinette', label: 'Clarinette' },
-          // Instruments africains 🌍
-          { value: 'Djembé', label: '🥁 Djembé' },
-          { value: 'Balafon', label: '🥁 Balafon' },
-          { value: 'Kora', label: '🎵 Kora' },
-          { value: 'Tam-tam', label: '🥁 Tam-tam' },
-          { value: 'Talking drum', label: '🥁 Talking drum' },
-          { value: 'Ngoni', label: '🎵 Ngoni' },
-          { value: 'Sanza/Kalimba', label: '🎵 Sanza/Kalimba' },
+          // Instruments africains \uD83C\uDF0D
+          { value: 'Djembé', label: '\uD83E\uDD41 Djembé' },
+          { value: 'Balafon', label: '\uD83E\uDD41 Balafon' },
+          { value: 'Kora', label: '\uD83C\uDFB5 Kora' },
+          { value: 'Tam-tam', label: '\uD83E\uDD41 Tam-tam' },
+          { value: 'Talking drum', label: '\uD83E\uDD41 Talking drum' },
+          { value: 'Ngoni', label: '\uD83C\uDFB5 Ngoni' },
+          { value: 'Sanza/Kalimba', label: '\uD83C\uDFB5 Sanza/Kalimba' },
         ],
       },
 
@@ -13568,9 +13568,9 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Shure', label: 'Shure' },
           { value: 'Sennheiser', label: 'Sennheiser' },
           { value: 'Focusrite', label: 'Focusrite' },
-          // Artisans locaux 🌍
-          { value: 'Artisan local', label: '🌍 Artisan local' },
-          { value: 'Fait main Afrique', label: '🌍 Fait main Afrique' },
+          // Artisans locaux \uD83C\uDF0D
+          { value: 'Artisan local', label: '\uD83C\uDF0D Artisan local' },
+          { value: 'Fait main Afrique', label: '\uD83C\uDF0D Fait main Afrique' },
         ],
       },
 
@@ -13621,10 +13621,10 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Laiton', label: 'Laiton' },
           { value: 'Bronze', label: 'Bronze' },
           { value: 'Acier', label: 'Acier' },
-          // Traditionnels africains 🌍
-          { value: 'Calebasse', label: '🌍 Calebasse' },
-          { value: 'Peau de chèvre', label: '🌍 Peau de chèvre' },
-          { value: 'Bambou', label: '🌍 Bambou' },
+          // Traditionnels africains \uD83C\uDF0D
+          { value: 'Calebasse', label: '\uD83C\uDF0D Calebasse' },
+          { value: 'Peau de chèvre', label: '\uD83C\uDF0D Peau de chèvre' },
+          { value: 'Bambou', label: '\uD83C\uDF0D Bambou' },
           // Modernes
           { value: 'Plastique ABS', label: 'Plastique ABS' },
           { value: 'Fibre de carbone', label: 'Fibre de carbone' },
@@ -13664,18 +13664,18 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Reggae', label: 'Reggae' },
           { value: 'Hip-hop', label: 'Hip-hop' },
           { value: 'R&B', label: 'R&B' },
-          // Genres africains 🌍
-          { value: 'Afrobeat', label: '🌍 Afrobeat' },
-          { value: 'Afro-pop', label: '🌍 Afro-pop' },
-          { value: 'Makossa', label: '🌍 Makossa' },
-          { value: 'Bikutsi', label: '🌍 Bikutsi' },
-          { value: 'Coupé-décalé', label: '🌍 Coupé-décalé' },
-          { value: 'Zouglou', label: '🌍 Zouglou' },
-          { value: 'Ndombolo', label: '🌍 Ndombolo' },
-          { value: 'Mbalax', label: '🌍 Mbalax' },
-          { value: 'Highlife', label: '🌍 Highlife' },
-          { value: 'Musique traditionnelle', label: '🌍 Traditionnelle' },
-          { value: 'Gospel africain', label: '🌍 Gospel africain' },
+          // Genres africains \uD83C\uDF0D
+          { value: 'Afrobeat', label: '\uD83C\uDF0D Afrobeat' },
+          { value: 'Afro-pop', label: '\uD83C\uDF0D Afro-pop' },
+          { value: 'Makossa', label: '\uD83C\uDF0D Makossa' },
+          { value: 'Bikutsi', label: '\uD83C\uDF0D Bikutsi' },
+          { value: 'Coupé-décalé', label: '\uD83C\uDF0D Coupé-décalé' },
+          { value: 'Zouglou', label: '\uD83C\uDF0D Zouglou' },
+          { value: 'Ndombolo', label: '\uD83C\uDF0D Ndombolo' },
+          { value: 'Mbalax', label: '\uD83C\uDF0D Mbalax' },
+          { value: 'Highlife', label: '\uD83C\uDF0D Highlife' },
+          { value: 'Musique traditionnelle', label: '\uD83C\uDF0D Traditionnelle' },
+          { value: 'Gospel africain', label: '\uD83C\uDF0D Gospel africain' },
         ],
       },
 
@@ -13751,16 +13751,16 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           // Amériques
           { value: 'États-Unis', label: 'États-Unis' },
           { value: 'Mexique', label: 'Mexique' },
-          // Afrique 🌍
-          { value: 'Sénégal', label: '🌍 Sénégal' },
-          { value: 'Mali', label: '🌍 Mali' },
-          { value: 'Guinée', label: '🌍 Guinée' },
-          { value: 'Cameroun', label: '🌍 Cameroun' },
-          { value: 'Burkina Faso', label: '🌍 Burkina Faso' },
-          { value: 'Côte d\'Ivoire', label: '🌍 Côte d\'Ivoire' },
-          { value: 'Ghana', label: '🌍 Ghana' },
-          { value: 'Artisanat africain', label: '🌍 Artisanat africain' },
-          { value: 'Fait main local', label: '🌍 Fait main local' },
+          // Afrique \uD83C\uDF0D
+          { value: 'Sénégal', label: '\uD83C\uDF0D Sénégal' },
+          { value: 'Mali', label: '\uD83C\uDF0D Mali' },
+          { value: 'Guinée', label: '\uD83C\uDF0D Guinée' },
+          { value: 'Cameroun', label: '\uD83C\uDF0D Cameroun' },
+          { value: 'Burkina Faso', label: '\uD83C\uDF0D Burkina Faso' },
+          { value: 'Côte d\'Ivoire', label: '\uD83C\uDF0D Côte d\'Ivoire' },
+          { value: 'Ghana', label: '\uD83C\uDF0D Ghana' },
+          { value: 'Artisanat africain', label: '\uD83C\uDF0D Artisanat africain' },
+          { value: 'Fait main local', label: '\uD83C\uDF0D Fait main local' },
         ],
       },
 
@@ -13791,7 +13791,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#9C27B0',
       gradientColors: ['#9C27B0', '#7B1FA2'],
-      icon: '🎸',
+      icon: '\uD83C\uDFB8',
       badgeColor: '#F3E5F5',
       accentColor: '#7B1FA2',
     },
@@ -13803,7 +13803,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
   },
 
   // ════════════════════════════════════════════════════════════
-  // 🛡️ SÉCURITÉ & SURVEILLANCE - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
+  // \uD83D\uDEE1️ SÉCURITÉ & SURVEILLANCE - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
   // ════════════════════════════════════════════════════════════
   // Gardiennage, Caméras surveillance, Alarmes, Agents de sécurité,
   // Contrôle d'accès, Sécurité événementielle, Maîtres-chiens
@@ -13833,36 +13833,36 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de service',
         type: 'multiselect',
         options: [
-          // 🔥 Services humains (très demandés en Afrique)
-          { value: 'Gardiennage résidentiel (villa, maison)', label: '👮 Gardiennage résidentiel' },
-          { value: 'Gardiennage commercial (boutique, magasin)', label: '👮 Gardiennage commercial' },
-          { value: 'Gardiennage industriel (usine, entrepôt)', label: '👮 Gardiennage industriel' },
-          { value: 'Agent de sécurité qualifié', label: '🛡️ Agent de sécurité' },
-          { value: 'Vigile armé', label: '🔫 Vigile armé' },
-          { value: 'Maître-chien (avec chien dressé)', label: '🐕 Maître-chien' },
-          { value: 'Sécurité événementielle (mariage, concert)', label: '🎉 Sécurité événementielle' },
-          { value: 'Garde du corps / Protection rapprochée', label: '🕴️ Garde du corps' },
-          { value: 'Convoyage de fonds', label: '💰 Convoyage de fonds' },
-          { value: 'Ronde de surveillance', label: '🚶 Ronde surveillance' },
+          // \uD83D\uDD25 Services humains (très demandés en Afrique)
+          { value: 'Gardiennage résidentiel (villa, maison)', label: '\uD83D\uDC6E Gardiennage résidentiel' },
+          { value: 'Gardiennage commercial (boutique, magasin)', label: '\uD83D\uDC6E Gardiennage commercial' },
+          { value: 'Gardiennage industriel (usine, entrepôt)', label: '\uD83D\uDC6E Gardiennage industriel' },
+          { value: 'Agent de sécurité qualifié', label: '\uD83D\uDEE1️ Agent de sécurité' },
+          { value: 'Vigile armé', label: '\uD83D\uDD2B Vigile armé' },
+          { value: 'Maître-chien (avec chien dressé)', label: '\uD83D\uDC15 Maître-chien' },
+          { value: 'Sécurité événementielle (mariage, concert)', label: '\uD83C\uDF89 Sécurité événementielle' },
+          { value: 'Garde du corps / Protection rapprochée', label: '\uD83D\uDD74️ Garde du corps' },
+          { value: 'Convoyage de fonds', label: '\uD83D\uDCB0 Convoyage de fonds' },
+          { value: 'Ronde de surveillance', label: '\uD83D\uDEB6 Ronde surveillance' },
 
-          // 📹 Vidéosurveillance
-          { value: 'Installation caméras surveillance', label: '📹 Installation caméras' },
-          { value: 'Maintenance système vidéosurveillance', label: '🔧 Maintenance caméras' },
-          { value: 'Centrale de télésurveillance 24h/24', label: '🖥️ Télésurveillance' },
-          { value: 'Location caméras surveillance', label: '📹 Location caméras' },
+          // \uD83D\uDCF9 Vidéosurveillance
+          { value: 'Installation caméras surveillance', label: '\uD83D\uDCF9 Installation caméras' },
+          { value: 'Maintenance système vidéosurveillance', label: '\uD83D\uDD27 Maintenance caméras' },
+          { value: 'Centrale de télésurveillance 24h/24', label: '\uD83D\uDDA5️ Télésurveillance' },
+          { value: 'Location caméras surveillance', label: '\uD83D\uDCF9 Location caméras' },
 
-          // 🚨 Alarmes & Contrôle d'accès
-          { value: 'Installation système alarme', label: '🚨 Installation alarme' },
-          { value: 'Alarme anti-intrusion', label: '🚨 Alarme anti-intrusion' },
-          { value: 'Alarme incendie', label: '🔥 Alarme incendie' },
-          { value: 'Contrôle d\'accès (badge, biométrie)', label: '🔐 Contrôle accès' },
-          { value: 'Barrière automatique / Portail sécurisé', label: '🚧 Barrière automatique' },
-          { value: 'Interphone vidéo / Visiophone', label: '📞 Interphone vidéo' },
+          // \uD83D\uDEA8 Alarmes & Contrôle d'accès
+          { value: 'Installation système alarme', label: '\uD83D\uDEA8 Installation alarme' },
+          { value: 'Alarme anti-intrusion', label: '\uD83D\uDEA8 Alarme anti-intrusion' },
+          { value: 'Alarme incendie', label: '\uD83D\uDD25 Alarme incendie' },
+          { value: 'Contrôle d\'accès (badge, biométrie)', label: '\uD83D\uDD10 Contrôle accès' },
+          { value: 'Barrière automatique / Portail sécurisé', label: '\uD83D\uDEA7 Barrière automatique' },
+          { value: 'Interphone vidéo / Visiophone', label: '\uD83D\uDCDE Interphone vidéo' },
 
-          // 🔒 Consulting & Formation
-          { value: 'Audit de sécurité', label: '📋 Audit sécurité' },
-          { value: 'Consulting sécurité', label: '💼 Consulting' },
-          { value: 'Formation agents de sécurité', label: '🎓 Formation agents' },
+          // \uD83D\uDD12 Consulting & Formation
+          { value: 'Audit de sécurité', label: '\uD83D\uDCCB Audit sécurité' },
+          { value: 'Consulting sécurité', label: '\uD83D\uDCBC Consulting' },
+          { value: 'Formation agents de sécurité', label: '\uD83C\uDF93 Formation agents' },
           { value: 'Analyse des risques', label: '⚠️ Analyse risques' },
         ],
       },
@@ -13873,14 +13873,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de client',
         type: 'multiselect',
         options: [
-          { value: 'Particuliers (maisons, villas)', label: '🏠 Particuliers' },
-          { value: 'Commerces (boutiques, magasins)', label: '🏪 Commerces' },
-          { value: 'Entreprises (bureaux, sièges)', label: '🏢 Entreprises' },
-          { value: 'Industries (usines, entrepôts)', label: '🏭 Industries' },
-          { value: 'Hôtels & Résidences', label: '🏨 Hôtels' },
-          { value: 'Événements (mariages, concerts)', label: '🎉 Événements' },
-          { value: 'Administrations publiques', label: '🏛️ Administrations' },
-          { value: 'Banques & Institutions financières', label: '🏦 Banques' },
+          { value: 'Particuliers (maisons, villas)', label: '\uD83C\uDFE0 Particuliers' },
+          { value: 'Commerces (boutiques, magasins)', label: '\uD83C\uDFEA Commerces' },
+          { value: 'Entreprises (bureaux, sièges)', label: '\uD83C\uDFE2 Entreprises' },
+          { value: 'Industries (usines, entrepôts)', label: '\uD83C\uDFED Industries' },
+          { value: 'Hôtels & Résidences', label: '\uD83C\uDFE8 Hôtels' },
+          { value: 'Événements (mariages, concerts)', label: '\uD83C\uDF89 Événements' },
+          { value: 'Administrations publiques', label: '\uD83C\uDFDB️ Administrations' },
+          { value: 'Banques & Institutions financières', label: '\uD83C\uDFE6 Banques' },
         ],
       },
 
@@ -13890,13 +13890,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Disponibilité',
         type: 'select',
         options: [
-          { value: 'Service 24h/24 - 7j/7', label: '🌙 24h/24 - 7j/7' },
+          { value: 'Service 24h/24 - 7j/7', label: '\uD83C\uDF19 24h/24 - 7j/7' },
           { value: 'Journée uniquement (6h-18h)', label: '☀️ Journée (6h-18h)' },
-          { value: 'Nuit uniquement (18h-6h)', label: '🌙 Nuit (18h-6h)' },
-          { value: 'Ronde périodique (2-4 passages/jour)', label: '🔄 Ronde périodique' },
-          { value: 'Week-end uniquement', label: '📅 Week-end' },
-          { value: 'Intervention sur appel', label: '📞 Sur appel' },
-          { value: 'Événements ponctuels', label: '🎉 Événements' },
+          { value: 'Nuit uniquement (18h-6h)', label: '\uD83C\uDF19 Nuit (18h-6h)' },
+          { value: 'Ronde périodique (2-4 passages/jour)', label: '\uD83D\uDD04 Ronde périodique' },
+          { value: 'Week-end uniquement', label: '\uD83D\uDCC5 Week-end' },
+          { value: 'Intervention sur appel', label: '\uD83D\uDCDE Sur appel' },
+          { value: 'Événements ponctuels', label: '\uD83C\uDF89 Événements' },
           { value: 'Horaires flexibles (à définir)', label: '⏰ Horaires flexibles' },
         ],
       },
@@ -13907,18 +13907,18 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de caméra',
         type: 'multiselect',
         options: [
-          { value: 'Caméra dôme intérieur', label: '📹 Dôme intérieur' },
-          { value: 'Caméra bullet extérieur', label: '📹 Bullet extérieur' },
-          { value: 'Caméra PTZ motorisée (360°)', label: '🔄 PTZ motorisée' },
-          { value: 'Caméra vision nocturne infrarouge', label: '🌙 Vision nocturne' },
-          { value: 'Caméra IP (réseau Ethernet/WiFi)', label: '🌐 Caméra IP' },
-          { value: 'Caméra analogique HD (AHD/TVI)', label: '📺 Analogique HD' },
-          { value: 'Caméra 4K ultra haute résolution', label: '🎬 4K UHD' },
-          { value: 'Caméra avec détection de mouvement', label: '🚶 Détection mouvement' },
-          { value: 'Caméra avec audio bidirectionnel', label: '🔊 Audio bidirectionnel' },
+          { value: 'Caméra dôme intérieur', label: '\uD83D\uDCF9 Dôme intérieur' },
+          { value: 'Caméra bullet extérieur', label: '\uD83D\uDCF9 Bullet extérieur' },
+          { value: 'Caméra PTZ motorisée (360°)', label: '\uD83D\uDD04 PTZ motorisée' },
+          { value: 'Caméra vision nocturne infrarouge', label: '\uD83C\uDF19 Vision nocturne' },
+          { value: 'Caméra IP (réseau Ethernet/WiFi)', label: '\uD83C\uDF10 Caméra IP' },
+          { value: 'Caméra analogique HD (AHD/TVI)', label: '\uD83D\uDCFA Analogique HD' },
+          { value: 'Caméra 4K ultra haute résolution', label: '\uD83C\uDFAC 4K UHD' },
+          { value: 'Caméra avec détection de mouvement', label: '\uD83D\uDEB6 Détection mouvement' },
+          { value: 'Caméra avec audio bidirectionnel', label: '\uD83D\uDD0A Audio bidirectionnel' },
           { value: 'Caméra sans fil (batterie solaire)', label: '☀️ Sans fil solaire' },
-          { value: 'Caméra thermique', label: '🌡️ Thermique' },
-          { value: 'Sonnette vidéo intelligente', label: '🔔 Sonnette vidéo' },
+          { value: 'Caméra thermique', label: '\uD83C\uDF21️ Thermique' },
+          { value: 'Sonnette vidéo intelligente', label: '\uD83D\uDD14 Sonnette vidéo' },
         ],
       },
 
@@ -13933,7 +13933,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: '3MP - Super HD', label: '3MP' },
           { value: '4MP - 2K', label: '4MP (2K)' },
           { value: '5MP - 2.5K', label: '5MP (2.5K)' },
-          { value: '8MP (4K) - Ultra HD', label: '8MP (4K) 🔥' },
+          { value: '8MP (4K) - Ultra HD', label: '8MP (4K) \uD83D\uDD25' },
           { value: '12MP+', label: '12MP+' },
         ],
       },
@@ -13947,13 +13947,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'DVR (enregistreur analogique)', label: 'DVR Analogique' },
           { value: 'NVR (enregistreur IP)', label: 'NVR IP' },
           { value: 'Cloud sécurisé (stockage en ligne)', label: '☁️ Cloud' },
-          { value: 'Carte SD locale', label: '💾 Carte SD' },
-          { value: 'Disque dur 500GB', label: '💿 500GB' },
-          { value: 'Disque dur 1TB', label: '💿 1TB' },
-          { value: 'Disque dur 2TB', label: '💿 2TB' },
-          { value: 'Disque dur 4TB+', label: '💿 4TB+' },
-          { value: 'Rétention 7 jours', label: '📅 7 jours' },
-          { value: 'Rétention 30 jours', label: '📅 30 jours' },
+          { value: 'Carte SD locale', label: '\uD83D\uDCBE Carte SD' },
+          { value: 'Disque dur 500GB', label: '\uD83D\uDCBF 500GB' },
+          { value: 'Disque dur 1TB', label: '\uD83D\uDCBF 1TB' },
+          { value: 'Disque dur 2TB', label: '\uD83D\uDCBF 2TB' },
+          { value: 'Disque dur 4TB+', label: '\uD83D\uDCBF 4TB+' },
+          { value: 'Rétention 7 jours', label: '\uD83D\uDCC5 7 jours' },
+          { value: 'Rétention 30 jours', label: '\uD83D\uDCC5 30 jours' },
         ],
       },
 
@@ -13963,18 +13963,18 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type d\'alarme',
         type: 'multiselect',
         options: [
-          { value: 'Alarme anti-intrusion filaire', label: '🔌 Anti-intrusion filaire' },
-          { value: 'Alarme anti-intrusion sans fil', label: '📡 Anti-intrusion sans fil' },
-          { value: 'Alarme GSM (alerte SMS)', label: '📱 Alarme GSM/SMS' },
-          { value: 'Alarme connectée (app smartphone)', label: '📲 Alarme connectée' },
-          { value: 'Détecteur de mouvement infrarouge', label: '🚶 Détecteur mouvement' },
-          { value: 'Détecteur d\'ouverture (porte/fenêtre)', label: '🚪 Détecteur ouverture' },
-          { value: 'Détecteur de choc/vibration', label: '💥 Détecteur choc' },
-          { value: 'Sirène extérieure puissante (120dB)', label: '🔊 Sirène 120dB' },
-          { value: 'Sirène intérieure', label: '🔔 Sirène intérieure' },
-          { value: 'Télécommande/Badge d\'activation', label: '🎛️ Télécommande' },
-          { value: 'Alarme incendie/fumée', label: '🔥 Alarme incendie' },
-          { value: 'Alarme inondation', label: '💧 Alarme inondation' },
+          { value: 'Alarme anti-intrusion filaire', label: '\uD83D\uDD0C Anti-intrusion filaire' },
+          { value: 'Alarme anti-intrusion sans fil', label: '\uD83D\uDCE1 Anti-intrusion sans fil' },
+          { value: 'Alarme GSM (alerte SMS)', label: '\uD83D\uDCF1 Alarme GSM/SMS' },
+          { value: 'Alarme connectée (app smartphone)', label: '\uD83D\uDCF2 Alarme connectée' },
+          { value: 'Détecteur de mouvement infrarouge', label: '\uD83D\uDEB6 Détecteur mouvement' },
+          { value: 'Détecteur d\'ouverture (porte/fenêtre)', label: '\uD83D\uDEAA Détecteur ouverture' },
+          { value: 'Détecteur de choc/vibration', label: '\uD83D\uDCA5 Détecteur choc' },
+          { value: 'Sirène extérieure puissante (120dB)', label: '\uD83D\uDD0A Sirène 120dB' },
+          { value: 'Sirène intérieure', label: '\uD83D\uDD14 Sirène intérieure' },
+          { value: 'Télécommande/Badge d\'activation', label: '\uD83C\uDF9B️ Télécommande' },
+          { value: 'Alarme incendie/fumée', label: '\uD83D\uDD25 Alarme incendie' },
+          { value: 'Alarme inondation', label: '\uD83D\uDCA7 Alarme inondation' },
         ],
       },
 
@@ -13984,16 +13984,16 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Contrôle d\'accès',
         type: 'multiselect',
         options: [
-          { value: 'Badge RFID', label: '🎫 Badge RFID' },
-          { value: 'Lecteur biométrique empreintes', label: '👆 Empreintes digitales' },
-          { value: 'Reconnaissance faciale', label: '👤 Reconnaissance faciale' },
-          { value: 'Code PIN / Clavier', label: '🔢 Code PIN' },
-          { value: 'Carte magnétique', label: '💳 Carte magnétique' },
-          { value: 'QR Code / NFC', label: '📱 QR Code/NFC' },
-          { value: 'Barrière automatique véhicules', label: '🚧 Barrière véhicules' },
-          { value: 'Portillon piéton automatique', label: '🚶 Portillon piéton' },
-          { value: 'Interphone vidéo', label: '📞 Interphone vidéo' },
-          { value: 'Gestion visiteurs', label: '📋 Gestion visiteurs' },
+          { value: 'Badge RFID', label: '\uD83C\uDFAB Badge RFID' },
+          { value: 'Lecteur biométrique empreintes', label: '\uD83D\uDC46 Empreintes digitales' },
+          { value: 'Reconnaissance faciale', label: '\uD83D\uDC64 Reconnaissance faciale' },
+          { value: 'Code PIN / Clavier', label: '\uD83D\uDD22 Code PIN' },
+          { value: 'Carte magnétique', label: '\uD83D\uDCB3 Carte magnétique' },
+          { value: 'QR Code / NFC', label: '\uD83D\uDCF1 QR Code/NFC' },
+          { value: 'Barrière automatique véhicules', label: '\uD83D\uDEA7 Barrière véhicules' },
+          { value: 'Portillon piéton automatique', label: '\uD83D\uDEB6 Portillon piéton' },
+          { value: 'Interphone vidéo', label: '\uD83D\uDCDE Interphone vidéo' },
+          { value: 'Gestion visiteurs', label: '\uD83D\uDCCB Gestion visiteurs' },
         ],
       },
 
@@ -14022,8 +14022,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Agents non armés', label: 'Non armés' },
           { value: 'Agents armés (arme de poing)', label: 'Armés (arme de poing)' },
           { value: 'Agents avec matraque/bâton', label: 'Matraque/Bâton' },
-          { value: 'Agents avec chiens dressés', label: '🐕 Avec chiens' },
-          { value: 'Équipement protection (gilet pare-balles)', label: '🦺 Gilet pare-balles' },
+          { value: 'Agents avec chiens dressés', label: '\uD83D\uDC15 Avec chiens' },
+          { value: 'Équipement protection (gilet pare-balles)', label: '\uD83E\uDDBA Gilet pare-balles' },
         ],
       },
 
@@ -14034,15 +14034,15 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           { value: 'Agrément Ministère Sécurité', label: '✅ Agrément Ministère' },
-          { value: 'Licence professionnelle sécurité privée', label: '📜 Licence pro' },
-          { value: 'ISO 9001 (Qualité)', label: '🏆 ISO 9001' },
-          { value: 'Formation pompiers/incendie', label: '🔥 Formation incendie' },
+          { value: 'Licence professionnelle sécurité privée', label: '\uD83D\uDCDC Licence pro' },
+          { value: 'ISO 9001 (Qualité)', label: '\uD83C\uDFC6 ISO 9001' },
+          { value: 'Formation pompiers/incendie', label: '\uD83D\uDD25 Formation incendie' },
           { value: 'Formation premiers secours', label: '⚕️ Premiers secours' },
-          { value: 'Assurance responsabilité civile', label: '🛡️ Assurance RC' },
-          { value: 'Membres association sécurité nationale', label: '🤝 Association nationale' },
+          { value: 'Assurance responsabilité civile', label: '\uD83D\uDEE1️ Assurance RC' },
+          { value: 'Membres association sécurité nationale', label: '\uD83E\uDD1D Association nationale' },
           { value: 'Expérience 5+ ans', label: '⭐ Expérience 5+ ans' },
           { value: 'Expérience 10+ ans', label: '⭐ Expérience 10+ ans' },
-          { value: 'Anciens militaires/policiers', label: '🎖️ Ex-militaires' },
+          { value: 'Anciens militaires/policiers', label: '\uD83C\uDF96️ Ex-militaires' },
         ],
       },
 
@@ -14130,7 +14130,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           // Caméras (marques présentes en Afrique)
-          { value: 'Hikvision', label: 'Hikvision 🔥' },
+          { value: 'Hikvision', label: 'Hikvision \uD83D\uDD25' },
           { value: 'Dahua', label: 'Dahua ⭐' },
           { value: 'Axis', label: 'Axis' },
           { value: 'Uniview', label: 'Uniview' },
@@ -14156,13 +14156,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Alimentation',
         type: 'multiselect',
         options: [
-          { value: 'Secteur 220V', label: '🔌 Secteur 220V' },
-          { value: 'Batterie de secours (UPS)', label: '🔋 Batterie secours' },
+          { value: 'Secteur 220V', label: '\uD83D\uDD0C Secteur 220V' },
+          { value: 'Batterie de secours (UPS)', label: '\uD83D\uDD0B Batterie secours' },
           { value: 'Panneaux solaires', label: '☀️ Solaire' },
           { value: 'Autonomie 24h', label: '⏰ Autonomie 24h' },
           { value: 'Autonomie 48h', label: '⏰ Autonomie 48h' },
           { value: 'Générateur de secours', label: '⚡ Générateur' },
-          { value: 'PoE (Power over Ethernet)', label: '🌐 PoE' },
+          { value: 'PoE (Power over Ethernet)', label: '\uD83C\uDF10 PoE' },
         ],
       },
 
@@ -14177,7 +14177,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#DC2626',
       gradientColors: ['#DC2626', '#B91C1C'],
-      icon: '🛡️',
+      icon: '\uD83D\uDEE1️',
       badgeColor: '#FEE2E2',
       accentColor: '#B91C1C',
     },
@@ -14286,7 +14286,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 🧘 BIEN-ÊTRE & SPA
+  // \uD83E\uDDD8 BIEN-ÊTRE & SPA
   bien_etre: {
     terminology: {
       productLabel: 'Service bien-être',
@@ -14337,7 +14337,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#10B981',
       gradientColors: ['#10B981', '#059669'],
-      icon: '🧘',
+      icon: '\uD83E\uDDD8',
       badgeColor: '#D1FAE5',
       accentColor: '#059669',
     },
@@ -14348,7 +14348,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 💄 SANTÉ & BEAUTÉ
+  // \uD83D\uDC84 SANTÉ & BEAUTÉ
   sante_beaute: {
     terminology: {
       productLabel: 'Produit beauté/santé',
@@ -14393,7 +14393,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#EC4899',
       gradientColors: ['#EC4899', '#DB2777'],
-      icon: '💄',
+      icon: '\uD83D\uDC84',
       badgeColor: '#FCE7F3',
       accentColor: '#DB2777',
     },
@@ -14459,7 +14459,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 🎵 MUSIQUE SERVICES
+  // \uD83C\uDFB5 MUSIQUE SERVICES
   musique_services: {
     terminology: {
       productLabel: 'Service musical',
@@ -14503,7 +14503,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#8B5CF6',
       gradientColors: ['#8B5CF6', '#7C3AED'],
-      icon: '🎵',
+      icon: '\uD83C\uDFB5',
       badgeColor: '#EDE9FE',
       accentColor: '#7C3AED',
     },
@@ -14514,7 +14514,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 📷 PHOTOGRAPHIE
+  // \uD83D\uDCF7 PHOTOGRAPHIE
   photographie: {
     terminology: {
       productLabel: 'Service photo',
@@ -14557,7 +14557,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#F59E0B',
       gradientColors: ['#F59E0B', '#D97706'],
-      icon: '📷',
+      icon: '\uD83D\uDCF7',
       badgeColor: '#FEF3C7',
       accentColor: '#D97706',
     },
@@ -14568,7 +14568,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 🏭 ENTREPRISE & INDUSTRIE
+  // \uD83C\uDFED ENTREPRISE & INDUSTRIE
   entreprise_industrie: {
     terminology: {
       productLabel: 'Équipement pro',
@@ -14610,7 +14610,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#64748B',
       gradientColors: ['#64748B', '#475569'],
-      icon: '🏭',
+      icon: '\uD83C\uDFED',
       badgeColor: '#F1F5F9',
       accentColor: '#475569',
     },
@@ -14622,7 +14622,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
   },
 
 
-  // 👶 ENFANTS & BÉBÉS
+  // \uD83D\uDC76 ENFANTS & BÉBÉS
   enfants_bebes: {
     terminology: {
       productLabel: 'Article enfant/bébé',
@@ -14682,7 +14682,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#EC4899',
       gradientColors: ['#EC4899', '#DB2777'],
-      icon: '👶',
+      icon: '\uD83D\uDC76',
       badgeColor: '#FCE7F3',
       accentColor: '#DB2777',
     },
@@ -14693,7 +14693,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'grid',
   },
 
-  // 🔨 BRICOLAGE
+  // \uD83D\uDD28 BRICOLAGE
   bricolage: {
     terminology: {
       productLabel: 'Article bricolage',
@@ -14750,7 +14750,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#F97316',
       gradientColors: ['#F97316', '#EA580C'],
-      icon: '🔨',
+      icon: '\uD83D\uDD28',
       badgeColor: '#FED7AA',
       accentColor: '#EA580C',
     },
@@ -14761,7 +14761,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'grid',
   },
 
-  // 🏗️ CARRELAGE
+  // \uD83C\uDFD7️ CARRELAGE
   carrelage: {
     terminology: {
       productLabel: 'Carrelage',
@@ -14897,16 +14897,16 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Origine',
         type: 'select',
         options: [
-          { value: '🇪🇸 Espagne', label: '🇪🇸 Espagne' },
-          { value: '🇮🇹 Italie', label: '🇮🇹 Italie' },
-          { value: '🇵🇹 Portugal', label: '🇵🇹 Portugal' },
-          { value: '🇹🇷 Turquie', label: '🇹🇷 Turquie' },
-          { value: '🇨🇳 Chine', label: '🇨🇳 Chine' },
-          { value: '🇮🇳 Inde', label: '🇮🇳 Inde' },
-          { value: '🇪🇬 Égypte', label: '🇪🇬 Égypte' },
-          { value: '🇲🇦 Maroc', label: '🇲🇦 Maroc' },
-          { value: '🇹🇳 Tunisie', label: '🇹🇳 Tunisie' },
-          { value: '🇿🇦 Afrique du Sud', label: '🇿🇦 Afrique du Sud' },
+          { value: '\uD83C\uDDEA\uD83C\uDDF8 Espagne', label: '\uD83C\uDDEA\uD83C\uDDF8 Espagne' },
+          { value: '\uD83C\uDDEE\uD83C\uDDF9 Italie', label: '\uD83C\uDDEE\uD83C\uDDF9 Italie' },
+          { value: '\uD83C\uDDF5\uD83C\uDDF9 Portugal', label: '\uD83C\uDDF5\uD83C\uDDF9 Portugal' },
+          { value: '\uD83C\uDDF9\uD83C\uDDF7 Turquie', label: '\uD83C\uDDF9\uD83C\uDDF7 Turquie' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF3 Chine', label: '\uD83C\uDDE8\uD83C\uDDF3 Chine' },
+          { value: '\uD83C\uDDEE\uD83C\uDDF3 Inde', label: '\uD83C\uDDEE\uD83C\uDDF3 Inde' },
+          { value: '\uD83C\uDDEA\uD83C\uDDEC Égypte', label: '\uD83C\uDDEA\uD83C\uDDEC Égypte' },
+          { value: '\uD83C\uDDF2\uD83C\uDDE6 Maroc', label: '\uD83C\uDDF2\uD83C\uDDE6 Maroc' },
+          { value: '\uD83C\uDDF9\uD83C\uDDF3 Tunisie', label: '\uD83C\uDDF9\uD83C\uDDF3 Tunisie' },
+          { value: '\uD83C\uDDFF\uD83C\uDDE6 Afrique du Sud', label: '\uD83C\uDDFF\uD83C\uDDE6 Afrique du Sud' },
           { value: 'Cameroun', label: 'Cameroun' },
           { value: 'Production locale', label: 'Production locale' },
         ],
@@ -14915,7 +14915,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#78716C',
       gradientColors: ['#78716C', '#57534E'],
-      icon: '🏗️',
+      icon: '\uD83C\uDFD7️',
       badgeColor: '#E7E5E4',
       accentColor: '#57534E',
     },
@@ -14928,7 +14928,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     searchKeywords: ['carrelage', 'carreau', 'faïence', 'mosaïque', 'ciment', 'revêtement', 'sol', 'mur', 'tomette', 'zellige', 'dalle', 'grès', 'céramique', 'porcelaine'],
   },
 
-  // 🏗️ CARRELEUR (PRESTATION - Service de pose de carrelage)
+  // \uD83C\uDFD7️ CARRELEUR (PRESTATION - Service de pose de carrelage)
   carreleur: {
     terminology: {
       productLabel: 'Service carreleur',
@@ -15036,7 +15036,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#78716C',
       gradientColors: ['#78716C', '#57534E'],
-      icon: '🏗️',
+      icon: '\uD83C\uDFD7️',
       badgeColor: '#E7E5E4',
       accentColor: '#57534E',
     },
@@ -15049,7 +15049,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     searchKeywords: ['carreleur', 'pose carrelage', 'faïence', 'mosaïque', 'ragréage', 'étanchéité', 'joint carrelage', 'rénovation carrelage'],
   },
 
-  // 🐾 ANIMAUX & VÉTÉRINAIRE
+  // \uD83D\uDC3E ANIMAUX & VÉTÉRINAIRE
   animaux_veterinaire: {
     terminology: {
       productLabel: 'Service vétérinaire',
@@ -15119,7 +15119,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#FF69B4',
       gradientColors: ['#FF69B4', '#FF1493'],
-      icon: '🐾',
+      icon: '\uD83D\uDC3E',
       badgeColor: '#FFE4E1',
       accentColor: '#FF1493',
     },
@@ -15130,7 +15130,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 🍽️ ALIMENTATION & PRODUITS ALIMENTAIRES
+  // \uD83C\uDF7D️ ALIMENTATION & PRODUITS ALIMENTAIRES
   agroalimentaire: {
     terminology: {
       productLabel: 'Produit alimentaire',
@@ -15183,90 +15183,90 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Marque',
         type: 'select',
         options: [
-          // 🇨🇲 CAMEROUN - Marques locales populaires (30+)
-          { value: 'SABC', label: '🇨🇲 SABC (Huile)' },
-          { value: 'Zena', label: '🇨🇲 Zena (Eau, Jus)' },
-          { value: 'Top Piment', label: '🇨🇲 Top Piment' },
-          { value: 'Cicam', label: '🇨🇲 Cicam (Huile)' },
-          { value: 'Supermount', label: '🇨🇲 Supermount (Eau)' },
-          { value: 'Tangui', label: '🇨🇲 Tangui (Eau)' },
-          { value: 'Source du Pays', label: '🇨🇲 Source du Pays (Eau)' },
-          { value: 'Beauté d\'Afrique', label: '🇨🇲 Beauté d\'Afrique (Huile)' },
-          { value: 'Azur', label: '🇨🇲 Azur (Huile)' },
-          { value: 'Douala Minoterie', label: '🇨🇲 Douala Minoterie (Farine)' },
-          { value: 'La Boulangère', label: '🇨🇲 La Boulangère (Pain)' },
-          { value: 'Top Ananas', label: '🇨🇲 Top Ananas (Jus)' },
-          { value: 'SOCAVER', label: '🇨🇲 SOCAVER (Boissons)' },
-          { value: 'Guinness Cameroun', label: '🇨🇲 Guinness Cameroun' },
-          { value: '33 Export', label: '🇨🇲 33 Export' },
-          { value: 'Beaufort', label: '🇨🇲 Beaufort' },
-          { value: 'Isenbeck', label: '🇨🇲 Isenbeck' },
-          { value: 'Castel Beer', label: '🇨🇲 Castel Beer' },
+          // \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN - Marques locales populaires (30+)
+          { value: 'SABC', label: '\uD83C\uDDE8\uD83C\uDDF2 SABC (Huile)' },
+          { value: 'Zena', label: '\uD83C\uDDE8\uD83C\uDDF2 Zena (Eau, Jus)' },
+          { value: 'Top Piment', label: '\uD83C\uDDE8\uD83C\uDDF2 Top Piment' },
+          { value: 'Cicam', label: '\uD83C\uDDE8\uD83C\uDDF2 Cicam (Huile)' },
+          { value: 'Supermount', label: '\uD83C\uDDE8\uD83C\uDDF2 Supermount (Eau)' },
+          { value: 'Tangui', label: '\uD83C\uDDE8\uD83C\uDDF2 Tangui (Eau)' },
+          { value: 'Source du Pays', label: '\uD83C\uDDE8\uD83C\uDDF2 Source du Pays (Eau)' },
+          { value: 'Beauté d\'Afrique', label: '\uD83C\uDDE8\uD83C\uDDF2 Beauté d\'Afrique (Huile)' },
+          { value: 'Azur', label: '\uD83C\uDDE8\uD83C\uDDF2 Azur (Huile)' },
+          { value: 'Douala Minoterie', label: '\uD83C\uDDE8\uD83C\uDDF2 Douala Minoterie (Farine)' },
+          { value: 'La Boulangère', label: '\uD83C\uDDE8\uD83C\uDDF2 La Boulangère (Pain)' },
+          { value: 'Top Ananas', label: '\uD83C\uDDE8\uD83C\uDDF2 Top Ananas (Jus)' },
+          { value: 'SOCAVER', label: '\uD83C\uDDE8\uD83C\uDDF2 SOCAVER (Boissons)' },
+          { value: 'Guinness Cameroun', label: '\uD83C\uDDE8\uD83C\uDDF2 Guinness Cameroun' },
+          { value: '33 Export', label: '\uD83C\uDDE8\uD83C\uDDF2 33 Export' },
+          { value: 'Beaufort', label: '\uD83C\uDDE8\uD83C\uDDF2 Beaufort' },
+          { value: 'Isenbeck', label: '\uD83C\uDDE8\uD83C\uDDF2 Isenbeck' },
+          { value: 'Castel Beer', label: '\uD83C\uDDE8\uD83C\uDDF2 Castel Beer' },
 
-          // 🇨🇮 CÔTE D\'IVOIRE - Marques locales populaires (15+)
-          { value: 'Ivoire Lait', label: '🇨🇮 Ivoire Lait' },
-          { value: 'Celia', label: '🇨🇮 Celia (Eau)' },
-          { value: 'Awoulaba', label: '🇨🇮 Awoulaba (Eau)' },
-          { value: 'Moossou', label: '🇨🇮 Moossou (Huile)' },
-          { value: 'TRITURAF', label: '🇨🇮 TRITURAF (Huile)' },
-          { value: 'Brassivoire', label: '🇨🇮 Brassivoire (Boissons)' },
-          { value: 'Solibra', label: '🇨🇮 Solibra (Boissons)' },
-          { value: 'Ivoire Cacao', label: '🇨🇮 Ivoire Cacao' },
-          { value: 'Chococam', label: '🇨🇮 Chococam' },
-          { value: 'Nestle CI', label: '🇨🇮 Nestlé CI' },
-          { value: 'Flag', label: '🇨🇮 Flag (Bière)' },
-          { value: 'Bock', label: '🇨🇮 Bock (Bière)' },
+          // \uD83C\uDDE8\uD83C\uDDEE CÔTE D\'IVOIRE - Marques locales populaires (15+)
+          { value: 'Ivoire Lait', label: '\uD83C\uDDE8\uD83C\uDDEE Ivoire Lait' },
+          { value: 'Celia', label: '\uD83C\uDDE8\uD83C\uDDEE Celia (Eau)' },
+          { value: 'Awoulaba', label: '\uD83C\uDDE8\uD83C\uDDEE Awoulaba (Eau)' },
+          { value: 'Moossou', label: '\uD83C\uDDE8\uD83C\uDDEE Moossou (Huile)' },
+          { value: 'TRITURAF', label: '\uD83C\uDDE8\uD83C\uDDEE TRITURAF (Huile)' },
+          { value: 'Brassivoire', label: '\uD83C\uDDE8\uD83C\uDDEE Brassivoire (Boissons)' },
+          { value: 'Solibra', label: '\uD83C\uDDE8\uD83C\uDDEE Solibra (Boissons)' },
+          { value: 'Ivoire Cacao', label: '\uD83C\uDDE8\uD83C\uDDEE Ivoire Cacao' },
+          { value: 'Chococam', label: '\uD83C\uDDE8\uD83C\uDDEE Chococam' },
+          { value: 'Nestle CI', label: '\uD83C\uDDE8\uD83C\uDDEE Nestlé CI' },
+          { value: 'Flag', label: '\uD83C\uDDE8\uD83C\uDDEE Flag (Bière)' },
+          { value: 'Bock', label: '\uD83C\uDDE8\uD83C\uDDEE Bock (Bière)' },
 
-          // 🇸🇳 SÉNÉGAL - Marques locales populaires (12+)
-          { value: 'Kirene', label: '🇸🇳 Kirene (Eau, Boissons)' },
-          { value: 'Lafi', label: '🇸🇳 Lafi (Eau)' },
-          { value: 'Bissap', label: '🇸🇳 Bissap (Jus)' },
-          { value: 'Soboa', label: '🇸🇳 Soboa (Boissons)' },
-          { value: 'Brasseries du Sénégal', label: '🇸🇳 Brasseries du Sénégal' },
-          { value: 'Gazelle', label: '🇸🇳 Gazelle (Bière)' },
-          { value: 'Flag Sénégal', label: '🇸🇳 Flag' },
-          { value: 'Patisen', label: '🇸🇳 Patisen (Biscuits)' },
-          { value: 'Niokobok', label: '🇸🇳 Niokobok (Confiserie)' },
+          // \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL - Marques locales populaires (12+)
+          { value: 'Kirene', label: '\uD83C\uDDF8\uD83C\uDDF3 Kirene (Eau, Boissons)' },
+          { value: 'Lafi', label: '\uD83C\uDDF8\uD83C\uDDF3 Lafi (Eau)' },
+          { value: 'Bissap', label: '\uD83C\uDDF8\uD83C\uDDF3 Bissap (Jus)' },
+          { value: 'Soboa', label: '\uD83C\uDDF8\uD83C\uDDF3 Soboa (Boissons)' },
+          { value: 'Brasseries du Sénégal', label: '\uD83C\uDDF8\uD83C\uDDF3 Brasseries du Sénégal' },
+          { value: 'Gazelle', label: '\uD83C\uDDF8\uD83C\uDDF3 Gazelle (Bière)' },
+          { value: 'Flag Sénégal', label: '\uD83C\uDDF8\uD83C\uDDF3 Flag' },
+          { value: 'Patisen', label: '\uD83C\uDDF8\uD83C\uDDF3 Patisen (Biscuits)' },
+          { value: 'Niokobok', label: '\uD83C\uDDF8\uD83C\uDDF3 Niokobok (Confiserie)' },
 
-          // 🇲🇱 MALI - Marques locales populaires (8+)
-          { value: 'Djoliba', label: '🇲🇱 Djoliba (Eau)' },
-          { value: 'Huicoma', label: '🇲🇱 Huicoma (Huile)' },
-          { value: 'SOMAPIL', label: '🇲🇱 SOMAPIL (Farine)' },
-          { value: 'Brakina', label: '🇲🇱 Brakina (Bière)' },
-          { value: 'Castel Mali', label: '🇲🇱 Castel Mali' },
+          // \uD83C\uDDF2\uD83C\uDDF1 MALI - Marques locales populaires (8+)
+          { value: 'Djoliba', label: '\uD83C\uDDF2\uD83C\uDDF1 Djoliba (Eau)' },
+          { value: 'Huicoma', label: '\uD83C\uDDF2\uD83C\uDDF1 Huicoma (Huile)' },
+          { value: 'SOMAPIL', label: '\uD83C\uDDF2\uD83C\uDDF1 SOMAPIL (Farine)' },
+          { value: 'Brakina', label: '\uD83C\uDDF2\uD83C\uDDF1 Brakina (Bière)' },
+          { value: 'Castel Mali', label: '\uD83C\uDDF2\uD83C\uDDF1 Castel Mali' },
 
-          // 🇨🇩 CONGO (RDC) - Marques locales populaires (10+)
-          { value: 'Bracongo', label: '🇨🇩 Bracongo (Boissons)' },
-          { value: 'Primus', label: '🇨🇩 Primus (Bière)' },
-          { value: 'Tembo', label: '🇨🇩 Tembo (Bière)' },
-          { value: 'Skol Congo', label: '🇨🇩 Skol Congo' },
-          { value: 'Celtis', label: '🇨🇩 Celtis' },
-          { value: 'MIDEMA', label: '🇨🇩 MIDEMA (Farine)' },
-          { value: 'Nganda', label: '🇨🇩 Nganda' },
+          // \uD83C\uDDE8\uD83C\uDDE9 CONGO (RDC) - Marques locales populaires (10+)
+          { value: 'Bracongo', label: '\uD83C\uDDE8\uD83C\uDDE9 Bracongo (Boissons)' },
+          { value: 'Primus', label: '\uD83C\uDDE8\uD83C\uDDE9 Primus (Bière)' },
+          { value: 'Tembo', label: '\uD83C\uDDE8\uD83C\uDDE9 Tembo (Bière)' },
+          { value: 'Skol Congo', label: '\uD83C\uDDE8\uD83C\uDDE9 Skol Congo' },
+          { value: 'Celtis', label: '\uD83C\uDDE8\uD83C\uDDE9 Celtis' },
+          { value: 'MIDEMA', label: '\uD83C\uDDE8\uD83C\uDDE9 MIDEMA (Farine)' },
+          { value: 'Nganda', label: '\uD83C\uDDE8\uD83C\uDDE9 Nganda' },
 
-          // 🇬🇦 GABON - Marques locales populaires (8+)
-          { value: 'Sogapal', label: '🇬🇦 Sogapal (Huile)' },
-          { value: 'Regab', label: '🇬🇦 Regab (Bière)' },
-          { value: 'Beaufort Gabon', label: '🇬🇦 Beaufort Gabon' },
-          { value: 'SOBRAGA', label: '🇬🇦 SOBRAGA (Boissons)' },
+          // \uD83C\uDDEC\uD83C\uDDE6 GABON - Marques locales populaires (8+)
+          { value: 'Sogapal', label: '\uD83C\uDDEC\uD83C\uDDE6 Sogapal (Huile)' },
+          { value: 'Regab', label: '\uD83C\uDDEC\uD83C\uDDE6 Regab (Bière)' },
+          { value: 'Beaufort Gabon', label: '\uD83C\uDDEC\uD83C\uDDE6 Beaufort Gabon' },
+          { value: 'SOBRAGA', label: '\uD83C\uDDEC\uD83C\uDDE6 SOBRAGA (Boissons)' },
 
-          // 🇳🇬 NIGERIA - Marques très populaires en Afrique francophone (15+)
-          { value: 'Golden Penny', label: '🇳🇬 Golden Penny (Farine)' },
-          { value: 'Dangote', label: '🇳🇬 Dangote' },
-          { value: 'Indomie', label: '🇳🇬 Indomie' },
-          { value: 'Peak Milk', label: '🇳🇬 Peak Milk' },
-          { value: 'Dano Milk', label: '🇳🇬 Dano Milk' },
-          { value: 'Three Crowns', label: '🇳🇬 Three Crowns (Lait)' },
-          { value: 'Cowbell', label: '🇳🇬 Cowbell (Lait)' },
-          { value: 'Tasty Tom', label: '🇳🇬 Tasty Tom' },
-          { value: 'Gino', label: '🇳🇬 Gino (Tomate)' },
-          { value: 'Maltina', label: '🇳🇬 Maltina' },
-          { value: 'Supermalt', label: '🇳🇬 Supermalt' },
-          { value: 'Star Beer', label: '🇳🇬 Star Beer' },
-          { value: 'Gulder', label: '🇳🇬 Gulder' },
-          { value: 'Trophy', label: '🇳🇬 Trophy' },
+          // \uD83C\uDDF3\uD83C\uDDEC NIGERIA - Marques très populaires en Afrique francophone (15+)
+          { value: 'Golden Penny', label: '\uD83C\uDDF3\uD83C\uDDEC Golden Penny (Farine)' },
+          { value: 'Dangote', label: '\uD83C\uDDF3\uD83C\uDDEC Dangote' },
+          { value: 'Indomie', label: '\uD83C\uDDF3\uD83C\uDDEC Indomie' },
+          { value: 'Peak Milk', label: '\uD83C\uDDF3\uD83C\uDDEC Peak Milk' },
+          { value: 'Dano Milk', label: '\uD83C\uDDF3\uD83C\uDDEC Dano Milk' },
+          { value: 'Three Crowns', label: '\uD83C\uDDF3\uD83C\uDDEC Three Crowns (Lait)' },
+          { value: 'Cowbell', label: '\uD83C\uDDF3\uD83C\uDDEC Cowbell (Lait)' },
+          { value: 'Tasty Tom', label: '\uD83C\uDDF3\uD83C\uDDEC Tasty Tom' },
+          { value: 'Gino', label: '\uD83C\uDDF3\uD83C\uDDEC Gino (Tomate)' },
+          { value: 'Maltina', label: '\uD83C\uDDF3\uD83C\uDDEC Maltina' },
+          { value: 'Supermalt', label: '\uD83C\uDDF3\uD83C\uDDEC Supermalt' },
+          { value: 'Star Beer', label: '\uD83C\uDDF3\uD83C\uDDEC Star Beer' },
+          { value: 'Gulder', label: '\uD83C\uDDF3\uD83C\uDDEC Gulder' },
+          { value: 'Trophy', label: '\uD83C\uDDF3\uD83C\uDDEC Trophy' },
 
-          // 🌍 MARQUES INTERNATIONALES POPULAIRES EN AFRIQUE (25+)
+          // \uD83C\uDF0D MARQUES INTERNATIONALES POPULAIRES EN AFRIQUE (25+)
           { value: 'Maggi', label: 'Maggi' },
           { value: 'Jumbo', label: 'Jumbo' },
           { value: 'Knorr', label: 'Knorr' },
@@ -15378,7 +15378,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#10B981',
       gradientColors: ['#10B981', '#059669'],
-      icon: '🍽️',
+      icon: '\uD83C\uDF7D️',
       badgeColor: '#D1FAE5',
       accentColor: '#059669',
     },
@@ -15421,7 +15421,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#6B7280',
       gradientColors: ['#6B7280', '#4B5563'],
-      icon: '📦',
+      icon: '\uD83D\uDCE6',
       badgeColor: '#F3F4F6',
       accentColor: '#4B5563',
     },
@@ -15432,7 +15432,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'horizontal',
   },
 
-  // 🏥 ÉTABLISSEMENTS DE SANTÉ (Hôpitaux, Cliniques)
+  // \uD83C\uDFE5 ÉTABLISSEMENTS DE SANTÉ (Hôpitaux, Cliniques)
   hopital_clinique: {
     terminology: {
       productLabel: 'Établissement de santé',
@@ -15483,42 +15483,42 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         options: [
           // Médecine interne
           { value: 'Cardiologie', label: '❤️ Cardiologie' },
-          { value: 'Pneumologie', label: '🫁 Pneumologie' },
-          { value: 'Gastro-entérologie', label: '🔬 Gastro-entérologie' },
+          { value: 'Pneumologie', label: '\uD83E\uDEC1 Pneumologie' },
+          { value: 'Gastro-entérologie', label: '\uD83D\uDD2C Gastro-entérologie' },
           { value: 'Néphrologie', label: 'Néphrologie' },
           { value: 'Endocrinologie', label: 'Endocrinologie' },
-          { value: 'Diabétologie', label: '🩸 Diabétologie' },
+          { value: 'Diabétologie', label: '\uD83E\uDE78 Diabétologie' },
           { value: 'Rhumatologie', label: 'Rhumatologie' },
-          { value: 'Neurologie', label: '🧠 Neurologie' },
+          { value: 'Neurologie', label: '\uD83E\uDDE0 Neurologie' },
           // Chirurgie
-          { value: 'Chirurgie générale', label: '🏥 Chirurgie générale' },
-          { value: 'Chirurgie orthopédique', label: '🦴 Orthopédie' },
+          { value: 'Chirurgie générale', label: '\uD83C\uDFE5 Chirurgie générale' },
+          { value: 'Chirurgie orthopédique', label: '\uD83E\uDDB4 Orthopédie' },
           { value: 'Chirurgie viscérale', label: 'Chirurgie viscérale' },
           { value: 'Neurochirurgie', label: 'Neurochirurgie' },
           { value: 'Chirurgie maxillo-faciale', label: 'Chirurgie maxillo-faciale' },
           { value: 'Chirurgie plastique', label: 'Chirurgie plastique' },
           // Femme et enfant
-          { value: 'Gynécologie', label: '👶 Gynécologie' },
+          { value: 'Gynécologie', label: '\uD83D\uDC76 Gynécologie' },
           { value: 'Obstétrique', label: 'Obstétrique' },
-          { value: 'Pédiatrie', label: '🧒 Pédiatrie' },
+          { value: 'Pédiatrie', label: '\uD83E\uDDD2 Pédiatrie' },
           { value: 'Néonatologie', label: 'Néonatologie' },
           // Organes des sens
-          { value: 'Ophtalmologie', label: '👁️ Ophtalmologie' },
-          { value: 'ORL (Oto-Rhino-Laryngologie)', label: '👂 ORL' },
+          { value: 'Ophtalmologie', label: '\uD83D\uDC41️ Ophtalmologie' },
+          { value: 'ORL (Oto-Rhino-Laryngologie)', label: '\uD83D\uDC42 ORL' },
           { value: 'Stomatologie', label: 'Stomatologie' },
-          { value: 'Odontologie (Dentaire)', label: '🦷 Dentiste' },
+          { value: 'Odontologie (Dentaire)', label: '\uD83E\uDDB7 Dentiste' },
           // Imagerie et diagnostic
-          { value: 'Radiologie', label: '📡 Radiologie' },
-          { value: 'Échographie', label: '🔊 Échographie' },
+          { value: 'Radiologie', label: '\uD83D\uDCE1 Radiologie' },
+          { value: 'Échographie', label: '\uD83D\uDD0A Échographie' },
           { value: 'Scanner', label: 'Scanner' },
           { value: 'IRM', label: 'IRM' },
           { value: 'Mammographie', label: 'Mammographie' },
           // Autres spécialités
           { value: 'Dermatologie', label: 'Dermatologie' },
-          { value: 'Urologie', label: '💧 Urologie' },
-          { value: 'Oncologie', label: '🎗️ Oncologie (Cancer)' },
+          { value: 'Urologie', label: '\uD83D\uDCA7 Urologie' },
+          { value: 'Oncologie', label: '\uD83C\uDF97️ Oncologie (Cancer)' },
           { value: 'Hématologie', label: 'Hématologie' },
-          { value: 'Psychiatrie', label: '🧘 Psychiatrie' },
+          { value: 'Psychiatrie', label: '\uD83E\uDDD8 Psychiatrie' },
           { value: 'Médecine physique et réadaptation', label: 'Réadaptation' },
           { value: 'Anesthésie', label: 'Anesthésie' },
           { value: 'Médecine du travail', label: 'Médecine du travail' },
@@ -15538,7 +15538,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Dimanche', label: 'Dimanche' },
         ]
       },
-      { id: 'ouvertMaintenant', label: '🟢 Ouvert maintenant', type: 'toggle' },
+      { id: 'ouvertMaintenant', label: '\uD83D\uDFE2 Ouvert maintenant', type: 'toggle' },
       { id: 'urgencesDisponible', label: 'Urgences 24h/24', type: 'toggle' },
       { id: 'banqueSang', label: 'Banque de sang', type: 'toggle' },
       { id: 'rdvEnLigne', label: 'RDV en ligne', type: 'toggle' },
@@ -15573,7 +15573,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#DC2626',
       gradientColors: ['#DC2626', '#B91C1C'],
-      icon: '🏥',
+      icon: '\uD83C\uDFE5',
       badgeColor: '#FEE2E2',
       accentColor: '#B91C1C',
     },
@@ -15584,7 +15584,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 💊 PHARMACIES - ENRICHI AVEC FILTRES INTELLIGENTS
+  // \uD83D\uDC8A PHARMACIES - ENRICHI AVEC FILTRES INTELLIGENTS
   pharmacie: {
     terminology: {
       productLabel: 'Pharmacie',
@@ -15602,17 +15602,17 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
       },
     },
     filters: [
-      // 🎯 FILTRE INTELLIGENT: Disponibilité immédiate
+      // \uD83C\uDFAF FILTRE INTELLIGENT: Disponibilité immédiate
       {
         id: 'disponibiliteImmediate',
         label: '⚡ Disponibilité',
         type: 'select',
         options: [
           { value: 'Toutes', label: 'Toutes les pharmacies' },
-          { value: 'Ouvertes maintenant', label: '🟢 Ouvertes maintenant' },
-          { value: 'De garde ce soir', label: '🌙 De garde ce soir (20h-8h)' },
-          { value: '24h/24', label: '🕐 Permanence 24h/24' },
-          { value: 'Ouvertes weekend', label: '📅 Ouvertes samedi-dimanche' },
+          { value: 'Ouvertes maintenant', label: '\uD83D\uDFE2 Ouvertes maintenant' },
+          { value: 'De garde ce soir', label: '\uD83C\uDF19 De garde ce soir (20h-8h)' },
+          { value: '24h/24', label: '\uD83D\uDD50 Permanence 24h/24' },
+          { value: 'Ouvertes weekend', label: '\uD83D\uDCC5 Ouvertes samedi-dimanche' },
         ]
       },
       // Type de pharmacie
@@ -15643,41 +15643,41 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Délivrance urgente', label: 'Urgence' },
 
           // Services garde
-          { value: 'Garde de nuit (20h-8h)', label: '🌙 Garde de nuit' },
-          { value: 'Garde weekend (Sam-Dim)', label: '📅 Garde weekend' },
-          { value: 'Garde jours fériés', label: '🎉 Garde jours fériés' },
-          { value: 'Permanence 24h/24', label: '🕐 24h/24' },
+          { value: 'Garde de nuit (20h-8h)', label: '\uD83C\uDF19 Garde de nuit' },
+          { value: 'Garde weekend (Sam-Dim)', label: '\uD83D\uDCC5 Garde weekend' },
+          { value: 'Garde jours fériés', label: '\uD83C\uDF89 Garde jours fériés' },
+          { value: 'Permanence 24h/24', label: '\uD83D\uDD50 24h/24' },
 
           // Tests et analyses
-          { value: 'Test de glycémie rapide', label: '🩸 Test glycémie' },
+          { value: 'Test de glycémie rapide', label: '\uD83E\uDE78 Test glycémie' },
           { value: 'Prise de tension artérielle', label: '❤️ Tension' },
-          { value: 'Test de grossesse', label: '🤰 Test grossesse' },
-          { value: 'Test paludisme (goutte épaisse)', label: '🦟 Test paludisme' },
-          { value: 'Test COVID-19', label: '😷 Test COVID' },
+          { value: 'Test de grossesse', label: '\uD83E\uDD30 Test grossesse' },
+          { value: 'Test paludisme (goutte épaisse)', label: '\uD83E\uDD9F Test paludisme' },
+          { value: 'Test COVID-19', label: '\uD83D\uDE37 Test COVID' },
 
           // Soins
-          { value: 'Injections/Vaccinations', label: '💉 Injections' },
-          { value: 'Pansements', label: '🩹 Pansements' },
-          { value: 'Premiers secours', label: '🚑 Premiers secours' },
+          { value: 'Injections/Vaccinations', label: '\uD83D\uDC89 Injections' },
+          { value: 'Pansements', label: '\uD83E\uDE79 Pansements' },
+          { value: 'Premiers secours', label: '\uD83D\uDE91 Premiers secours' },
 
           // Services pratiques
-          { value: 'Livraison à domicile', label: '🚚 Livraison' },
+          { value: 'Livraison à domicile', label: '\uD83D\uDE9A Livraison' },
           { value: 'Livraison Express (<2h)', label: '⚡ Livraison Express' },
-          { value: 'Commande téléphonique', label: '📞 Commande tél' },
-          { value: 'WhatsApp Business', label: '💬 WhatsApp' },
+          { value: 'Commande téléphonique', label: '\uD83D\uDCDE Commande tél' },
+          { value: 'WhatsApp Business', label: '\uD83D\uDCAC WhatsApp' },
 
           // Parapharmacie
-          { value: 'Parapharmacie (cosmétiques)', label: '💄 Cosmétiques' },
-          { value: 'Produits bébé (lait, couches)', label: '👶 Produits bébé' },
-          { value: 'Compléments alimentaires', label: '💊 Compléments' },
-          { value: 'Matériel médical', label: '🏥 Matériel médical' },
-          { value: 'Orthopédie', label: '🦴 Orthopédie' },
+          { value: 'Parapharmacie (cosmétiques)', label: '\uD83D\uDC84 Cosmétiques' },
+          { value: 'Produits bébé (lait, couches)', label: '\uD83D\uDC76 Produits bébé' },
+          { value: 'Compléments alimentaires', label: '\uD83D\uDC8A Compléments' },
+          { value: 'Matériel médical', label: '\uD83C\uDFE5 Matériel médical' },
+          { value: 'Orthopédie', label: '\uD83E\uDDB4 Orthopédie' },
 
           // Paiement
-          { value: 'Paiement Mobile Money', label: '💳 Mobile Money' },
-          { value: 'Paiement Orange Money', label: '🟠 Orange Money' },
-          { value: 'Paiement MTN Mobile Money', label: '🟡 MTN MoMo' },
-          { value: 'Paiement carte bancaire', label: '💳 Carte bancaire' },
+          { value: 'Paiement Mobile Money', label: '\uD83D\uDCB3 Mobile Money' },
+          { value: 'Paiement Orange Money', label: '\uD83D\uDFE0 Orange Money' },
+          { value: 'Paiement MTN Mobile Money', label: '\uD83D\uDFE1 MTN MoMo' },
+          { value: 'Paiement carte bancaire', label: '\uD83D\uDCB3 Carte bancaire' },
         ]
       },
       // Villes principales (NOUVEAU)
@@ -15721,7 +15721,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#16A34A',
       gradientColors: ['#16A34A', '#15803D'],
-      icon: '💊',
+      icon: '\uD83D\uDC8A',
       badgeColor: '#DCFCE7',
       accentColor: '#15803D',
     },
@@ -15732,7 +15732,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 🧪 LABORATOIRES D'ANALYSES
+  // \uD83E\uDDEA LABORATOIRES D'ANALYSES
   laboratoire: {
     terminology: {
       productLabel: 'Laboratoire',
@@ -15833,7 +15833,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#0891B2',
       gradientColors: ['#0891B2', '#0E7490'],
-      icon: '🧪',
+      icon: '\uD83E\uDDEA',
       badgeColor: '#CFFAFE',
       accentColor: '#0E7490',
     },
@@ -15844,7 +15844,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'vertical',
   },
 
-  // 🚕 TRANSPORT INTRA-URBAIN (Taxi/VTC - Concurrent de Yango/Gozem)
+  // \uD83D\uDE95 TRANSPORT INTRA-URBAIN (Taxi/VTC - Concurrent de Yango/Gozem)
   transport_intra_urbain: {
     terminology: {
       productLabel: 'Course',
@@ -15874,13 +15874,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de véhicule',
         type: 'select',
         options: [
-          { value: 'Moto-taxi', label: '🏍️ Moto-taxi (Okada/Bendskin)' },
-          { value: 'Tricycle', label: '🛺 Tricycle (Keke Napep)' },
-          { value: 'Berline économique', label: '🚗 Berline économique (4 places)' },
-          { value: 'Berline confort', label: '🚗 Berline confort (4 places)' },
-          { value: 'SUV', label: '🚙 SUV (5-7 places)' },
-          { value: 'Minibus', label: '🚐 Minibus (9-14 places)' },
-          { value: 'Van climatisé', label: '🚐 Van climatisé (6-8 places)' },
+          { value: 'Moto-taxi', label: '\uD83C\uDFCD️ Moto-taxi (Okada/Bendskin)' },
+          { value: 'Tricycle', label: '\uD83D\uDEFA Tricycle (Keke Napep)' },
+          { value: 'Berline économique', label: '\uD83D\uDE97 Berline économique (4 places)' },
+          { value: 'Berline confort', label: '\uD83D\uDE97 Berline confort (4 places)' },
+          { value: 'SUV', label: '\uD83D\uDE99 SUV (5-7 places)' },
+          { value: 'Minibus', label: '\uD83D\uDE90 Minibus (9-14 places)' },
+          { value: 'Van climatisé', label: '\uD83D\uDE90 Van climatisé (6-8 places)' },
           { value: 'Voiture de luxe', label: '✨ Voiture de luxe (VIP)' },
         ]
       },
@@ -15889,14 +15889,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Catégorie de service',
         type: 'select',
         options: [
-          { value: 'Course simple', label: '📍 Course simple (A → B)' },
+          { value: 'Course simple', label: '\uD83D\uDCCD Course simple (A → B)' },
           { value: 'Course avec attente', label: '⏳ Course avec attente' },
-          { value: 'Courses multiples', label: '🔄 Courses multiples (plusieurs arrêts)' },
-          { value: 'Service à la journée', label: '📅 Service à la journée' },
+          { value: 'Courses multiples', label: '\uD83D\uDD04 Courses multiples (plusieurs arrêts)' },
+          { value: 'Service à la journée', label: '\uD83D\uDCC5 Service à la journée' },
           { value: 'Service à l\'heure', label: '⏰ Service à l\'heure' },
-          { value: 'Livraison express', label: '📦 Livraison express' },
-          { value: 'Transport scolaire', label: '🎒 Transport scolaire' },
-          { value: 'Transport médical', label: '🏥 Transport médical' },
+          { value: 'Livraison express', label: '\uD83D\uDCE6 Livraison express' },
+          { value: 'Transport scolaire', label: '\uD83C\uDF92 Transport scolaire' },
+          { value: 'Transport médical', label: '\uD83C\uDFE5 Transport médical' },
         ]
       },
       {
@@ -15905,13 +15905,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'multiselect',
         options: [
           { value: 'Climatisation', label: '❄️ Climatisation' },
-          { value: 'Wifi gratuit', label: '📶 Wifi gratuit' },
-          { value: 'Chargeur téléphone', label: '🔌 Chargeur téléphone' },
-          { value: 'Eau fraîche offerte', label: '💧 Eau fraîche offerte' },
-          { value: 'Musique au choix', label: '🎵 Musique au choix' },
-          { value: 'Silence garanti', label: '🤫 Silence garanti' },
-          { value: 'Coffre spacieux', label: '🧳 Coffre spacieux' },
-          { value: 'Siège bébé disponible', label: '👶 Siège bébé disponible' },
+          { value: 'Wifi gratuit', label: '\uD83D\uDCF6 Wifi gratuit' },
+          { value: 'Chargeur téléphone', label: '\uD83D\uDD0C Chargeur téléphone' },
+          { value: 'Eau fraîche offerte', label: '\uD83D\uDCA7 Eau fraîche offerte' },
+          { value: 'Musique au choix', label: '\uD83C\uDFB5 Musique au choix' },
+          { value: 'Silence garanti', label: '\uD83E\uDD2B Silence garanti' },
+          { value: 'Coffre spacieux', label: '\uD83E\uDDF3 Coffre spacieux' },
+          { value: 'Siège bébé disponible', label: '\uD83D\uDC76 Siège bébé disponible' },
         ]
       },
       {
@@ -15919,12 +15919,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Mode de paiement accepté',
         type: 'multiselect',
         options: [
-          { value: 'Espèces', label: '💵 Espèces' },
-          { value: 'Orange Money', label: '📱 Orange Money' },
-          { value: 'MTN Mobile Money', label: '📱 MTN Mobile Money' },
-          { value: 'Moov Money', label: '📱 Moov Money' },
-          { value: 'Carte bancaire', label: '💳 Carte bancaire' },
-          { value: 'Virement instantané', label: '💸 Virement instantané' },
+          { value: 'Espèces', label: '\uD83D\uDCB5 Espèces' },
+          { value: 'Orange Money', label: '\uD83D\uDCF1 Orange Money' },
+          { value: 'MTN Mobile Money', label: '\uD83D\uDCF1 MTN Mobile Money' },
+          { value: 'Moov Money', label: '\uD83D\uDCF1 Moov Money' },
+          { value: 'Carte bancaire', label: '\uD83D\uDCB3 Carte bancaire' },
+          { value: 'Virement instantané', label: '\uD83D\uDCB8 Virement instantané' },
         ]
       },
       {
@@ -15933,11 +15933,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           { value: 'Maintenant', label: '⚡ Disponible maintenant' },
-          { value: '24h/24', label: '🌙 Service 24h/24' },
+          { value: '24h/24', label: '\uD83C\uDF19 Service 24h/24' },
           { value: 'Jour uniquement', label: '☀️ Jour uniquement (6h-20h)' },
-          { value: 'Nuit uniquement', label: '🌙 Nuit uniquement (20h-6h)' },
-          { value: 'Sur réservation', label: '📅 Sur réservation' },
-          { value: 'Week-end', label: '🌴 Week-end uniquement' },
+          { value: 'Nuit uniquement', label: '\uD83C\uDF19 Nuit uniquement (20h-6h)' },
+          { value: 'Sur réservation', label: '\uD83D\uDCC5 Sur réservation' },
+          { value: 'Week-end', label: '\uD83C\uDF34 Week-end uniquement' },
         ]
       },
       {
@@ -15952,7 +15952,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#F59E0B',
       gradientColors: ['#F59E0B', '#D97706'],
-      icon: '🚕',
+      icon: '\uD83D\uDE95',
       badgeColor: '#FEF3C7',
       accentColor: '#D97706',
     },
@@ -15964,7 +15964,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     searchKeywords: ['taxi', 'vtc', 'chauffeur', 'course', 'transport', 'moto', 'okada', 'bendskin', 'keke', 'clando'],
   },
 
-  // 🚗 COVOITURAGE & TRAJETS
+  // \uD83D\uDE97 COVOITURAGE & TRAJETS
   covoiturage: {
     terminology: {
       productLabel: 'Trajet',
@@ -16002,11 +16002,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de véhicule',
         type: 'select',
         options: [
-          { value: 'Berline (4 places)', label: '🚗 Berline (4 places)' },
-          { value: 'SUV (6-7 places)', label: '🚙 SUV (6-7 places)' },
-          { value: 'Break (5-6 places)', label: '🚐 Break (5-6 places)' },
-          { value: 'Minibus (9-15 places)', label: '🚐 Minibus (9-15 places)' },
-          { value: 'Camionnette', label: '🚚 Camionnette' },
+          { value: 'Berline (4 places)', label: '\uD83D\uDE97 Berline (4 places)' },
+          { value: 'SUV (6-7 places)', label: '\uD83D\uDE99 SUV (6-7 places)' },
+          { value: 'Break (5-6 places)', label: '\uD83D\uDE90 Break (5-6 places)' },
+          { value: 'Minibus (9-15 places)', label: '\uD83D\uDE90 Minibus (9-15 places)' },
+          { value: 'Camionnette', label: '\uD83D\uDE9A Camionnette' },
           { value: 'Voiture de luxe', label: '✨ Voiture de luxe' },
         ]
       },
@@ -16015,12 +16015,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Fréquence',
         type: 'select',
         options: [
-          { value: 'Trajet unique', label: '📅 Trajet unique' },
-          { value: 'Quotidien', label: '🔄 Quotidien' },
-          { value: 'Hebdomadaire', label: '📆 Hebdomadaire' },
-          { value: 'Week-end', label: '🌴 Week-end' },
-          { value: 'Occasionnel', label: '🎯 Occasionnel' },
-          { value: 'Sur demande', label: '📞 Sur demande' },
+          { value: 'Trajet unique', label: '\uD83D\uDCC5 Trajet unique' },
+          { value: 'Quotidien', label: '\uD83D\uDD04 Quotidien' },
+          { value: 'Hebdomadaire', label: '\uD83D\uDCC6 Hebdomadaire' },
+          { value: 'Week-end', label: '\uD83C\uDF34 Week-end' },
+          { value: 'Occasionnel', label: '\uD83C\uDFAF Occasionnel' },
+          { value: 'Sur demande', label: '\uD83D\uDCDE Sur demande' },
         ]
       },
       {
@@ -16028,14 +16028,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Préférences',
         type: 'multiselect',
         options: [
-          { value: 'Non-fumeur', label: '🚭 Non-fumeur' },
+          { value: 'Non-fumeur', label: '\uD83D\uDEAD Non-fumeur' },
           { value: 'Climatisation', label: '❄️ Climatisation' },
-          { value: 'Musique autorisée', label: '🎵 Musique autorisée' },
-          { value: 'Silence apprécié', label: '🤫 Silence apprécié' },
-          { value: 'Discussion agréable', label: '💬 Discussion agréable' },
-          { value: 'Bagages volumineux acceptés', label: '🧳 Bagages volumineux' },
-          { value: 'Animaux autorisés', label: '🐕 Animaux autorisés' },
-          { value: 'Arrêts flexibles', label: '🛑 Arrêts flexibles' },
+          { value: 'Musique autorisée', label: '\uD83C\uDFB5 Musique autorisée' },
+          { value: 'Silence apprécié', label: '\uD83E\uDD2B Silence apprécié' },
+          { value: 'Discussion agréable', label: '\uD83D\uDCAC Discussion agréable' },
+          { value: 'Bagages volumineux acceptés', label: '\uD83E\uDDF3 Bagages volumineux' },
+          { value: 'Animaux autorisés', label: '\uD83D\uDC15 Animaux autorisés' },
+          { value: 'Arrêts flexibles', label: '\uD83D\uDED1 Arrêts flexibles' },
           { value: 'Trajet direct', label: '➡️ Trajet direct' },
         ]
       },
@@ -16043,7 +16043,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#EC4899',
       gradientColors: ['#EC4899', '#DB2777'],
-      icon: '🚗',
+      icon: '\uD83D\uDE97',
       badgeColor: '#FCE7F3',
       accentColor: '#DB2777',
     },
@@ -16054,7 +16054,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'horizontal',
   },
 
-  // 🎨 ARTICLES DE DÉCORATION
+  // \uD83C\uDFA8 ARTICLES DE DÉCORATION
   decoration: {
     terminology: {
       productLabel: 'Article de décoration',
@@ -16084,7 +16084,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#E91E63',
       gradientColors: ['#E91E63', '#C2185B'],
-      icon: '🎨',
+      icon: '\uD83C\uDFA8',
       badgeColor: '#FCE4EC',
       accentColor: '#C2185B',
     },
@@ -16095,7 +16095,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'grid',
   },
 
-  // 👟 CHAUSSURES
+  // \uD83D\uDC5F CHAUSSURES
   chaussure: {
     terminology: {
       productLabel: 'Chaussure',
@@ -16234,7 +16234,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#F59E0B',
       gradientColors: ['#F59E0B', '#D97706'],
-      icon: '👟',
+      icon: '\uD83D\uDC5F',
       badgeColor: '#FEF3C7',
       accentColor: '#D97706',
     },
@@ -16430,7 +16430,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     ],
   },
 
-  // 📺 RÉPARATEUR ÉLECTRONIQUE (TV, RADIO, AUDIO, VIDÉO)
+  // \uD83D\uDCFA RÉPARATEUR ÉLECTRONIQUE (TV, RADIO, AUDIO, VIDÉO)
   reparateur_electronique: {
     terminology: {
       productLabel: 'Prestation réparation électronique',
@@ -16564,7 +16564,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     style: {
       primaryColor: '#9C27B0',
       gradientColors: ['#9C27B0', '#7B1FA2'],
-      icon: '📺',
+      icon: '\uD83D\uDCFA',
       badgeColor: '#F3E5F5',
       accentColor: '#7B1FA2',
     },
@@ -16604,7 +16604,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
 
   // ⚠️ NOTE : Configuration "evenementiel" dupliquée supprimée (existait déjà ligne 6460)
 
-  // 🌾 AGRICULTURE & ÉLEVAGE
+  // \uD83C\uDF3E AGRICULTURE & ÉLEVAGE
   agriculture_elevage: {
     terminology: {
       productLabel: 'Produit agricole / Animal',
@@ -16628,11 +16628,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Catégorie',
         type: 'select',
         options: [
-          { value: '🌾 Produits Agricoles', label: '🌾 Produits Agricoles' },
-          { value: '🐄 Animaux d\'Élevage', label: '🐄 Animaux d\'Élevage' },
-          { value: '🥚 Produits Animaux (œufs, lait, miel)', label: '🥚 Produits Animaux' },
-          { value: '🌱 Intrants Agricoles (semences, engrais)', label: '🌱 Intrants Agricoles' },
-          { value: '🚜 Matériel & Équipements', label: '🚜 Matériel & Équipements' },
+          { value: '\uD83C\uDF3E Produits Agricoles', label: '\uD83C\uDF3E Produits Agricoles' },
+          { value: '\uD83D\uDC04 Animaux d\'Élevage', label: '\uD83D\uDC04 Animaux d\'Élevage' },
+          { value: '\uD83E\uDD5A Produits Animaux (œufs, lait, miel)', label: '\uD83E\uDD5A Produits Animaux' },
+          { value: '\uD83C\uDF31 Intrants Agricoles (semences, engrais)', label: '\uD83C\uDF31 Intrants Agricoles' },
+          { value: '\uD83D\uDE9C Matériel & Équipements', label: '\uD83D\uDE9C Matériel & Équipements' },
         ],
       },
       {
@@ -16640,12 +16640,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de produit',
         type: 'select',
         options: [
-          { value: 'Légumes', label: '🥬 Légumes' },
-          { value: 'Fruits', label: '🍎 Fruits' },
-          { value: 'Céréales', label: '🌾 Céréales & Grains' },
-          { value: 'Tubercules', label: '🥔 Tubercules & Racines' },
-          { value: 'Légumineuses', label: '🫘 Légumineuses sèches' },
-          { value: 'Épices', label: '🌶️ Épices & Condiments' },
+          { value: 'Légumes', label: '\uD83E\uDD6C Légumes' },
+          { value: 'Fruits', label: '\uD83C\uDF4E Fruits' },
+          { value: 'Céréales', label: '\uD83C\uDF3E Céréales & Grains' },
+          { value: 'Tubercules', label: '\uD83E\uDD54 Tubercules & Racines' },
+          { value: 'Légumineuses', label: '\uD83E\uDED8 Légumineuses sèches' },
+          { value: 'Épices', label: '\uD83C\uDF36️ Épices & Condiments' },
           { value: 'Cultures de rente', label: '☕ Cultures de rente' },
         ],
       },
@@ -16654,13 +16654,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type d\'animal',
         type: 'select',
         options: [
-          { value: 'Bovins', label: '🐄 Bovins (bœuf, vache)' },
-          { value: 'Ovins', label: '🐏 Ovins (moutons)' },
-          { value: 'Caprins', label: '🐐 Caprins (chèvres)' },
-          { value: 'Porcins', label: '🐖 Porcins (porcs)' },
-          { value: 'Volailles', label: '🐔 Volailles (poulets, canards)' },
-          { value: 'Autres animaux', label: '🐰 Autres animaux (lapins, escargots)' },
-          { value: 'Poissons', label: '🐟 Poissons (aquaculture)' },
+          { value: 'Bovins', label: '\uD83D\uDC04 Bovins (bœuf, vache)' },
+          { value: 'Ovins', label: '\uD83D\uDC0F Ovins (moutons)' },
+          { value: 'Caprins', label: '\uD83D\uDC10 Caprins (chèvres)' },
+          { value: 'Porcins', label: '\uD83D\uDC16 Porcins (porcs)' },
+          { value: 'Volailles', label: '\uD83D\uDC14 Volailles (poulets, canards)' },
+          { value: 'Autres animaux', label: '\uD83D\uDC30 Autres animaux (lapins, escargots)' },
+          { value: 'Poissons', label: '\uD83D\uDC1F Poissons (aquaculture)' },
         ],
       },
       {
@@ -16669,16 +16669,16 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'select',
         options: [
           { value: 'Kilogramme (kg)', label: '⚖️ Kilogramme (kg)' },
-          { value: 'Seau 15L (standard)', label: '🪣 Seau 15L' },
-          { value: 'Sac 25 kg (standard)', label: '💼 Sac 25 kg' },
-          { value: 'Cagio', label: '🧺 Cagio / Cageot' },
-          { value: 'Tas', label: '🥔 Tas' },
-          { value: 'Liasse', label: '🥬 Liasse / Botte' },
-          { value: 'Alvéole 30 œufs (plateau)', label: '🥚 Alvéole (œufs)' },
-          { value: 'Ver', label: '🥜 Ver' },
+          { value: 'Seau 15L (standard)', label: '\uD83E\uDEA3 Seau 15L' },
+          { value: 'Sac 25 kg (standard)', label: '\uD83D\uDCBC Sac 25 kg' },
+          { value: 'Cagio', label: '\uD83E\uDDFA Cagio / Cageot' },
+          { value: 'Tas', label: '\uD83E\uDD54 Tas' },
+          { value: 'Liasse', label: '\uD83E\uDD6C Liasse / Botte' },
+          { value: 'Alvéole 30 œufs (plateau)', label: '\uD83E\uDD5A Alvéole (œufs)' },
+          { value: 'Ver', label: '\uD83E\uDD5C Ver' },
           { value: 'Unité', label: '1️⃣ Unité / Pièce / Tête' },
-          { value: 'Régime', label: '🍌 Régime (bananes)' },
-          { value: 'Litre', label: '🥛 Litre' },
+          { value: 'Régime', label: '\uD83C\uDF4C Régime (bananes)' },
+          { value: 'Litre', label: '\uD83E\uDD5B Litre' },
         ],
       },
       {
@@ -16686,16 +16686,16 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Origine / Provenance',
         type: 'select',
         options: [
-          { value: '🇨🇲 Cameroun', label: '🇨🇲 Cameroun' },
-          { value: '🇨🇮 Côte d\'Ivoire', label: '🇨🇮 Côte d\'Ivoire' },
-          { value: '🇸🇳 Sénégal', label: '🇸🇳 Sénégal' },
-          { value: '🇲🇱 Mali', label: '🇲🇱 Mali' },
-          { value: '🇧🇯 Bénin', label: '🇧🇯 Bénin' },
-          { value: '🇹🇬 Togo', label: '🇹🇬 Togo' },
-          { value: '🇧🇫 Burkina Faso', label: '🇧🇫 Burkina Faso' },
-          { value: '🇬🇦 Gabon', label: '🇬🇦 Gabon' },
-          { value: '🇨🇩 RD Congo', label: '🇨🇩 RD Congo' },
-          { value: '🏡 Production locale', label: '🏡 Production locale' },
+          { value: '\uD83C\uDDE8\uD83C\uDDF2 Cameroun', label: '\uD83C\uDDE8\uD83C\uDDF2 Cameroun' },
+          { value: '\uD83C\uDDE8\uD83C\uDDEE Côte d\'Ivoire', label: '\uD83C\uDDE8\uD83C\uDDEE Côte d\'Ivoire' },
+          { value: '\uD83C\uDDF8\uD83C\uDDF3 Sénégal', label: '\uD83C\uDDF8\uD83C\uDDF3 Sénégal' },
+          { value: '\uD83C\uDDF2\uD83C\uDDF1 Mali', label: '\uD83C\uDDF2\uD83C\uDDF1 Mali' },
+          { value: '\uD83C\uDDE7\uD83C\uDDEF Bénin', label: '\uD83C\uDDE7\uD83C\uDDEF Bénin' },
+          { value: '\uD83C\uDDF9\uD83C\uDDEC Togo', label: '\uD83C\uDDF9\uD83C\uDDEC Togo' },
+          { value: '\uD83C\uDDE7\uD83C\uDDEB Burkina Faso', label: '\uD83C\uDDE7\uD83C\uDDEB Burkina Faso' },
+          { value: '\uD83C\uDDEC\uD83C\uDDE6 Gabon', label: '\uD83C\uDDEC\uD83C\uDDE6 Gabon' },
+          { value: '\uD83C\uDDE8\uD83C\uDDE9 RD Congo', label: '\uD83C\uDDE8\uD83C\uDDE9 RD Congo' },
+          { value: '\uD83C\uDFE1 Production locale', label: '\uD83C\uDFE1 Production locale' },
         ],
       },
       {
@@ -16703,13 +16703,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Méthode de production',
         type: 'select',
         options: [
-          { value: '🌱 Agriculture biologique', label: '🌱 Agriculture biologique' },
-          { value: '🌱 Agriculture conventionnelle', label: '🌱 Agriculture conventionnelle' },
-          { value: '🌱 Agroécologie', label: '🌱 Agroécologie' },
-          { value: '🌱 Agriculture traditionnelle', label: '🌱 Agriculture traditionnelle' },
-          { value: '🐄 Élevage traditionnel', label: '🐄 Élevage traditionnel' },
-          { value: '🐄 Élevage moderne', label: '🐄 Élevage moderne' },
-          { value: '🐄 Élevage biologique', label: '🐄 Élevage biologique' },
+          { value: '\uD83C\uDF31 Agriculture biologique', label: '\uD83C\uDF31 Agriculture biologique' },
+          { value: '\uD83C\uDF31 Agriculture conventionnelle', label: '\uD83C\uDF31 Agriculture conventionnelle' },
+          { value: '\uD83C\uDF31 Agroécologie', label: '\uD83C\uDF31 Agroécologie' },
+          { value: '\uD83C\uDF31 Agriculture traditionnelle', label: '\uD83C\uDF31 Agriculture traditionnelle' },
+          { value: '\uD83D\uDC04 Élevage traditionnel', label: '\uD83D\uDC04 Élevage traditionnel' },
+          { value: '\uD83D\uDC04 Élevage moderne', label: '\uD83D\uDC04 Élevage moderne' },
+          { value: '\uD83D\uDC04 Élevage biologique', label: '\uD83D\uDC04 Élevage biologique' },
         ],
       },
       {
@@ -16722,9 +16722,9 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: '✅ Sans pesticides', label: '✅ Sans pesticides' },
           { value: '✅ Sans OGM', label: '✅ Sans OGM' },
           { value: '✅ Halal', label: '✅ Halal' },
-          { value: '🌟 Produit frais du jour', label: '🌟 Frais du jour' },
-          { value: '🌟 Production locale', label: '🌟 Production locale' },
-          { value: '🌟 Circuit court', label: '🌟 Circuit court' },
+          { value: '\uD83C\uDF1F Produit frais du jour', label: '\uD83C\uDF1F Frais du jour' },
+          { value: '\uD83C\uDF1F Production locale', label: '\uD83C\uDF1F Production locale' },
+          { value: '\uD83C\uDF1F Circuit court', label: '\uD83C\uDF1F Circuit court' },
         ],
       },
       {
@@ -16735,10 +16735,10 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: '✨ Ultra-frais (récolte jour même)', label: '✨ Ultra-frais (récolte jour même)' },
           { value: '✨ Très frais (récolte veille)', label: '✨ Très frais (récolte veille)' },
           { value: '✨ Frais (2-3 jours)', label: '✨ Frais (2-3 jours)' },
-          { value: '🐄 Animal vivant sur pied', label: '🐄 Animal vivant sur pied' },
-          { value: '🐄 Vacciné', label: '🐄 Vacciné' },
-          { value: '📦 Séché', label: '📦 Séché' },
-          { value: '📦 Fumé', label: '📦 Fumé' },
+          { value: '\uD83D\uDC04 Animal vivant sur pied', label: '\uD83D\uDC04 Animal vivant sur pied' },
+          { value: '\uD83D\uDC04 Vacciné', label: '\uD83D\uDC04 Vacciné' },
+          { value: '\uD83D\uDCE6 Séché', label: '\uD83D\uDCE6 Séché' },
+          { value: '\uD83D\uDCE6 Fumé', label: '\uD83D\uDCE6 Fumé' },
         ],
       },
       {
@@ -16746,11 +16746,11 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Saison / Disponibilité',
         type: 'select',
         options: [
-          { value: '🌞 Toute l\'année', label: '🌞 Toute l\'année' },
-          { value: '🌞 Disponible actuellement', label: '🌞 Disponible actuellement' },
+          { value: '\uD83C\uDF1E Toute l\'année', label: '\uD83C\uDF1E Toute l\'année' },
+          { value: '\uD83C\uDF1E Disponible actuellement', label: '\uD83C\uDF1E Disponible actuellement' },
           { value: '☔ Saison des pluies', label: '☔ Saison des pluies' },
           { value: '☀️ Saison sèche', label: '☀️ Saison sèche' },
-          { value: '🌾 Période de récolte', label: '🌾 Période de récolte' },
+          { value: '\uD83C\uDF3E Période de récolte', label: '\uD83C\uDF3E Période de récolte' },
           { value: '⏰ Sur commande uniquement', label: '⏰ Sur commande' },
         ],
       },
@@ -16759,21 +16759,21 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Type de vente',
         type: 'select',
         options: [
-          { value: '🏪 Vente au détail', label: '🏪 Vente au détail' },
-          { value: '🏪 Vente en gros', label: '🏪 Vente en gros' },
-          { value: '🏪 Demi-gros', label: '🏪 Demi-gros' },
-          { value: '🛒 Vente directe producteur', label: '🛒 Vente directe producteur' },
-          { value: '🛒 Circuit court', label: '🛒 Circuit court' },
-          { value: '🏪 Vente au marché', label: '🏪 Vente au marché' },
-          { value: '🚚 Livraison possible', label: '🚚 Livraison possible' },
-          { value: '💰 Prix négociable', label: '💰 Prix négociable' },
+          { value: '\uD83C\uDFEA Vente au détail', label: '\uD83C\uDFEA Vente au détail' },
+          { value: '\uD83C\uDFEA Vente en gros', label: '\uD83C\uDFEA Vente en gros' },
+          { value: '\uD83C\uDFEA Demi-gros', label: '\uD83C\uDFEA Demi-gros' },
+          { value: '\uD83D\uDED2 Vente directe producteur', label: '\uD83D\uDED2 Vente directe producteur' },
+          { value: '\uD83D\uDED2 Circuit court', label: '\uD83D\uDED2 Circuit court' },
+          { value: '\uD83C\uDFEA Vente au marché', label: '\uD83C\uDFEA Vente au marché' },
+          { value: '\uD83D\uDE9A Livraison possible', label: '\uD83D\uDE9A Livraison possible' },
+          { value: '\uD83D\uDCB0 Prix négociable', label: '\uD83D\uDCB0 Prix négociable' },
         ],
       },
     ],
     style: {
       primaryColor: '#10B981',
       gradientColors: ['#10B981', '#059669'],
-      icon: '🌾',
+      icon: '\uD83C\uDF3E',
       badgeColor: '#D1FAE5',
       accentColor: '#059669',
     },

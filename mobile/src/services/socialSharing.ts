@@ -25,7 +25,7 @@ class SocialSharingService {
         agency: string;
     }): Promise<boolean> {
         try {
-            const message = `🚌 Voyage ${trip.departure} → ${trip.arrival}\n📅 ${trip.date}\n💰 ${trip.price.toLocaleString()} FCFA\n🏢 ${trip.agency}\n\nRéservez sur Yukpo !`;
+            const message = `\uD83D\uDE8C Voyage ${trip.departure} → ${trip.arrival}\n\uD83D\uDCC5 ${trip.date}\n\uD83D\uDCB0 ${trip.price.toLocaleString()} FCFA\n\uD83C\uDFE2 ${trip.agency}\n\nRéservez sur Yukpo !`;
             const url = `https://yukpomnang.com/trips/${trip.departure}-${trip.arrival}`;
 
             const result = await Share.share({
@@ -91,7 +91,7 @@ class SocialSharingService {
         code?: string;
     }): Promise<boolean> {
         try {
-            const message = `🎉 ${promotion.title}\n${promotion.description}\n💰 Réduction de ${promotion.discount}%${promotion.code ? `\n🎫 Code: ${promotion.code}` : ''}\n\nProfitez-en sur Yukpo !`;
+            const message = `\uD83C\uDF89 ${promotion.title}\n${promotion.description}\n\uD83D\uDCB0 Réduction de ${promotion.discount}%${promotion.code ? `\n\uD83C\uDFAB Code: ${promotion.code}` : ''}\n\nProfitez-en sur Yukpo !`;
             const url = 'https://yukpomnang.com/promotions';
 
             const result = await Share.share({
@@ -135,20 +135,20 @@ class SocialSharingService {
     }): Promise<boolean> {
         try {
             const lines = [
-                `🏃 Mes performances Yukpo Navigation (${stats.period === 'week' ? 'cette semaine' : stats.period === 'month' ? 'ce mois' : 'cette année'})`,
+                `\uD83C\uDFC3 Mes performances Yukpo Navigation (${stats.period === 'week' ? 'cette semaine' : stats.period === 'month' ? 'ce mois' : 'cette année'})`,
                 ``,
-                `🫀 Score santé: ${stats.healthScore}/100 (${stats.healthLabel})`,
-                `📏 Distance: ${stats.distanceKm.toFixed(1)} km · ${stats.sessions} session${stats.sessions > 1 ? 's' : ''}`,
-                `🔥 Calories: ${Math.round(stats.calories)} kcal`,
-                `🌱 CO₂ économisé: ${stats.co2SavedKg.toFixed(1)} kg`,
-                `💪 VO₂max: ${Math.round(stats.vo2max)} ml/kg/min (${stats.fitnessLevel})`,
+                `\uD83E\uDEC0 Score santé: ${stats.healthScore}/100 (${stats.healthLabel})`,
+                `\uD83D\uDCCF Distance: ${stats.distanceKm.toFixed(1)} km · ${stats.sessions} session${stats.sessions > 1 ? 's' : ''}`,
+                `\uD83D\uDD25 Calories: ${Math.round(stats.calories)} kcal`,
+                `\uD83C\uDF31 CO₂ économisé: ${stats.co2SavedKg.toFixed(1)} kg`,
+                `\uD83D\uDCAA VO₂max: ${Math.round(stats.vo2max)} ml/kg/min (${stats.fitnessLevel})`,
                 `⚡ Série: ${stats.streak} jour${stats.streak > 1 ? 's' : ''} consécutif${stats.streak > 1 ? 's' : ''}`,
-                `🏅 ${stats.badgeCount} badge${stats.badgeCount > 1 ? 's' : ''} · ${stats.points} points`,
+                `\uD83C\uDFC5 ${stats.badgeCount} badge${stats.badgeCount > 1 ? 's' : ''} · ${stats.points} points`,
             ];
-            if (stats.bestDistanceKm) lines.push(`🏆 Record distance: ${stats.bestDistanceKm.toFixed(1)} km`);
+            if (stats.bestDistanceKm) lines.push(`\uD83C\uDFC6 Record distance: ${stats.bestDistanceKm.toFixed(1)} km`);
             if (stats.bestSpeedKmh) lines.push(`⚡ Record vitesse: ${stats.bestSpeedKmh.toFixed(1)} km/h`);
             lines.push(``);
-            lines.push(`Rejoins-moi sur Yukpo ! 🚀`);
+            lines.push(`Rejoins-moi sur Yukpo ! \uD83D\uDE80`);
             // URL de la page de partage backend (avec OG tags pour preview WhatsApp/Facebook + deep link + store fallback)
             if (stats.userId) {
                 lines.push(`https://yukpomnang.com/navigation/share/${stats.userId}`);
@@ -184,7 +184,7 @@ class SocialSharingService {
      */
     async shareApp(): Promise<boolean> {
         try {
-            const message = `🚀 Découvrez Yukpo, la meilleure plateforme de réservation de tickets de bus !\n\n✅ Réservation facile\n✅ Paiement sécurisé\n✅ Suivi en temps réel\n\nTéléchargez maintenant !`;
+            const message = `\uD83D\uDE80 Découvrez Yukpo, la meilleure plateforme de réservation de tickets de bus !\n\n✅ Réservation facile\n✅ Paiement sécurisé\n✅ Suivi en temps réel\n\nTéléchargez maintenant !`;
             const url = Platform.OS === 'ios'
                 ? 'https://apps.apple.com/app/yukpomnang'
                 : 'https://play.google.com/store/apps/details?id=com.yukpomnang';

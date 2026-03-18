@@ -147,11 +147,11 @@ pub async fn create_publicite(
     }
 
     // Déduire le coût du solde
-    sqlx::query!(
+    sqlx::query(
         "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2",
-        payload.cout as i64,
-        payload.user_id
     )
+    .bind(payload.cout as i64)
+    .bind(payload.user_id)
     .execute(pool.as_ref())
     .await
     .map_err(|e| {
@@ -188,7 +188,7 @@ pub async fn create_publicite(
         .await
     } else {
         // Sans géolocalisation
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO publicites (
                 user_id, titre, description, produits_indexes, videos, thumbnails,
@@ -198,17 +198,17 @@ pub async fn create_publicite(
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW() + ($7 || ' days')::interval)
             RETURNING id, date_debut, date_fin
             "#,
-            payload.user_id,
-            payload.titre,
-            payload.description,
-            &payload.produits_indexes,
-            &payload.videos,
-            &payload.thumbnails,
-            payload.duree_jours,
-            payload.cout,
-            payload.zone_geographique,
-            rayon
         )
+        .bind(payload.user_id)
+        .bind(&payload.titre)
+        .bind(&payload.description)
+        .bind(&payload.produits_indexes)
+        .bind(&payload.videos)
+        .bind(&payload.thumbnails)
+        .bind(payload.duree_jours)
+        .bind(payload.cout)
+        .bind(&payload.zone_geographique)
+        .bind(rayon)
         .fetch_one(pool.as_ref())
         .await
     };
@@ -243,7 +243,7 @@ pub async fn get_active_publicites(
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     log::info!("📋 [Publicité] Récupération publicités actives");
 
-    let query = sqlx::query!(
+    let query = sqlx::query(
         r#"
         SELECT 
             id, user_id, titre, description, produits_indexes, videos, thumbnails,
@@ -253,7 +253,7 @@ pub async fn get_active_publicites(
         AND date_fin > NOW()
         ORDER BY created_at DESC
         LIMIT 50
-        "#
+        "#,
     )
     .fetch_all(pool.as_ref())
     .await
@@ -264,22 +264,36 @@ pub async fn get_active_publicites(
 
     // Enrichir avec les données des produits
     let mut publicites = Vec::new();
-    for record in query {
+    for record in &query {
+        use sqlx::Row;
+        let rec_id: i32 = record.try_get("id").unwrap_or(0);
+        let rec_titre: Option<String> = record.try_get("titre").unwrap_or(None);
+        let rec_description: Option<String> = record.try_get("description").unwrap_or(None);
+        let rec_produits_indexes: Vec<String> = record.try_get("produits_indexes").unwrap_or_default();
+        let rec_videos: Vec<String> = record.try_get("videos").unwrap_or_default();
+        let rec_thumbnails: Vec<String> = record.try_get("thumbnails").unwrap_or_default();
+        let rec_zone: Option<String> = record.try_get("zone_geographique").unwrap_or(None);
+        let rec_vues: Option<i32> = record.try_get("vues").unwrap_or(None);
+        let rec_clics: Option<i32> = record.try_get("clics").unwrap_or(None);
+        let rec_date_debut: Option<chrono::DateTime<chrono::Utc>> = record.try_get("date_debut").unwrap_or(None);
+        let rec_date_fin: Option<chrono::DateTime<chrono::Utc>> = record.try_get("date_fin").unwrap_or(None);
+
         // Récupérer les produits indexés
         let mut produits = Vec::new();
-        for product_key in &record.produits_indexes {
+        for product_key in &rec_produits_indexes {
             let parts: Vec<&str> = product_key.split('_').collect();
             if parts.len() == 2 {
                 if let (Ok(service_id), Ok(product_index)) = (parts[0].parse::<i32>(), parts[1].parse::<usize>()) {
                     // Récupérer le produit depuis le service
-                    if let Ok(Some(service)) = sqlx::query!(
+                    if let Ok(Some(service_row)) = sqlx::query(
                         "SELECT data FROM services WHERE id = $1",
-                        service_id
                     )
+                    .bind(service_id)
                     .fetch_optional(pool.as_ref())
                     .await
                     {
-                        if let Some(data) = service.data {
+                        let data: Option<serde_json::Value> = service_row.try_get("data").unwrap_or(None);
+                        if let Some(data) = data {
                             if let Some(products_array) = data.get("produits").and_then(|p| p.as_array()) {
                                 if let Some(product) = products_array.get(product_index) {
                                     let mut product_data = product.clone();
@@ -296,17 +310,17 @@ pub async fn get_active_publicites(
         }
 
         publicites.push(serde_json::json!({
-            "id": record.id,
-            "titre": record.titre,
-            "description": record.description,
+            "id": rec_id,
+            "titre": rec_titre,
+            "description": rec_description,
             "produits": produits,
-            "videos": record.videos,
-            "thumbnails": record.thumbnails,
-            "zone_geographique": record.zone_geographique,
-            "vues": record.vues,
-            "clics": record.clics,
-            "date_debut": record.date_debut,
-            "date_fin": record.date_fin
+            "videos": rec_videos,
+            "thumbnails": rec_thumbnails,
+            "zone_geographique": rec_zone,
+            "vues": rec_vues,
+            "clics": rec_clics,
+            "date_debut": rec_date_debut,
+            "date_fin": rec_date_fin
         }));
     }
 
@@ -323,8 +337,9 @@ pub async fn get_publicite_dashboard(
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     log::info!("📊 [Publicité] Dashboard pour user {}", user_id);
 
+    use sqlx::Row;
     // Stats globales
-    let stats = sqlx::query!(
+    let stats = sqlx::query(
         r#"
         SELECT 
             COALESCE(SUM(vues), 0) as total_vues,
@@ -334,8 +349,8 @@ pub async fn get_publicite_dashboard(
         FROM publicites
         WHERE user_id = $1
         "#,
-        user_id
     )
+    .bind(user_id)
     .fetch_one(&**pool)
     .await
     .map_err(|e| {
@@ -343,8 +358,10 @@ pub async fn get_publicite_dashboard(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    let total_vues = stats.total_vues.unwrap_or(0);
-    let total_clics = stats.total_clics.unwrap_or(0);
+    let total_vues: i64 = stats.try_get::<Option<i64>, _>("total_vues").unwrap_or(None).unwrap_or(0);
+    let total_clics: i64 = stats.try_get::<Option<i64>, _>("total_clics").unwrap_or(None).unwrap_or(0);
+    let budget_total_depense: i64 = stats.try_get::<Option<i64>, _>("budget_total_depense").unwrap_or(None).unwrap_or(0);
+    let publicites_actives: i64 = stats.try_get::<Option<i64>, _>("publicites_actives").unwrap_or(None).unwrap_or(0);
     let taux_conversion = if total_vues > 0 {
         (total_clics as f64 / total_vues as f64) * 100.0
     } else {
@@ -352,7 +369,7 @@ pub async fn get_publicite_dashboard(
     };
 
     // Liste des publicités de l'utilisateur
-    let publicites = sqlx::query!(
+    let publicites = sqlx::query(
         r#"
         SELECT 
             id, titre, status, vues, clics, cout as budget_depense,
@@ -362,8 +379,8 @@ pub async fn get_publicite_dashboard(
         WHERE user_id = $1
         ORDER BY created_at DESC
         "#,
-        user_id
     )
+    .bind(user_id)
     .fetch_all(pool.as_ref())
     .await
     .map_err(|e| {
@@ -372,27 +389,25 @@ pub async fn get_publicite_dashboard(
     })?;
 
     let publicites_details: Vec<serde_json::Value> = publicites
-        .into_iter()
-        .map(|pub_record| {
-            let conversion_rate = if pub_record.vues > 0 {
-                (pub_record.clics as f64 / pub_record.vues as f64) * 100.0
-            } else {
-                0.0
-            };
-
+        .iter()
+        .map(|r| {
+            let vues: i32 = r.try_get("vues").unwrap_or(0);
+            let clics: i32 = r.try_get("clics").unwrap_or(0);
+            let conversion_rate = if vues > 0 { (clics as f64 / vues as f64) * 100.0 } else { 0.0 };
+            let pi: Vec<String> = r.try_get("produits_indexes").unwrap_or_default();
             serde_json::json!({
-                "id": pub_record.id,
-                "titre": pub_record.titre,
-                "status": pub_record.status,
-                "vues": pub_record.vues,
-                "clics": pub_record.clics,
+                "id": r.try_get::<i32, _>("id").unwrap_or(0),
+                "titre": r.try_get::<Option<String>, _>("titre").unwrap_or(None),
+                "status": r.try_get::<Option<String>, _>("status").unwrap_or(None),
+                "vues": vues,
+                "clics": clics,
                 "conversion_rate": conversion_rate,
-                "budget_depense": pub_record.budget_depense,
-                "jours_restants": pub_record.jours_restants.unwrap_or(0),
-                "zone_geographique": pub_record.zone_geographique,
-                "produits_count": pub_record.produits_indexes.len(),
-                "date_debut": pub_record.date_debut,
-                "date_fin": pub_record.date_fin
+                "budget_depense": r.try_get::<Option<f64>, _>("budget_depense").unwrap_or(None),
+                "jours_restants": r.try_get::<Option<i64>, _>("jours_restants").unwrap_or(None).unwrap_or(0),
+                "zone_geographique": r.try_get::<Option<String>, _>("zone_geographique").unwrap_or(None),
+                "produits_count": pi.len(),
+                "date_debut": r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("date_debut").unwrap_or(None),
+                "date_fin": r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("date_fin").unwrap_or(None)
             })
         })
         .collect();
@@ -404,8 +419,8 @@ pub async fn get_publicite_dashboard(
                 "total_vues": total_vues,
                 "total_clics": total_clics,
                 "taux_conversion_moyen": taux_conversion,
-                "budget_total_depense": stats.budget_total_depense.unwrap_or(0),
-                "publicites_actives": stats.publicites_actives.unwrap_or(0)
+                "budget_total_depense": budget_total_depense,
+                "publicites_actives": publicites_actives
             },
             "publicites": publicites_details
         }
@@ -419,7 +434,7 @@ pub async fn get_publicite_by_id(
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     log::info!("🔍 [Publicité] Récupération publicité ID {}", id);
 
-    let publicite = sqlx::query!(
+    let publicite = sqlx::query(
         r#"
         SELECT 
             id, user_id, titre, description, produits_indexes, videos, thumbnails,
@@ -428,8 +443,8 @@ pub async fn get_publicite_by_id(
         FROM publicites
         WHERE id = $1
         "#,
-        id
     )
+    .bind(id)
     .fetch_optional(pool.as_ref())
     .await
     .map_err(|e| {
@@ -438,26 +453,29 @@ pub async fn get_publicite_by_id(
     })?;
 
     match publicite {
-        Some(pub_record) => Ok(Json(serde_json::json!({
-            "success": true,
-            "data": {
-                "id": pub_record.id,
-                "user_id": pub_record.user_id,
-                "titre": pub_record.titre,
-                "description": pub_record.description,
-                "produits_indexes": pub_record.produits_indexes,
-                "videos": pub_record.videos,
-                "thumbnails": pub_record.thumbnails,
-                "duree_jours": pub_record.duree_jours,
-                "cout": pub_record.cout,
-                "zone_geographique": pub_record.zone_geographique,
-                "status": pub_record.status,
-                "vues": pub_record.vues,
-                "clics": pub_record.clics,
-                "date_debut": pub_record.date_debut,
-                "date_fin": pub_record.date_fin
-            }
-        }))),
+        Some(r) => {
+            use sqlx::Row;
+            Ok(Json(serde_json::json!({
+                "success": true,
+                "data": {
+                    "id": r.try_get::<i32, _>("id").unwrap_or(0),
+                    "user_id": r.try_get::<Option<i32>, _>("user_id").unwrap_or(None),
+                    "titre": r.try_get::<Option<String>, _>("titre").unwrap_or(None),
+                    "description": r.try_get::<Option<String>, _>("description").unwrap_or(None),
+                    "produits_indexes": r.try_get::<Vec<String>, _>("produits_indexes").unwrap_or_default(),
+                    "videos": r.try_get::<Vec<String>, _>("videos").unwrap_or_default(),
+                    "thumbnails": r.try_get::<Vec<String>, _>("thumbnails").unwrap_or_default(),
+                    "duree_jours": r.try_get::<Option<i32>, _>("duree_jours").unwrap_or(None),
+                    "cout": r.try_get::<Option<f64>, _>("cout").unwrap_or(None),
+                    "zone_geographique": r.try_get::<Option<String>, _>("zone_geographique").unwrap_or(None),
+                    "status": r.try_get::<Option<String>, _>("status").unwrap_or(None),
+                    "vues": r.try_get::<Option<i32>, _>("vues").unwrap_or(None),
+                    "clics": r.try_get::<Option<i32>, _>("clics").unwrap_or(None),
+                    "date_debut": r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("date_debut").unwrap_or(None),
+                    "date_fin": r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("date_fin").unwrap_or(None)
+                }
+            })))
+        },
         None => Err(StatusCode::NOT_FOUND),
     }
 }
@@ -519,7 +537,7 @@ pub async fn update_publicite(
         .fetch_one(pool.as_ref())
         .await
     } else {
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE publicites
             SET titre = $2, description = $3, produits_indexes = $4,
@@ -529,16 +547,16 @@ pub async fn update_publicite(
             WHERE id = $1
             RETURNING id
             "#,
-            id,
-            payload.titre,
-            payload.description,
-            &payload.produits_indexes,
-            &payload.videos,
-            &payload.thumbnails,
-            payload.duree_jours,
-            payload.zone_geographique,
-            payload.rayon_km.unwrap_or(50)
         )
+        .bind(id)
+        .bind(&payload.titre)
+        .bind(&payload.description)
+        .bind(&payload.produits_indexes)
+        .bind(&payload.videos)
+        .bind(&payload.thumbnails)
+        .bind(payload.duree_jours)
+        .bind(&payload.zone_geographique)
+        .bind(payload.rayon_km.unwrap_or(50))
         .fetch_one(pool.as_ref())
         .await
     };
@@ -562,10 +580,10 @@ pub async fn track_publicite_click(
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     log::info!("👆 [Publicité] Tracking clic publicité ID {}", payload.publicite_id);
 
-    sqlx::query!(
+    sqlx::query(
         "UPDATE publicites SET clics = clics + 1 WHERE id = $1",
-        payload.publicite_id
     )
+    .bind(payload.publicite_id)
     .execute(pool.as_ref())
     .await
     .map_err(|e| {
@@ -586,10 +604,10 @@ pub async fn track_publicite_view(
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     log::info!("👁️ [Publicité] Tracking vue publicité ID {}", payload.publicite_id);
 
-    sqlx::query!(
+    sqlx::query(
         "UPDATE publicites SET vues = vues + 1, impressions = impressions + 1 WHERE id = $1",
-        payload.publicite_id
     )
+    .bind(payload.publicite_id)
     .execute(pool.as_ref())
     .await
     .map_err(|e| {

@@ -135,9 +135,9 @@ const MesLivresScreen: React.FC = () => {
                         )}
                         <View style={styles.livreMeta}>
                             <Text style={styles.metaText}>
-                                📚 {item.classe_actuelle} → {item.classe_souhaitee}
+                                \uD83D\uDCDA {item.classe_actuelle} → {item.classe_souhaitee}
                             </Text>
-                            <Text style={styles.metaText}>📖 {item.matiere}</Text>
+                            <Text style={styles.metaText}>\uD83D\uDCD6 {item.matiere}</Text>
                         </View>
                         <View style={styles.statusRow}>
                             <View style={[

@@ -142,11 +142,11 @@ const HashtagDiscoveryScreen: React.FC = () => {
             >
                 {item.thumbnail ? (
                     <View style={styles.thumbnailContainer}>
-                        <Text style={styles.thumbnailPlaceholder}>📹</Text>
+                        <Text style={styles.thumbnailPlaceholder}>\uD83D\uDCF9</Text>
                     </View>
                 ) : (
                     <View style={styles.thumbnailContainer}>
-                        <Text style={styles.thumbnailPlaceholder}>📹</Text>
+                        <Text style={styles.thumbnailPlaceholder}>\uD83D\uDCF9</Text>
                     </View>
                 )}
                 <View style={styles.videoInfo}>
@@ -190,7 +190,7 @@ const HashtagDiscoveryScreen: React.FC = () => {
                     </Text>
                     {hashtagInfo && (
                         <Text style={styles.hashtagSubtitle}>
-                            {formatCount(hashtagInfo.video_count)} vidéos{hashtagInfo.is_trending ? ' • 🔥 Tendance' : ''}
+                            {formatCount(hashtagInfo.video_count)} vidéos{hashtagInfo.is_trending ? ' • \uD83D\uDD25 Tendance' : ''}
                         </Text>
                     )}
                 </View>
@@ -211,7 +211,7 @@ const HashtagDiscoveryScreen: React.FC = () => {
                                 sortBy === sort && styles.sortButtonTextActive,
                             ]}
                         >
-                            {sort === 'recent' ? t('hashtagDiscoveryScreen.recent') : sort === 'popular' ? 'Populaire' : 'Tendance'}
+                            {sort === 'recent' ? 'Récent' : sort === 'popular' ? 'Populaire' : 'Tendance'}
                         </Text>
                     </TouchableOpacity>
                 ))}
@@ -226,7 +226,9 @@ const HashtagDiscoveryScreen: React.FC = () => {
             ) : videos.length === 0 ? (
                 <View style={styles.emptyState}>
                     <SafeIcon name="video-off" size={48} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyTitle}>{t('hashtagDiscovery.aucuneVideoTrouveet('hashtagDiscoveryScreen.textTextStylestylesemptysubtitleAucuneVideoN')utilise ce hashtag pour le moment.
+                    <Text style={styles.emptyTitle}>{t('hashtagDiscovery.aucuneVideoTrouvee')}</Text>
+                    <Text style={styles.emptySubtitle}>
+                        Aucune vidéo n'utilise ce hashtag pour le moment.
                     </Text>
                 </View>
             ) : (

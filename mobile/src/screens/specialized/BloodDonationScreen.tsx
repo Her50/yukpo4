@@ -181,9 +181,9 @@ const BloodDonationScreen: React.FC = () => {
 
     const getUrgencyLabel = (level: string) => {
         switch (level) {
-            case 'critical': return 'CRITIQUE';
-            case 'urgent': return 'URGENT';
-            default: return 'Normal';
+            case 'critical': return t('bloodDonation.urgencyCritical') || 'CRITIQUE';
+            case 'urgent': return t('bloodDonation.urgencyUrgent') || 'URGENT';
+            default: return t('bloodDonation.urgencyNormal') || 'Normal';
         }
     };
 
@@ -203,7 +203,11 @@ const BloodDonationScreen: React.FC = () => {
             </View>
 
             <Text style={styles.requestTitle}>
-                Besoin de {item.units_needed} unité{item.units_needed > 1 ? 's' : ''} de sang {item.blood_group_needed}
+                {t('bloodDonation.needUnits', {
+                    units: item.units_needed,
+                    plural: item.units_needed > 1 ? 's' : '',
+                    group: item.blood_group_needed,
+                }) || `Besoin de ${item.units_needed} unité${item.units_needed > 1 ? 's' : ''} de sang ${item.blood_group_needed}`}
             </Text>
 
             {item.banque_nom && (
@@ -225,7 +229,8 @@ const BloodDonationScreen: React.FC = () => {
             )}
 
             <Text style={styles.requestDate}>
-                Publiée le {new Date(item.created_at).toLocaleDateString('fr-FR')}
+                {t('bloodDonation.publishedOn', { date: new Date(item.created_at).toLocaleDateString('fr-FR') }) ||
+                    `Publiée le ${new Date(item.created_at).toLocaleDateString('fr-FR')}`}
             </Text>
 
             <TouchableOpacity
@@ -233,7 +238,9 @@ const BloodDonationScreen: React.FC = () => {
                 onPress={() => handleRespondToRequest(item)}
             >
                 <SafeIcon name="heart" size={16} color="#FFFFFF" />
-                <Text style={styles.respondButtonText}>Je suis disponible pour donner</Text>
+                <Text style={styles.respondButtonText}>
+                    {t('bloodDonation.availableToDonate') || 'Je suis disponible pour donner'}
+                </Text>
             </TouchableOpacity>
         </NativeCard>
     );
@@ -255,8 +262,8 @@ const BloodDonationScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <View style={styles.headerContent}>
-                    <Text style={styles.headerTitle}>Don de Sang</Text>
-                    <Text style={styles.headerSubtitle}>Sauvez des vies</Text>
+                    <Text style={styles.headerTitle}>{t('bloodDonation.headerTitle') || 'Don de Sang'}</Text>
+                    <Text style={styles.headerSubtitle}>{t('bloodDonation.headerSubtitle') || 'Sauvez des vies'}</Text>
                 </View>
                 <SafeIcon name="droplet" size={28} color="#DC2626" />
             </View>
@@ -264,7 +271,7 @@ const BloodDonationScreen: React.FC = () => {
             {/* Tabs */}
             <View style={styles.tabContainer}>
                 {[
-                    { key: 'requests' as TabType, label: 'Demandes', icon: 'alert-circle' },
+                    { key: 'requests' as TabType, label: t('bloodDonation.requestsTab') || 'Demandes', icon: 'alert-circle' },
                     { key: 'profile' as TabType, label: t('bloodDonation.monProfil'), icon: 'user' },
                     { key: 'compatibility' as TabType, label: t('bloodDonation.compatibilite'), icon: 'check-circle' },
                 ].map(tab => (
@@ -305,7 +312,8 @@ const BloodDonationScreen: React.FC = () => {
                             <SafeIcon name="heart" size={64} color="#D1D5DB" />
                             <Text style={styles.emptyTitle}>{t('bloodDonation.aucuneDemandeActive')}</Text>
                             <Text style={styles.emptyText}>
-                                Il n'y a pas de demande de don de sang en cours. Revenez régulièrement.
+                                {t('bloodDonation.noActiveRequestsHint') ||
+                                    "Il n'y a pas de demande de don de sang en cours. Revenez régulièrement."}
                             </Text>
                         </View>
                     }
@@ -433,13 +441,15 @@ const BloodDonationScreen: React.FC = () => {
                     <NativeCard style={styles.profileCard}>
                         <View style={styles.profileCardHeader}>
                             <SafeIcon name="bar-chart" size={20} color="#F59E0B" />
-                            <Text style={styles.profileCardTitle}>Saviez-vous ?</Text>
+                            <Text style={styles.profileCardTitle}>{t('bloodDonation.didYouKnow') || 'Saviez-vous ?'}</Text>
                         </View>
                         <Text style={styles.factText}>
-                            Un don de sang peut sauver jusqu'à 3 vies. En Afrique, le besoin en sang est critique avec seulement 40% des besoins couverts.
+                            {t('bloodDonation.didYouKnowFact1') ||
+                                "Un don de sang peut sauver jusqu'à 3 vies. En Afrique, le besoin en sang est critique avec seulement 40% des besoins couverts."}
                         </Text>
                         <Text style={styles.factText}>
-                            Vous pouvez donner du sang tous les 56 jours (8 semaines) pour les hommes et 84 jours (12 semaines) pour les femmes.
+                            {t('bloodDonation.didYouKnowFact2') ||
+                                "Vous pouvez donner du sang tous les 56 jours (8 semaines) pour les hommes et 84 jours (12 semaines) pour les femmes."}
                         </Text>
                     </NativeCard>
                 </ScrollView>
@@ -457,7 +467,8 @@ const BloodDonationScreen: React.FC = () => {
                             <View style={styles.noGroupWarning}>
                                 <SafeIcon name="alert-triangle" size={20} color="#F59E0B" />
                                 <Text style={styles.noGroupText}>
-                                    Enregistrez d'abord votre groupe sanguin dans l'onglet Profil
+                                    {t('bloodDonation.registerFirstInProfile') ||
+                                        "Enregistrez d'abord votre groupe sanguin dans l'onglet Profil"}
                                 </Text>
                             </View>
                         ) : loadingCompatibility ? (
@@ -481,7 +492,9 @@ const BloodDonationScreen: React.FC = () => {
                                 </View>
 
                                 <View style={styles.compatibilitySection}>
-                                    <Text style={styles.compatibilitySectionTitle}>Recevoir de :</Text>
+                                    <Text style={styles.compatibilitySectionTitle}>
+                                        {t('bloodDonation.receiveFrom') || 'Recevoir de :'}
+                                    </Text>
                                     <View style={styles.compatibilityChips}>
                                         {getCanReceiveFrom(selectedBloodGroup).map(group => (
                                             <View key={group} style={[styles.compatibleChip, styles.receiveChip]}>

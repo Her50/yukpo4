@@ -1,5 +1,5 @@
 /**
- * 🎯 Composant Touchable avec haptic feedback automatique
+ * \uD83C\uDFAF Composant Touchable avec haptic feedback automatique
  * Micro-interactions partout
  */
 

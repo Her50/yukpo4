@@ -16,6 +16,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import IntelligentChat from '../../components/IntelligentChat';
+import IntelligentChatFab from '../../components/IntelligentChatFab';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
@@ -51,6 +53,7 @@ const HotelMeubleHomeScreen: React.FC = () => {
     const accentColor = isHotel ? '#2563EB' : '#8B5CF6';
 
     const devise = getCurrencyIntelligently() || 'FCFA';
+    const [showChat, setShowChat] = useState(false);
 
     // Search states
     const [searchQuery, setSearchQuery] = useState('');
@@ -400,6 +403,24 @@ const HotelMeubleHomeScreen: React.FC = () => {
                     />
                 )}
             </View>
+            {/* Intelligent Chat FAB */}
+            <IntelligentChatFab
+                onPress={() => setShowChat(true)}
+                visible={!showChat}
+                screenName="HotelMeubleHome"
+            />
+            <IntelligentChat
+                visible={showChat}
+                onClose={() => setShowChat(false)}
+                screenContext={{
+                    screenName: 'HotelMeubleHome',
+                    screenType: 'specialized',
+                    serviceData: {
+                        nom: screenTitle,
+                        description: screenSubtitle,
+                    },
+                }}
+            />
         </SafeNativeView>
     );
 };

@@ -80,7 +80,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
     const handlePickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission requise', 'Veuillez autoriser l\t('proofMediaUpload.accesALaGalerie'));
+            Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la galerie');
             return;
         }
 
@@ -99,7 +99,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
     const handleTakePhoto = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission requise', 'Veuillez autoriser l\t('proofMediaUpload.accesALaCamera'));
+            Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la caméra');
             return;
         }
 
@@ -176,21 +176,21 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.message || 'Impossible d\t('proofMediaUpload.uploaderLeMedia'));
+                throw new Error(error.message || 'Impossible d\'uploader le média');
             }
 
             const result = await response.json();
 
             Alert.alert(
                 t('proofMediaUpload.succes'),
-                t('proofMediaUpload.deAjouteeAvecSucces', { isImage____Image____: isImage ? 'Image' : t('proofMediaUpload.video'), proofType______picku: proofType === 'pickup' ? t('proofMediaUpload.recuperation') : 'livraison' })
+                `${isImage ? 'Image' : 'Vidéo'} de ${proofType === 'pickup' ? t('proofMediaUpload.recuperation') : 'livraison'} ajoutée avec succès`
             );
 
             loadMedia();
             onMediaUpdated?.();
         } catch (error: any) {
             console.error('Erreur upload média:', error);
-            Alert.alert('Erreur', error.message || 'Impossible d\t('proofMediaUpload.ajouterLeMedia'));
+            Alert.alert('Erreur', error.message || 'Impossible d\'ajouter le média');
         } finally {
             setUploading(false);
         }
@@ -208,11 +208,11 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                     onPress: async () => {
                         try {
                             await deliveryApi.deleteProofMedia(deliveryId, mediaId);
-                            Alert.alert(t('proofMediaUpload.succes'), t('proofMediaUpload.leMediaAEteSupprimeAvec'));
+                            Alert.alert('Succès', 'Le média a été supprimé avec succès');
                             loadMedia();
                             onMediaUpdated?.();
                         } catch (error: any) {
-                            Alert.alert('Erreur', error.message || t('proofMediaUpload.impossibleDeSupprimerLeMedia'));
+                            Alert.alert('Erreur', error.message || 'Impossible de supprimer le média');
                         }
                     },
                 },
@@ -228,7 +228,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
         <NativeCard style={styles.card}>
             <View style={styles.header}>
                 <Text style={styles.title}>
-                    {proofType === 'pickup' ? t('proofMediaUpload.preuveDeRecuperation') : '📦 Preuve de livraison'}
+                    {proofType === 'pickup' ? t('proofMediaUpload.preuveDeRecuperation') : '\uD83D\uDCE6 Preuve de livraison'}
                 </Text>
                 {isCourier && (
                     <View style={styles.actions}>
@@ -239,7 +239,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                                     'Choisissez une option',
                                     [
                                         { text: t('proofMediaUpload.prendreUnePhotovideo'), onPress: handleTakePhoto },
-                                        { text: '🖼️ Choisir depuis la galerie', onPress: handlePickImage },
+                                        { text: '\uD83D\uDDBC️ Choisir depuis la galerie', onPress: handlePickImage },
                                         { text: t('common.cancel'), style: 'cancel' },
                                     ]
                                 );

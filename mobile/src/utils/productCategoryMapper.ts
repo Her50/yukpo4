@@ -295,7 +295,7 @@ export function detectProductTypeFromCategory(serviceCategory: string | undefine
         .replace(/[\u0300-\u036f]/g, '')
         .trim();
 
-    console.log(`[productCategoryMapper] 🔍 Détection pour: "${serviceCategory}" (normalisé: "${normalized}")`);
+    console.log(`[productCategoryMapper] \uD83D\uDD0D Détection pour: "${serviceCategory}" (normalisé: "${normalized}")`);
 
     // Recherche exacte d'abord (score parfait)
     if (CATEGORY_TO_PRODUCT_TYPE[normalized]) {
@@ -355,7 +355,7 @@ export function detectProductTypeFromCategory(serviceCategory: string | undefine
     if (matches.length > 0 && matches[0].score >= 40) {
         console.log(`[productCategoryMapper] ✅ Meilleur match: ${matches[0].type} (score: ${matches[0].score}, clé: "${matches[0].matchedKey}")`);
         if (matches.length > 1) {
-            console.log(`[productCategoryMapper] 📊 Autres matches:`, matches.slice(1, 3).map(m => `${m.type} (${m.score})`));
+            console.log(`[productCategoryMapper] \uD83D\uDCCA Autres matches:`, matches.slice(1, 3).map(m => `${m.type} (${m.score})`));
         }
         return matches[0].type;
     }
@@ -363,7 +363,7 @@ export function detectProductTypeFromCategory(serviceCategory: string | undefine
     // ✅ AMÉLIORATION: Fallback intelligent basé sur les mots-clés génériques
     // Si la catégorie contient "vente" ou "magasin", probablement un produit générique
     if (normalized.includes('vente') || normalized.includes('magasin') || normalized.includes('boutique')) {
-        console.log(`[productCategoryMapper] 💡 Détecté comme vente générique, fallback vers 'autre'`);
+        console.log(`[productCategoryMapper] \uD83D\uDCA1 Détecté comme vente générique, fallback vers 'autre'`);
         return 'autre';
     }
 
@@ -507,7 +507,7 @@ export function suggestProductCategoriesFromServiceData(
         return [];
     }
 
-    console.log('[productCategoryMapper] 🧠 Analyse des données service pour suggestions intelligentes');
+    console.log('[productCategoryMapper] \uD83E\uDDE0 Analyse des données service pour suggestions intelligentes');
 
     interface CategoryMatch {
         type: ProductType;
@@ -536,7 +536,7 @@ export function suggestProductCategoriesFromServiceData(
     // 1. Analyser le titre du service
     if (serviceData.titre?.valeur || serviceData.titre) {
         const titre = normalize((serviceData.titre?.valeur || serviceData.titre).toString());
-        console.log('[productCategoryMapper] 📝 Analyse du titre:', titre);
+        console.log('[productCategoryMapper] \uD83D\uDCDD Analyse du titre:', titre);
 
         // Matcher le titre contre toutes les clés du mapping
         for (const [key, type] of Object.entries(CATEGORY_TO_PRODUCT_TYPE)) {
@@ -550,7 +550,7 @@ export function suggestProductCategoriesFromServiceData(
     // 2. Analyser la description
     if (serviceData.description?.valeur || serviceData.description) {
         const description = normalize((serviceData.description?.valeur || serviceData.description).toString());
-        console.log('[productCategoryMapper] 📄 Analyse de la description');
+        console.log('[productCategoryMapper] \uD83D\uDCC4 Analyse de la description');
 
         // Extraire les mots-clés de la description
         for (const [key, type] of Object.entries(CATEGORY_TO_PRODUCT_TYPE)) {
@@ -563,7 +563,7 @@ export function suggestProductCategoriesFromServiceData(
     // 3. Analyser la catégorie du service
     if (serviceData.categorie?.valeur || serviceData.categorie) {
         const categorie = normalize((serviceData.categorie?.valeur || serviceData.categorie).toString());
-        console.log('[productCategoryMapper] 🏷️ Analyse de la catégorie:', categorie);
+        console.log('[productCategoryMapper] \uD83C\uDFF7️ Analyse de la catégorie:', categorie);
 
         for (const [key, type] of Object.entries(CATEGORY_TO_PRODUCT_TYPE)) {
             if (categorie === key) {
@@ -577,7 +577,7 @@ export function suggestProductCategoriesFromServiceData(
     // 4. Analyser les mots-clés/tags
     const tags = serviceData.tags?.valeur || serviceData.tags || [];
     if (Array.isArray(tags) && tags.length > 0) {
-        console.log('[productCategoryMapper] 🏷️ Analyse des tags:', tags);
+        console.log('[productCategoryMapper] \uD83C\uDFF7️ Analyse des tags:', tags);
 
         tags.forEach((tag: string) => {
             const normalizedTag = normalize(tag);
@@ -594,7 +594,7 @@ export function suggestProductCategoriesFromServiceData(
     // 5. Analyser les services proposés
     const services = serviceData.services?.valeur || serviceData.services || [];
     if (Array.isArray(services) && services.length > 0) {
-        console.log('[productCategoryMapper] 📋 Analyse des services proposés');
+        console.log('[productCategoryMapper] \uD83D\uDCCB Analyse des services proposés');
 
         services.forEach((service: string) => {
             const normalizedService = normalize(service);
@@ -609,7 +609,7 @@ export function suggestProductCategoriesFromServiceData(
     // 6. Analyser le type d'activité
     if (serviceData.typeActivite?.valeur || serviceData.typeActivite) {
         const activite = normalize((serviceData.typeActivite?.valeur || serviceData.typeActivite).toString());
-        console.log('[productCategoryMapper] 🏢 Analyse du type d\'activité:', activite);
+        console.log('[productCategoryMapper] \uD83C\uDFE2 Analyse du type d\'activité:', activite);
 
         for (const [key, type] of Object.entries(CATEGORY_TO_PRODUCT_TYPE)) {
             if (activite.includes(key)) {
@@ -621,7 +621,7 @@ export function suggestProductCategoriesFromServiceData(
     // 7. Analyser les spécialités
     const specialites = serviceData.specialites?.valeur || serviceData.specialites || [];
     if (Array.isArray(specialites) && specialites.length > 0) {
-        console.log('[productCategoryMapper] 🎯 Analyse des spécialités');
+        console.log('[productCategoryMapper] \uD83C\uDFAF Analyse des spécialités');
 
         specialites.forEach((spec: string) => {
             const normalizedSpec = normalize(spec);

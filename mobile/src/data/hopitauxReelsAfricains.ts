@@ -104,7 +104,7 @@ export const getHopitauxAfricains = (codePaysUtilisateur: string = 'CM'): string
 
     // 2️⃣ Séparateur visuel si plusieurs pays
     if (hopitaux.length > 0 && Object.keys(HOPITAUX_REELS_PAR_PAYS).length > 1) {
-        hopitaux.push(`──────── 🌍 Autres pays ────────`);
+        hopitaux.push(`──────── \uD83C\uDF0D Autres pays ────────`);
     }
 
     // 3️⃣ Autres pays
@@ -115,7 +115,7 @@ export const getHopitauxAfricains = (codePaysUtilisateur: string = 'CM'): string
     });
 
     // 4️⃣ Option personnalisée
-    hopitaux.push('🆕 Autre (ajouter)');
+    hopitaux.push('\uD83C\uDD95 Autre (ajouter)');
 
     console.log(`[getHopitauxAfricains] ${hopitaux.length} hôpitaux réels (${codePaysUtilisateur} prioritaire)`);
 

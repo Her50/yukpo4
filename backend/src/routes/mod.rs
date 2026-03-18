@@ -25,6 +25,7 @@ pub mod delivery_routes;
 pub mod diagnostic_routes;
 pub mod echange_routes;
 pub mod embedding_routes; // ✅ Routes pour embeddings
+pub mod exchange_rate_routes; // ✅ 2026-03-18: Routes taux de change live (ExchangeRate-API gratuit)
 pub mod export_routes;
 pub mod extended_audio_routes;
 pub mod feature_flags_routes;
@@ -51,6 +52,7 @@ pub mod media_routes;
 pub mod metrics_routes;
 pub mod metrics_tracking_routes;
 pub mod mobile_logs_routes;
+pub mod multilingue_routes;
 pub mod navigation_routes; // ✅ NOUVEAU: Routes pour navigation intelligente
 pub mod nearby_services_routes;
 pub mod negotiated_price_routes;

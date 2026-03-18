@@ -116,7 +116,7 @@ export const useNotifications = (userId?: string) => {
                 token = (await Notifications.getExpoPushTokenAsync({
                     projectId: projectId
                 })).data;
-                console.log('📱 Push token obtenu:', token);
+                console.log('\uD83D\uDCF1 Push token obtenu:', token);
             } catch (error: any) {
                 // Gestion spécifique de l'erreur EXPERIENCE_NOT_FOUND
                 const errorMessage = error?.message || '';
@@ -128,7 +128,7 @@ export const useNotifications = (userId?: string) => {
                     error?.code === 'ERR_NOTIFICATIONS_SERVER_ERROR'
                 ) {
                     console.warn('⚠️ Expérience Expo non trouvée ou non configurée');
-                    console.warn('💡 Vérifiez que le projectId Expo est correct dans app.json');
+                    console.warn('\uD83D\uDCA1 Vérifiez que le projectId Expo est correct dans app.json');
                     return null;
                 }
                 console.error('❌ Erreur obtention token:', error);
@@ -206,19 +206,19 @@ export const useNotifications = (userId?: string) => {
 
         // Listener pour les notifications reçues
         notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
-            console.log('📩 Notification reçue:', notification);
+            console.log('\uD83D\uDCE9 Notification reçue:', notification);
             setNotification(notification);
         });
 
         // Listener pour les interactions avec les notifications
         responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-            console.log('👆 Notification cliquée:', response);
+            console.log('\uD83D\uDC46 Notification cliquée:', response);
             const data = response.notification.request.content.data as NotificationData;
 
             // Gérer la navigation en fonction du type de notification
             if (data.type === 'return_bus_available') {
                 // Navigation vers le bus retour disponible
-                console.log('🚌 Bus retour disponible, ID:', data.busId);
+                console.log('\uD83D\uDE8C Bus retour disponible, ID:', data.busId);
                 // TODO: Implémenter la navigation
             }
         });

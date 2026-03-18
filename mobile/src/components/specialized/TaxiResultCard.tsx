@@ -53,7 +53,7 @@ const TaxiResultCard: React.FC<TaxiResultCardProps> = ({ taxi, onPress }) => {
         <TouchableOpacity style={styles.card} onPress={handlePress}>
             <View style={styles.header}>
                 <View style={styles.iconContainer}>
-                    <Text style={styles.icon}>🚕</Text>
+                    <Text style={styles.icon}>\uD83D\uDE95</Text>
                 </View>
                 <View style={styles.titleContainer}>
                     <Text style={styles.title}>
@@ -61,7 +61,7 @@ const TaxiResultCard: React.FC<TaxiResultCardProps> = ({ taxi, onPress }) => {
                     </Text>
                     {taxi.is_available_now && (
                         <View style={styles.badge}>
-                            <Text style={styles.badgeText}>🟢 DISPONIBLE</Text>
+                            <Text style={styles.badgeText}>\uD83D\uDFE2 DISPONIBLE</Text>
                         </View>
                     )}
                 </View>

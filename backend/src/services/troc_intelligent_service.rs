@@ -357,11 +357,14 @@ impl TrocIntelligentService {
         let mut bundles_par_user: HashMap<(i32, String), Bundle> = HashMap::new();
         for l in &tous_livres {
             let key = (l.user_id, l.classe_actuelle.clone());
-            bundles_par_user
-                .entry(key)
-                .or_insert_with(|| Bundle::new(vec![l]).unwrap())
-                .livres
-                .push(l);
+            match bundles_par_user.entry(key) {
+                std::collections::hash_map::Entry::Occupied(mut e) => {
+                    e.get_mut().livres.push(l);
+                }
+                std::collections::hash_map::Entry::Vacant(e) => {
+                    e.insert(Bundle::new(vec![l]).unwrap());
+                }
+            }
         }
 
         // Finaliser les bundles (calculer les matières)
@@ -867,6 +870,12 @@ impl TrocIntelligentService {
         .map_err(|e| AppError::Internal(format!("Erreur vérification livre souhaité: {}", e)))?
         .ok_or_else(|| AppError::NotFound("Livre souhaité non trouvé".to_string()))?;
 
+        if livre_souhaite.user_id == initiateur_id {
+            return Err(AppError::BadRequest(
+                "Vous ne pouvez pas troquer un livre avec vous-même".to_string(),
+            ));
+        }
+
         // Calculer la distance
         let distance_km = if let (Some((lat1, lon1)), Some((lat2, lon2))) = (
             Self::parse_gps(&livre_offert.gps),
@@ -1183,6 +1192,7 @@ impl TrocIntelligentService {
             UPDATE troc_livres_scolaires
             SET statut = 'refuse'
             WHERE id = $1 AND (initiateur_id = $2 OR participant_id = $2)
+              AND statut IN ('en_attente', 'accepte')
             RETURNING *
             "#,
         )
@@ -1192,7 +1202,9 @@ impl TrocIntelligentService {
         .await
         .map_err(|e| AppError::Internal(format!("Erreur refus troc: {}", e)))?
         .ok_or_else(|| {
-            AppError::NotFound("Troc non trouvé ou vous n'êtes pas autorisé".to_string())
+            AppError::NotFound(
+                "Troc non trouvé, déjà finalisé ou vous n'êtes pas autorisé".to_string(),
+            )
         })?;
 
         info!("[TROC_INTELLIGENT] ✅ Troc refusé: id={}", troc_id);
@@ -1200,20 +1212,35 @@ impl TrocIntelligentService {
     }
 
     /// Finaliser un troc (échange complété) — atomique via transaction SQL
+    /// ✅ Inclut le paiement réel de la soulte (différence de valeur) + commissions Yukpo
+    ///
+    /// Formule par participant:
+    ///   commission = valeur_reçue × 5%  (commission Yukpo sur ce qu'on reçoit)
+    ///   soulte     = valeur_reçue - valeur_donnée  (différence de valeur entre livres)
+    ///   total_dû   = soulte + commission  (si > 0 → on paie, si < 0 l'autre paie)
+    ///
+    /// Les frais de livraison sont gérés séparément par le système de paquets.
     pub async fn complete_troc(&self, troc_id: i32, user_id: i32) -> AppResult<TrocLivre> {
         info!(
             "[TROC_INTELLIGENT] Finalisation troc: id={}, user_id={}",
             troc_id, user_id
         );
 
-        // Vérifier que le troc est accepté
-        let troc =
-            sqlx::query_as::<_, TrocLivre>("SELECT * FROM troc_livres_scolaires WHERE id = $1")
-                .bind(troc_id)
-                .fetch_optional(&*self.pool)
-                .await
-                .map_err(|e| AppError::Internal(format!("Erreur récupération troc: {}", e)))?
-                .ok_or_else(|| AppError::NotFound("Troc non trouvé".to_string()))?;
+        // Vérifier que le troc est accepté (FOR UPDATE pour éviter race condition)
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur début transaction: {}", e)))?;
+
+        let troc = sqlx::query_as::<_, TrocLivre>(
+            "SELECT * FROM troc_livres_scolaires WHERE id = $1 FOR UPDATE",
+        )
+        .bind(troc_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur récupération troc: {}", e)))?
+        .ok_or_else(|| AppError::NotFound("Troc non trouvé".to_string()))?;
 
         if troc.initiateur_id != user_id && troc.participant_id != user_id {
             return Err(AppError::Forbidden(
@@ -1227,12 +1254,43 @@ impl TrocIntelligentService {
             ));
         }
 
-        // Transaction atomique : statut + désactivation livres
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur début transaction: {}", e)))?;
+        // Récupérer les valeurs des livres pour calculer la soulte (dans la même tx)
+        let livre_offert =
+            sqlx::query_as::<_, LivreScolaire>("SELECT * FROM livres_scolaires WHERE id = $1")
+                .bind(troc.livre_offert_id)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(|e| {
+                    AppError::Internal(format!("Erreur récupération livre offert: {}", e))
+                })?;
+
+        let livre_souhaite =
+            sqlx::query_as::<_, LivreScolaire>("SELECT * FROM livres_scolaires WHERE id = $1")
+                .bind(troc.livre_souhaite_id)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(|e| {
+                    AppError::Internal(format!("Erreur récupération livre souhaité: {}", e))
+                })?;
+
+        let valeur_offert: f64 = livre_offert
+            .as_ref()
+            .and_then(|l| l.valeur_calculee)
+            .and_then(|v| v.to_string().parse().ok())
+            .unwrap_or(0.0);
+        let valeur_souhaite: f64 = livre_souhaite
+            .as_ref()
+            .and_then(|l| l.valeur_calculee)
+            .and_then(|v| v.to_string().parse().ok())
+            .unwrap_or(0.0);
+
+        let taux = crate::models::livre_scolaire::TAUX_COMMISSION_APP; // 5%
+
+        // Initiateur : donne livre_offert (valeur_offert), reçoit livre_souhaite (valeur_souhaite)
+        // Participant: donne livre_souhaite (valeur_souhaite), reçoit livre_offert (valeur_offert)
+        let commission_initiateur = valeur_souhaite * taux; // 5% de ce que l'initiateur REÇOIT
+        let commission_participant = valeur_offert * taux; // 5% de ce que le participant REÇOIT
+        let soulte = valeur_souhaite - valeur_offert; // >0 → initiateur reçoit plus → il paie
 
         let troc_complete = sqlx::query_as::<_, TrocLivre>(
             r#"
@@ -1254,11 +1312,126 @@ impl TrocIntelligentService {
             .await
             .map_err(|e| AppError::Internal(format!("Erreur désactivation livres: {}", e)))?;
 
+        // ✅ PAIEMENT SOULTE — débiter celui qui reçoit plus, créditer l'autre
+        // + Commission Yukpo prélevée sur chaque partie
+        if valeur_offert > 0.0 || valeur_souhaite > 0.0 {
+            // Débiter la commission de l'initiateur (5% de ce qu'il reçoit)
+            if commission_initiateur > 0.0 {
+                let cents = (commission_initiateur * 100.0).round() as i64;
+                sqlx::query(
+                    "UPDATE users SET tokens_balance = GREATEST(COALESCE(tokens_balance, 0) - $2, 0) WHERE id = $1",
+                )
+                .bind(troc.initiateur_id)
+                .bind(cents)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur débit commission initiateur: {}", e)))?;
+                info!(
+                    "[TROC_SOULTE] Commission initiateur {}: -{} XAF (5% de {} reçu)",
+                    troc.initiateur_id, commission_initiateur as i64, valeur_souhaite as i64
+                );
+            }
+
+            // Débiter la commission du participant (5% de ce qu'il reçoit)
+            if commission_participant > 0.0 {
+                let cents = (commission_participant * 100.0).round() as i64;
+                sqlx::query(
+                    "UPDATE users SET tokens_balance = GREATEST(COALESCE(tokens_balance, 0) - $2, 0) WHERE id = $1",
+                )
+                .bind(troc.participant_id)
+                .bind(cents)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur débit commission participant: {}", e)))?;
+                info!(
+                    "[TROC_SOULTE] Commission participant {}: -{} XAF (5% de {} reçu)",
+                    troc.participant_id, commission_participant as i64, valeur_offert as i64
+                );
+            }
+
+            // Paiement de la soulte (différence de valeur entre livres)
+            if soulte.abs() > 0.0 {
+                let soulte_cents = (soulte.abs() * 100.0).round() as i64;
+                let (payeur_id, receveur_id) = if soulte > 0.0 {
+                    (troc.initiateur_id, troc.participant_id)
+                } else {
+                    (troc.participant_id, troc.initiateur_id)
+                };
+
+                sqlx::query(
+                    "UPDATE users SET tokens_balance = GREATEST(COALESCE(tokens_balance, 0) - $2, 0) WHERE id = $1",
+                )
+                .bind(payeur_id)
+                .bind(soulte_cents)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur débit soulte payeur: {}", e)))?;
+
+                sqlx::query(
+                    "UPDATE users SET tokens_balance = COALESCE(tokens_balance, 0) + $2 WHERE id = $1",
+                )
+                .bind(receveur_id)
+                .bind(soulte_cents)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur crédit soulte receveur: {}", e)))?;
+
+                info!(
+                    "[TROC_SOULTE] Soulte {} XAF: user {} → user {} (troc #{})",
+                    soulte.abs() as i64,
+                    payeur_id,
+                    receveur_id,
+                    troc_id
+                );
+            }
+
+            // Enregistrer les commissions dans book_exchange_commissions
+            let total_commission = commission_initiateur + commission_participant;
+            if total_commission > 0.0 {
+                sqlx::query(
+                    r#"
+                    INSERT INTO book_exchange_commissions (
+                        livre_id, troc_id, vendeur_id, acheteur_id,
+                        type_transaction, valeur_livre, taux_commission,
+                        montant_commission, montant_reversement_vendeur, devise,
+                        reversement_statut
+                    )
+                    VALUES ($1, $2, $3, $4, 'troc_soulte', $5, $6, $7, $8, 'XAF', 'paye')
+                    "#,
+                )
+                .bind(troc.livre_offert_id)
+                .bind(troc_id)
+                .bind(troc.initiateur_id)
+                .bind(troc.participant_id)
+                .bind(
+                    rust_decimal::Decimal::from_f64_retain(valeur_offert + valeur_souhaite)
+                        .unwrap_or_default(),
+                )
+                .bind(rust_decimal::Decimal::from_f64_retain(taux).unwrap_or_default())
+                .bind(rust_decimal::Decimal::from_f64_retain(total_commission).unwrap_or_default())
+                .bind(rust_decimal::Decimal::from_f64_retain(soulte.abs()).unwrap_or_default())
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| {
+                    AppError::Internal(format!("Erreur enregistrement commission: {}", e))
+                })?;
+
+                info!(
+                    "[TROC_SOULTE] ✅ Troc #{}: soulte={} XAF, commission_yukpo={} XAF (initiateur:{}, participant:{})",
+                    troc_id, soulte.abs() as i64, total_commission as i64,
+                    commission_initiateur as i64, commission_participant as i64
+                );
+            }
+        }
+
         tx.commit()
             .await
             .map_err(|e| AppError::Internal(format!("Erreur commit transaction: {}", e)))?;
 
-        info!("[TROC_INTELLIGENT] ✅ Troc complété: id={}", troc_id);
+        info!(
+            "[TROC_INTELLIGENT] ✅ Troc complété avec paiement soulte: id={}",
+            troc_id
+        );
         Ok(troc_complete)
     }
 
@@ -1469,17 +1642,25 @@ impl TrocIntelligentService {
             }
         }
 
-        // 4. Marquer les trocs comme packagés
+        // 4. Marquer les trocs comme packagés (atomique)
         if !created_packages.is_empty() {
             let troc_ids_all: Vec<i32> = trocs.iter().map(|t| t.id).collect();
+            let mut pkg_tx =
+                self.pool.begin().await.map_err(|e| {
+                    AppError::Internal(format!("Erreur tx marquage paquets: {}", e))
+                })?;
             for tid in &troc_ids_all {
-                let _ = sqlx::query(
-                    "UPDATE troc_livres_scolaires SET is_packaged = true WHERE id = $1",
-                )
-                .bind(tid)
-                .execute(&*self.pool)
-                .await;
+                sqlx::query("UPDATE troc_livres_scolaires SET is_packaged = true WHERE id = $1")
+                    .bind(tid)
+                    .execute(&mut *pkg_tx)
+                    .await
+                    .map_err(|e| {
+                        AppError::Internal(format!("Erreur marquage troc {} packagé: {}", tid, e))
+                    })?;
             }
+            pkg_tx.commit().await.map_err(|e| {
+                AppError::Internal(format!("Erreur commit marquage paquets: {}", e))
+            })?;
             info!(
                 "[TROC_INTELLIGENT] ✅ {} trocs marqués packagés pour user {}",
                 troc_ids_all.len(),
@@ -2167,12 +2348,16 @@ impl TrocIntelligentService {
             req.livre_id, req.package_id, coursier_id
         );
 
+        let mut tx = self.pool.begin().await.map_err(|e| {
+            AppError::Internal(format!("Erreur début transaction annulation: {}", e))
+        })?;
+
         // 1. Récupérer le paquet
         let pkg = sqlx::query_as::<_, BookDeliveryPackage>(
-            "SELECT * FROM book_delivery_packages WHERE id = $1",
+            "SELECT * FROM book_delivery_packages WHERE id = $1 FOR UPDATE",
         )
         .bind(req.package_id)
-        .fetch_optional(&*self.pool)
+        .fetch_optional(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur récupération paquet: {}", e)))?
         .ok_or_else(|| AppError::NotFound("Paquet non trouvé".to_string()))?;
@@ -2208,19 +2393,19 @@ impl TrocIntelligentService {
         .bind(req.package_id)
         .bind(serde_json::json!(livres_updated))
         .bind(new_count)
-        .execute(&*self.pool)
+        .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur MAJ paquet: {}", e)))?;
 
         // 4. Créditer le wallet RÉEL du destinataire (table user_wallets, en centimes)
-        let credit_cents = (credit_total * 100.0) as i64;
+        let credit_cents = (credit_total * 100.0).round() as i64;
 
         // Solde avant crédit
         let balance_before: i64 = sqlx::query_scalar::<_, Option<i64>>(
             "SELECT balance_cents FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'",
         )
         .bind(destinataire_id)
-        .fetch_optional(&*self.pool)
+        .fetch_optional(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur lecture wallet: {}", e)))?
         .flatten()
@@ -2239,7 +2424,7 @@ impl TrocIntelligentService {
         )
         .bind(destinataire_id)
         .bind(credit_cents)
-        .execute(&*self.pool)
+        .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur crédit wallet: {}", e)))?;
 
@@ -2265,7 +2450,7 @@ impl TrocIntelligentService {
             "Remboursement livre #{} annulé par coursier #{} (valeur {:.0} + commission {:.0} XAF)",
             req.livre_id, coursier_id, livre_valeur, commission
         ))
-        .execute(&*self.pool)
+        .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur log transaction wallet: {}", e)))?;
 
@@ -2286,16 +2471,20 @@ impl TrocIntelligentService {
         .bind(&req.raison)
         .bind(rust_decimal::Decimal::from_f64_retain(livre_valeur).unwrap_or_default())
         .bind(rust_decimal::Decimal::from_f64_retain(commission).unwrap_or_default())
-        .execute(&*self.pool)
+        .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur log annulation: {}", e)))?;
 
         // 6. Réactiver le livre (il n'a pas été échangé)
         sqlx::query("UPDATE livres_scolaires SET is_available = true WHERE id = $1")
             .bind(req.livre_id)
-            .execute(&*self.pool)
+            .execute(&mut *tx)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur réactivation livre: {}", e)))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur commit annulation livre: {}", e)))?;
 
         info!(
             "[TROC_INTELLIGENT] ✅ Livre {} annulé. Destinataire {} crédité de {:.0} XAF (valeur {:.0} + commission {:.0})",

@@ -14,7 +14,6 @@ import { Highlight, SceneCut, videoAnalysisService } from '../services/videoAnal
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AutoCutPanelProps {
     videoUrl: string;
@@ -33,8 +32,7 @@ export const AutoCutPanel: React.FC<AutoCutPanelProps> = ({
     videoId,
     onScenesSelected,
 }) => {
-        const { t } = useLanguageSafe();
-const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [scenes, setScenes] = useState<SceneCut[]>([]);
     const [highlights, setHighlights] = useState<Highlight[]>([]);
     const [selectedScenes, setSelectedScenes] = useState<Set<number>>(new Set());
@@ -43,8 +41,8 @@ const [loading, setLoading] = useState(false);
         // ✅ CORRIGÉ: Validation avant d'appeler l'API
         if (!videoUrl || videoUrl.trim() === '') {
             Alert.alert(
-                t('autoCutPanel.videoManquante'),
-                t('autoCutPanel.aucuneVideoDisponiblePourLeDecoupageAutomatiquennveuill'),
+                'Vidéo manquante',
+                'Aucune vidéo disponible pour le découpage automatique.\n\nVeuillez d\'abord uploader ou sélectionner une vidéo.',
                 [{ text: 'OK' }]
             );
             return;
@@ -54,7 +52,7 @@ const [loading, setLoading] = useState(false);
         if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://') && !videoUrl.startsWith('file://')) {
             Alert.alert(
                 'URL invalide',
-                t('autoCutPanel.lurlDeLaVideoNestPasValidennveuillezReessayer'),
+                'L\'URL de la vidéo n\'est pas valide.\n\nVeuillez réessayer après avoir uploadé la vidéo.',
                 [{ text: 'OK' }]
             );
             return;
@@ -72,7 +70,7 @@ const [loading, setLoading] = useState(false);
             });
 
             if (!result || !result.scenes) {
-                throw new Error(t('autoCutPanel.reponseInvalideDuServeur'));
+                throw new Error('Réponse invalide du serveur');
             }
 
             setScenes(result.scenes);
@@ -91,21 +89,21 @@ const [loading, setLoading] = useState(false);
             console.error('[AutoCutPanel] Error:', error);
             
             // ✅ CORRIGÉ: Messages d'erreur plus clairs selon le type d'erreur
-            let errorMessage = t('autoCutPanel.impossibleDeDecouperLaVideoAutomatiquement');
+            let errorMessage = 'Impossible de découper la vidéo automatiquement';
             
             if (error?.message) {
                 if (error.message.includes('500') || error.message.includes('Erreur 500')) {
-                    errorMessage = t('autoCutPanel.erreurServeurLaVideoNaPasPu');
-                } else if (error.message.includes(t('autoCutPanel.duree')) || error.message.includes('duration')) {
-                    errorMessage = t('autoCutPanel.impossibleDeDeterminerLaDureeDe');
+                    errorMessage = 'Erreur serveur : La vidéo n\'a pas pu être analysée.\n\nVérifiez que la vidéo est bien uploadée et accessible.';
+                } else if (error.message.includes('durée') || error.message.includes('duration')) {
+                    errorMessage = 'Impossible de déterminer la durée de la vidéo.\n\nVérifiez que la vidéo est valide et complète.';
                 } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
-                    errorMessage = t('autoCutPanel.leTraitementPrendTropDeTempsnnveuillez');
+                    errorMessage = 'Le traitement prend trop de temps.\n\nVeuillez réessayer avec une vidéo plus courte.';
                 } else {
                     errorMessage = error.message;
                 }
             }
             
-            Alert.alert(t('autoCutPanel.erreurDeDecoupage'), errorMessage, [{ text: 'OK' }]);
+            Alert.alert('Erreur de découpage', errorMessage, [{ text: 'OK' }]);
         } finally {
             setLoading(false);
         }
@@ -114,7 +112,7 @@ const [loading, setLoading] = useState(false);
     return (
         <NativeCard style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>{t('autoCutPanel.decoupageAutomatique')}</Text>
+                <Text style={styles.title}>Découpage Automatique</Text>
                 <TouchableOpacity
                     style={styles.autoCutButton}
                     onPress={handleAutoCut}
@@ -125,7 +123,7 @@ const [loading, setLoading] = useState(false);
                     ) : (
                         <>
                             <SafeIcon name="scissors" size={16} color="#FFF" />
-                            <Text style={styles.autoCutButtonText}>{t('autoCutPanel.decouper')}</Text>
+                            <Text style={styles.autoCutButtonText}>Découper</Text>
                         </>
                     )}
                 </TouchableOpacity>
@@ -134,7 +132,7 @@ const [loading, setLoading] = useState(false);
             {scenes.length > 0 && (
                 <>
                     <Text style={styles.summary}>
-                        {scenes.length} scène{scenes.length > 1 ? 's' : 't('autoCutPanel.detecteesceneslength1')s' : ''}
+                        {scenes.length} scène{scenes.length > 1 ? 's' : ''} détectée{scenes.length > 1 ? 's' : ''}
                         {highlights.length > 0 && ` • ${highlights.length} highlight${highlights.length > 1 ? 's' : ''}`}
                     </Text>
 
@@ -207,7 +205,7 @@ const [loading, setLoading] = useState(false);
                             }}
                         >
                             <Text style={styles.applyButtonText}>
-                                Utiliser {selectedScenes.size} scène{selectedScenes.size > 1 ? 's' : 't('autoCutPanel.selectionneeselectedscenessize1')s' : ''}
+                                Utiliser {selectedScenes.size} scène{selectedScenes.size > 1 ? 's' : ''} sélectionnée{selectedScenes.size > 1 ? 's' : ''}
                             </Text>
                         </TouchableOpacity>
                     )}

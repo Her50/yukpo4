@@ -992,4 +992,171 @@ export const bourseLivreV2Api = {
         const r = response.data as any;
         return r?.classes || [];
     },
+
+    // ============================
+    // ÉQUIPE LIBRAIRE
+    // ============================
+
+    inviteTeamMember: async (telephone: string, role: 'manager' | 'preparer' | 'cashier', nom?: string): Promise<any> => {
+        const response = await apiPost<any>(
+            '/api/bourse-livre/v2/libraire/team/invite',
+            { telephone, role, nom }
+        );
+        const r = response.data as any;
+        return r?.member || r;
+    },
+
+    listTeamMembers: async (): Promise<{ librairie_id: number; members: any[]; total: number }> => {
+        const response = await apiGet<any>('/api/bourse-livre/v2/libraire/team');
+        const r = response.data as any;
+        return {
+            librairie_id: r?.librairie_id || 0,
+            members: r?.members || [],
+            total: r?.total || 0,
+        };
+    },
+
+    updateTeamMemberRole: async (memberId: number, role: 'manager' | 'preparer' | 'cashier'): Promise<void> => {
+        await apiPatch(`/api/bourse-livre/v2/libraire/team/${memberId}/role`, { role });
+    },
+
+    removeTeamMember: async (memberId: number): Promise<void> => {
+        const { apiDelete } = await import('./api');
+        await apiDelete(`/api/bourse-livre/v2/libraire/team/${memberId}`);
+    },
+
+    teamScanCourierQR: async (qrCode: string, packageIds?: number[]): Promise<{
+        validation: any;
+        scanned_by: { user_id: number; role: string; librairie_id: number };
+        packages_updated: number;
+    }> => {
+        const response = await apiPost<any>(
+            '/api/bourse-livre/v2/libraire/team/scan-qr',
+            { qr_code: qrCode, package_ids: packageIds }
+        );
+        const r = response.data as any;
+        return {
+            validation: r?.validation,
+            scanned_by: r?.scanned_by || {},
+            packages_updated: r?.packages_updated || 0,
+        };
+    },
+
+    getTeamPendingPackages: async (): Promise<{
+        librairie_id: number;
+        packages: { a_constituer: any[]; constitues: any[] };
+        purchases_pending: any[];
+        stats: { a_constituer: number; prets_pour_coursier: number; achats_a_preparer: number };
+    }> => {
+        const response = await apiGet<any>('/api/bourse-livre/v2/libraire/team/pending-packages');
+        const r = response.data as any;
+        return {
+            librairie_id: r?.librairie_id || 0,
+            packages: r?.packages || { a_constituer: [], constitues: [] },
+            purchases_pending: r?.purchases_pending || [],
+            stats: r?.stats || { a_constituer: 0, prets_pour_coursier: 0, achats_a_preparer: 0 },
+        };
+    },
+
+    teamValidateOrder: async (params: {
+        package_id?: number;
+        purchase_id?: number;
+        action: 'en_preparation' | 'constitue' | 'pret';
+    }): Promise<{ type: string; id: number; new_status: string; validated_by: number; role: string }> => {
+        const response = await apiPost<any>(
+            '/api/bourse-livre/v2/libraire/team/validate-order',
+            params
+        );
+        const r = response.data as any;
+        return {
+            type: r?.type || '',
+            id: r?.id || 0,
+            new_status: r?.new_status || '',
+            validated_by: r?.validated_by || 0,
+            role: r?.role || '',
+        };
+    },
+
+    teamGetPackageDetail: async (packageId: number): Promise<{
+        package: any;
+        livres: any[];
+        destinataire: any;
+        checklist: Array<{ titre: string; matiere: string; classe: string; etat: string; a_verifier: boolean }>;
+        instructions: string;
+    }> => {
+        const response = await apiGet<any>(
+            `/api/bourse-livre/v2/libraire/team/package/${packageId}/detail`
+        );
+        const r = response.data as any;
+        return {
+            package: r?.package || {},
+            livres: r?.livres || [],
+            destinataire: r?.destinataire || null,
+            checklist: r?.checklist || [],
+            instructions: r?.instructions || '',
+        };
+    },
+
+    // ============================
+    // COURSIER: ITINÉRAIRE AVEC QR CONTEXTUEL
+    // ============================
+
+    courierGetMyStops: async (): Promise<{
+        stops: Array<{
+            ordre: number;
+            stop_type: 'pickup' | 'delivery';
+            action: string;
+            user: { id: number; nom: string; telephone: string; photo_url?: string } | null;
+            gps: string | null;
+            adresse: string | null;
+            package_ids: number[];
+            package_refs: string[];
+            livres_count: number;
+            livres: Array<{ titre: string; matiere?: string; valeur?: number; package_ref: string }>;
+            qr_code: string;
+            qr_code_url: string;
+            instruction: string;
+        }>;
+        total_stops: number;
+        total_packages: number;
+    }> => {
+        const response = await apiGet<any>('/api/bourse-livre/v2/courier/my-stops');
+        const r = response.data as any;
+        return {
+            stops: r?.stops || [],
+            total_stops: r?.total_stops || 0,
+            total_packages: r?.total_packages || 0,
+        };
+    },
+
+    // ============================
+    // CHANGEMENT DE LIEU (récupération / livraison)
+    // ============================
+
+    updateLocation: async (params: {
+        package_id?: number;
+        purchase_id?: number;
+        livre_id?: number;
+        gps: string;
+        adresse?: string;
+    }): Promise<{
+        updated_count: number;
+        notifications_sent: number;
+        new_gps: string;
+        new_adresse?: string;
+        message: string;
+    }> => {
+        const response = await apiPatch<any>(
+            '/api/bourse-livre/v2/update-location',
+            params
+        );
+        const r = response.data as any;
+        return {
+            updated_count: r?.updated_count || 0,
+            notifications_sent: r?.notifications_sent || 0,
+            new_gps: r?.new_gps || params.gps,
+            new_adresse: r?.new_adresse,
+            message: r?.message || '',
+        };
+    },
 };

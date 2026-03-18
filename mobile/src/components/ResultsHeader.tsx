@@ -35,7 +35,7 @@ const ResultsHeader: React.FC<ResultsHeaderProps> = ({
                 <View style={styles.statItem}>
                     <Text style={styles.statIcon}>✅</Text>
                     <Text style={styles.statText}>
-                        {resultsCount} service{resultsCount > 1 ? 's' : 't('resultsHeader.trouveresultscount1')s' : ''}
+                        {resultsCount} service{resultsCount > 1 ? 's' : ''} trouvé{resultsCount > 1 ? 's' : ''}
                     </Text>
                 </View>
                 <View style={styles.statItem}>

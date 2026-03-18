@@ -36,10 +36,10 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
     let shareUrl = '';
     const serviceTitle = titre || t('shareService.serviceYukpo');
     const deviseStr = devise || 'XAF';
-    let serviceDescription = `🛍️ ${serviceTitle}`;
+    let serviceDescription = `\uD83D\uDECD️ ${serviceTitle}`;
     if (description) serviceDescription += `\n\n${description}`;
-    if (prix) serviceDescription += `\n💰 Prix: ${prix} ${deviseStr}`;
-    serviceDescription += `\n\n🔗 Voir sur Yukpo:`;
+    if (prix) serviceDescription += `\n\uD83D\uDCB0 Prix: ${prix} ${deviseStr}`;
+    serviceDescription += `\n\n\uD83D\uDD17 Voir sur Yukpo:`;
     const fullText = `${serviceDescription}\n${url}`;
 
     switch (platform) {
@@ -83,10 +83,10 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
     try {
       const serviceTitle = titre || t('shareService.serviceYukpo');
       const deviseStr = devise || 'XAF';
-      let shareText = `🛍️ ${serviceTitle}`;
+      let shareText = `\uD83D\uDECD️ ${serviceTitle}`;
       if (description) shareText += `\n\n${description}`;
-      if (prix) shareText += `\n💰 Prix: ${prix} ${deviseStr}`;
-      shareText += `\n\n🔗 Voir sur Yukpo:\n${url}`;
+      if (prix) shareText += `\n\uD83D\uDCB0 Prix: ${prix} ${deviseStr}`;
+      shareText += `\n\n\uD83D\uDD17 Voir sur Yukpo:\n${url}`;
       const result = await Share.share({
         message: shareText,
         title: serviceTitle,

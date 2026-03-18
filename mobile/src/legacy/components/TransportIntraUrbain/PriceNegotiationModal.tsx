@@ -292,7 +292,7 @@ const PriceNegotiationModal: React.FC<PriceNegotiationModalProps> = ({
                         <SafeIcon name="x" size={24} color="#1F2937" />
                     </TouchableOpacity>
                     <View style={styles.headerContent}>
-                        <Text style={styles.headerTitle}>💰 Négociation du prix</Text>
+                        <Text style={styles.headerTitle}>\uD83D\uDCB0 Négociation du prix</Text>
                         <Text style={styles.headerSubtitle}>
                             avec {userRole === 'client' ? driverName : 'le client'}
                         </Text>

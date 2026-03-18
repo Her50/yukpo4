@@ -19,8 +19,8 @@ use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     models::librairie_network::{
-        CommandeLivreNeuf, CommandeLivreOccasion, DestinationQR, LivreQRReference, PointPassage,
-        ValidationStatut,
+        CommandeLivreNeuf, CommandeLivreOccasion, CommandeValidation, DestinationQR,
+        LivreQRReference, PointPassage, ValidationStatut,
     },
     models::librairie_network_model::*,
     state::AppState,
@@ -544,7 +544,7 @@ pub async fn valider_budget_commande(
     .ok_or_else(|| AppError::NotFound("Commande non trouvée ou non valide".to_string()))?;
 
     // Calculer totaux actuels
-    let totaux = calculer_totaux_commande(&mut *tx, payload.commande_id).await?;
+    let totaux = calculer_totaux_commande(&mut tx, payload.commande_id).await?;
 
     if totaux.total_commande > commande.budget_total {
         return Err(AppError::BadRequest(format!(
@@ -1042,7 +1042,7 @@ pub async fn finaliser_commande(
         .ok_or_else(|| AppError::NotFound("Commande non trouvée ou non finalisable".to_string()))?;
 
     // Calculer totaux finaux
-    let totaux = calculer_totaux_commande(&mut *tx, payload.commande_id).await?;
+    let totaux = calculer_totaux_commande(&mut tx, payload.commande_id).await?;
 
     // Traiter le paiement
     let reference_paiement = format!("PAY-{}", generate_reference(""));
@@ -1076,7 +1076,7 @@ pub async fn finaliser_commande(
     .map_err(|e| AppError::Internal(format!("Erreur update commande: {}", e)))?;
 
     // Créer la chaîne de livraison unifiée
-    let chaine = creer_chaine_livraison(&mut *tx, payload.commande_id).await?;
+    let chaine = creer_chaine_livraison(&mut tx, payload.commande_id).await?;
 
     tx.commit()
         .await
@@ -1309,7 +1309,7 @@ pub async fn optimiser_chaine_livraison(
     .ok_or_else(|| AppError::NotFound("Chaîne de livraison non trouvée".to_string()))?;
 
     // Optimiser l'itinéraire (algorithme nearest neighbor TSP)
-    let points_optimises = optimiser_itineraire(&mut *tx, payload.commande_id).await?;
+    let points_optimises = optimiser_itineraire(&mut tx, payload.commande_id).await?;
 
     // Calculer distance et durée estimées
     let (distance_totale, duree_estimee) = calculer_metrics_itineraire(&points_optimises);
@@ -1610,9 +1610,7 @@ async fn creer_chaine_livraison(
     commande_id: Uuid,
 ) -> Result<ChaineLivraisonUnifiee, AppError> {
     // Récupérer tous les points de passage nécessaires
-    let points_passage = vec![
-        // TODO: Construire les points (librairies, vendeurs, acheteurs)
-    ];
+    let points_passage: Vec<PointPassage> = vec![];
 
     let chaine = sqlx::query_as::<_, ChaineLivraisonUnifiee>(
         r#"

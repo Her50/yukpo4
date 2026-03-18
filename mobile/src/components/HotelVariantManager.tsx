@@ -109,7 +109,7 @@ const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
     const handlePickImage = async (variantId: string) => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert(t('hotelVariantManager.permissionRefusee'), 'Nous avons besoin d\t('hotelVariantManager.accederAVotreGalerie'));
+            Alert.alert('Permission refusée', 'Nous avons besoin d\'accéder à votre galerie');
             return;
         }
 
@@ -169,11 +169,11 @@ const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
             {variants.length > 0 && (
                 <View style={styles.summary}>
                     <Text style={styles.summaryText}>
-                        📊 {variants.length} type{variants.length > 1 ? 's' : ''} de chambre{variants.length > 1 ? 's' : ''}
+                        \uD83D\uDCCA {variants.length} type{variants.length > 1 ? 's' : ''} de chambre{variants.length > 1 ? 's' : ''}
                     </Text>
                     {getPriceRange() && (
                         <Text style={styles.summaryPrice}>
-                            💰 {getPriceRange()}
+                            \uD83D\uDCB0 {getPriceRange()}
                         </Text>
                     )}
                 </View>
@@ -183,7 +183,7 @@ const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
             <View style={styles.hintBox}>
                 <SafeIcon name="info" size={14} color={modernColors.primary} />
                 <Text style={styles.hintText}>
-                    💡 Ajoutez les différents types de chambres avec leurs tarifs et photos.
+                    \uD83D\uDCA1 Ajoutez les différents types de chambres avec leurs tarifs et photos.
                 </Text>
             </View>
 

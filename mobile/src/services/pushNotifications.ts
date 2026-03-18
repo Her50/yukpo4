@@ -56,7 +56,7 @@ Notifications.setNotificationHandler({
  */
 export async function registerForPushNotificationsAsync(userToken: string): Promise<string | null> {
     try {
-        console.log('[PushNotifications] 📱 Enregistrement pour push notifications...');
+        console.log('[PushNotifications] \uD83D\uDCF1 Enregistrement pour push notifications...');
 
         // Vérifier si c'est un appareil physique
         if (!Device.isDevice) {
@@ -88,7 +88,7 @@ export async function registerForPushNotificationsAsync(userToken: string): Prom
                 return null;
             }
 
-            console.log('[PushNotifications] 📋 Utilisation projectId Expo:', projectId.substring(0, 8) + '...');
+            console.log('[PushNotifications] \uD83D\uDCCB Utilisation projectId Expo:', projectId.substring(0, 8) + '...');
 
             const tokenData = await Notifications.getExpoPushTokenAsync({
                 projectId: projectId
@@ -99,7 +99,7 @@ export async function registerForPushNotificationsAsync(userToken: string): Prom
             // Gestion spécifique de l'erreur Firebase sur Android
             if (Platform.OS === 'android' && tokenError?.code === 'E_REGISTRATION_FAILED') {
                 console.warn('[PushNotifications] ⚠️ Firebase non configuré pour Android');
-                console.warn('[PushNotifications] 📖 Suivez le guide: https://docs.expo.dev/push-notifications/fcm-credentials/');
+                console.warn('[PushNotifications] \uD83D\uDCD6 Suivez le guide: https://docs.expo.dev/push-notifications/fcm-credentials/');
                 // Ne pas faire crasher l'app, retourner null gracieusement
                 return null;
             }
@@ -114,7 +114,7 @@ export async function registerForPushNotificationsAsync(userToken: string): Prom
                 tokenError?.code === 'ERR_NOTIFICATIONS_SERVER_ERROR'
             ) {
                 console.warn('[PushNotifications] ⚠️ Expérience Expo non trouvée ou non configurée');
-                console.warn('[PushNotifications] 💡 Vérifiez que le projectId Expo est correct dans app.json');
+                console.warn('[PushNotifications] \uD83D\uDCA1 Vérifiez que le projectId Expo est correct dans app.json');
                 // Ne pas faire crasher l'app, retourner null gracieusement
                 return null;
             }
@@ -217,7 +217,7 @@ async function getDeviceId(): Promise<string | undefined> {
  */
 export async function unregisterPushToken(pushToken: string, userToken: string): Promise<boolean> {
     try {
-        console.log('[PushNotifications] 🔕 Désactivation token push...');
+        console.log('[PushNotifications] \uD83D\uDD15 Désactivation token push...');
 
         const response = await fetch(`${API_URL}/api/push/deactivate`, {
             method: 'PATCH',
@@ -249,7 +249,7 @@ export function setupForegroundNotificationHandler(
     onNotificationReceived: (notification: Notifications.Notification) => void
 ) {
     const subscription = Notifications.addNotificationReceivedListener(notification => {
-        console.log('[PushNotifications] 🔔 Notification reçue (foreground):', notification);
+        console.log('[PushNotifications] \uD83D\uDD14 Notification reçue (foreground):', notification);
         onNotificationReceived(notification);
     });
 
@@ -263,7 +263,7 @@ export function setupNotificationResponseHandler(
     onNotificationTap: (response: Notifications.NotificationResponse) => void
 ) {
     const subscription = Notifications.addNotificationResponseReceivedListener(response => {
-        console.log('[PushNotifications] 👆 Notification tapée:', response);
+        console.log('[PushNotifications] \uD83D\uDC46 Notification tapée:', response);
         onNotificationTap(response);
     });
 

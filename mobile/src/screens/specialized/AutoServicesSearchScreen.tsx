@@ -16,10 +16,10 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet } from '../../services/api';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface SearchFilters {
     q?: string;
@@ -239,8 +239,8 @@ const AutoServicesSearchScreen: React.FC = () => {
                         <Text style={styles.headerTitle}>{t('autoServicesSearch.rechercheAutomobile')}</Text>
                         <Text style={styles.headerSubtitle}>
                             {dynamicFilters
-                                ? `${dynamicFilters.total_products} vehicule${dynamicFilters.total_products > 1 ? 's' : ''} disponible${dynamicFilters.total_products > 1 ? 's' : ''}`
-                                : 'Chargement du catalogue...'}
+                                ? t('autoServicesSearch.vehiculesDisponibles', { count: dynamicFilters.total_products })
+                                : t('autoServicesSearch.chargementDuCatalogue')}
                         </Text>
                     </View>
                     <View style={{ width: 24 }} />
@@ -281,32 +281,32 @@ const AutoServicesSearchScreen: React.FC = () => {
             >
                 {/* Recherches rapides */}
                 <View style={styles.quickSection}>
-                    <Text style={styles.sectionLabel}>Recherches rapides</Text>
+                    <Text style={styles.sectionLabel}>{t('autoServicesSearch.recherchesRapides')}</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         <View style={styles.quickRow}>
                             <TouchableOpacity style={styles.quickCard} onPress={() => handleQuickSearch({})}>
                                 <View style={[styles.quickIcon, { backgroundColor: '#EFF6FF' }]}>
                                     <SafeIcon name="list" size={20} color={ACCENT_LIGHT} type="lucide" />
                                 </View>
-                                <Text style={styles.quickLabel}>Tout voir</Text>
+                                <Text style={styles.quickLabel}>{t('autoServicesSearch.toutVoir')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.quickCard} onPress={() => handleQuickSearch({ etat: 'Occasion' })}>
                                 <View style={[styles.quickIcon, { backgroundColor: '#FEF3C7' }]}>
                                     <SafeIcon name="refresh-cw" size={20} color="#D97706" type="lucide" />
                                 </View>
-                                <Text style={styles.quickLabel}>Occasion</Text>
+                                <Text style={styles.quickLabel}>{t('autoServicesSearch.occasion')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.quickCard} onPress={() => handleQuickSearch({ etat: 'Neuf' })}>
                                 <View style={[styles.quickIcon, { backgroundColor: '#D1FAE5' }]}>
                                     <SafeIcon name="star" size={20} color="#059669" type="lucide" />
                                 </View>
-                                <Text style={styles.quickLabel}>Neuf</Text>
+                                <Text style={styles.quickLabel}>{t('autoServicesSearch.neuf')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.quickCard} onPress={() => handleQuickSearch({ sort: 'price_asc' })}>
                                 <View style={[styles.quickIcon, { backgroundColor: '#FEE2E2' }]}>
                                     <SafeIcon name="trending-down" size={20} color="#DC2626" type="lucide" />
                                 </View>
-                                <Text style={styles.quickLabel}>Moins cher</Text>
+                                <Text style={styles.quickLabel}>{t('autoServicesSearch.moinsCher')}</Text>
                             </TouchableOpacity>
                             {gpsData && (
                                 <TouchableOpacity style={styles.quickCard} onPress={() => handleQuickSearch({
@@ -315,7 +315,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                                     <View style={[styles.quickIcon, { backgroundColor: '#E0E7FF' }]}>
                                         <SafeIcon name="map-pin" size={20} color="#4F46E5" type="lucide" />
                                     </View>
-                                    <Text style={styles.quickLabel}>Proche</Text>
+                                    <Text style={styles.quickLabel}>{t('autoServicesSearch.proche')}</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -335,7 +335,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                             {activeFiltersCount > 0 && (
                                 <TouchableOpacity onPress={resetFilters} style={styles.resetButton}>
                                     <SafeIcon name="x" size={14} color={ACCENT_LIGHT} type="lucide" />
-                                    <Text style={styles.resetText}>Effacer ({activeFiltersCount})</Text>
+                                    <Text style={styles.resetText}>{t('autoServicesSearch.effacer', { count: activeFiltersCount })}</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -344,7 +344,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                         {dynamicFilters.marques.length > 0 && (
                             <View style={styles.filterGroup}>
                                 <Text style={styles.filterLabel}>
-                                    <SafeIcon name="tag" size={14} color={ACCENT_COLOR} type="lucide" /> Marque
+                                    <SafeIcon name="tag" size={14} color={ACCENT_COLOR} type="lucide" /> {t('autoServicesSearch.marque')}
                                 </Text>
                                 {renderFilterChips(dynamicFilters.marques, marque, setMarque)}
                             </View>
@@ -354,7 +354,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                         {dynamicFilters.types_vehicule.length > 0 && (
                             <View style={styles.filterGroup}>
                                 <Text style={styles.filterLabel}>
-                                    <SafeIcon name="car" size={14} color={ACCENT_COLOR} type="lucide" /> Type
+                                    <SafeIcon name="car" size={14} color={ACCENT_COLOR} type="lucide" /> {t('autoServicesSearch.type')}
                                 </Text>
                                 {renderFilterChips(dynamicFilters.types_vehicule, typeVehicule, setTypeVehicule)}
                             </View>
@@ -364,7 +364,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                         {dynamicFilters.etats.length > 0 && (
                             <View style={styles.filterGroup}>
                                 <Text style={styles.filterLabel}>
-                                    <SafeIcon name="check-circle" size={14} color={ACCENT_COLOR} type="lucide" /> {t('autoServicesSearchScreen.condition')}
+                                    <SafeIcon name="check-circle" size={14} color={ACCENT_COLOR} type="lucide" /> {t('autoServicesSearch.condition')}
                                 </Text>
                                 {renderFilterChips(dynamicFilters.etats, etat, setEtat)}
                             </View>
@@ -373,7 +373,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                         {/* Prix */}
                         <View style={styles.filterGroup}>
                             <Text style={styles.filterLabel}>
-                                <SafeIcon name="dollar-sign" size={14} color={ACCENT_COLOR} type="lucide" /> Prix (FCFA)
+                                <SafeIcon name="dollar-sign" size={14} color={ACCENT_COLOR} type="lucide" /> {t('autoServicesSearch.prixFcfa')}
                                 {dynamicFilters.prix_range.min != null && dynamicFilters.prix_range.max != null && (
                                     <Text style={styles.rangeHint}>
                                         {' '}({Math.round(dynamicFilters.prix_range.min).toLocaleString()} - {Math.round(dynamicFilters.prix_range.max).toLocaleString()})
@@ -404,7 +404,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                         {/* Année */}
                         <View style={styles.filterGroup}>
                             <Text style={styles.filterLabel}>
-                                <SafeIcon name="calendar" size={14} color={ACCENT_COLOR} type="lucide" />{t('autoServicesSearchScreen.annee')}
+                                <SafeIcon name="calendar" size={14} color={ACCENT_COLOR} type="lucide" /> {t('autoServicesSearch.annee')}
                                 {dynamicFilters.annee_range.min != null && dynamicFilters.annee_range.max != null && (
                                     <Text style={styles.rangeHint}>
                                         {' '}({dynamicFilters.annee_range.min} - {dynamicFilters.annee_range.max})
@@ -416,7 +416,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                                     <NativeInput
                                         value={anneeMin}
                                         onChangeText={setAnneeMin}
-                                        placeholder={dynamicFilters.annee_range.min ? `Depuis ${dynamicFilters.annee_range.min}` : 'Depuis'}
+                                        placeholder={dynamicFilters.annee_range.min ? `${t('autoServicesSearch.depuis')} ${dynamicFilters.annee_range.min}` : t('autoServicesSearch.depuis')}
                                         keyboardType="numeric"
                                     />
                                 </View>
@@ -425,7 +425,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                                     <NativeInput
                                         value={anneeMax}
                                         onChangeText={setAnneeMax}
-                                        placeholder={dynamicFilters.annee_range.max ? t('autoServicesSearchScreen.jusqua', { dynamicFilters_annee_range_max: dynamicFilters.annee_range.max }) : t('autoServicesSearchScreen.jusqua')}
+                                        placeholder={dynamicFilters.annee_range.max ? `${t('autoServicesSearch.jusqua')} ${dynamicFilters.annee_range.max}` : t('autoServicesSearch.jusqua')}
                                         keyboardType="numeric"
                                     />
                                 </View>
@@ -439,7 +439,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                         >
                             <SafeIcon name={showAdvancedFilters ? 'chevron-up' : 'chevron-down'} size={16} color={ACCENT_LIGHT} type="lucide" />
                             <Text style={styles.advancedToggleText}>
-                                {showAdvancedFilters ? t('autoServicesSearchScreen.masquerLesFiltresAvances') : 'Plus de filtres'}
+                                {showAdvancedFilters ? t('autoServicesSearch.masquerFiltresAvances') : t('autoServicesSearch.plusDeFiltres')}
                             </Text>
                         </TouchableOpacity>
 
@@ -449,7 +449,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                                 {dynamicFilters.carburants.length > 0 && (
                                     <View style={styles.filterGroup}>
                                         <Text style={styles.filterLabel}>
-                                            <SafeIcon name="zap" size={14} color={ACCENT_COLOR} type="lucide" /> Carburant
+                                            <SafeIcon name="zap" size={14} color={ACCENT_COLOR} type="lucide" /> {t('autoServicesSearch.carburant')}
                                         </Text>
                                         {renderFilterChips(dynamicFilters.carburants, carburant, setCarburant)}
                                     </View>
@@ -459,7 +459,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                                 {dynamicFilters.transmissions.length > 0 && (
                                     <View style={styles.filterGroup}>
                                         <Text style={styles.filterLabel}>
-                                            <SafeIcon name="settings" size={14} color={ACCENT_COLOR} type="lucide" /> Transmission
+                                            <SafeIcon name="settings" size={14} color={ACCENT_COLOR} type="lucide" /> {t('autoServicesSearch.transmission')}
                                         </Text>
                                         {renderFilterChips(dynamicFilters.transmissions, transmission, setTransmission)}
                                     </View>
@@ -469,7 +469,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                                 {dynamicFilters.couleurs.length > 0 && (
                                     <View style={styles.filterGroup}>
                                         <Text style={styles.filterLabel}>
-                                            <SafeIcon name="palette" size={14} color={ACCENT_COLOR} type="lucide" /> Couleur
+                                            <SafeIcon name="palette" size={14} color={ACCENT_COLOR} type="lucide" /> {t('autoServicesSearch.couleur')}
                                         </Text>
                                         {renderFilterChips(dynamicFilters.couleurs, couleur, setCouleur, 15)}
                                     </View>
@@ -478,13 +478,13 @@ const AutoServicesSearchScreen: React.FC = () => {
                                 {/* Localisation */}
                                 <View style={styles.filterGroup}>
                                     <Text style={styles.filterLabel}>
-                                        <SafeIcon name="map-pin" size={14} color={ACCENT_COLOR} type="lucide" /> Localisation
+                                        <SafeIcon name="map-pin" size={14} color={ACCENT_COLOR} type="lucide" /> {t('autoServicesSearch.localisation')}
                                     </Text>
                                     <LocationSelector
                                         label=""
                                         value={typeof ville === 'string' ? (ville ? { raw: ville, place_name: ville } : '') : ville}
                                         onSelect={(loc: LocationObject) => setVille(loc)}
-                                        placeholder={t('autoServicesSearchScreen.villeQuartierAdresse')}
+                                        placeholder={t('autoServicesSearch.villeQuartierAdresse')}
                                         scope="all"
                                         enrichWithBackend={true}
                                     />
@@ -498,7 +498,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                                     >
                                         <SafeIcon name="navigation" size={18} color={ACCENT_LIGHT} type="lucide" />
                                         <Text style={styles.gpsButtonText} numberOfLines={1}>
-                                            {gpsString ? `GPS: ${gpsString.substring(0, 25)}...` : 'Utiliser ma position GPS'}
+                                            {gpsString ? `GPS: ${gpsString.substring(0, 25)}...` : t('autoServicesSearch.utiliserMaPositionGps')}
                                         </Text>
                                         <SafeIcon name="chevron-right" size={16} color="#9CA3AF" type="lucide" />
                                     </TouchableOpacity>
@@ -506,7 +506,7 @@ const AutoServicesSearchScreen: React.FC = () => {
 
                                 {gpsData && (
                                     <View style={styles.filterGroup}>
-                                        <Text style={styles.filterLabel}>Rayon: {rayonKm} km</Text>
+                                        <Text style={styles.filterLabel}>{t('autoServicesSearch.rayon', { km: rayonKm })}</Text>
                                         <View style={styles.radiusRow}>
                                             {[5, 10, 20, 50].map(r => (
                                                 <TouchableOpacity
@@ -552,7 +552,7 @@ const AutoServicesSearchScreen: React.FC = () => {
                     <View style={styles.infoRow}>
                         <SafeIcon name="info" size={16} color={ACCENT_LIGHT} type="lucide" />
                         <Text style={styles.infoText}>
-                            Les filtres s'adaptent automatiquement aux véhicules disponibles dans le catalogue.
+                            {t('autoServicesSearch.infoFiltres')}
                         </Text>
                     </View>
                 </View>

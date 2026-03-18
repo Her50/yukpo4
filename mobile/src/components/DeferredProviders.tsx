@@ -63,13 +63,13 @@ const DeferredProviders: React.FC<DeferredProvidersProps> = ({ children }) => {
   useEffect(() => {
     // Phase 1: Attendre que l'écran soit monté (500ms)
     const locationTimer = setTimeout(() => {
-      console.log('[DeferredProviders] 📍 Chargement LocationProvider...');
+      console.log('[DeferredProviders] \uD83D\uDCCD Chargement LocationProvider...');
       setLocationReady(true);
     }, 500);
 
     // Phase 2: Charger les stats IA (1000ms)
     const statsTimer = setTimeout(() => {
-      console.log('[DeferredProviders] 📊 Chargement GlobalIAStatsProvider...');
+      console.log('[DeferredProviders] \uD83D\uDCCA Chargement GlobalIAStatsProvider...');
       setStatsReady(true);
     }, 1000);
 
@@ -97,7 +97,7 @@ const DeferredProviders: React.FC<DeferredProvidersProps> = ({ children }) => {
 
   // ✅ ÉTAPE 2: LocationProvider chargé (+500ms) avec protection
   if (!statsReady) {
-    console.log('[DeferredProviders] 📍 LocationProvider actif');
+    console.log('[DeferredProviders] \uD83D\uDCCD LocationProvider actif');
     return (
       <SafeLocationProvider>
         {children}

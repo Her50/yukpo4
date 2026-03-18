@@ -9,7 +9,7 @@ import { ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, View } fr
 import { LiveJoinInformationRecord, liveStreamingService } from '../../services/liveStreamingService';
 import SafeIcon from '../SafeIcon';
 import { LiveChatModal } from './LiveChatModal';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface LiveStreamPlayerProps {
     sessionId: string;

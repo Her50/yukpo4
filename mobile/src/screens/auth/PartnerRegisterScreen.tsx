@@ -576,7 +576,7 @@ const PartnerRegisterScreen: React.FC = () => {
                   label={t('partnerRegister.concoursOrganisesSeparesParDes')}
                   value={form.concours_organises.join(', ')}
                   onChangeText={(text) => setForm({ ...form, concours_organises: text.split(',').map(c => c.trim()).filter(Boolean) })}
-                  placeholder="Ex: Concours dt('partnerRegisterScreen.entreeEn6emeConcoursDentreeEn1ere')
+                  placeholder="Ex: Concours d'entrée en 6ème, Concours d'entrée en 1ère"
                   multiline
                   numberOfLines={2}
                   disabled={loading}
@@ -591,7 +591,7 @@ const PartnerRegisterScreen: React.FC = () => {
                 <View style={styles.divider} />
                 <View style={styles.sectionHeader}>
                   <Building size={20} color={theme.colors.primary} />
-                  <Title style={styles.sectionTitle}>{t('partnerRegister.informationsPersonnelles')}/Title>
+                  <Title style={styles.sectionTitle}>{t('partnerRegister.informationsPersonnelles')}</Title>
                 </View>
                 <Paragraph style={styles.sectionSubtitle}>
                   Ces informations sont nécessaires pour la validation de votre compte par les administrateurs
@@ -602,17 +602,17 @@ const PartnerRegisterScreen: React.FC = () => {
                   value={form.driver_license_number}
                   onChangeText={(text) => setForm({ ...form, driver_license_number: text })}
                   placeholder="Ex:AB123456789"
-                disabled={loading}
-                style={styles.input}
+                  disabled={loading}
+                  style={styles.input}
                 />
 
                 <TextInput
-                  label={t('partnerRegisterScreen.dateD')} expiration du permis (YYYY-MM-DD) *"
-                value={form.driver_license_expiry}
-                onChangeText={(text) => setForm({ ...form, driver_license_expiry: text })}
-                placeholder="Ex: 2025-12-31"
-                disabled={loading}
-                style={styles.input}
+                  label={`${t('partnerRegisterScreen.dateDExpirationDuPermis')} *`}
+                  value={form.driver_license_expiry}
+                  onChangeText={(text) => setForm({ ...form, driver_license_expiry: text })}
+                  placeholder="Ex: 2025-12-31"
+                  disabled={loading}
+                  style={styles.input}
                 />
 
                 <Text style={styles.label}>{t('partnerRegister.photoDuPermisDeConduire')}</Text>
@@ -728,13 +728,13 @@ const PartnerRegisterScreen: React.FC = () => {
                 </View>
 
                 <TextInput
-                  label={t('partnerRegister.anneesD')} expérience"
-                value={form.driver_experience_years}
-                onChangeText={(text) => setForm({ ...form, driver_experience_years: text })}
-                placeholder="Ex: 5"
-                keyboardType="numeric"
-                disabled={loading}
-                style={styles.input}
+                  label={`${t('partnerRegister.anneesDExperience')}`}
+                  value={form.driver_experience_years}
+                  onChangeText={(text) => setForm({ ...form, driver_experience_years: text })}
+                  placeholder="Ex: 5"
+                  keyboardType="numeric"
+                  disabled={loading}
+                  style={styles.input}
                 />
               </>
             )}
@@ -754,7 +754,7 @@ const PartnerRegisterScreen: React.FC = () => {
 
             {/* MTN Mobile Money */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Text style={{ fontWeight: '600', fontSize: 14 }}>📱 MTN Mobile Money</Text>
+              <Text style={{ fontWeight: '600', fontSize: 14 }}>\uD83D\uDCF1 MTN Mobile Money</Text>
               <TouchableOpacity
                 onPress={() => setPaymentMtnEnabled(!paymentMtnEnabled)}
                 style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: paymentMtnEnabled ? '#FBBF24' : '#E5E7EB' }}
@@ -779,7 +779,7 @@ const PartnerRegisterScreen: React.FC = () => {
 
             {/* Orange Money */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginTop: 8 }}>
-              <Text style={{ fontWeight: '600', fontSize: 14 }}>📱 Orange Money</Text>
+              <Text style={{ fontWeight: '600', fontSize: 14 }}>\uD83D\uDCF1 Orange Money</Text>
               <TouchableOpacity
                 onPress={() => setPaymentOrangeEnabled(!paymentOrangeEnabled)}
                 style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: paymentOrangeEnabled ? '#F97316' : '#E5E7EB' }}
@@ -815,7 +815,7 @@ const PartnerRegisterScreen: React.FC = () => {
           <Text style={styles.submitButtonText}>
             {loading ? 'Inscription en cours...' :
               (!form.partner_type || form.partner_type.trim() === '') ?
-                t('partnerRegisterScreen.selectionnezUnTypeDt('partnerRegisterScreen.etablissement') :
+                t('partnerRegisterScreen.selectionnezUnTypeDetablissement') :
                 "S'inscrire comme partenaire"}
           </Text>
         </TouchableOpacity>
@@ -872,8 +872,8 @@ const PartnerRegisterScreen: React.FC = () => {
           }
         }}
         currentLocation={form.partner_gps}
-        title={t('partnerRegister.selectionnerL')} adresse de l'établissement"
-      allowZoneSelection={false}
+        title={t('partnerRegister.selectionnerLAdresseDeLEtablissement')}
+        allowZoneSelection={false}
       />
     </>
   );

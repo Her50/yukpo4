@@ -201,7 +201,7 @@ const [versions, setVersions] = useState<PubliciteVersion[]>([]);
                 <View style={styles.tipCard}>
                     <SafeIcon name="info" size={20} color="#3B82F6" />
                     <Text style={styles.tipText}>
-                        💡 Vous pouvez restaurer n'importe quelle version précédente. La version actuelle est la
+                        \uD83D\uDCA1 Vous pouvez restaurer n'importe quelle version précédente. La version actuelle est la
                         version {versions[0]?.version_number}.
                     </Text>
                 </View>

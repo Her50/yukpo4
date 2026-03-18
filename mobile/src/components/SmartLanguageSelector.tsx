@@ -146,7 +146,7 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
                             <Text style={styles.title}>{t('smartLanguageSelector.chooseLanguage')}</Text>
                             {showCountryHint && countryCode ? (
                                 <Text style={styles.countryHint}>
-                                    📍 {t('smartLanguageSelector.detectedCountry')}: {countryCode}
+                                    \uD83D\uDCCD {t('smartLanguageSelector.detectedCountry')}: {countryCode}
                                 </Text>
                             ) : null}
                         </View>
@@ -181,7 +181,7 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
                                 {suggestedLanguages.length > 0 && (
                                     <View style={styles.section}>
                                         <Text style={styles.sectionTitle}>
-                                            🌍 {t('smartLanguageSelector.suggestedForYou')}
+                                            \uD83C\uDF0D {t('smartLanguageSelector.suggestedForYou')}
                                         </Text>
                                         {suggestedLanguages.map(lang => (
                                             <React.Fragment key={lang.code}>
@@ -197,7 +197,7 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
                                     onPress={() => setShowAllLanguages(true)}
                                 >
                                     <Text style={styles.showAllText}>
-                                        🌐 {t('smartLanguageSelector.allLanguages')} ({SUPPORTED_LANGUAGES.length})
+                                        \uD83C\uDF10 {t('smartLanguageSelector.allLanguages')} ({SUPPORTED_LANGUAGES.length})
                                     </Text>
                                     <Text style={styles.showAllChevron}>→</Text>
                                 </TouchableOpacity>

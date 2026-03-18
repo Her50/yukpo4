@@ -18,7 +18,6 @@ import {
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface VideoRecorderProps {
     onRecordingComplete: (uri: string) => void;
@@ -33,8 +32,7 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
     duetType,
     maxDuration = 60,
 }) => {
-        const { t } = useLanguageSafe();
-const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+    const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
     const [cameraType, setCameraType] = useState<CameraType>('front' as CameraType);
@@ -87,7 +85,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
             }
         } catch (error: any) {
             console.error('[VideoRecorder] Erreur enregistrement:', error);
-            Alert.alert('Erreur', 'Impossible d\t('videoRecorder.enregistrerLaVideo'));
+            Alert.alert('Erreur', 'Impossible d\'enregistrer la vidéo');
             setIsRecording(false);
             if (recordingTimerRef.current) {
                 clearInterval(recordingTimerRef.current);
@@ -128,7 +126,7 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>{t('videoRecorder.demandeDePermissions')}</Text>
+                <Text style={styles.loadingText}>Demande de permissions...</Text>
             </View>
         );
     }
@@ -137,12 +135,12 @@ const [hasPermission, setHasPermission] = useState<boolean | null>(null);
         return (
             <View style={styles.container}>
                 <SafeIcon name="camera-off" size={48} color={modernColors.textSecondary} />
-                <Text style={styles.errorText}>{t('videoRecorder.accesALaCameraRefuse')}</Text>
+                <Text style={styles.errorText}>Accès à la caméra refusé</Text>
                 <Text style={styles.errorSubtext}>
                     Veuillez autoriser l'accès à la caméra dans les paramètres
                 </Text>
                 <TouchableOpacity style={styles.button} onPress={onCancel}>
-                    <Text style={styles.buttonText}>{t('videoRecorder.fermer')}</Text>
+                    <Text style={styles.buttonText}>Fermer</Text>
                 </TouchableOpacity>
             </View>
         );

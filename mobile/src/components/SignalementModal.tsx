@@ -14,7 +14,6 @@ import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeInput } from './SafeNativeDesign';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SignalementModalProps {
     visible: boolean;
@@ -31,45 +30,44 @@ const SignalementModal: React.FC<SignalementModalProps> = ({
     productId,
     productName
 }) => {
-        const { t } = useLanguageSafe();
-const [selectedType, setSelectedType] = useState<string | null>(null);
+    const [selectedType, setSelectedType] = useState<string | null>(null);
     const [selectedMotifs, setSelectedMotifs] = useState<string[]>([]);
     const [motifLibre, setMotifLibre] = useState('');
     const [loading, setLoading] = useState(false);
 
     const typesSignalement = [
-        { id: 'contenu_inapproprie', label: t('signalement.contenuInapproprie'), icon: '⚠️', color: '#EF4444' },
-        { id: 'arnaque_suspectee', label: t('signalement.arnaqueSuspectee'), icon: '🚨', color: '#DC2626' },
-        { id: 'prix_trompeur', label: t('signalementModal.prixTrompeur'), icon: '💰', color: '#F59E0B' },
-        { id: 'produit_contrefait', label: t('signalement.produitContrefait'), icon: '🔍', color: '#F97316' },
-        { id: 'photo_trompeuse', label: t('signalement.photoTrompeuse'), icon: '📷', color: '#FB923C' },
-        { id: 'harcèlement', label: t('signalement.harcelement'), icon: '🛑', color: '#B91C1C' },
-        { id: 'spam', label: t('signalement.spamPublicite'), icon: '📢', color: '#EA580C' },
-        { id: 'informations_fausses', label: t('signalement.informationsFausses'), icon: '❌', color: '#DC2626' },
-        { id: 'autre', label: 'Autre', icon: '📝', color: '#6B7280' },
+        { id: 'contenu_inapproprie', label: 'Contenu inapproprié', icon: '⚠️', color: '#EF4444' },
+        { id: 'arnaque_suspectee', label: 'Arnaque suspectée', icon: '\uD83D\uDEA8', color: '#DC2626' },
+        { id: 'prix_trompeur', label: 'Prix trompeur', icon: '\uD83D\uDCB0', color: '#F59E0B' },
+        { id: 'produit_contrefait', label: 'Produit contrefait', icon: '\uD83D\uDD0D', color: '#F97316' },
+        { id: 'photo_trompeuse', label: 'Photo trompeuse', icon: '\uD83D\uDCF7', color: '#FB923C' },
+        { id: 'harcèlement', label: 'Harcèlement', icon: '\uD83D\uDED1', color: '#B91C1C' },
+        { id: 'spam', label: 'Spam / Publicité', icon: '\uD83D\uDCE2', color: '#EA580C' },
+        { id: 'informations_fausses', label: 'Informations fausses', icon: '❌', color: '#DC2626' },
+        { id: 'autre', label: 'Autre', icon: '\uD83D\uDCDD', color: '#6B7280' },
     ];
 
     const motifsFrequents = [
-        t('signalementModal.lePrestataireNeRepondPas'),
+        'Le prestataire ne répond pas',
         'Les photos ne correspondent pas au produit',
-        t('signalementModal.prixDifferentDeLannonce'),
+        'Prix différent de l\'annonce',
         'Produit non disponible',
         'Demande d\'argent avant prestation',
         'Comportement suspect',
-        t('signalementModal.coordonneesInvalides'),
-        t('signalementModal.serviceDeMauvaiseQualite'),
-        t('signalementModal.delaisNonRespectes'),
-        t('signalementModal.produitDefectueux'),
+        'Coordonnées invalides',
+        'Service de mauvaise qualité',
+        'Délais non respectés',
+        'Produit défectueux',
     ];
 
     const handleSubmit = async () => {
         if (!selectedType) {
-            Alert.alert('Erreur', t('signalementModal.veuillezSelectionnerUnTypeDeSignalement'));
+            Alert.alert('Erreur', 'Veuillez sélectionner un type de signalement');
             return;
         }
 
         if (selectedMotifs.length === 0 && !motifLibre.trim()) {
-            Alert.alert('Erreur', t('signalementModal.veuillezPreciserAuMoinsUnMotif'));
+            Alert.alert('Erreur', 'Veuillez préciser au moins un motif de signalement');
             return;
         }
 
@@ -86,8 +84,8 @@ const [selectedType, setSelectedType] = useState<string | null>(null);
 
             if (response.success) {
                 Alert.alert(
-                    t('signalementModal.signalementEnregistre'),
-                    t('signalementModal.referenceNn', { (response_data as any)_reference: (response.data as any).reference, (response_data as any)_message: (response.data as any).message }),
+                    '✅ Signalement enregistré',
+                    `Référence: ${(response.data as any).reference}\n\n${(response.data as any).message}`,
                     [
                         {
                             text: 'OK',
@@ -105,7 +103,7 @@ const [selectedType, setSelectedType] = useState<string | null>(null);
             console.error('[SignalementModal] Erreur:', error);
             Alert.alert(
                 'Erreur',
-                error.message || t('signalementModal.impossibleDenregistrerLeSignalementReessayez')
+                error.message || 'Impossible d\'enregistrer le signalement. Réessayez.'
             );
         } finally {
             setLoading(false);
@@ -141,7 +139,7 @@ const [selectedType, setSelectedType] = useState<string | null>(null);
                             <SafeIcon name="flag" size={24} color={modernColors.error} />
                         </View>
                         <View style={styles.headerTextContainer}>
-                            <Text style={styles.headerTitle}>{t('signalement.signalerUnProbleme')}</Text>
+                            <Text style={styles.headerTitle}>Signaler un problème</Text>
                             <Text style={styles.headerSubtitle}>
                                 {productName ? `Produit: ${productName}` : 'Service'}
                             </Text>
@@ -154,7 +152,7 @@ const [selectedType, setSelectedType] = useState<string | null>(null);
                     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                         {/* Type de signalement */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{t('signalement.typeDeProbleme')}</Text>
+                            <Text style={styles.sectionTitle}>Type de problème</Text>
                             <View style={styles.typesGrid}>
                                 {typesSignalement.map((type) => (
                                     <TouchableOpacity
@@ -181,7 +179,7 @@ const [selectedType, setSelectedType] = useState<string | null>(null);
                         {/* Motifs fréquents */}
                         {selectedType && (
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>{t('signalement.motifsFrequentsOptionnel')}</Text>
+                                <Text style={styles.sectionTitle}>Motifs fréquents (optionnel)</Text>
                                 <Text style={styles.sectionHint}>Cochez tout ce qui s'applique</Text>
                                 {motifsFrequents.map((motif) => (
                                     <TouchableOpacity
@@ -206,10 +204,10 @@ const [selectedType, setSelectedType] = useState<string | null>(null);
                         {/* Description libre */}
                         {selectedType && (
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>{t('signalement.descriptionDuProbleme')}</Text>
-                                <Text style={styles.sectionHint}>{t('signalement.decrivezEnDetailLeProbleme')}</Text>
+                                <Text style={styles.sectionTitle}>Description du problème</Text>
+                                <Text style={styles.sectionHint}>Décrivez en détail le problème rencontré</Text>
                                 <NativeInput
-                                    placeholder={t('signalement.exLePrestataireDemandeLe')}
+                                    placeholder="Ex: Le prestataire demande le paiement intégral avant la prestation sans garantie..."
                                     value={motifLibre}
                                     onChangeText={setMotifLibre}
                                     multiline
@@ -241,7 +239,7 @@ const [selectedType, setSelectedType] = useState<string | null>(null);
                             }}
                             disabled={loading}
                         >
-                            <Text style={styles.cancelButtonText}>{t('signalementModal.annuler')}</Text>
+                            <Text style={styles.cancelButtonText}>Annuler</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -257,7 +255,7 @@ const [selectedType, setSelectedType] = useState<string | null>(null);
                             ) : (
                                 <>
                                     <SafeIcon name="flag" size={18} color="#FFFFFF" />
-                                    <Text style={styles.submitButtonText}>{t('signalement.envoyerLeSignalement')}</Text>
+                                    <Text style={styles.submitButtonText}>Envoyer le signalement</Text>
                                 </>
                             )}
                         </TouchableOpacity>

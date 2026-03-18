@@ -149,7 +149,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
             {/* Header avec boutons d'ajout */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>
-                    📦 Variantes de Conditionnement
+                    \uD83D\uDCE6 Variantes de Conditionnement
                 </Text>
                 {!readonly && (
                     <View style={styles.headerButtons}>
@@ -172,7 +172,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
             </View>
 
             <Text style={styles.hint}>
-                💡 <Text style={styles.hintBold}>Astuce :</Text>{t('productVariantManager.ajoutezToutesLesQuantitesDisponiblesEx')}
+                \uD83D\uDCA1 <Text style={styles.hintBold}>Astuce :</Text>{t('productVariantManager.ajoutezToutesLesQuantitesDisponiblesEx')}
             </Text>
 
             {/* Liste des variantes */}

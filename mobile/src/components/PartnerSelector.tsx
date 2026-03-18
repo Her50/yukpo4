@@ -227,19 +227,19 @@ const [searchQuery, setSearchQuery] = useState('');
                                         <View style={styles.partnerLocation}>
                                             {partner.city && (
                                                 <Text style={styles.partnerLocationText}>
-                                                    📍 {partner.city}
+                                                    \uD83D\uDCCD {partner.city}
                                                     {partner.country && `, ${partner.country}`}
                                                 </Text>
                                             )}
                                             {!partner.city && partner.country && (
                                                 <Text style={styles.partnerLocationText}>
-                                                    📍 {partner.country}
+                                                    \uD83D\uDCCD {partner.country}
                                                 </Text>
                                             )}
                                         </View>
                                         {partner.contact_phone && (
                                             <Text style={styles.partnerContact}>
-                                                📞 {partner.contact_phone}
+                                                \uD83D\uDCDE {partner.contact_phone}
                                             </Text>
                                         )}
                                     </View>

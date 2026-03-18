@@ -8,7 +8,6 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface TripMapProps {
     departureCity: string;
@@ -30,8 +29,7 @@ const TripMap: React.FC<TripMapProps> = ({
     durationMinutes,
 }) => {
     const mapRef = useRef<MapView>(null);
-        const { t } = useLanguageSafe();
-const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true);
     const [region, setRegion] = useState({
         latitude: 7.3697, // Yaoundé par défaut
         longitude: 12.3547,
@@ -78,7 +76,7 @@ const [loading, setLoading] = useState(true);
             // TODO: Utiliser le backend ou Google Geocoding API
             // Pour l'instant, utiliser des coordonnées par défaut pour les villes camerounaises
             const cityCoordinates: { [key: string]: { lat: number; lng: number } } = {
-                t('tripMap.yaounde'): { lat: 3.848, lng: 11.5021 },
+                'yaoundé': { lat: 3.848, lng: 11.5021 },
                 'douala': { lat: 4.0511, lng: 9.7679 },
                 'bafoussam': { lat: 5.4737, lng: 10.4176 },
                 'bamenda': { lat: 6.1584, lng: 10.1703 },
@@ -88,7 +86,7 @@ const [loading, setLoading] = useState(true);
             const depKey = departureCity.toLowerCase();
             const arrKey = arrivalCity.toLowerCase();
 
-            const depCoords = cityCoordinates[depKey] || cityCoordinates[t('tripMap.yaounde')];
+            const depCoords = cityCoordinates[depKey] || cityCoordinates['yaoundé'];
             const arrCoords = cityCoordinates[arrKey] || cityCoordinates['douala'];
 
             const minLat = Math.min(depCoords.lat, arrCoords.lat);
@@ -115,7 +113,7 @@ const [loading, setLoading] = useState(true);
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>{t('tripMap.chargementDeLaCarte')}</Text>
+                <Text style={styles.loadingText}>Chargement de la carte...</Text>
             </View>
         );
     }
@@ -132,7 +130,7 @@ const [loading, setLoading] = useState(true);
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>{t('tripMap.itineraire')}</Text>
+                <Text style={styles.title}>Itinéraire</Text>
                 {distanceKm && (
                     <View style={styles.infoBadge}>
                         <SafeIcon name="map" size={14} color={modernColors.primary} />

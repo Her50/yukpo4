@@ -72,7 +72,7 @@ const CourierAdminScreen: React.FC = () => {
             const statusParam = filter !== 'all' ? `?status=${filter}` : '';
             const endpoint = `/api/courier/applications${statusParam}`;
 
-            console.log('[CourierAdminScreen] 🔍 Chargement candidatures:', {
+            console.log('[CourierAdminScreen] \uD83D\uDD0D Chargement candidatures:', {
                 filter,
                 statusParam,
                 endpoint,
@@ -85,8 +85,8 @@ const CourierAdminScreen: React.FC = () => {
             // Le backend retourne { applications: [...], total: ... }
             // Donc response.data devrait contenir { applications: [...], total: ... }
 
-            console.log('[CourierAdminScreen] 🔍 Réponse API complète:', JSON.stringify(response, null, 2));
-            console.log('[CourierAdminScreen] 🔍 Structure réponse:', {
+            console.log('[CourierAdminScreen] \uD83D\uDD0D Réponse API complète:', JSON.stringify(response, null, 2));
+            console.log('[CourierAdminScreen] \uD83D\uDD0D Structure réponse:', {
                 success: response.success,
                 hasData: !!response.data,
                 dataType: typeof response.data,
@@ -412,22 +412,22 @@ const CourierAdminScreen: React.FC = () => {
                                     </Text>
                                     {selectedApplication.user_email && (
                                         <Text style={styles.detailValue}>
-                                            📧 {selectedApplication.user_email}
+                                            \uD83D\uDCE7 {selectedApplication.user_email}
                                         </Text>
                                     )}
                                     {selectedApplication.profile_data?.personal?.phone && (
                                         <Text style={styles.detailValue}>
-                                            📞 {selectedApplication.profile_data.personal.phone}
+                                            \uD83D\uDCDE {selectedApplication.profile_data.personal.phone}
                                         </Text>
                                     )}
                                     {selectedApplication.profile_data?.personal?.idNumber && (
                                         <Text style={styles.detailValue}>
-                                            🆔 ID: {selectedApplication.profile_data.personal.idNumber}
+                                            \uD83C\uDD94 ID: {selectedApplication.profile_data.personal.idNumber}
                                         </Text>
                                     )}
                                     {selectedApplication.profile_data?.personal?.dateOfBirth && (
                                         <Text style={styles.detailValue}>
-                                            🎂 Né(e) le: {new Date(selectedApplication.profile_data.personal.dateOfBirth).toLocaleDateString('fr-FR')}
+                                            \uD83C\uDF82 Né(e) le: {new Date(selectedApplication.profile_data.personal.dateOfBirth).toLocaleDateString('fr-FR')}
                                         </Text>
                                     )}
                                 </NativeCard>

@@ -16,7 +16,7 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiCall } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface DeliveryStats {
   total_deliveries: number;
@@ -202,7 +202,7 @@ const AnalyticsDashboardScreen: React.FC = () => {
           </View>
           <Text style={styles.kpiValue}>{formatCurrency(analytics.revenue_stats.total_revenue)}</Text>
           <Text style={styles.kpiSubtext}>
-            {analytics.revenue_stats.revenue_growth >= 0 ? '📈' : '📉'}{' '}
+            {analytics.revenue_stats.revenue_growth >= 0 ? '\uD83D\uDCC8' : '\uD83D\uDCC9'}{' '}
             {analytics.revenue_stats.revenue_growth >= 0 ? '+' : ''}
             {analytics.revenue_stats.revenue_growth.toFixed(1)}% vs mois précédent
           </Text>

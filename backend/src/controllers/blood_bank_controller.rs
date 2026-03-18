@@ -405,12 +405,43 @@ pub async fn search_blood_banks(
 
 /// ✅ Liste des banques de sang (stub pour éviter erreur 405)
 pub async fn list_blood_banks(
-    State(_state): State<Arc<AppState>>,
-    Extension(_user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[list_blood_banks] Called");
-    // TODO: Implémenter la vraie liste
-    Ok((StatusCode::OK, Json(json!([]))))
+    info!("[list_blood_banks] List banks for user_id={}", user_id);
+
+    let rows = sqlx::query(
+        r#"
+        SELECT id, nom, adresse, ville
+        FROM banques_sang
+        WHERE user_id = $1
+        ORDER BY updated_at DESC
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[list_blood_banks] Erreur récupération: {}", e);
+        AppError::Internal("Erreur récupération des banques de sang".to_string())
+    })?;
+
+    let data: Vec<serde_json::Value> = rows
+        .into_iter()
+        .map(|row| {
+            json!({
+                "id": row.get::<i32, _>("id"),
+                "nom": row.get::<String, _>("nom"),
+                "adresse": row.get::<Option<String>, _>("adresse"),
+                "ville": row.get::<Option<String>, _>("ville"),
+            })
+        })
+        .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "data": data })),
+    ))
 }
 
 /// Obtenir une banque de sang par ID

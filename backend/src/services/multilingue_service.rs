@@ -128,12 +128,14 @@ impl MultilingueService {
         pg: &sqlx::PgPool,
     ) -> Result<String, AppError> {
         // Priorité: langue profil > langue appareil > langue_defaut
-        if let Ok(Some(langue)) =
-            sqlx::query_scalar!("SELECT langue_preferee FROM users WHERE id = $1", user_id)
-                .fetch_one(pg)
-                .await
+        if let Ok(langue_opt) = sqlx::query_scalar::<_, Option<String>>(
+            "SELECT langue_preferee FROM users WHERE id = $1",
+        )
+        .bind(user_id)
+        .fetch_one(pg)
+        .await
         {
-            if let Some(langue) = langue {
+            if let Some(langue) = langue_opt {
                 if self.langues_supportees.contains(&langue) {
                     return Ok(langue);
                 }
@@ -166,24 +168,26 @@ impl MultilingueService {
     }
 
     /// Obtenir une traduction (avec cache)
-    async fn get_traduction(
-        &self,
-        cle: &str,
-        langue: &str,
-        pg: &sqlx::PgPool,
-    ) -> Result<String, AppError> {
-        let cache_key = (langue.to_string(), cle.to_string());
+    fn get_traduction<'a>(
+        &'a self,
+        cle: &'a str,
+        langue: &'a str,
+        pg: &'a sqlx::PgPool,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<String, AppError>> + Send + 'a>>
+    {
+        Box::pin(async move {
+            let cache_key = (langue.to_string(), cle.to_string());
 
-        // Vérifier le cache
-        {
-            let cache = self.cache_traductions.read().await;
-            if let Some(traduction) = cache.get(&cache_key) {
-                return Ok(traduction.clone());
+            // Vérifier le cache
+            {
+                let cache = self.cache_traductions.read().await;
+                if let Some(traduction) = cache.get(&cache_key) {
+                    return Ok(traduction.clone());
+                }
             }
-        }
 
-        // Rechercher en base
-        let traduction: Option<String> = sqlx::query_scalar(
+            // Rechercher en base
+            let traduction: Option<String> = sqlx::query_scalar(
             "SELECT traduction FROM traductions_systeme WHERE cle_traduction = $1 AND langue = $2",
         )
         .bind(cle)
@@ -192,26 +196,27 @@ impl MultilingueService {
         .await
         .map_err(|e| AppError::Internal(format!("Erreur traduction: {}", e)))?;
 
-        let traduction = match traduction {
-            Some(t) => t,
-            None => {
-                // Fallback vers langue par défaut
-                if langue != self.langue_defaut {
-                    return self.get_traduction(cle, &self.langue_defaut, pg).await;
-                } else {
-                    // Dernier fallback: retourner la clé
-                    cle.to_string()
+            let traduction = match traduction {
+                Some(t) => t,
+                None => {
+                    // Fallback vers langue par défaut
+                    if langue != self.langue_defaut {
+                        return self.get_traduction(cle, &self.langue_defaut, pg).await;
+                    } else {
+                        // Dernier fallback: retourner la clé
+                        cle.to_string()
+                    }
                 }
+            };
+
+            // Mettre en cache
+            {
+                let mut cache = self.cache_traductions.write().await;
+                cache.insert(cache_key, traduction.clone());
             }
-        };
 
-        // Mettre en cache
-        {
-            let mut cache = self.cache_traductions.write().await;
-            cache.insert(cache_key, traduction.clone());
-        }
-
-        Ok(traduction)
+            Ok(traduction)
+        })
     }
 
     /// Générer un message localisé complet
@@ -265,6 +270,71 @@ impl MultilingueService {
         }
 
         Ok(message_localise)
+    }
+
+    /// Envoyer une notification (stub - utilise le système de traduction)
+    pub async fn send_notification(
+        &self,
+        cle: &str,
+        variables: std::collections::HashMap<String, String>,
+        _user_id: Option<i32>,
+    ) -> Result<(), AppError> {
+        log::info!("[send_notification] cle={}, variables={:?}", cle, variables);
+        Ok(())
+    }
+
+    /// Traduire du texte libre d'une langue source vers une langue cible.
+    /// Cherche d'abord dans le cache mémoire, puis en base (traductions_systeme),
+    /// puis retourne un fallback préfixé `[target_lang]texte` pour signaler au frontend
+    /// que la traduction n'existe pas encore.
+    pub async fn translate_text(
+        &self,
+        text: &str,
+        source_lang: &str,
+        target_lang: &str,
+        pg: &sqlx::PgPool,
+    ) -> Result<String, AppError> {
+        if source_lang == target_lang || text.is_empty() {
+            return Ok(text.to_string());
+        }
+
+        let cache_key = (target_lang.to_string(), text.to_string());
+
+        // 1. Check in-memory cache
+        {
+            let cache = self.cache_traductions.read().await;
+            if let Some(cached) = cache.get(&cache_key) {
+                return Ok(cached.clone());
+            }
+        }
+
+        // 2. Look up in database (traductions_systeme stores key-based translations,
+        //    but we also store free-text translations with a generated key)
+        let db_key = format!("freetext.{}", text.replace(' ', "_").to_lowercase());
+        let db_result: Option<String> = sqlx::query_scalar(
+            "SELECT traduction FROM traductions_systeme WHERE cle_traduction = $1 AND langue = $2",
+        )
+        .bind(&db_key)
+        .bind(target_lang)
+        .fetch_optional(pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur translate_text DB: {}", e)))?;
+
+        let translated = match db_result {
+            Some(t) => t,
+            None => {
+                // 3. Fallback: prefix with language code so frontend knows it's untranslated
+                format!("[{}]{}", target_lang, text)
+            }
+        };
+
+        // Store in cache
+        {
+            let mut cache = self.cache_traductions.write().await;
+            cache.insert(cache_key, translated.clone());
+        }
+
+        Ok(translated)
     }
 
     /// Initialiser les traductions par défaut
@@ -709,7 +779,12 @@ pub async fn middleware_detection_langue(headers: &axum::http::HeaderMap) -> Str
 
                 // Vérifier si la langue est supportée
                 if [
-                    "fr", "en", "es", "de", "pt", "it", "ar", "zh", "ja", "ko", "ru", "hi",
+                    "fr", "en", "de", "es", "pt", "zh", "ja", "hi", "ar", "ru", "ko", "tr", "id",
+                    "vi", "th", "bn", "tl", "ms", "uk", "pl", "it", "nl", "sw", "ha", "yo", "am",
+                    "wo", "zu", "ig", "ln", "ff", "rw", "sn", "so", "ti", "mg", "ewo", "dua",
+                    "bbj", "bas", "bum", "bci", "dyu", "bet", "pcm", "mos", "bm", "dje", "ee",
+                    "kbp", "sar", "sg", "kg", "lua", "fan", "xh", "af", "st", "rn", "srr", "ht",
+                    "pap",
                 ]
                 .contains(&code_principal)
                 {

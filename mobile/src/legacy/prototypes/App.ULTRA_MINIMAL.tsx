@@ -1,5 +1,5 @@
 // @ts-nocheck
-// 🚨 VERSION ULTRA MINIMALE POUR DIAGNOSTIC
+// \uD83D\uDEA8 VERSION ULTRA MINIMALE POUR DIAGNOSTIC
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { Text, View } from 'react-native';
@@ -7,7 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function App() {
-    console.log('[App] 🚨 VERSION ULTRA MINIMALE - Diagnostic');
+    console.log('[App] \uD83D\uDEA8 VERSION ULTRA MINIMALE - Diagnostic');
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>

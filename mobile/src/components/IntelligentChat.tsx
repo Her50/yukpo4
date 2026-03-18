@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -101,28 +100,65 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     if (visible) {
       const screenLabel = screenContext.screenName || 'Yukpo';
       const userName = screenContext.userData?.name || screenContext.userData?.email?.split('@')[0] || '';
-      const greeting = userName
-        ? t('intelligentChat.welcomeUser', { name: userName, screen: screenLabel })
-        : t('intelligentChat.welcomeScreen', { screen: screenLabel });
+      const isHomeScreen = screenLabel === 'Home' || screenLabel === 'HomeScreen';
+
+      let greeting: string;
+      if (isHomeScreen) {
+        const homeKey = userName ? 'intelligentChat.welcomeHomeUser' : 'intelligentChat.welcomeHome';
+        greeting = t(homeKey, { name: userName });
+        if (!greeting || greeting.startsWith('intelligentChat.')) {
+          greeting = userName
+            ? `${userName}, bienvenue sur Yukpo ! 🚀 Je suis votre assistant IA. Santé, transport, livraison, emploi, éducation — demandez-moi tout !`
+            : `Bienvenue sur Yukpo ! 🚀 La super-app qui révolutionne votre quotidien. Découvrez nos services — demandez ou appuyez ci-dessous !`;
+        }
+      } else {
+        const screenKey = userName ? 'intelligentChat.welcomeUser' : 'intelligentChat.welcomeScreen';
+        greeting = t(screenKey, { name: userName, screen: screenLabel });
+        if (!greeting || greeting.startsWith('intelligentChat.')) {
+          greeting = `${userName ? `${userName}, ` : ''}Je suis votre assistant Yukpo sur « ${screenLabel} ». Comment puis-je vous aider ?`;
+        }
+      }
+
+      const welcomeActions: any[] = isHomeScreen ? [
+        { id: 'discover', label: t('intelligentChat.discover') || '🚀 Découvrir Yukpo', icon: 'sparkles', route: undefined, category: 'discovery', description: '' },
+        { id: 'health', label: t('intelligentChat.nav.health') || '🏥 Santé', icon: 'heart', route: 'PharmacieHome', category: 'navigation', description: '' },
+        { id: 'transport', label: t('intelligentChat.nav.transport') || '🚗 Transport', icon: 'car', route: 'TaxiHome', category: 'navigation', description: '' },
+        { id: 'delivery', label: t('intelligentChat.nav.delivery') || '📦 Livraison', icon: 'truck', route: 'DeliveryHome', category: 'navigation', description: '' },
+        { id: 'gps', label: t('intelligentChat.nav.gps') || '🗺️ Navigation GPS', icon: 'map', route: 'Navigation', category: 'navigation', description: '' },
+        { id: 'emploi', label: t('intelligentChat.nav.jobs') || '💼 Emploi', icon: 'briefcase', route: 'OffresEmploiHome', category: 'navigation', description: '' },
+        { id: 'hotel', label: t('intelligentChat.nav.hotel') || '🏨 Hôtels', icon: 'building', route: 'HotelMeubleHome', category: 'navigation', description: '' },
+        { id: 'books', label: t('intelligentChat.nav.books') || '📚 Livres', icon: 'book-open', route: 'LivreScolaireHome', category: 'navigation', description: '' },
+      ] : [];
 
       const welcomeMessage: ChatMessage = {
         id: 'welcome',
-        text: greeting || `Bonjour${userName ? ` ${userName}` : ''} ! Je suis votre assistant Yukpo. Vous êtes sur « ${screenLabel} ». Comment puis-je vous aider ?`,
+        text: greeting,
         isUser: false,
         timestamp: new Date(),
         type: 'text',
+        suggestedActions: isHomeScreen ? welcomeActions : undefined,
+        metadata: isHomeScreen ? {
+          nextSteps: [
+            t('intelligentChat.followUp.whatIsYukpo') || "C'est quoi Yukpo ?",
+            t('intelligentChat.followUp.howCreateProduct') || 'Comment créer un produit/service ?',
+            t('intelligentChat.followUp.howPayment') || 'Quels moyens de paiement ?',
+          ],
+        } : undefined,
       };
       setMessages([welcomeMessage]);
       setLastFailedMessage(null);
 
-      const contextActions = screenContext.availableActions
-        .filter((a: any) => a.id !== 'home' && a.id !== 'profile' && a.id !== 'services')
-        .slice(0, 4);
+      const contextActions = isHomeScreen
+        ? welcomeActions
+        : screenContext.availableActions
+          .filter((a: any) => a.id !== 'home' && a.id !== 'profile' && a.id !== 'services')
+          .slice(0, 6);
       setSuggestedActions(contextActions);
 
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 300,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
 
@@ -218,10 +254,15 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
   }, [lastFailedMessage, handleSendMessage]);
 
   const handleActionPress = useCallback((action: any) => {
-    if (action.route) {
+    if (action.id === 'discover') {
+      const discoveryQuery = t('intelligentChat.discoveryQuery') || 'What is Yukpo? Show me all features';
+      handleSendMessage(discoveryQuery);
+    } else if (action.route) {
       try {
+        // @ts-ignore - dynamic route navigation
         navigation.navigate(action.route, action.params);
       } catch {
+        // @ts-ignore - dynamic route navigation
         navigation.navigate(action.route);
       }
       handleClose();
@@ -230,7 +271,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     } else if (action.label) {
       handleSendMessage(action.label);
     }
-  }, [navigation, handleClose, handleSendMessage]);
+  }, [navigation, handleClose, handleSendMessage, t]);
 
   const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
     const isUser = item.isUser;
@@ -262,7 +303,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
 
             {item.suggestedActions && item.suggestedActions.length > 0 && (
               <View style={styles.messageActions}>
-                {item.suggestedActions.slice(0, 3).map((action) => (
+                {item.suggestedActions.slice(0, 6).map((action) => (
                   <TouchableOpacity
                     key={action.id}
                     style={styles.messageActionButton}
@@ -272,6 +313,22 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
                       <SafeIcon name={action.icon} size={14} color="#6366f1" />
                     )}
                     <Text style={styles.messageActionText}>{action.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {item.metadata?.nextSteps && item.metadata.nextSteps.length > 0 && (
+              <View style={styles.nextStepsContainer}>
+                <Text style={styles.nextStepsTitle}>{t('intelligentChat.followUpTitle') || 'You might also ask:'}</Text>
+                {item.metadata.nextSteps.map((step: string, idx: number) => (
+                  <TouchableOpacity
+                    key={`next-${idx}`}
+                    style={styles.nextStepButton}
+                    onPress={() => handleSendMessage(step)}
+                  >
+                    <SafeIcon name="message-circle" size={12} color="#8b5cf6" />
+                    <Text style={styles.nextStepText}>{step}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -309,8 +366,9 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
   }, [suggestedActions, handleActionPress, loading]);
 
   return (
-    <Modal visible={visible} animationType="none" presentationStyle="fullScreen">
-      <SafeAreaView style={styles.safeArea}>
+    <Modal visible={visible} animationType="none" transparent presentationStyle="overFullScreen">
+      <Animated.View style={[styles.safeArea, { transform: [{ translateY: slideAnim }] }]}>
+        <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
           style={styles.container}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -375,7 +433,8 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+        </SafeAreaView>
+      </Animated.View>
     </Modal>
   );
 };
@@ -517,6 +576,35 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     marginTop: 8,
     gap: 6,
+  },
+  nextStepsContainer: {
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: modernColors.border,
+    gap: 4,
+  },
+  nextStepsTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: modernColors.textSecondary,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  nextStepButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: '#f5f3ff',
+    gap: 6,
+  },
+  nextStepText: {
+    fontSize: 12,
+    color: '#8b5cf6',
+    flex: 1,
   },
   messageActionButton: {
     flexDirection: 'row',

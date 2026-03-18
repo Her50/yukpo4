@@ -11,7 +11,6 @@ import {
 import { apiGet, apiPost } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SmartApplianceInputProps {
     brand: string; // Marque de l'appareil (pour suggestions contextuelles)
@@ -28,12 +27,11 @@ const SmartApplianceInput: React.FC<SmartApplianceInputProps> = ({
     value,
     onChangeText,
     placeholder = 'Ex: RT50K6000S8',
-    label={t('smartApplianceInput.modele')},
+    label = 'Modèle',
     required = false,
     autoLoadLastUsed = true,
 }) => {
-        const { t } = useLanguageSafe();
-const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
     const [allModels, setAllModels] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
@@ -151,7 +149,7 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
                         brand: brand,
                         model: normalized
                     });
-                    console.log(`🌐 [SmartApplianceInput] Modèle sauvegardé en DB: ${normalized}`);
+                    console.log(`\uD83C\uDF10 [SmartApplianceInput] Modèle sauvegardé en DB: ${normalized}`);
                 } catch (dbError) {
                     console.warn('[SmartApplianceInput] Erreur sauvegarde DB:', dbError);
                 }
@@ -290,7 +288,7 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
                                     </Text>
                                     {isLastUsed && (
                                         <View style={styles.lastUsedBadge}>
-                                            <Text style={styles.lastUsedBadgeText}>{t('smartApplianceInput.recent')}</Text>
+                                            <Text style={styles.lastUsedBadgeText}>Récent</Text>
                                         </View>
                                     )}
                                 </TouchableOpacity>
@@ -305,12 +303,12 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
             {/* Hint */}
             {!showSuggestions && !brand && (
                 <Text style={styles.hint}>
-                    💡 Sélectionnez d'abord une marque pour voir les modèles
+                    \uD83D\uDCA1 Sélectionnez d'abord une marque pour voir les modèles
                 </Text>
             )}
             {!showSuggestions && brand && allModels.length > 0 && (
                 <Text style={styles.hint}>
-                    💡 {allModels.length} modèle(s) {brand} enregistré(s)
+                    \uD83D\uDCA1 {allModels.length} modèle(s) {brand} enregistré(s)
                 </Text>
             )}
         </View>

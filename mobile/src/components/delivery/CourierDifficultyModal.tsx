@@ -20,7 +20,6 @@ import { modernColors } from '../../theme/modernTheme';
 import ModernGPSModal from '../ModernGPSModal';
 import { NativeButton, NativeCard, NativeInput } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface CourierDifficultyModalProps {
     visible: boolean;
@@ -35,8 +34,7 @@ const CourierDifficultyModal: React.FC<CourierDifficultyModalProps> = ({
     deliveryId,
     onSuccess,
 }) => {
-        const { t } = useLanguageSafe();
-const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | null>(null);
+    const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | null>(null);
     const [relayLocation, setRelayLocation] = useState<{
         latitude: number;
         longitude: number;
@@ -52,7 +50,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission requise', 'L\t('courierDifficultyModal.accesALaLocalisationEstNecessaire'));
+                Alert.alert('Permission requise', 'L\'accès à la localisation est nécessaire.');
                 return;
             }
 
@@ -108,7 +106,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
 
     const handleSubmit = async () => {
         if (!difficultyType) {
-            Alert.alert('Erreur', t('courierDifficultyModal.veuillezSelectionnerLeTypeDeDifficulte'));
+            Alert.alert('Erreur', 'Veuillez sélectionner le type de difficulté');
             return;
         }
 
@@ -133,8 +131,8 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
 
             if (response.success) {
                 Alert.alert(
-                    t('courierDifficultyModal.difficulteSignalee'),
-                    t('courierDifficultyModal.votreDifficulteAEteSignaleeUn'),
+                    'Difficulté signalée',
+                    'Votre difficulté a été signalée. Un nouveau coursier va être recherché pour prendre le relais.',
                     [
                         {
                             text: 'OK',
@@ -152,7 +150,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
                     ]
                 );
             } else {
-                Alert.alert('Erreur', response.error || t('courierDifficultyModal.impossibleDeSignalerLaDifficulte'));
+                Alert.alert('Erreur', response.error || 'Impossible de signaler la difficulté');
             }
         } catch (error: any) {
             console.error('Erreur signalement difficulté:', error);
@@ -172,7 +170,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
             >
                 <View style={styles.container}>
                     <View style={styles.header}>
-                        <Text style={styles.headerTitle}>{t('courierDifficulty.signalerUneDifficulte')}</Text>
+                        <Text style={styles.headerTitle}>Signaler une difficulté</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>
@@ -187,7 +185,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
 
                         {/* Type de difficulté */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>{t('courierDifficulty.typeDeDifficulte')}</Text>
+                            <Text style={styles.label}>Type de difficulté *</Text>
                             <View style={styles.difficultyOptions}>
                                 <TouchableOpacity
                                     style={[
@@ -243,7 +241,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
 
                         {/* Position du relais */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>{t('courierDifficulty.positionDuRelais')}</Text>
+                            <Text style={styles.label}>Position du relais *</Text>
                             <Text style={styles.helperText}>
                                 Indiquez où le nouveau coursier doit venir récupérer le colis
                             </Text>
@@ -252,7 +250,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
                                 <NativeCard style={styles.locationCard}>
                                     <View style={styles.locationHeader}>
                                         <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                                        <Text style={styles.locationLabel}>{t('courierDifficulty.positionSelectionnee')}</Text>
+                                        <Text style={styles.locationLabel}>Position sélectionnée</Text>
                                     </View>
                                     <Text style={styles.locationText}>
                                         {relayLocation.address ||
@@ -276,7 +274,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
                                         style={styles.locationButton}
                                     />
                                     <NativeButton
-                                        title={t('courierDifficulty.selectionnerSurLaCarte')}
+                                        title="Sélectionner sur la carte"
                                         variant="outline"
                                         onPress={() => setShowGPSModal(true)}
                                         style={styles.locationButton}
@@ -287,9 +285,9 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
 
                         {/* Notes optionnelles */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>{t('courierDifficulty.notesOptionnel')}</Text>
+                            <Text style={styles.label}>Notes (optionnel)</Text>
                             <NativeInput
-                                placeholder={t('courierDifficulty.detailsSupplementairesSurLaDifficulte')}
+                                placeholder="Détails supplémentaires sur la difficulté..."
                                 value={notes}
                                 onChangeText={setNotes}
                                 multiline
@@ -300,7 +298,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
                         {/* Bouton de soumission */}
                         <View style={styles.submitSection}>
                             <NativeButton
-                                title={loading ? 'Envoi en cours...' : t('courierDifficultyModal.signalerLaDifficulte')}
+                                title={loading ? 'Envoi en cours...' : 'Signaler la difficulté'}
                                 variant="primary"
                                 onPress={handleSubmit}
                                 disabled={loading || !difficultyType || !relayLocation}
@@ -311,7 +309,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
                                 style={styles.cancelButton}
                                 disabled={loading}
                             >
-                                <Text style={styles.cancelButtonText}>{t('courierDifficultyModal.annuler')}</Text>
+                                <Text style={styles.cancelButtonText}>Annuler</Text>
                             </TouchableOpacity>
                         </View>
                     </ScrollView>
@@ -324,7 +322,7 @@ const [difficultyType, setDifficultyType] = useState<'breakdown' | 'illness' | n
                 onClose={() => setShowGPSModal(false)}
                 onSelect={handleGPSSelect}
                 currentLocation={relayLocation ? { lat: relayLocation.latitude, lng: relayLocation.longitude } : undefined}
-                title={t('courierDifficulty.selectionnerLaPositionDuRelais')}
+                title="Sélectionner la position du relais"
                 allowZoneSelection={false}
             />
         </>

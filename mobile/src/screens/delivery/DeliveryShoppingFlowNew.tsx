@@ -1,6 +1,6 @@
 // @ts-nocheck
 /**
- * 🛒 NOUVEAU: Flux de commande shopping amélioré avec progress bar
+ * \uD83D\uDED2 NOUVEAU: Flux de commande shopping amélioré avec progress bar
  * Design moderne niveau Instacart / Uber Eats
  */
 

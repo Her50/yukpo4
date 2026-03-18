@@ -1,5 +1,6 @@
 /**
- * Composant dt('webRTCCallModal.appelsVideoaudioWebrtcImportantNecessiteL')installation de react-native-webrtc
+ * Composant d'appels vidéo/audio WebRTC
+ * IMPORTANT: Nécessite l'installation de react-native-webrtc
  * Voir WEBRTC_SETUP.md pour les instructions d'installation
  */
 import { Audio } from 'expo-av'; // ✅ Pour la sonnerie d'appel
@@ -20,7 +21,6 @@ import SafeIcon from './SafeIcon';
 
 // Import WebRTC
 import { mediaDevices, MediaStream, RTCIceCandidate, RTCPeerConnection, RTCSessionDescription, RTCView } from 'react-native-webrtc';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -45,8 +45,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
     serviceId,
     isIncoming = false // ✅ NOUVEAU: Défaut = false (appel sortant)
 }) => {
-        const { t } = useLanguageSafe();
-const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' | 'ended'>('connecting');
+    const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' | 'ended'>('connecting');
     const [isMuted, setIsMuted] = useState(false);
     const [isSpeaker, setIsSpeaker] = useState(false);
     const [isVideoEnabled, setIsVideoEnabled] = useState(callType === 'video');
@@ -81,7 +80,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
                 }
             } catch (error) {
                 console.error('[WebRTC] Erreur critique initialisation:', error);
-                Alert.alert('Erreur', 'Impossible d\'initialiser l\t('webRTCCallModal.appelVeuillezReessayer'));
+                Alert.alert('Erreur', 'Impossible d\'initialiser l\'appel. Veuillez réessayer.');
                 onClose();
             }
         }
@@ -127,7 +126,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
     useEffect(() => {
         // Appel ENTRANT : jouer la sonnerie immédiatement pour alerter le destinataire
         if (isIncoming && visible && callState === 'connecting') {
-            console.log('[WebRTC] 🔔 Appel entrant - Démarrage sonnerie destinataire');
+            console.log('[WebRTC] \uD83D\uDD14 Appel entrant - Démarrage sonnerie destinataire');
             if (playRingToneRef.current && typeof playRingToneRef.current === 'function') {
                 playRingToneRef.current();
             }
@@ -135,7 +134,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
 
         // Appel SORTANT : jouer la sonnerie quand on attend la réponse
         if (!isIncoming && callState === 'ringing') {
-            console.log('[WebRTC] 🔔 Appel sortant - Démarrage sonnerie émetteur');
+            console.log('[WebRTC] \uD83D\uDD14 Appel sortant - Démarrage sonnerie émetteur');
             if (playRingToneRef.current && typeof playRingToneRef.current === 'function') {
                 playRingToneRef.current();
             }
@@ -209,7 +208,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
             });
 
             const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error(t('webRTCCallModal.timeoutObtentionCameramicro'))), 15000)
+                setTimeout(() => reject(new Error('Timeout obtention caméra/micro')), 15000)
             );
 
             const stream = await Promise.race([streamPromise, timeoutPromise]) as MediaStream;
@@ -269,11 +268,11 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
             let errorMessage = 'Impossible d\'initialiser l\'appel.';
             if (error instanceof Error) {
                 if (error.message.includes('Permission')) {
-                    errorMessage = t('webRTCCallModal.permissionsCameramicroRefuseesVeuillezLesActiver');
+                    errorMessage = 'Permissions caméra/micro refusées. Veuillez les activer dans les paramètres.';
                 } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
-                    errorMessage = t('webRTCCallModal.delaiDattenteDepasseVerifiezVotreCameramicro');
+                    errorMessage = 'Délai d\'attente dépassé. Vérifiez votre caméra/micro.';
                 } else if (error.message.includes('WebRTC non disponible')) {
-                    errorMessage = t('webRTCCallModal.appelsVideoaudioNonDisponiblesSurCet');
+                    errorMessage = 'Appels vidéo/audio non disponibles sur cet appareil.';
                 }
             }
 
@@ -324,7 +323,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
             if (event.code !== 1000 && callState === 'active') {
                 // Seulement si l'appel était en cours (connexion active)
                 console.warn('[WebRTC] Connexion fermée pendant un appel actif');
-                Alert.alert('Appel interrompu', t('webRTCCallModal.laConnexionAEtePerdue'));
+                Alert.alert('Appel interrompu', 'La connexion a été perdue');
                 endCall();
             } else if (event.code !== 1000 && callState === 'connecting') {
                 // Connexion a échoué au démarrage - mode fallback silencieux
@@ -377,7 +376,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
                 break;
 
             case 'call-rejected':
-                Alert.alert(t('webRTCCallModal.appelRefuse'), t('webRTCCallModal.aRefuseLappel', { recipientName: recipientName }));
+                Alert.alert('Appel refusé', `${recipientName} a refusé l'appel`);
                 onClose();
                 break;
 
@@ -472,7 +471,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
     // ✅ CORRIGÉ: Jouer la sonnerie d'appel avec son système
     const playRingTone = async () => {
         try {
-            console.log('[WebRTC] 🔔 Démarrage sonnerie...');
+            console.log('[WebRTC] \uD83D\uDD14 Démarrage sonnerie...');
 
             // Si déjà en cours, ne rien faire
             if (ringSound) {
@@ -516,7 +515,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
 
             // ✅ FALLBACK: Si le fichier son n'existe pas, essayer un son système alternatif
             try {
-                console.log('[WebRTC] 🔄 Tentative fallback avec son système...');
+                console.log('[WebRTC] \uD83D\uDD04 Tentative fallback avec son système...');
                 // Utiliser le son de notification système par défaut
                 const { sound } = await Audio.Sound.createAsync(
                     { uri: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg' },
@@ -538,7 +537,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
     const stopRingTone = async () => {
         try {
             if (ringSound) {
-                console.log('[WebRTC] 🔕 Arrêt sonnerie');
+                console.log('[WebRTC] \uD83D\uDD15 Arrêt sonnerie');
                 await ringSound.stopAsync();
                 await ringSound.unloadAsync();
                 setRingSound(null);
@@ -560,7 +559,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
     // ✅ CORRIGÉ: Envoyer une notification d'appel via API et WebSocket
     const sendCallPushNotification = async () => {
         try {
-            console.log('[WebRTC] 📲 Envoi notification d\'appel à:', recipientId);
+            console.log('[WebRTC] \uD83D\uDCF2 Envoi notification d\'appel à:', recipientId);
 
             // Import sécurisé de apiPost
             let apiPost;
@@ -577,7 +576,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
             const response = await apiPost(API_ENDPOINTS.WEBRTC.NOTIFY_CALL, {
                 recipient_id: recipientId,
                 caller_id: currentUserId,
-                caller_name: recipientName || t('webRTCCall.unUtilisateur'),
+                caller_name: recipientName || 'Un utilisateur',
                 call_type: callType,
                 service_id: serviceId
             });
@@ -595,7 +594,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
                     type: 'call_notification',
                     to: recipientId,
                     from: currentUserId,
-                    caller_name: recipientName || t('webRTCCall.unUtilisateur'),
+                    caller_name: recipientName || 'Un utilisateur',
                     call_type: callType,
                     service_id: serviceId,
                     timestamp: new Date().toISOString()
@@ -669,15 +668,15 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
 
                     <Text style={styles.callStatus}>
                         {callState === 'connecting' ? 'Connexion...' :
-                            callState === 'ringing' ? '🔔 Sonnerie en cours...' :
+                            callState === 'ringing' ? '\uD83D\uDD14 Sonnerie en cours...' :
                                 callState === 'active' ? formatDuration(callDuration) :
-                                    callState === 'ended' ? t('webRTCCallModal.appelTermine') : ''}
+                                    callState === 'ended' ? 'Appel terminé' : ''}
                     </Text>
 
                     {/* ✅ Indicateur sonore pendant ringing */}
                     {callState === 'ringing' && (
                         <View style={styles.ringingIndicator}>
-                            <Text style={styles.ringingText}>🔊 Appel en cours</Text>
+                            <Text style={styles.ringingText}>\uD83D\uDD0A Appel en cours</Text>
                             <View style={styles.soundWaves}>
                                 <Animated.View style={[styles.soundWave, { opacity: pulseAnim }]} />
                                 <Animated.View style={[styles.soundWave, { opacity: pulseAnim }]} />
@@ -687,7 +686,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
                     )}
 
                     {callType === 'video' && callState === 'active' && (
-                        <Text style={styles.callType}>{t('webRTCCall.appelVideo')}</Text>
+                        <Text style={styles.callType}>Appel vidéo</Text>
                     )}
                     {callType === 'audio' && callState === 'active' && (
                         <Text style={styles.callType}>Appel audio</Text>
@@ -769,7 +768,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
                             onPress={endCall}
                         >
                             <SafeIcon name="phone-off" size={40} color="#FFFFFF" />
-                            <Text style={styles.endCallText}>{t('webRTCCallModal.annulerLappel')}</Text>
+                            <Text style={styles.endCallText}>Annuler l'appel</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -778,7 +777,7 @@ const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' |
                 {callState === 'connecting' && (
                     <View style={styles.demoNote}>
                         <Text style={styles.demoNoteText}>
-                            🔄 Connexion en cours...
+                            \uD83D\uDD04 Connexion en cours...
                         </Text>
                     </View>
                 )}

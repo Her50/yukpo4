@@ -24,13 +24,13 @@ const PushNotificationManager: React.FC = () => {
     useEffect(() => {
         if (!user) return;
 
-        console.log('[PushNotificationManager] 📱 Configuration des listeners de notifications...');
+        console.log('[PushNotificationManager] \uD83D\uDCF1 Configuration des listeners de notifications...');
 
         // Listener pour notifications reçues en foreground
         notificationListener.current = setupForegroundNotificationHandler((notification) => {
             const data = notification.request.content.data;
 
-            console.log('[PushNotificationManager] 🔔 Notification reçue:', notification.request.content);
+            console.log('[PushNotificationManager] \uD83D\uDD14 Notification reçue:', notification.request.content);
 
             // ✅ NOUVEAU: Émettre un événement global pour mettre à jour les badges de notifications
             DeviceEventEmitter.emit('notification:received', {
@@ -41,7 +41,7 @@ const PushNotificationManager: React.FC = () => {
 
             // Gérer les appels entrants
             if (data?.type === 'incoming_call') {
-                console.log('[PushNotificationManager] 📞 Appel entrant détecté:', data);
+                console.log('[PushNotificationManager] \uD83D\uDCDE Appel entrant détecté:', data);
 
                 setIncomingCall({
                     callType: data.call_type || 'audio',
@@ -52,7 +52,7 @@ const PushNotificationManager: React.FC = () => {
             }
             // ✅ NOUVEAU: Gérer les notifications de messages
             else if (data?.type === 'new_message') {
-                console.log('[PushNotificationManager] 💬 Nouveau message détecté:', data);
+                console.log('[PushNotificationManager] \uD83D\uDCAC Nouveau message détecté:', data);
 
                 // Afficher une alerte avec option d'ouvrir le chat
                 Alert.alert(
@@ -76,7 +76,7 @@ const PushNotificationManager: React.FC = () => {
             }
             // ✅ NOUVEAU: Gérer les notifications de livraison disponible (foreground)
             else if (data?.type === 'delivery_available') {
-                console.log('[PushNotificationManager] 📦 Notification de livraison disponible (foreground):', data.delivery_id);
+                console.log('[PushNotificationManager] \uD83D\uDCE6 Notification de livraison disponible (foreground):', data.delivery_id);
 
                 // Son + TTS contextuel pour coursiers dans le rayon de recherche
                 notificationSoundService.notifyDeliveryEvent('new_delivery_available', {
@@ -106,7 +106,7 @@ const PushNotificationManager: React.FC = () => {
             }
             // ✅ NOUVEAU: Notifications de statut livraison avec TTS contextuel
             else if (data?.type === 'delivery_status_update' || data?.type === 'delivery_event') {
-                console.log('[PushNotificationManager] 📦 Mise à jour livraison (foreground):', data.eventType || data.status);
+                console.log('[PushNotificationManager] \uD83D\uDCE6 Mise à jour livraison (foreground):', data.eventType || data.status);
 
                 const eventType = data.eventType || data.status;
                 if (eventType) {
@@ -137,13 +137,13 @@ const PushNotificationManager: React.FC = () => {
             }
             // ✅ Notifications Live (live programmé, en direct, replay)
             else if (data?.event === 'live_scheduled' || data?.event === 'live_live_now' || data?.event === 'live_replay_ready') {
-                console.log('[PushNotificationManager] 🎥 Notification Live:', data.event, data.live_session_id);
+                console.log('[PushNotificationManager] \uD83C\uDFA5 Notification Live:', data.event, data.live_session_id);
 
                 const buttonText = data.event === 'live_live_now' ? 'Rejoindre'
                     : data.event === 'live_replay_ready' ? 'Voir le replay' : 'Voir';
 
                 Alert.alert(
-                    notification.request.content.title || '🎥 Live',
+                    notification.request.content.title || '\uD83C\uDFA5 Live',
                     notification.request.content.body || '',
                     [
                         { text: t('common.close'), style: 'cancel' },
@@ -198,7 +198,7 @@ const PushNotificationManager: React.FC = () => {
             }
             // ✅ Alertes Publicités (performance faible, CTR bas, CPC élevé, fin imminente)
             else if (data?.type === 'publicite_alert') {
-                console.log('[PushNotificationManager] 📊 Alerte Publicité:', data.alert_type, data.campaign_id);
+                console.log('[PushNotificationManager] \uD83D\uDCCA Alerte Publicité:', data.alert_type, data.campaign_id);
 
                 Alert.alert(
                     notification.request.content.title || t('pushNotificationManager.alertePublicite'),
@@ -227,7 +227,7 @@ const PushNotificationManager: React.FC = () => {
         responseListener.current = setupNotificationResponseHandler((response) => {
             const data = response.notification.request.content.data;
 
-            console.log('[PushNotificationManager] 👆 Notification tapée:', data);
+            console.log('[PushNotificationManager] \uD83D\uDC46 Notification tapée:', data);
 
             // ✅ NOUVEAU: Émettre un événement pour mettre à jour le badge quand une notification est tapée
             DeviceEventEmitter.emit('notification:received', {
@@ -246,7 +246,7 @@ const PushNotificationManager: React.FC = () => {
             }
             // ✅ NOUVEAU: Gérer les notifications de messages
             else if (data?.type === 'new_message') {
-                console.log('[PushNotificationManager] 💬 Navigation vers le service pour voir le message');
+                console.log('[PushNotificationManager] \uD83D\uDCAC Navigation vers le service pour voir le message');
 
                 // Naviguer vers le service ou le chat
                 if (data.service_id) {
@@ -258,7 +258,7 @@ const PushNotificationManager: React.FC = () => {
             }
             // ✅ NOUVEAU: Gérer les notifications de livraison disponible
             else if (data?.type === 'delivery_available') {
-                console.log('[PushNotificationManager] 📦 Notification de livraison disponible:', data.delivery_id);
+                console.log('[PushNotificationManager] \uD83D\uDCE6 Notification de livraison disponible:', data.delivery_id);
 
                 // Naviguer vers l'écran de suivi de livraison
                 if (data.delivery_id) {
@@ -270,7 +270,7 @@ const PushNotificationManager: React.FC = () => {
             }
             // ✅ Tap sur notification Live → naviguer vers le live
             else if (data?.event === 'live_scheduled' || data?.event === 'live_live_now' || data?.event === 'live_replay_ready') {
-                console.log('[PushNotificationManager] 🎥 Tap notification Live:', data.event);
+                console.log('[PushNotificationManager] \uD83C\uDFA5 Tap notification Live:', data.event);
                 if (data.live_session_id) {
                     (navigation as any).navigate('LiveViewerScreen', {
                         sessionId: data.live_session_id,
@@ -295,7 +295,7 @@ const PushNotificationManager: React.FC = () => {
             }
             // ✅ Tap sur alerte publicité → naviguer vers le dashboard
             else if (data?.type === 'publicite_alert') {
-                console.log('[PushNotificationManager] 📊 Tap alerte Publicité:', data.alert_type);
+                console.log('[PushNotificationManager] \uD83D\uDCCA Tap alerte Publicité:', data.alert_type);
                 (navigation as any).navigate('PubliciteDashboard');
             }
         });

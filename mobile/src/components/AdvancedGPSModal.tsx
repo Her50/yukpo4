@@ -14,7 +14,6 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeCard, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,10 +36,9 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
     onClose,
     onSelect,
     currentLocation,
-    title={t('advancedGPS.selectionDeLocalisationGps')}
+    title = 'Sélection de localisation GPS'
 }) => {
-        const { t } = useLanguageSafe();
-const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
+    const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
     const [loading, setLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -74,7 +72,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
-                    t('advancedGPSModal.laccesALaLocalisationEstNecessairePourUtiliser'),
+                    'L\'accès à la localisation est nécessaire pour utiliser cette fonctionnalité.',
                     [{ text: 'OK' }]
                 );
                 return;
@@ -84,7 +82,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             console.error('Erreur permission GPS:', error);
             // ✅ CORRECTION: Ne pas afficher d'alerte si timeout
             if (error.message !== 'Permission timeout') {
-                Alert.alert('Erreur', 'Impossible d\t('advancedGPSModal.accederALaLocalisation'));
+                Alert.alert('Erreur', 'Impossible d\'accéder à la localisation');
             }
         }
     };
@@ -115,7 +113,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             console.error('Erreur localisation:', error);
             // ✅ CORRECTION: Gestion d'erreur plus douce
             if (error.message === 'GPS timeout') {
-                Alert.alert('GPS lent', t('advancedGPSModal.laLocalisationPrendDuTempsReessayez')adresse.');
+                Alert.alert('GPS lent', 'La localisation prend du temps. Réessayez ou utilisez la recherche d\'adresse.');
             } else {
                 Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle');
             }
@@ -133,11 +131,11 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             if (geocodeResult.length > 0) {
                 const addr = geocodeResult[0];
                 const formattedAddress = `${addr.street || ''} ${addr.city || ''} ${addr.region || ''}`.trim();
-                setAddress(formattedAddress || t('advancedGPS.adresseNonTrouvee'));
+                setAddress(formattedAddress || 'Adresse non trouvée');
             }
         } catch (error) {
             console.warn('Erreur géocodage:', error);
-            setAddress(t('advancedGPSModal.adresseNonTrouvee'));
+            setAddress('Adresse non trouvée');
         }
     };
 
@@ -158,7 +156,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                 setSearchResults(geocodeResult);
                 setAddress(searchQuery);
             } else {
-                Alert.alert(t('advancedGPSModal.aucunResultat'), t('advancedGPSModal.aucuneAdresseTrouveePourCetteRecherche'));
+                Alert.alert('Aucun résultat', 'Aucune adresse trouvée pour cette recherche');
             }
         } catch (error) {
             console.error('Erreur recherche adresse:', error);
@@ -180,7 +178,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                 geocodeLocation(newLocation);
                 setSearchQuery('');
             } else {
-                Alert.alert('Erreur', t('advancedGPSModal.coordonneesInvalidesFormatLatitudeLongitude'));
+                Alert.alert('Erreur', 'Coordonnées invalides. Format: latitude, longitude');
             }
         }
     };
@@ -196,7 +194,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
             });
             onClose();
         } else {
-            Alert.alert('Erreur', t('advancedGPSModal.veuillezSelectionnerUneLocalisation'));
+            Alert.alert('Erreur', 'Veuillez sélectionner une localisation');
         }
     };
 
@@ -259,15 +257,15 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                             </View>
                             <View style={styles.instructionsList}>
                                 <Text style={styles.instructionItem}>• Recherchez une adresse dans la barre de recherche</Text>
-                                <Text style={styles.instructionItem}>{t('advancedGPS.utilisezMaPositionPourVotre')}</Text>
-                                <Text style={styles.instructionItem}>{t('advancedGPS.saisissezDesCoordonneesManuellement')}</Text>
-                                <Text style={styles.instructionItem}>{t('advancedGPS.choisissezLeTypeDeZone')}</Text>
+                                <Text style={styles.instructionItem}>• Utilisez "Ma Position" pour votre GPS actuel</Text>
+                                <Text style={styles.instructionItem}>• Saisissez des coordonnées manuellement</Text>
+                                <Text style={styles.instructionItem}>• Choisissez le type de zone souhaité</Text>
                             </View>
                         </NativeCard>
 
                         {/* Bouton Ma Position GPS */}
                         <NativeButton
-                            title={t('advancedGPS.maPositionGps')}
+                            title="Ma Position GPS"
                             onPress={getCurrentLocation}
                             disabled={loading || !permissionGranted}
                             {...({ variant: "primary", size: "large", icon: "navigation" } as any)}
@@ -277,7 +275,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                         {/* Barre de recherche d'adresse */}
                         <View style={styles.searchSection}>
                             <NativeInput
-                                placeholder={t('advancedGPS.rechercherUneAdresse')}
+                                placeholder="Rechercher une adresse..."
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 {...({ icon: "search" } as any)}
@@ -295,7 +293,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
 
                         {/* Saisie coordonnées manuelles */}
                         <View style={styles.manualSection}>
-                            <Text style={styles.sectionTitle}>{t('advancedGPS.coordonneesManuelles')}</Text>
+                            <Text style={styles.sectionTitle}>✏️ Coordonnées manuelles</Text>
                             <View style={styles.manualInputContainer}>
                                 <TextInput
                                     style={styles.coordinateInput}
@@ -327,7 +325,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                                     color={selectedLocation ? modernColors.success : modernColors.warning}
                                 />
                                 <Text style={styles.statusTitle}>
-                                    {selectedLocation ? t('advancedGPSModal.positionSelectionnee') : t('advancedGPSModal.aucunePositionSelectionnee')}
+                                    {selectedLocation ? 'Position sélectionnée' : 'Aucune position sélectionnée'}
                                 </Text>
                             </View>
 
@@ -349,7 +347,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
 
                         {/* Modes de sélection */}
                         <NativeCard style={styles.modesCard}>
-                            <Text style={styles.modesTitle}>{t('advancedGPS.modeDeSelection')}</Text>
+                            <Text style={styles.modesTitle}>Mode de sélection</Text>
                             <View style={styles.modesContainer}>
                                 {[
                                     { key: 'point', label: 'Point', icon: 'map-pin' },
@@ -384,7 +382,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                         {/* Contrôles de rayon (pour cercle) */}
                         {zoneType === 'circle' && (
                             <NativeCard style={styles.radiusCard}>
-                                <Text style={styles.radiusTitle}>{t('advancedGPS.rayonMetres')}</Text>
+                                <Text style={styles.radiusTitle}>Rayon (mètres)</Text>
                                 <View style={styles.radiusControls}>
                                     <TouchableOpacity
                                         style={styles.radiusButton}
@@ -464,7 +462,7 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                                 style={styles.clearButton}
                             />
                             <NativeButton
-                                title={t('advancedGPSModal.confirmer')}
+                                title="Confirmer"
                                 onPress={handleConfirm}
                                 disabled={!selectedLocation}
                                 {...({ variant: "primary", size: "medium", icon: "check" } as any)}
@@ -478,18 +476,18 @@ const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: num
                         <NativeCard style={styles.mapCard}>
                             <View style={styles.mapPlaceholder}>
                                 <SafeIcon name="map" size={64} color={modernColors.textSecondary} />
-                                <Text style={styles.mapPlaceholderTitle}>{t('advancedGPS.zoneDeSelection')}</Text>
+                                <Text style={styles.mapPlaceholderTitle}>Zone de sélection</Text>
                                 <Text style={styles.mapPlaceholderText}>
                                     {selectedLocation
                                         ? `Position: ${formatCoordinates(selectedLocation.lat, selectedLocation.lng)}`
-                                        : t('advancedGPSModal.aucunePositionSelectionnee')
+                                        : 'Aucune position sélectionnée'
                                     }
                                 </Text>
                                 {zoneType === 'circle' && selectedLocation && (
                                     <Text style={styles.radiusInfo}>Rayon: {radius}m</Text>
                                 )}
                                 {address && (
-                                    <Text style={styles.addressInfo}>📍 {address}</Text>
+                                    <Text style={styles.addressInfo}>\uD83D\uDCCD {address}</Text>
                                 )}
                             </View>
                         </NativeCard>

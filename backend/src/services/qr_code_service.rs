@@ -58,10 +58,7 @@ impl QRCodeService {
 
         // Générer URL image QR code (à implémenter avec bibliothèque QR)
         // Pour l'instant, retourner le code texte
-        let qr_code_url = format!(
-            "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={}",
-            qr_code
-        );
+        let qr_code_url = format!("/api/qr/render?data={}", urlencoding::encode(&qr_code));
 
         // Mettre à jour avec URL
         sqlx::query("UPDATE reservation_qr_codes SET qr_code_url = $1 WHERE id = $2")
@@ -237,6 +234,8 @@ impl QRCodeService {
     // ========================================================================
 
     /// Génère un QR code pour un paquet de livres (pickup par le coursier)
+    /// Le QR embarque un payload JSON avec les références de paquets et livres,
+    /// permettant au libraire de retrouver rapidement les paquets physiques à remettre.
     pub async fn generate_book_package_qr(
         &self,
         package_id: i32,
@@ -246,6 +245,50 @@ impl QRCodeService {
             "[QRCodeService] Génération QR code {} pour paquet livre: {}",
             qr_type, package_id
         );
+
+        // Récupérer le paquet avec ses livres pour embarquer dans le QR
+        let pkg_row = sqlx::query(
+            "SELECT reference, livres, nombre_livres, expediteur_id, destinataire_id FROM book_delivery_packages WHERE id = $1",
+        )
+        .bind(package_id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()
+        .flatten();
+
+        let (pkg_ref, livres_summary) = if let Some(row) = &pkg_row {
+            use sqlx::Row;
+            let reference: String = row.try_get("reference").unwrap_or_default();
+            let livres_json: serde_json::Value =
+                row.try_get("livres").unwrap_or(serde_json::json!([]));
+
+            // Extraire un résumé compact des livres (titre + matière seulement)
+            let livres_list: Vec<serde_json::Value> = livres_json
+                .as_array()
+                .unwrap_or(&vec![])
+                .iter()
+                .map(|l| {
+                    serde_json::json!({
+                        "t": l.get("titre").and_then(|v| v.as_str()).unwrap_or("?"),
+                        "m": l.get("matiere").and_then(|v| v.as_str()).unwrap_or(""),
+                    })
+                })
+                .collect();
+
+            (reference, livres_list)
+        } else {
+            (format!("PKG-{}", package_id), vec![])
+        };
+
+        // Le QR code contient un JSON compact lisible par l'app du libraire
+        let qr_payload = serde_json::json!({
+            "t": qr_type,           // type: pickup/delivery
+            "p": package_id,        // package_id
+            "r": pkg_ref,           // référence paquet (ex: "BL-A1B2")
+            "n": livres_summary.len(), // nombre de livres
+            "l": livres_summary,    // livres [{t: titre, m: matière}]
+            "ts": chrono::Utc::now().timestamp(),
+        });
 
         let qr_code = format!(
             "BK-{}-{}-{}-{}",
@@ -257,9 +300,12 @@ impl QRCodeService {
 
         let expires_at = chrono::Utc::now() + chrono::Duration::hours(48);
 
+        // URL du QR code image — encode le JSON payload (pas juste l'identifiant)
+        let qr_payload_str = qr_payload.to_string();
+        let qr_data_encoded = urlencoding::encode(&qr_payload_str);
         let qr_code_url = format!(
-            "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={}",
-            qr_code
+            "https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={}",
+            qr_data_encoded
         );
 
         sqlx::query(
@@ -268,6 +314,8 @@ impl QRCodeService {
                 package_id, qr_code, qr_code_url, qr_type, status, expires_at
             )
             VALUES ($1, $2, $3, $4, 'pending', $5)
+            ON CONFLICT (package_id, qr_type) WHERE status = 'pending'
+            DO UPDATE SET qr_code = $2, qr_code_url = $3, expires_at = $5
             "#,
         )
         .bind(package_id)
@@ -282,7 +330,12 @@ impl QRCodeService {
             AppError::Internal(format!("Erreur création QR paquet livre: {}", e))
         })?;
 
-        info!("[QRCodeService] ✅ QR paquet livre généré: {}", qr_code);
+        info!(
+            "[QRCodeService] ✅ QR paquet livre généré: {} (ref={}, {} livres)",
+            qr_code,
+            pkg_ref,
+            livres_summary.len()
+        );
 
         Ok(BookPackageQRInfo {
             package_id,
@@ -340,13 +393,32 @@ impl QRCodeService {
         }
 
         // Vérifier les permissions selon le type de QR
+        // Autorisé: coursier, expéditeur, destinataire, OU membre d'équipe de l'expéditeur
+        let is_team_member_of_expediteur: bool = sqlx::query_scalar(
+            r#"SELECT EXISTS(
+                SELECT 1 FROM libraire_team_members
+                WHERE user_id = $1 AND is_active = true
+                AND librairie_id IN (
+                    SELECT librairie_id FROM libraire_team_members
+                    WHERE user_id = $2 AND role = 'owner' AND is_active = true
+                )
+            )"#,
+        )
+        .bind(scanner_user_id)
+        .bind(expediteur_id)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or(false);
+
         let authorized = match qr_type.as_str() {
             "pickup" => {
-                // Le coursier scanne chez l'expéditeur
-                coursier_id == Some(scanner_user_id) || expediteur_id == scanner_user_id
+                // Le coursier OU l'expéditeur OU un membre d'équipe de l'expéditeur
+                coursier_id == Some(scanner_user_id)
+                    || expediteur_id == scanner_user_id
+                    || is_team_member_of_expediteur
             }
             "delivery" => {
-                // Le destinataire scanne pour confirmer réception
+                // Le destinataire OU le coursier
                 destinataire_id == scanner_user_id || coursier_id == Some(scanner_user_id)
             }
             _ => false,
@@ -393,11 +465,50 @@ impl QRCodeService {
             qr_code, package_id, new_package_status
         );
 
+        // Récupérer les infos enrichies du paquet pour la réponse de validation
+        // (le libraire/destinataire voit immédiatement quels paquets et livres sont concernés)
+        let pkg_detail = sqlx::query(
+            "SELECT reference, livres, nombre_livres FROM book_delivery_packages WHERE id = $1",
+        )
+        .bind(package_id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()
+        .flatten();
+
+        let (reference, livres_list, nombre_livres) = if let Some(row) = &pkg_detail {
+            use sqlx::Row;
+            let reference: String = row.try_get("reference").unwrap_or_default();
+            let livres_json: serde_json::Value =
+                row.try_get("livres").unwrap_or(serde_json::json!([]));
+            let nombre: i32 = row.try_get("nombre_livres").unwrap_or(0);
+
+            let livres: Vec<serde_json::Value> = livres_json
+                .as_array()
+                .unwrap_or(&vec![])
+                .iter()
+                .map(|l| {
+                    serde_json::json!({
+                        "titre": l.get("titre").and_then(|v| v.as_str()).unwrap_or("?"),
+                        "matiere": l.get("matiere").and_then(|v| v.as_str()),
+                        "valeur": l.get("valeur").and_then(|v| v.as_f64()),
+                    })
+                })
+                .collect();
+
+            (reference, livres, nombre)
+        } else {
+            (String::new(), vec![], 0)
+        };
+
         Ok(BookPackageQRValidation {
             package_id,
             qr_type,
             validated: true,
             new_package_status: new_package_status.to_string(),
+            package_reference: reference,
+            nombre_livres,
+            livres: livres_list,
         })
     }
 }
@@ -418,6 +529,9 @@ pub struct BookPackageQRValidation {
     pub qr_type: String,
     pub validated: bool,
     pub new_package_status: String,
+    pub package_reference: String,
+    pub nombre_livres: i32,
+    pub livres: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]

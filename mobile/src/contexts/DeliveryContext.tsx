@@ -535,54 +535,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         []
     );
 
-    const assignRecipient = useCallback(
-        async (deliveryId: string, payload: DeliveryRecipientPayload) => {
-            return executeMutation(`delivery:${deliveryId}:assignRecipient`, () => deliveryApi.assignRecipient(deliveryId, payload), async () => {
-                await refreshDelivery(deliveryId, { force: true });
-            });
-        },
-        [executeMutation, refreshDelivery]
-    );
-
-    const updateRecipientLocation = useCallback(
-        async (deliveryId: string, payload: DeliveryLocationUpdatePayload) => {
-            return executeMutation(`delivery:${deliveryId}:recipientLocation`, () => deliveryApi.updateRecipientLocation(deliveryId, payload));
-        },
-        [executeMutation]
-    );
-
-    const updateDeliveryStatus = useCallback(
-        async (deliveryId: string, status: string, metadata?: Record<string, any>) => {
-            return executeMutation(`delivery:${deliveryId}:status:${status}`, () => deliveryApi.updateStatus(deliveryId, status, metadata), async () => {
-                await refreshDelivery(deliveryId, { force: true });
-            });
-        },
-        [executeMutation, refreshDelivery]
-    );
-
-    const cancelDelivery = useCallback(
-        async (deliveryId: string, reason?: string) => {
-            return executeMutation(`delivery:${deliveryId}:cancel`, () => deliveryApi.cancelDelivery(deliveryId, reason), async () => {
-                await refreshDelivery(deliveryId, { force: true });
-            });
-        },
-        [executeMutation, refreshDelivery]
-    );
-
-    const debitWalletForDelivery = useCallback(
-        async (deliveryId: string, amount: number, currency: string) => {
-            return executeMutation(`wallet:${deliveryId}:debit`, () => walletApi.debitForDelivery(deliveryId, amount, currency));
-        },
-        [executeMutation]
-    );
-
-    const refundDelivery = useCallback(
-        async (deliveryId: string, amount: number, currency: string, reason?: string) => {
-            return executeMutation(`wallet:${deliveryId}:refund`, () => walletApi.refundDelivery(deliveryId, amount, currency, reason));
-        },
-        [executeMutation]
-    );
-
     const enqueueMutation = useCallback((mutation: PendingMutation) => {
         pendingMutationsRef.current.push(mutation);
         setPendingMutationCount(pendingMutationsRef.current.length);
@@ -689,6 +641,54 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             }
         },
         [enqueueMutation, flushPendingMutations]
+    );
+
+    const assignRecipient = useCallback(
+        async (deliveryId: string, payload: DeliveryRecipientPayload) => {
+            return executeMutation(`delivery:${deliveryId}:assignRecipient`, () => deliveryApi.assignRecipient(deliveryId, payload), async () => {
+                await refreshDelivery(deliveryId, { force: true });
+            });
+        },
+        [executeMutation, refreshDelivery]
+    );
+
+    const updateRecipientLocation = useCallback(
+        async (deliveryId: string, payload: DeliveryLocationUpdatePayload) => {
+            return executeMutation(`delivery:${deliveryId}:recipientLocation`, () => deliveryApi.updateRecipientLocation(deliveryId, payload));
+        },
+        [executeMutation]
+    );
+
+    const updateDeliveryStatus = useCallback(
+        async (deliveryId: string, status: string, metadata?: Record<string, any>) => {
+            return executeMutation(`delivery:${deliveryId}:status:${status}`, () => deliveryApi.updateStatus(deliveryId, status, metadata), async () => {
+                await refreshDelivery(deliveryId, { force: true });
+            });
+        },
+        [executeMutation, refreshDelivery]
+    );
+
+    const cancelDelivery = useCallback(
+        async (deliveryId: string, reason?: string) => {
+            return executeMutation(`delivery:${deliveryId}:cancel`, () => deliveryApi.cancelDelivery(deliveryId, reason), async () => {
+                await refreshDelivery(deliveryId, { force: true });
+            });
+        },
+        [executeMutation, refreshDelivery]
+    );
+
+    const debitWalletForDelivery = useCallback(
+        async (deliveryId: string, amount: number, currency: string) => {
+            return executeMutation(`wallet:${deliveryId}:debit`, () => walletApi.debitForDelivery(deliveryId, amount, currency));
+        },
+        [executeMutation]
+    );
+
+    const refundDelivery = useCallback(
+        async (deliveryId: string, amount: number, currency: string, reason?: string) => {
+            return executeMutation(`wallet:${deliveryId}:refund`, () => walletApi.refundDelivery(deliveryId, amount, currency, reason));
+        },
+        [executeMutation]
     );
 
     const contextValue = useMemo<DeliveryContextValue>(

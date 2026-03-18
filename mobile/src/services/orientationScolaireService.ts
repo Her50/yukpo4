@@ -330,14 +330,25 @@ export const orientationScolaireService = {
         return response;
     },
 
-    comparePrograms: async (etablissement1Id: number, etablissement2Id: number, filiere1: string, filiere2: string) => {
+    comparePrograms: async (
+        profileId: number,
+        etablissement1Id: number,
+        etablissement2Id: number,
+        filiere1: string,
+        filiere2: string,
+        specialite1?: string,
+        specialite2?: string
+    ) => {
         const response = await apiPost<{ success: boolean; comparison: ProgramComparison }>(
             '/api/orientation/ai/compare-programs',
             {
+                student_profile_id: profileId,
                 etablissement_1_id: etablissement1Id,
                 etablissement_2_id: etablissement2Id,
                 filiere_1: filiere1,
                 filiere_2: filiere2,
+                specialite_1: specialite1,
+                specialite_2: specialite2,
             }
         );
         return response;
@@ -347,6 +358,45 @@ export const orientationScolaireService = {
     getMyProfile: async () => {
         const response = await apiGet<{ success: boolean; profile: any }>(
             '/api/orientation/my-profile'
+        );
+        return response;
+    },
+
+    // ✅ Créer / mettre à jour mon profil étudiant
+    createOrUpdateMyProfile: async (profile: Record<string, any>) => {
+        const response = await apiPost<{ success: boolean; profile: any }>(
+            '/api/orientation/my-profile',
+            profile
+        );
+        return response;
+    },
+
+    // ✅ Analytics orientation
+    getAnalytics: async (etablissementId?: number) => {
+        const response = await apiGet<{ success: boolean; analytics: any }>(
+            '/api/orientation/analytics',
+            { params: etablissementId ? { etablissement_id: etablissementId } : {} }
+        );
+        return response;
+    },
+
+    // ✅ Recherche académique IA
+    academicSearch: async (query: string, context?: Record<string, any>) => {
+        const response = await apiPost<{ success: boolean; response: string }>(
+            '/api/orientation/ai/academic-search',
+            {
+                query,
+                context: context || { service: 'orientation_scolaire', domain: 'education' },
+            }
+        );
+        return response;
+    },
+
+    // ✅ Rejoindre une conférence live
+    joinConference: async (conferenceId: number) => {
+        const response = await apiPost<{ success: boolean; data: any }>(
+            `/api/orientation-scolaire/conferences/${conferenceId}/join`,
+            {}
         );
         return response;
     },

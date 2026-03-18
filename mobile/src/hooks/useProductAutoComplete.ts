@@ -1,5 +1,5 @@
 /**
- * 🎯 HOOK : Auto-complétion et remplissage automatique massif
+ * \uD83C\uDFAF HOOK : Auto-complétion et remplissage automatique massif
  * 
  * Exploite la base de 1000+ produits pour :
  * 1. Suggérer des noms de produits pendant la frappe
@@ -128,7 +128,7 @@ export function useProductAutoComplete(
         setSuggestions([]);  // Masquer les suggestions
 
         console.log(`✅ [AutoComplete] Produit sélectionné: ${product.name}`);
-        console.log(`📋 [AutoComplete] ${Object.keys(characteristics).length} champs auto-remplis:`, characteristics);
+        console.log(`\uD83D\uDCCB [AutoComplete] ${Object.keys(characteristics).length} champs auto-remplis:`, characteristics);
     };
 
     // Effacer la sélection

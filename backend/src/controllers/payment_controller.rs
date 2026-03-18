@@ -142,8 +142,27 @@ pub async fn initiate_payment(
     // G?n?rer un ID de paiement unique
     let payment_id = format!("pay_{}_{}", user_id, chrono::Utc::now().timestamp());
 
-    // Enregistrer la tentative de paiement en base
-    let currency = req.currency.clone();
+    // Détection automatique de la devise selon le pays du numéro de téléphone
+    let detected_country = req
+        .phone_number
+        .as_deref()
+        .map(crate::services::payment_aggregator::detect_country_from_phone)
+        .unwrap_or("cm");
+    let actual_currency =
+        crate::services::payment_aggregator::currency_for_country(detected_country).to_string();
+
+    // Convertir le montant en XAF-équivalent pour le stockage interne
+    let amount_xaf_equivalent = crate::services::payment_aggregator::convert_to_xaf(
+        req.amount_xaf as f64,
+        &actual_currency,
+    );
+
+    log::info!(
+        "[initiate_payment] Devise détectée: {} (pays: {}), montant local: {} {}, équivalent XAF: {}",
+        actual_currency, detected_country, req.amount_xaf, actual_currency, amount_xaf_equivalent
+    );
+
+    // Enregistrer la tentative de paiement en base (avec devise réelle ET équivalent XAF)
     let payment_method = req.payment_method.clone();
     let phone_number = req.phone_number.clone();
     let result = sqlx::query(
@@ -155,8 +174,8 @@ pub async fn initiate_payment(
     )
     .bind(&payment_id)
     .bind(user_id)
-    .bind(req.amount_xaf)
-    .bind(&currency)
+    .bind(amount_xaf_equivalent) // Stocker l'équivalent XAF (pour le crédit tokens)
+    .bind(&actual_currency)      // Stocker la devise RÉELLE (pas celle du mobile)
     .bind(&payment_method)
     .bind(phone_number.as_deref())
     .execute(&state.pg)
@@ -192,19 +211,14 @@ pub async fn initiate_payment(
                 _ => PayChannel::AllMobileMoney,
             };
 
-            // Détection automatique de la devise selon le pays du numéro de téléphone
-            let detected_country = req.phone_number.as_deref()
-                .map(detect_country_from_phone)
-                .unwrap_or("cm");
-            let auto_currency = currency_for_country(detected_country).to_string();
-
+            // Réutiliser la devise déjà détectée plus haut (actual_currency)
             let agg_request = InitPaymentRequest {
                 user_id,
-                amount: req.amount_xaf,
-                currency: auto_currency.clone(),
+                amount: req.amount_xaf, // Montant dans la devise locale de l'utilisateur
+                currency: actual_currency.clone(),
                 channel,
                 phone_number: req.phone_number.clone(),
-                description: format!("Recharge Yukpo {} {}", req.amount_xaf, auto_currency),
+                description: format!("Recharge Yukpo {} {}", req.amount_xaf, actual_currency),
                 customer_email: None,
                 customer_name: None,
                 metadata: Some(serde_json::json!({"payment_id": &payment_id, "user_id": user_id})),
@@ -416,8 +430,29 @@ pub async fn confirm_payment(
         })));
     }
 
-    // Mettre à jour le statut du paiement
+    // ⛔ SÉCURITÉ: Le client NE PEUT PAS confirmer un paiement lui-même.
+    // Seuls les webhooks (CinetPay/NotchPay/Flutterwave/Stripe/PayPal) peuvent créditer des tokens.
+    // Le client peut uniquement vérifier le statut via status="check" (traité plus haut).
+    if req.status == "success" || req.status == "completed" {
+        log::warn!(
+            "[confirm_payment] ⛔ TENTATIVE DE SELF-CONFIRM BLOQUÉE: user={}, payment_id={}, status={}",
+            user_id, req.payment_id, req.status
+        );
+        return Err(AppError::Forbidden(
+            "La confirmation de paiement se fait automatiquement via le fournisseur. Utilisez status='check' pour vérifier.".to_string(),
+        ));
+    }
+
+    // Mettre à jour le statut du paiement (uniquement pour les statuts d'échec côté client)
     let transaction_id = req.transaction_id.as_deref();
+    let allowed_client_statuses = ["failed", "cancelled", "expired"];
+    if !allowed_client_statuses.contains(&req.status.as_str()) {
+        return Err(AppError::BadRequest(
+            "Statut invalide. Utilisez 'check' pour vérifier ou 'cancelled' pour annuler."
+                .to_string(),
+        ));
+    }
+
     sqlx::query(
         r#"
         UPDATE payment_attempts 
@@ -432,39 +467,17 @@ pub async fn confirm_payment(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur mise à jour paiement: {}", e)))?;
 
-    // Si le paiement est réussi, créditer les tokens via PaymentService
-    if req.status == "success" {
-        use crate::services::payment_service::PaymentService;
-        let payment_service = PaymentService::new(state.pg.clone());
-
-        payment_service
-            .add_tokens_to_user(user_id, payment.amount_xaf as f64)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur crédit tokens: {}", e)))?;
-
-        log::info!(
-            "[confirm_payment] {} tokens crédités pour utilisateur {}",
-            payment.amount_xaf,
-            user_id
-        );
-
-        Ok(Json(serde_json::json!({
-            "success": true,
-            "message": format!("{} tokens crédités avec succès", payment.amount_xaf),
-            "tokens_added": payment.amount_xaf
-        })))
-    } else {
-        log::warn!(
-            "[confirm_payment] Paiement échoué pour utilisateur {}: {}",
-            user_id,
-            req.status
-        );
-        Ok(Json(serde_json::json!({
-            "success": false,
-            "message": "Paiement échoué",
-            "status": req.status
-        })))
-    }
+    log::info!(
+        "[confirm_payment] Paiement {} marqué comme {} par utilisateur {}",
+        req.payment_id,
+        req.status,
+        user_id
+    );
+    Ok(Json(serde_json::json!({
+        "success": false,
+        "message": "Paiement marqué comme échoué/annulé",
+        "status": req.status
+    })))
 }
 
 /// Historique des paiements de l'utilisateur

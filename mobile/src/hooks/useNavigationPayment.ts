@@ -8,6 +8,7 @@
 import { useNavigation } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
+import { useToaster } from '../components/ToasterProvider';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiPost } from '../services/api';
@@ -16,7 +17,6 @@ import {
     formatPriceInCurrency, getMicroFeaturePrice,
     MICRO_PAYMENT_POLICY
 } from '../services/navigationPricing';
-import { useToaster } from '../components/ToasterProvider';
 import SafeStorage from '../utils/SafeStorage';
 import { useCurrencyDetection } from './useCurrencyDetection';
 
@@ -101,7 +101,7 @@ export function useNavigationPayment() {
                         SafeStorage.setItem(COACHING_STORAGE_KEY, JSON.stringify({ expiresAt: trialExpiresAt, isTrial: true })),
                         SafeStorage.setItem(COACHING_TRIAL_KEY, 'true'),
                     ]);
-                    console.log(`[NavigationPayment] 🎁 Trial coaching 7 jours activé automatiquement (expire: ${new Date(trialExpiresAt).toLocaleDateString()})`);
+                    console.log(`[NavigationPayment] \uD83C\uDF81 Trial coaching 7 jours activé automatiquement (expire: ${new Date(trialExpiresAt).toLocaleDateString()})`);
                 }
 
                 // Alerts suspension
@@ -135,7 +135,7 @@ export function useNavigationPayment() {
 
                 if (currentBalance >= debtToRecover) {
                     // Solde suffisant pour couvrir toute la dette
-                    console.log(`[NavigationPayment] 💰 Recouvrement dette: ${debtToRecover} XAF sur solde ${currentBalance} XAF`);
+                    console.log(`[NavigationPayment] \uD83D\uDCB0 Recouvrement dette: ${debtToRecover} XAF sur solde ${currentBalance} XAF`);
                     const result = await apiPost('/api/users/deduct-balance', {
                         amount: debtToRecover,
                         reason: `Recouvrement dette navigation: ${unpaidCount} utilisations impayées`,
@@ -170,7 +170,7 @@ export function useNavigationPayment() {
                 } else {
                     // Solde insuffisant pour couvrir toute la dette → recouvrement partiel
                     const partialAmount = currentBalance;
-                    console.log(`[NavigationPayment] 💰 Recouvrement partiel: ${partialAmount} XAF sur dette de ${debtToRecover} XAF`);
+                    console.log(`[NavigationPayment] \uD83D\uDCB0 Recouvrement partiel: ${partialAmount} XAF sur dette de ${debtToRecover} XAF`);
                     const result = await apiPost('/api/users/deduct-balance', {
                         amount: partialAmount,
                         reason: `Recouvrement partiel dette navigation (${partialAmount}/${debtToRecover} XAF)`,
@@ -248,7 +248,7 @@ export function useNavigationPayment() {
             if (response?.success || response?.data?.success) {
                 if (refreshUser) await refreshUser();
 
-                // 🍞 Toast de transparence - afficher le débit (i18n + multi-devises)
+                // \uD83C\uDF5E Toast de transparence - afficher le débit (i18n + multi-devises)
                 const costFormatted = formatPriceInCurrency(amount, userCurrency);
                 const message = t('navPayment.debitSuccess')
                     .replace('{{amount}}', costFormatted)
@@ -298,13 +298,13 @@ export function useNavigationPayment() {
         const suggestedFmt = formatPriceInCurrency(suggestedRecharge, userCurrency);
 
         const message = suspended
-            ? (t('navPayment.serviceSuspendedMsg') || 'Votre accès aux fonctionnalités payantes est suspendu.\n\n💳 Dette cumulée: {{debt}} ({{count}} utilisations impayées)\nSolde actuel: {{balance}}\nCoût par utilisation: {{cost}}\n\nLa dette sera automatiquement prélevée à la recharge.\nRechargez au minimum {{debt}} pour restaurer l\'accès.\n\n💡 Nous recommandons {{suggested}} pour un confort d\'utilisation.')
+            ? (t('navPayment.serviceSuspendedMsg') || 'Votre accès aux fonctionnalités payantes est suspendu.\n\n\uD83D\uDCB3 Dette cumulée: {{debt}} ({{count}} utilisations impayées)\nSolde actuel: {{balance}}\nCoût par utilisation: {{cost}}\n\nLa dette sera automatiquement prélevée à la recharge.\nRechargez au minimum {{debt}} pour restaurer l\'accès.\n\n\uD83D\uDCA1 Nous recommandons {{suggested}} pour un confort d\'utilisation.')
                 .replace(/\{\{count\}\}/g, String(failCount))
                 .replace(/\{\{balance\}\}/g, balanceFmt)
                 .replace(/\{\{cost\}\}/g, costFmt)
                 .replace(/\{\{debt\}\}/g, debtFmt)
                 .replace(/\{\{suggested\}\}/g, suggestedFmt)
-            : (t('navPayment.lowBalanceWarningMsg') || 'Solde insuffisant pour {{feature}} ({{cost}}).\n\n💳 Dette cumulée: {{debt}} ({{count}} utilisation(s) impayée(s))\nSolde actuel: {{balance}}\nUtilisations restantes avant suspension: {{remaining}}\n\nRechargez pour éviter la coupure du service.')
+            : (t('navPayment.lowBalanceWarningMsg') || 'Solde insuffisant pour {{feature}} ({{cost}}).\n\n\uD83D\uDCB3 Dette cumulée: {{debt}} ({{count}} utilisation(s) impayée(s))\nSolde actuel: {{balance}}\nUtilisations restantes avant suspension: {{remaining}}\n\nRechargez pour éviter la coupure du service.')
                 .replace(/\{\{feature\}\}/g, feature)
                 .replace(/\{\{cost\}\}/g, costFmt)
                 .replace(/\{\{balance\}\}/g, balanceFmt)
@@ -322,7 +322,7 @@ export function useNavigationPayment() {
                     onPress: () => { alertShownRef.current = false; },
                 },
                 {
-                    text: `🔋 ${t('navPayment.rechargeNow') || 'Recharger maintenant'}`,
+                    text: `\uD83D\uDD0B ${t('navPayment.rechargeNow') || 'Recharger maintenant'}`,
                     style: 'default',
                     onPress: () => {
                         alertShownRef.current = false;
@@ -358,7 +358,7 @@ export function useNavigationPayment() {
                 [
                     { text: t('common.cancel') || 'Annuler', style: 'cancel', onPress: onCancel },
                     {
-                        text: `🔋 ${t('navPayment.recharge') || 'Recharger'}`,
+                        text: `\uD83D\uDD0B ${t('navPayment.recharge') || 'Recharger'}`,
                         onPress: () => redirectToRecharge('Navigation', { pendingPoiCategories: selectedCategories }),
                     },
                 ]
@@ -490,7 +490,7 @@ export function useNavigationPayment() {
             const msgKey = trialExpired ? 'navPayment.coachingTrialEndedMsg' : 'navPayment.coachingInsufficientMsg';
             const titleKey = trialExpired ? 'navPayment.coachingTrialEnded' : 'navPayment.coachingSubscription';
             Alert.alert(
-                t(titleKey) || (trialExpired ? '🎁 Essai terminé' : '🤖 Coaching IA mensuel'),
+                t(titleKey) || (trialExpired ? '\uD83C\uDF81 Essai terminé' : '\uD83E\uDD16 Coaching IA mensuel'),
                 (t(msgKey) || (trialExpired
                     ? 'Votre essai gratuit de 7 jours est terminé.\n\nPour continuer à recevoir les notifications de coaching personnalisées, abonnez-vous pour seulement {{cost}}/mois.\n\nSolde actuel: {{balance}}'
                     : 'Le coaching push mensuel coûte {{cost}}/mois.\n\nSolde actuel: {{balance}}\n\nRechargez pour activer les notifications automatiques de coaching.'))
@@ -498,7 +498,7 @@ export function useNavigationPayment() {
                     .replace(/\{\{balance\}\}/g, balanceFmt),
                 [
                     { text: t('common.cancel') || 'Plus tard', style: 'cancel' },
-                    { text: `🔋 ${t('navPayment.recharge') || 'Recharger'}`, onPress: () => redirectToRecharge('Navigation') },
+                    { text: `\uD83D\uDD0B ${t('navPayment.recharge') || 'Recharger'}`, onPress: () => redirectToRecharge('Navigation') },
                 ]
             );
             return false;
@@ -534,7 +534,7 @@ export function useNavigationPayment() {
                     .replace('{{cost}}', costFmt),
                 [
                     { text: t('common.cancel') || 'Plus tard', style: 'cancel' },
-                    { text: '🔄 Renouveler', onPress: () => activateCoachingSubscription() },
+                    { text: '\uD83D\uDD04 Renouveler', onPress: () => activateCoachingSubscription() },
                 ]
             );
         } else if (daysLeft <= 3) {
@@ -549,7 +549,7 @@ export function useNavigationPayment() {
                         .replace('{{cost}}', costFmt),
                     [
                         { text: 'OK', style: 'cancel' },
-                        { text: '🔄 Renouveler', onPress: () => activateCoachingSubscription() },
+                        { text: '\uD83D\uDD04 Renouveler', onPress: () => activateCoachingSubscription() },
                     ]
                 );
                 await SafeStorage.setItem(COACHING_REMINDER_KEY, 'true').catch(() => { });
@@ -575,7 +575,8 @@ export function useNavigationPayment() {
         console.log('[NavigationPayment] ✅ Alertes communautaires restaurées');
     }, []);
 
-    // Payer pour les alertes communautaires (par session)
+    // Payer pour la consultation de l'écran alertes communautaires
+    // ✅ FIX 2026-03-18: La facturation pendant le tracking est par checkpoint unique (dans NavigationScreen)
     const payForAlerts = useCallback(async (
         onSuccess: () => void,
         onSuspended?: () => void,
@@ -596,7 +597,7 @@ export function useNavigationPayment() {
                     .replace('{{cost}}', costFmt),
                 [
                     { text: t('common.cancel') || 'Plus tard', style: 'cancel' },
-                    { text: `🔋 ${t('navPayment.recharge') || 'Recharger'}`, onPress: () => redirectToRecharge('Navigation') },
+                    { text: `\uD83D\uDD0B ${t('navPayment.recharge') || 'Recharger'}`, onPress: () => redirectToRecharge('Navigation') },
                 ]
             );
             if (onSuspended) onSuspended();

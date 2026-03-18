@@ -18,7 +18,6 @@ interface AvatarMenuModalProps {
 }
 
 const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
-    const { t } = useLanguageSafe();
   isOpen,
   onClose,
   onNavigate
@@ -27,7 +26,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
 
   const handleLogout = async () => {
     Alert.alert(
-      t('avatarMenuModal.deconnexion'),
+      'Déconnexion',
       t('avatarMenuModal.etesvousSurDeVouloirVousDeconnecter'),
       [
         {
@@ -43,7 +42,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
               onClose();
             } catch (error) {
               console.error('Erreur déconnexion:', error);
-              Alert.alert('Erreur', t('avatarMenuModal.impossibleDeSeDeconnecter'));
+              Alert.alert('Erreur', 'Impossible de se déconnecter');
             }
           },
         },
@@ -110,13 +109,13 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
 
             <View style={styles.userInfo}>
               <Text style={styles.userName}>
-                👤 {user?.name || t('avatarMenu.utilisateur')}
+                \uD83D\uDC64 {user?.name || t('avatarMenu.utilisateur')}
               </Text>
               <Text style={styles.userRole}>
-                🛡 Rôle : <Text style={styles.roleBold}>{user?.role || t('avatarMenu.utilisateur')}</Text>
+                \uD83D\uDEE1 Rôle : <Text style={styles.roleBold}>{user?.role || t('avatarMenu.utilisateur')}</Text>
               </Text>
               <Text style={styles.userEmail}>
-                📧 {user?.email}
+                \uD83D\uDCE7 {user?.email}
               </Text>
             </View>
           </View>

@@ -25,7 +25,6 @@ import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 import { measureScreenLoad } from '../../utils/metrics';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface BusTicketResult {
     product_id: string;
@@ -46,7 +45,6 @@ interface BusTicketResult {
 const BusTicketSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
-    const { t } = useLanguageSafe();
 
     // Mesurer le temps de chargement
     React.useEffect(() => {
@@ -79,7 +77,7 @@ const BusTicketSearchScreen: React.FC = () => {
 
     const handleSearch = async () => {
         if (!departureCity.trim() || !arrivalCity.trim()) {
-            Alert.alert('Erreur', t('busTicketSearchScreen.veuillezRenseignerLaVilleDeDepartt('busTicketSearchScreen.arrivee'));
+            Alert.alert('Erreur', 'Veuillez renseigner la ville de départ et d\'arrivée');
             return;
         }
 
@@ -137,7 +135,7 @@ const BusTicketSearchScreen: React.FC = () => {
 
                 setResults(sortedResults);
                 if (sortedResults.length === 0) {
-                    Alert.alert(t('busTicketSearchScreen.aucunResultat'), t('busTicketSearchScreen.aucunTrajetTrouvePourCetteRecherche'));
+                    Alert.alert('Aucun résultat', 'Aucun trajet trouvé pour cette recherche');
                 }
             } else {
                 Alert.alert('Erreur', 'Impossible de rechercher les tickets');
@@ -175,7 +173,7 @@ const BusTicketSearchScreen: React.FC = () => {
             id: 'aujourdhui',
             title: "Aujourd'hui",
             icon: 'calendar',
-            description: t('busTicketSearch.departAujourdhui'),
+            description: 'Départ aujourd\'hui',
             action: () => {
                 hapticPress();
                 setDepartureDate(new Date());
@@ -185,7 +183,7 @@ const BusTicketSearchScreen: React.FC = () => {
             id: 'demain',
             title: 'Demain',
             icon: 'calendar-days',
-            description: t('busTicketSearch.departDemain'),
+            description: 'Départ demain',
             action: () => {
                 hapticPress();
                 const tomorrow = new Date();
@@ -231,7 +229,7 @@ const BusTicketSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="bus" size={32} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>{t('busTicketSearch.rechercherUnTrajet')}</Text>
+                        <Text style={styles.headerTitle}>Rechercher un trajet</Text>
                         <Text style={styles.headerSubtitle}>
                             Trouvez et réservez vos tickets de bus en quelques clics
                         </Text>
@@ -246,7 +244,7 @@ const BusTicketSearchScreen: React.FC = () => {
             >
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
-                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDD0D Recherches rapides</Text>
                     <View style={styles.quickSearchesGrid}>
                         {quickSearches.map((search) => (
                             <TouchableOpacity
@@ -272,11 +270,11 @@ const BusTicketSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>{t('busTicketSearch.rechercheDeTrajet')}</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDCCD Recherche de trajet</Text>
                     {/* Ville de départ */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="map-pin" size={14} color={modernColors.primary} type="lucide" />{t('busTicketSearchScreen.villeDeDepart')}
+                            <SafeIcon name="map-pin" size={14} color={modernColors.primary} type="lucide" /> Ville de départ *
                         </Text>
                         <CityAutocomplete
                             label=""
@@ -286,14 +284,14 @@ const BusTicketSearchScreen: React.FC = () => {
                                 hapticPress();
                                 setDepartureCity(city.main_text);
                             }}
-                            placeholder={t('busTicketSearch.exYaounde')}
+                            placeholder="Ex: Yaoundé"
                         />
                     </View>
 
                     {/* Ville d'arrivée */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="navigation" size={14} color={modernColors.primary} type="lucide" />{t('busTicketSearchScreen.villeDarrivee')}
+                            <SafeIcon name="navigation" size={14} color={modernColors.primary} type="lucide" /> Ville d'arrivée *
                         </Text>
                         <CityAutocomplete
                             label=""
@@ -310,7 +308,7 @@ const BusTicketSearchScreen: React.FC = () => {
                     {/* Date de départ */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="calendar" size={14} color={modernColors.primary} type="lucide" />{t('busTicketSearchScreen.dateDeDepart')}
+                            <SafeIcon name="calendar" size={14} color={modernColors.primary} type="lucide" /> Date de départ
                         </Text>
                         <TouchableOpacity
                             style={styles.dateButton}
@@ -348,7 +346,7 @@ const BusTicketSearchScreen: React.FC = () => {
                                     <SafeIcon name="rotate-ccw" size={20} color="#F59E0B" type="lucide" />
                                 </View>
                                 <View style={styles.optionTextContainer}>
-                                    <Text style={styles.optionTitle}>{t('busTicketSearchScreen.allerretour')}</Text>
+                                    <Text style={styles.optionTitle}>Aller-Retour</Text>
                                     <Text style={styles.optionDescription}>
                                         Réserver un trajet aller et retour
                                     </Text>
@@ -490,7 +488,7 @@ const BusTicketSearchScreen: React.FC = () => {
                                         <View style={styles.cityDot} />
                                         <View style={styles.cityInfo}>
                                             <Text style={styles.cityName}>
-                                                {result.departure_city || t('busTicketSearch.depart')}
+                                                {result.departure_city || 'Départ'}
                                             </Text>
                                             <Text style={styles.time}>
                                                 {formatTime(result.departure_time)}
@@ -504,7 +502,7 @@ const BusTicketSearchScreen: React.FC = () => {
                                         <View style={[styles.cityDot, styles.cityDotArrival]} />
                                         <View style={styles.cityInfo}>
                                             <Text style={styles.cityName}>
-                                                {result.arrival_city || t('busTicketSearch.arrivee')}
+                                                {result.arrival_city || 'Arrivée'}
                                             </Text>
                                         </View>
                                     </View>
@@ -519,7 +517,7 @@ const BusTicketSearchScreen: React.FC = () => {
                                     </View>
                                     {result.distance_km && (
                                         <Text style={styles.distanceText}>
-                                            📍 {result.distance_km.toFixed(1)} km
+                                            \uD83D\uDCCD {result.distance_km.toFixed(1)} km
                                         </Text>
                                     )}
                                 </View>
@@ -533,10 +531,12 @@ const BusTicketSearchScreen: React.FC = () => {
                     <View style={styles.infoCard}>
                         <View style={styles.infoHeader}>
                             <SafeIcon name="info" size={20} color="#F59E0B" type="lucide" />
-                            <Text style={styles.infoTitle}>{t('busTicketSearch.bonASavoir')}</Text>
+                            <Text style={styles.infoTitle}>\uD83D\uDCA1 Bon à savoir</Text>
                         </View>
                         <Text style={styles.infoText}>
-                            • Réservez vos tickets à l'avance pour garantir votre place{'\nt('busTicketSearchScreen.lesPrixPeuventVarierSelonLa')\nt('busTicketSearchScreen.verifiezLesHorairesDeDepartAvant')\n'}
+                            • Réservez vos tickets à l'avance pour garantir votre place{'\n'}
+                            • Les prix peuvent varier selon la période et la disponibilité{'\n'}
+                            • Vérifiez les horaires de départ avant de réserver{'\n'}
                             • L'option aller-retour permet d'économiser sur les trajets réguliers
                         </Text>
                     </View>

@@ -56,7 +56,7 @@ const LoginScreen: React.FC = () => {
     redirectUri: redirectUri, // ✅ Forcer le redirect URI pour garantir l'alignement
   });
 
-  // 🔍 Debug: Log de la configuration OAuth
+  // \uD83D\uDD0D Debug: Log de la configuration OAuth
   useEffect(() => {
     if (googleRequest) {
       console.log('[OAuth Debug] Request:', JSON.stringify(googleRequest, null, 2));
@@ -406,7 +406,7 @@ const LoginScreen: React.FC = () => {
             style={styles.partnerButton}
           >
             <Text style={styles.partnerButtonText}>
-              🏢 Devenir partenaire
+              \uD83C\uDFE2 Devenir partenaire
             </Text>
           </TouchableOpacity>
         </View>

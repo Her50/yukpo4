@@ -10,7 +10,6 @@ import { SearchSuggestion as HistorySuggestion, searchHistoryService } from '../
 import { modernColors } from '../theme/modernTheme';
 import LocationSelector, { LocationObject } from './LocationSelector';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface IntelligentSearchBarProps {
     placeholder?: string;
@@ -101,7 +100,7 @@ const buildLabeledPairs = (
             const rawLabel = labels[index];
             const label = rawLabel && rawLabel.trim().length > 0
                 ? rawLabel
-                : t('intelligentSearchBar.caracteristique', { index + 1: index + 1 });
+                : `Caractéristique ${index + 1}`;
 
             return {
                 label,
@@ -168,7 +167,7 @@ const computeCombinationRanking = (
 };
 
 export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
-    placeholder={t('intelligentSearchBar.rechercher')},
+    placeholder = 'Rechercher...',
     onSubmit,
     onGPSPress,
     showSendButton = true,
@@ -178,8 +177,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
     enableSuggestions = true,
     onSearchRecorded,
 }) => {
-        const { t } = useLanguageSafe();
-const [query, setQuery] = useState(initialValue);
+    const [query, setQuery] = useState(initialValue);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [suggestions, setSuggestions] = useState<HistorySuggestion[]>([]);
     const [popularSearches, setPopularSearches] = useState<HistorySuggestion[]>([]);
@@ -394,7 +392,7 @@ const [query, setQuery] = useState(initialValue);
                     }
 
                     if (normalized.length === 0) {
-                        setCombinationError(t('intelligentSearchBar.aucuneCaracteristiquePopulaireCorrespondantACette'));
+                        setCombinationError('Aucune caractéristique populaire correspondant à cette recherche.');
                     } else {
                         const scored = normalized.map((suggestion) => {
                             const { popularityScore, relevanceScore, totalScore } = computeCombinationRanking(
@@ -434,11 +432,11 @@ const [query, setQuery] = useState(initialValue);
                     }
                 } else {
                     setCombinationSuggestions([]);
-                    setCombinationError(t('intelligentSearchBar.aucuneCaracteristiquePopulaireTrouvee'));
+                    setCombinationError('Aucune caractéristique populaire trouvée.');
                 }
             } catch (error) {
                 console.error('[IntelligentSearchBar] Erreur chargement combinaisons:', error);
-                setCombinationError(t('intelligentSearchBar.impossibleDeChargerLesCaracteristiquesPopulaires'));
+                setCombinationError('Impossible de charger les caractéristiques populaires pour cette recherche.');
                 setCombinationSuggestions([]);
             } finally {
                 setIsLoadingCombinations(false);
@@ -649,7 +647,7 @@ const [query, setQuery] = useState(initialValue);
                     <View style={styles.combinationSuggestionsHeader}>
                         <View style={styles.combinationSuggestionsHeaderLeft}>
                             <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
-                            <Text style={styles.combinationSuggestionsTitle}>{t('intelligentSearchBar.caracteristiquesRecommandees')}</Text>
+                            <Text style={styles.combinationSuggestionsTitle}>Caractéristiques recommandées</Text>
                             {combinationSuggestions.length > 0 && (
                                 <Text style={styles.combinationSuggestionsCount}>({combinationSuggestions.length})</Text>
                             )}
@@ -659,7 +657,7 @@ const [query, setQuery] = useState(initialValue);
                     {isLoadingCombinations && (
                         <View style={styles.loadingCombinationsContainer}>
                             <ActivityIndicator size="small" color={modernColors.primary} />
-                            <Text style={styles.loadingCombinationsText}>{t('intelligentSearchBar.chargementDesCaracteristiques')}</Text>
+                            <Text style={styles.loadingCombinationsText}>Chargement des caractéristiques…</Text>
                         </View>
                     )}
 
@@ -668,7 +666,7 @@ const [query, setQuery] = useState(initialValue);
                     )}
 
                     {!isLoadingCombinations && !combinationError && combinationSuggestions.length === 0 && (
-                        <Text style={styles.emptyCombinationsText}>{t('intelligentSearchBar.aucuneCaracteristiquePopulaireTrouveePou')}</Text>
+                        <Text style={styles.emptyCombinationsText}>Aucune caractéristique populaire trouvée pour cette recherche.</Text>
                     )}
 
                     {!isLoadingCombinations && !combinationError && topCombinationSuggestion && (
@@ -680,7 +678,7 @@ const [query, setQuery] = useState(initialValue);
                                         size={16}
                                         color={topCombinationSuggestion.isPreferred ? modernColors.primary : '#F97316'}
                                     />
-                                    <Text style={styles.topCombinationTitle}>{t('intelligentSearchBar.caracteristiquesPertinentesDetectees')}</Text>
+                                    <Text style={styles.topCombinationTitle}>Caractéristiques pertinentes détectées</Text>
                                 </View>
                                 {typeof topCombinationSuggestion.usageCount === 'number' && topCombinationSuggestion.usageCount > 0 && (
                                     <View style={styles.topCombinationBadge}>
@@ -694,7 +692,7 @@ const [query, setQuery] = useState(initialValue);
 
                             <View style={styles.topCombinationTable}>
                                 {topCombinationRows.length === 0 ? (
-                                    <Text style={styles.topCombinationEmptyRow}>{t('intelligentSearchBar.aucuneModaliteDisponible')}</Text>
+                                    <Text style={styles.topCombinationEmptyRow}>Aucune modalité disponible.</Text>
                                 ) : (
                                     topCombinationRows.slice(0, 6).map((row, index) => (
                                         <View
@@ -718,14 +716,14 @@ const [query, setQuery] = useState(initialValue);
                                             {typeof topCombinationSuggestion.occurrences === 'number' &&
                                                 topCombinationSuggestion.occurrences > 0 && (
                                                     <Text style={styles.topCombinationMetaText}>
-                                                        🔁 {topCombinationSuggestion.occurrences} occurrence
+                                                        \uD83D\uDD01 {topCombinationSuggestion.occurrences} occurrence
                                                         {topCombinationSuggestion.occurrences > 1 ? 's' : ''}
                                                     </Text>
                                                 )}
                                         </View>
                                         {typeof topCombinationSuggestion.price === 'number' && (
                                             <Text style={styles.topCombinationMetaText}>
-                                                💰 {Math.round(topCombinationSuggestion.price).toLocaleString('fr-FR')}{' '}
+                                                \uD83D\uDCB0 {Math.round(topCombinationSuggestion.price).toLocaleString('fr-FR')}{' '}
                                                 {topCombinationSuggestion.devise || 'XAF'}
                                             </Text>
                                         )}
@@ -734,7 +732,7 @@ const [query, setQuery] = useState(initialValue);
 
                             <View style={styles.topCombinationLocation}>
                                 <LocationSelector
-                                    label={t('intelligentSearchBar.lieuDeRecherche')}
+                                    label="Lieu de recherche"
                                     value={searchLocation || ''}
                                     onSelect={(loc) => {
                                         if (!loc || !loc.raw) {

@@ -63,7 +63,7 @@ export const getPharmacyStatus = (pharmacie: any): { status: string; message: st
     if (isPharmacyOpenNow(pharmacie)) {
         return {
             status: 'open',
-            message: '🟢 Ouvert maintenant',
+            message: '\uD83D\uDFE2 Ouvert maintenant',
             color: '#10B981'
         };
     }
@@ -75,14 +75,14 @@ export const getPharmacyStatus = (pharmacie: any): { status: string; message: st
     if (pharmacie.joursGarde && pharmacie.joursGarde.includes(currentDay)) {
         return {
             status: 'garde',
-            message: '🌙 De garde ce soir',
+            message: '\uD83C\uDF19 De garde ce soir',
             color: '#3B82F6'
         };
     }
 
     return {
         status: 'closed',
-        message: '🔴 Fermé actuellement',
+        message: '\uD83D\uDD34 Fermé actuellement',
         color: '#EF4444'
     };
 };
@@ -202,16 +202,16 @@ export const formatPrestationPlanning = (planning: any): string => {
     const parts: string[] = [];
 
     if (planning.jours) {
-        parts.push(`📅 ${planning.jours}`);
+        parts.push(`\uD83D\uDCC5 ${planning.jours}`);
     }
 
     if (planning.moment) {
         if (planning.moment === '24h/24') {
-            parts.push('🕐 24h/24');
+            parts.push('\uD83D\uDD50 24h/24');
         } else if (planning.moment === 'Journée') {
             parts.push('☀️ Journée');
         } else if (planning.moment === 'Nuit') {
-            parts.push('🌙 Nuit');
+            parts.push('\uD83C\uDF19 Nuit');
         }
     }
 

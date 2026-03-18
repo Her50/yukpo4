@@ -34,7 +34,7 @@ interface StorageLocationSelectorProps {
 const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
     value,
     onSelect,
-    label={t('storageLocationSelector.lieuDeStockage')},
+    label = 'Lieu de stockage',
     required = false,
     showCreateButton = true
 }) => {
@@ -74,27 +74,27 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
 
     const handleSelectLocation = () => {
         const options = [
-            { text: t('storageLocationSelector.aucunLieuDeStockage'), onPress: () => onSelect(null) },
+            { text: 'Aucun lieu de stockage', onPress: () => onSelect(null) },
             ...locations.map(loc => ({
                 text: `${loc.name} - ${loc.address}`,
                 onPress: () => onSelect(loc.id)
             })),
             ...(showCreateButton ? [{
-                text: t('storageLocationSelector.creerUnNouveauLieu'),
+                text: '➕ Créer un nouveau lieu',
                 onPress: () => {
                     setNewLocationData({ name: '', address: '', latitude: 0, longitude: 0 });
                     setShowGPSModal(true);
                 }
             }] : []),
             {
-                text: t('storageLocationSelector.gererLesLieuxDeStock'), onPress: () => {
+                text: 'Gérer les lieux de stock', onPress: () => {
                     // @ts-ignore
                     navigation.navigate('StorageLocations');
                 }
             },
             { text: t('common.cancel'), style: 'cancel' as const }
         ];
-        Alert.alert(t('storageLocationSelector.selectionnerUnLieuDeStockage'), '', options);
+        Alert.alert('Sélectionner un lieu de stockage', '', options);
     };
 
     const handleGPSSelect = (coordinates: string) => {
@@ -110,7 +110,7 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
         // Demander le nom et l'adresse
         Alert.prompt(
             'Nom du lieu de stockage',
-            t('storageLocationSelector.donnezUnNomACeLieu'),
+            'Donnez un nom à ce lieu de stockage (ex: Entrepôt principal, Magasin centre-ville)',
             [
                 { text: t('common.cancel'), style: 'cancel', onPress: () => { } },
                 {
@@ -120,7 +120,7 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
                             setNewLocationData(prev => ({ ...prev, name: name.trim() }));
                             Alert.prompt(
                                 'Adresse',
-                                t('storageLocationSelector.entrezLadresseCompleteDeCeLieuDeStockage'),
+                                'Entrez l\'adresse complète de ce lieu de stockage',
                                 [
                                     { text: t('common.cancel'), style: 'cancel', onPress: () => { } },
                                     {
@@ -166,12 +166,12 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
             if (response.success && crd?.location) {
                 await loadLocations();
                 onSelect(crd.location.id);
-                Alert.alert(t('storageLocationSelector.succes'), t('storageLocationSelector.lieuDeStockageCreeAvecSucces'));
+                Alert.alert('Succès', 'Lieu de stockage créé avec succès');
             } else {
-                throw new Error(response.message || t('storageLocationSelector.erreurLorsDeLaCreation'));
+                throw new Error(response.message || 'Erreur lors de la création');
             }
         } catch (error: any) {
-            Alert.alert('Erreur', error.message || t('storageLocationSelector.impossibleDeCreerLeLieuDe'));
+            Alert.alert('Erreur', error.message || 'Impossible de créer le lieu de stockage');
         } finally {
             setCreatingLocation(false);
         }
@@ -200,7 +200,7 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
                                     {selectedLocation.address}
                                 </Text>
                                 <Text style={styles.locationGPS}>
-                                    📍 {selectedLocation.latitude.toFixed(6)}, {selectedLocation.longitude.toFixed(6)}
+                                    \uD83D\uDCCD {selectedLocation.latitude.toFixed(6)}, {selectedLocation.longitude.toFixed(6)}
                                 </Text>
                             </View>
                         </>
@@ -230,7 +230,7 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
                 visible={showGPSModal}
                 onClose={() => setShowGPSModal(false)}
                 onSelect={handleGPSSelect}
-                title={t('storageLocationSelector.selectionnerL')}emplacement GPS du lieu de stockage"
+                title="Sélectionner l'emplacement GPS du lieu de stockage"
                 allowZoneSelection={false}
             />
         </View>

@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useNavigation } from '@react-navigation/native';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ServiceItem {
   id: string;
@@ -21,45 +20,44 @@ const mockServices: ServiceItem[] = [
     description: 'Publication et gestion de biens immobiliers',
     categorie: 'Immobilier',
     type: 'plateforme',
-    icon: '🏠',
+    icon: '\uD83C\uDFE0',
   },
   {
     id: '2',
     nom: 'Yukpo Transport',
-    description: t('servicesList.reservationDeBilletsEtHotels'),
+    description: 'Réservation de billets et hôtels',
     categorie: 'Transport',
     type: 'service',
-    icon: '🚗',
+    icon: '\uD83D\uDE97',
   },
   {
     id: '3',
     nom: 'Yukpo Social Listening',
-    description: t('servicesList.suiviIntelligentDesTendancesSociales'),
+    description: 'Suivi intelligent des tendances sociales',
     categorie: 'Analyse & Intelligence',
     type: 'moteur',
-    icon: '📊',
+    icon: '\uD83D\uDCCA',
   },
   {
     id: '4',
     nom: 'Yukpo Commerce',
-    description: t('servicesList.gestionDeBoutiqueEnLigne'),
+    description: 'Gestion de boutique en ligne',
     categorie: 'E-commerce',
     type: 'plateforme',
-    icon: '🛍️',
+    icon: '\uD83D\uDECD️',
   },
   {
     id: '5',
     nom: 'Yukpo Formation',
     description: 'Plateforme de cours et formations',
-    categorie: t('servicesListScreen.education'),
+    categorie: 'Éducation',
     type: 'service',
-    icon: '📚',
+    icon: '\uD83D\uDCDA',
   },
 ];
 
 const ServicesListScreen: React.FC = () => {
   const navigation = useNavigation();
-    const { t } = useLanguageSafe();
   const [query, setQuery] = useState('');
 
   const filtered = mockServices.filter(
@@ -74,7 +72,9 @@ const ServicesListScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{t('servicesList.catalogueDesServicest('servicesListScreen.textTextStylestylessubtitleDecouvrezTousLes') '}
+          <Text style={styles.title}>\uD83C\uDFAF Catalogue des services</Text>
+          <Text style={styles.subtitle}>
+            Découvrez tous les services disponibles sur{' '}
             <Text style={styles.brandYuk}>Yuk</Text>
             <Text style={styles.brandPo}>po</Text>
           </Text>
@@ -82,10 +82,10 @@ const ServicesListScreen: React.FC = () => {
 
         {/* Barre de recherche */}
         <View style={styles.searchContainer}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Text style={styles.searchIcon}>\uD83D\uDD0D</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder={t('servicesList.rechercherUnService')}
+            placeholder="Rechercher un service..."
             placeholderTextColor="#999"
             value={query}
             onChangeText={setQuery}
@@ -98,7 +98,7 @@ const ServicesListScreen: React.FC = () => {
             style={[styles.actionCard, styles.actionCardPrimary]}
             onPress={() => (navigation as any).navigate('Home')}
           >
-            <Text style={styles.actionIcon}>🔍</Text>
+            <Text style={styles.actionIcon}>\uD83D\uDD0D</Text>
             <Text style={styles.actionTitle}>Trouver un service</Text>
             <Text style={styles.actionDescription}>
               Exprimez un besoin, Yukpo vous connecte automatiquement
@@ -110,7 +110,7 @@ const ServicesListScreen: React.FC = () => {
             onPress={() => (navigation as any).navigate('Home')}
           >
             <Text style={styles.actionIcon}>⚙️</Text>
-            <Text style={styles.actionTitle}>{t('servicesList.creerUnService')}</Text>
+            <Text style={styles.actionTitle}>Créer un service</Text>
             <Text style={styles.actionDescription}>
               Service assisté personnalisé en quelques clics
             </Text>
@@ -118,11 +118,11 @@ const ServicesListScreen: React.FC = () => {
         </View>
 
         {/* Liste des services */}
-        <Text style={styles.sectionTitle}>{t('servicesList.servicesDisponibles')}</Text>
+        <Text style={styles.sectionTitle}>\uD83D\uDCE6 Services disponibles</Text>
 
         {filtered.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🔎</Text>
+            <Text style={styles.emptyIcon}>\uD83D\uDD0E</Text>
             <Text style={styles.emptyText}>
               Aucun service ne correspond à votre recherche
             </Text>
@@ -150,7 +150,7 @@ const ServicesListScreen: React.FC = () => {
                   <View style={styles.serviceFooter}>
                     <Text style={styles.serviceType}>{service.type.toUpperCase()}</Text>
                     <TouchableOpacity style={styles.discoverButton}>
-                      <Text style={styles.discoverText}>{t('servicesList.decouvrir')}</Text>
+                      <Text style={styles.discoverText}>Découvrir →</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

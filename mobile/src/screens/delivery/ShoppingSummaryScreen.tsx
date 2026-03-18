@@ -9,11 +9,9 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useDeliveryContext } from '../../contexts/DeliveryContext';
 import { useShoppingBasket } from '../../hooks/useShoppingBasket';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const ShoppingSummaryScreen: React.FC = () => {
     const navigation = useNavigation() as any;
-    const { t } = useLanguageSafe();
     const { setActiveDeliveryId } = useDeliveryContext();
     const {
         items,
@@ -42,20 +40,20 @@ const ShoppingSummaryScreen: React.FC = () => {
 
     const handleConfirm = async () => {
         if (!pickup?.latitude || !dropoff?.latitude) {
-            Alert.alert('Informations manquantes', t('shoppingSummaryScreen.verifieLesAdressesAvantDeConfirmer'));
+            Alert.alert('Informations manquantes', 'Vérifie les adresses avant de confirmer.');
             return;
         }
 
         const response = await createShoppingOrder();
         if (!response.success) {
-            Alert.alert('Erreur', response.error ?? t('shoppingSummaryScreen.impossibleDeCreerLaCommande'));
+            Alert.alert('Erreur', response.error ?? 'Impossible de créer la commande.');
             return;
         }
 
         const deliveryId =
             response.data?.delivery_id || response.data?.delivery?.id || response.data?.id;
         if (!deliveryId) {
-            Alert.alert(t('shoppingSummaryScreen.commandeCreee'), t('shoppingSummaryScreen.laLivraisonAEteEnregistreeAvec'));
+            Alert.alert('Commande créée', 'La livraison a été enregistrée avec succès.');
             navigation.navigate('DeliveryHome');
             return;
         }
@@ -68,19 +66,19 @@ const ShoppingSummaryScreen: React.FC = () => {
         <SafeNativeView style={styles.container} backgroundColor={modernColors.background}>
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                 <DeliveryAvatarBubble
-                    message=t('shoppingSummaryScreen.verifieLeRecapitulatifAvantDeConfirmer')
+                    message='Vérifie le récapitulatif avant de confirmer la commande.'
                     subtitle='Tu peux encore ajuster ton panier ou tes instructions.'
                 />
 
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('shoppingSummary.detailsDuTrajet')}</Text>
+                    <Text style={styles.sectionTitle}>Détails du trajet</Text>
                     <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>{t('shoppingSummary.supermarche')}</Text>
-                        <Text style={styles.detailValue}>{pickup?.label ?? t('shoppingSummary.nonDefini')}</Text>
+                        <Text style={styles.detailLabel}>Supermarché</Text>
+                        <Text style={styles.detailValue}>{pickup?.label ?? 'Non défini'}</Text>
                     </View>
                     <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>{t('shoppingSummary.livraison')}</Text>
-                        <Text style={styles.detailValue}>{dropoff?.label ?? t('shoppingSummary.nonDefini')}</Text>
+                        <Text style={styles.detailLabel}>Livraison</Text>
+                        <Text style={styles.detailValue}>{dropoff?.label ?? 'Non défini'}</Text>
                     </View>
                     {comment ? (
                         <View style={styles.commentBox}>
@@ -99,19 +97,19 @@ const ShoppingSummaryScreen: React.FC = () => {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Estimation Yukpo</Text>
                         <View style={styles.summaryLine}>
-                            <Text style={styles.detailLabel}>{t('shoppingSummary.panier')}</Text>
+                            <Text style={styles.detailLabel}>Panier</Text>
                             <Text style={styles.detailValue}>
                                 {estimate.subtotal.toFixed(0)} {estimate.currency}
                             </Text>
                         </View>
                         <View style={styles.summaryLine}>
-                            <Text style={styles.detailLabel}>{t('shoppingSummary.livraison')}</Text>
+                            <Text style={styles.detailLabel}>Livraison</Text>
                             <Text style={styles.detailValue}>
                                 {estimate.deliveryFee.toFixed(0)} {estimate.currency}
                             </Text>
                         </View>
                         <View style={styles.summaryLine}>
-                            <Text style={styles.totalLabel}>{t('shoppingSummary.totalEstime')}</Text>
+                            <Text style={styles.totalLabel}>Total estimé</Text>
                             <Text style={styles.totalValue}>
                                 {estimate.total.toFixed(0)} {estimate.currency}
                             </Text>
@@ -122,7 +120,7 @@ const ShoppingSummaryScreen: React.FC = () => {
 
             <View style={styles.footer}>
                 <NativeButton
-                    title={submittingOrder ? 'Validation en cours...' : t('shoppingSummaryScreen.confirmerLaCommande')}
+                    title={submittingOrder ? 'Validation en cours...' : 'Confirmer la commande'}
                     onPress={handleConfirm}
                     disabled={submittingOrder}
                 />

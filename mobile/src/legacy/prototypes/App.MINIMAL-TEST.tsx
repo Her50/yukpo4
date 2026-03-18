@@ -7,7 +7,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 export default function App() {
-    console.log('🚀 App démarré');
+    console.log('\uD83D\uDE80 App démarré');
 
     return (
         <View style={styles.container}>

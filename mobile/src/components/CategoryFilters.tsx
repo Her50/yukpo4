@@ -64,7 +64,7 @@ const [filters, setFilters] = useState<Record<string, any>>(initialFilters);
         const loadDynamicFilters = async () => {
             try {
                 setLoadingDynamicOptions(true);
-                console.log(`[CategoryFilters] 🔄 Chargement modalités dynamiques pour ${category}...`);
+                console.log(`[CategoryFilters] \uD83D\uDD04 Chargement modalités dynamiques pour ${category}...`);
 
                 // Charger toutes les modalités personnalisées
                 await modalityService.loadCustomModalities();
@@ -182,13 +182,13 @@ const [filters, setFilters] = useState<Record<string, any>>(initialFilters);
         if (suggestion.type === 'range') {
             newFilters[`${suggestion.id}_min`] = suggestion.min;
             newFilters[`${suggestion.id}_max`] = suggestion.max;
-            console.log(`💡 Suggestion appliquée (range): ${suggestion.label} - ${suggestion.min} à ${suggestion.max}`);
+            console.log(`\uD83D\uDCA1 Suggestion appliquée (range): ${suggestion.label} - ${suggestion.min} à ${suggestion.max}`);
         } else if (suggestion.type === 'select' || suggestion.type === 'multiselect') {
             newFilters[suggestion.id] = suggestion.options?.[0]?.value || null;
-            console.log(`💡 Suggestion appliquée (select): ${suggestion.label} = ${suggestion.options?.[0]?.value}`);
+            console.log(`\uD83D\uDCA1 Suggestion appliquée (select): ${suggestion.label} = ${suggestion.options?.[0]?.value}`);
         } else {
             newFilters[suggestion.id] = suggestion.options?.[0]?.value || null;
-            console.log(`💡 Suggestion appliquée: ${suggestion.label}`);
+            console.log(`\uD83D\uDCA1 Suggestion appliquée: ${suggestion.label}`);
         }
 
         setFilters(newFilters);
@@ -225,7 +225,7 @@ const [filters, setFilters] = useState<Record<string, any>>(initialFilters);
     // ✅ NOUVEAU: Appliquer un filtre de l'historique
     const applyHistoryFilter = (historyItem: any) => {
         setFilters(historyItem.filters);
-        console.log(`📜 Historique appliqué: ${Object.keys(historyItem.filters).length} filtres`);
+        console.log(`\uD83D\uDCDC Historique appliqué: ${Object.keys(historyItem.filters).length} filtres`);
     };
 
     const renderFilter = (filter: CategoryFilter) => {
@@ -599,7 +599,7 @@ const [filters, setFilters] = useState<Record<string, any>>(initialFilters);
                                 <Animated.View style={{ opacity: fadeAnim }}>
                                     {/* ✅ NOUVEAU: Indication pour l'utilisateur */}
                                     <Text style={styles.suggestionHint}>
-                                        👆 Cliquez pour appliquer un filtre recommandé
+                                        \uD83D\uDC46 Cliquez pour appliquer un filtre recommandé
                                     </Text>
                                     <ScrollView
                                         horizontal

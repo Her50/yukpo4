@@ -202,7 +202,7 @@ const [loading, setLoading] = useState(true);
                 {/* Insights */}
                 {insights.length > 0 && (
                     <NativeCard style={styles.insightsCard}>
-                        <Text style={styles.insightsTitle}>💡 Insights</Text>
+                        <Text style={styles.insightsTitle}>\uD83D\uDCA1 Insights</Text>
                         {insights.map((insight, index) => (
                             <Text key={index} style={styles.insightText}>
                                 • {insight}

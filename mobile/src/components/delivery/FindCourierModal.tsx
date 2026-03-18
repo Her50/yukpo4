@@ -16,7 +16,6 @@ import { modernColors } from '../../theme/modernTheme';
 import ModernGPSModal from '../ModernGPSModal';
 import SafeIcon from '../SafeIcon';
 import { NativeButton } from '../SafeNativeDesign';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface FindCourierModalProps {
     visible: boolean;
@@ -40,8 +39,7 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
     service,
     onSuccess,
 }) => {
-        const { t } = useLanguageSafe();
-const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     // Points de pickup et delivery
     const [pickupLocation, setPickupLocation] = useState<LocationData | null>(null);
@@ -194,7 +192,7 @@ const [loading, setLoading] = useState(false);
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission requise', 'Veuillez autoriser l\t('findCourierModal.accesALaLocalisationPourDefinir'));
+                Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la localisation pour définir votre adresse de livraison');
                 return;
             }
 
@@ -231,7 +229,7 @@ const [loading, setLoading] = useState(false);
                     : `${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`;
 
                 // ✅ Construire le nom du lieu (première partie de l'adresse)
-                const placeName = addr.street || addr.name || addr.subThoroughfare || t('findCourier.localisation');
+                const placeName = addr.street || addr.name || addr.subThoroughfare || 'Localisation';
 
                 setDeliveryLocation({
                     latitude: location.coords.latitude,
@@ -253,12 +251,12 @@ const [loading, setLoading] = useState(false);
     // ✅ RÉÉCRIT COMPLÈTEMENT: Créer directement la livraison avec matching intelligent automatique
     const handleCreateDelivery = async () => {
         if (!pickupLocation || !deliveryLocation) {
-            Alert.alert('Erreur', t('findCourierModal.veuillezDefinirLePointDeLivraison'));
+            Alert.alert('Erreur', 'Veuillez définir le point de livraison');
             return;
         }
 
         if (!service?.id && !service?.service_id) {
-            Alert.alert('Erreur', t('findCourierModal.serviceNonTrouve'));
+            Alert.alert('Erreur', 'Service non trouvé');
             return;
         }
 
@@ -308,8 +306,8 @@ const [loading, setLoading] = useState(false);
                 const deliveryId = response.delivery?.id || response.id;
 
                 Alert.alert(
-                    t('findCourierModal.commandeCreee'),
-                    t('findCourierModal.votreCommandeAEteCreeeAvecSucces'),
+                    '✅ Commande créée',
+                    'Votre commande a été créée avec succès. Le matching intelligent est en cours. Vous recevrez une notification dès qu\'un coursier sera assigné.',
                     [
                         {
                             text: 'OK',
@@ -328,13 +326,13 @@ const [loading, setLoading] = useState(false);
                     [{ text: 'OK' }]
                 );
             } else {
-                throw new Error(response.message || t('findCourier.reponseInvalideDeLapi'));
+                throw new Error(response.message || 'Réponse invalide de l\'API');
             }
         } catch (error: any) {
             console.error('[FindCourierModal] Erreur création livraison:', error);
             Alert.alert(
                 'Erreur',
-                error.message || error.error || t('findCourier.impossibleDeCreerLaCommande')
+                error.message || error.error || 'Impossible de créer la commande. Veuillez réessayer.'
             );
         } finally {
             setLoading(false);
@@ -381,28 +379,28 @@ const [loading, setLoading] = useState(false);
                     <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
                         {/* Points de pickup et delivery */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{t('findCourier.pointsDeLivraison')}</Text>
+                            <Text style={styles.sectionTitle}>Points de livraison</Text>
 
                             {/* ✅ Point de pickup - Récupéré depuis la configuration (non modifiable) */}
                             {loadingConfig ? (
                                 <View style={styles.locationCard}>
                                     <View style={styles.locationHeader}>
                                         <SafeIcon name="package" size={16} color={modernColors.primary} />
-                                        <Text style={styles.locationLabel}>{t('findCourier.pointDeRecuperation')}</Text>
+                                        <Text style={styles.locationLabel}>Point de récupération</Text>
                                     </View>
                                     <View style={styles.loadingLocation}>
                                         <ActivityIndicator size="small" color={modernColors.primary} />
-                                        <Text style={styles.loadingLocationText}>{t('findCourier.chargementDeLaConfiguration')}</Text>
+                                        <Text style={styles.loadingLocationText}>Chargement de la configuration...</Text>
                                     </View>
                                 </View>
                             ) : pickupLocation ? (
                                 <View style={styles.locationCard}>
                                     <View style={styles.locationHeader}>
                                         <SafeIcon name="package" size={16} color={modernColors.primary} />
-                                        <Text style={styles.locationLabel}>{t('findCourier.pointDeRecuperation')}</Text>
+                                        <Text style={styles.locationLabel}>Point de récupération</Text>
                                         <View style={styles.configBadge}>
                                             <SafeIcon name="check-circle" size={12} color={modernColors.success} />
-                                            <Text style={styles.configBadgeText}>{t('findCourier.configure')}</Text>
+                                            <Text style={styles.configBadgeText}>Configuré</Text>
                                         </View>
                                     </View>
                                     <View style={styles.locationInfo}>
@@ -418,7 +416,7 @@ const [loading, setLoading] = useState(false);
                                 <View style={styles.locationCard}>
                                     <View style={styles.locationHeader}>
                                         <SafeIcon name="package" size={16} color={modernColors.warning} />
-                                        <Text style={styles.locationLabel}>{t('findCourier.pointDeRecuperation')}</Text>
+                                        <Text style={styles.locationLabel}>Point de récupération</Text>
                                     </View>
                                     <Text style={styles.locationErrorText}>
                                         ⚠️ Aucune configuration de livraison trouvée pour ce produit
@@ -430,7 +428,7 @@ const [loading, setLoading] = useState(false);
                             <View style={styles.locationCard}>
                                 <View style={styles.locationHeader}>
                                     <SafeIcon name="map-pin" size={16} color={modernColors.success} />
-                                    <Text style={styles.locationLabel}>{t('findCourier.pointDeLivraison')}</Text>
+                                    <Text style={styles.locationLabel}>Point de livraison</Text>
                                 </View>
                                 {deliveryLocation ? (
                                     <View style={styles.locationInfo}>
@@ -446,7 +444,7 @@ const [loading, setLoading] = useState(false);
                                             style={styles.locationButton}
                                             onPress={() => setShowDeliveryGPSModal(true)}
                                         >
-                                            <Text style={styles.locationButtonText}>{t('findCourierModal.modifier')}</Text>
+                                            <Text style={styles.locationButtonText}>Modifier</Text>
                                         </TouchableOpacity>
                                     </View>
                                 ) : (
@@ -454,7 +452,7 @@ const [loading, setLoading] = useState(false);
                                         style={styles.locationButton}
                                         onPress={() => setShowDeliveryGPSModal(true)}
                                     >
-                                        <Text style={styles.locationButtonText}>{t('findCourier.definirVotreAdresseDeLivraison')}</Text>
+                                        <Text style={styles.locationButtonText}>Définir votre adresse de livraison</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -463,7 +461,7 @@ const [loading, setLoading] = useState(false);
                         {/* ✅ Type de transport - Affiche celui configuré (non modifiable) */}
                         {deliveryConfig?.required_vehicle_type_id && (
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>{t('findCourier.typeDeTransport')}</Text>
+                                <Text style={styles.sectionTitle}>Type de transport</Text>
                                 <View style={styles.transportInfoCard}>
                                     <View style={styles.transportInfoHeader}>
                                         <SafeIcon
@@ -472,7 +470,7 @@ const [loading, setLoading] = useState(false);
                                             color={modernColors.primary}
                                         />
                                         <Text style={styles.transportInfoLabel}>
-                                            {transportType === 'bike' ? t('findCourierModal.velo') :
+                                            {transportType === 'bike' ? 'Vélo' :
                                                 transportType === 'motorcycle' ? 'Moto' :
                                                     transportType === 'car' ? 'Voiture' :
                                                         transportType === 'pickup' ? 'Pick-up' :
@@ -481,7 +479,7 @@ const [loading, setLoading] = useState(false);
                                         </Text>
                                         <View style={styles.configBadge}>
                                             <SafeIcon name="check-circle" size={12} color={modernColors.success} />
-                                            <Text style={styles.configBadgeText}>{t('findCourier.configure')}</Text>
+                                            <Text style={styles.configBadgeText}>Configuré</Text>
                                         </View>
                                     </View>
                                     <Text style={styles.transportInfoText}>
@@ -493,10 +491,10 @@ const [loading, setLoading] = useState(false);
 
                         {/* Notes */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{t('findCourier.notesOptionnel')}</Text>
+                            <Text style={styles.sectionTitle}>Notes (optionnel)</Text>
                             <TextInput
                                 style={styles.notesInput}
-                                placeholder={t('findCourier.instructionsSpecialesPourLeCoursier')}
+                                placeholder="Instructions spéciales pour le coursier..."
                                 value={deliveryNotes}
                                 onChangeText={setDeliveryNotes}
                                 multiline
@@ -526,13 +524,13 @@ const [loading, setLoading] = useState(false);
                     {/* Footer */}
                     <View style={styles.footer}>
                         <NativeButton
-                            title={t('findCourierModal.annuler')}
+                            title="Annuler"
                             variant="outline"
                             onPress={onClose}
                             disabled={loading}
                         />
                         <NativeButton
-                            title={loading ? t('findCourierModal.creationEnCours') : t('findCourierModal.creerLaCommande')}
+                            title={loading ? 'Création en cours...' : 'Créer la commande'}
                             variant="primary"
                             onPress={handleCreateDelivery}
                             disabled={!pickupLocation || !deliveryLocation || loading}
@@ -574,7 +572,7 @@ const [loading, setLoading] = useState(false);
                                         ? addressParts.join(', ')
                                         : `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
-                                    const placeName = addr2.street || addr2.name || addr2.subThoroughfare || t('findCourier.localisation');
+                                    const placeName = addr2.street || addr2.name || addr2.subThoroughfare || 'Localisation';
 
                                     setDeliveryLocation({
                                         latitude: lat,
@@ -595,7 +593,7 @@ const [loading, setLoading] = useState(false);
                         console.error('[FindCourierModal] Erreur parsing delivery GPS:', error);
                     }
                 }}
-                title={t('findCourier.pointDeLivraison')}
+                title="Point de livraison"
                 currentLocation={deliveryLocation ? { lat: deliveryLocation.latitude, lng: deliveryLocation.longitude } : null}
             />
         </Modal>

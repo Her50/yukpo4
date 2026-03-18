@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const DAYS_OF_WEEK = [
     { value: 1, label: 'Lundi', short: 'Lun' },
@@ -38,10 +37,9 @@ const WeekDaysSelector: React.FC<WeekDaysSelectorProps> = ({
     onClose,
     onSave,
     initialDays = [],
-    title={t('weekDaysSelector.selectionnerLesJoursD')}ouverture'
+    title = 'Sélectionner les jours d\'ouverture'
 }) => {
-        const { t } = useLanguageSafe();
-const [selectedDays, setSelectedDays] = useState<number[]>(initialDays);
+    const [selectedDays, setSelectedDays] = useState<number[]>(initialDays);
 
     const toggleDay = (dayValue: number) => {
         setSelectedDays(prev =>
@@ -84,12 +82,12 @@ const [selectedDays, setSelectedDays] = useState<number[]>(initialDays);
                 <View style={styles.summary}>
                     <Text style={styles.summaryText}>
                         {selectedDays.length === 0
-                            ? t('weekDaysSelector.aucunJourSelectionne')
+                            ? 'Aucun jour sélectionné'
                             : selectedDays.length === 7
                                 ? 'Tous les jours'
                                 : weekdaysSelected
                                     ? 'Lundi - Vendredi'
-                                    : t('weekDaysSelector.joursSelectionnes', { selectedDays_length: selectedDays.length })}
+                                    : `${selectedDays.length} jour(s) sélectionné(s)`}
                     </Text>
                 </View>
 
@@ -99,7 +97,7 @@ const [selectedDays, setSelectedDays] = useState<number[]>(initialDays);
                         onPress={selectAll}
                     >
                         <Text style={[styles.selectAllText, allSelected && styles.selectAllTextActive]}>
-                            {allSelected ? t('weekDaysSelector.deselectionnerTout') : t('weekDaysSelector.selectionnerTousLesJours')}
+                            {allSelected ? 'Désélectionner tout' : 'Sélectionner tous les jours'}
                         </Text>
                     </TouchableOpacity>
 
@@ -132,13 +130,13 @@ const [selectedDays, setSelectedDays] = useState<number[]>(initialDays);
                         style={[styles.button, styles.cancelButton]}
                         onPress={onClose}
                     >
-                        <Text style={styles.cancelButtonText}>{t('weekDaysSelector.annuler')}</Text>
+                        <Text style={styles.cancelButtonText}>Annuler</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.button, styles.saveButton]}
                         onPress={handleSave}
                     >
-                        <Text style={styles.saveButtonText}>{t('weekDaysSelector.enregistrer')}</Text>
+                        <Text style={styles.saveButtonText}>Enregistrer</Text>
                     </TouchableOpacity>
                 </View>
             </View>

@@ -78,7 +78,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
             }
         } catch (error: any) {
             console.error('[ShoppingList] Erreur génération:', error);
-            Alert.alert('Erreur', error.message || t('shoppingListScreen.erreurLorsDeLaGenerationDe'));
+            Alert.alert(t('message.error'), error.message || t('shoppingListScreen.erreurLorsDeLaGenerationDe'));
         } finally {
             setLoading(false);
         }
@@ -149,7 +149,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
                 </View>
                 {item.store_section && (
                     <Text style={styles.itemSection}>
-                        📍 {item.store_section}
+                        \uD83D\uDCCD {item.store_section}
                     </Text>
                 )}
             </TouchableOpacity>
@@ -190,7 +190,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
                     </View>
                     {shoppingList && (
                         <Text style={styles.headerSubtitle}>
-                            {checkedCount}/{totalItems} articles cochés
+                            {t('shoppingList.checkedSummary', { checked: checkedCount, total: totalItems })}
                         </Text>
                     )}
                 </View>
@@ -200,7 +200,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
             {shoppingList && shoppingList.items.length > 0 && (
                 <View style={styles.optionsBar}>
                     <View style={styles.optionRow}>
-                        <Text style={styles.optionLabel}>Par magasin</Text>
+                        <Text style={styles.optionLabel}>{t('shoppingList.organizeByStore')}</Text>
                         <Switch
                             value={organizedByStore}
                             onValueChange={organizeByStore}
@@ -208,7 +208,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
                         />
                     </View>
                     <View style={styles.optionRow}>
-                        <Text style={styles.optionLabel}>Par rayon</Text>
+                        <Text style={styles.optionLabel}>{t('shoppingList.organizeByAisle')}</Text>
                         <Switch
                             value={organizedByAisle}
                             onValueChange={organizeByAisle}

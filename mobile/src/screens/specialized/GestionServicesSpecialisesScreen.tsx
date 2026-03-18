@@ -47,7 +47,7 @@ interface SpecializedService {
 
 const GestionServicesSpecialisesScreen: React.FC = () => {
     const navigation = useNavigation();
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const [services, setServices] = useState<SpecializedService[]>([]);
     const [loading, setLoading] = useState(true);
     const { t } = useLanguageSafe();
@@ -546,11 +546,11 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
             case 'pharmacie':
                 return service.nom || 'Pharmacie';
             case 'hopital':
-                return service.nom || t('gestionServicesSpecialises.hopitalclinique');
+                return service.nom || 'Hôpital/Clinique';
             case 'laboratoire':
                 return service.nom || 'Laboratoire';
             case 'agence_voyage':
-                return service.nom_agence || t('gestionServicesSpecialises.agenceDeVoyage');
+                return service.nom_agence || 'Agence de Voyage';
             case 'covoiturage':
                 return `${service.depart} → ${service.destination}`;
             case 'taxi':
@@ -563,19 +563,19 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
     const getServiceIcon = (type: SpecializedService['type']): string => {
         switch (type) {
             case 'pharmacie':
-                return '💊';
+                return '\uD83D\uDC8A';
             case 'hopital':
-                return '🏥';
+                return '\uD83C\uDFE5';
             case 'laboratoire':
-                return '🔬';
+                return '\uD83D\uDD2C';
             case 'agence_voyage':
-                return '🚌';
+                return '\uD83D\uDE8C';
             case 'covoiturage':
-                return '🚗';
+                return '\uD83D\uDE97';
             case 'taxi':
-                return '🚕';
+                return '\uD83D\uDE95';
             default:
-                return '📋';
+                return '\uD83D\uDCCB';
         }
     };
 
@@ -880,7 +880,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     <Text style={styles.serviceName}>{getServiceName(item)}</Text>
                     <Text style={styles.serviceType}>
                         {item.type === 'pharmacie' ? 'Pharmacie' :
-                            item.type === 'hopital' ? t('gestionServicesSpecialisesScreen.hopitalclinique') :
+                            item.type === 'hopital' ? 'Hôpital/Clinique' :
                                 item.type === 'laboratoire' ? 'Laboratoire' :
                                     item.type === 'agence_voyage' ? 'Agence de Voyage' :
                                         item.type === 'covoiturage' ? 'Covoiturage' :
@@ -903,7 +903,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
             {(item.is_on_duty_now || item.is_available_now) && (
                 <View style={styles.availabilityBadge}>
                     <Text style={styles.availabilityText}>
-                        {item.is_on_duty_now ? '🟢 DE GARDE' : '🟢 DISPONIBLE'}
+                        {item.is_on_duty_now ? '\uD83D\uDFE2 DE GARDE' : '\uD83D\uDFE2 DISPONIBLE'}
                     </Text>
                 </View>
             )}
@@ -916,14 +916,14 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                         onPress={() => (navigation as any).navigate('AgencyTicketManagement')}
                     >
                         <SafeIcon name="ticket" size={18} color="#fff" />
-                        <Text style={styles.ticketsButtonText}>{t('gestionServicesSpecialises.gererLesTickets')}</Text>
+                        <Text style={styles.ticketsButtonText}>Gérer les tickets</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.ticketsButton, styles.agencyButton, { backgroundColor: modernColors.primary }]}
                         onPress={() => (navigation as any).navigate('ManageAgencySchedules')}
                     >
                         <SafeIcon name="clock" size={18} color="#fff" />
-                        <Text style={styles.ticketsButtonText}>{t('gestionServicesSpecialises.horairesDeDepart')}</Text>
+                        <Text style={styles.ticketsButtonText}>Horaires de départ</Text>
                     </TouchableOpacity>
                 </View>
             )}
@@ -934,7 +934,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     onPress={() => handleEdit(item)}
                 >
                     <SafeIcon name="edit" size={16} color={modernColors.primary} />
-                    <Text style={styles.actionButtonText}>{t('gestionServicesSpecialisesScreen.modifier')}</Text>
+                    <Text style={styles.actionButtonText}>Modifier</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -952,7 +952,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                             { color: item.is_active ? '#EF4444' : '#10B981' },
                         ]}
                     >
-                        {item.is_active ? t('gestionServicesSpecialisesScreen.desactiver') : 'Activer'}
+                        {item.is_active ? 'Désactiver' : 'Activer'}
                     </Text>
                 </TouchableOpacity>
 
@@ -980,11 +980,11 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>{t('gestionServicesSpecialises.gestionServicesSpecialises')}</Text>
+                    <Text style={styles.title}>Gestion Services Spécialisés</Text>
                 </View>
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="shield-off" size={64} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyTitle}>{t('gestionServicesSpecialises.accesReserveAuxPartenaires')}</Text>
+                    <Text style={styles.emptyTitle}>Accès réservé aux partenaires</Text>
                     <Text style={styles.emptyText}>
                         Cette section est réservée aux partenaires commerciaux. Si vous souhaitez devenir partenaire, veuillez vous inscrire depuis l'écran de connexion.
                     </Text>
@@ -992,7 +992,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                         style={styles.createButton}
                         onPress={() => navigation.goBack()}
                     >
-                        <Text style={styles.createButtonText}>{t('gestionServicesSpecialises.retour')}</Text>
+                        <Text style={styles.createButtonText}>Retour</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -1010,7 +1010,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>{t('gestionServicesSpecialises.gestionServicesSpecialises')}</Text>
+                    <Text style={styles.title}>Gestion Services Spécialisés</Text>
                 </View>
 
                 {/* Skeleton pour la barre de recherche */}
@@ -1053,7 +1053,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>{t('gestionServicesSpecialises.gestionServicesSpecialises')}</Text>
+                <Text style={styles.title}>Gestion Services Spécialisés</Text>
                 <View style={styles.headerActions}>
                     {/* ✅ Phase 6.2 & 6.5: Indicateur mode hors ligne et statut sync */}
                     {isOffline && (
@@ -1106,12 +1106,6 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                             >
                                 <SafeIcon name="check-square" size={20} color={modernColors.primary} />
                             </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); }}
-                                style={[styles.dashboardButton, { backgroundColor: '#FEF2F2' }]}
-                            >
-                                <SafeIcon name="log-out" size={20} color="#DC2626" />
-                            </TouchableOpacity>
                         </>
                     ) : (
                         <>
@@ -1122,7 +1116,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 }}
                                 style={styles.cancelSelectionButton}
                             >
-                                <Text style={styles.cancelSelectionText}>{t('gestionServicesSpecialisesScreen.annuler')}</Text>
+                                <Text style={styles.cancelSelectionText}>Annuler</Text>
                             </TouchableOpacity>
                             <Text style={styles.selectionCount}>
                                 {selectedServices.size} sélectionné{selectedServices.size > 1 ? 's' : ''}
@@ -1138,7 +1132,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 onSearchChange={setSearchQuery}
                 sortConfig={sortConfig}
                 onSortChange={setSortConfig}
-                placeholder={t('gestionServicesSpecialises.rechercherDansLaListe')}
+                placeholder="Rechercher dans la liste..."
             />
 
             {/* Filtres et Toggle */}
@@ -1252,7 +1246,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     onPress={() => (navigation as any).navigate('ServicesDashboard')}
                 >
                     <SafeIcon name="bar-chart-2" size={20} color={modernColors.primary} />
-                    <Text style={styles.dashboardButtonText}>{t('gestionServicesSpecialises.accederAuDashboard')}</Text>
+                    <Text style={styles.dashboardButtonText}>Accéder au Dashboard</Text>
                 </TouchableOpacity>
             </View>
 
@@ -1275,41 +1269,42 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     </View>
                     <Text style={styles.emptyTitle} accessibilityRole="header">
                         {searchQuery || filter !== 'tous'
-                            ? t('gestionServicesSpecialisesScreen.aucunResultatTrouve')
+                            ? 'Aucun résultat trouvé'
                             : 'Bienvenue sur votre espace partenaire'}
                     </Text>
                     <Text style={styles.emptyText} accessibilityRole="text">
                         {searchQuery || filter !== 'tous'
-                            ? t('gestionServicesSpecialisesScreen.aucunServiceNeCorrespondAVos')
-                            : t('gestionServicesSpecialisesScreen.startByCreatingService')}
+                            ? 'Aucun service ne correspond à vos critères de recherche. Essayez de modifier vos filtres.'
+                            : 'Commencez par créer votre premier service pour proposer vos prestations aux utilisateurs de <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>.'}
                     </Text>
                     {/* ✅ AMÉLIORÉ: CTA avec navigation directe vers le bon formulaire selon le partner_type */}
                     <View style={styles.emptyActions}>
                         {user?.role === 'partenaire' && (() => {
                             const partnerFormMap: Record<string, { screen: string; label: string }> = {
-                                'pharmacie': { screen: 'PharmacieForm', label: t('gestionServicesSpecialisesScreen.enregistrerMaPharmacie') },
-                                'hopital': { screen: 'HopitalForm', label: t('gestionServicesSpecialises.enregistrerMonHopital') },
-                                'laboratoire': { screen: 'LaboratoireForm', label: t('gestionServicesSpecialisesScreen.enregistrerMonLaboratoire') },
-                                'banquesang': { screen: 'BanqueSangForm', label: t('gestionServicesSpecialisesScreen.enregistrerMaBanqueDeSang') },
-                                'agence de voyage': { screen: 'AgenceVoyageForm', label: t('gestionServicesSpecialisesScreen.enregistrerMonAgence') },
-                                'hotel': { screen: 'HotelDashboard', label: t('gestionServicesSpecialises.gererMonHotel') },
-                                'meuble': { screen: 'HotelDashboard', label: t('gestionServicesSpecialises.gererMonMeuble') },
-                                'chauffeur': { screen: 'TaxiForm', label: t('gestionServicesSpecialises.creerMonProfilChauffeur') },
-                                'supermarche': { screen: 'SupermarketHome', label: t('gestionServicesSpecialises.gererMonSupermarche') },
+                                'pharmacie': { screen: 'PharmacieForm', label: 'Enregistrer ma pharmacie' },
+                                'hopital': { screen: 'HopitalForm', label: 'Enregistrer mon hôpital' },
+                                'laboratoire': { screen: 'LaboratoireForm', label: 'Enregistrer mon laboratoire' },
+                                'banquesang': { screen: 'BanqueSangForm', label: 'Enregistrer ma banque de sang' },
+                                'agence de voyage': { screen: 'AgenceVoyageForm', label: 'Enregistrer mon agence' },
+                                'hotel': { screen: 'HotelDashboard', label: 'Gérer mon hôtel' },
+                                'meuble': { screen: 'HotelDashboard', label: 'Gérer mon meublé' },
+                                'chauffeur': { screen: 'TaxiForm', label: 'Créer mon profil chauffeur' },
+                                'covoiturage': { screen: 'CovoiturageForm', label: 'Gérer mes covoiturages' },
+                                'supermarche': { screen: 'SupermarketHome', label: 'Gérer mon supermarché' },
                                 'offres_emploi': { screen: 'CreateOffre', label: 'Publier une offre d\'emploi' },
                                 'recruteur': { screen: 'CreateOffre', label: 'Publier une offre d\'emploi' },
                                 'employeur': { screen: 'CreateOffre', label: 'Publier une offre d\'emploi' },
                             };
                             const formInfo = user.partner_type ? partnerFormMap[user.partner_type] : null;
                             const targetScreen = formInfo?.screen || 'MesServicesSpecialises';
-                            const buttonLabel = formInfo?.label || t('gestionServicesSpecialises.creerUnService');
+                            const buttonLabel = formInfo?.label || 'Créer un service';
                             return (
                                 <TouchableOpacity
                                     onPress={() => (navigation as any).navigate(targetScreen)}
                                     style={[styles.createButton, { backgroundColor: modernColors.primary }]}
                                     accessibilityRole="button"
                                     accessibilityLabel={buttonLabel}
-                                    accessibilityHint=t('gestionServicesSpecialisesScreen.ouvreLeFormulaireDeCreationDe')
+                                    accessibilityHint="Ouvre le formulaire de création de service"
                                 >
                                     <SafeIcon name="plus" size={18} color="#fff" />
                                     <Text style={styles.createButtonText}>{buttonLabel}</Text>
@@ -1329,10 +1324,10 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 }}
                                 style={[styles.createButton, styles.clearButton]}
                                 accessibilityRole="button"
-                                accessibilityLabel={t('gestionServicesSpecialises.reinitialiserTousLesFiltres')}
+                                accessibilityLabel="Réinitialiser tous les filtres"
                             >
                                 <SafeIcon name="x" size={18} color={modernColors.textSecondary} />
-                                <Text style={styles.clearButtonText}>{t('gestionServicesSpecialises.reinitialiserLesFiltres')}</Text>
+                                <Text style={styles.clearButtonText}>Réinitialiser les filtres</Text>
                             </TouchableOpacity>
                         ) : (
                             <TouchableOpacity

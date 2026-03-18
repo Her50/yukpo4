@@ -76,7 +76,7 @@ export const uploadToCloud = async (
         if (useDirectUpload && fileUri.startsWith('file://')) {
             // ✅ Upload direct via FormData (React Native compatible)
             // Pour React Native, on utilise l'URI file:// directement dans FormData
-            console.log('[CloudUpload] 📤 Upload direct (FormData) pour fichier volumineux:', formatFileSize(fileSize));
+            console.log('[CloudUpload] \uD83D\uDCE4 Upload direct (FormData) pour fichier volumineux:', formatFileSize(fileSize));
             
             // En React Native, FormData accepte les objets avec uri, type, name
             formData.append('file', {
@@ -138,7 +138,7 @@ export const uploadToCloud = async (
         }
         // Ne pas définir Content-Type pour FormData, le navigateur le fera avec boundary
 
-        console.log('[CloudUpload] 📤 Envoi upload:', {
+        console.log('[CloudUpload] \uD83D\uDCE4 Envoi upload:', {
             url: uploadUrl,
             fileType,
             fileName,

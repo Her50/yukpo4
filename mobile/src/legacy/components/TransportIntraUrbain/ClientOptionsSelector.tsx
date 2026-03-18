@@ -75,7 +75,7 @@ const ClientOptionsSelector: React.FC<ClientOptionsSelectorProps> = ({
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                     <SafeIcon name="map-pin" size={20} color="#F59E0B" />
-                    <Text style={styles.sectionTitle}>📍 Destination</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDCCD Destination</Text>
                 </View>
                 <TextInput
                     style={styles.input}
@@ -85,7 +85,7 @@ const ClientOptionsSelector: React.FC<ClientOptionsSelectorProps> = ({
                     multiline
                 />
                 <Text style={styles.hint}>
-                    💡 Soyez précis (quartier, rue, point de repère)
+                    \uD83D\uDCA1 Soyez précis (quartier, rue, point de repère)
                 </Text>
             </View>
 
@@ -131,7 +131,7 @@ const ClientOptionsSelector: React.FC<ClientOptionsSelectorProps> = ({
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                     <SafeIcon name="file-text" size={20} color="#F59E0B" />
-                    <Text style={styles.sectionTitle}>📝 Notes spéciales</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDCDD Notes spéciales</Text>
                 </View>
                 <TextInput
                     style={[styles.input, styles.textArea]}

@@ -25,7 +25,7 @@ const OfflineIndicator: React.FC = () => {
                 </View>
             ) : isSyncing ? (
                 <View style={[styles.banner, styles.syncingBanner]}>
-                    <Text style={styles.text}>🔄 Synchronisation en cours...</Text>
+                    <Text style={styles.text}>\uD83D\uDD04 Synchronisation en cours...</Text>
                 </View>
             ) : queueLength > 0 ? (
                 <View style={[styles.banner, styles.pendingBanner]}>

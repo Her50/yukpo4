@@ -20,7 +20,6 @@ import { autocompleteHistoryService } from '../services/autocompleteHistoryServi
 import { modernColors } from '../theme/modernTheme';
 import { extractAvailableCharacteristics } from '../utils/characteristicsExtractor';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SmartSearchBarProps {
     placeholder?: string;
@@ -42,7 +41,7 @@ interface Suggestion {
 }
 
 export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({
-    placeholder={t('smartSearchBar.rechercher')},
+    placeholder = "Rechercher...",
     onSearch,
     onClear,
     initialValue = '',
@@ -51,8 +50,7 @@ export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({
     onLocationFilterPress, // ✅ NOUVEAU
     hasLocationFilter = false, // ✅ NOUVEAU
 }) => {
-        const { t } = useLanguageSafe();
-const [searchText, setSearchText] = useState(initialValue);
+    const [searchText, setSearchText] = useState(initialValue);
     const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -146,34 +144,34 @@ const [searchText, setSearchText] = useState(initialValue);
 
     const getIconForKey = (key: string): string => {
         const iconMap: Record<string, string> = {
-            marque: '🏷️',
-            modele: '📦',
-            type: '🔖',
-            couleur: '🎨',
-            competence: '💼',
+            marque: '\uD83C\uDFF7️',
+            modele: '\uD83D\uDCE6',
+            type: '\uD83D\uDD16',
+            couleur: '\uD83C\uDFA8',
+            competence: '\uD83D\uDCBC',
             specialite: '⭐',
-            type_service: '🛠️',
-            domaine: '📚',
-            niveau: '📊',
-            experience: '🎓',
-            annee: '📅',
-            taille: '📏',
-            pointure: '👟',
-            matiere: '🧵',
+            type_service: '\uD83D\uDEE0️',
+            domaine: '\uD83D\uDCDA',
+            niveau: '\uD83D\uDCCA',
+            experience: '\uD83C\uDF93',
+            annee: '\uD83D\uDCC5',
+            taille: '\uD83D\uDCCF',
+            pointure: '\uD83D\uDC5F',
+            matiere: '\uD83E\uDDF5',
             style: '✨',
             etat: '⭐',
-            version: '🔢',
+            version: '\uD83D\uDD22',
             carburant: '⛽',
             transmission: '⚙️',
             puissance: '⚡',
-            kilometrage: '🛣️',
-            dimensions: '📐',
+            kilometrage: '\uD83D\uDEE3️',
+            dimensions: '\uD83D\uDCD0',
             poids: '⚖️',
             forme: '◾',
-            nombre_de_places: '👥',
-            capacite: '📊',
+            nombre_de_places: '\uD83D\uDC65',
+            capacite: '\uD83D\uDCCA',
         };
-        return iconMap[key.toLowerCase()] || '🔍';
+        return iconMap[key.toLowerCase()] || '\uD83D\uDD0D';
     };
 
     // ✅ NOUVEAU: Compter le total de filtres actifs
@@ -338,7 +336,7 @@ const [searchText, setSearchText] = useState(initialValue);
             {showSuggestions && suggestions.length > 0 && (
                 <View style={styles.suggestionsContainer}>
                     <Text style={styles.suggestionsTitle}>
-                        💡 Suggestions ({suggestions.length})
+                        \uD83D\uDCA1 Suggestions ({suggestions.length})
                     </Text>
                     <ScrollView
                         style={styles.suggestionsList}

@@ -22,6 +22,7 @@ import { useToaster } from '../../components/ToasterProvider';
 import TimeSlotPicker from '../../components/delivery/TimeSlotPicker';
 import { VEHICLE_TRANSPORT_OPTIONS, type VehicleType } from '../../config/deliveryConfig';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
@@ -35,11 +36,11 @@ interface DocumentFile {
 
 // ✅ REFONDU: Liste des types de coursiers disponibles avec labels optimisés
 const COURIER_TYPES = [
-    { value: 'classic', label: 'Coursier', icon: '📦' },
-    { value: 'market_shopping', label: t('courierRegistration.coursesMarche'), icon: '🛒' },
-    { value: 'taxi', label: 'Chauffeur Taxi', icon: '🚕' },
-    { value: 'carpooling', label: 'Covoiturage', icon: '🚗' },
-    { value: 'moving', label: t('courierRegistration.demenagement'), icon: '🚚' },
+    { value: 'classic', label: 'Coursier', icon: '\uD83D\uDCE6' },
+    { value: 'market_shopping', label: 'Courses Marché', icon: '\uD83D\uDED2' },
+    { value: 'taxi', label: 'Chauffeur Taxi', icon: '\uD83D\uDE95' },
+    { value: 'carpooling', label: 'Covoiturage', icon: '\uD83D\uDE97' },
+    { value: 'moving', label: 'Déménagement', icon: '\uD83D\uDE9A' },
 ] as const;
 
 const CourierRegistrationScreen: React.FC = () => {
@@ -494,7 +495,7 @@ const CourierRegistrationScreen: React.FC = () => {
                 if (profile.paymentMethod) setPaymentMethod(profile.paymentMethod);
 
                 console.log('[CourierRegistrationScreen] ✅ Données du brouillon chargées');
-                toaster.info(t('courierRegistrationScreen.brouillonChargeVousPouvezContinuerA'));
+                toaster.info('\uD83D\uDCDD Brouillon chargé. Vous pouvez continuer à compléter votre candidature.');
             }
         } catch (error) {
             console.error('[CourierRegistrationScreen] Erreur chargement brouillon:', error);
@@ -788,7 +789,7 @@ const CourierRegistrationScreen: React.FC = () => {
             // ✅ CORRIGÉ: Convertir -1 (Yukpo virtuel) en null pour éviter les erreurs de contrainte de clé étrangère
             const validPartnerId = selectedPartnerId && selectedPartnerId > 0 ? selectedPartnerId : null;
 
-            console.log('[CourierRegistrationScreen] 🔍 Soumission avec partner_id:', {
+            console.log('[CourierRegistrationScreen] \uD83D\uDD0D Soumission avec partner_id:', {
                 selectedPartnerId,
                 validPartnerId,
                 'est Yukpo virtuel': selectedPartnerId === -1,
@@ -802,8 +803,8 @@ const CourierRegistrationScreen: React.FC = () => {
             });
 
             // ✅ DEBUG: Log complet de la réponse pour diagnostic
-            console.log('[CourierRegistrationScreen] 🔍 Réponse complète API:', JSON.stringify(response, null, 2));
-            console.log('[CourierRegistrationScreen] 🔍 Détails réponse:', {
+            console.log('[CourierRegistrationScreen] \uD83D\uDD0D Réponse complète API:', JSON.stringify(response, null, 2));
+            console.log('[CourierRegistrationScreen] \uD83D\uDD0D Détails réponse:', {
                 'response.success': response.success,
                 'response.error': response.error,
                 'response.status': response.status,
@@ -827,8 +828,8 @@ const CourierRegistrationScreen: React.FC = () => {
 
                 // ✅ CORRIGÉ: Afficher le toast de confirmation immédiatement
                 const toastMessage = submit
-                    ? t('courierRegistrationScreen.candidatureSoumiseAvecSuccesVotreFormulaire')
-                    : t('courierRegistrationScreen.brouillonEnregistreVousPouvezCompleterEt');
+                    ? '✅ Candidature soumise avec succès ! Votre formulaire est en attente de validation.'
+                    : '\uD83D\uDCBE Brouillon enregistré ! Vous pouvez compléter et soumettre plus tard.';
 
                 console.log('[CourierRegistrationScreen] ✅ Réponse succès, affichage toast:', toastMessage);
                 console.log('[CourierRegistrationScreen] Structure réponse:', {
@@ -919,7 +920,7 @@ const CourierRegistrationScreen: React.FC = () => {
             <SafeNativeView style={styles.container}>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>{t('courierRegistration.verificationDuStatut')}</Text>
+                    <Text style={styles.loadingText}>Vérification du statut...</Text>
                 </View>
             </SafeNativeView>
         );
@@ -930,12 +931,12 @@ const CourierRegistrationScreen: React.FC = () => {
             <SafeNativeView style={styles.container}>
                 <View style={styles.statusContainer}>
                     <SafeIcon name="check-circle" size={64} color={modernColors.success} />
-                    <Text style={styles.statusTitle}>{t('courierRegistration.candidatureApprouvee')}</Text>
+                    <Text style={styles.statusTitle}>Candidature approuvée !</Text>
                     <Text style={styles.statusText}>
                         Félicitations ! Votre candidature de coursier a été approuvée. Vous pouvez maintenant recevoir des livraisons.
                     </Text>
                     <NativeButton
-                        title={t('courierRegistrationScreen.voirMesLivraisons')}
+                        title="Voir mes livraisons"
                         variant="primary"
                         onPress={() => navigation.navigate('Delivery' as never)}
                     />
@@ -954,7 +955,7 @@ const CourierRegistrationScreen: React.FC = () => {
                         Votre candidature a été soumise avec succès. Notre équipe l'examinera sous peu. Vous recevrez une notification une fois la décision prise.
                     </Text>
                     <NativeButton
-                        title={t('courierRegistrationScreen.retour')}
+                        title="Retour"
                         variant="outline"
                         onPress={() => navigation.goBack()}
                     />
@@ -968,12 +969,12 @@ const CourierRegistrationScreen: React.FC = () => {
             <SafeNativeView style={styles.container}>
                 <View style={styles.statusContainer}>
                     <SafeIcon name="x-circle" size={64} color={modernColors.error} />
-                    <Text style={styles.statusTitle}>{t('courierRegistration.candidatureRefusee')}</Text>
+                    <Text style={styles.statusTitle}>Candidature refusée</Text>
                     <Text style={styles.statusText}>
-                        {t('courierRegistrationScreen.candidatureRefuseeDetail')}
+                        Votre candidature n'a pas été approuvée. Veuillez contacter le support pour plus d'informations.
                     </Text>
                     <NativeButton
-                        title={t('courierRegistrationScreen.retour')}
+                        title="Retour"
                         variant="outline"
                         onPress={() => navigation.goBack()}
                     />
@@ -1005,15 +1006,15 @@ const CourierRegistrationScreen: React.FC = () => {
                 contentContainerStyle={[styles.scrollContent, { paddingBottom: Platform.OS === 'android' ? 400 : 350 }]}
             >
                 <View style={styles.header}>
-                    <Text style={styles.title}>{t('courierRegistration.devenirCoursierYukpo')}</Text>
-                        <Text style={styles.subtitle}>
-                            Complétez ce formulaire pour devenir coursier. Toutes les informations seront vérifiées avant validation.
-                        </Text>
+                    <Text style={styles.title}>Devenir coursier Yukpo</Text>
+                    <Text style={styles.subtitle}>
+                        Complétez ce formulaire pour devenir coursier. Toutes les informations seront vérifiées avant validation.
+                    </Text>
                 </View>
 
                 {/* ✅ REFONDU: Nature de l'activité (obligatoire) - Disposition améliorée pour éviter les retours à la ligne */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>{t('courierRegistration.natureDeLactivite')}</Text>
+                    <Text style={styles.sectionTitle}>Nature de l'activité *</Text>
                     <Text style={styles.helperText}>
                         Sélectionnez le type de service que vous souhaitez offrir.
                     </Text>
@@ -1064,61 +1065,61 @@ const CourierRegistrationScreen: React.FC = () => {
 
                 {/* Informations personnelles */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>{t('courierRegistration.informationsPersonnelles')}</Text>
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>{t('courierRegistration.nomComplet')}</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder={t('courierRegistration.entrezVotreNomComplet')}
-                                value={fullName}
-                                onChangeText={setFullName}
-                            />
-                        </View>
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>{t('courierRegistration.telephone')}</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder={t('courierRegistration.entrezVotreNumeroDeTelephone')}
-                                value={phone}
-                                onChangeText={setPhone}
-                                keyboardType="phone-pad"
-                            />
-                        </View>
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>Email</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Email"
-                                value={user?.email || ''}
-                                editable={false}
-                            />
-                        </View>
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>{t('courierRegistration.dateDeNaissance')}</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="YYYY-MM-DD"
-                                value={dateOfBirth}
-                                onChangeText={setDateOfBirth}
-                            />
-                        </View>
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>{t('courierRegistration.numeroDePieceDidentite')}</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder={t('courierRegistration.entrezVotreNumeroDePiece')} identité"
+                    <Text style={styles.sectionTitle}>Informations personnelles</Text>
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Nom complet *</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Entrez votre nom complet"
+                            value={fullName}
+                            onChangeText={setFullName}
+                        />
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Téléphone *</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Entrez votre numéro de téléphone"
+                            value={phone}
+                            onChangeText={setPhone}
+                            keyboardType="phone-pad"
+                        />
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Email</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Email"
+                            value={user?.email || ''}
+                            editable={false}
+                        />
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Date de naissance</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="YYYY-MM-DD"
+                            value={dateOfBirth}
+                            onChangeText={setDateOfBirth}
+                        />
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Numéro de pièce d'identité *</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Entrez votre numéro de pièce d'identité"
                             value={idNumber}
                             onChangeText={setIdNumber}
                         />
-                        </View>
+                    </View>
                 </NativeCard>
 
                 {/* Adresse */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>{t('courierRegistration.adresseDeResidence')}</Text>
+                    <Text style={styles.sectionTitle}>Adresse de résidence</Text>
                     <View style={styles.inputContainer}>
                         <LocationSelector
-                            label={t('courierRegistration.adresseComplete')}
+                            label="Adresse complète *"
                             value={address || ''}
                             onSelect={(location: LocationObject) => {
                                 // ✅ CORRIGÉ 2026-03-01: Utiliser LocationSelector avec autocomplete intelligent
@@ -1151,7 +1152,7 @@ const CourierRegistrationScreen: React.FC = () => {
                     </View>
                     <View style={styles.inputContainer}>
                         <LocationSelector
-                            label={t('courierRegistration.ville')}
+                            label="Ville *"
                             value={cityLocation || ''}
                             onSelect={(location: LocationObject) => {
                                 console.log('[CourierRegistrationScreen] onSelect ville appelé avec:', location);
@@ -1168,7 +1169,7 @@ const CourierRegistrationScreen: React.FC = () => {
                                     });
                                 }
                             }}
-                            placeholder={t('courierRegistration.rechercherUneVille')}
+                            placeholder="Rechercher une ville..."
                             scope="city"
                             required={true}
                             enrichWithBackend={true}
@@ -1185,7 +1186,7 @@ const CourierRegistrationScreen: React.FC = () => {
                                 const pays = location.components?.pays || location.place_name || location.raw || '';
                                 setCountry(pays);
                             }}
-                            placeholder={t('courierRegistration.rechercherUnPays')}
+                            placeholder="Rechercher un pays..."
                             scope="all"
                             enrichWithBackend={true}
                         />
@@ -1243,7 +1244,7 @@ const CourierRegistrationScreen: React.FC = () => {
                             />
                             <TextInput
                                 style={styles.input}
-                                placeholder={t('courierRegistration.modele')}
+                                placeholder="Modèle"
                                 value={vehicleModel}
                                 onChangeText={setVehicleModel}
                             />
@@ -1255,97 +1256,97 @@ const CourierRegistrationScreen: React.FC = () => {
                             />
                             {/* ✅ NOUVEAU 2026-01-04: Champ pour télécharger l'image du moyen de transport */}
                             <View style={styles.inputContainer}>
-                                <Text style={styles.inputLabel}>{t('courierRegistration.photoDuMoyenDeTransport')}</Text>
-                                    <View style={styles.documentRow}>
-                                        <View style={styles.documentInfo}>
-                                            {vehicleImage && <Text style={styles.documentName}>{vehicleImage.name}</Text>}
-                                            {!vehicleImage && <Text style={styles.documentHint}>{t('courierRegistration.aucuneImageSelectionnee')}</Text>}
-                                        </View>
-                                        <View style={styles.documentButtons}>
-                                            <NativeButton
-                                                title={t('courierRegistrationScreen.photo')}
-                                                variant="outline"
-                                                size="small"
-                                                onPress={() => pickImage('vehicle')}
-                                            />
-                                            <NativeButton
-                                                title="📄 Fichier"
-                                                variant="outline"
-                                                size="small"
-                                                onPress={() => pickDocument('vehicle')}
-                                            />
-                                        </View>
+                                <Text style={styles.inputLabel}>Photo du moyen de transport</Text>
+                                <View style={styles.documentRow}>
+                                    <View style={styles.documentInfo}>
+                                        {vehicleImage && <Text style={styles.documentName}>{vehicleImage.name}</Text>}
+                                        {!vehicleImage && <Text style={styles.documentHint}>Aucune image sélectionnée</Text>}
                                     </View>
+                                    <View style={styles.documentButtons}>
+                                        <NativeButton
+                                            title="\uD83D\uDCF7 Photo"
+                                            variant="outline"
+                                            size="small"
+                                            onPress={() => pickImage('vehicle')}
+                                        />
+                                        <NativeButton
+                                            title="\uD83D\uDCC4 Fichier"
+                                            variant="outline"
+                                            size="small"
+                                            onPress={() => pickDocument('vehicle')}
+                                        />
+                                    </View>
+                                </View>
                             </View>
                         </>
                     )}
                     {/* ✅ AMÉLIORÉ 2026-01-12: Champ partenaire (obligatoire) - Rendu opérationnel */}
                     <View style={styles.inputContainer}>
-                        <Text style={styles.inputLabel}>{t('courierRegistration.partenaireDeLivraison')}</Text>
-                            <Text style={styles.helperText}>
-                                Sélectionnez le partenaire de logistique auquel vous appartenez. Ce champ permet de gérer les coursiers qui feront les achats pour l'utilisateur au marché.
-                            </Text>
-                            {partners.length === 0 ? (
-                                <View style={styles.noPartnersContainer}>
-                                    <SafeIcon name="alert-circle" size={24} color={modernColors.warning || '#F59E0B'} type="lucide" />
-                                    <Text style={styles.errorText}>
-                                        Aucun partenaire de livraison disponible.
-                                    </Text>
-                                    <Text style={styles.helperText}>
-                                        Veuillez contacter l'administrateur pour créer un partenaire de livraison ou réessayez plus tard.
-                                    </Text>
+                        <Text style={styles.inputLabel}>Partenaire de livraison *</Text>
+                        <Text style={styles.helperText}>
+                            Sélectionnez le partenaire de logistique auquel vous appartenez. Ce champ permet de gérer les coursiers qui feront les achats pour l'utilisateur au marché.
+                        </Text>
+                        {partners.length === 0 ? (
+                            <View style={styles.noPartnersContainer}>
+                                <SafeIcon name="alert-circle" size={24} color={modernColors.warning || '#F59E0B'} type="lucide" />
+                                <Text style={styles.errorText}>
+                                    Aucun partenaire de livraison disponible.
+                                </Text>
+                                <Text style={styles.helperText}>
+                                    Veuillez contacter l'administrateur pour créer un partenaire de livraison ou réessayez plus tard.
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.refreshButton}
+                                    onPress={loadPartners}
+                                >
+                                    <SafeIcon name="refresh-cw" size={16} color={modernColors.primary} type="lucide" />
+                                    <Text style={styles.refreshButtonText}>Actualiser</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <View style={styles.pickerContainer}>
+                                {partners.map((partner) => (
                                     <TouchableOpacity
-                                        style={styles.refreshButton}
-                                        onPress={loadPartners}
+                                        key={partner.id}
+                                        style={[
+                                            styles.partnerOption,
+                                            selectedPartnerId === partner.id && styles.partnerOptionSelected
+                                        ]}
+                                        onPress={() => {
+                                            setSelectedPartnerId(partner.id);
+                                            console.log('[CourierRegistrationScreen] ✅ Partenaire sélectionné:', partner.id, partner.name);
+                                        }}
+                                        activeOpacity={0.7}
                                     >
-                                        <SafeIcon name="refresh-cw" size={16} color={modernColors.primary} type="lucide" />
-                                        <Text style={styles.refreshButtonText}>{t('courierRegistration.actualiser')}</Text>
+                                        <View style={styles.partnerOptionContent}>
+                                            <SafeIcon
+                                                name="building"
+                                                size={18}
+                                                color={selectedPartnerId === partner.id ? modernColors.surface : modernColors.primary}
+                                                type="lucide"
+                                            />
+                                            <Text style={[
+                                                styles.partnerOptionText,
+                                                selectedPartnerId === partner.id && styles.partnerOptionTextSelected
+                                            ]}>
+                                                {partner.name}
+                                            </Text>
+                                        </View>
+                                        {selectedPartnerId === partner.id && (
+                                            <SafeIcon name="check-circle" size={20} color={modernColors.surface} type="lucide" />
+                                        )}
                                     </TouchableOpacity>
-                                </View>
-                            ) : (
-                                <View style={styles.pickerContainer}>
-                                    {partners.map((partner) => (
-                                        <TouchableOpacity
-                                            key={partner.id}
-                                            style={[
-                                                styles.partnerOption,
-                                                selectedPartnerId === partner.id && styles.partnerOptionSelected
-                                            ]}
-                                            onPress={() => {
-                                                setSelectedPartnerId(partner.id);
-                                                console.log('[CourierRegistrationScreen] ✅ Partenaire sélectionné:', partner.id, partner.name);
-                                            }}
-                                            activeOpacity={0.7}
-                                        >
-                                            <View style={styles.partnerOptionContent}>
-                                                <SafeIcon
-                                                    name="building"
-                                                    size={18}
-                                                    color={selectedPartnerId === partner.id ? modernColors.surface : modernColors.primary}
-                                                    type="lucide"
-                                                />
-                                                <Text style={[
-                                                    styles.partnerOptionText,
-                                                    selectedPartnerId === partner.id && styles.partnerOptionTextSelected
-                                                ]}>
-                                                    {partner.name}
-                                                </Text>
-                                            </View>
-                                            {selectedPartnerId === partner.id && (
-                                                <SafeIcon name="check-circle" size={20} color={modernColors.surface} type="lucide" />
-                                            )}
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            )}
-                            {selectedPartnerId && (
-                                <View style={styles.selectedPartnerInfo}>
-                                    <SafeIcon name="info" size={14} color={modernColors.primary} type="lucide" />
-                                    <Text style={styles.selectedPartnerInfoText}>
-                                        Partenaire sélectionné : {partners.find(p => p.id === selectedPartnerId)?.name || 'Inconnu'}
-                                    </Text>
-                                </View>
-                            )}
+                                ))}
+                            </View>
+                        )}
+                        {selectedPartnerId && (
+                            <View style={styles.selectedPartnerInfo}>
+                                <SafeIcon name="info" size={14} color={modernColors.primary} type="lucide" />
+                                <Text style={styles.selectedPartnerInfoText}>
+                                    Partenaire sélectionné : {partners.find(p => p.id === selectedPartnerId)?.name || 'Inconnu'}
+                                </Text>
+                            </View>
+                        )}
                     </View>
                 </NativeCard>
 
@@ -1354,18 +1355,18 @@ const CourierRegistrationScreen: React.FC = () => {
                     <Text style={styles.sectionTitle}>Documents</Text>
                     <View style={styles.documentRow}>
                         <View style={styles.documentInfo}>
-                            <Text style={styles.documentLabel}>{t('courierRegistration.pieceDidentite')}</Text>
+                            <Text style={styles.documentLabel}>Pièce d'identité *</Text>
                             {idDocument && <Text style={styles.documentName}>{idDocument.name}</Text>}
                         </View>
                         <View style={styles.documentButtons}>
                             <NativeButton
-                                title={t('courierRegistrationScreen.photo')}
+                                title="\uD83D\uDCF7 Photo"
                                 variant="outline"
                                 size="small"
                                 onPress={() => pickImage('id')}
                             />
                             <NativeButton
-                                title="📄 Fichier"
+                                title="\uD83D\uDCC4 Fichier"
                                 variant="outline"
                                 size="small"
                                 onPress={() => pickDocument('id')}
@@ -1380,13 +1381,13 @@ const CourierRegistrationScreen: React.FC = () => {
                             </View>
                             <View style={styles.documentButtons}>
                                 <NativeButton
-                                    title={t('courierRegistrationScreen.photo')}
+                                    title="\uD83D\uDCF7 Photo"
                                     variant="outline"
                                     size="small"
                                     onPress={() => pickImage('license')}
                                 />
                                 <NativeButton
-                                    title="📄 Fichier"
+                                    title="\uD83D\uDCC4 Fichier"
                                     variant="outline"
                                     size="small"
                                     onPress={() => pickDocument('license')}
@@ -1398,20 +1399,20 @@ const CourierRegistrationScreen: React.FC = () => {
                         <>
                             <View style={styles.documentRow}>
                                 <View style={styles.documentInfo}>
-                                    <Text style={styles.documentLabel}>{t('courierRegistration.carteGrise')}</Text>
-                                        {vehicleRegistration && (
-                                            <Text style={styles.documentName}>{vehicleRegistration.name}</Text>
-                                        )}
+                                    <Text style={styles.documentLabel}>Carte grise</Text>
+                                    {vehicleRegistration && (
+                                        <Text style={styles.documentName}>{vehicleRegistration.name}</Text>
+                                    )}
                                 </View>
                                 <View style={styles.documentButtons}>
                                     <NativeButton
-                                        title={t('courierRegistrationScreen.photo')}
+                                        title="\uD83D\uDCF7 Photo"
                                         variant="outline"
                                         size="small"
                                         onPress={() => pickImage('registration')}
                                     />
                                     <NativeButton
-                                        title="📄 Fichier"
+                                        title="\uD83D\uDCC4 Fichier"
                                         variant="outline"
                                         size="small"
                                         onPress={() => pickDocument('registration')}
@@ -1428,13 +1429,13 @@ const CourierRegistrationScreen: React.FC = () => {
                                     </View>
                                     <View style={styles.documentButtons}>
                                         <NativeButton
-                                            title={t('courierRegistrationScreen.photo')}
+                                            title="\uD83D\uDCF7 Photo"
                                             variant="outline"
                                             size="small"
                                             onPress={() => pickImage('insurance')}
                                         />
                                         <NativeButton
-                                            title="📄 Fichier"
+                                            title="\uD83D\uDCC4 Fichier"
                                             variant="outline"
                                             size="small"
                                             onPress={() => pickDocument('insurance')}
@@ -1455,13 +1456,13 @@ const CourierRegistrationScreen: React.FC = () => {
                         </View>
                         <View style={styles.documentButtons}>
                             <NativeButton
-                                title={t('courierRegistrationScreen.photo')}
+                                title="\uD83D\uDCF7 Photo"
                                 variant="outline"
                                 size="small"
                                 onPress={() => pickImage('location')}
                             />
                             <NativeButton
-                                title="📄 Fichier"
+                                title="\uD83D\uDCC4 Fichier"
                                 variant="outline"
                                 size="small"
                                 onPress={() => pickDocument('location')}
@@ -1472,7 +1473,7 @@ const CourierRegistrationScreen: React.FC = () => {
 
                 {/* Disponibilités */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>{t('courierRegistration.disponibilites')}</Text>
+                    <Text style={styles.sectionTitle}>Disponibilités</Text>
                     <Text style={styles.helperText}>
                         Sélectionnez vos jours et plages horaires de travail. Vous pouvez configurer des horaires différents pour chaque jour.
                     </Text>
@@ -1484,7 +1485,7 @@ const CourierRegistrationScreen: React.FC = () => {
 
                 {/* Bio et expérience */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>{t('courierRegistration.informationsComplementaires')}</Text>
+                    <Text style={styles.sectionTitle}>Informations complémentaires</Text>
                     <TextInput
                         style={[styles.input, styles.textArea]}
                         placeholder="Bio (optionnel)"
@@ -1495,7 +1496,7 @@ const CourierRegistrationScreen: React.FC = () => {
                     />
                     <TextInput
                         style={[styles.input, styles.textArea]}
-                        placeholder={t('courierRegistration.experienceOptionnel')}
+                        placeholder="Expérience (optionnel)"
                         value={experience}
                         onChangeText={setExperience}
                         multiline
@@ -1519,13 +1520,13 @@ const CourierRegistrationScreen: React.FC = () => {
                 <View style={styles.actions}>
                     <View style={styles.actionButtonContainer}>
                         <NativeButton
-                            title={t('courierRegistrationScreen.enregistrerEnBrouillon')}
+                            title="Enregistrer en brouillon"
                             variant="outline"
                             onPress={() => handleSubmit(false)}
                             disabled={loading}
                         />
                         <Text style={styles.actionHelperText}>
-                            💾 Sauvegardez votre progression sans soumettre. Vous pourrez compléter et soumettre plus tard.
+                            \uD83D\uDCBE Sauvegardez votre progression sans soumettre. Vous pourrez compléter et soumettre plus tard.
                         </Text>
                     </View>
                     <View style={styles.actionButtonContainer}>

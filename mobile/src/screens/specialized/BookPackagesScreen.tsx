@@ -3,7 +3,6 @@
 
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
     Alert,
@@ -17,18 +16,10 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { useToaster } from '../../components/ToasterProvider';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { BookDeliveryPackage, BookPurchase, bourseLivreV2Api } from '../../services/bourseLivreV2Api';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
-
-const STATUT_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-    a_constituer: { label: t('bookPackages.aConstituer'), color: '#f59e0b', icon: 'package' },
-    constitue: { label: t('bookPackages.constitue'), color: '#3b82f6', icon: 'check-square' },
-    en_route: { label: 'En route', color: '#8b5cf6', icon: 'truck' },
-    livre: { label: t('bookPackages.livre'), color: '#22c55e', icon: 'check-circle' },
-    confirme: { label: t('bookPackages.confirme'), color: '#059669', icon: 'shield' },
-};
 
 const NEXT_STATUS: Record<string, string> = {
     a_constituer: 'constitue',
@@ -37,30 +28,37 @@ const NEXT_STATUS: Record<string, string> = {
     livre: 'confirme',
 };
 
-const NEXT_STATUS_LABEL: Record<string, string> = {
-    a_constituer: t('bookPackagesScreen.marquerConstitue'),
-    constitue: t('bookPackagesScreen.demarrerLivraison'),
-    en_route: t('bookPackagesScreen.confirmerLivraison'),
-    livre: t('bookPackagesScreen.confirmerReception'),
-};
-
-const PURCHASE_STATUT_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-    en_attente: { label: t('bookPackages.enAttente'), color: '#f59e0b', icon: 'clock' },
-    confirme: { label: t('bookPackages.confirme'), color: '#3b82f6', icon: 'check-square' },
-    en_livraison: { label: 'En livraison', color: '#8b5cf6', icon: 'truck' },
-    livre: { label: t('bookPackages.livre'), color: '#22c55e', icon: 'check-circle' },
-    annule: { label: t('bookPackages.annule'), color: '#ef4444', icon: 'x-circle' },
-};
-
 interface Props {
     mode?: 'user' | 'courier'; // default: 'user'
 }
 
 const BookPackagesScreen: React.FC<Props> = ({ mode = 'user' }) => {
-    const { t } = useTranslation();
     const { user } = useAuth();
     const toaster = useToaster();
     const { t } = useLanguageSafe();
+
+    const STATUT_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+        a_constituer: { label: t('bookPackages.aConstituer', 'À constituer'), color: '#f59e0b', icon: 'package' },
+        constitue: { label: t('bookPackages.constitue', 'Constitué'), color: '#3b82f6', icon: 'check-square' },
+        en_route: { label: t('bookPackages.enRoute', 'En route'), color: '#8b5cf6', icon: 'truck' },
+        livre: { label: t('bookPackages.livre', 'Livré'), color: '#22c55e', icon: 'check-circle' },
+        confirme: { label: t('bookPackages.confirme', 'Confirmé'), color: '#059669', icon: 'shield' },
+    };
+
+    const NEXT_STATUS_LABEL: Record<string, string> = {
+        a_constituer: t('bookPackagesScreen.marquerConstitue', 'Marquer constitué'),
+        constitue: t('bookPackagesScreen.demarrerLivraison', 'Démarrer livraison'),
+        en_route: t('bookPackagesScreen.confirmerLivraison', 'Confirmer livraison'),
+        livre: t('bookPackagesScreen.confirmerReception', 'Confirmer réception'),
+    };
+
+    const PURCHASE_STATUT_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+        en_attente: { label: t('bookPackages.enAttente', 'En attente'), color: '#f59e0b', icon: 'clock' },
+        confirme: { label: t('bookPackages.confirme', 'Confirmé'), color: '#3b82f6', icon: 'check-square' },
+        en_livraison: { label: t('bookPackages.enLivraison', 'En livraison'), color: '#8b5cf6', icon: 'truck' },
+        livre: { label: t('bookPackages.livre', 'Livré'), color: '#22c55e', icon: 'check-circle' },
+        annule: { label: t('bookPackages.annule', 'Annulé'), color: '#ef4444', icon: 'x-circle' },
+    };
     const [activeTab, setActiveTab] = useState<'packages' | 'purchases'>('packages');
     const [packages, setPackages] = useState<BookDeliveryPackage[]>([]);
     const [purchases, setPurchases] = useState<BookPurchase[]>([]);
@@ -85,7 +83,7 @@ const BookPackagesScreen: React.FC<Props> = ({ mode = 'user' }) => {
             }
         } catch (error: any) {
             console.error('[BookPackagesScreen] Erreur:', error);
-            Alert.alert('Erreur', t('bourseLivreV2.packages.erreurChargement'));
+            Alert.alert(t('message.error', 'Erreur'), t('bourseLivreV2.packages.erreurChargement'));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -116,7 +114,7 @@ const BookPackagesScreen: React.FC<Props> = ({ mode = 'user' }) => {
                             toaster.show(t('bourseLivreV2.packages.paquetMisAJour', { ref: pkg.reference }), 'success');
                             loadData();
                         } catch (error: any) {
-                            Alert.alert('Erreur', t('bourseLivreV2.packages.erreurMaj'));
+                            Alert.alert(t('message.error', 'Erreur'), t('bourseLivreV2.packages.erreurMaj'));
                         }
                     },
                 },

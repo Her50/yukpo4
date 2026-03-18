@@ -67,8 +67,8 @@ const BusTicketPaymentScreen: React.FC = () => {
     const handlePaymentWithTokens = async () => {
         if (!user?.credits || user.credits < totalPrice) {
             Alert.alert(
-                'Solde insuffisant',
-                `Vous avez ${user?.credits || 0} tokens. Vous avez besoin de ${totalPrice} tokens.`,
+                t('busTicketPayment.soldeInsuffisant'),
+                `${t('busTicketPayment.vousAvez')} ${user?.credits || 0} tokens. ${t('busTicketPayment.vousAvezBesoinDe')} ${totalPrice} tokens.`,
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
@@ -110,11 +110,11 @@ const BusTicketPaymentScreen: React.FC = () => {
                     ]
                 );
             } else {
-                Alert.alert('Erreur', resData.error || t('busTicketPaymentScreen.lePaiementAEchoue'));
+                Alert.alert(t('message.error'), resData.error || t('busTicketPaymentScreen.lePaiementAEchoue'));
             }
         } catch (error: any) {
             console.error('[BusTicketPayment] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+            Alert.alert(t('message.error'), error.message || t('busTicketPaymentScreen.lePaiementAEchoue'));
         } finally {
             setLoading(false);
         }
@@ -143,7 +143,7 @@ const BusTicketPaymentScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-back" size={24} color={modernColors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Paiement</Text>
+                <Text style={styles.headerTitle}>{t('busTicketPayment.paiement')}</Text>
                 <View style={styles.placeholder} />
             </View>
 
@@ -155,13 +155,13 @@ const BusTicketPaymentScreen: React.FC = () => {
                         <Text style={styles.summaryValue}>{numberOfTickets}</Text>
                     </View>
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Prix unitaire:</Text>
+                        <Text style={styles.summaryLabel}>{t('busTicketPayment.prixUnitaire')}</Text>
                         <Text style={styles.summaryValue}>
                             {ticketPrice.toLocaleString()} FCFA
                         </Text>
                     </View>
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Sous-total:</Text>
+                        <Text style={styles.summaryLabel}>{t('busTicketPayment.sousTotal')}</Text>
                         <Text style={styles.summaryValue}>
                             {subtotal.toLocaleString()} FCFA
                         </Text>
@@ -174,12 +174,12 @@ const BusTicketPaymentScreen: React.FC = () => {
                     </View>
                     {isRoundTrip && (
                         <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>Aller-retour:</Text>
-                            <Text style={styles.summaryValue}>Oui</Text>
+                            <Text style={styles.summaryLabel}>{t('busTicketPayment.allerRetour')}</Text>
+                            <Text style={styles.summaryValue}>{t('common.oui')}</Text>
                         </View>
                     )}
                     <View style={[styles.summaryRow, styles.totalRow]}>
-                        <Text style={styles.totalLabel}>Total:</Text>
+                        <Text style={styles.totalLabel}>{t('busTicketPayment.total')}</Text>
                         <Text style={styles.totalValue}>
                             {totalPrice.toLocaleString()} FCFA
                         </Text>
@@ -211,7 +211,7 @@ const BusTicketPaymentScreen: React.FC = () => {
                             <View style={styles.paymentMethodInfo}>
                                 <Text style={styles.paymentMethodName}>Tokens</Text>
                                 <Text style={styles.paymentMethodBalance}>
-                                    Solde: {user?.credits || 0} tokens
+                                    {t('busTicketPayment.solde')}: {user?.credits || 0} tokens
                                 </Text>
                             </View>
                         </View>
@@ -256,7 +256,7 @@ const BusTicketPaymentScreen: React.FC = () => {
                     <View style={styles.warningCard}>
                         <SafeIcon name="warning" size={20} color={modernColors.warning} />
                         <Text style={styles.warningText}>
-                            Solde insuffisant. Rechargez vos tokens pour continuer.
+                            {t('busTicketPayment.soldeInsuffisantRechargez')}
                         </Text>
                     </View>
                 )}
@@ -279,7 +279,7 @@ const BusTicketPaymentScreen: React.FC = () => {
                         <ActivityIndicator color="#fff" />
                     ) : (
                         <Text style={styles.payButtonText}>
-                            Payer {totalPrice.toLocaleString()} FCFA
+                            {t('busTicketPayment.payer')} {totalPrice.toLocaleString()} FCFA
                         </Text>
                     )}
                 </TouchableOpacity>

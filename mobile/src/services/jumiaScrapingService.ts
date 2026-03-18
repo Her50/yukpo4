@@ -1,5 +1,5 @@
 /**
- * 🛒 SERVICE DE SCRAPING ÉTHIQUE JUMIA
+ * \uD83D\uDED2 SERVICE DE SCRAPING ÉTHIQUE JUMIA
  * 
  * IMPORTANT: 
  * - Respecter robots.txt
@@ -129,7 +129,7 @@ class JumiaScrapingService {
             const baseUrl = this.getBaseUrl(countryCode);
             const searchUrl = `${baseUrl}/catalog/?q=${encodeURIComponent(query)}&page=${page}`;
 
-            console.log(`[JumiaScraping] 📡 Scraping: ${searchUrl}`);
+            console.log(`[JumiaScraping] \uD83D\uDCE1 Scraping: ${searchUrl}`);
 
             // Headers pour simuler un navigateur
             const headers: Record<string, string> = {
@@ -373,7 +373,7 @@ class JumiaScrapingService {
                 }
             }
 
-            console.log(`[JumiaScraping] 🔍 Recherche: "${query}" (${config.countryCode})`);
+            console.log(`[JumiaScraping] \uD83D\uDD0D Recherche: "${query}" (${config.countryCode})`);
 
             // Vérifier le cache
             const cacheKey = `${config.countryCode}_${query}`;

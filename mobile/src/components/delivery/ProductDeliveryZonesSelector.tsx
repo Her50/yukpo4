@@ -121,7 +121,7 @@ const [zones, setZones] = useState<DeliveryZone[]>([]);
                 throw new Error('Erreur lors de la sauvegarde');
             }
 
-            Alert.alert(t('productDeliveryZonesSelector.zonesSauvegardees'), t('productDeliveryZonesSelector.lesZonesDeLivraisonOntEte'));
+            Alert.alert('✅ Zones sauvegardées', 'Les zones de livraison ont été associées au produit avec succès');
         } catch (error: any) {
             Alert.alert('Erreur', error.message || 'Impossible de sauvegarder les zones');
         } finally {
@@ -212,7 +212,7 @@ const [zones, setZones] = useState<DeliveryZone[]>([]);
             {selected.length > 0 && (
                 <View style={styles.footer}>
                     <Text style={styles.footerText}>
-                        {selected.length} zone{selected.length > 1 ? 's' : 't('productDeliveryZonesSelector.selectionneeselectedlength1')s' : ''}
+                        {selected.length} zone{selected.length > 1 ? 's' : ''} sélectionnée{selected.length > 1 ? 's' : ''}
                     </Text>
                 </View>
             )}

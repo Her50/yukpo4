@@ -1,5 +1,5 @@
 /**
- * 🌍 NOMS LOCAUX DES VÉHICULES EN AFRIQUE FRANCOPHONE
+ * \uD83C\uDF0D NOMS LOCAUX DES VÉHICULES EN AFRIQUE FRANCOPHONE
  * 
  * Ce fichier contient un mapping intelligent entre les noms populaires/locaux
  * utilisés dans chaque pays francophone et les véhicules réels.
@@ -22,7 +22,7 @@ export interface VehicleLocalName {
 }
 
 // ════════════════════════════════════════════════════════════
-// 🇨🇲 CAMEROUN - NOMS LOCAUX
+// \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN - NOMS LOCAUX
 // ════════════════════════════════════════════════════════════
 export const VEHICLE_NAMES_CAMEROUN: VehicleLocalName[] = [
     {
@@ -74,7 +74,7 @@ export const VEHICLE_NAMES_CAMEROUN: VehicleLocalName[] = [
 ];
 
 // ════════════════════════════════════════════════════════════
-// 🇨🇮 CÔTE D'IVOIRE - NOMS LOCAUX
+// \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE - NOMS LOCAUX
 // ════════════════════════════════════════════════════════════
 export const VEHICLE_NAMES_COTE_IVOIRE: VehicleLocalName[] = [
     {
@@ -114,7 +114,7 @@ export const VEHICLE_NAMES_COTE_IVOIRE: VehicleLocalName[] = [
 ];
 
 // ════════════════════════════════════════════════════════════
-// 🇸🇳 SÉNÉGAL - NOMS LOCAUX
+// \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL - NOMS LOCAUX
 // ════════════════════════════════════════════════════════════
 export const VEHICLE_NAMES_SENEGAL: VehicleLocalName[] = [
     {
@@ -160,7 +160,7 @@ export const VEHICLE_NAMES_SENEGAL: VehicleLocalName[] = [
 ];
 
 // ════════════════════════════════════════════════════════════
-// 🇨🇩 CONGO RDC/RC - NOMS LOCAUX
+// \uD83C\uDDE8\uD83C\uDDE9 CONGO RDC/RC - NOMS LOCAUX
 // ════════════════════════════════════════════════════════════
 export const VEHICLE_NAMES_CONGO: VehicleLocalName[] = [
     {
@@ -198,7 +198,7 @@ export const VEHICLE_NAMES_CONGO: VehicleLocalName[] = [
 ];
 
 // ════════════════════════════════════════════════════════════
-// 🇧🇯🇹🇬 BÉNIN/TOGO - NOMS LOCAUX
+// \uD83C\uDDE7\uD83C\uDDEF\uD83C\uDDF9\uD83C\uDDEC BÉNIN/TOGO - NOMS LOCAUX
 // ════════════════════════════════════════════════════════════
 export const VEHICLE_NAMES_BENIN_TOGO: VehicleLocalName[] = [
     {
@@ -228,7 +228,7 @@ export const VEHICLE_NAMES_BENIN_TOGO: VehicleLocalName[] = [
 ];
 
 // ════════════════════════════════════════════════════════════
-// 🇲🇱 MALI - NOMS LOCAUX
+// \uD83C\uDDF2\uD83C\uDDF1 MALI - NOMS LOCAUX
 // ════════════════════════════════════════════════════════════
 export const VEHICLE_NAMES_MALI: VehicleLocalName[] = [
     {
@@ -260,7 +260,7 @@ export const VEHICLE_NAMES_MALI: VehicleLocalName[] = [
 ];
 
 // ════════════════════════════════════════════════════════════
-// 🇬🇦 GABON - NOMS LOCAUX
+// \uD83C\uDDEC\uD83C\uDDE6 GABON - NOMS LOCAUX
 // ════════════════════════════════════════════════════════════
 export const VEHICLE_NAMES_GABON: VehicleLocalName[] = [
     {
@@ -282,7 +282,7 @@ export const VEHICLE_NAMES_GABON: VehicleLocalName[] = [
 ];
 
 // ════════════════════════════════════════════════════════════
-// 🌍 BASE DE DONNÉES COMPLÈTE (Tous les pays)
+// \uD83C\uDF0D BASE DE DONNÉES COMPLÈTE (Tous les pays)
 // ════════════════════════════════════════════════════════════
 export const ALL_VEHICLE_LOCAL_NAMES: VehicleLocalName[] = [
     ...VEHICLE_NAMES_CAMEROUN,
@@ -295,7 +295,7 @@ export const ALL_VEHICLE_LOCAL_NAMES: VehicleLocalName[] = [
 ];
 
 // ════════════════════════════════════════════════════════════
-// 🔍 FONCTION DE RECHERCHE INTELLIGENTE
+// \uD83D\uDD0D FONCTION DE RECHERCHE INTELLIGENTE
 // ════════════════════════════════════════════════════════════
 
 /**

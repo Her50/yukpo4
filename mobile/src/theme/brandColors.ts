@@ -1,5 +1,5 @@
 /**
- * 🎨 Yukpo Brand Colors — Source unique de vérité
+ * \uD83C\uDFA8 Yukpo Brand Colors — Source unique de vérité
  * 
  * Extraites du logo officiel (adaptive-icon.png):
  * - Monogramme "YP" en style circuit-board

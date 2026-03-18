@@ -4,7 +4,6 @@ import { getProduitsAssuranceByType } from '../data/assuranceModalities';
 import { modalityService } from '../services/modalityService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface AssuranceProduitSelectorProps {
     label: string;
@@ -27,8 +26,7 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
     required = false,
     disabled = false
 }) => {
-        const { t } = useLanguageSafe();
-const [modalVisible, setModalVisible] = useState(false);
+    const [modalVisible, setModalVisible] = useState(false);
     const [addModalVisible, setAddModalVisible] = useState(false);
     const [newProduitName, setNewProduitName] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -60,8 +58,8 @@ const [modalVisible, setModalVisible] = useState(false);
 
             // Trier alphabétiquement
             const sortedOptions = combinedOptions.sort((a, b) => {
-                if (a.includes('🆕')) return 1;
-                if (b.includes('🆕')) return -1;
+                if (a.includes('\uD83C\uDD95')) return 1;
+                if (b.includes('\uD83C\uDD95')) return -1;
                 return a.localeCompare(b, 'fr');
             });
 
@@ -75,7 +73,7 @@ const [modalVisible, setModalVisible] = useState(false);
     };
 
     const handleSelect = (option: string) => {
-        if (option.includes('🆕 Autre')) {
+        if (option.includes('\uD83C\uDD95 Autre')) {
             // Ouvrir modale d'ajout (compatible Android)
             setNewProduitName('');
             setAddModalVisible(true);
@@ -111,8 +109,8 @@ const [modalVisible, setModalVisible] = useState(false);
             setModalVisible(false);
             setNewProduitName('');
             Alert.alert(
-                t('assuranceProduitSelector.produitAjoute'),
-                t('assuranceProduitSelector.aEteAjouteALaListe', { newProduit: newProduit, typeAssurance: typeAssurance }),
+                '✅ Produit ajouté',
+                `"${newProduit}" a été ajouté à la liste des produits ${typeAssurance}`,
                 [{ text: 'OK' }]
             );
         } else {
@@ -146,7 +144,7 @@ const [modalVisible, setModalVisible] = useState(false);
                 {label} <Text style={styles.required}>*</Text>
             </Text>
             <Text style={styles.typeHint}>
-                📋 Produits {typeAssurance}
+                \uD83D\uDCCB Produits {typeAssurance}
             </Text>
 
             <TouchableOpacity
@@ -155,7 +153,7 @@ const [modalVisible, setModalVisible] = useState(false);
                 disabled={disabled}
             >
                 <Text style={[styles.selectorText, !value && styles.placeholder]}>
-                    {value || t('assuranceProduitSelector.selectionnerUnProduit')}
+                    {value || 'Sélectionner un produit...'}
                 </Text>
                 <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
             </TouchableOpacity>
@@ -177,7 +175,7 @@ const [modalVisible, setModalVisible] = useState(false);
                             <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder={t('assuranceProduitSelector.rechercherUnProduit')}
+                                placeholder="Rechercher un produit..."
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 placeholderTextColor={modernColors.textSecondary}
@@ -187,7 +185,7 @@ const [modalVisible, setModalVisible] = useState(false);
                         <ScrollView style={styles.optionsList} showsVerticalScrollIndicator={false}>
                             {loading ? (
                                 <View style={styles.loadingContainer}>
-                                    <Text style={styles.loadingText}>{t('assuranceProduitSelector.chargement')}</Text>
+                                    <Text style={styles.loadingText}>Chargement...</Text>
                                 </View>
                             ) : filteredOptions.length > 0 ? (
                                 filteredOptions.map((option, index) => (
@@ -196,14 +194,14 @@ const [modalVisible, setModalVisible] = useState(false);
                                         style={[
                                             styles.option,
                                             value === option && styles.optionSelected,
-                                            option.includes('🆕') && styles.optionAdd
+                                            option.includes('\uD83C\uDD95') && styles.optionAdd
                                         ]}
                                         onPress={() => handleSelect(option)}
                                     >
                                         <Text style={[
                                             styles.optionText,
                                             value === option && styles.optionTextSelected,
-                                            option.includes('🆕') && styles.optionTextAdd
+                                            option.includes('\uD83C\uDD95') && styles.optionTextAdd
                                         ]}>
                                             {option}
                                         </Text>
@@ -214,7 +212,7 @@ const [modalVisible, setModalVisible] = useState(false);
                                 ))
                             ) : (
                                 <View style={styles.emptyContainer}>
-                                    <Text style={styles.emptyText}>{t('assuranceProduitSelector.aucunProduitTrouve')}</Text>
+                                    <Text style={styles.emptyText}>Aucun produit trouvé</Text>
                                 </View>
                             )}
                         </ScrollView>
@@ -232,10 +230,10 @@ const [modalVisible, setModalVisible] = useState(false);
                             </Text>
                         </View>
 
-                        <Text style={styles.addModalLabel}>{t('assuranceProduitSelector.nomDuProduit')}</Text>
+                        <Text style={styles.addModalLabel}>Nom du produit:</Text>
                         <TextInput
                             style={styles.addModalInput}
-                            placeholder={t('assuranceProduitSelector.ex', { typeAssurance === 'VIE' ? t('assuranceProduitSelector.epargneRetraite') : 'Assurance habitation': typeAssurance === 'VIE' ? t('assuranceProduitSelector.epargneRetraite') : 'Assurance habitation' })}
+                            placeholder={`Ex: ${typeAssurance === 'VIE' ? 'Épargne retraite' : 'Assurance habitation'}`}
                             value={newProduitName}
                             onChangeText={setNewProduitName}
                             placeholderTextColor={modernColors.textSecondary}
@@ -250,13 +248,13 @@ const [modalVisible, setModalVisible] = useState(false);
                                     setNewProduitName('');
                                 }}
                             >
-                                <Text style={styles.addModalButtonTextCancel}>{t('assuranceProduitSelector.annuler')}</Text>
+                                <Text style={styles.addModalButtonTextCancel}>Annuler</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.addModalButton, styles.addModalButtonConfirm]}
                                 onPress={handleAddNewProduit}
                             >
-                                <Text style={styles.addModalButtonTextConfirm}>{t('assuranceProduitSelector.ajouter')}</Text>
+                                <Text style={styles.addModalButtonTextConfirm}>Ajouter</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

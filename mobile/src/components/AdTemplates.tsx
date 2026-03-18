@@ -50,7 +50,7 @@ const TEMPLATES: Template[] = [
 export const AdTemplates: React.FC<AdTemplatesProps> = ({ onSelectTemplate }) => {
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>📋 Templates</Text>
+            <Text style={styles.title}>\uD83D\uDCCB Templates</Text>
             <Text style={styles.subtitle}>{t('adTemplates.choisissezUnModelePourDemarrer')}</Text>
             <View style={styles.grid}>
                 {TEMPLATES.map((template) => (

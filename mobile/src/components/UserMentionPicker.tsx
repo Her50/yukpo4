@@ -221,7 +221,7 @@ const [searchQuery, setSearchQuery] = useState(currentQuery);
                     )}
                     {fromHistory && 'tag_count' in user && (
                         <Text style={styles.tagInfo}>
-                            📌 Tagué {user.tag_count} fois
+                            \uD83D\uDCCC Tagué {user.tag_count} fois
                         </Text>
                     )}
                 </View>
@@ -231,10 +231,10 @@ const [searchQuery, setSearchQuery] = useState(currentQuery);
     };
 
     const categories = [
-        { key: 'livraison', label: t('userMentionPicker.livraison'), icon: '🚚' },
-        { key: 'plombier', label: 'Plomberie', icon: '🔧' },
+        { key: 'livraison', label: t('userMentionPicker.livraison'), icon: '\uD83D\uDE9A' },
+        { key: 'plombier', label: 'Plomberie', icon: '\uD83D\uDD27' },
         { key: 'électricien', label: t('userMentionPicker.electricite'), icon: '⚡' },
-        { key: 'mécanicien', label: t('userMentionPicker.mecanique'), icon: '🔨' },
+        { key: 'mécanicien', label: t('userMentionPicker.mecanique'), icon: '\uD83D\uDD28' },
         { key: 'coiffeur', label: 'Coiffure', icon: '✂️' },
     ];
 

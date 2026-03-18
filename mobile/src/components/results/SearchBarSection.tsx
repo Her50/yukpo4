@@ -19,7 +19,7 @@ import { hapticPress, hapticSelect } from '../../utils/hapticFeedback';
 import ModernGPSModal from '../ModernGPSModal';
 import SafeIcon from '../SafeIcon';
 import SearchActionsBottomSheet from './SearchActionsBottomSheet';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface SearchBarSectionProps {
     searchQuery: string;

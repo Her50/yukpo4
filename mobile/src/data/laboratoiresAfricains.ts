@@ -19,16 +19,16 @@ export interface LaboratoiresPays {
 }
 
 // ============================================================================
-// 🇨🇲 CAMEROUN - Le plus détaillé (pays principal de Yukpo)
+// \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN - Le plus détaillé (pays principal de Yukpo)
 // ============================================================================
 export const LABORATOIRES_CAMEROUN: LaboratoiresPays = {
     code: 'CM',
-    emoji: '🇨🇲',
+    emoji: '\uD83C\uDDE8\uD83C\uDDF2',
     nom: 'Cameroun',
     capitale: 'Yaoundé',
     laboratoires: [
         // ═══════════════════════════════════════════════════════════════
-        // 🏙️ DOUALA - Capitale économique (50+ laboratoires)
+        // \uD83C\uDFD9️ DOUALA - Capitale économique (50+ laboratoires)
         // ═══════════════════════════════════════════════════════════════
 
         // Laboratoires d'analyses - Douala
@@ -76,7 +76,7 @@ export const LABORATOIRES_CAMEROUN: LaboratoiresPays = {
         { nom: 'Centre Hospitalier de Bonabéri - Labo & Radio', ville: 'Douala', pays: 'Cameroun', type: 'Mixte' },
 
         // ═══════════════════════════════════════════════════════════════
-        // 🏛️ YAOUNDÉ - Capitale politique (40+ laboratoires)
+        // \uD83C\uDFDB️ YAOUNDÉ - Capitale politique (40+ laboratoires)
         // ═══════════════════════════════════════════════════════════════
 
         // Laboratoires d'analyses - Yaoundé
@@ -116,7 +116,7 @@ export const LABORATOIRES_CAMEROUN: LaboratoiresPays = {
         { nom: 'Clinique du Centre - Analyses & Imagerie', ville: 'Yaoundé', pays: 'Cameroun', type: 'Mixte' },
 
         // ═══════════════════════════════════════════════════════════════
-        // 🌆 AUTRES GRANDES VILLES DU CAMEROUN (20+ laboratoires)
+        // \uD83C\uDF06 AUTRES GRANDES VILLES DU CAMEROUN (20+ laboratoires)
         // ═══════════════════════════════════════════════════════════════
 
         // Bafoussam
@@ -160,11 +160,11 @@ export const LABORATOIRES_CAMEROUN: LaboratoiresPays = {
 };
 
 // ============================================================================
-// 🇨🇮 CÔTE D'IVOIRE
+// \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE
 // ============================================================================
 export const LABORATOIRES_COTE_IVOIRE: LaboratoiresPays = {
     code: 'CI',
-    emoji: '🇨🇮',
+    emoji: '\uD83C\uDDE8\uD83C\uDDEE',
     nom: 'Côte d\'Ivoire',
     capitale: 'Yamoussoukro',
     laboratoires: [
@@ -219,11 +219,11 @@ export const LABORATOIRES_COTE_IVOIRE: LaboratoiresPays = {
 };
 
 // ============================================================================
-// 🇸🇳 SÉNÉGAL
+// \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL
 // ============================================================================
 export const LABORATOIRES_SENEGAL: LaboratoiresPays = {
     code: 'SN',
-    emoji: '🇸🇳',
+    emoji: '\uD83C\uDDF8\uD83C\uDDF3',
     nom: 'Sénégal',
     capitale: 'Dakar',
     laboratoires: [
@@ -269,11 +269,11 @@ export const LABORATOIRES_SENEGAL: LaboratoiresPays = {
 };
 
 // ============================================================================
-// 🇲🇱 MALI
+// \uD83C\uDDF2\uD83C\uDDF1 MALI
 // ============================================================================
 export const LABORATOIRES_MALI: LaboratoiresPays = {
     code: 'ML',
-    emoji: '🇲🇱',
+    emoji: '\uD83C\uDDF2\uD83C\uDDF1',
     nom: 'Mali',
     capitale: 'Bamako',
     laboratoires: [
@@ -306,11 +306,11 @@ export const LABORATOIRES_MALI: LaboratoiresPays = {
 };
 
 // ============================================================================
-// 🇨🇩 RD CONGO (République Démocratique du Congo)
+// \uD83C\uDDE8\uD83C\uDDE9 RD CONGO (République Démocratique du Congo)
 // ============================================================================
 export const LABORATOIRES_RD_CONGO: LaboratoiresPays = {
     code: 'CD',
-    emoji: '🇨🇩',
+    emoji: '\uD83C\uDDE8\uD83C\uDDE9',
     nom: 'RD Congo',
     capitale: 'Kinshasa',
     laboratoires: [
@@ -349,11 +349,11 @@ export const LABORATOIRES_RD_CONGO: LaboratoiresPays = {
 };
 
 // ============================================================================
-// 🇨🇬 CONGO-BRAZZAVILLE (République du Congo)
+// \uD83C\uDDE8\uD83C\uDDEC CONGO-BRAZZAVILLE (République du Congo)
 // ============================================================================
 export const LABORATOIRES_CONGO_BRAZZA: LaboratoiresPays = {
     code: 'CG',
-    emoji: '🇨🇬',
+    emoji: '\uD83C\uDDE8\uD83C\uDDEC',
     nom: 'Congo-Brazzaville',
     capitale: 'Brazzaville',
     laboratoires: [
@@ -375,11 +375,11 @@ export const LABORATOIRES_CONGO_BRAZZA: LaboratoiresPays = {
 };
 
 // ============================================================================
-// 🇬🇦 GABON
+// \uD83C\uDDEC\uD83C\uDDE6 GABON
 // ============================================================================
 export const LABORATOIRES_GABON: LaboratoiresPays = {
     code: 'GA',
-    emoji: '🇬🇦',
+    emoji: '\uD83C\uDDEC\uD83C\uDDE6',
     nom: 'Gabon',
     capitale: 'Libreville',
     laboratoires: [
@@ -403,11 +403,11 @@ export const LABORATOIRES_GABON: LaboratoiresPays = {
 };
 
 // ============================================================================
-// 🇹🇬 TOGO
+// \uD83C\uDDF9\uD83C\uDDEC TOGO
 // ============================================================================
 export const LABORATOIRES_TOGO: LaboratoiresPays = {
     code: 'TG',
-    emoji: '🇹🇬',
+    emoji: '\uD83C\uDDF9\uD83C\uDDEC',
     nom: 'Togo',
     capitale: 'Lomé',
     laboratoires: [
@@ -429,11 +429,11 @@ export const LABORATOIRES_TOGO: LaboratoiresPays = {
 };
 
 // ============================================================================
-// 🇧🇯 BÉNIN
+// \uD83C\uDDE7\uD83C\uDDEF BÉNIN
 // ============================================================================
 export const LABORATOIRES_BENIN: LaboratoiresPays = {
     code: 'BJ',
-    emoji: '🇧🇯',
+    emoji: '\uD83C\uDDE7\uD83C\uDDEF',
     nom: 'Bénin',
     capitale: 'Porto-Novo',
     laboratoires: [
@@ -455,11 +455,11 @@ export const LABORATOIRES_BENIN: LaboratoiresPays = {
 };
 
 // ============================================================================
-// 🇧🇫 BURKINA FASO
+// \uD83C\uDDE7\uD83C\uDDEB BURKINA FASO
 // ============================================================================
 export const LABORATOIRES_BURKINA_FASO: LaboratoiresPays = {
     code: 'BF',
-    emoji: '🇧🇫',
+    emoji: '\uD83C\uDDE7\uD83C\uDDEB',
     nom: 'Burkina Faso',
     capitale: 'Ouagadougou',
     laboratoires: [
@@ -482,11 +482,11 @@ export const LABORATOIRES_BURKINA_FASO: LaboratoiresPays = {
 };
 
 // ============================================================================
-// 🇳🇪 NIGER
+// \uD83C\uDDF3\uD83C\uDDEA NIGER
 // ============================================================================
 export const LABORATOIRES_NIGER: LaboratoiresPays = {
     code: 'NE',
-    emoji: '🇳🇪',
+    emoji: '\uD83C\uDDF3\uD83C\uDDEA',
     nom: 'Niger',
     capitale: 'Niamey',
     laboratoires: [
@@ -506,11 +506,11 @@ export const LABORATOIRES_NIGER: LaboratoiresPays = {
 };
 
 // ============================================================================
-// 🇲🇬 MADAGASCAR
+// \uD83C\uDDF2\uD83C\uDDEC MADAGASCAR
 // ============================================================================
 export const LABORATOIRES_MADAGASCAR: LaboratoiresPays = {
     code: 'MG',
-    emoji: '🇲🇬',
+    emoji: '\uD83C\uDDF2\uD83C\uDDEC',
     nom: 'Madagascar',
     capitale: 'Antananarivo',
     laboratoires: [
@@ -536,11 +536,11 @@ export const LABORATOIRES_MADAGASCAR: LaboratoiresPays = {
 };
 
 // ============================================================================
-// 🇹🇩 TCHAD
+// \uD83C\uDDF9\uD83C\uDDE9 TCHAD
 // ============================================================================
 export const LABORATOIRES_TCHAD: LaboratoiresPays = {
     code: 'TD',
-    emoji: '🇹🇩',
+    emoji: '\uD83C\uDDF9\uD83C\uDDE9',
     nom: 'Tchad',
     capitale: 'N\'Djamena',
     laboratoires: [
@@ -559,11 +559,11 @@ export const LABORATOIRES_TCHAD: LaboratoiresPays = {
 };
 
 // ============================================================================
-// 🇨🇫 RÉPUBLIQUE CENTRAFRICAINE
+// \uD83C\uDDE8\uD83C\uDDEB RÉPUBLIQUE CENTRAFRICAINE
 // ============================================================================
 export const LABORATOIRES_RCA: LaboratoiresPays = {
     code: 'CF',
-    emoji: '🇨🇫',
+    emoji: '\uD83C\uDDE8\uD83C\uDDEB',
     nom: 'Centrafrique',
     capitale: 'Bangui',
     laboratoires: [
@@ -579,11 +579,11 @@ export const LABORATOIRES_RCA: LaboratoiresPays = {
 };
 
 // ============================================================================
-// 🇬🇳 GUINÉE
+// \uD83C\uDDEC\uD83C\uDDF3 GUINÉE
 // ============================================================================
 export const LABORATOIRES_GUINEE: LaboratoiresPays = {
     code: 'GN',
-    emoji: '🇬🇳',
+    emoji: '\uD83C\uDDEC\uD83C\uDDF3',
     nom: 'Guinée',
     capitale: 'Conakry',
     laboratoires: [
@@ -629,11 +629,11 @@ export const TOUS_LES_LABORATOIRES: LaboratoiresPays[] = [
 // ============================================================================
 
 /**
- * 🎯 SYSTÈME GÉO-INTELLIGENT : Génère la liste des laboratoires avec TRIPLE PRIORITÉ
+ * \uD83C\uDFAF SYSTÈME GÉO-INTELLIGENT : Génère la liste des laboratoires avec TRIPLE PRIORITÉ
  * 
- * NIVEAU 1 (🏆 ULTRA PRIORITAIRE) : Laboratoires de la VILLE de l'utilisateur
+ * NIVEAU 1 (\uD83C\uDFC6 ULTRA PRIORITAIRE) : Laboratoires de la VILLE de l'utilisateur
  * NIVEAU 2 (⭐ PRIORITAIRE) : Laboratoires du PAYS de l'utilisateur (autres villes)
- * NIVEAU 3 (📍 SUGGESTION) : Laboratoires renommés des pays voisins
+ * NIVEAU 3 (\uD83D\uDCCD SUGGESTION) : Laboratoires renommés des pays voisins
  * 
  * @param codePaysUtilisateur - Code ISO du pays (ex: 'CM', 'CI', 'SN')
  * @param villeUtilisateur - Nom de la ville de l'utilisateur (ex: 'Douala', 'Yaoundé')
@@ -654,12 +654,12 @@ export const genererTousLesLaboratoires = (
 
     if (!paysPrioritaire) {
         // Fallback si pays non trouvé
-        laboratoires.push('🆕 Autre (ajouter)');
+        laboratoires.push('\uD83C\uDD95 Autre (ajouter)');
         return laboratoires;
     }
 
     // ═════════════════════════════════════════════════════════════════
-    // 🏆 NIVEAU 1 : VILLE DE L'UTILISATEUR (Ultra Prioritaire)
+    // \uD83C\uDFC6 NIVEAU 1 : VILLE DE L'UTILISATEUR (Ultra Prioritaire)
     // ═════════════════════════════════════════════════════════════════
     if (villeUtilisateur) {
         const labosVille = paysPrioritaire.laboratoires.filter(lab =>
@@ -667,20 +667,20 @@ export const genererTousLesLaboratoires = (
         );
 
         if (labosVille.length > 0) {
-            laboratoires.push(`──── 🏙️ ${villeUtilisateur.toUpperCase()} (Votre ville) ────`);
+            laboratoires.push(`──── \uD83C\uDFD9️ ${villeUtilisateur.toUpperCase()} (Votre ville) ────`);
 
             // Laboratoires renommés de la ville en premier
             labosVille
                 .filter(lab => lab.renomme)
                 .forEach(lab => {
-                    laboratoires.push(`🏆 ${lab.nom} [${lab.type}]`);
+                    laboratoires.push(`\uD83C\uDFC6 ${lab.nom} [${lab.type}]`);
                 });
 
             // Autres laboratoires de la ville
             labosVille
                 .filter(lab => !lab.renomme)
                 .forEach(lab => {
-                    laboratoires.push(`📍 ${lab.nom} [${lab.type}]`);
+                    laboratoires.push(`\uD83D\uDCCD ${lab.nom} [${lab.type}]`);
                 });
 
             laboratoires.push(''); // Ligne vide pour séparation visuelle
@@ -721,9 +721,9 @@ export const genererTousLesLaboratoires = (
     }
 
     // ═════════════════════════════════════════════════════════════════
-    // 📍 NIVEAU 3 : PAYS VOISINS (Suggestions)
+    // \uD83D\uDCCD NIVEAU 3 : PAYS VOISINS (Suggestions)
     // ═════════════════════════════════════════════════════════════════
-    laboratoires.push('──── 🌍 Autres pays (Suggestions) ────');
+    laboratoires.push('──── \uD83C\uDF0D Autres pays (Suggestions) ────');
 
     TOUS_LES_LABORATOIRES
         .filter(p => p.code !== codePaysUtilisateur)
@@ -737,7 +737,7 @@ export const genererTousLesLaboratoires = (
             });
         });
 
-    laboratoires.push('🆕 Autre (ajouter)');
+    laboratoires.push('\uD83C\uDD95 Autre (ajouter)');
     return laboratoires;
 };
 
@@ -746,7 +746,7 @@ export const genererTousLesLaboratoires = (
  */
 export const genererLaboratoiresParVille = (ville: string, codePays: string = 'CM'): string[] => {
     const pays = TOUS_LES_LABORATOIRES.find(p => p.code === codePays);
-    if (!pays) return ['🆕 Autre (ajouter)'];
+    if (!pays) return ['\uD83C\uDD95 Autre (ajouter)'];
 
     const laboratoires: string[] = [];
     pays.laboratoires
@@ -756,10 +756,10 @@ export const genererLaboratoiresParVille = (ville: string, codePays: string = 'C
         });
 
     if (laboratoires.length === 0) {
-        return ['🆕 Autre (ajouter)'];
+        return ['\uD83C\uDD95 Autre (ajouter)'];
     }
 
-    laboratoires.push('🆕 Autre (ajouter)');
+    laboratoires.push('\uD83C\uDD95 Autre (ajouter)');
     return laboratoires;
 };
 
@@ -768,7 +768,7 @@ export const genererLaboratoiresParVille = (ville: string, codePays: string = 'C
  */
 export const genererLaboratoiresParType = (type: 'Analyses' | 'Imagerie' | 'Mixte' | 'Anatomopathologie', codePays: string = 'CM'): string[] => {
     const pays = TOUS_LES_LABORATOIRES.find(p => p.code === codePays);
-    if (!pays) return ['🆕 Autre (ajouter)'];
+    if (!pays) return ['\uD83C\uDD95 Autre (ajouter)'];
 
     const laboratoires: string[] = [];
     pays.laboratoires
@@ -779,10 +779,10 @@ export const genererLaboratoiresParType = (type: 'Analyses' | 'Imagerie' | 'Mixt
         });
 
     if (laboratoires.length === 0) {
-        return ['🆕 Autre (ajouter)'];
+        return ['\uD83C\uDD95 Autre (ajouter)'];
     }
 
-    laboratoires.push('🆕 Autre (ajouter)');
+    laboratoires.push('\uD83C\uDD95 Autre (ajouter)');
     return laboratoires;
 };
 
@@ -815,7 +815,7 @@ export const rechercherLaboratoires = (query: string, codePays?: string): Labora
 };
 
 /**
- * 🌍 DÉTECTION AUTOMATIQUE DE LOCALISATION
+ * \uD83C\uDF0D DÉTECTION AUTOMATIQUE DE LOCALISATION
  * Extrait le pays et la ville depuis les données utilisateur ou GPS
  * 
  * @param userData - Données utilisateur (adresse, ville, pays)

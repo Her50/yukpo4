@@ -96,7 +96,7 @@ export async function appelerMoteurIA(input: any, onAfterCall?: () => void): Pro
     // En mode dev, utiliser un token JWT de développement
     const devToken = generateDevToken();
     headers.Authorization = `Bearer ${devToken}`;
-    console.warn('🧪 Mode développement : utilisation d\'un token JWT de développement');
+    console.warn('\uD83E\uDDEA Mode développement : utilisation d\'un token JWT de développement');
   } else {
     console.warn('⚠️ Aucun token d\'authentification trouvé');
   }
@@ -140,7 +140,7 @@ export async function appelerMoteurIA(input: any, onAfterCall?: () => void): Pro
     }
     console.error('❌ Erreur lors de l\'appel à l\'API IA:', error);
     if (error.message?.includes('401')) {
-      console.error('🔐 Erreur d\'authentification. Activez le mode développeur ou connectez-vous.');
+      console.error('\uD83D\uDD10 Erreur d\'authentification. Activez le mode développeur ou connectez-vous.');
     }
     throw error;
   }
@@ -165,7 +165,7 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
   } else if (isDevMode) {
     const devToken = generateDevToken();
     headers.Authorization = `Bearer ${devToken}`;
-    console.warn('🧪 Mode développement : utilisation d\'un token JWT de développement');
+    console.warn('\uD83E\uDDEA Mode développement : utilisation d\'un token JWT de développement');
   }
 
   // Préparer la requête pour l'IA

@@ -1,5 +1,5 @@
 /**
- * 🎯 HOOK : Suggestions intelligentes pour champs de formulaire
+ * \uD83C\uDFAF HOOK : Suggestions intelligentes pour champs de formulaire
  * 
  * Combine plusieurs sources de suggestions :
  * - Règles conditionnelles (marque → modèles)

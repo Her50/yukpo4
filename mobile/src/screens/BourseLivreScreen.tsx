@@ -1,3 +1,5 @@
+// @deprecated - Ce fichier est déprécié. Utiliser LivreScolaireHomeScreen (V2) à la place.
+// La route 'BourseLivre' redirige maintenant vers 'LivreScolaireHome'.
 // ✅ Écran Bourse du Livre avec IA (Mobile)
 
 import { useNavigation } from '@react-navigation/native';
@@ -288,7 +290,7 @@ const renderLivreCard = ({ item }: { item: LivreScolaire }) => {
                 />
             ) : (
                 <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
-                    <Text style={styles.cardImagePlaceholderText}>📚</Text>
+                    <Text style={styles.cardImagePlaceholderText}>\uD83D\uDCDA</Text>
                 </View>
             )}
 
@@ -331,7 +333,7 @@ const renderLivreCard = ({ item }: { item: LivreScolaire }) => {
 
                 {item.distance_km !== undefined && (
                     <Text style={styles.cardDistance}>
-                        📍 {item.distance_km.toFixed(1)} km
+                        \uD83D\uDCCD {item.distance_km.toFixed(1)} km
                     </Text>
                 )}
             </View>

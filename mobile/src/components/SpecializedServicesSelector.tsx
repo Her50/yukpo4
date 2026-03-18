@@ -1,4 +1,4 @@
-// 🏥 Sélecteur de Services Spécialisés Yukpo
+// \uD83C\uDFE5 Sélecteur de Services Spécialisés Yukpo
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
@@ -20,7 +20,7 @@ export const SPECIALIZED_SERVICES = [
         name: 'Pharmacie',
         iconName: 'pill', // SafeIcon name
         iconType: 'lucide' as const,
-        emoji: '💊', // Fallback emoji
+        emoji: '\uD83D\uDC8A', // Fallback emoji
         specialized_type: 'pharmacie',
         description: t('specializedServicesSelector.pharmaciesEtMedicaments'),
     },
@@ -29,7 +29,7 @@ export const SPECIALIZED_SERVICES = [
         name: t('specializedServicesSelector.hopitalClinique'),
         iconName: 'hospital',
         iconType: 'lucide' as const,
-        emoji: '🏥',
+        emoji: '\uD83C\uDFE5',
         specialized_type: 'hopital_clinique',
         description: t('specializedServicesSelector.hopitauxCliniquesMedecins'),
     },
@@ -38,7 +38,7 @@ export const SPECIALIZED_SERVICES = [
         name: 'Laboratoire / Imagerie',
         iconName: 'microscope',
         iconType: 'lucide' as const,
-        emoji: '🔬',
+        emoji: '\uD83D\uDD2C',
         specialized_type: 'laboratoire_imagerie',
         description: t('specializedServicesSelector.analysesMedicalesRadiologie'),
     },
@@ -56,7 +56,7 @@ export const SPECIALIZED_SERVICES = [
         name: 'Covoiturage',
         iconName: 'users',
         iconType: 'lucide' as const,
-        emoji: '🚗',
+        emoji: '\uD83D\uDE97',
         specialized_type: 'covoiturage',
         description: t('specializedServicesSelector.partageDeTrajets'),
     },
@@ -65,7 +65,7 @@ export const SPECIALIZED_SERVICES = [
         name: 'Taxi',
         iconName: 'car',
         iconType: 'lucide' as const,
-        emoji: '🚕',
+        emoji: '\uD83D\uDE95',
         specialized_type: 'taxi_ville',
         description: 'Taxis de ville',
     },
@@ -74,7 +74,7 @@ export const SPECIALIZED_SERVICES = [
         name: 'Banque de Sang',
         iconName: 'droplet',
         iconType: 'lucide' as const,
-        emoji: '🩸',
+        emoji: '\uD83E\uDE78',
         specialized_type: 'banque_sang',
         description: 'Dons de sang, groupes sanguins',
     },

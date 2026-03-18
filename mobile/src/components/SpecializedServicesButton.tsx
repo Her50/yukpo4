@@ -17,7 +17,6 @@ import {
 import { modernColors } from '../theme/modernTheme';
 import { hapticPress } from '../utils/hapticFeedback';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SpecializedServicesButtonProps {
     onPress?: () => void;
@@ -27,7 +26,6 @@ export const SpecializedServicesButton: React.FC<SpecializedServicesButtonProps>
     onPress,
 }) => {
     const navigation = useNavigation();
-    const { t } = useLanguageSafe();
     const [isNavigating, setIsNavigating] = useState(false);
 
     const handlePress = async () => {
@@ -58,7 +56,7 @@ export const SpecializedServicesButton: React.FC<SpecializedServicesButtonProps>
             // ✅ AMÉLIORÉ: Afficher un message d'erreur à l'utilisateur
             Alert.alert(
                 'Erreur',
-                t('specializedServicesButton.impossibleDaccederAuxServicesSpecialisesVeuillezReessayer'),
+                'Impossible d\'accéder aux services spécialisés. Veuillez réessayer.',
                 [{ text: 'OK' }]
             );
         } finally {
@@ -75,9 +73,9 @@ export const SpecializedServicesButton: React.FC<SpecializedServicesButtonProps>
             onPress={handlePress}
             activeOpacity={0.8}
             disabled={isNavigating}
-            accessibilityLabel={t('specializedServicesButton.accederAuxServicesSpecialises')}
+            accessibilityLabel="Accéder aux services spécialisés"
             accessibilityRole="button"
-            accessibilityHint=t('specializedServicesButton.ouvreLaPageDesServicesSpecialises')
+            accessibilityHint="Ouvre la page des services spécialisés : santé, transport, immobilier, éducation et cuisine"
             accessibilityState={{ disabled: isNavigating }}
         >
             <View style={styles.content}>
@@ -89,7 +87,7 @@ export const SpecializedServicesButton: React.FC<SpecializedServicesButtonProps>
                     )}
                 </View>
                 <View style={styles.textContainer}>
-                    <Text style={styles.title}>{t('specializedServicesButton.servicesSpecialises')}</Text>
+                    <Text style={styles.title}>Services Spécialisés</Text>
                     <Text style={styles.subtitle}>
                         Santé • Transport • Immobilier • Éducation • Cuisine
                     </Text>

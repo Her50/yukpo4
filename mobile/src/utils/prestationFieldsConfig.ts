@@ -145,10 +145,10 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 📐 INGÉNIERIE & ARCHITECTURE (BTP) - Configuration ultra-spécialisée
+    // \uD83D\uDCD0 INGÉNIERIE & ARCHITECTURE (BTP) - Configuration ultra-spécialisée
     // ============================================================================
     if (
-        categoriePrestation.includes('📐') ||
+        categoriePrestation.includes('\uD83D\uDCD0') ||
         categoriePrestation.includes('Ingénieur') ||
         categoriePrestation.includes('Architecte') ||
         categoriePrestation.includes('Bureau d\'études') ||
@@ -185,10 +185,10 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 🏗️ BÂTIMENT & CONSTRUCTION (garanties + équipements importants)
+    // \uD83C\uDFD7️ BÂTIMENT & CONSTRUCTION (garanties + équipements importants)
     // ============================================================================
     if (
-        categoriePrestation.includes('🏗️') ||
+        categoriePrestation.includes('\uD83C\uDFD7️') ||
         categoriePrestation.includes('Maçonnerie') ||
         categoriePrestation.includes('Menuiserie') ||
         categoriePrestation.includes('Plomberie') ||
@@ -211,11 +211,11 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 🔨 FORGERON / FERRONNERIE D'ART (sécurité + garanties + sur mesure)
+    // \uD83D\uDD28 FORGERON / FERRONNERIE D'ART (sécurité + garanties + sur mesure)
     // ============================================================================
     // Métier artisanal très important en Afrique : grilles anti-vol, portails, balcons
     if (
-        categoriePrestation.includes('🔨') ||
+        categoriePrestation.includes('\uD83D\uDD28') ||
         categoriePrestation.includes('Forgeron') ||
         categoriePrestation.includes('Ferronnerie') ||
         categoriePrestation.includes('Ferronnier') ||
@@ -252,10 +252,10 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 💇 BEAUTÉ & COIFFURE (horaires + langues + modes paiement)
+    // \uD83D\uDC87 BEAUTÉ & COIFFURE (horaires + langues + modes paiement)
     // ============================================================================
     if (
-        categoriePrestation.includes('💇') ||
+        categoriePrestation.includes('\uD83D\uDC87') ||
         categoriePrestation.includes('Coiffure') ||
         categoriePrestation.includes('Barbier') ||
         categoriePrestation.includes('Tresses') ||
@@ -281,10 +281,10 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 🔧 MÉCANIQUE & AUTOMOBILE (urgences + équipements + garantie)
+    // \uD83D\uDD27 MÉCANIQUE & AUTOMOBILE (urgences + équipements + garantie)
     // ============================================================================
     if (
-        categoriePrestation.includes('🔧') ||
+        categoriePrestation.includes('\uD83D\uDD27') ||
         categoriePrestation.includes('Mécanique') ||
         categoriePrestation.includes('Carrosserie') ||
         categoriePrestation.includes('Vulcanisation') ||
@@ -305,10 +305,10 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 💻 INFORMATIQUE & TECHNOLOGIE (certifications + portfolio + tarif horaire)
+    // \uD83D\uDCBB INFORMATIQUE & TECHNOLOGIE (certifications + portfolio + tarif horaire)
     // ============================================================================
     if (
-        categoriePrestation.includes('💻') ||
+        categoriePrestation.includes('\uD83D\uDCBB') ||
         categoriePrestation.includes('Réparation Téléphone') ||
         categoriePrestation.includes('Réparation Ordinateur') ||
         categoriePrestation.includes('Développement') ||
@@ -330,10 +330,10 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 🏠 MÉNAGE & ENTRETIEN (horaires + fréquence + langues)
+    // \uD83C\uDFE0 MÉNAGE & ENTRETIEN (horaires + fréquence + langues)
     // ============================================================================
     if (
-        categoriePrestation.includes('🏠') ||
+        categoriePrestation.includes('\uD83C\uDFE0') ||
         categoriePrestation.includes('Ménage') ||
         categoriePrestation.includes('Repassage') ||
         categoriePrestation.includes('Jardinage') ||
@@ -355,10 +355,10 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 👨‍🍳 CUISINE & RESTAURATION (disponibilités + langues)
+    // \uD83D\uDC68‍\uD83C\uDF73 CUISINE & RESTAURATION (disponibilités + langues)
     // ============================================================================
     if (
-        categoriePrestation.includes('👨‍🍳') ||
+        categoriePrestation.includes('\uD83D\uDC68‍\uD83C\uDF73') ||
         categoriePrestation.includes('Cuisinier') ||
         categoriePrestation.includes('Traiteur') ||
         categoriePrestation.includes('Pâtisserie') ||
@@ -381,12 +381,12 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 🎓 PRÉPARATION CONCOURS GRANDES ÉCOLES (système ultra-spécialisé)
-    // Détecté si : "Préparation", "Concours", "Grandes écoles", "🎓", etc.
+    // \uD83C\uDF93 PRÉPARATION CONCOURS GRANDES ÉCOLES (système ultra-spécialisé)
+    // Détecté si : "Préparation", "Concours", "Grandes écoles", "\uD83C\uDF93", etc.
     // ============================================================================
     if (
         // Emoji spécifique concours
-        categoriePrestation.includes('🎓') ||
+        categoriePrestation.includes('\uD83C\uDF93') ||
         // OU Préparation + mots-clés écoles
         (categoriePrestation.toLowerCase().includes('préparation') &&
             (categoriePrestation.toLowerCase().includes('concours') ||
@@ -436,11 +436,11 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 📚 ÉDUCATION & FORMATION (certifications + matières + niveaux + langues)
+    // \uD83D\uDCDA ÉDUCATION & FORMATION (certifications + matières + niveaux + langues)
     // Pour cours particuliers classiques, soutien scolaire (NON concours)
     // ============================================================================
     if (
-        (categoriePrestation.includes('📚') ||
+        (categoriePrestation.includes('\uD83D\uDCDA') ||
             categoriePrestation.includes('Cours') ||
             categoriePrestation.includes('Soutien') ||
             categoriePrestation.includes('Formation') ||
@@ -475,10 +475,10 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 🩺 SANTÉ & BIEN-ÊTRE (certifications + urgences + assurance)
+    // \uD83E\uDE7A SANTÉ & BIEN-ÊTRE (certifications + urgences + assurance)
     // ============================================================================
     if (
-        categoriePrestation.includes('🩺') ||
+        categoriePrestation.includes('\uD83E\uDE7A') ||
         categoriePrestation.includes('Soins') ||
         categoriePrestation.includes('Kinésithérapie') ||
         categoriePrestation.includes('Aide-Soignant') ||
@@ -500,10 +500,10 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 👶 GARDE & ASSISTANCE (horaires + langues + assurance)
+    // \uD83D\uDC76 GARDE & ASSISTANCE (horaires + langues + assurance)
     // ============================================================================
     if (
-        categoriePrestation.includes('👶') ||
+        categoriePrestation.includes('\uD83D\uDC76') ||
         categoriePrestation.includes('Garde') ||
         categoriePrestation.includes('Baby-sitting') ||
         categoriePrestation.includes('Nounou')
@@ -524,10 +524,10 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 📸 ÉVÉNEMENTIEL & MULTIMÉDIA (portfolio + équipements)
+    // \uD83D\uDCF8 ÉVÉNEMENTIEL & MULTIMÉDIA (portfolio + équipements)
     // ============================================================================
     if (
-        categoriePrestation.includes('📸') ||
+        categoriePrestation.includes('\uD83D\uDCF8') ||
         categoriePrestation.includes('Photographie') ||
         categoriePrestation.includes('Vidéographie') ||
         categoriePrestation.includes('DJ') ||
@@ -551,10 +551,10 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 🚚 TRANSPORT & LOGISTIQUE (disponibilités + équipements)
+    // \uD83D\uDE9A TRANSPORT & LOGISTIQUE (disponibilités + équipements)
     // ============================================================================
     if (
-        categoriePrestation.includes('🚚') ||
+        categoriePrestation.includes('\uD83D\uDE9A') ||
         categoriePrestation.includes('Déménagement') ||
         categoriePrestation.includes('Transport') ||
         categoriePrestation.includes('Coursier') ||
@@ -577,10 +577,10 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 🔐 SÉCURITÉ & SURVEILLANCE (horaires + certifications + assurance)
+    // \uD83D\uDD10 SÉCURITÉ & SURVEILLANCE (horaires + certifications + assurance)
     // ============================================================================
     if (
-        categoriePrestation.includes('🔐') ||
+        categoriePrestation.includes('\uD83D\uDD10') ||
         categoriePrestation.includes('Sécurité') ||
         categoriePrestation.includes('Gardiennage') ||
         categoriePrestation.includes('Installation Caméras') ||
@@ -602,10 +602,10 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 🪡 COUTURE & MODE (portfolio + horaires)
+    // \uD83E\uDEA1 COUTURE & MODE (portfolio + horaires)
     // ============================================================================
     if (
-        categoriePrestation.includes('🪡') ||
+        categoriePrestation.includes('\uD83E\uDEA1') ||
         categoriePrestation.includes('Couture') ||
         categoriePrestation.includes('Retouches') ||
         categoriePrestation.includes('Stylisme') ||
@@ -652,10 +652,10 @@ export const getFieldsConfig = (categoriePrestation: string): FieldConfig => {
     }
 
     // ============================================================================
-    // 📄 SERVICES ADMINISTRATIFS (certifications + langues)
+    // \uD83D\uDCC4 SERVICES ADMINISTRATIFS (certifications + langues)
     // ============================================================================
     if (
-        categoriePrestation.includes('📄') ||
+        categoriePrestation.includes('\uD83D\uDCC4') ||
         categoriePrestation.includes('Saisie') ||
         categoriePrestation.includes('Traduction') ||
         categoriePrestation.includes('Rédaction') ||
@@ -697,11 +697,11 @@ export const getEncouragementMessage = (config: FieldConfig): string => {
     if (count <= 10) {
         return '✨ Formulaire court ! Seulement quelques champs essentiels à remplir.';
     } else if (count <= 15) {
-        return '👍 Formulaire optimisé pour votre catégorie.';
+        return '\uD83D\uDC4D Formulaire optimisé pour votre catégorie.';
     } else if (count <= 20) {
-        return '📝 Remplissez un maximum de champs pour plus de visibilité !';
+        return '\uD83D\uDCDD Remplissez un maximum de champs pour plus de visibilité !';
     } else {
-        return '🌟 Profil complet = Plus de clients ! Prenez le temps de bien remplir.';
+        return '\uD83C\uDF1F Profil complet = Plus de clients ! Prenez le temps de bien remplir.';
     }
 };
 

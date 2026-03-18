@@ -115,19 +115,19 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
         }
 
         if (!tempModality.prix || tempModality.prix <= 0) {
-            Alert.alert('Erreur', t('priceVariantSelector.lePrixDoitEtreSuperieurA'));
+            Alert.alert('Erreur', 'Le prix doit être supérieur à 0');
             return;
         }
 
         if (!tempModality.devise) {
-            Alert.alert('Erreur', t('priceVariantSelector.veuillezSelectionnerUneDevise'));
+            Alert.alert('Erreur', 'Veuillez sélectionner une devise');
             return;
         }
 
         // S'assurer que prix est un nombre (jamais string)
         const prix = typeof tempModality.prix === 'string' ? parseFloat(tempModality.prix) : tempModality.prix;
         if (isNaN(prix) || prix <= 0) {
-            Alert.alert('Erreur', t('priceVariantSelector.lePrixDoitEtreUnNombre'));
+            Alert.alert('Erreur', 'Le prix doit être un nombre valide');
             return;
         }
 
@@ -165,7 +165,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
 
             Alert.alert(
                 'Confirmer',
-                t('priceVariantSelector.voulezvousSupprimerLaModalite', { modalites[index]_valeur: modalites[index].valeur }),
+                `Voulez-vous supprimer la modalité "${modalites[index].valeur}" ?`,
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
@@ -189,7 +189,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
 
     const resolvedLabel = label?.trim() || 'Variantes';
     const resolvedVariable = variable?.trim();
-    const resolvedHelperText = helperText || t('priceVariantSelector.modifiezChaqueModaliteDetecteePrix');
+    const resolvedHelperText = helperText || 'Modifiez chaque modalité détectée (prix, devise, stock, image) ou ajoutez-en de nouvelles.';
 
     return (
         <View style={styles.container}>
@@ -201,7 +201,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                 </Text>
                 <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
                     <SafeIcon name="plus" size={18} color="#FFFFFF" />
-                    <Text style={styles.addButtonText}>{t('priceVariantSelector.ajouterUneModalite')}</Text>
+                    <Text style={styles.addButtonText}>Ajouter une modalité</Text>
                 </TouchableOpacity>
             </View>
 
@@ -211,7 +211,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
             {modalites.length > 0 ? (
                 <View style={styles.modalitiesList}>
                     <Text style={styles.modalitiesCount}>
-                        {modalites.length} variante{modalites.length > 1 ? 's' : 't('priceVariantSelector.definiemodaliteslength1')s' : ''}
+                        {modalites.length} variante{modalites.length > 1 ? 's' : ''} définie{modalites.length > 1 ? 's' : ''}
                     </Text>
                     {modalites.map((modality, index) => (
                         <View key={index} style={styles.modalityItem}>
@@ -266,7 +266,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                     <View style={styles.emptyStateIcon}>
                         <SafeIcon name="tag" size={32} color={modernColors.primary} />
                     </View>
-                    <Text style={styles.emptyStateTitle}>{t('priceVariantSelector.aucuneVarianteDefinie')}</Text>
+                    <Text style={styles.emptyStateTitle}>Aucune variante définie</Text>
                     <Text style={styles.emptyStateText}>
                         Appuyez sur « Ajouter » pour définir une variante (ex: Taille M) et le prix correspondant.
                     </Text>
@@ -275,8 +275,8 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                 <TouchableOpacity style={styles.compactEmptyState} onPress={openAddModal}>
                     <SafeIcon name="layers" size={18} color={modernColors.primary} />
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.compactEmptyTitle}>{t('priceVariantSelector.ajouterUneVariante')}</Text>
-                        <Text style={styles.compactEmptyText}>{t('priceVariantSelector.exTailleMFormuleVip')}</Text>
+                        <Text style={styles.compactEmptyTitle}>Ajouter une variante</Text>
+                        <Text style={styles.compactEmptyText}>Ex: Taille M, Formule VIP, Option Livraison...</Text>
                     </View>
                     <SafeIcon name="plus" size={18} color={modernColors.primary} />
                 </TouchableOpacity>
@@ -348,7 +348,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                                     }}
                                     keyboardType="numeric"
                                 />
-                                <Text style={styles.inputHint}>{t('priceVariantSelector.lePrixDoitEtreUn')}</Text>
+                                <Text style={styles.inputHint}>⚠️ Le prix doit être un nombre (jamais texte)</Text>
                             </View>
 
                             {/* Devise */}
@@ -381,7 +381,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
 
                             {/* Stock (optionnel) */}
                             <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>{t('priceVariantSelector.stockOptionnel')}</Text>
+                                <Text style={styles.inputLabel}>Stock (optionnel)</Text>
                                 <TextInput
                                     style={styles.input}
                                     placeholder="0"
@@ -396,12 +396,12 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                                     }}
                                     keyboardType="numeric"
                                 />
-                                <Text style={styles.inputHint}>{t('priceVariantSelector.laisserVideSiIllimite')}</Text>
+                                <Text style={styles.inputHint}>Laisser vide si illimité</Text>
                             </View>
 
                             {/* Image (optionnel) */}
                             <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>{t('priceVariantSelector.imageSpecifiqueOptionnel')}</Text>
+                                <Text style={styles.inputLabel}>Image spécifique (optionnel)</Text>
                                 {tempModality.image ? (
                                     <View style={styles.imagePreviewContainer}>
                                         <Image
@@ -423,7 +423,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                                             try {
                                                 const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
                                                 if (!permissionResult.granted) {
-                                                    Alert.alert(t('priceVariantSelector.permissionRefusee'), 'Vous devez autoriser l\t('priceVariantSelector.accesALaGalerie'));
+                                                    Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès à la galerie');
                                                     return;
                                                 }
 
@@ -442,15 +442,15 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                                                 }
                                             } catch (error) {
                                                 console.error('Erreur sélection image:', error);
-                                                Alert.alert('Erreur', t('priceVariantSelector.impossibleDeSelectionnerL')image');
+                                                Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
                                             }
                                         }}
                                     >
                                         <SafeIcon name="image" size={20} color={modernColors.primary} />
-                                        <Text style={styles.uploadImageText}>{t('priceVariantSelector.ajouterUneImage')}</Text>
+                                        <Text style={styles.uploadImageText}>Ajouter une image</Text>
                                     </TouchableOpacity>
                                 )}
-                                <Text style={styles.inputHint}>{t('priceVariantSelector.imageSpecifiqueACetteModalite')}</Text>
+                                <Text style={styles.inputHint}>Image spécifique à cette modalité (ex: photo du produit en pointure 38)</Text>
                             </View>
                         </ScrollView>
 
@@ -463,10 +463,10 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                                     setEditIndex(null);
                                 }}
                             >
-                                <Text style={styles.cancelButtonText}>{t('priceVariantSelector.annuler')}</Text>
+                                <Text style={styles.cancelButtonText}>Annuler</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.saveButton} onPress={saveModality}>
-                                <Text style={styles.saveButtonText}>{t('priceVariantSelector.enregistrer')}</Text>
+                                <Text style={styles.saveButtonText}>Enregistrer</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

@@ -8,8 +8,7 @@ use axum::{
     Extension,
 };
 use log::{info, warn};
-use serde::{Deserialize, Serialize};
-use sqlx::Row;
+use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
@@ -507,32 +506,41 @@ pub async fn traiter_remboursement(
             .map_err(|e| AppError::Internal(format!("Erreur update demande: {}", e)))?;
 
             // Rembourser le wallet de l'utilisateur
+            let montant_cents = (montant_rembourse * 100.0) as i64;
             sqlx::query(
                 r#"
-                INSERT INTO user_wallets (user_id, solde, updated_at)
-                VALUES ($1, $2, NOW())
-                ON CONFLICT (user_id) DO UPDATE SET
-                    solde = user_wallets.solde + $2,
+                INSERT INTO user_wallets (user_id, balance_cents, currency, updated_at, created_at)
+                VALUES ($1, $2, 'XAF', NOW(), NOW())
+                ON CONFLICT (user_id, currency) DO UPDATE SET
+                    balance_cents = user_wallets.balance_cents + $2,
                     updated_at = NOW()
                 "#,
             )
             .bind(remboursement_user_id)
-            .bind(montant_rembourse)
+            .bind(montant_cents)
             .execute(&mut *tx)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur crédit wallet: {}", e)))?;
 
+            // Sync users.tokens_balance
+            let _ =
+                sqlx::query("UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2")
+                    .bind(montant_cents / 100)
+                    .bind(remboursement_user_id)
+                    .execute(&mut *tx)
+                    .await;
+
             // Historique du remboursement
             sqlx::query(
                 r#"
-                INSERT INTO wallet_transactions (user_id, montant, type_transaction, motif, reference_paiement, created_at)
-                VALUES ($1, $2, 'credit', $3, $4, NOW())
+                INSERT INTO wallet_transactions (user_id, transaction_type, amount_cents, balance_before_cents, balance_after_cents, currency, reference_type, reference_id, description, created_at)
+                VALUES ($1, 'credit_refund', $2, 0, 0, 'XAF', 'remboursement', $3, $4, NOW())
                 "#,
             )
             .bind(remboursement_user_id)
-            .bind(montant_rembourse)
-            .bind(format!("Remboursement {}", remboursement_reference_paiement))
+            .bind(montant_cents)
             .bind(&remboursement_reference_paiement)
+            .bind(format!("Remboursement {}", remboursement_reference_paiement))
             .execute(&mut *tx)
             .await
                 .map_err(|e| AppError::Internal(format!("Erreur historique: {}", e)))?;
@@ -740,7 +748,7 @@ pub async fn get_remboursements(
 pub async fn get_statistiques_paiements(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: admin_id, .. }): Extension<AuthenticatedUser>,
-    Query(params): Query<GetStatistiquesQuery>,
+    Query(_params): Query<GetStatistiquesQuery>,
 ) -> AppResult<impl IntoResponse> {
     info!("[get_statistiques_paiements] Admin: {}", admin_id);
 

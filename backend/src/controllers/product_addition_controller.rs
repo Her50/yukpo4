@@ -1281,7 +1281,8 @@ async fn _old_add_product_logic(
 
     // Récupérer le user_id du service pour la notification
     let service_user_id: Option<i32> =
-        sqlx::query_scalar!("SELECT user_id FROM services WHERE id = $1", service_id)
+        sqlx::query_scalar::<_, i32>("SELECT user_id FROM services WHERE id = $1")
+            .bind(service_id)
             .fetch_optional(&pool)
             .await
             .ok()

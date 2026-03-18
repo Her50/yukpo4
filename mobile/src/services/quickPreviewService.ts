@@ -25,7 +25,7 @@ export const quickPreviewService = {
      */
     async generatePreview(request: QuickPreviewRequest): Promise<QuickPreviewResponse> {
         try {
-            console.log('[quickPreviewService] 📤 Génération preview:', {
+            console.log('[quickPreviewService] \uD83D\uDCE4 Génération preview:', {
                 scenesCount: request.timeline?.scenes?.length || 0,
                 quality: request.quality || 'low',
                 maxDuration: request.max_duration || 10.0,
@@ -33,7 +33,7 @@ export const quickPreviewService = {
 
             const response = await iaApi.generateQuickPreview(request);
 
-            console.log('[quickPreviewService] 📥 Réponse:', {
+            console.log('[quickPreviewService] \uD83D\uDCE5 Réponse:', {
                 success: response.success,
                 hasData: !!response.data,
                 error: response.error,

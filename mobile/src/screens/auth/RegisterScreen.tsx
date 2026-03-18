@@ -39,18 +39,18 @@ interface RegisterForm {
 
 // Indicatifs téléphoniques par pays africain francophone
 const COUNTRY_CODES = [
-  { code: 'CM', label: '🇨🇲 Cameroun', prefix: '+237' },
+  { code: 'CM', label: '\uD83C\uDDE8\uD83C\uDDF2 Cameroun', prefix: '+237' },
   { code: 'CI', label: t('register.coteDivoire'), prefix: '+225' },
   { code: 'SN', label: t('register.senegal'), prefix: '+221' },
-  { code: 'CD', label: '🇨🇩 RD Congo', prefix: '+243' },
-  { code: 'GA', label: '🇬🇦 Gabon', prefix: '+241' },
-  { code: 'BF', label: '🇧🇫 Burkina Faso', prefix: '+226' },
-  { code: 'ML', label: '🇲🇱 Mali', prefix: '+223' },
+  { code: 'CD', label: '\uD83C\uDDE8\uD83C\uDDE9 RD Congo', prefix: '+243' },
+  { code: 'GA', label: '\uD83C\uDDEC\uD83C\uDDE6 Gabon', prefix: '+241' },
+  { code: 'BF', label: '\uD83C\uDDE7\uD83C\uDDEB Burkina Faso', prefix: '+226' },
+  { code: 'ML', label: '\uD83C\uDDF2\uD83C\uDDF1 Mali', prefix: '+223' },
   { code: 'GN', label: t('register.guinee'), prefix: '+224' },
-  { code: 'TD', label: '🇹🇩 Tchad', prefix: '+235' },
-  { code: 'CG', label: '🇨🇬 Congo', prefix: '+242' },
-  { code: 'FR', label: '🇫🇷 France', prefix: '+33' },
-  { code: 'BE', label: '🇧🇪 Belgique', prefix: '+32' },
+  { code: 'TD', label: '\uD83C\uDDF9\uD83C\uDDE9 Tchad', prefix: '+235' },
+  { code: 'CG', label: '\uD83C\uDDE8\uD83C\uDDEC Congo', prefix: '+242' },
+  { code: 'FR', label: '\uD83C\uDDEB\uD83C\uDDF7 France', prefix: '+33' },
+  { code: 'BE', label: '\uD83C\uDDE7\uD83C\uDDEA Belgique', prefix: '+32' },
 ];
 
 const RegisterScreen: React.FC = () => {
@@ -86,7 +86,7 @@ const RegisterScreen: React.FC = () => {
     redirectUri: redirectUri, // ✅ Forcer le redirect URI pour garantir l'alignement
   });
 
-  // 🔍 Debug: Log de la configuration OAuth
+  // \uD83D\uDD0D Debug: Log de la configuration OAuth
   useEffect(() => {
     if (googleRequest) {
       console.log('[OAuth Debug] Request:', JSON.stringify(googleRequest, null, 2));

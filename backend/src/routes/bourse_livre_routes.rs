@@ -295,6 +295,49 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/bourse-livre/v2/admin/donations/{id}/reject",
             post(bourse_livre_v2_controller::admin_reject_donation),
         )
+        // Équipe libraire: gestion membres, QR scan, paquets à préparer
+        .route(
+            "/api/bourse-livre/v2/libraire/team/invite",
+            post(bourse_livre_v2_controller::invite_team_member),
+        )
+        .route(
+            "/api/bourse-livre/v2/libraire/team",
+            get(bourse_livre_v2_controller::list_team_members),
+        )
+        .route(
+            "/api/bourse-livre/v2/libraire/team/{member_id}/role",
+            patch(bourse_livre_v2_controller::update_team_member_role),
+        )
+        .route(
+            "/api/bourse-livre/v2/libraire/team/{member_id}",
+            axum::routing::delete(bourse_livre_v2_controller::remove_team_member),
+        )
+        .route(
+            "/api/bourse-livre/v2/libraire/team/scan-qr",
+            post(bourse_livre_v2_controller::team_scan_courier_qr),
+        )
+        .route(
+            "/api/bourse-livre/v2/libraire/team/pending-packages",
+            get(bourse_livre_v2_controller::get_pending_packages_for_team),
+        )
+        .route(
+            "/api/bourse-livre/v2/libraire/team/validate-order",
+            post(bourse_livre_v2_controller::team_validate_order),
+        )
+        .route(
+            "/api/bourse-livre/v2/libraire/team/package/{id}/detail",
+            get(bourse_livre_v2_controller::team_get_package_detail),
+        )
+        // Coursier: itinéraire avec QR contextuel par stop
+        .route(
+            "/api/bourse-livre/v2/courier/my-stops",
+            get(bourse_livre_v2_controller::courier_get_my_stops),
+        )
+        // Changement de lieu de récupération/livraison par les intervenants
+        .route(
+            "/api/bourse-livre/v2/update-location",
+            patch(bourse_livre_v2_controller::update_delivery_location),
+        )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
     // Webhook routes (PUBLIQUES, sans JWT — appelées par les prestataires de paiement)

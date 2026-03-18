@@ -1,5 +1,5 @@
 /**
- * 🎨 Carte de livraison animée avec micro-interactions
+ * \uD83C\uDFA8 Carte de livraison animée avec micro-interactions
  * Niveau Uber Eats / DoorDash
  */
 

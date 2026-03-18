@@ -25,7 +25,7 @@ export interface UploadResponse {
  * @returns URLs des fichiers uploadés
  */
 export const uploadFiles = async (files: Array<{ uri: string; type: string; name?: string }>): Promise<UploadedFile[]> => {
-    console.log('[uploadApi] 📤 Upload préalable de', files.length, 'fichier(s)');
+    console.log('[uploadApi] \uD83D\uDCE4 Upload préalable de', files.length, 'fichier(s)');
 
     if (files.length === 0) {
         return [];
@@ -53,7 +53,7 @@ export const uploadFiles = async (files: Array<{ uri: string; type: string; name
             } as any);
         });
 
-        console.log('[uploadApi] 📦 Envoi de tous les fichiers en une seule requête...');
+        console.log('[uploadApi] \uD83D\uDCE6 Envoi de tous les fichiers en une seule requête...');
 
         // ✅ ENVOI UNIQUE: Tous les fichiers en une seule requête (beaucoup plus rapide)
         const response = await fetch(`${API_BASE_URL}/api/upload`, {

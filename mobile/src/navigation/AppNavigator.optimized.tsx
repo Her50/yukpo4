@@ -142,7 +142,7 @@ reg('AgencyTicketManagement', () => import('../screens/AgencyTicketManagementScr
 reg('AjouterProduitSimple', () => import('../screens/AjouterProduitSimpleScreen'));
 reg('Blog', () => import('../screens/BlogScreen'));
 reg('BloodGroupManagement', () => import('../screens/BloodGroupManagementScreen'));
-reg('BourseLivre', () => import('../screens/BourseLivreScreen'));
+reg('BourseLivre', () => import('../screens/specialized/LivreScolaireHomeScreen'));
 reg('LibrairieRegistration', () => import('../screens/LibrairieRegistrationScreen'));
 reg('QRCodeShare', () => import('../screens/QRCodeShareScreen'));
 reg('BusBoardingManagement', () => import('../screens/BusBoardingManagementScreen'));
@@ -236,6 +236,7 @@ reg('FleetDashboard', () => import('../screens/delivery/FleetDashboardScreen'));
 reg('CourierDashboard', () => import('../screens/delivery/CourierDashboardScreen'));
 reg('CourierRegistration', () => import('../screens/delivery/CourierRegistrationScreen'));
 reg('CourierVerificationCode', () => import('../screens/delivery/CourierVerificationCodeScreen'));
+reg('DeliveryCommissionsAdmin', () => import('../screens/delivery/DeliveryCommissionsAdminScreen'));
 reg('DeliveryHome', () => import('../screens/delivery/DeliveryHomeScreen'));
 reg('DeliveryParcelFlowNew', () => import('../screens/delivery/DeliveryParcelFlowNewScreen'));
 reg('DeliveryParcelFlowScreen', () => import('../screens/delivery/DeliveryParcelFlowScreen'));
@@ -251,6 +252,8 @@ reg('ShoppingPickupDrop', () => import('../screens/delivery/ShoppingPickupDropSc
 reg('ShoppingSummary', () => import('../screens/delivery/ShoppingSummaryScreen'));
 reg('StorageLocations', () => import('../screens/delivery/StorageLocationsScreen'));
 reg('ExternalProvidersAdmin', () => import('../screens/delivery/ExternalProvidersAdminScreen'));
+reg('CourierHistory', () => import('../screens/delivery/CourierHistoryScreen'));
+reg('CourierWithdrawal', () => import('../screens/delivery/CourierWithdrawalScreen'));
 
 // ---------------------------------------------------------------------------
 // Offres d'emploi (14)
@@ -437,6 +440,7 @@ reg('BookRecapV2', () => import('../screens/specialized/BookRecapV2Screen'));
 reg('BookPackages', () => import('../screens/specialized/BookPackagesScreen'));
 reg('BookBuyDirect', () => import('../screens/bourse-livre/BookBuyDirectScreen'));
 reg('AdminProgrammeUpload', () => import('../screens/bourse-livre/AdminProgrammeUploadScreen'));
+reg('BookDeliveryTracking', () => import('../screens/specialized/BookDeliveryTrackingScreen'));
 reg('NewBooks', () => import('../screens/specialized/NewBooksScreen'));
 reg('MesBesoinsLivres', () => import('../screens/specialized/MesBesoinsLivresScreen'));
 reg('AdminDonations', () => import('../screens/specialized/AdminDonationsScreen'));
@@ -548,7 +552,7 @@ const SPECIALIZED_SERVICES_TYPES = [
   'banquesang', 'banque_sang', 'transfusion sanguine',
   'hotel', 'meuble', 'immobilier',
   'supermarche', 'restaurant',
-  'livrescolaire', 'livre_scolaire',
+  'livrescolaire', 'livre_scolaire', 'libraire', 'librairie',
   'assureur', 'assurance',
   'etablissementscolaire', 'etablissement_scolaire',
   'offre_emploi', 'offreemploi', 'recruteur', 'employeur',
@@ -600,8 +604,10 @@ const getPartnerDashboardScreen = (partnerType: string | undefined): string | nu
     'assurance': 'AssuranceDashboard',
     'etablissementscolaire': 'OrientationPartnerDashboard',
     'etablissement_scolaire': 'OrientationPartnerDashboard',
-    'livrescolaire': 'OrientationPartnerDashboard',
-    'livre_scolaire': 'OrientationPartnerDashboard',
+    'livrescolaire': 'LivreScolaireForm',
+    'livre_scolaire': 'LivreScolaireForm',
+    'libraire': 'LivreScolaireForm',
+    'librairie': 'LivreScolaireForm',
     // Autres types avec espaces (normalisation)
     'livraison': 'FleetDashboard',
     'livraison_courses_marche': 'FleetDashboard',
@@ -838,7 +844,7 @@ function MainStackNavigator() {
     // Android peut tuer la tâche background — ce listener la relance automatiquement
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
-        console.log('[AppNav] 📱 App revenue au premier plan, vérification tracking...');
+        console.log('[AppNav] \uD83D\uDCF1 App revenue au premier plan, vérification tracking...');
         PassiveActivityTracker.resumeIfEnabled().catch(() => { });
       }
       appStateRef.current = nextAppState;

@@ -2806,6 +2806,12 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             &app_state.pg,
         )
         .await;
+
+        // ✅ 2026-03-18: Table cache taux de change
+        let _ = yukpomnang_backend::migrations::auto_migrate::ensure_exchange_rate_cache_table(
+            &app_state.pg,
+        )
+        .await;
     }
 
     // ✅ 2026-03-16: Index MongoDB supprimés - index PostgreSQL créés via ensure_history_events_table

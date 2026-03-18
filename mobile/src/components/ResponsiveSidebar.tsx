@@ -14,6 +14,7 @@ const links: SidebarLink[] = [
   { label: "Dashboard", screen: "Dashboard" },
   { label: t('responsiveSidebar.utilisateurs'), screen: "Users" },
   { label: "Services", screen: "MesServices" },
+  { label: "Bourse du Livre", screen: "LivreScolaireHome" },
   { label: "Statistiques", screen: "Stats" },
   { label: t('responsiveSidebar.parametres'), screen: "Settings" },
 ];
@@ -45,7 +46,7 @@ const ResponsiveSidebar: React.FC = () => {
         <View style={styles.overlay} onTouchEnd={() => setOpen(false)}>
           <View style={styles.sidebar}>
             <View style={styles.header}>
-              <Text style={styles.headerText}>🎯 Admin Panel</Text>
+              <Text style={styles.headerText}>\uD83C\uDFAF Admin Panel</Text>
             </View>
             <View style={styles.nav}>
               {links.map((link) => (

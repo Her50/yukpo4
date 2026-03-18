@@ -53,7 +53,7 @@ const [isLoading, setIsLoading] = useState(false);
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>📍 GPS Tracking</Text>
+                <Text style={styles.title}>\uD83D\uDCCD GPS Tracking</Text>
                 <TouchableOpacity
                     style={[
                         styles.toggleButton,

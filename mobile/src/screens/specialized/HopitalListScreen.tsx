@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Hopital {
     id: number;
@@ -101,11 +101,11 @@ const HopitalListScreen: React.FC = () => {
                 }
                 setHasMore(newHopitaux.length === 20);
             } else {
-                Alert.alert('Erreur', t('hopitalListScreen.impossibleDeChargerLesHopitaux'));
+                Alert.alert(t('message.error') || 'Erreur', t('hopitalListScreen.impossibleDeChargerLesHopitaux') || 'Impossible de charger les hôpitaux');
             }
         } catch (error: any) {
             console.error('[HopitalListScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || t('hopitalListScreen.impossibleDeChargerLesHopitaux'));
+            Alert.alert(t('message.error') || 'Erreur', error.message || t('hopitalListScreen.impossibleDeChargerLesHopitaux') || 'Impossible de charger les hôpitaux');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -134,13 +134,13 @@ const HopitalListScreen: React.FC = () => {
                     <View style={styles.badgesContainer}>
                         <View style={[styles.statusBadge, item.is_available_now && styles.statusBadgeAvailable]}>
                             <Text style={[styles.statusText, item.is_available_now && styles.statusTextAvailable]}>
-                                {item.is_available_now ? 'Disponible' : 'Indisponible'}
+                                {item.is_available_now ? (t('hopitalDetails.disponible') || 'Disponible') : (t('hopitalListScreen.indisponible') || 'Indisponible')}
                             </Text>
                         </View>
                         {item.urgences_disponible && (
                             <View style={styles.urgenceBadge}>
                                 <SafeIcon name="alert-circle" size={12} color="#DC2626" />
-                                <Text style={styles.urgenceText}>Urgences</Text>
+                                <Text style={styles.urgenceText}>{t('hopitalDetails.urgences') || 'Urgences'}</Text>
                             </View>
                         )}
                     </View>
@@ -173,7 +173,7 @@ const HopitalListScreen: React.FC = () => {
 
                 {item.prestations_medicales && item.prestations_medicales.length > 0 && (
                     <View style={styles.prestationsContainer}>
-                        <Text style={styles.prestationsLabel}>Prestations:</Text>
+                        <Text style={styles.prestationsLabel}>{t('hopitalFormScreen.prestations') || 'Prestations'}:</Text>
                         <View style={styles.prestationsChips}>
                             {item.prestations_medicales.slice(0, 3).map((prest, idx) => (
                                 <View key={idx} style={styles.prestationChip}>
@@ -217,7 +217,7 @@ const HopitalListScreen: React.FC = () => {
                     <SafeIcon name="hospital" size={64} color="#D1D5DB" />
                     <Text style={styles.emptyText}>{t('hopitalList.aucunHopitalTrouve')}</Text>
                     <Text style={styles.emptySubtext}>
-                        Essayez de modifier vos critères de recherche
+                        {t('hopitalListScreen.essayezDeModifierVosCriteres') || 'Essayez de modifier vos critères de recherche'}
                     </Text>
                 </View>
             </View>
@@ -234,7 +234,7 @@ const HopitalListScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <Text style={styles.title}>
-                    {hopitaux.length} hôpital{hopitaux.length > 1 ? 'aux' : 't('hopitalListScreen.trouvehopitauxlength1')s' : ''}
+                    {hopitaux.length} {t('hopitalListScreen.hopitalTrouve') || `hôpital${hopitaux.length > 1 ? 'aux' : ''} trouvé${hopitaux.length > 1 ? 's' : ''}`}
                 </Text>
             </View>
 

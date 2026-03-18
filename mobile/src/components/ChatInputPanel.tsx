@@ -7,7 +7,6 @@ import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity
 import { Card } from 'react-native-paper';
 import { useLocation } from '../contexts/LocationContext';
 import { theme } from '../theme/theme';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface MultiModalInput {
   text?: string;
@@ -37,7 +36,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
   loading = false,
   onInputChange,
   showIASuggestion = false,
-  placeholder={t('chatInputPanel.decrivezVotreBesoinIci')}
+  placeholder = "Décrivez votre besoin ici..."
 }) => {
   const [texte, setTexte] = useState('');
   const [site_web, setSiteWeb] = useState('');
@@ -50,7 +49,6 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
 
   // GPS
   const { location } = useLocation();
-    const { t } = useLanguageSafe();
   const [gps_zone, setGpsZone] = useState<{ lat: number; lng: number } | null>(null);
 
   // Suggestions IA
@@ -80,7 +78,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
         // Simulation d'analyse IA
         setAiInsights({
           confidence: 0.8,
-          suggestions: [t('chatInputPanel.ajoutezPlusDeDetailsSurVotre'), t('chatInputPanel.precisezVotreLocalisation')],
+          suggestions: ['Ajoutez plus de détails sur votre besoin', 'Précisez votre localisation'],
           complexity: 'medium',
           estimatedTokens: Math.floor(texte.length / 4)
         });
@@ -148,7 +146,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
       }
     } catch (error) {
       console.error('Erreur sélection images:', error);
-      Alert.alert('Erreur', t('chatInputPanel.impossibleDeSelectionnerLesImages'));
+      Alert.alert('Erreur', 'Impossible de sélectionner les images');
     }
   }, []);
 
@@ -171,7 +169,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
       }
     } catch (error) {
       console.error('Erreur sélection documents:', error);
-      Alert.alert('Erreur', t('chatInputPanel.impossibleDeSelectionnerLesDocuments'));
+      Alert.alert('Erreur', 'Impossible de sélectionner les documents');
     }
   }, []);
 
@@ -273,7 +271,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
             color="white"
           />
           <Text style={styles.submitText}>
-            {loading ? "Analyse..." : t('chatInputPanel.envoyerAYukpo')}
+            {loading ? "Analyse..." : "Envoyer à Yukpo"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -285,7 +283,7 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = ({
             style={styles.linkInput}
             value={site_web}
             onChangeText={setSiteWeb}
-            placeholder={t('chatInputPanel.collerUnLienUrlA')}
+            placeholder="Coller un lien (URL) à analyser..."
             keyboardType="url"
           />
         </View>

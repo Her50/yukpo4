@@ -1,5 +1,5 @@
 /**
- * 📊 Graphiques de statistiques pour coursier
+ * \uD83D\uDCCA Graphiques de statistiques pour coursier
  * Design moderne avec visualisations animées
  */
 

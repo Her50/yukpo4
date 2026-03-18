@@ -33,7 +33,7 @@ const AcquisitionTracker: React.FC = () => {
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>🔄 Redirection en cours...</Text>
+      <Text>\uD83D\uDD04 Redirection en cours...</Text>
     </View>
   );
 };

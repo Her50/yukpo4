@@ -20,7 +20,6 @@ import { placesService } from '../services/placesService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import SubCharacteristicsTable, { SubCharacteristicRow } from './SubCharacteristicsTable';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface LinearAutocompleteEditorProps {
     label: string;
@@ -59,8 +58,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     filtrable = true,
     productLabels, // ✅ AJOUT: Pour garantir l'ordre correct des labels
 }) => {
-        const { t } = useLanguageSafe();
-const [selectedModalities, setSelectedModalities] = useState<string[]>(value || []);
+    const [selectedModalities, setSelectedModalities] = useState<string[]>(value || []);
     const [searchQuery, setSearchQuery] = useState('');
     const [iaSuggestions, setIaSuggestions] = useState<string[]>([]);
     const [dbSuggestions, setDbSuggestions] = useState<string[]>([]);
@@ -248,7 +246,7 @@ const [selectedModalities, setSelectedModalities] = useState<string[]>(value || 
             }
 
             // PRIORITÉ 3: Fallback positionnel si aucun match trouvé
-            let label = index < orderedLabels.length ? orderedLabels[index] : t('linearAutocompleteEditor.caracteristique', { index + 1: index + 1 });
+            let label = index < orderedLabels.length ? orderedLabels[index] : `caractéristique_${index + 1}`;
 
             return {
                 key: label,
@@ -385,7 +383,7 @@ const [selectedModalities, setSelectedModalities] = useState<string[]>(value || 
             setShowTable(false);
 
             // ✅ NOUVEAU : Sauvegarder dans la DB avec gestion d'erreur
-            console.log('[LinearAutocompleteEditor] 💾 Sauvegarde sous-caractéristiques dans DB...', {
+            console.log('[LinearAutocompleteEditor] \uD83D\uDCBE Sauvegarde sous-caractéristiques dans DB...', {
                 modality,
                 updatedProductLabels,
                 nbSousCaracs: Object.keys(updatedSousCaracs).length
@@ -449,7 +447,7 @@ const [selectedModalities, setSelectedModalities] = useState<string[]>(value || 
             {showTable && (
                 <>
                     {/* ✅ DEBUG: Logger les props passées au tableau */}
-                    {console.log('[LinearAutocompleteEditor] 🔍 Props passées à SubCharacteristicsTable:', {
+                    {console.log('[LinearAutocompleteEditor] \uD83D\uDD0D Props passées à SubCharacteristicsTable:', {
                         sousCaracteristiques: JSON.stringify(sousCaracteristiques, null, 2),
                         separateur,
                         hasInitialRows: tableRows.length > 0,
@@ -493,7 +491,7 @@ const [selectedModalities, setSelectedModalities] = useState<string[]>(value || 
                                 });
 
                                 onChange([modality], updatedSousCaracs);
-                                console.log('[LinearAutocompleteEditor] 💾 Modifications sauvegardées automatiquement (lignes directes du tableau)');
+                                console.log('[LinearAutocompleteEditor] \uD83D\uDCBE Modifications sauvegardées automatiquement (lignes directes du tableau)');
                                 console.log('[LinearAutocompleteEditor] ✅ tableRows mis à jour:', rows.length, 'lignes');
 
                                 // ✅ NOUVEAU: Feedback visuel pour les modifications
@@ -501,7 +499,7 @@ const [selectedModalities, setSelectedModalities] = useState<string[]>(value || 
                             } else {
                                 // ✅ CORRECTION: Si aucune ligne valide, mettre à jour avec un tableau vide
                                 onChange([], {});
-                                console.log('[LinearAutocompleteEditor] 🗑️ Tableau vidé, aucune modification sauvegardée');
+                                console.log('[LinearAutocompleteEditor] \uD83D\uDDD1️ Tableau vidé, aucune modification sauvegardée');
                             }
                         }}
                     />
@@ -538,7 +536,7 @@ const [selectedModalities, setSelectedModalities] = useState<string[]>(value || 
             {/* Suggestions linéaires (affichage horizontal) - seulement si le tableau n'est pas affiché */}
             {!showTable && uniqueSuggestions.length > 0 && (
                 <View style={styles.suggestionsSection}>
-                    <Text style={styles.suggestionsTitle}>💡 Suggestions</Text>
+                    <Text style={styles.suggestionsTitle}>\uD83D\uDCA1 Suggestions</Text>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -617,7 +615,7 @@ const [selectedModalities, setSelectedModalities] = useState<string[]>(value || 
                 </View>
             )}
 
-            {/* Modal dt('linearAutocompleteEditor.ajoutPersonnaliseSeulementSiLeTableau')est pas affiché */}
+            {/* Modal d'ajout personnalisé - seulement si le tableau n'est pas affiché */}
             {!showTable && (
                 <Modal
                     visible={showAddModal}
@@ -629,7 +627,7 @@ const [selectedModalities, setSelectedModalities] = useState<string[]>(value || 
                         <View style={styles.modalContent}>
                             <View style={styles.modalHeader}>
                                 <SafeIcon name="plus-circle" size={24} color={modernColors.primary} />
-                                <Text style={styles.modalTitle}>{t('linearAutocompleteEditor.ajouterUneCaracteristique')}</Text>
+                                <Text style={styles.modalTitle}>Ajouter une caractéristique</Text>
                                 <TouchableOpacity
                                     style={styles.closeButton}
                                     onPress={() => {
@@ -648,10 +646,10 @@ const [selectedModalities, setSelectedModalities] = useState<string[]>(value || 
                                 </Text>
 
                                 <View style={styles.inputContainer}>
-                                    <Text style={styles.inputLabel}>{t('linearAutocompleteEditor.nomDeLaCaracteristique')}</Text>
+                                    <Text style={styles.inputLabel}>Nom de la caractéristique</Text>
                                     <TextInput
                                         style={styles.input}
-                                        placeholder={t('linearAutocompleteEditor.exCouleurTailleMatiere')}
+                                        placeholder="Ex: couleur, taille, matière..."
                                         placeholderTextColor="#9CA3AF"
                                         value={customKey}
                                         onChangeText={setCustomKey}
@@ -681,7 +679,7 @@ const [selectedModalities, setSelectedModalities] = useState<string[]>(value || 
                                         setCustomValue('');
                                     }}
                                 >
-                                    <Text style={styles.cancelButtonText}>{t('linearAutocompleteEditor.annuler')}</Text>
+                                    <Text style={styles.cancelButtonText}>Annuler</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[
@@ -692,7 +690,7 @@ const [selectedModalities, setSelectedModalities] = useState<string[]>(value || 
                                     disabled={!customKey || !customValue}
                                 >
                                     <SafeIcon name="check" size={18} color="#FFFFFF" />
-                                    <Text style={styles.saveButtonText}>{t('linearAutocompleteEditor.ajouter')}</Text>
+                                    <Text style={styles.saveButtonText}>Ajouter</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>

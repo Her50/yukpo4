@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SimpleSearchBarProps {
     placeholder?: string;
@@ -27,7 +26,7 @@ interface SimpleSearchBarProps {
 }
 
 const SimpleSearchBar: React.FC<SimpleSearchBarProps> = ({
-    placeholder={t('simpleSearchBar.rechercher')},
+    placeholder = "Rechercher...",
     onSubmit,
     onGPSPress,
     showSendButton = true,
@@ -36,8 +35,7 @@ const SimpleSearchBar: React.FC<SimpleSearchBarProps> = ({
     onImagePress,
     onAudioPress,
 }) => {
-        const { t } = useLanguageSafe();
-const [query, setQuery] = useState(initialValue);
+    const [query, setQuery] = useState(initialValue);
 
     const handleSubmit = useCallback(() => {
         const trimmed = query.trim();

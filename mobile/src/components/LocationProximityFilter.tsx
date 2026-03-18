@@ -18,7 +18,6 @@ import { modernColors } from '../theme/modernTheme';
 import { formatCoordinates, geocodeLocation } from '../utils/geocoding';
 import LocationSelector from './LocationSelector';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export type LocationMode = 'current' | 'custom' | 'anywhere';
 
@@ -34,8 +33,7 @@ export const LocationProximityFilter: React.FC<LocationProximityFilterProps> = (
     initialRadius = 10
 }) => {
     const { location, isLoading: locationLoading, calculateDistance } = useLocation();
-        const { t } = useLanguageSafe();
-const [mode, setMode] = useState<LocationMode>(initialMode);
+    const [mode, setMode] = useState<LocationMode>(initialMode);
     const [customLocation, setCustomLocation] = useState('');
     const [customCoords, setCustomCoords] = useState<{ lat: number, lon: number } | null>(null);
     const [radius, setRadius] = useState<number | null>(initialRadius);
@@ -97,13 +95,13 @@ const [mode, setMode] = useState<LocationMode>(initialMode);
         { value: 10, label: '10 km' },
         { value: 20, label: '20 km' },
         { value: 50, label: '50 km' },
-        { value: null, label: t('locationProximityFilter.illimite') }
+        { value: null, label: 'Illimité' }
     ];
 
     return (
         <View style={styles.container}>
             {/* Titre de section */}
-            <Text style={styles.sectionTitle}>{t('locationProximityFilter.localisationEtProximite')}</Text>
+            <Text style={styles.sectionTitle}>\uD83D\uDCCD Localisation et proximité</Text>
             <Text style={styles.sectionDescription}>
                 Filtrez par zone géographique
             </Text>
@@ -133,7 +131,8 @@ const [mode, setMode] = useState<LocationMode>(initialMode);
                         size={18}
                         color={mode === 'custom' ? '#FFFFFF' : modernColors.primary}
                     />
-                    <Text style={[styles.modeText, mode === 'customt('locationProximityFilter.stylesmodetextactivePresD')un lieu
+                    <Text style={[styles.modeText, mode === 'custom' && styles.modeTextActive]}>
+                        Près d'un lieu
                     </Text>
                 </TouchableOpacity>
 
@@ -172,7 +171,7 @@ const [mode, setMode] = useState<LocationMode>(initialMode);
                     {isGeocoding && (
                         <View style={styles.geocodingIndicator}>
                             <ActivityIndicator size="small" color={modernColors.primary} />
-                            <Text style={styles.geocodingText}>{t('locationProximityFilter.geolocalisation')}</Text>
+                            <Text style={styles.geocodingText}>Géolocalisation...</Text>
                         </View>
                     )}
                 </View>
@@ -210,7 +209,7 @@ const [mode, setMode] = useState<LocationMode>(initialMode);
                     {locationLoading ? (
                         <>
                             <ActivityIndicator size="small" color={modernColors.primary} />
-                            <Text style={styles.infoText}>{t('locationProximityFilter.localisationEnCours')}</Text>
+                            <Text style={styles.infoText}>Localisation en cours...</Text>
                         </>
                     ) : location ? (
                         <>
@@ -253,7 +252,7 @@ const [mode, setMode] = useState<LocationMode>(initialMode);
                 >
                     <View style={styles.modalContainer}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{t('locationProximityFilter.rechercherUnLieu')}</Text>
+                            <Text style={styles.modalTitle}>Rechercher un lieu</Text>
                             <TouchableOpacity
                                 onPress={() => setShowLocationSelector(false)}
                                 style={styles.modalCloseButton}
@@ -263,10 +262,10 @@ const [mode, setMode] = useState<LocationMode>(initialMode);
                         </View>
 
                         <LocationSelector
-                            label={t('locationProximityFilter.villeOuQuartier')}
+                            label="Ville ou quartier"
                             value={customLocation}
                             onSelect={handleLocationSelect as any}
-                            placeholder={t('locationProximityFilter.rechercherUnLieuVilleQuartier')}
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
                             scope="all"
                         />
                     </View>

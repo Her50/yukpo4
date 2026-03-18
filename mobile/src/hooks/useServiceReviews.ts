@@ -124,7 +124,7 @@ export const useServiceReviews = (serviceId: number | number[]): UseServiceRevie
                     }
                 } else {
                     if (!cancelled) {
-                        console.log(`📝 [useServiceReviews] API reviews non disponible pour service ${singleServiceId}`);
+                        console.log(`\uD83D\uDCDD [useServiceReviews] API reviews non disponible pour service ${singleServiceId}`);
                         setReviews([]);
                         setStats({
                             average_rating: 0,

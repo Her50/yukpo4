@@ -7,7 +7,7 @@ import useGlobalPromos from '../../hooks/useGlobalPromos';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 import { NativeButton, NativeCard } from '../SafeNativeDesign';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const getSnapshotImage = (snapshot: any): string | undefined => {
     if (!snapshot) return undefined;
@@ -85,7 +85,7 @@ const GlobalPromoHighlightsComponent: React.FC = () => {
     if (error && !safeCatalog.length) {
         return (
             <NativeCard style={styles.card}>
-                <Text style={styles.title}>🔥 Black Friday collectif</Text>
+                <Text style={styles.title}>\uD83D\uDD25 Black Friday collectif</Text>
                 <Text style={styles.errorText}>{typeof error === 'string' ? error : (error as any)?.message || 'Erreur inconnue'}</Text>
                 <NativeButton title={t('globalPromoHighlights.reessayer')} onPress={refresh} variant="secondary" />
             </NativeCard>
@@ -101,7 +101,7 @@ const GlobalPromoHighlightsComponent: React.FC = () => {
             <View style={styles.header}>
                 <View>
                     <Text style={styles.kicker}>{t('globalPromoHighlights.nouveautePlateforme')}</Text>
-                    <Text style={styles.title}>🔥 Black Friday collectif</Text>
+                    <Text style={styles.title}>\uD83D\uDD25 Black Friday collectif</Text>
                     <Text style={styles.subtitle}>{t('globalPromoHighlights.integrezLesPromosOfficiellesYukpo')}</Text>
                 </View>
                 <View style={{ gap: 8 }}>

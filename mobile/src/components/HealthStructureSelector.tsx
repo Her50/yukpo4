@@ -4,7 +4,6 @@ import { healthPlacesService, HealthStructureType } from '../services/healthPlac
 import { modalityService } from '../services/modalityService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface HealthStructureSelectorProps {
     label: string;
@@ -22,13 +21,12 @@ export const HealthStructureSelector: React.FC<HealthStructureSelectorProps> = (
     value,
     onSelect,
     type,
-    placeholder={t('healthStructureSelector.rechercher')},
+    placeholder = 'Rechercher...',
     required = false,
     useLocation = true,
     radius = 5000,
 }) => {
-        const { t } = useLanguageSafe();
-const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [options, setOptions] = useState<string[]>([]);
@@ -94,7 +92,7 @@ const [open, setOpen] = useState(false);
                         {value || placeholder}
                     </Text>
                     {locationEnabled && (
-                        <Text style={styles.locationHint}>{t('healthStructureSelector.rechercheParProximiteActivee')}</Text>
+                        <Text style={styles.locationHint}>\uD83D\uDCCD Recherche par proximité activée</Text>
                     )}
                 </View>
                 <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
@@ -129,7 +127,7 @@ const [open, setOpen] = useState(false);
                                     color={locationEnabled ? modernColors.primary : modernColors.textSecondary}
                                 />
                                 <Text style={[styles.locationToggleText, locationEnabled && styles.locationToggleTextActive]}>
-                                    {locationEnabled ? t('healthStructureSelector.rechercheParProximite') : 'Recherche par nom'}
+                                    {locationEnabled ? 'Recherche par proximité' : 'Recherche par nom'}
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -157,24 +155,24 @@ const [open, setOpen] = useState(false);
                             onPress={() => setShowAddModal(true)}
                         >
                             <SafeIcon name="plus-circle" size={18} color={modernColors.primary} />
-                            <Text style={styles.addButtonText}>{t('healthStructureSelector.ajouterUneStructure')}</Text>
+                            <Text style={styles.addButtonText}>Ajouter une structure</Text>
                         </TouchableOpacity>
 
                         <ScrollView style={styles.optionsList}>
                             {loading ? (
                                 <View style={styles.loadingContainer}>
-                                    <Text style={styles.loadingText}>{t('healthStructureSelector.rechercheEnCours')}</Text>
+                                    <Text style={styles.loadingText}>Recherche en cours...</Text>
                                     {locationEnabled && (
-                                        <Text style={styles.loadingHint}>📍 Recherche dans un rayon de {radius / 1000}km</Text>
+                                        <Text style={styles.loadingHint}>\uD83D\uDCCD Recherche dans un rayon de {radius / 1000}km</Text>
                                     )}
                                 </View>
                             ) : options.length === 0 ? (
                                 <View style={styles.emptyContainer}>
                                     <SafeIcon name="map-pin" size={32} color={modernColors.textSecondary} />
-                                    <Text style={styles.emptyText}>{t('healthStructureSelector.aucunResultatTrouve')}</Text>
+                                    <Text style={styles.emptyText}>Aucun résultat trouvé</Text>
                                     <Text style={styles.emptyHint}>
                                         {locationEnabled
-                                            ? t('healthStructureSelector.essayezDaugmenterLeRayonOuDe')
+                                            ? "Essayez d'augmenter le rayon ou de désactiver la géolocalisation"
                                             : "Essayez un autre terme de recherche ou ajoutez votre structure"
                                         }
                                     </Text>
@@ -203,9 +201,9 @@ const [open, setOpen] = useState(false);
             <Modal visible={showAddModal} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.addModalContainer}>
-                        <Text style={styles.addModalTitle}>{t('healthStructureSelector.ajouterUneStructure')}</Text>
+                        <Text style={styles.addModalTitle}>Ajouter une structure</Text>
                         <TextInput
-                            placeholder={t('healthStructureSelector.nomDeLaStructure')}
+                            placeholder="Nom de la structure"
                             value={newStructureName}
                             onChangeText={setNewStructureName}
                             style={styles.addModalInput}
@@ -220,13 +218,13 @@ const [open, setOpen] = useState(false);
                                     setNewStructureName('');
                                 }}
                             >
-                                <Text style={styles.addModalButtonTextCancel}>{t('healthStructureSelector.annuler')}</Text>
+                                <Text style={styles.addModalButtonTextCancel}>Annuler</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.addModalButton, styles.addModalButtonConfirm]}
                                 onPress={handleAddCustomStructure}
                             >
-                                <Text style={styles.addModalButtonTextConfirm}>{t('healthStructureSelector.ajouter')}</Text>
+                                <Text style={styles.addModalButtonTextConfirm}>Ajouter</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

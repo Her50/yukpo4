@@ -527,7 +527,7 @@ const MesInteractionsScreen: React.FC = () => {
         {/* ✅ Bouton Dashboard Client/Utilisateur */}
         <View style={styles.dashboardSection}>
           <NativeButton
-            title={`📊 ${t('interactions.dashboardFull')}`}
+            title={`\uD83D\uDCCA ${t('interactions.dashboardFull')}`}
             onPress={() => (navigation as any).navigate('Dashboard')}
             variant="primary"
             size="large"

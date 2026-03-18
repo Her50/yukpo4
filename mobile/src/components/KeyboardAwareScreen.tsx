@@ -7,7 +7,7 @@
  * Il utilise react-native-keyboard-aware-scroll-view pour remonter automatiquement
  * le contenu lorsque le clavier s'ouvre.
  * 
- * 📖 Guide d'utilisation complet : docs/KEYBOARD_AWARE_SCREEN_GUIDE.md
+ * \uD83D\uDCD6 Guide d'utilisation complet : docs/KEYBOARD_AWARE_SCREEN_GUIDE.md
  * 
  * Usage:
  * ```tsx

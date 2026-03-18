@@ -173,7 +173,7 @@ const RealTimeGPSModal: React.FC<RealTimeGPSModalProps> = ({
                     </TouchableOpacity>
                     <View style={styles.headerContent}>
                         <Text style={styles.headerTitle}>
-                            {mode === 'pickup' ? '📍 Aller chercher le client' : '🎯 Aller à destination'}
+                            {mode === 'pickup' ? '\uD83D\uDCCD Aller chercher le client' : '\uD83C\uDFAF Aller à destination'}
                         </Text>
                         <Text style={styles.headerSubtitle}>
                             {clientLocation.address || 'Adresse du client'}

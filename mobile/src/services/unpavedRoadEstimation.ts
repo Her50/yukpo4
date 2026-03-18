@@ -203,7 +203,7 @@ export function getRouteConditionMessage(
     } else if (estimation.unpavedPercentage < 50) {
         return '⚠️ Route partiellement non goudronnée';
     } else {
-        return '🚧 Route majoritairement non goudronnée';
+        return '\uD83D\uDEA7 Route majoritairement non goudronnée';
     }
 }
 

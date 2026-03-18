@@ -14,6 +14,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import IntelligentChat from '../../components/IntelligentChat';
+import IntelligentChatFab from '../../components/IntelligentChatFab';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
@@ -54,6 +56,7 @@ const HotelBookingScreen: React.FC = () => {
     const [emailClient, setEmailClient] = useState(user?.email || '');
     const [notes, setNotes] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showChat, setShowChat] = useState(false);
 
     const nbNuits = (() => {
         try {
@@ -294,6 +297,26 @@ const HotelBookingScreen: React.FC = () => {
                     <View style={{ height: 40 }} />
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Intelligent Chat FAB */}
+            <IntelligentChatFab
+                onPress={() => setShowChat(true)}
+                visible={!showChat}
+                screenName="HotelBooking"
+            />
+            <IntelligentChat
+                visible={showChat}
+                onClose={() => setShowChat(false)}
+                screenContext={{
+                    screenName: 'HotelBooking',
+                    screenType: 'form',
+                    serviceData: {
+                        nom: propertyName,
+                        prix: prixNuitee > 0 ? `${prixNuitee} ${devise}/${t('hotelMeubleHome.nuit')}` : undefined,
+                        description: `${typeBien === 'meuble' ? t('hotelBookingScreen.locationMeublee') : t('hotelBookingScreen.hotel')} · ${ville}`,
+                    },
+                }}
+            />
         </View>
     );
 };

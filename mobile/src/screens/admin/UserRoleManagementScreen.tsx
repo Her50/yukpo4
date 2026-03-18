@@ -20,7 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPatch } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { isAdminUser } from '../../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface UserListItem {
     id: number;
@@ -144,10 +144,10 @@ const UserRoleManagementScreen: React.FC = () => {
 
     const getRoleLabel = (role: string) => {
         const labels: Record<string, string> = {
-            user: '👤 Utilisateur',
-            admin: '👑 Administrateur',
-            client: '🛒 Client',
-            prestataire: '🏪 Prestataire',
+            user: '\uD83D\uDC64 Utilisateur',
+            admin: '\uD83D\uDC51 Administrateur',
+            client: '\uD83D\uDED2 Client',
+            prestataire: '\uD83C\uDFEA Prestataire',
         };
         return labels[role] || role;
     };

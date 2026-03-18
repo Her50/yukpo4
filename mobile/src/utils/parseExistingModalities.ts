@@ -1,5 +1,5 @@
 /**
- * 🔧 OUTIL DE PARSING AUTOMATIQUE DE VOTRE BASE EXISTANTE
+ * \uD83D\uDD27 OUTIL DE PARSING AUTOMATIQUE DE VOTRE BASE EXISTANTE
  * 
  * Ce fichier analyse votre productModalities.ts existant et génère
  * automatiquement les mappings marque → modèles sans refaire tout manuellement !
@@ -22,14 +22,14 @@ export function parseModelesParMarque(
 
     // Initialiser avec toutes les marques
     marques.forEach(marque => {
-        if (!marque.includes('🆕')) {
+        if (!marque.includes('\uD83C\uDD95')) {
             result[marque] = [];
         }
     });
 
     // Parser chaque modèle
     modeles.forEach(modele => {
-        if (modele.includes('🆕')) return; // Ignorer l'option "Autre"
+        if (modele.includes('\uD83C\uDD95')) return; // Ignorer l'option "Autre"
 
         const marque = extraireMarque(modele, marques, category);
         if (marque && result[marque]) {
@@ -87,7 +87,7 @@ function extraireMarque(
 
     // Règle générique : Chercher si le modèle commence par une marque connue
     for (const marque of marquesConnues) {
-        if (marque.includes('🆕')) continue;
+        if (marque.includes('\uD83C\uDD95')) continue;
 
         const marqueNormalized = marque.toLowerCase();
         if (normalized.startsWith(marqueNormalized)) {
@@ -105,16 +105,16 @@ function extraireMarque(
 }
 
 /**
- * 🎯 GÉNÉRATION AUTOMATIQUE DES MAPPINGS
+ * \uD83C\uDFAF GÉNÉRATION AUTOMATIQUE DES MAPPINGS
  * À exécuter une fois pour créer les mappings depuis votre base existante
  */
 export function genererMappingsAutomatiques() {
     console.log('═══════════════════════════════════════════════════');
-    console.log('🚀 GÉNÉRATION AUTOMATIQUE DES MAPPINGS');
+    console.log('\uD83D\uDE80 GÉNÉRATION AUTOMATIQUE DES MAPPINGS');
     console.log('═══════════════════════════════════════════════════');
 
     // TÉLÉPHONES
-    console.log('\n📱 TÉLÉPHONES :');
+    console.log('\n\uD83D\uDCF1 TÉLÉPHONES :');
     const telephonesMapping = parseModelesParMarque(
         TELEPHONES_MODALITIES.modeles_populaires || [],
         TELEPHONES_MODALITIES.marques || [],
@@ -128,7 +128,7 @@ export function genererMappingsAutomatiques() {
     });
 
     // AUTOMOBILES
-    console.log('\n🚗 AUTOMOBILES :');
+    console.log('\n\uD83D\uDE97 AUTOMOBILES :');
     const automobilesMapping = parseModelesParMarque(
         AUTOMOBILE_MODALITIES.modeles_populaires || [],
         AUTOMOBILE_MODALITIES.marques || [],
@@ -152,34 +152,34 @@ export function genererMappingsAutomatiques() {
 }
 
 /**
- * 🎯 MAPPING GÉNÉRÉ AUTOMATIQUEMENT
+ * \uD83C\uDFAF MAPPING GÉNÉRÉ AUTOMATIQUEMENT
  * (À utiliser dans intelligentProductAutocomplete.ts)
  */
 export const MODELES_PAR_MARQUE_AUTO = genererMappingsAutomatiques();
 
 /**
- * 📊 STATISTIQUES SUR VOTRE BASE
+ * \uD83D\uDCCA STATISTIQUES SUR VOTRE BASE
  */
 export function analyserBaseExistante() {
-    console.log('\n📊 ANALYSE DE VOTRE BASE EXISTANTE :');
+    console.log('\n\uD83D\uDCCA ANALYSE DE VOTRE BASE EXISTANTE :');
     console.log('═══════════════════════════════════════════════════');
 
     // Téléphones
-    const nbMarquesTel = (TELEPHONES_MODALITIES.marques || []).filter(m => !m.includes('🆕')).length;
-    const nbModelesTel = (TELEPHONES_MODALITIES.modeles_populaires || []).filter(m => !m.includes('🆕')).length;
+    const nbMarquesTel = (TELEPHONES_MODALITIES.marques || []).filter(m => !m.includes('\uD83C\uDD95')).length;
+    const nbModelesTel = (TELEPHONES_MODALITIES.modeles_populaires || []).filter(m => !m.includes('\uD83C\uDD95')).length;
     const nbChampsTel = Object.keys(TELEPHONES_MODALITIES).length;
 
-    console.log(`\n📱 TÉLÉPHONES :`);
+    console.log(`\n\uD83D\uDCF1 TÉLÉPHONES :`);
     console.log(`  • ${nbMarquesTel} marques`);
     console.log(`  • ${nbModelesTel} modèles populaires`);
     console.log(`  • ${nbChampsTel} types de caractéristiques`);
 
     // Automobiles
-    const nbMarquesAuto = (AUTOMOBILE_MODALITIES.marques || []).filter(m => !m.includes('🆕')).length;
-    const nbModelesAuto = (AUTOMOBILE_MODALITIES.modeles_populaires || [])?.filter(m => !m.includes('🆕')).length || 0;
+    const nbMarquesAuto = (AUTOMOBILE_MODALITIES.marques || []).filter(m => !m.includes('\uD83C\uDD95')).length;
+    const nbModelesAuto = (AUTOMOBILE_MODALITIES.modeles_populaires || [])?.filter(m => !m.includes('\uD83C\uDD95')).length || 0;
     const nbChampsAuto = Object.keys(AUTOMOBILE_MODALITIES).length;
 
-    console.log(`\n🚗 AUTOMOBILES :`);
+    console.log(`\n\uD83D\uDE97 AUTOMOBILES :`);
     console.log(`  • ${nbMarquesAuto} marques`);
     console.log(`  • ${nbModelesAuto} modèles populaires`);
     console.log(`  • ${nbChampsAuto} types de caractéristiques`);
@@ -190,7 +190,7 @@ export function analyserBaseExistante() {
         (TELEPHONES_MODALITIES.couleurs?.length || 0) +
         (AUTOMOBILE_MODALITIES.couleurs?.length || 0);
 
-    console.log(`\n📈 TOTAL ESTIMÉ :`);
+    console.log(`\n\uD83D\uDCC8 TOTAL ESTIMÉ :`);
     console.log(`  • ${totalOptions}+ options de modalités`);
     console.log(`  • 48+ catégories couvertes`);
     console.log(`  • ~20 pays d'Afrique francophone`);
@@ -205,7 +205,7 @@ export function analyserBaseExistante() {
 }
 
 /**
- * 🎯 FONCTION HELPER : Obtenir les modèles d'une marque
+ * \uD83C\uDFAF FONCTION HELPER : Obtenir les modèles d'une marque
  * (Utilise le mapping auto-généré)
  */
 export function getModelesByMarque(

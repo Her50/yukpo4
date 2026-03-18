@@ -1257,7 +1257,7 @@ pub async fn admin_approve_donation(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Path(donation_id): Path<i32>,
-    Json(payload): Json<ApproveDonationPayload>,
+    Json(_payload): Json<ApproveDonationPayload>,
 ) -> AppResult<impl IntoResponse> {
     ensure_admin_role(&user)?;
     let admin_id = user.id;
@@ -1329,7 +1329,7 @@ pub async fn admin_reject_donation(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Path(donation_id): Path<i32>,
-    Json(payload): Json<ApproveDonationPayload>,
+    Json(_payload): Json<ApproveDonationPayload>,
 ) -> AppResult<impl IntoResponse> {
     ensure_admin_role(&user)?;
     let admin_id = user.id;
@@ -1761,6 +1761,20 @@ pub async fn create_book_purchase(
         ));
     }
 
+    // ✅ GPS obligatoire : l'acheteur DOIT préciser son lieu de livraison
+    if payload.gps_livraison.as_deref().unwrap_or("").is_empty() {
+        return Err(AppError::BadRequest(
+            "Veuillez préciser votre lieu de livraison (GPS). Utilisez la carte pour sélectionner un emplacement précis.".to_string(),
+        ));
+    }
+
+    // ✅ GPS obligatoire : le vendeur DOIT avoir un lieu de récupération (on doit aller chercher les livres)
+    if livre.gps.as_deref().unwrap_or("").is_empty() {
+        return Err(AppError::BadRequest(
+            "Ce livre ne peut pas être acheté car le vendeur n'a pas précisé de lieu de récupération. Contactez le vendeur pour qu'il mette à jour la localisation de son livre.".to_string(),
+        ));
+    }
+
     // Calculer le prix
     let prix_achat = livre
         .valeur_calculee
@@ -1903,29 +1917,21 @@ pub async fn create_book_purchase(
                     let aggregator = crate::services::payment_aggregator::PaymentAggregator::new();
                     match aggregator
                         .initiate_payment(crate::services::payment_aggregator::InitPaymentRequest {
+                            user_id: acheteur_id,
                             amount: montant_total as i64,
                             currency: "XAF".to_string(),
                             description: format!("Achat livre: {}", livre.titre),
-                            transaction_id: ref_id.clone(),
                             customer_name: None,
                             customer_email: None,
-                            customer_phone: None,
-                            return_url: Some(format!(
-                                "yukpo://book-purchase/{}?status=success",
-                                purchase.id
-                            )),
-                            notify_url: Some(format!(
-                                "{}/api/webhooks/book-purchase/{}",
-                                std::env::var("API_BASE_URL").unwrap_or_default(),
-                                purchase.id
-                            )),
-                            channels: Some(vec!["MOBILE_MONEY".to_string()]),
+                            channel:
+                                crate::services::payment_aggregator::PayChannel::AllMobileMoney,
+                            phone_number: None,
                             metadata: None,
                         })
                         .await
                     {
                         Ok(resp) => {
-                            payment_redirect_url = Some(resp.payment_url);
+                            payment_redirect_url = resp.payment_url;
                             info!(
                                 "[create_book_purchase] Paiement Mobile Money initié pour achat #{}",
                                 purchase.id
@@ -1972,7 +1978,25 @@ pub async fn create_book_purchase(
     .bind(purchase.id)
     .execute(&state.pg)
     .await
-    .ok();
+    .map_err(|e| {
+        error!("[create_book_purchase] Erreur MAJ statut paiement: {}", e);
+        AppError::Internal(format!("Erreur MAJ statut paiement: {}", e))
+    })?;
+
+    // Marquer le livre indisponible si paiement wallet réussi (éviter double vente)
+    if paiement_statut == "paye" {
+        if let Err(e) =
+            sqlx::query("UPDATE livres_scolaires SET is_available = false WHERE id = $1")
+                .bind(payload.livre_id)
+                .execute(&state.pg)
+                .await
+        {
+            error!(
+                "[create_book_purchase] Erreur marquage livre indisponible: {}",
+                e
+            );
+        }
+    }
 
     // ✅ Enregistrer la commission dans book_exchange_commissions
     if let Err(e) = record_book_commission(
@@ -2123,6 +2147,55 @@ pub async fn update_purchase_status(
         // ✅ Marquer les commissions comme reversées
         if let Err(e) = mark_commissions_paid(&state.pg, None, Some(purchase.livre_id)).await {
             error!("[update_purchase_status] Erreur MAJ commission: {}", e);
+        }
+    }
+
+    // Si annulé, rembourser l'acheteur et remettre le livre disponible
+    if payload.statut == "annule" {
+        // Remettre le livre disponible
+        if let Err(e) = sqlx::query("UPDATE livres_scolaires SET is_available = true WHERE id = $1")
+            .bind(purchase.livre_id)
+            .execute(&state.pg)
+            .await
+        {
+            error!("[update_purchase_status] Erreur réactivation livre: {}", e);
+        }
+
+        // Rembourser l'acheteur si le paiement avait été effectué par wallet
+        let paiement_statut_str = purchase.paiement_statut.as_deref().unwrap_or("");
+        if paiement_statut_str == "paye" {
+            let montant_total = purchase
+                .montant_total
+                .and_then(|m| m.to_string().parse::<f64>().ok())
+                .unwrap_or(0.0);
+            if montant_total > 0.0 {
+                match credit_book_wallet(
+                    &state.pg,
+                    purchase.acheteur_id,
+                    montant_total,
+                    &format!("Remboursement achat annulé #{}", purchase_id),
+                )
+                .await
+                {
+                    Ok(_) => {
+                        info!(
+                            "[update_purchase_status] ✅ Acheteur {} remboursé {} XAF pour achat annulé #{}",
+                            purchase.acheteur_id, montant_total as i64, purchase_id
+                        );
+                        // Mettre à jour le statut de paiement
+                        let _ = sqlx::query(
+                            "UPDATE book_purchases SET paiement_statut = 'rembourse' WHERE id = $1",
+                        )
+                        .bind(purchase_id)
+                        .execute(&state.pg)
+                        .await;
+                    }
+                    Err(e) => error!(
+                        "[update_purchase_status] Erreur remboursement acheteur {}: {}",
+                        purchase.acheteur_id, e
+                    ),
+                }
+            }
         }
     }
 
@@ -3540,7 +3613,8 @@ pub async fn build_delivery_schedule(
 }
 
 /// GET /api/bourse-livre/v2/chains/{id}
-/// Récupère les détails d'une chaîne (transfers, route, schedule, paquets).
+/// Récupère les détails d'une chaîne avec paquets enrichis, QR codes, et livres par paquet.
+/// Le coursier peut accéder aux QR codes directement depuis la vue chaîne.
 pub async fn get_chain_details(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: _user_id, .. }): Extension<AuthenticatedUser>,
@@ -3555,6 +3629,86 @@ pub async fn get_chain_details(
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
     .ok_or_else(|| AppError::NotFound("Chaîne non trouvée".to_string()))?;
 
+    // Enrichir les paquets avec QR codes + livres détaillés
+    let mut paquets_enrichis: Vec<serde_json::Value> = Vec::new();
+    if let Some(ref pkg_ids_val) = chaine.package_ids {
+        let pkg_ids: Vec<i32> = serde_json::from_value(pkg_ids_val.clone()).unwrap_or_default();
+
+        for pkg_id in &pkg_ids {
+            let pkg = sqlx::query_as::<_, BookDeliveryPackage>(
+                "SELECT * FROM book_delivery_packages WHERE id = $1",
+            )
+            .bind(pkg_id)
+            .fetch_optional(&state.pg)
+            .await
+            .ok()
+            .flatten();
+
+            if let Some(pkg) = pkg {
+                // Récupérer le QR code existant pour ce paquet (pickup)
+                let qr_pickup: Option<(String, String)> = sqlx::query_as(
+                    "SELECT qr_code, qr_code_url FROM book_package_qr_codes WHERE package_id = $1 AND qr_type = 'pickup' AND status = 'pending' AND expires_at > NOW() LIMIT 1",
+                )
+                .bind(pkg_id)
+                .fetch_optional(&state.pg)
+                .await
+                .ok()
+                .flatten();
+
+                let qr_delivery: Option<(String, String)> = sqlx::query_as(
+                    "SELECT qr_code, qr_code_url FROM book_package_qr_codes WHERE package_id = $1 AND qr_type = 'delivery' AND status = 'pending' AND expires_at > NOW() LIMIT 1",
+                )
+                .bind(pkg_id)
+                .fetch_optional(&state.pg)
+                .await
+                .ok()
+                .flatten();
+
+                // Info expéditeur et destinataire
+                let exp_name: Option<String> =
+                    sqlx::query_scalar("SELECT full_name FROM users WHERE id = $1")
+                        .bind(pkg.expediteur_id)
+                        .fetch_optional(&state.pg)
+                        .await
+                        .ok()
+                        .flatten();
+
+                let dest_name: Option<String> =
+                    sqlx::query_scalar("SELECT full_name FROM users WHERE id = $1")
+                        .bind(pkg.destinataire_id)
+                        .fetch_optional(&state.pg)
+                        .await
+                        .ok()
+                        .flatten();
+
+                paquets_enrichis.push(json!({
+                    "package_id": pkg.id,
+                    "reference": pkg.reference,
+                    "statut": pkg.statut,
+                    "nombre_livres": pkg.nombre_livres,
+                    "livres": pkg.livres,
+                    "expediteur": {
+                        "id": pkg.expediteur_id,
+                        "nom": exp_name,
+                        "gps": pkg.expediteur_gps,
+                        "adresse": pkg.expediteur_adresse,
+                    },
+                    "destinataire": {
+                        "id": pkg.destinataire_id,
+                        "nom": dest_name,
+                        "gps": pkg.destinataire_gps,
+                        "adresse": pkg.destinataire_adresse,
+                    },
+                    "qr_pickup": qr_pickup.as_ref().map(|(code, url)| json!({"qr_code": code, "qr_code_url": url})),
+                    "qr_delivery": qr_delivery.as_ref().map(|(code, url)| json!({"qr_code": code, "qr_code_url": url})),
+                    "valeur_totale": pkg.valeur_totale,
+                    "frais_livraison": pkg.frais_livraison,
+                    "coursier_id": pkg.coursier_id,
+                }));
+            }
+        }
+    }
+
     Ok(Json(json!({
         "success": true,
         "chaine": {
@@ -3565,13 +3719,14 @@ pub async fn get_chain_details(
             "transfers": chaine.transfers,
             "route_optimisee": chaine.route_optimisee,
             "delivery_schedule": chaine.delivery_schedule,
-            "package_ids": chaine.package_ids,
             "nombre_vendeurs": chaine.nombre_vendeurs,
             "score_proximite": chaine.score_proximite,
             "distance_totale_km": chaine.distance_totale_km,
             "date_validation": chaine.date_validation,
             "created_at": chaine.created_at,
-        }
+        },
+        "paquets": paquets_enrichis,
+        "total_paquets": paquets_enrichis.len(),
     })))
 }
 
@@ -4358,14 +4513,1378 @@ pub async fn book_purchase_webhook(
 }
 
 // ============================================================================
+// CHANGEMENT DE LIEU (récupération / livraison) PAR LES INTERVENANTS
+// ============================================================================
+//
+// Chaque intervenant peut modifier SON lieu dans la chaîne:
+//   - Vendeur/expéditeur → modifier le lieu de récupération
+//   - Acheteur/destinataire → modifier le lieu de livraison
+//   - Participant troc (offre) → modifier le lieu de récupération de ses livres
+//   - Participant troc (demande) → modifier le lieu de livraison
+// Le changement est autorisé UNIQUEMENT si le paquet n'est pas encore en_route.
+// Après changement: recalcul frais livraison + notification à l'autre partie + coursier.
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateLocationRequest {
+    pub package_id: Option<i32>,
+    pub purchase_id: Option<i32>,
+    pub livre_id: Option<i32>,
+    pub gps: String, // "lat,lng"
+    pub adresse: Option<String>,
+}
+
+/// PATCH /api/bourse-livre/v2/update-location
+/// Permet à un vendeur, acheteur ou participant troc de changer son lieu de récupération/livraison.
+pub async fn update_delivery_location(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<UpdateLocationRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[update_delivery_location] User: {}, GPS: {}, pkg: {:?}, purchase: {:?}, livre: {:?}",
+        user_id, payload.gps, payload.package_id, payload.purchase_id, payload.livre_id
+    );
+
+    if payload.gps.is_empty() || !payload.gps.contains(',') {
+        return Err(AppError::BadRequest(
+            "GPS invalide. Format attendu: lat,lng".to_string(),
+        ));
+    }
+
+    let mut updated_count = 0;
+    let mut notifications: Vec<(i32, String, String, serde_json::Value)> = Vec::new();
+
+    // ── 1. Mise à jour sur un PAQUET de livraison ──
+    if let Some(pkg_id) = payload.package_id {
+        let pkg = sqlx::query_as::<_, BookDeliveryPackage>(
+            "SELECT * FROM book_delivery_packages WHERE id = $1",
+        )
+        .bind(pkg_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+        .ok_or_else(|| AppError::NotFound("Paquet non trouvé".to_string()))?;
+
+        // Bloquer si déjà en_route ou livré
+        if pkg.statut == "en_route" || pkg.statut == "livre" || pkg.statut == "confirme" {
+            return Err(AppError::BadRequest(
+                "Impossible de modifier le lieu : le paquet est déjà en cours de livraison."
+                    .to_string(),
+            ));
+        }
+
+        if pkg.expediteur_id == user_id {
+            // Vendeur/expéditeur → modifier lieu de RÉCUPÉRATION
+            sqlx::query(
+                "UPDATE book_delivery_packages SET expediteur_gps = $1, expediteur_adresse = $2, updated_at = NOW() WHERE id = $3",
+            )
+            .bind(&payload.gps)
+            .bind(&payload.adresse)
+            .bind(pkg_id)
+            .execute(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur MAJ lieu expéditeur: {}", e)))?;
+            updated_count += 1;
+
+            // Notifier le destinataire + coursier
+            notifications.push((
+                pkg.destinataire_id,
+                "Lieu de récupération modifié".to_string(),
+                format!("L'expéditeur a changé le lieu de récupération du paquet {}.", pkg.reference),
+                json!({"type": "location_changed", "package_id": pkg_id, "role": "expediteur", "new_gps": payload.gps, "new_adresse": payload.adresse, "i18n_key": "location_changed_pickup"}),
+            ));
+            if let Some(cid) = pkg.coursier_id {
+                notifications.push((
+                    cid,
+                    "Adresse de récupération modifiée".to_string(),
+                    format!("Paquet {} : le lieu de récupération a changé. Vérifiez votre itinéraire.", pkg.reference),
+                    json!({"type": "location_changed", "package_id": pkg_id, "role": "expediteur", "new_gps": payload.gps, "i18n_key": "courier_location_changed"}),
+                ));
+            }
+        } else if pkg.destinataire_id == user_id {
+            // Acheteur/destinataire → modifier lieu de LIVRAISON
+            sqlx::query(
+                "UPDATE book_delivery_packages SET destinataire_gps = $1, destinataire_adresse = $2, updated_at = NOW() WHERE id = $3",
+            )
+            .bind(&payload.gps)
+            .bind(&payload.adresse)
+            .bind(pkg_id)
+            .execute(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur MAJ lieu destinataire: {}", e)))?;
+            updated_count += 1;
+
+            // Notifier l'expéditeur + coursier
+            notifications.push((
+                pkg.expediteur_id,
+                "Lieu de livraison modifié".to_string(),
+                format!("Le destinataire a changé le lieu de livraison du paquet {}.", pkg.reference),
+                json!({"type": "location_changed", "package_id": pkg_id, "role": "destinataire", "new_gps": payload.gps, "new_adresse": payload.adresse, "i18n_key": "location_changed_delivery"}),
+            ));
+            if let Some(cid) = pkg.coursier_id {
+                notifications.push((
+                    cid,
+                    "Adresse de livraison modifiée".to_string(),
+                    format!("Paquet {} : le lieu de livraison a changé. Vérifiez votre itinéraire.", pkg.reference),
+                    json!({"type": "location_changed", "package_id": pkg_id, "role": "destinataire", "new_gps": payload.gps, "i18n_key": "courier_location_changed"}),
+                ));
+            }
+        } else {
+            return Err(AppError::Forbidden(
+                "Vous n'êtes ni l'expéditeur ni le destinataire de ce paquet.".to_string(),
+            ));
+        }
+
+        // Recalculer les frais de livraison si les deux GPS sont disponibles
+        let pkg_updated = sqlx::query_as::<_, BookDeliveryPackage>(
+            "SELECT * FROM book_delivery_packages WHERE id = $1",
+        )
+        .bind(pkg_id)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten();
+
+        if let Some(pkg_u) = pkg_updated {
+            let parse_gps = |gps: &str| -> Option<(f64, f64)> {
+                let parts: Vec<&str> = gps.split(',').collect();
+                if parts.len() == 2 {
+                    Some((parts[0].trim().parse().ok()?, parts[1].trim().parse().ok()?))
+                } else {
+                    None
+                }
+            };
+            if let (Some(exp_pos), Some(dest_pos)) = (
+                pkg_u.expediteur_gps.as_deref().and_then(parse_gps),
+                pkg_u.destinataire_gps.as_deref().and_then(parse_gps),
+            ) {
+                let distance_m =
+                    crate::services::delivery_service::haversine_distance(exp_pos, dest_pos);
+                let new_frais = (distance_m / 1000.0 * 500.0).max(1000.0);
+                let eta_min = ((distance_m / 1000.0) / 25.0 * 60.0).max(15.0) as i32;
+
+                sqlx::query(
+                    "UPDATE book_delivery_packages SET frais_livraison = $1, eta_minutes = $2, distance_totale_metres = $3, updated_at = NOW() WHERE id = $4",
+                )
+                .bind(rust_decimal::Decimal::from_f64_retain(new_frais))
+                .bind(eta_min)
+                .bind(distance_m as i32)
+                .bind(pkg_id)
+                .execute(&state.pg)
+                .await
+                .ok();
+
+                info!(
+                    "[update_delivery_location] Paquet {} : frais recalculés = {} XAF, distance = {} m",
+                    pkg_id, new_frais as i64, distance_m as i32
+                );
+            }
+        }
+    }
+
+    // ── 2. Mise à jour sur un ACHAT DIRECT ──
+    if let Some(purchase_id) = payload.purchase_id {
+        let purchase = sqlx::query_as::<_, crate::models::livre_scolaire::BookPurchase>(
+            "SELECT * FROM book_purchases WHERE id = $1",
+        )
+        .bind(purchase_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+        .ok_or_else(|| AppError::NotFound("Achat non trouvé".to_string()))?;
+
+        if purchase.statut == "en_livraison" || purchase.statut == "livre" {
+            return Err(AppError::BadRequest(
+                "Impossible de modifier le lieu : l'achat est déjà en cours de livraison."
+                    .to_string(),
+            ));
+        }
+
+        if purchase.acheteur_id == user_id {
+            // Acheteur → modifier lieu de livraison
+            sqlx::query(
+                "UPDATE book_purchases SET gps_livraison = $1, adresse_livraison = $2, updated_at = NOW() WHERE id = $3",
+            )
+            .bind(&payload.gps)
+            .bind(&payload.adresse)
+            .bind(purchase_id)
+            .execute(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur MAJ lieu achat: {}", e)))?;
+            updated_count += 1;
+
+            if let Some(vid) = purchase.vendeur_id {
+                notifications.push((
+                    vid,
+                    "Lieu de livraison modifié".to_string(),
+                    format!("L'acheteur a changé son lieu de livraison pour l'achat #{}.", purchase_id),
+                    json!({"type": "location_changed", "purchase_id": purchase_id, "role": "acheteur", "new_gps": payload.gps, "i18n_key": "location_changed_delivery"}),
+                ));
+            }
+        } else if purchase.vendeur_id == Some(user_id) {
+            // Vendeur → modifier lieu de récupération du livre
+            // On met à jour le GPS du livre source
+            sqlx::query(
+                "UPDATE livres_scolaires SET gps = $1, ville = $2 WHERE id = $3 AND user_id = $4",
+            )
+            .bind(&payload.gps)
+            .bind(&payload.adresse)
+            .bind(purchase.livre_id)
+            .bind(user_id)
+            .execute(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur MAJ GPS livre: {}", e)))?;
+            updated_count += 1;
+
+            notifications.push((
+                purchase.acheteur_id,
+                "Lieu de récupération modifié".to_string(),
+                format!("Le vendeur a changé le lieu de récupération pour l'achat #{}.", purchase_id),
+                json!({"type": "location_changed", "purchase_id": purchase_id, "role": "vendeur", "new_gps": payload.gps, "i18n_key": "location_changed_pickup"}),
+            ));
+        } else {
+            return Err(AppError::Forbidden(
+                "Vous n'êtes ni l'acheteur ni le vendeur de cet achat.".to_string(),
+            ));
+        }
+    }
+
+    // ── 3. Mise à jour sur un LIVRE (participant troc) ──
+    if let Some(livre_id) = payload.livre_id {
+        let updated = sqlx::query_scalar::<_, i32>(
+            "UPDATE livres_scolaires SET gps = $1, ville = $2, updated_at = NOW() WHERE id = $3 AND user_id = $4 RETURNING id",
+        )
+        .bind(&payload.gps)
+        .bind(&payload.adresse)
+        .bind(livre_id)
+        .bind(user_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur MAJ GPS livre: {}", e)))?;
+
+        if updated.is_none() {
+            return Err(AppError::Forbidden(
+                "Livre non trouvé ou vous n'en êtes pas le propriétaire.".to_string(),
+            ));
+        }
+        updated_count += 1;
+
+        // Mettre à jour le GPS sur TOUS les paquets non-expédiés où ce livre est impliqué
+        let _ = sqlx::query(
+            r#"UPDATE book_delivery_packages
+            SET expediteur_gps = $1, expediteur_adresse = $2, updated_at = NOW()
+            WHERE expediteur_id = $3 AND statut IN ('a_constituer', 'constitue')
+            AND livres::text LIKE '%"livre_id":' || $4 || '%'"#,
+        )
+        .bind(&payload.gps)
+        .bind(&payload.adresse)
+        .bind(user_id)
+        .bind(livre_id.to_string())
+        .execute(&state.pg)
+        .await;
+
+        // Notifier les destinataires de paquets impactés
+        let impacted_dests: Vec<(i32, String)> = sqlx::query_as(
+            r#"SELECT DISTINCT destinataire_id, reference FROM book_delivery_packages
+            WHERE expediteur_id = $1 AND statut IN ('a_constituer', 'constitue')"#,
+        )
+        .bind(user_id)
+        .fetch_all(&state.pg)
+        .await
+        .unwrap_or_default();
+
+        for (dest_id, pkg_ref) in &impacted_dests {
+            notifications.push((
+                *dest_id,
+                "Lieu de récupération modifié".to_string(),
+                format!("Le propriétaire du livre a changé son lieu pour le paquet {}.", pkg_ref),
+                json!({"type": "location_changed", "livre_id": livre_id, "role": "proprietaire", "new_gps": payload.gps, "i18n_key": "location_changed_pickup"}),
+            ));
+        }
+
+        invalidate_bourse_livre_cache(&state).await;
+    }
+
+    // ── Envoyer toutes les notifications ──
+    for (target_user_id, title, body, data) in &notifications {
+        let _ = sqlx::query(
+            r#"INSERT INTO notifications (user_id, type, title, body, data, created_at)
+            VALUES ($1, 'location_changed', $2, $3, $4, NOW())"#,
+        )
+        .bind(target_user_id)
+        .bind(title)
+        .bind(body)
+        .bind(data.to_string())
+        .execute(&state.pg)
+        .await;
+    }
+
+    if updated_count == 0 {
+        return Err(AppError::BadRequest(
+            "Aucune mise à jour effectuée. Fournir package_id, purchase_id, ou livre_id."
+                .to_string(),
+        ));
+    }
+
+    info!(
+        "[update_delivery_location] ✅ {} mise(s) à jour, {} notification(s) envoyée(s)",
+        updated_count,
+        notifications.len()
+    );
+
+    Ok(Json(json!({
+        "success": true,
+        "updated_count": updated_count,
+        "notifications_sent": notifications.len(),
+        "new_gps": payload.gps,
+        "new_adresse": payload.adresse,
+        "message": "Lieu mis à jour avec succès. Les parties concernées ont été notifiées."
+    })))
+}
+
+// ============================================================================
 // HELPER: INVALIDATION CACHE BOURSE DU LIVRE
 // ============================================================================
 
 /// Invalider les caches Redis liés à la bourse du livre
 /// À appeler après toute modification de livres (création, update, suppression, achat, troc)
 pub async fn invalidate_bourse_livre_cache(state: &AppState) {
-    // Invalider le cache browse-by-class (pattern bourse_livre:browse:*)
     let _ = state.cache_service.delete_pattern("bourse_livre:browse:*").await;
-    // Invalider le cache classes-programmes
     let _ = state.cache_service.delete("bourse_livre:classes_programmes").await;
+}
+
+// ============================================================================
+// ÉQUIPE LIBRAIRE — Gestion des membres d'équipe d'une librairie
+// ============================================================================
+//
+// Rôles:
+//   - owner     : propriétaire de la librairie (créé automatiquement)
+//   - manager   : gestionnaire complet (CRUD équipe, voir stats, valider QR, préparer paquets)
+//   - preparer  : préparateur (voir commandes, préparer paquets, scanner QR coursier)
+//   - cashier   : caissier (scanner QR coursier, confirmer remise paquets uniquement)
+//
+// Fonctionnalités:
+//   1. Inviter un membre par téléphone
+//   2. Lister les membres de l'équipe
+//   3. Modifier le rôle d'un membre
+//   4. Retirer un membre
+//   5. Scanner QR coursier (par un membre de l'équipe)
+//   6. Voir les paquets à constituer (commandes en attente de préparation)
+//   7. Notifications à toute l'équipe quand une nouvelle commande arrive
+
+#[derive(Debug, Deserialize)]
+pub struct InviteTeamMemberRequest {
+    pub telephone: String,
+    pub role: String, // "manager", "preparer", "cashier"
+    pub nom: Option<String>,
+}
+
+/// POST /api/bourse-livre/v2/libraire/team/invite
+/// Inviter un membre dans l'équipe de la librairie
+pub async fn invite_team_member(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: owner_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<InviteTeamMemberRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[invite_team_member] Owner: {}, Tel: {}, Role: {}",
+        owner_id, payload.telephone, payload.role
+    );
+
+    let valid_roles = ["manager", "preparer", "cashier"];
+    if !valid_roles.contains(&payload.role.as_str()) {
+        return Err(AppError::BadRequest(format!(
+            "Rôle invalide: {}. Rôles acceptés: manager, preparer, cashier",
+            payload.role
+        )));
+    }
+
+    // Vérifier que l'appelant est owner ou manager de la librairie
+    let is_authorized: bool = sqlx::query_scalar(
+        r#"SELECT EXISTS(
+            SELECT 1 FROM libraire_team_members
+            WHERE user_id = $1 AND role IN ('owner', 'manager') AND is_active = true
+        )"#,
+    )
+    .bind(owner_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(false);
+
+    if !is_authorized {
+        return Err(AppError::Forbidden(
+            "Vous devez être propriétaire ou gestionnaire de la librairie".to_string(),
+        ));
+    }
+
+    // Trouver le librairie_id de l'appelant
+    let librairie_id: i32 = sqlx::query_scalar(
+        "SELECT librairie_id FROM libraire_team_members WHERE user_id = $1 AND is_active = true LIMIT 1",
+    )
+    .bind(owner_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur récupération librairie: {}", e)))?;
+
+    // Chercher l'utilisateur par téléphone
+    let invited_user: Option<(i32, Option<String>)> =
+        sqlx::query_as("SELECT id, full_name FROM users WHERE telephone = $1 LIMIT 1")
+            .bind(&payload.telephone)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur recherche utilisateur: {}", e)))?;
+
+    let (invited_user_id, invited_name) = match invited_user {
+        Some((id, name)) => (id, name.unwrap_or_default()),
+        None => {
+            return Err(AppError::NotFound(format!(
+                "Aucun utilisateur trouvé avec le numéro {}. L'utilisateur doit d'abord créer un compte Yukpo.",
+                payload.telephone
+            )));
+        }
+    };
+
+    // Vérifier si déjà membre
+    let already_member: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM libraire_team_members WHERE librairie_id = $1 AND user_id = $2 AND is_active = true)",
+    )
+    .bind(librairie_id)
+    .bind(invited_user_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(false);
+
+    if already_member {
+        return Err(AppError::BadRequest(
+            "Cet utilisateur est déjà membre de votre équipe".to_string(),
+        ));
+    }
+
+    // Insérer le membre (ou réactiver si désactivé)
+    let member_id: i32 = sqlx::query_scalar(
+        r#"
+        INSERT INTO libraire_team_members (librairie_id, user_id, role, nom_affiche, telephone, invited_by, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6, true)
+        ON CONFLICT (librairie_id, user_id) DO UPDATE
+            SET role = $3, is_active = true, nom_affiche = COALESCE($4, libraire_team_members.nom_affiche), updated_at = NOW()
+        RETURNING id
+        "#,
+    )
+    .bind(librairie_id)
+    .bind(invited_user_id)
+    .bind(&payload.role)
+    .bind(payload.nom.as_deref().unwrap_or(&invited_name))
+    .bind(&payload.telephone)
+    .bind(owner_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur ajout membre: {}", e)))?;
+
+    // Notifier le nouveau membre
+    let role_label = match payload.role.as_str() {
+        "manager" => "gestionnaire",
+        "preparer" => "préparateur de commandes",
+        "cashier" => "caissier",
+        _ => "membre",
+    };
+    let _ = sqlx::query(
+        r#"INSERT INTO notifications (user_id, type, title, body, data, created_at)
+        VALUES ($1, 'team_invite', 'Invitation équipe librairie', $2, $3, NOW())"#,
+    )
+    .bind(invited_user_id)
+    .bind(format!(
+        "Vous avez été ajouté comme {} dans une librairie Yukpo.",
+        role_label
+    ))
+    .bind(
+        json!({"librairie_id": librairie_id, "role": payload.role, "i18n_key": "team_invite"})
+            .to_string(),
+    )
+    .execute(&state.pg)
+    .await;
+
+    info!(
+        "[invite_team_member] ✅ Membre {} ajouté (id={}, role={}) à librairie {}",
+        invited_user_id, member_id, payload.role, librairie_id
+    );
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "member": {
+                "id": member_id,
+                "user_id": invited_user_id,
+                "nom": payload.nom.as_deref().unwrap_or(&invited_name),
+                "telephone": payload.telephone,
+                "role": payload.role,
+                "librairie_id": librairie_id
+            }
+        })),
+    ))
+}
+
+/// GET /api/bourse-livre/v2/libraire/team
+/// Lister les membres de l'équipe
+pub async fn list_team_members(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    // Récupérer le librairie_id du membre
+    let librairie_id: Option<i32> = sqlx::query_scalar(
+        "SELECT librairie_id FROM libraire_team_members WHERE user_id = $1 AND is_active = true LIMIT 1",
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten();
+
+    let librairie_id = librairie_id
+        .ok_or_else(|| AppError::Forbidden("Vous n'êtes membre d'aucune librairie".to_string()))?;
+
+    let members = sqlx::query(
+        r#"
+        SELECT ltm.id, ltm.user_id, ltm.role, ltm.nom_affiche, ltm.telephone,
+               ltm.is_active, ltm.created_at,
+               u.full_name, u.photo_url
+        FROM libraire_team_members ltm
+        LEFT JOIN users u ON u.id = ltm.user_id
+        WHERE ltm.librairie_id = $1 AND ltm.is_active = true
+        ORDER BY
+            CASE ltm.role WHEN 'owner' THEN 0 WHEN 'manager' THEN 1 WHEN 'preparer' THEN 2 ELSE 3 END,
+            ltm.created_at ASC
+        "#,
+    )
+    .bind(librairie_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur liste membres: {}", e)))?;
+
+    let members_json: Vec<serde_json::Value> = members
+        .iter()
+        .map(|row| {
+            use sqlx::Row;
+            json!({
+                "id": row.get::<i32, _>("id"),
+                "user_id": row.get::<i32, _>("user_id"),
+                "role": row.get::<String, _>("role"),
+                "nom": row.try_get::<String, _>("nom_affiche").ok().or_else(|| row.try_get::<String, _>("full_name").ok()),
+                "telephone": row.try_get::<String, _>("telephone").ok(),
+                "photo_url": row.try_get::<String, _>("photo_url").ok(),
+                "created_at": row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+            })
+        })
+        .collect();
+
+    Ok(Json(json!({
+        "success": true,
+        "librairie_id": librairie_id,
+        "members": members_json,
+        "total": members_json.len()
+    })))
+}
+
+/// PATCH /api/bourse-livre/v2/libraire/team/:member_id/role
+/// Modifier le rôle d'un membre
+#[derive(Debug, Deserialize)]
+pub struct UpdateTeamRoleRequest {
+    pub role: String,
+}
+
+pub async fn update_team_member_role(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: owner_id, .. }): Extension<AuthenticatedUser>,
+    Path(member_id): Path<i32>,
+    Json(payload): Json<UpdateTeamRoleRequest>,
+) -> AppResult<impl IntoResponse> {
+    let valid_roles = ["manager", "preparer", "cashier"];
+    if !valid_roles.contains(&payload.role.as_str()) {
+        return Err(AppError::BadRequest(format!(
+            "Rôle invalide: {}",
+            payload.role
+        )));
+    }
+
+    // Vérifier que l'appelant est owner ou manager
+    let caller_role: Option<String> = sqlx::query_scalar(
+        "SELECT role FROM libraire_team_members WHERE user_id = $1 AND is_active = true LIMIT 1",
+    )
+    .bind(owner_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten();
+
+    match caller_role.as_deref() {
+        Some("owner") | Some("manager") => {}
+        _ => {
+            return Err(AppError::Forbidden(
+                "Seul le propriétaire ou gestionnaire peut modifier les rôles".to_string(),
+            ))
+        }
+    }
+
+    // Empêcher de modifier le rôle du owner
+    let target_role: Option<String> =
+        sqlx::query_scalar("SELECT role FROM libraire_team_members WHERE id = $1")
+            .bind(member_id)
+            .fetch_optional(&state.pg)
+            .await
+            .ok()
+            .flatten();
+
+    if target_role.as_deref() == Some("owner") {
+        return Err(AppError::BadRequest(
+            "Impossible de modifier le rôle du propriétaire".to_string(),
+        ));
+    }
+
+    sqlx::query("UPDATE libraire_team_members SET role = $1, updated_at = NOW() WHERE id = $2")
+        .bind(&payload.role)
+        .bind(member_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur MAJ rôle: {}", e)))?;
+
+    Ok(Json(
+        json!({"success": true, "message": format!("Rôle mis à jour: {}", payload.role)}),
+    ))
+}
+
+/// DELETE /api/bourse-livre/v2/libraire/team/:member_id
+/// Retirer un membre de l'équipe (soft delete)
+pub async fn remove_team_member(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: owner_id, .. }): Extension<AuthenticatedUser>,
+    Path(member_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    // Vérifier autorisation
+    let caller_role: Option<String> = sqlx::query_scalar(
+        "SELECT role FROM libraire_team_members WHERE user_id = $1 AND is_active = true LIMIT 1",
+    )
+    .bind(owner_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten();
+
+    match caller_role.as_deref() {
+        Some("owner") | Some("manager") => {}
+        _ => return Err(AppError::Forbidden("Non autorisé".to_string())),
+    }
+
+    // Empêcher de retirer le owner
+    let target_role: Option<String> =
+        sqlx::query_scalar("SELECT role FROM libraire_team_members WHERE id = $1")
+            .bind(member_id)
+            .fetch_optional(&state.pg)
+            .await
+            .ok()
+            .flatten();
+
+    if target_role.as_deref() == Some("owner") {
+        return Err(AppError::BadRequest(
+            "Impossible de retirer le propriétaire".to_string(),
+        ));
+    }
+
+    sqlx::query(
+        "UPDATE libraire_team_members SET is_active = false, updated_at = NOW() WHERE id = $1",
+    )
+    .bind(member_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur retrait membre: {}", e)))?;
+
+    Ok(Json(
+        json!({"success": true, "message": "Membre retiré de l'équipe"}),
+    ))
+}
+
+/// POST /api/bourse-livre/v2/libraire/team/scan-qr
+/// Un membre de l'équipe scanne le QR code du coursier pour valider la remise des paquets
+#[derive(Debug, Deserialize)]
+pub struct TeamScanQRRequest {
+    pub qr_code: String,
+    pub package_ids: Option<Vec<i32>>,
+}
+
+pub async fn team_scan_courier_qr(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<TeamScanQRRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[team_scan_courier_qr] Team member {} scans QR: {}",
+        user_id,
+        &payload.qr_code[..payload.qr_code.len().min(20)]
+    );
+
+    // Vérifier que l'utilisateur est membre d'une librairie (tout rôle peut scanner)
+    let member_info: Option<(i32, String)> = sqlx::query_as(
+        "SELECT librairie_id, role FROM libraire_team_members WHERE user_id = $1 AND is_active = true LIMIT 1",
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur vérification membre: {}", e)))?;
+
+    let (librairie_id, member_role) = member_info
+        .ok_or_else(|| AppError::Forbidden("Vous n'êtes membre d'aucune librairie".to_string()))?;
+
+    // Déléguer au service QR existant
+    let qr_service = crate::services::qr_code_service::QRCodeService::new(state.pg.clone());
+    let validation_result = qr_service.validate_book_package_qr(&payload.qr_code, user_id).await?;
+
+    // Si des package_ids sont spécifiés, mettre à jour leur statut → 'en_route'
+    if let Some(ref pkg_ids) = payload.package_ids {
+        for pkg_id in pkg_ids {
+            let _ = sqlx::query(
+                r#"UPDATE book_delivery_packages
+                SET statut = 'en_route', updated_at = NOW()
+                WHERE id = $1 AND statut = 'constitue'"#,
+            )
+            .bind(pkg_id)
+            .execute(&state.pg)
+            .await;
+        }
+        info!(
+            "[team_scan_courier_qr] {} paquets marqués 'en_route' par membre {} (role: {})",
+            pkg_ids.len(),
+            user_id,
+            member_role
+        );
+    }
+
+    // Logger l'action
+    let _ = sqlx::query(
+        r#"INSERT INTO notifications (user_id, type, title, body, data, created_at)
+        VALUES ($1, 'team_qr_scan', 'QR scanné', 'Un membre de votre équipe a scanné un QR coursier', $2, NOW())"#,
+    )
+    .bind(user_id)
+    .bind(json!({"librairie_id": librairie_id, "role": member_role, "qr_result": "validated", "i18n_key": "team_qr_scan"}).to_string())
+    .execute(&state.pg)
+    .await;
+
+    Ok(Json(json!({
+        "success": true,
+        "validation": validation_result,
+        "scanned_by": {
+            "user_id": user_id,
+            "role": member_role,
+            "librairie_id": librairie_id
+        },
+        "packages_updated": payload.package_ids.as_ref().map(|ids| ids.len()).unwrap_or(0)
+    })))
+}
+
+/// GET /api/bourse-livre/v2/libraire/team/pending-packages
+/// Voir les paquets en attente de constitution pour cette librairie
+/// Accessible à tout membre de l'équipe (preparer, manager, owner)
+pub async fn get_pending_packages_for_team(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    // Vérifier membre
+    let member_info: Option<(i32, String)> = sqlx::query_as(
+        "SELECT librairie_id, role FROM libraire_team_members WHERE user_id = $1 AND is_active = true LIMIT 1",
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten();
+
+    let (librairie_id, _role) = member_info
+        .ok_or_else(|| AppError::Forbidden("Vous n'êtes membre d'aucune librairie".to_string()))?;
+
+    // Trouver le user_id du propriétaire de la librairie
+    let owner_user_id: Option<i32> = sqlx::query_scalar(
+        "SELECT user_id FROM libraire_team_members WHERE librairie_id = $1 AND role = 'owner' AND is_active = true LIMIT 1",
+    )
+    .bind(librairie_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten();
+
+    let owner_id = owner_user_id.unwrap_or(user_id);
+
+    // Paquets à constituer (expéditeur = le propriétaire de la librairie OU les livres neufs vendus)
+    let pending = sqlx::query_as::<_, BookDeliveryPackage>(
+        r#"
+        SELECT * FROM book_delivery_packages
+        WHERE expediteur_id = $1
+            AND statut IN ('a_constituer', 'constitue')
+        ORDER BY
+            CASE WHEN statut = 'a_constituer' THEN 0 ELSE 1 END,
+            created_at ASC
+        LIMIT 50
+        "#,
+    )
+    .bind(owner_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur paquets en attente: {}", e)))?;
+
+    // Achats directs en attente de préparation
+    let purchases_pending = sqlx::query_as::<_, crate::models::livre_scolaire::BookPurchase>(
+        r#"
+        SELECT * FROM book_purchases
+        WHERE vendeur_id = $1
+            AND statut IN ('confirme', 'en_attente')
+            AND paiement_statut = 'paye'
+        ORDER BY created_at ASC
+        LIMIT 50
+        "#,
+    )
+    .bind(owner_id)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    // Stats rapides
+    let a_constituer = pending.iter().filter(|p| p.statut == "a_constituer").count();
+    let constitues = pending.iter().filter(|p| p.statut == "constitue").count();
+
+    Ok(Json(json!({
+        "success": true,
+        "librairie_id": librairie_id,
+        "packages": {
+            "a_constituer": pending.iter().filter(|p| p.statut == "a_constituer").collect::<Vec<_>>(),
+            "constitues": pending.iter().filter(|p| p.statut == "constitue").collect::<Vec<_>>(),
+        },
+        "purchases_pending": purchases_pending,
+        "stats": {
+            "a_constituer": a_constituer,
+            "prets_pour_coursier": constitues,
+            "achats_a_preparer": purchases_pending.len()
+        }
+    })))
+}
+
+/// Helper interne: Notifier toute l'équipe d'une librairie
+/// Appelé quand un nouveau paquet/achat arrive pour la librairie
+pub async fn notify_libraire_team(
+    pool: &sqlx::PgPool,
+    librairie_id: i32,
+    title: &str,
+    body: &str,
+    data: serde_json::Value,
+) {
+    // Récupérer tous les membres actifs (sauf cashier pour les notifications de commande)
+    let members: Vec<(i32,)> = sqlx::query_as(
+        r#"SELECT user_id FROM libraire_team_members
+           WHERE librairie_id = $1 AND is_active = true AND role IN ('owner', 'manager', 'preparer')
+        "#,
+    )
+    .bind(librairie_id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    for (member_user_id,) in &members {
+        let _ = sqlx::query(
+            r#"INSERT INTO notifications (user_id, type, title, body, data, created_at)
+            VALUES ($1, 'libraire_order', $2, $3, $4, NOW())"#,
+        )
+        .bind(member_user_id)
+        .bind(title)
+        .bind(body)
+        .bind(data.to_string())
+        .execute(pool)
+        .await;
+    }
+
+    if !members.is_empty() {
+        log::info!(
+            "[notify_libraire_team] {} membres notifiés pour librairie {}",
+            members.len(),
+            librairie_id
+        );
+    }
+}
+
+// ============================================================================
+// COURSIER: QR CONTEXTUEL PAR STOP
+// ============================================================================
+//
+// Problème: un coursier a N paquets et N QR codes.
+// Quand il arrive chez un libraire/utilisateur, il doit savoir quel QR montrer.
+//
+// Solution: endpoint qui retourne les paquets groupés par stop (expéditeur/destinataire),
+// avec le QR code correspondant à chaque stop. Le coursier voit:
+//   "Stop 1: Librairie Dupont → 3 paquets → [QR à montrer]"
+//   "Stop 2: Jean Mbarga → 1 paquet → [QR à montrer]"
+
+/// GET /api/bourse-livre/v2/courier/my-stops
+/// Retourne l'itinéraire du coursier avec les QR codes contextuels par arrêt.
+/// Chaque stop = un lieu (expéditeur ou destinataire) avec les paquets + QR associés.
+pub async fn courier_get_my_stops(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: courier_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!("[courier_get_my_stops] Coursier: {}", courier_id);
+
+    // Récupérer tous les paquets actifs du coursier
+    let packages = sqlx::query_as::<_, BookDeliveryPackage>(
+        r#"
+        SELECT * FROM book_delivery_packages
+        WHERE coursier_id = $1 AND statut IN ('constitue', 'en_route')
+        ORDER BY created_at ASC
+        "#,
+    )
+    .bind(courier_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur paquets coursier: {}", e)))?;
+
+    if packages.is_empty() {
+        return Ok(Json(json!({
+            "success": true,
+            "stops": [],
+            "total_stops": 0,
+            "message": "Aucun paquet actif"
+        })));
+    }
+
+    // Grouper les paquets par stop (pickup chez expéditeur, puis delivery chez destinataire)
+    // Un stop = un user_id unique qu'on visite
+    use std::collections::HashMap;
+    struct StopInfo {
+        user_id: i32,
+        stop_type: String, // "pickup" ou "delivery"
+        gps: Option<String>,
+        adresse: Option<String>,
+        package_ids: Vec<i32>,
+        package_refs: Vec<String>,
+        livres_count: i32,
+    }
+
+    let mut stops_map: HashMap<(i32, String), StopInfo> = HashMap::new();
+
+    for pkg in &packages {
+        // Stop pickup (chez l'expéditeur)
+        if pkg.statut == "constitue" {
+            let key = (pkg.expediteur_id, "pickup".to_string());
+            let stop = stops_map.entry(key).or_insert_with(|| StopInfo {
+                user_id: pkg.expediteur_id,
+                stop_type: "pickup".to_string(),
+                gps: pkg.expediteur_gps.clone(),
+                adresse: pkg.expediteur_adresse.clone(),
+                package_ids: Vec::new(),
+                package_refs: Vec::new(),
+                livres_count: 0,
+            });
+            stop.package_ids.push(pkg.id);
+            stop.package_refs.push(pkg.reference.clone());
+            stop.livres_count += pkg.nombre_livres;
+        }
+
+        // Stop delivery (chez le destinataire)
+        let key = (pkg.destinataire_id, "delivery".to_string());
+        let stop = stops_map.entry(key).or_insert_with(|| StopInfo {
+            user_id: pkg.destinataire_id,
+            stop_type: "delivery".to_string(),
+            gps: pkg.destinataire_gps.clone(),
+            adresse: pkg.destinataire_adresse.clone(),
+            package_ids: Vec::new(),
+            package_refs: Vec::new(),
+            livres_count: 0,
+        });
+        stop.package_ids.push(pkg.id);
+        stop.package_refs.push(pkg.reference.clone());
+        stop.livres_count += pkg.nombre_livres;
+    }
+
+    // Pour chaque stop, récupérer le QR code et les infos utilisateur
+    let mut stops_json: Vec<serde_json::Value> = Vec::new();
+
+    // Pickups d'abord, puis deliveries
+    let mut stops_ordered: Vec<StopInfo> = stops_map.into_values().collect();
+    stops_ordered.sort_by(|a, b| {
+        let type_order = |t: &str| if t == "pickup" { 0 } else { 1 };
+        type_order(&a.stop_type).cmp(&type_order(&b.stop_type))
+    });
+
+    for (idx, stop) in stops_ordered.iter().enumerate() {
+        // Info utilisateur (nom, téléphone)
+        let user_info =
+            sqlx::query("SELECT id, full_name, telephone, photo_url FROM users WHERE id = $1")
+                .bind(stop.user_id)
+                .fetch_optional(&state.pg)
+                .await
+                .ok()
+                .flatten();
+
+        let user_json = user_info.as_ref().map(|row| {
+            use sqlx::Row;
+            json!({
+                "id": row.get::<i32, _>("id"),
+                "nom": row.try_get::<String, _>("full_name").ok(),
+                "telephone": row.try_get::<String, _>("telephone").ok(),
+                "photo_url": row.try_get::<String, _>("photo_url").ok(),
+            })
+        });
+
+        // Récupérer OU générer le QR code pour ce stop
+        // Un QR par (premier package_id, stop_type) — le QR couvre TOUS les paquets du stop
+        let primary_pkg_id = stop.package_ids[0];
+        let existing_qr: Option<(String, String)> = sqlx::query_as(
+            "SELECT qr_code, qr_code_url FROM book_package_qr_codes WHERE package_id = $1 AND qr_type = $2 AND status = 'pending' AND expires_at > NOW() LIMIT 1",
+        )
+        .bind(primary_pkg_id)
+        .bind(&stop.stop_type)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten();
+
+        let (qr_code, qr_code_url) = if let Some((code, url)) = existing_qr {
+            (code, url)
+        } else {
+            // Générer un nouveau QR pour ce stop
+            let qr_service = crate::services::qr_code_service::QRCodeService::new(state.pg.clone());
+            match qr_service.generate_book_package_qr(primary_pkg_id, &stop.stop_type).await {
+                Ok(qr_info) => (qr_info.qr_code, qr_info.qr_code_url),
+                Err(_) => ("".to_string(), "".to_string()),
+            }
+        };
+
+        // Grouper les livres PAR PAQUET (référence) pour identification physique rapide
+        // Chaque paquet = un sac/enveloppe physique étiqueté avec sa référence
+        let mut paquets_detail: Vec<serde_json::Value> = Vec::new();
+        for pkg_id in &stop.package_ids {
+            let pkg = packages.iter().find(|p| p.id == *pkg_id);
+            if let Some(pkg) = pkg {
+                let livres_du_paquet: Vec<serde_json::Value> = pkg
+                    .livres
+                    .as_array()
+                    .unwrap_or(&vec![])
+                    .iter()
+                    .map(|livre| {
+                        json!({
+                            "titre": livre.get("titre").and_then(|v| v.as_str()).unwrap_or("?"),
+                            "matiere": livre.get("matiere").and_then(|v| v.as_str()),
+                            "valeur": livre.get("valeur").and_then(|v| v.as_f64()),
+                        })
+                    })
+                    .collect();
+
+                paquets_detail.push(json!({
+                    "package_id": pkg.id,
+                    "reference": pkg.reference,
+                    "nombre_livres": pkg.nombre_livres,
+                    "statut": pkg.statut,
+                    "livres": livres_du_paquet,
+                }));
+            }
+        }
+
+        // Liste plate de tous les livres (pour vue rapide)
+        let livres_flat: Vec<serde_json::Value> = paquets_detail
+            .iter()
+            .flat_map(|p| {
+                let pkg_ref = p.get("reference").and_then(|v| v.as_str()).unwrap_or("?");
+                p.get("livres")
+                    .and_then(|l| l.as_array())
+                    .unwrap_or(&vec![])
+                    .iter()
+                    .map(move |livre| {
+                        let mut l = livre.clone();
+                        l.as_object_mut()
+                            .map(|o| o.insert("package_ref".to_string(), json!(pkg_ref)));
+                        l
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+
+        stops_json.push(json!({
+            "ordre": idx + 1,
+            "stop_type": stop.stop_type,
+            "action": if stop.stop_type == "pickup" { "RÉCUPÉRER les livres" } else { "LIVRER les livres" },
+            "user": user_json,
+            "gps": stop.gps,
+            "adresse": stop.adresse,
+            // Paquets groupés par référence (pour identification physique rapide)
+            "paquets": paquets_detail,
+            "package_ids": stop.package_ids,
+            "package_refs": stop.package_refs,
+            "livres_count": stop.livres_count,
+            // Liste plate de tous les livres (rétrocompatibilité)
+            "livres": livres_flat,
+            "qr_code": qr_code,
+            "qr_code_url": qr_code_url,
+            "instruction": if stop.stop_type == "pickup" {
+                format!("Montrez ce QR code à {} pour récupérer {} paquet(s) ({} livre(s)). Références: {}",
+                    user_json.as_ref().and_then(|u| u.get("nom")).and_then(|n| n.as_str()).unwrap_or("l'expéditeur"),
+                    stop.package_ids.len(),
+                    stop.livres_count,
+                    stop.package_refs.join(", "))
+            } else {
+                format!("Livrer {} paquet(s) ({} livre(s)) — Références: {}",
+                    stop.package_ids.len(),
+                    stop.livres_count,
+                    stop.package_refs.join(", "))
+            }
+        }));
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "stops": stops_json,
+        "total_stops": stops_json.len(),
+        "total_packages": packages.len(),
+        "message": format!("{} arrêts pour {} paquets", stops_json.len(), packages.len())
+    })))
+}
+
+// ============================================================================
+// ÉQUIPE LIBRAIRE: VALIDER UNE COMMANDE + VOIR DÉTAIL LIVRES POUR CONSTITUTION
+// ============================================================================
+
+/// POST /api/bourse-livre/v2/libraire/team/validate-order
+/// Un membre de l'équipe valide une commande/paquet (marque comme "en préparation" ou "constitué")
+#[derive(Debug, Deserialize)]
+pub struct TeamValidateOrderRequest {
+    pub package_id: Option<i32>,
+    pub purchase_id: Option<i32>,
+    pub action: String, // "en_preparation", "constitue", "pret"
+}
+
+pub async fn team_validate_order(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<TeamValidateOrderRequest>,
+) -> AppResult<impl IntoResponse> {
+    // Vérifier que c'est un membre d'équipe (owner, manager, ou preparer)
+    let member_info: Option<(i32, String)> = sqlx::query_as(
+        "SELECT librairie_id, role FROM libraire_team_members WHERE user_id = $1 AND is_active = true AND role IN ('owner', 'manager', 'preparer') LIMIT 1",
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten();
+
+    let (_librairie_id, role) = member_info.ok_or_else(|| {
+        AppError::Forbidden("Non autorisé — rôle preparer minimum requis".to_string())
+    })?;
+
+    let valid_actions = ["en_preparation", "constitue", "pret"];
+    if !valid_actions.contains(&payload.action.as_str()) {
+        return Err(AppError::BadRequest(format!(
+            "Action invalide: {}. Actions: en_preparation, constitue, pret",
+            payload.action
+        )));
+    }
+
+    // Valider un paquet de livraison
+    if let Some(pkg_id) = payload.package_id {
+        let new_status = match payload.action.as_str() {
+            "en_preparation" => "a_constituer",
+            "constitue" | "pret" => "constitue",
+            _ => "a_constituer",
+        };
+
+        let updated = sqlx::query_scalar::<_, i32>(
+            "UPDATE book_delivery_packages SET statut = $1, date_constitution = CASE WHEN $1 = 'constitue' THEN NOW() ELSE date_constitution END, updated_at = NOW() WHERE id = $2 RETURNING id",
+        )
+        .bind(new_status)
+        .bind(pkg_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur MAJ paquet: {}", e)))?;
+
+        if updated.is_none() {
+            return Err(AppError::NotFound("Paquet non trouvé".to_string()));
+        }
+
+        info!(
+            "[team_validate_order] Membre {} (role:{}) → paquet {} marqué '{}'",
+            user_id, role, pkg_id, new_status
+        );
+
+        return Ok(Json(json!({
+            "success": true,
+            "type": "package",
+            "id": pkg_id,
+            "new_status": new_status,
+            "validated_by": user_id,
+            "role": role
+        })));
+    }
+
+    // Valider un achat direct
+    if let Some(purchase_id) = payload.purchase_id {
+        let new_status = match payload.action.as_str() {
+            "en_preparation" => "en_preparation",
+            "constitue" | "pret" => "en_livraison",
+            _ => "en_preparation",
+        };
+
+        let updated = sqlx::query_scalar::<_, i32>(
+            "UPDATE book_purchases SET statut = $1, updated_at = NOW() WHERE id = $2 RETURNING id",
+        )
+        .bind(new_status)
+        .bind(purchase_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur MAJ achat: {}", e)))?;
+
+        if updated.is_none() {
+            return Err(AppError::NotFound("Achat non trouvé".to_string()));
+        }
+
+        info!(
+            "[team_validate_order] Membre {} (role:{}) → achat {} marqué '{}'",
+            user_id, role, purchase_id, new_status
+        );
+
+        return Ok(Json(json!({
+            "success": true,
+            "type": "purchase",
+            "id": purchase_id,
+            "new_status": new_status,
+            "validated_by": user_id,
+            "role": role
+        })));
+    }
+
+    Err(AppError::BadRequest(
+        "Fournir package_id ou purchase_id".to_string(),
+    ))
+}
+
+/// GET /api/bourse-livre/v2/libraire/team/package/:id/detail
+/// Voir le détail complet d'un paquet pour la constitution physique
+/// (liste des livres avec images, titres, matières, classes — pour les préparer physiquement)
+pub async fn team_get_package_detail(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(package_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    // Vérifier membre d'équipe
+    let member_info: Option<(i32,)> = sqlx::query_as(
+        "SELECT librairie_id FROM libraire_team_members WHERE user_id = $1 AND is_active = true LIMIT 1",
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten();
+
+    if member_info.is_none() {
+        return Err(AppError::Forbidden(
+            "Vous n'êtes membre d'aucune librairie".to_string(),
+        ));
+    }
+
+    // Récupérer le paquet
+    let package = sqlx::query_as::<_, BookDeliveryPackage>(
+        "SELECT * FROM book_delivery_packages WHERE id = $1",
+    )
+    .bind(package_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Paquet non trouvé".to_string()))?;
+
+    // Enrichir chaque livre avec infos complètes (images, auteur, état...)
+    let mut livres_enrichis: Vec<serde_json::Value> = Vec::new();
+    if let Some(arr) = package.livres.as_array() {
+        for livre_json in arr {
+            let livre_id = livre_json.get("livre_id").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+            if livre_id > 0 {
+                if let Ok(Some(livre)) =
+                    sqlx::query_as::<_, crate::models::livre_scolaire::LivreScolaire>(
+                        "SELECT * FROM livres_scolaires WHERE id = $1",
+                    )
+                    .bind(livre_id)
+                    .fetch_optional(&state.pg)
+                    .await
+                {
+                    // Générer presigned URL pour les images
+                    let recto_url = match &livre.image_recto {
+                        Some(p) if !p.is_empty() && !p.starts_with("http") => {
+                            state.media_storage.generate_presigned_url(p, 86400).await.ok()
+                        }
+                        other => other.clone(),
+                    };
+                    let verso_url = match &livre.image_verso {
+                        Some(p) if !p.is_empty() && !p.starts_with("http") => {
+                            state.media_storage.generate_presigned_url(p, 86400).await.ok()
+                        }
+                        other => other.clone(),
+                    };
+
+                    livres_enrichis.push(json!({
+                        "livre_id": livre.id,
+                        "titre": livre.titre,
+                        "auteur": livre.auteur,
+                        "editeur": livre.editeur,
+                        "isbn": livre.isbn,
+                        "matiere": livre.matiere,
+                        "classe_actuelle": livre.classe_actuelle,
+                        "etat_livre": livre.etat_livre,
+                        "etat_classification": livre.etat_classification,
+                        "image_recto": recto_url,
+                        "image_verso": verso_url,
+                        "valeur": livre.valeur_calculee,
+                        "mode": livre.mode_listing,
+                    }));
+                } else {
+                    livres_enrichis.push(livre_json.clone());
+                }
+            }
+        }
+    }
+
+    // Info destinataire
+    let destinataire = sqlx::query("SELECT id, full_name, telephone FROM users WHERE id = $1")
+        .bind(package.destinataire_id)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten();
+
+    let dest_json = destinataire.as_ref().map(|row| {
+        use sqlx::Row;
+        json!({
+            "id": row.get::<i32, _>("id"),
+            "nom": row.try_get::<String, _>("full_name").ok(),
+            "telephone": row.try_get::<String, _>("telephone").ok(),
+        })
+    });
+
+    Ok(Json(json!({
+        "success": true,
+        "package": {
+            "id": package.id,
+            "reference": package.reference,
+            "statut": package.statut,
+            "nombre_livres": package.nombre_livres,
+            "valeur_totale": package.valeur_totale,
+            "frais_livraison": package.frais_livraison,
+            "devise": package.devise.as_deref().unwrap_or("XAF"),
+            "created_at": package.created_at,
+        },
+        "livres": livres_enrichis,
+        "destinataire": dest_json,
+        "checklist": livres_enrichis.iter().map(|l| {
+            json!({
+                "titre": l.get("titre"),
+                "matiere": l.get("matiere"),
+                "classe": l.get("classe_actuelle"),
+                "etat": l.get("etat_livre"),
+                "a_verifier": true,
+            })
+        }).collect::<Vec<_>>(),
+        "instructions": format!(
+            "Préparez {} livre(s) pour le paquet {}. Vérifiez chaque livre de la checklist ci-dessous avant de marquer le paquet comme 'constitué'.",
+            livres_enrichis.len(), package.reference
+        )
+    })))
 }

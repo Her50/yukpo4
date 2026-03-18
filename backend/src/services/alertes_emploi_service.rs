@@ -261,10 +261,10 @@ impl AlertesEmploiService {
 
     /// Désactive une alerte
     pub async fn deactivate_alerte(&self, alerte_id: i32) -> AppResult<()> {
-        sqlx::query!(
+        sqlx::query(
             "UPDATE alertes_emploi SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
-            alerte_id
         )
+        .bind(alerte_id)
         .execute(&self.pool)
         .await
         .map_err(|e| {

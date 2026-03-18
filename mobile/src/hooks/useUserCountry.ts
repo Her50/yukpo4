@@ -7,79 +7,79 @@ import SafeStorage from '../utils/safeStorage';
 
 export interface UserCountryInfo {
     code: string; // Code ISO (CM, CI, SN, etc.)
-    emoji: string; // 🇨🇲, 🇨🇮, etc.
+    emoji: string; // \uD83C\uDDE8\uD83C\uDDF2, \uD83C\uDDE8\uD83C\uDDEE, etc.
     nom: string;
     detected: boolean; // Si détecté automatiquement ou manuel
 }
 
 // Mapping des coordonnées GPS vers pays (approximatif)
 const detectCountryFromGPS = (latitude: number, longitude: number): string => {
-    // 🇨🇲 CAMEROUN: 2°N-13°N, 8°E-16°E
+    // \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN: 2°N-13°N, 8°E-16°E
     if (latitude >= 2 && latitude <= 13 && longitude >= 8 && longitude <= 16) {
         return 'CM';
     }
 
-    // 🇨🇩 RDC: 5°S-5°N, 12°E-31°E
+    // \uD83C\uDDE8\uD83C\uDDE9 RDC: 5°S-5°N, 12°E-31°E
     if (latitude >= -5 && latitude <= 5 && longitude >= 12 && longitude <= 31) {
         return 'CD';
     }
 
-    // 🇨🇮 CÔTE D'IVOIRE: 4°N-11°N, 8°W-3°W
+    // \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE: 4°N-11°N, 8°W-3°W
     if (latitude >= 4 && latitude <= 11 && longitude >= -8 && longitude <= -3) {
         return 'CI';
     }
 
-    // 🇸🇳 SÉNÉGAL: 12°N-17°N, 17°W-12°W
+    // \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL: 12°N-17°N, 17°W-12°W
     if (latitude >= 12 && latitude <= 17 && longitude >= -17 && longitude <= -12) {
         return 'SN';
     }
 
-    // 🇲🇱 MALI: 10°N-25°N, 12°W-4°E
+    // \uD83C\uDDF2\uD83C\uDDF1 MALI: 10°N-25°N, 12°W-4°E
     if (latitude >= 10 && latitude <= 25 && longitude >= -12 && longitude <= 4) {
         return 'ML';
     }
 
-    // 🇬🇦 GABON: 4°S-2°N, 8°E-15°E
+    // \uD83C\uDDEC\uD83C\uDDE6 GABON: 4°S-2°N, 8°E-15°E
     if (latitude >= -4 && latitude <= 2 && longitude >= 8 && longitude <= 15) {
         return 'GA';
     }
 
-    // 🇨🇬 CONGO-BRAZZAVILLE: 5°S-4°N, 11°E-19°E
+    // \uD83C\uDDE8\uD83C\uDDEC CONGO-BRAZZAVILLE: 5°S-4°N, 11°E-19°E
     if (latitude >= -5 && latitude <= 4 && longitude >= 11 && longitude <= 19) {
         return 'CG';
     }
 
-    // 🇧🇯 BÉNIN: 6°N-13°N, 0°E-4°E
+    // \uD83C\uDDE7\uD83C\uDDEF BÉNIN: 6°N-13°N, 0°E-4°E
     if (latitude >= 6 && latitude <= 13 && longitude >= 0 && longitude <= 4) {
         return 'BJ';
     }
 
-    // 🇹🇬 TOGO: 6°N-11°N, 0°E-2°E
+    // \uD83C\uDDF9\uD83C\uDDEC TOGO: 6°N-11°N, 0°E-2°E
     if (latitude >= 6 && latitude <= 11 && longitude >= 0 && longitude <= 2) {
         return 'TG';
     }
 
-    // 🇧🇫 BURKINA FASO: 10°N-15°N, 5°W-2°E
+    // \uD83C\uDDE7\uD83C\uDDEB BURKINA FASO: 10°N-15°N, 5°W-2°E
     if (latitude >= 10 && latitude <= 15 && longitude >= -5 && longitude <= 2) {
         return 'BF';
     }
 
-    // 🇳🇪 NIGER: 11°N-24°N, 0°E-16°E
+    // \uD83C\uDDF3\uD83C\uDDEA NIGER: 11°N-24°N, 0°E-16°E
     if (latitude >= 11 && latitude <= 24 && longitude >= 0 && longitude <= 16) {
         return 'NE';
     }
 
-    // 🇹🇩 TCHAD: 7°N-24°N, 13°E-24°E
+    // \uD83C\uDDF9\uD83C\uDDE9 TCHAD: 7°N-24°N, 13°E-24°E
     if (latitude >= 7 && latitude <= 24 && longitude >= 13 && longitude <= 24) {
         return 'TD';
     }
 
-    // 🇬🇳 GUINÉE: 7°N-13°N, 15°W-7°W
+    // \uD83C\uDDEC\uD83C\uDDF3 GUINÉE: 7°N-13°N, 15°W-7°W
     if (latitude >= 7 && latitude <= 13 && longitude >= -15 && longitude <= -7) {
         return 'GN';
     }
 
-    // 🇲🇬 MADAGASCAR: 26°S-12°S, 43°E-51°E
+    // \uD83C\uDDF2\uD83C\uDDEC MADAGASCAR: 26°S-12°S, 43°E-51°E
     if (latitude >= -26 && latitude <= -12 && longitude >= 43 && longitude <= 51) {
         return 'MG';
     }

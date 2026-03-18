@@ -33,7 +33,7 @@ class ErrorBoundary extends Component<Props, State> {
             platform: require('react-native').Platform.OS,
         };
 
-        console.error('🚨 [ErrorBoundary] Erreur capturée:', detailedError);
+        console.error('\uD83D\uDEA8 [ErrorBoundary] Erreur capturée:', detailedError);
 
         // ✅ AMÉLIORATION: Logger les composants suspects si disponible
         try {
@@ -70,7 +70,7 @@ class ErrorBoundary extends Component<Props, State> {
     render() {
         if (this.state.hasError) {
             // ✅ AMÉLIORÉ: Logger l'erreur pour debugging
-            console.error('[ErrorBoundary] 🚨 Erreur capturée, affichage du fallback:', {
+            console.error('[ErrorBoundary] \uD83D\uDEA8 Erreur capturée, affichage du fallback:', {
                 error: this.state.error?.message,
                 hasFallback: !!this.props.fallback,
                 stack: this.state.error?.stack
@@ -109,7 +109,7 @@ class ErrorBoundary extends Component<Props, State> {
                                 style={styles.retryButton}
                                 onPress={this.handleRetry}
                             >
-                                <Text style={styles.buttonIcon}>🔄</Text>
+                                <Text style={styles.buttonIcon}>\uD83D\uDD04</Text>
                                 <Text style={styles.retryButtonText}>{t('errorBoundary.redemarrer')}</Text>
                             </TouchableOpacity>
 
@@ -124,7 +124,7 @@ class ErrorBoundary extends Component<Props, State> {
                                     console.log('Report error:', this.state.error);
                                 }}
                             >
-                                <Text style={styles.buttonIcon}>🐛</Text>
+                                <Text style={styles.buttonIcon}>\uD83D\uDC1B</Text>
                                 <Text style={styles.reportButtonText}>Signaler</Text>
                             </TouchableOpacity>
                         </View>

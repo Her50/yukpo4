@@ -12,7 +12,7 @@ import { modernColors } from '../../theme/modernTheme';
 import BusSeatSelector, { SelectedSeat } from '../bus/BusSeatSelector';
 import BusTicketCard, { BusTicketData } from '../bus/BusTicketCard';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface AgenceVoyageResultCardProps {
     agency: {
@@ -118,7 +118,7 @@ const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({
         <TouchableOpacity style={styles.card} onPress={handlePress}>
             <View style={styles.header}>
                 <View style={styles.iconContainer}>
-                    <Text style={styles.icon}>🚌</Text>
+                    <Text style={styles.icon}>\uD83D\uDE8C</Text>
                 </View>
                 <View style={styles.titleContainer}>
                     <Text style={styles.title}>{agency.nom_agence}</Text>

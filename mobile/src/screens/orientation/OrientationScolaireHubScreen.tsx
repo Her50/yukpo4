@@ -48,7 +48,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
 
     const handleAnalyzeProfile = async () => {
         if (!profileId) {
-            Alert.alert('Profil requis', 'Veuillez d\t('orientationScolaireHubScreen.abordCreerVotreProfilEtudiant'));
+            Alert.alert(t('orientationScolaireHub.profileRequiredTitle'), t('orientationScolaireHub.profileRequiredMsg'));
             return;
         }
         try {
@@ -59,11 +59,11 @@ const OrientationScolaireHubScreen: React.FC = () => {
             if (response.success) {
                 Alert.alert(
                     t('orientationScolaireHubScreen.analyseTerminee'),
-                    t('orientationScolaireHubScreen.votreProfilAEteAnalyseAvec')
+                    t('orientationScolaireHub.analyseTermineeMsg')
                 );
             }
         } catch (error: any) {
-            Alert.alert('Erreur', 'Impossible d\'analyser le profil');
+            Alert.alert(t('orientationScolaireHub.analysisErrorTitle'), t('orientationScolaireHub.analysisErrorMsg'));
         } finally {
             setLoading(false);
         }
@@ -71,7 +71,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
 
     const handleGetRecommendations = () => {
         if (!hasProfile) {
-            Alert.alert('Profil requis', 'Veuillez d\t('orientationScolaireHubScreen.abordCreerVotreProfilEtudiant'));
+            Alert.alert(t('orientationScolaireHub.profileRequiredTitle'), t('orientationScolaireHub.profileRequiredMsg'));
             return;
         }
         navigation.navigate('EtablissementSearch');
@@ -79,7 +79,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
 
     const handleComparePrograms = () => {
         if (!hasProfile) {
-            Alert.alert('Profil requis', 'Veuillez d\t('orientationScolaireHubScreen.abordCreerVotreProfilEtudiant'));
+            Alert.alert(t('orientationScolaireHub.profileRequiredTitle'), t('orientationScolaireHub.profileRequiredMsg'));
             return;
         }
         navigation.navigate('OrientationAIComparePrograms');
@@ -88,24 +88,24 @@ const OrientationScolaireHubScreen: React.FC = () => {
     const etablissementTypes = [
         {
             id: 'primaire',
-            name: 'Primaire',
-            icon: '📚',
+            name: t('orientationScolaireHub.primary'),
+            icon: '\uD83D\uDCDA',
             color: '#10B981',
             route: 'EtablissementSearch',
             params: { type: 'primaire' },
         },
         {
             id: 'secondaire',
-            name: 'Secondaire',
-            icon: '🎓',
+            name: t('orientationScolaireHub.secondary'),
+            icon: '\uD83C\uDF93',
             color: '#3B82F6',
             route: 'EtablissementSearch',
             params: { type: 'secondaire' },
         },
         {
             id: 'superieur',
-            name: t('orientationScolaireHubScreen.superieur'),
-            icon: '🎓',
+            name: t('orientationScolaireHub.superieur'),
+            icon: '\uD83C\uDF93',
             color: '#8B5CF6',
             route: 'EtablissementSearch',
             params: { type: 'superieur' },
@@ -115,25 +115,25 @@ const OrientationScolaireHubScreen: React.FC = () => {
     const quickActions = [
         {
             id: 'concours',
-            name: 'Concours actifs',
-            icon: '🏆',
+            name: t('orientationScolaireHub.quickActionsItems.concours'),
+            icon: '\uD83C\uDFC6',
             route: 'ConcoursList',
         },
         {
             id: 'conferences',
-            name: t('orientationScolaireHubScreen.conferences'),
-            icon: '📺',
+            name: t('orientationScolaireHub.quickActionsItems.conferences'),
+            icon: '\uD83D\uDCFA',
             route: 'ConferencesList',
         },
         {
             id: 'programmes',
-            name: 'Programmes',
-            icon: '📖',
+            name: t('orientationScolaireHub.quickActionsItems.programmes'),
+            icon: '\uD83D\uDCD6',
             route: 'ProgrammesList',
         },
         {
             id: 'fournitures',
-            name: 'Fournitures',
+            name: t('orientationScolaireHub.quickActionsItems.fournitures'),
             icon: '✏️',
             route: 'FournituresList',
         },
@@ -142,9 +142,15 @@ const OrientationScolaireHubScreen: React.FC = () => {
     return (
         <ScrollView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Orientation Scolaire</Text>
+                <Text style={styles.title}>{t('orientationScolaireHub.title')}</Text>
                 <Text style={styles.subtitle}>
-                    Trouvez lt('orientationScolaireHubScreen.etablissementIdealPourVousOuVost('orientationScolaireHubScreen.etablissementsViewStylestylessectionTextStylestyle')orientationScolaireHub.typesDetablissements')}</Text>
+                    {t('orientationScolaireHub.subtitle')}
+                </Text>
+            </View>
+
+            {/* Types d'établissements */}
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>{t('orientationScolaireHub.typesDetablissements')}</Text>
                 <View style={styles.grid}>
                     {etablissementTypes.map((type) => (
                         <TouchableOpacity
@@ -161,7 +167,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
 
             {/* Actions rapides */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Actions rapides</Text>
+                <Text style={styles.sectionTitle}>{t('orientationScolaireHub.quickActions')}</Text>
                 <View style={styles.actionsGrid}>
                     {quickActions.map((action) => (
                         <TouchableOpacity
@@ -178,13 +184,13 @@ const OrientationScolaireHubScreen: React.FC = () => {
 
             {/* Suggestions IA */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>🤖 Intelligence Artificielle</Text>
+                <Text style={styles.sectionTitle}>{t('orientationScolaireHub.aiSectionTitle')}</Text>
 
                 {!hasProfile && (
                     <NativeCard style={styles.profileCard}>
                         <Text style={styles.profileCardTitle}>{t('orientationScolaireHub.creerVotreProfil')}</Text>
                         <Text style={styles.profileCardText}>
-                            Créez votre profil étudiant pour obtenir des recommandations personnalisées
+                            {t('orientationScolaireHub.creerVotreProfilDesc')}
                         </Text>
                         <NativeButton
                             title={t('orientationScolaireHub.creerMonProfil')}
@@ -200,13 +206,13 @@ const OrientationScolaireHubScreen: React.FC = () => {
                         <NativeCard style={styles.aiCard}>
                             <View style={styles.aiCardHeader}>
                                 <SafeIcon name="sparkles" size={24} color="#8B5CF6" />
-                                <Text style={styles.aiCardTitle}>Analyse de profil IA</Text>
+                                <Text style={styles.aiCardTitle}>{t('orientationScolaireHub.analysisCardTitle')}</Text>
                             </View>
                             <Text style={styles.aiCardText}>
-                                Analysez votre profil académique et obtenez des insights personnalisés
+                                {t('orientationScolaireHub.analysisCardDesc')}
                             </Text>
                             <NativeButton
-                                title={loading ? 'Analyse en cours...' : 'Analyser mon profil'}
+                                title={loading ? t('orientationScolaireHub.analysisInProgress') : t('orientationScolaireHub.analyzeMyProfile')}
                                 onPress={handleAnalyzeProfile}
                                 variant="primary"
                                 disabled={loading}
@@ -217,13 +223,13 @@ const OrientationScolaireHubScreen: React.FC = () => {
                         <NativeCard style={styles.aiCard}>
                             <View style={styles.aiCardHeader}>
                                 <SafeIcon name="target" size={24} color="#10B981" />
-                                <Text style={styles.aiCardTitle}>Recommandations IA</Text>
+                                <Text style={styles.aiCardTitle}>{t('orientationScolaireHub.recommendationsCardTitle')}</Text>
                             </View>
                             <Text style={styles.aiCardText}>
-                                Obtenez des recommandations personnalisées d'établissements et programmes
+                                {t('orientationScolaireHub.recommendationsCardDesc')}
                             </Text>
                             <NativeButton
-                                title="Obtenir des recommandations"
+                                title={t('orientationScolaireHub.getRecommendations')}
                                 onPress={handleGetRecommendations}
                                 variant="secondary"
                                 style={styles.aiButton}
@@ -233,13 +239,13 @@ const OrientationScolaireHubScreen: React.FC = () => {
                         <NativeCard style={styles.aiCard}>
                             <View style={styles.aiCardHeader}>
                                 <SafeIcon name="git-compare" size={24} color="#3B82F6" />
-                                <Text style={styles.aiCardTitle}>Comparer des programmes</Text>
+                                <Text style={styles.aiCardTitle}>{t('orientationScolaireHub.compareCardTitle')}</Text>
                             </View>
                             <Text style={styles.aiCardText}>
-                                Comparez deux programmes ou établissements avec l'IA
+                                {t('orientationScolaireHub.compareCardDesc')}
                             </Text>
                             <NativeButton
-                                title="Comparer"
+                                title={t('orientationScolaireHub.comparePrograms')}
                                 onPress={handleComparePrograms}
                                 variant="outline"
                                 style={styles.aiButton}

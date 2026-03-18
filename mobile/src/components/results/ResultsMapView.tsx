@@ -9,7 +9,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Product {
     service_id: number;
@@ -151,7 +151,7 @@ const ResultsMapView: React.FC<ResultsMapViewProps> = ({
                                 <Text style={styles.markerPrice} numberOfLines={1}>
                                     {product.prix
                                         ? `${product.prix.toLocaleString()} ${product.devise || 'XAF'}`
-                                        : '💰'}
+                                        : '\uD83D\uDCB0'}
                                 </Text>
                             </View>
                             <View style={styles.markerPin} />

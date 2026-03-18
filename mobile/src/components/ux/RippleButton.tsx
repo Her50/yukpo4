@@ -15,7 +15,7 @@ import Animated, {
 import { modernColors } from '../../theme/modernTheme';
 // ✅ NOUVEAU: Monitoring des re-renders
 import { useRenderMonitor } from '../../hooks/useRenderMonitor';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface RippleButtonProps {
     onPress: () => void;

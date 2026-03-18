@@ -205,7 +205,7 @@ const FlashPromosActiveScreen: React.FC = () => {
                                             </View>
                                             {promo.availability === 'live' || promo.availability === 'both' ? (
                                                 <View style={styles.liveBadgeInline}>
-                                                    <Text style={styles.liveBadgeTextInline}>📺 LIVE</Text>
+                                                    <Text style={styles.liveBadgeTextInline}>\uD83D\uDCFA LIVE</Text>
                                                 </View>
                                             ) : null}
                                         </View>

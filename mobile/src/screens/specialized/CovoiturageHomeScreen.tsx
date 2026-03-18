@@ -364,7 +364,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                             >
                                 <SafeIcon name="user" size={18} color="#fff" type="lucide" />
                                 <Text style={styles.registerDriverTextLeft} numberOfLines={1} adjustsFontSizeToFit>
-                                    Devenir chauffeur
+                                    {t('covoiturageHome.devenirChauffeur')}
                                 </Text>
                             </TouchableOpacity>
                         )}
@@ -372,7 +372,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                             onPress={() => {
                                 hapticPress();
                                 if (!isDriverValidated) {
-                                    toaster.warning('Vous devez d\'abord vous enregistrer comme chauffeur avant de pouvoir publier un trajet.');
+                                    toaster.warning(t('covoiturageHome.driverRegistrationRequired'));
                                     return;
                                 }
                                 (navigation as any).navigate('CovoiturageForm', {
@@ -395,7 +395,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                                 styles.publishTrajetTextRight,
                                 !isDriverValidated && styles.publishTrajetTextRightDisabled
                             ]} numberOfLines={1} adjustsFontSizeToFit>
-                                Publier un trajet
+                                {t('covoiturageHome.publierUnTrajet')}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -411,7 +411,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>
-                                {viewMode === 'search' ? 'Rechercher un trajet' : 'Publier un trajet'}
+                                {viewMode === 'search' ? t('covoiturageHome.rechercherUnTrajet') : t('covoiturageHome.publierUnTrajet')}
                             </Text>
                             {viewMode === 'search' && totalResults > 0 && (
                                 <Text style={[styles.headerSubtitle, { color: '#ffffffCC' }]}>
@@ -464,7 +464,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                             ]}>
                                 <View style={styles.labelRow}>
                                     <SafeIcon name="navigation" size={14} color="#3B82F6" type="lucide" />
-                                    <Text style={styles.routeLabel}>Destination *</Text>
+                                    <Text style={styles.routeLabel}>{t('covoiturageHome.destination')}</Text>
                                 </View>
                                 <LocationSelector
                                     label=""
@@ -513,7 +513,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                                 {loading ? (
                                     <>
                                         <ActivityIndicator size="small" color="#FFFFFF" />
-                                        <Text style={styles.searchButtonText}>Recherche...</Text>
+                                        <Text style={styles.searchButtonText}>{t('covoiturageHome.rechercheEnCours')}</Text>
                                     </>
                                 ) : (
                                     <>
@@ -522,7 +522,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                                             style={[styles.searchButtonText, !canSearch() && styles.searchButtonTextDisabled]}
                                             numberOfLines={1}
                                         >
-                                            {canSearch() ? "Rechercher" : t('covoiturageHomeScreen.remplirDepartdestination')}
+                                            {canSearch() ? t('covoiturageHome.rechercher') : t('covoiturageHomeScreen.remplirDepartdestination')}
                                         </Text>
                                     </>
                                 )}
@@ -541,7 +541,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                             <SafeIcon name="map-pin" size={64} color="#9CA3AF" />
                             <Text style={styles.emptyText}>{t('covoiturageHome.selectionnezVotreTrajet')}</Text>
                             <Text style={styles.emptySubtext} numberOfLines={3}>
-                                Choisissez une ville de départ et une ville de destination, puis cliquez sur "Rechercher"
+                                {t('covoiturageHome.choisissezTrajet')}
                             </Text>
                         </View>
                     ) : loading && covoiturages.length === 0 ? (
@@ -592,7 +592,7 @@ const CovoiturageHomeScreen: React.FC = () => {
                                     <SafeIcon name="car" size={64} color="#9CA3AF" />
                                     <Text style={styles.emptyText}>{t('covoiturageHome.aucunTrajetTrouve')}</Text>
                                     <Text style={styles.emptySubtext} numberOfLines={2}>
-                                        Essayez de modifier vos critères de recherche
+                                        {t('covoiturageHome.modifierCriteres')}
                                     </Text>
                                 </View>
                             }
@@ -671,7 +671,7 @@ const TrajetCard: React.FC<TrajetCardProps> = ({ trajet, onPress, onReserve, onC
                     <Text style={styles.trajetPriceText}>
                         {formatPrice(trajet.prix_par_place, trajet.devise)}
                     </Text>
-                    <Text style={styles.trajetPriceLabel}>par place</Text>
+                    <Text style={styles.trajetPriceLabel}>{t('covoiturageHome.parPlace')}</Text>
                 </View>
             </View>
 
@@ -699,13 +699,13 @@ const TrajetCard: React.FC<TrajetCardProps> = ({ trajet, onPress, onReserve, onC
                     {trajet.climatisation && (
                         <View style={styles.featureChip}>
                             <SafeIcon name="wind" size={12} color="#6B7280" type="lucide" />
-                            <Text style={styles.featureChipText}>Climatisation</Text>
+                            <Text style={styles.featureChipText}>{t('covoiturageHome.climatisation')}</Text>
                         </View>
                     )}
                     {trajet.bagages_autorises && (
                         <View style={styles.featureChip}>
                             <SafeIcon name="luggage" size={12} color="#6B7280" type="lucide" />
-                            <Text style={styles.featureChipText}>Bagages</Text>
+                            <Text style={styles.featureChipText}>{t('covoiturageHome.bagages')}</Text>
                         </View>
                     )}
                 </View>
@@ -786,7 +786,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                 <View style={styles.serviceWarning}>
                     <SafeIcon name="info" size={20} color="#F59E0B" type="lucide" />
                     <Text style={styles.serviceWarningText}>
-                        Vous devez d'abord créer un service pour publier un trajet
+                        {t('covoiturageHome.serviceRequiredMsg')}
                     </Text>
                     <TouchableOpacity
                         style={styles.serviceWarningButton}
@@ -842,7 +842,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
             </View>
 
             <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Date et heure *</Text>
+                <Text style={styles.formSectionTitle}>{t('covoiturageHome.dateEtHeure')}</Text>
                 <TouchableOpacity
                     style={styles.dateInput}
                     onPress={() => onShowDatePicker(true)}
@@ -880,7 +880,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                 <Text style={styles.formSectionTitle}>Places et prix *</Text>
                 <View style={styles.placesRow}>
                     <View style={styles.placesInput}>
-                        <Text style={styles.placesLabel}>Places totales</Text>
+                        <Text style={styles.placesLabel}>{t('covoiturageHome.placesTotales')}</Text>
                         <NativeInput
                             value={trajetForm.nombre_places?.toString() || '4'}
                             onChangeText={(text) => onFormChange({ ...trajetForm, nombre_places: parseInt(text) || 4 })}
@@ -889,7 +889,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                         />
                     </View>
                     <View style={styles.placesInput}>
-                        <Text style={styles.placesLabel}>Places disponibles</Text>
+                        <Text style={styles.placesLabel}>{t('covoiturageHome.placesDisponibles')}</Text>
                         <NativeInput
                             value={trajetForm.places_disponibles?.toString() || '3'}
                             onChangeText={(text) => onFormChange({ ...trajetForm, places_disponibles: parseInt(text) || 3 })}
@@ -910,7 +910,7 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
             </View>
 
             <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Options</Text>
+                <Text style={styles.formSectionTitle}>{t('covoiturageHome.options')}</Text>
                 <View style={styles.checkboxRow}>
                     <TouchableOpacity
                         style={styles.checkbox}
@@ -936,12 +936,12 @@ const CreateTrajetForm: React.FC<CreateTrajetFormProps> = ({
                     >
                         {trajetForm.climatisation && <SafeIcon name="check" size={16} color="#3B82F6" type="lucide" />}
                     </TouchableOpacity>
-                    <Text style={styles.checkboxLabel}>Climatisation</Text>
+                    <Text style={styles.checkboxLabel}>{t('covoiturageHome.climatisation')}</Text>
                 </View>
             </View>
 
             <NativeButton
-                title={creating ? 'Publication en cours...' : 'Publier le trajet'}
+                title={creating ? t('covoiturageHome.publicationEnCours') : t('covoiturageHome.publierLeTrajet')}
                 onPress={onCreate}
                 variant="primary"
                 disabled={creating}

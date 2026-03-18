@@ -6,7 +6,7 @@
  */
 
 export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
-    // 🇨🇲 CAMEROUN
+    // \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN
     CM: [
         // Douala
         'Hôtel Sawa', 'Hôtel Akwa Palace', 'Pullman Douala Rabingha', 'Ibis Douala',
@@ -29,7 +29,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Hôtel Miramar (Buea)', 'Mountain Hotel (Buea)', 'Hôtel La Regence (Bertoua)',
     ],
 
-    // 🇸🇳 SÉNÉGAL
+    // \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL
     SN: [
         // Dakar
         'Radisson Blu Dakar', 'Pullman Dakar Teranga', 'King Fahd Palace',
@@ -47,7 +47,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Keur Saloum (Fatick)', 'Le Flamboyant (Ziguinchor)', 'Hôtel Kadiandoumagne (Kolda)',
     ],
 
-    // 🇨🇮 CÔTE D'IVOIRE
+    // \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE
     CI: [
         // Abidjan
         'Sofitel Abidjan Hôtel Ivoire', 'Pullman Abidjan', 'Azalaï Hotel Abidjan',
@@ -62,7 +62,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Hôtel Assoyam (Boundiali)', 'La Bénoué (Man)', 'Hôtel Les Cascades (Man)',
     ],
 
-    // 🇨🇩 RDC (RÉPUBLIQUE DÉMOCRATIQUE DU CONGO)
+    // \uD83C\uDDE8\uD83C\uDDE9 RDC (RÉPUBLIQUE DÉMOCRATIQUE DU CONGO)
     CD: [
         // Kinshasa
         'Pullman Kinshasa Grand Hôtel', 'Memling Hotel', 'Fleuve Congo Hotel',
@@ -79,7 +79,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Hotel Lac Kivu Lodge (Goma)', 'Hotel Mwanga (Bukavu)', 'Hotel Royal (Matadi)',
     ],
 
-    // 🇬🇦 GABON
+    // \uD83C\uDDEC\uD83C\uDDE6 GABON
     GA: [
         // Libreville
         'Radisson Blu Libreville', 'Hôtel Boulevard', 'Le Meridien Renouveau',
@@ -95,7 +95,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Mission Catholique Guesthouse (Franceville)', 'Hôtel Le Masuku (Franceville)',
     ],
 
-    // 🇲🇱 MALI
+    // \uD83C\uDDF2\uD83C\uDDF1 MALI
     ML: [
         // Bamako
         'Radisson Blu Bamako', 'Azalaï Grand Hotel', 'Hôtel l\'Amitié',
@@ -107,7 +107,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Hotel Kanaga (Mopti)', 'Hotel Salam (Mopti)', 'Hôtel La Falaise (Ségou)',
     ],
 
-    // 🇧🇫 BURKINA FASO
+    // \uD83C\uDDE7\uD83C\uDDEB BURKINA FASO
     BF: [
         // Ouagadougou
         'Hôtel Palm Beach', 'Laïco Ouaga 2000', 'Azalaï Hotel Ouagadougou',
@@ -121,7 +121,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Coco Lodge (Banfora)', 'Hôtel Les Cascades (Banfora)', 'Hotel Sindou',
     ],
 
-    // 🇳🇪 NIGER
+    // \uD83C\uDDF3\uD83C\uDDEA NIGER
     NE: [
         // Niamey
         'Radisson Blu Niamey', 'Bravia Hotel Niamey', 'Hotel Sahel',
@@ -132,7 +132,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Hôtel Tafadek (Agadez)', 'Auberge Azel (Agadez)', 'Hotel Sojal (Zinder)',
     ],
 
-    // 🇹🇩 TCHAD
+    // \uD83C\uDDF9\uD83C\uDDE9 TCHAD
     TD: [
         // N\'Djamena
         'Radisson Blu N\'Djamena', 'Hotel Kempinski', 'Ledger Plaza N\'Djamena',
@@ -143,7 +143,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Hotel de Tibesti (Bardaï)', 'Hotel Moundou', 'Hotel Sarh',
     ],
 
-    // 🇹🇬 TOGO
+    // \uD83C\uDDF9\uD83C\uDDEC TOGO
     TG: [
         // Lomé
         'Hotel 2 Fevrier', 'Radisson Blu Hotel Lomé', 'Hôtel Sarakawa',
@@ -155,7 +155,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Hotel Kara Lodge (Kara)', 'Hotel des Plateaux (Atakpamé)',
     ],
 
-    // 🇧🇯 BÉNIN
+    // \uD83C\uDDE7\uD83C\uDDEF BÉNIN
     BJ: [
         // Cotonou
         'Novotel Cotonou Orisha', 'Golden Tulip Le Diplomate', 'Hotel du Port',
@@ -169,7 +169,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Hotel Casa del Papa (Ouidah)', 'Auberge de Grand Popo', 'Hotel La Tanière (Parakou)',
     ],
 
-    // 🇬🇳 GUINÉE
+    // \uD83C\uDDEC\uD83C\uDDF3 GUINÉE
     GN: [
         // Conakry
         'Grand Hotel de l\'Indépendance', 'Hotel Palm Camayenne', 'Novotel Conakry',
@@ -180,7 +180,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Hotel Tata (Kankan)', 'Hotel Tambacounda (Labé)', 'Hotel Nimba (N\'Zérékoré)',
     ],
 
-    // 🇲🇬 MADAGASCAR
+    // \uD83C\uDDF2\uD83C\uDDEC MADAGASCAR
     MG: [
         // Antananarivo
         'Carlton Madagascar', 'Radisson Blu Antananarivo', 'Hotel Colbert',
@@ -192,7 +192,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Hotel Libertalia (Nosy Be)', 'Hotel Sunny Beach (Ifaty)', 'Le Paradisier (Antsirabe)',
     ],
 
-    // 🇨🇬 CONGO-BRAZZAVILLE
+    // \uD83C\uDDE8\uD83C\uDDEC CONGO-BRAZZAVILLE
     CG: [
         // Brazzaville
         'Radisson Blu M\'Bamou Palace', 'Hotel Ledger Plaza Maya Maya',
@@ -204,14 +204,14 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Hotel Azur', 'Hotel Pefaco', 'Hotel Residence Bouenza',
     ],
 
-    // 🇨🇫 RÉPUBLIQUE CENTRAFRICAINE
+    // \uD83C\uDDE8\uD83C\uDDEB RÉPUBLIQUE CENTRAFRICAINE
     CF: [
         // Bangui
         'Ledger Plaza Bangui', 'Hotel Oubangui', 'Hotel Leon',
         'Hotel Somba', 'Hotel Novotel Bangui', 'Hotel la Residence',
     ],
 
-    // 🇧🇮 BURUNDI
+    // \uD83C\uDDE7\uD83C\uDDEE BURUNDI
     BI: [
         // Bujumbura
         'Hotel Club du Lac Tanganyika', 'Roca Golf Hotel', 'Dolce Vita Resort',
@@ -219,7 +219,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Hotel Residence', 'Hotel Safari Gate', 'Hotel Burundi Palace',
     ],
 
-    // 🇷🇼 RWANDA
+    // \uD83C\uDDF7\uD83C\uDDFC RWANDA
     RW: [
         // Kigali
         'Radisson Blu Kigali', 'Kigali Marriott Hotel', 'Hotel des Mille Collines',
@@ -231,7 +231,7 @@ export const HOTELS_REELS_PAR_PAYS: { [countryCode: string]: string[] } = {
         'Centre Bethanie (Gisenyi)', 'Hotel Muhabura (Musanze/Ruhengeri)',
     ],
 
-    // 🇲🇷 MAURITANIE
+    // \uD83C\uDDF2\uD83C\uDDF7 MAURITANIE
     MR: [
         // Nouakchott
         'Hotel Azalaï', 'Tfeila Hotel', 'Hotel Monotel', 'Hotel Marhaba',

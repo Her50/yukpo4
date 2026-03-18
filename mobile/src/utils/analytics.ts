@@ -74,7 +74,7 @@ export const logEvent = async (
 
         // Logger en console en mode DEV
         if (__DEV__) {
-            console.log(`📊 [Analytics] ${eventType}:`, {
+            console.log(`\uD83D\uDCCA [Analytics] ${eventType}:`, {
                 ...event,
                 metadata,
             });

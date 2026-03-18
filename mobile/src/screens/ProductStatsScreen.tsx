@@ -1,6 +1,6 @@
 // @ts-nocheck
 // ✅ NOUVEAU 2026-03-03: Écran statistiques produit (dashboard prestataire)
-// Accessible depuis MesProduitsScreen via bouton 📊 sur chaque produit
+// Accessible depuis MesProduitsScreen via bouton \uD83D\uDCCA sur chaque produit
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -149,11 +149,11 @@ const ProductStatsScreen: React.FC = () => {
 
     const getInteractionIcon = (type: string): string => {
         switch (type) {
-            case 'view': return '👁️';
-            case 'click': return '👆';
-            case 'contact': return '📞';
-            case 'share': return '🔗';
-            default: return '📌';
+            case 'view': return '\uD83D\uDC41️';
+            case 'click': return '\uD83D\uDC46';
+            case 'contact': return '\uD83D\uDCDE';
+            case 'share': return '\uD83D\uDD17';
+            default: return '\uD83D\uDCCC';
         }
     };
 
@@ -175,7 +175,7 @@ const ProductStatsScreen: React.FC = () => {
         if (timeline.length === 0) {
             return (
                 <View style={styles.emptyChart}>
-                    <Text style={styles.emptyChartIcon}>📈</Text>
+                    <Text style={styles.emptyChartIcon}>\uD83D\uDCC8</Text>
                     <Text style={styles.emptyChartText}>
                         Pas encore de données pour cette période
                     </Text>
@@ -263,7 +263,7 @@ const ProductStatsScreen: React.FC = () => {
                 </TouchableOpacity>
                 <View style={styles.headerTitleContainer}>
                     <Text style={styles.headerTitle} numberOfLines={1}>
-                        📊 Statistiques
+                        \uD83D\uDCCA Statistiques
                     </Text>
                     <Text style={styles.headerSubtitle} numberOfLines={1}>
                         {productName || 'Produit'}
@@ -301,15 +301,15 @@ const ProductStatsScreen: React.FC = () => {
 
                 {/* Cartes statistiques principales */}
                 <View style={styles.statsGrid}>
-                    <StatCard icon="👁️" label="Vues" value={formatNumber(stats?.views ?? 0)} color="#6366F1" />
-                    <StatCard icon="🔗" label="Partages" value={formatNumber(stats?.shares ?? 0)} color="#10B981" />
-                    <StatCard icon="💾" label="Sauvegardes" value={formatNumber(stats?.saves ?? 0)} color="#F59E0B" />
-                    <StatCard icon="👆" label="Clics" value={formatNumber(stats?.clicks ?? 0)} color="#EF4444" />
+                    <StatCard icon="\uD83D\uDC41️" label="Vues" value={formatNumber(stats?.views ?? 0)} color="#6366F1" />
+                    <StatCard icon="\uD83D\uDD17" label="Partages" value={formatNumber(stats?.shares ?? 0)} color="#10B981" />
+                    <StatCard icon="\uD83D\uDCBE" label="Sauvegardes" value={formatNumber(stats?.saves ?? 0)} color="#F59E0B" />
+                    <StatCard icon="\uD83D\uDC46" label="Clics" value={formatNumber(stats?.clicks ?? 0)} color="#EF4444" />
                 </View>
 
                 {/* Cartes secondaires */}
                 <View style={styles.statsGrid}>
-                    <StatCard icon="💬" label="Commentaires" value={formatNumber(stats?.comments ?? 0)} color="#8B5CF6" />
+                    <StatCard icon="\uD83D\uDCAC" label="Commentaires" value={formatNumber(stats?.comments ?? 0)} color="#8B5CF6" />
                     <StatCard icon="❤️" label={t('productStats.reactions')} value={formatNumber(stats?.reactions ?? 0)} color="#EC4899" />
                     <StatCard
                         icon="⭐"
@@ -317,7 +317,7 @@ const ProductStatsScreen: React.FC = () => {
                         value={stats?.avg_rating ? stats.avg_rating.toFixed(1) : 'N/A'}
                         color="#F59E0B"
                     />
-                    <StatCard icon="📷" label={t('productStats.medias')} value={formatNumber(stats?.media_count ?? 0)} color="#06B6D4" />
+                    <StatCard icon="\uD83D\uDCF7" label={t('productStats.medias')} value={formatNumber(stats?.media_count ?? 0)} color="#06B6D4" />
                 </View>
 
                 {/* Graphique temporel */}
@@ -328,7 +328,7 @@ const ProductStatsScreen: React.FC = () => {
 
                 {/* Villes des visiteurs */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>🌍 Villes des visiteurs</Text>
+                    <Text style={styles.sectionTitle}>\uD83C\uDF0D Villes des visiteurs</Text>
                     <Text style={styles.sectionSubtitle}>
                         {totalVisitors} visiteur{totalVisitors !== 1 ? 's' : ''} unique{totalVisitors !== 1 ? 's' : ''}
                     </Text>
@@ -358,7 +358,7 @@ const ProductStatsScreen: React.FC = () => {
 
                 {/* Sources d'interaction */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>📱 Types d'interactions</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDCF1 Types d'interactions</Text>
                     {sources.length === 0 ? (
                         <Text style={styles.emptyText}>{t('productStats.aucuneInteractionEnregistree')}</Text>
                     ) : (
@@ -366,10 +366,10 @@ const ProductStatsScreen: React.FC = () => {
                             <View key={i} style={styles.sourceRow}>
                                 <View style={styles.sourceLeft}>
                                     <Text style={styles.sourceIcon}>
-                                        {source.source === 'Vues directes' ? '👁️' :
-                                            source.source === 'Clics' ? '👆' :
-                                                source.source === 'Contacts' ? '📞' :
-                                                    source.source === 'Partages' ? '🔗' : '📌'}
+                                        {source.source === 'Vues directes' ? '\uD83D\uDC41️' :
+                                            source.source === 'Clics' ? '\uD83D\uDC46' :
+                                                source.source === 'Contacts' ? '\uD83D\uDCDE' :
+                                                    source.source === 'Partages' ? '\uD83D\uDD17' : '\uD83D\uDCCC'}
                                     </Text>
                                     <Text style={styles.sourceName}>{source.source}</Text>
                                 </View>

@@ -133,10 +133,10 @@ const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
 
     const getSeatIcon = (seat: Seat) => {
         if (seat.type === 'driver') {
-            return '🚗';
+            return '\uD83D\uDE97';
         }
         if (seat.status === 'occupied' || seat.status === 'reserved') {
-            return '🔒';
+            return '\uD83D\uDD12';
         }
         if (seat.status === 'prebooked' || seat.prebooked) {
             return '⏳'; // Sablier pour pré-réservé
@@ -420,7 +420,7 @@ const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
                                     />
                                     {index === 0 && savedName && passengerNames[0] === savedName && (
                                         <Text style={styles.savedNameHint}>
-                                            💡 Modifiable si nécessaire
+                                            \uD83D\uDCA1 Modifiable si nécessaire
                                         </Text>
                                     )}
                                 </View>
@@ -461,7 +461,7 @@ const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
                                     ]} />
                                 </View>
                                 <Text style={styles.returnToggleText}>
-                                    {wantReturn ? '🔔 Oui, notifiez-moi' : 'Non, aller simple uniquement'}
+                                    {wantReturn ? '\uD83D\uDD14 Oui, notifiez-moi' : 'Non, aller simple uniquement'}
                                 </Text>
                             </TouchableOpacity>
 
@@ -470,7 +470,7 @@ const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
                                     <View style={styles.returnInfoBox}>
                                         <SafeIcon name="bell" size={16} color={modernColors.primary} />
                                         <Text style={styles.returnInfoText}>
-                                            📲 Vous recevrez une notification dès qu'un bus correspondant sera créé!
+                                            \uD83D\uDCF2 Vous recevrez une notification dès qu'un bus correspondant sera créé!
                                         </Text>
                                     </View>
 

@@ -138,7 +138,7 @@ const OffreDetailsScreen: React.FC = () => {
                     [
                         { text: t('common.cancel') },
                         {
-                            text: t('offreDetails.creerMonProfil'),
+                            text: 'Créer mon profil',
                             onPress: () => (navigation as any).navigate('ProfilCandidat'),
                         },
                     ]
@@ -168,20 +168,20 @@ const OffreDetailsScreen: React.FC = () => {
     };
 
     const formatSalaire = () => {
-        if (!offre) return t('offreDetailsScreen.salaireNonRenseigne');
-        if (!offre.salaire_min && !offre.salaire_max) return t('offreDetailsScreen.salaireNonRenseigne');
+        if (!offre) return t('offresEmploiHome.salaireNonRenseigne');
+        if (!offre.salaire_min && !offre.salaire_max) return t('offresEmploiHome.salaireNonRenseigne');
         if (offre.salaire_min && offre.salaire_max) {
             return `${offre.salaire_min.toLocaleString()} - ${offre.salaire_max.toLocaleString()} ${offre.devise}`;
         }
-        if (offre.salaire_min) return t('offreDetailsScreen.aPartirDe', { offre_salaire_min_toLocal: offre.salaire_min.toLocaleString(), offre_devise: offre.devise });
-        return t('offreDetailsScreen.jusqua', { offre_salaire_max?_toLocaleString(): offre.salaire_max?.toLocaleString(), offre_devise: offre.devise });
+        if (offre.salaire_min) return `${t('offresEmploiHome.aPartirDe')} ${offre.salaire_min.toLocaleString()} ${offre.devise}`;
+        return `${t('offresEmploiHome.jusqua')} ${offre.salaire_max?.toLocaleString()} ${offre.devise}`;
     };
 
     if (loading) {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>{t('offreDetails.chargement')}</Text>
+                <Text style={styles.loadingText}>{t('offresEmploiHome.chargement')}</Text>
             </View>
         );
     }
@@ -189,7 +189,7 @@ const OffreDetailsScreen: React.FC = () => {
     if (!offre) {
         return (
             <View style={styles.centerContainer}>
-                <Text style={styles.errorText}>{t('offreDetails.offreNonTrouvee')}</Text>
+                <Text style={styles.errorText}>{t('offresEmploiHome.offreNonTrouvee')}</Text>
             </View>
         );
     }
@@ -200,7 +200,7 @@ const OffreDetailsScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>{t('offreDetails.details')}</Text>
+                <Text style={styles.title}>{t('offreDetails.details') || 'Détails'}</Text>
             </View>
 
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -209,7 +209,7 @@ const OffreDetailsScreen: React.FC = () => {
                     <NativeCard style={[styles.matchingCard, matchingScore.score_total >= 70 ? styles.matchingCardGood : styles.matchingCardLow]}>
                         <View style={styles.matchingHeader}>
                             <View>
-                                <Text style={styles.matchingLabel}>{t('offreDetails.votreScoreDeCorrespondance')}</Text>
+                                <Text style={styles.matchingLabel}>{t('offreDetails.votreScoreDeCorrespondance') || 'Votre score de correspondance'}</Text>
                                 <Text style={styles.matchingScore}>{matchingScore.score_total.toFixed(0)}%</Text>
                             </View>
                             <SafeIcon
@@ -221,7 +221,7 @@ const OffreDetailsScreen: React.FC = () => {
                         </View>
                         {matchingScore.competences_manquantes && matchingScore.competences_manquantes.length > 0 && (
                             <View style={styles.competencesMissing}>
-                                <Text style={styles.competencesMissingTitle}>{t('offreDetails.competencesManquantes')}</Text>
+                                <Text style={styles.competencesMissingTitle}>{t('offreDetails.competencesManquantes') || 'Compétences manquantes :'}</Text>
                                 <View style={styles.competencesTags}>
                                     {matchingScore.competences_manquantes.map((comp, idx) => (
                                         <View key={idx} style={styles.competenceTag}>
@@ -242,7 +242,7 @@ const OffreDetailsScreen: React.FC = () => {
                             <SafeIcon name="map-pin" size={16} color={modernColors.textSecondary} type="lucide" />
                             <Text style={styles.metaText}>
                                 {offre.lieu_travail}
-                                {offre.remote && <Text style={styles.remoteText}> (Remote possible)</Text>}
+                                {offre.remote && <Text style={styles.remoteText}> ({t('offresEmploiHome.teletravail')})</Text>}
                             </Text>
                         </View>
                         <View style={styles.metaItem}>
@@ -253,19 +253,19 @@ const OffreDetailsScreen: React.FC = () => {
                             <SafeIcon name="dollar-sign" size={16} color={modernColors.textSecondary} type="lucide" />
                             <Text style={styles.metaText}>{formatSalaire()}</Text>
                             {offre.salaire_negociable && (
-                                <Text style={styles.negotiableText}>{t('offreDetails.negociable')}</Text>
+                                <Text style={styles.negotiableText}> ({t('createOffre.salaireNegociable')})</Text>
                             )}
                         </View>
                     </View>
 
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Description</Text>
+                        <Text style={styles.sectionTitle}>{t('createOffre.description')}</Text>
                         <Text style={styles.sectionContent}>{offre.description}</Text>
                     </View>
 
                     {offre.competences_requises && offre.competences_requises.length > 0 && (
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{t('offreDetails.competencesRequises')}</Text>
+                            <Text style={styles.sectionTitle}>{t('createOffre.competencesRequises')}</Text>
                             <View style={styles.competencesTags}>
                                 {offre.competences_requises.map((comp, idx) => (
                                     <View
@@ -286,14 +286,14 @@ const OffreDetailsScreen: React.FC = () => {
                         <View style={styles.alertBox}>
                             <SafeIcon name="clock" size={20} color="#F59E0B" type="lucide" />
                             <Text style={styles.alertText}>
-                                Date limite : {new Date(offre.date_limite_candidature).toLocaleDateString('fr-FR')}
+                                {t('offreDetails.dateLimite') || 'Date limite'} : {new Date(offre.date_limite_candidature).toLocaleDateString()}
                             </Text>
                         </View>
                     )}
 
                     <View style={styles.stats}>
-                        <Text style={styles.statsText}>{offre.nombre_vues} vues</Text>
-                        <Text style={styles.statsText}>{offre.nombre_candidatures} candidatures</Text>
+                        <Text style={styles.statsText}>{offre.nombre_vues} {t('offreDetails.vues') || 'vues'}</Text>
+                        <Text style={styles.statsText}>{offre.nombre_candidatures} {t('offreDetails.candidatures') || 'candidatures'}</Text>
                     </View>
                 </NativeCard>
             </ScrollView>
@@ -301,7 +301,7 @@ const OffreDetailsScreen: React.FC = () => {
             {/* Actions */}
             <View style={styles.actions}>
                 <NativeButton
-                    title={postulating ? 'Envoi...' : 'Postuler maintenant'}
+                    title={postulating ? (t('offreDetails.envoi') || 'Envoi...') : (t('offreDetails.postulerMaintenant') || 'Postuler maintenant')}
                     onPress={handlePostuler}
                     disabled={postulating}
                     style={styles.postulerButton}
@@ -314,7 +314,7 @@ const OffreDetailsScreen: React.FC = () => {
                     }}
                 >
                     <SafeIcon name="edit" size={16} color={modernColors.primary} type="lucide" />
-                    <Text style={styles.profilLinkText}>{t('offreDetails.mettreAJourMonCv')}</Text>
+                    <Text style={styles.profilLinkText}>{t('offreDetails.mettreAJourMonCv') || 'Mettre à jour mon CV'}</Text>
                 </TouchableOpacity>
             </View>
         </View>

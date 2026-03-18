@@ -137,14 +137,14 @@ const LivreScolaireListScreen: React.FC = () => {
                         )}
                         <View style={styles.livreMeta}>
                             <Text style={styles.livreMetaText}>
-                                📚 {livre.classe_actuelle} → {livre.classe_souhaitee}
+                                \uD83D\uDCDA {livre.classe_actuelle} → {livre.classe_souhaitee}
                             </Text>
                             <Text style={styles.livreMetaText}>
-                                📖 {livre.matiere}
+                                \uD83D\uDCD6 {livre.matiere}
                             </Text>
                             {livre.niveau && (
                                 <Text style={styles.livreMetaText}>
-                                    🎓 {livre.niveau}
+                                    \uD83C\uDF93 {livre.niveau}
                                 </Text>
                             )}
                         </View>
@@ -162,7 +162,7 @@ const LivreScolaireListScreen: React.FC = () => {
                             </View>
                             {item.distance_km && (
                                 <Text style={styles.distanceText}>
-                                    📍 {item.distance_km.toFixed(1)} km
+                                    \uD83D\uDCCD {item.distance_km.toFixed(1)} km
                                 </Text>
                             )}
                         </View>
@@ -175,7 +175,7 @@ const LivreScolaireListScreen: React.FC = () => {
     const getEtatColor = (etat: string): string => {
         switch (etat) {
             case 'Neuf': return modernColors.success;
-            case t('livreScolaireListScreen.tresBon'): return '#10B981';
+            case 'Très bon': return '#10B981';
             case 'Bon': return modernColors.warning;
             case 'Acceptable': return modernColors.error;
             default: return modernColors.textSecondary;
@@ -201,7 +201,7 @@ const LivreScolaireListScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <Text style={styles.title}>
-                    {livres.length} livre{livres.length > 1 ? 's' : 't('livreScolaireListScreen.trouvelivreslength1')s' : ''}
+                    {livres.length} livre{livres.length > 1 ? 's' : ''} trouvé{livres.length > 1 ? 's' : ''}
                 </Text>
             </View>
 

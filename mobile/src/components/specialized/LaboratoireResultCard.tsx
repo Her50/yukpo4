@@ -46,7 +46,7 @@ const LaboratoireResultCard: React.FC<LaboratoireResultCardProps> = ({ laborator
         <TouchableOpacity style={styles.card} onPress={handlePress}>
             <View style={styles.header}>
                 <View style={styles.iconContainer}>
-                    <Text style={styles.icon}>🔬</Text>
+                    <Text style={styles.icon}>\uD83D\uDD2C</Text>
                 </View>
                 <View style={styles.titleContainer}>
                     <Text style={styles.title}>{laboratory.nom}</Text>

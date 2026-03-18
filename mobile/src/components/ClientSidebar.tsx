@@ -7,6 +7,7 @@ import { useLanguageSafe } from '../contexts/LanguageContext';
 const links = [
   { label: t('clientSidebar.tableauDeBord'), screen: "Dashboard" },
   { label: t('clientSidebar.mesServices'), screen: "MesServices" },
+  { label: "Bourse du Livre", screen: "LivreScolaireHome" },
   { label: t('clientSidebar.parametres'), screen: "Settings" },
 ];
 
@@ -22,7 +23,7 @@ const ClientSidebar: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>👤 Espace Client</Text>
+      <Text style={styles.title}>\uD83D\uDC64 Espace Client</Text>
       {links.map((link) => (
         <TouchableOpacity
           key={link.screen}

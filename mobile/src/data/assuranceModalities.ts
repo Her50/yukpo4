@@ -27,7 +27,7 @@ export const ASSURANCE_MODALITIES: AssuranceModalityCategory = {
         'Assurance Prévoyance',
         'Assurance Capital Différé',
         'Assurance Rente',
-        '🆕 Autre (ajouter)'
+        '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // ✅ PRODUITS ASSURANCE NON VIE (affichés si type = NON VIE)
@@ -50,7 +50,7 @@ export const ASSURANCE_MODALITIES: AssuranceModalityCategory = {
         'Assurance Vol',
         'Assurance Tous Risques Chantier',
         'Assurance Flotte Automobile',
-        '🆕 Autre (ajouter)'
+        '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // ✅ COMPAGNIES D'ASSURANCE CAMEROUNAISES + INTERNATIONALES
@@ -76,7 +76,7 @@ export const ASSURANCE_MODALITIES: AssuranceModalityCategory = {
         'Groupama',
         'MAAF',
         'MMA',
-        '🆕 Autre (ajouter)'
+        '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // ✅ COUVERTURES / GARANTIES (multi-select)
@@ -116,7 +116,7 @@ export const ASSURANCE_MODALITIES: AssuranceModalityCategory = {
         'Frais d\'obsèques',
         'Capital santé',
         'Rente éducation',
-        '🆕 Autre (ajouter)'
+        '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // ✅ PRINCIPAUX BÉNÉFICES (multi-select)
@@ -148,7 +148,7 @@ export const ASSURANCE_MODALITIES: AssuranceModalityCategory = {
         'Évacuation sanitaire',
         'Prise en charge à l\'étranger',
         'Couverture famille',
-        '🆕 Autre (ajouter)'
+        '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // ✅ OPTIONS DE CONTRAT (pour tableau options/primes)
@@ -168,7 +168,7 @@ export const ASSURANCE_MODALITIES: AssuranceModalityCategory = {
         'Extension géographique',
         'Garantie capital décès',
         'Garantie invalidité',
-        '🆕 Autre (ajouter)'
+        '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // Durées de contrat
@@ -183,7 +183,7 @@ export const ASSURANCE_MODALITIES: AssuranceModalityCategory = {
         '15 ans',
         '20 ans',
         'Viagère',
-        '🆕 Autre (ajouter)'
+        '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // Modes de paiement
@@ -194,7 +194,7 @@ export const ASSURANCE_MODALITIES: AssuranceModalityCategory = {
         'Annuel',
         'Paiement unique',
         'Prélèvement automatique',
-        '🆕 Autre (ajouter)'
+        '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // Conditions d'âge
@@ -206,7 +206,7 @@ export const ASSURANCE_MODALITIES: AssuranceModalityCategory = {
         '61-70 ans',
         'Plus de 70 ans',
         'Tous âges',
-        '🆕 Autre (ajouter)'
+        '\uD83C\uDD95 Autre (ajouter)'
     ]
 };
 

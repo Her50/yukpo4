@@ -16,18 +16,18 @@ export interface LanguageConfig {
 }
 
 export const SUPPORTED_LANGUAGES: LanguageConfig[] = [
-    { code: 'fr', name: 'Français', nativeName: 'Français', flag: '🇫🇷' },
-    { code: 'en', name: 'English', nativeName: 'English', flag: '🇺🇸' },
-    { code: 'es', name: 'Español', nativeName: 'Español', flag: '🇪🇸' },
-    { code: 'de', name: 'Deutsch', nativeName: 'Deutsch', flag: '🇩🇪' },
-    { code: 'it', name: 'Italiano', nativeName: 'Italiano', flag: '🇮🇹' },
-    { code: 'pt', name: 'Português', nativeName: 'Português', flag: '🇵🇹' },
-    { code: 'ar', name: 'العربية', nativeName: 'العربية', flag: '🇸🇦' },
-    { code: 'zh', name: '中文', nativeName: '中文', flag: '🇨🇳' },
-    { code: 'ja', name: '日本語', nativeName: '日本語', flag: '🇯🇵' },
-    { code: 'ko', name: '한국어', nativeName: '한국어', flag: '🇰🇷' },
-    { code: 'ru', name: 'Русский', nativeName: 'Русский', flag: '🇷🇺' },
-    { code: 'hi', name: 'हिन्दी', nativeName: 'हिन्दी', flag: '🇮🇳' },
+    { code: 'fr', name: 'Français', nativeName: 'Français', flag: '\uD83C\uDDEB\uD83C\uDDF7' },
+    { code: 'en', name: 'English', nativeName: 'English', flag: '\uD83C\uDDFA\uD83C\uDDF8' },
+    { code: 'es', name: 'Español', nativeName: 'Español', flag: '\uD83C\uDDEA\uD83C\uDDF8' },
+    { code: 'de', name: 'Deutsch', nativeName: 'Deutsch', flag: '\uD83C\uDDE9\uD83C\uDDEA' },
+    { code: 'it', name: 'Italiano', nativeName: 'Italiano', flag: '\uD83C\uDDEE\uD83C\uDDF9' },
+    { code: 'pt', name: 'Português', nativeName: 'Português', flag: '\uD83C\uDDF5\uD83C\uDDF9' },
+    { code: 'ar', name: 'العربية', nativeName: 'العربية', flag: '\uD83C\uDDF8\uD83C\uDDE6' },
+    { code: 'zh', name: '中文', nativeName: '中文', flag: '\uD83C\uDDE8\uD83C\uDDF3' },
+    { code: 'ja', name: '日本語', nativeName: '日本語', flag: '\uD83C\uDDEF\uD83C\uDDF5' },
+    { code: 'ko', name: '한국어', nativeName: '한국어', flag: '\uD83C\uDDF0\uD83C\uDDF7' },
+    { code: 'ru', name: 'Русский', nativeName: 'Русский', flag: '\uD83C\uDDF7\uD83C\uDDFA' },
+    { code: 'hi', name: 'हिन्दी', nativeName: 'हिन्दी', flag: '\uD83C\uDDEE\uD83C\uDDF3' },
 ];
 
 export class TranslationService {

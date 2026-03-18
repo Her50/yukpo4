@@ -26,7 +26,7 @@ interface MessageReactionsProps {
     onRemoveReaction: (messageId: string, emoji: string) => void;
 }
 
-const QUICK_REACTIONS = ['❤️', '👍', '😂', '😮', '😢', '🙏'];
+const QUICK_REACTIONS = ['❤️', '\uD83D\uDC4D', '\uD83D\uDE02', '\uD83D\uDE2E', '\uD83D\uDE22', '\uD83D\uDE4F'];
 
 const MessageReactions: React.FC<MessageReactionsProps> = ({
     messageId,

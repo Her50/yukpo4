@@ -1,6 +1,6 @@
 // @ts-nocheck
 /**
- * 🇨🇲 PRODUITS LOCAUX CAMEROUN
+ * \uD83C\uDDE8\uD83C\uDDF2 PRODUITS LOCAUX CAMEROUN
  * 
  * Base de données de produits typiques camerounais pour enrichir l'autocomplétion.
  * Ces produits sont disponibles localement et souvent recherchés.
@@ -10,7 +10,7 @@ import { EnrichedProduct } from '../enrichedProductDatabase';
 
 export const CAMEROON_LOCAL_PRODUCTS: Partial<EnrichedProduct>[] = [
     // ═══════════════════════════════════════════════════════════
-    // 🌾 AGRICULTURE ET CÉRÉALES
+    // \uD83C\uDF3E AGRICULTURE ET CÉRÉALES
     // ═══════════════════════════════════════════════════════════
 
     {
@@ -116,7 +116,7 @@ export const CAMEROON_LOCAL_PRODUCTS: Partial<EnrichedProduct>[] = [
     },
 
     // ═══════════════════════════════════════════════════════════
-    // 🛢️ HUILES ET LIQUIDES
+    // \uD83D\uDEE2️ HUILES ET LIQUIDES
     // ═══════════════════════════════════════════════════════════
 
     {
@@ -182,7 +182,7 @@ export const CAMEROON_LOCAL_PRODUCTS: Partial<EnrichedProduct>[] = [
     },
 
     // ═══════════════════════════════════════════════════════════
-    // 🍫 CACAO ET CAFÉ
+    // \uD83C\uDF6B CACAO ET CAFÉ
     // ═══════════════════════════════════════════════════════════
 
     {
@@ -255,7 +255,7 @@ export const CAMEROON_LOCAL_PRODUCTS: Partial<EnrichedProduct>[] = [
     },
 
     // ═══════════════════════════════════════════════════════════
-    // 🥜 ARACHIDES ET NOIX
+    // \uD83E\uDD5C ARACHIDES ET NOIX
     // ═══════════════════════════════════════════════════════════
 
     {
@@ -292,7 +292,7 @@ export const CAMEROON_LOCAL_PRODUCTS: Partial<EnrichedProduct>[] = [
     },
 
     // ═══════════════════════════════════════════════════════════
-    // 🍌 FRUITS ET LÉGUMES
+    // \uD83C\uDF4C FRUITS ET LÉGUMES
     // ═══════════════════════════════════════════════════════════
 
     {
@@ -363,7 +363,7 @@ export const CAMEROON_LOCAL_PRODUCTS: Partial<EnrichedProduct>[] = [
     },
 
     // ═══════════════════════════════════════════════════════════
-    // 🐟 POISSONS ET FRUITS DE MER
+    // \uD83D\uDC1F POISSONS ET FRUITS DE MER
     // ═══════════════════════════════════════════════════════════
 
     {

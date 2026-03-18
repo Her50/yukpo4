@@ -114,7 +114,7 @@ const ImmobilierCompareScreen: React.FC = () => {
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>{comparisonName}</Text>
                 <Text style={styles.headerSubtitle}>
-                    {properties.length} bien{properties.length > 1 ? 's' : 't('immobilierCompareScreen.comparepropertieslength1')s' : ''}
+                    {properties.length} bien{properties.length > 1 ? 's' : ''} comparé{properties.length > 1 ? 's' : ''}
                 </Text>
             </View>
 

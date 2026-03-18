@@ -12,7 +12,6 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { userApi } from '../services/api';
 import { theme } from '../theme/theme';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 type UsageLog = {
   date: string;
@@ -37,7 +36,6 @@ type PaymentLog = {
 
 const SoldeDetailScreen: React.FC = () => {
   const navigation = useNavigation();
-    const { t } = useLanguageSafe();
   const { user, refreshUser } = useAuth(); // ✅ Ajout de refreshUser
   const [logs, setLogs] = useState<UsageLog[]>([]);
   const [paymentLogs, setPaymentLogs] = useState<PaymentLog[]>([]);
@@ -63,7 +61,7 @@ const SoldeDetailScreen: React.FC = () => {
   // ✅ NOUVEAU: Rafraîchir les données quand on revient sur l'écran
   useFocusEffect(
     React.useCallback(() => {
-      console.log('[SoldeDetailScreen] 🔄 Écran focus - Rafraîchissement des données...');
+      console.log('[SoldeDetailScreen] \uD83D\uDD04 Écran focus - Rafraîchissement des données...');
       if (user?.id) {
         // Rafraîchir le solde utilisateur
         refreshUser().catch(err => {
@@ -151,14 +149,14 @@ const SoldeDetailScreen: React.FC = () => {
   const getPaymentMethodIcon = (method: string) => {
     switch (method.toLowerCase()) {
       case 'orange_money':
-        return '🟠';
+        return '\uD83D\uDFE0';
       case 'mtn_money':
-        return '🟡';
+        return '\uD83D\uDFE1';
       case 'visa_card':
       case 'mastercard':
-        return '💳';
+        return '\uD83D\uDCB3';
       default:
-        return '💰';
+        return '\uD83D\uDCB0';
     }
   };
 
@@ -177,7 +175,7 @@ const SoldeDetailScreen: React.FC = () => {
 
   const renderPeriodSelector = () => (
     <View style={styles.periodSelector}>
-      <Text style={styles.periodLabel}>{t('soldeDetail.periode')}</Text>
+      <Text style={styles.periodLabel}>Période:</Text>
       <View style={styles.periodButtons}>
         {[
           { key: '7d', label: '7j' },
@@ -211,7 +209,7 @@ const SoldeDetailScreen: React.FC = () => {
         style={[styles.tabButton, selectedTab === 'consumption' && styles.tabButtonActive]}
         onPress={() => setSelectedTab('consumption')}
       >
-        <Text style={styles.tabIcon}>📊</Text>
+        <Text style={styles.tabIcon}>\uD83D\uDCCA</Text>
         <Text style={[styles.tabText, selectedTab === 'consumption' && styles.tabTextActive]}>
           Consommation
         </Text>
@@ -220,7 +218,7 @@ const SoldeDetailScreen: React.FC = () => {
         style={[styles.tabButton, selectedTab === 'payments' && styles.tabButtonActive]}
         onPress={() => setSelectedTab('payments')}
       >
-        <Text style={styles.tabIcon}>💳</Text>
+        <Text style={styles.tabIcon}>\uD83D\uDCB3</Text>
         <Text style={[styles.tabText, selectedTab === 'payments' && styles.tabTextActive]}>
           Paiements
         </Text>
@@ -233,17 +231,17 @@ const SoldeDetailScreen: React.FC = () => {
       {/* Statistiques */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>💰</Text>
+          <Text style={styles.statIcon}>\uD83D\uDCB0</Text>
           <Text style={styles.statValue}>{formatCurrency(totalConsumed)}</Text>
-          <Text style={styles.statLabel}>{t('soldeDetail.totalConsomme')}</Text>
+          <Text style={styles.statLabel}>Total consommé</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>📈</Text>
+          <Text style={styles.statIcon}>\uD83D\uDCC8</Text>
           <Text style={styles.statValue}>{logs.length}</Text>
           <Text style={styles.statLabel}>Utilisations</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>📊</Text>
+          <Text style={styles.statIcon}>\uD83D\uDCCA</Text>
           <Text style={styles.statValue}>
             {logs.length > 0 ? formatCurrency(totalConsumed / logs.length) : '0 FCFA'}
           </Text>
@@ -253,17 +251,17 @@ const SoldeDetailScreen: React.FC = () => {
 
       {/* Liste des utilisations */}
       <View style={styles.listContainer}>
-        <Text style={styles.listTitle}>{t('soldeDetail.detailDesUtilisations')}<Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text></Text>
+        <Text style={styles.listTitle}>Détail des utilisations <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text></Text>
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={styles.loadingText}>{t('soldeDetail.chargement')}</Text>
+            <Text style={styles.loadingText}>Chargement...</Text>
           </View>
         ) : logs.length > 0 ? (
           logs.map((log, index) => (
             <View key={index} style={styles.logItem}>
               <View style={styles.logIcon}>
-                <Text style={styles.logIconText}>🔥</Text>
+                <Text style={styles.logIconText}>\uD83D\uDD25</Text>
               </View>
               <View style={styles.logContent}>
                 <Text style={styles.logTitle}>{log.usage_type}</Text>
@@ -282,8 +280,8 @@ const SoldeDetailScreen: React.FC = () => {
           ))
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>📭</Text>
-            <Text style={styles.emptyText}>{t('soldeDetail.aucuneUtilisation')}Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>{t('soldeDetail.enregistree')}</Text>
+            <Text style={styles.emptyIcon}>\uD83D\uDCED</Text>
+            <Text style={styles.emptyText}>Aucune utilisation <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text> enregistrée</Text>
           </View>
         )}
       </View>
@@ -295,17 +293,17 @@ const SoldeDetailScreen: React.FC = () => {
       {/* Statistiques */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>💳</Text>
+          <Text style={styles.statIcon}>\uD83D\uDCB3</Text>
           <Text style={styles.statValue}>{formatCurrency(totalPaid)}</Text>
-          <Text style={styles.statLabel}>{t('soldeDetail.totalPaye')}</Text>
+          <Text style={styles.statLabel}>Total payé</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>🪙</Text>
+          <Text style={styles.statIcon}>\uD83E\uDE99</Text>
           <Text style={styles.statValue}>{totalTokensAdded.toLocaleString()}</Text>
-          <Text style={styles.statLabel}>{t('soldeDetail.tokensAjoutes')}</Text>
+          <Text style={styles.statLabel}>Tokens ajoutés</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>📝</Text>
+          <Text style={styles.statIcon}>\uD83D\uDCDD</Text>
           <Text style={styles.statValue}>{paymentLogs.length}</Text>
           <Text style={styles.statLabel}>Transactions</Text>
         </View>
@@ -313,11 +311,11 @@ const SoldeDetailScreen: React.FC = () => {
 
       {/* Liste des paiements */}
       <View style={styles.listContainer}>
-        <Text style={styles.listTitle}>{t('soldeDetail.historiqueDesPaiements')}</Text>
+        <Text style={styles.listTitle}>Historique des paiements</Text>
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={styles.loadingText}>{t('soldeDetail.chargement')}</Text>
+            <Text style={styles.loadingText}>Chargement...</Text>
           </View>
         ) : paymentLogs.length > 0 ? (
           paymentLogs.map((payment) => (
@@ -345,8 +343,8 @@ const SoldeDetailScreen: React.FC = () => {
           ))
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>💳</Text>
-            <Text style={styles.emptyText}>{t('soldeDetail.aucunPaiementEnregistre')}</Text>
+            <Text style={styles.emptyIcon}>\uD83D\uDCB3</Text>
+            <Text style={styles.emptyText}>Aucun paiement enregistré</Text>
           </View>
         )}
       </View>
@@ -358,20 +356,20 @@ const SoldeDetailScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{t('soldeDetail.historiqueDeConsommation')}</Text>
+          <Text style={styles.headerTitle}>Historique de Consommation</Text>
         </View>
 
         {/* Solde actuel */}
         <View style={styles.balanceCard}>
           <View style={styles.balanceContent}>
             <View style={styles.balanceLeft}>
-              <Text style={styles.balanceLabel}>{t('soldeDetail.soldeActuel')}</Text>
+              <Text style={styles.balanceLabel}>Solde actuel</Text>
               <Text style={styles.balanceValue}>
                 {currentBalance.toFixed(0)} FCFA
               </Text>
             </View>
             <View style={styles.balanceRight}>
-              <Text style={styles.balanceSubLabel}>{t('soldeDetail.totalConsomme')}</Text>
+              <Text style={styles.balanceSubLabel}>Total consommé</Text>
               <Text style={styles.balanceSubValue}>
                 {formatCurrency(totalConsumed)}
               </Text>
@@ -383,7 +381,7 @@ const SoldeDetailScreen: React.FC = () => {
             style={styles.rechargeButton}
             onPress={() => (navigation as any).navigate('RechargeTokens')}
           >
-            <Text style={styles.rechargeIcon}>💳</Text>
+            <Text style={styles.rechargeIcon}>\uD83D\uDCB3</Text>
             <Text style={styles.rechargeText}>Recharger tokens</Text>
             <Text style={styles.rechargeArrow}>→</Text>
           </TouchableOpacity>

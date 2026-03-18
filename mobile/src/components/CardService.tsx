@@ -17,7 +17,7 @@ const CardService: React.FC<CardServiceProps> = ({ icon, title, description }) =
     <Text style="text-lg font-bold text-gray-800 mb-1">{title}</Text>
     <Text style="text-sm text-gray-600">{description}</Text>
 
-    {/* 🚀 CONTEXTUAL BUTTONS */}
+    {/* \uD83D\uDE80 CONTEXTUAL BUTTONS */}
     <View style="mt-6 flex flex-wrap gap-4 justify-center">
       <a
         href={ROUTES.SERVICES}

@@ -62,7 +62,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             return () => { };
         }
 
-        console.log('[WebSocketContext] 🔌 Connexion WebSocket pour user:', user.id);
+        console.log('[WebSocketContext] \uD83D\uDD0C Connexion WebSocket pour user:', user.id);
 
         // DÉLAI AUGMENTÉ pour éviter les blocages au démarrage
         const connectTimer = setTimeout(() => {
@@ -110,7 +110,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                         });
                     }
                 }
-                console.log('[WebSocketContext] 🔌 Déconnexion WebSocket');
+                console.log('[WebSocketContext] \uD83D\uDD0C Déconnexion WebSocket');
                 if (websocketService && typeof websocketService.disconnect === 'function') {
                     websocketService.disconnect();
                 }
@@ -128,7 +128,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
 
         const handleStatusChange = (status: 'online' | 'offline') => {
-            console.log('[WebSocketContext] 📡 Statut connexion:', status);
+            console.log('[WebSocketContext] \uD83D\uDCE1 Statut connexion:', status);
             setIsConnected(status === 'online');
 
             if (status === 'online' && user?.id) {
@@ -157,7 +157,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const handleMessage = (message: any) => {
             // ✅ CORRIGÉ: Vérifier que message.type existe avant de le logger
             const messageType = message?.type || message?.message_type || 'unknown';
-            console.log('[WebSocketContext] 📨 Message reçu:', messageType);
+            console.log('[WebSocketContext] \uD83D\uDCE8 Message reçu:', messageType);
 
             // ✅ CORRIGÉ: Gérer le cas où message.type est undefined
             if (!messageType || messageType === 'unknown' || messageType === 'undefined') {
@@ -190,7 +190,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                             }
                         } as unknown as NotificationMessage & { data: any };
                     })();
-                    console.log('[WebSocketContext] 🔔 Notification:', notification.data?.title);
+                    console.log('[WebSocketContext] \uD83D\uDD14 Notification:', notification.data?.title);
 
                     // ✅ SÉCURITÉ: Notifier tous les handlers enregistrés (vérifier que ce sont des fonctions)
                     notificationHandlers.forEach(handler => {
@@ -211,7 +211,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
                 case 'chat_message':
                     const chatMessage = message as ChatMessage;
-                    console.log('[WebSocketContext] 💬 Message chat:', chatMessage.data?.service_id);
+                    console.log('[WebSocketContext] \uD83D\uDCAC Message chat:', chatMessage.data?.service_id);
 
                     // ✅ SÉCURITÉ: Notifier tous les handlers enregistrés (vérifier que ce sont des fonctions)
                     chatMessageHandlers.forEach(handler => {
@@ -231,7 +231,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
                 case 'user_status':
                     const statusUpdate = message as UserStatusUpdate;
-                    console.log('[WebSocketContext] 👤 Statut utilisateur:', statusUpdate.data.user_id, statusUpdate.data.status);
+                    console.log('[WebSocketContext] \uD83D\uDC64 Statut utilisateur:', statusUpdate.data.user_id, statusUpdate.data.status);
 
                     // ✅ SÉCURITÉ: Notifier tous les handlers enregistrés (vérifier que ce sont des fonctions)
                     userStatusHandlers.forEach(handler => {
@@ -254,7 +254,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
                 case 'call_incoming':
                     // Notification d'appel entrant
-                    console.log('[WebSocketContext] 📞 Appel entrant:', message.data);
+                    console.log('[WebSocketContext] \uD83D\uDCDE Appel entrant:', message.data);
                     Alert.alert(
                         'Appel entrant',
                         `${message.data.caller_name || 'Un utilisateur'} vous appelle`,

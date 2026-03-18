@@ -19,7 +19,7 @@ export const checkAndNotifyReturnRequests = async (
     departureTime: string
 ): Promise<number> => {
     try {
-        console.log('🔍 Vérification demandes de retour pour nouveau bus:', busId);
+        console.log('\uD83D\uDD0D Vérification demandes de retour pour nouveau bus:', busId);
         
         const response = await apiPost('/api/bus/check-return-requests', {
             busId,

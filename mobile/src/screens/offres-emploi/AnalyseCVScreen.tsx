@@ -17,11 +17,9 @@ import { NativeBadge, NativeButton, NativeCard } from '../../components/SafeNati
 import { useAuth } from '../../contexts/AuthContext';
 import { offreEmploiService } from '../../services/offreEmploiService';
 import { modernColors, modernStyles } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const AnalyseCVScreen: React.FC = () => {
     const navigation = useNavigation() as any;
-    const { t } = useLanguageSafe();
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [cvText, setCvText] = useState('');
@@ -35,7 +33,7 @@ const AnalyseCVScreen: React.FC = () => {
         }
 
         if (!user) {
-            Alert.alert('Erreur', t('analyseCVScreen.vousDevezEtreConnecte'));
+            Alert.alert('Erreur', 'Vous devez être connecté');
             return;
         }
 
@@ -50,7 +48,7 @@ const AnalyseCVScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[AnalyseCV] Erreur:', error);
-            Alert.alert('Erreur', 'Impossible d\t('analyseCVScreen.analyserLeCvVeuillezReessayer'));
+            Alert.alert('Erreur', 'Impossible d\'analyser le CV. Veuillez réessayer.');
         } finally {
             setLoading(false);
         }
@@ -110,13 +108,13 @@ const AnalyseCVScreen: React.FC = () => {
                         <Text style={styles.sectionTitle}>Scores d'analyse</Text>
                         <View style={styles.scoresContainer}>
                             <View style={styles.scoreItem}>
-                                <Text style={styles.scoreLabel}>{t('analyseCV.completude')}</Text>
+                                <Text style={styles.scoreLabel}>Complétude</Text>
                                 <Text style={styles.scoreValue}>
                                     {analysis.score_completude?.toFixed(1) || 'N/A'}%
                                 </Text>
                             </View>
                             <View style={styles.scoreItem}>
-                                <Text style={styles.scoreLabel}>{t('analyseCV.qualite')}</Text>
+                                <Text style={styles.scoreLabel}>Qualité</Text>
                                 <Text style={styles.scoreValue}>
                                     {analysis.score_qualite?.toFixed(1) || 'N/A'}%
                                 </Text>
@@ -133,7 +131,7 @@ const AnalyseCVScreen: React.FC = () => {
                     {/* Compétences extraites */}
                     {analysis.competences_extracted && analysis.competences_extracted.length > 0 && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>{t('analyseCV.competencesIdentifiees')}</Text>
+                            <Text style={styles.sectionTitle}>Compétences identifiées</Text>
                             <View style={styles.badgesContainer}>
                                 {analysis.competences_extracted.map((comp: string, index: number) => (
                                     <NativeBadge
@@ -149,10 +147,10 @@ const AnalyseCVScreen: React.FC = () => {
 
                     {/* Informations extraites */}
                     <NativeCard style={styles.card}>
-                        <Text style={styles.sectionTitle}>{t('analyseCV.informationsExtraites')}</Text>
+                        <Text style={styles.sectionTitle}>Informations extraites</Text>
                         {analysis.experience_years_extracted !== undefined && (
                             <View style={styles.infoRow}>
-                                <Text style={styles.infoLabel}>{t('analyseCV.experience')}</Text>
+                                <Text style={styles.infoLabel}>Expérience:</Text>
                                 <Text style={styles.infoValue}>
                                     {analysis.experience_years_extracted} années
                                 </Text>
@@ -160,7 +158,7 @@ const AnalyseCVScreen: React.FC = () => {
                         )}
                         {analysis.niveau_etude_extracted && (
                             <View style={styles.infoRow}>
-                                <Text style={styles.infoLabel}>{t('analyseCV.niveauDetude')}</Text>
+                                <Text style={styles.infoLabel}>Niveau d'étude:</Text>
                                 <Text style={styles.infoValue}>
                                     {analysis.niveau_etude_extracted}
                                 </Text>
@@ -171,7 +169,7 @@ const AnalyseCVScreen: React.FC = () => {
                     {/* Suggestions d'amélioration */}
                     {analysis.suggestions_amelioration && analysis.suggestions_amelioration.length > 0 && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>{t('analyseCV.suggestionsDamelioration')}</Text>
+                            <Text style={styles.sectionTitle}>Suggestions d'amélioration</Text>
                             {analysis.suggestions_amelioration.map((suggestion: string, index: number) => (
                                 <View key={index} style={styles.suggestionItem}>
                                     <SafeIcon name="check-circle" size={16} color={modernColors.primary} />
@@ -184,7 +182,7 @@ const AnalyseCVScreen: React.FC = () => {
                     {/* Compétences manquantes */}
                     {analysis.competences_manquantes && analysis.competences_manquantes.length > 0 && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>{t('analyseCV.competencesManquantes')}</Text>
+                            <Text style={styles.sectionTitle}>Compétences manquantes</Text>
                             <View style={styles.badgesContainer}>
                                 {analysis.competences_manquantes.map((comp: string, index: number) => (
                                     <NativeBadge
@@ -200,7 +198,7 @@ const AnalyseCVScreen: React.FC = () => {
 
                     <View style={styles.actions}>
                         <NativeButton
-                            title={t('analyseCV.nouvelleAnalyse')}
+                            title="Nouvelle analyse"
                             onPress={() => {
                                 setAnalysis(null);
                                 setCvText('');
@@ -210,10 +208,10 @@ const AnalyseCVScreen: React.FC = () => {
                             style={styles.actionButton}
                         />
                         <NativeButton
-                            title={t('analyseCVScreen.voirSuggestionsFormations')}
+                            title="Voir suggestions formations"
                             onPress={() => {
                                 // TODO: Navigation vers suggestions formations
-                                Alert.alert(t('analyseCVScreen.aVenir'), t('analyseCVScreen.fonctionnaliteAImplementer'));
+                                Alert.alert('À venir', 'Fonctionnalité à implémenter');
                             }}
                             variant="secondary"
                             style={styles.actionButton}

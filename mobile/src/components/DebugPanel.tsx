@@ -240,7 +240,7 @@ ${logText}
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                         <Ionicons name="close" size={24} color="#FFF" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>🐛 Debug Panel</Text>
+                    <Text style={styles.title}>\uD83D\uDC1B Debug Panel</Text>
                     <TouchableOpacity 
                         onPress={() => setAutoScroll(!autoScroll)}
                         style={[styles.autoScrollButton, autoScroll && styles.autoScrollActive]}
@@ -367,9 +367,9 @@ ${logText}
                 {/* Info footer */}
                 <View style={styles.footer}>
                     <Text style={styles.footerText}>
-                        📋 {filteredLogs.length} logs • 
-                        💾 Maintenez appuyé sur un log pour le copier • 
-                        🔄 Auto-scroll: {autoScroll ? 'ON' : 'OFF'}
+                        \uD83D\uDCCB {filteredLogs.length} logs • 
+                        \uD83D\uDCBE Maintenez appuyé sur un log pour le copier • 
+                        \uD83D\uDD04 Auto-scroll: {autoScroll ? 'ON' : 'OFF'}
                     </Text>
                 </View>
             </View>

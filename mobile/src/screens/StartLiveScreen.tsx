@@ -15,7 +15,6 @@ import { NativeButton, NativeInput } from '../components/SafeNativeDesign';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { liveStreamingService, StartLiveSessionPayload } from '../services/liveStreamingService';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 type RouteParams = {
   serviceId?: number;
@@ -23,7 +22,6 @@ type RouteParams = {
 
 export default function StartLiveScreen() {
   const navigation = useNavigation();
-    const { t } = useLanguageSafe();
   const route = useRoute();
   const { user } = useAuth();
 
@@ -62,7 +60,7 @@ export default function StartLiveScreen() {
 
   const handleStartLive = useCallback(async () => {
     if (!user?.id) {
-      Alert.alert('Erreur', t('startLiveScreen.vousDevezEtreConnectePourDemarrer'));
+      Alert.alert('Erreur', 'Vous devez être connecté pour démarrer un live');
       return;
     }
 
@@ -96,8 +94,8 @@ export default function StartLiveScreen() {
 
       if ((response.success || backendResp?.success) && session?.id) {
         Alert.alert(
-          t('startLiveScreen.liveDemarre'),
-          t('startLiveScreen.votreSessionLiveEstMaintenantActive'),
+          'Live démarré!',
+          'Votre session live est maintenant active. Vous pouvez commencer à diffuser.',
           [
             {
               text: 'OK',
@@ -113,7 +111,7 @@ export default function StartLiveScreen() {
           ]
         );
       } else {
-        const errMsg = backendResp?.message || backendResp?.error || (response as any).error || (response as any).message || t('startLive.echecDuDemarrageDuLive');
+        const errMsg = backendResp?.message || backendResp?.error || (response as any).error || (response as any).message || 'Échec du démarrage du live';
         console.error('[StartLiveScreen] Erreur backend:', errMsg, 'status:', backendResp?.status || response?.status);
         throw new Error(errMsg);
       }
@@ -121,7 +119,7 @@ export default function StartLiveScreen() {
       console.error('[StartLiveScreen] Erreur démarrage live:', error);
       Alert.alert(
         'Erreur',
-        error.message || t('startLive.impossibleDeDemarrerLeLive')
+        error.message || 'Impossible de démarrer le live. Veuillez réessayer.'
       );
     } finally {
       setIsStarting(false);
@@ -130,7 +128,9 @@ export default function StartLiveScreen() {
 
   const renderServiceSelector = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{t('startLive.serviceAssocieOptionnelt('startLiveScreen.textTextStylestylessectiondescriptionLiezCeLive')un de vos services pour permettre les ventes flash
+      <Text style={styles.sectionTitle}>Service associé (optionnel)</Text>
+      <Text style={styles.sectionDescription}>
+        Liez ce live à l'un de vos services pour permettre les ventes flash
       </Text>
 
       {userServices.map((service) => (
@@ -187,13 +187,13 @@ export default function StartLiveScreen() {
         >
           <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('startLive.demarrerUnLive')}</Text>
+        <Text style={styles.headerTitle}>Démarrer un Live</Text>
         <View style={styles.headerRight} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('startLive.informationsDuLive')}</Text>
+          <Text style={styles.sectionTitle}>Informations du Live</Text>
           <Text style={styles.sectionDescription}>
             Donnez un titre attractif pour votre audience
           </Text>
@@ -207,7 +207,7 @@ export default function StartLiveScreen() {
           />
 
           <NativeInput
-            placeholder={t('startLiveScreen.descriptionOptionnel')}
+            placeholder="Description (optionnel)..."
             value={description}
             onChangeText={setDescription}
             style={[styles.input, styles.textArea]}
@@ -220,7 +220,7 @@ export default function StartLiveScreen() {
         {userServices.length > 0 && renderServiceSelector()}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('startLive.conseilsPourUnLiveReussi')}</Text>
+          <Text style={styles.sectionTitle}>Conseils pour un live réussi</Text>
           <View style={styles.tipsContainer}>
             <View style={styles.tip}>
               <SafeIcon name="wifi" size={16} color="#6366F1" />
@@ -228,7 +228,7 @@ export default function StartLiveScreen() {
             </View>
             <View style={styles.tip}>
               <SafeIcon name="video" size={16} color="#6366F1" />
-              <Text style={styles.tipText}>{t('startLive.utilisezUnBonEclairageEt')}</Text>
+              <Text style={styles.tipText}>Utilisez un bon éclairage et une caméra stable</Text>
             </View>
             <View style={styles.tip}>
               <SafeIcon name="users" size={16} color="#6366F1" />
@@ -236,14 +236,14 @@ export default function StartLiveScreen() {
             </View>
             <View style={styles.tip}>
               <SafeIcon name="zap" size={16} color="#6366F1" />
-              <Text style={styles.tipText}>{t('startLive.preparezDesOffresSpecialesOu')}</Text>
+              <Text style={styles.tipText}>Préparez des offres spéciales ou ventes flash</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.actions}>
           <NativeButton
-            title={isStarting ? t('startLiveScreen.demarrageEnCours') : t('startLiveScreen.demarrerLeLive')}
+            title={isStarting ? 'Démarrage en cours...' : 'Démarrer le Live'}
             onPress={handleStartLive}
             disabled={isStarting || !title.trim()}
             style={[
@@ -264,7 +264,7 @@ export default function StartLiveScreen() {
             style={styles.cancelButton}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.cancelButtonText}>{t('startLiveScreen.annuler')}</Text>
+            <Text style={styles.cancelButtonText}>Annuler</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

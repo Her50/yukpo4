@@ -106,7 +106,7 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({
                 if (err.name === 'AbortError' || err.name === 'TimeoutError') {
                     console.warn('[FeatureFlagContext] ⏱️ Timeout lors du chargement des feature flags');
                 } else if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
-                    console.warn('[FeatureFlagContext] 🌐 Erreur réseau lors du chargement des feature flags');
+                    console.warn('[FeatureFlagContext] \uD83C\uDF10 Erreur réseau lors du chargement des feature flags');
                 } else {
                     // ✅ CORRIGÉ: Éviter d'afficher "undefined is not a function" dans les logs
                     const errorMessage = err?.message || String(err || 'Erreur inconnue');

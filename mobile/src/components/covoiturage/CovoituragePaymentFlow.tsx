@@ -57,8 +57,8 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                 // Paiement via wallet Yukpo
                 if (balance < total) {
                     Alert.alert(
-                        'Solde insuffisant',
-                        `Votre solde (${balance.toLocaleString('fr-FR')} ${devise}) est insuffisant. Veuillez recharger.`,
+                        t('covoituragePaymentFlow.soldeInsuffisant'),
+                        t('covoituragePaymentFlow.soldeInsuffisantMsg', { balance: balance.toLocaleString(), devise }),
                         [
                             { text: t('common.cancel'), style: 'cancel' },
                             {
@@ -137,7 +137,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
             }
         } catch (error: any) {
             console.error('[CovoituragePaymentFlow] Erreur paiement:', error);
-            Alert.alert('Erreur', error.message || 'Une erreur est survenue lors du paiement');
+            Alert.alert(t('message.error'), error.message || t('covoituragePaymentFlow.erreurPaiement'));
         } finally {
             setProcessing(false);
         }
@@ -149,7 +149,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                 <TouchableOpacity onPress={onCancel} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Paiement</Text>
+                <Text style={styles.title}>{t('covoituragePaymentFlow.paiement')}</Text>
             </View>
 
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -163,7 +163,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                         </Text>
                     </View>
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Places:</Text>
+                        <Text style={styles.summaryLabel}>{t('covoituragePaymentFlow.places')}</Text>
                         <Text style={styles.summaryValue}>{numberOfPlaces}</Text>
                     </View>
                 </NativeCard>
@@ -186,9 +186,9 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                                 <SafeIcon name="wallet" size={24} color={modernColors.primary} />
                             </View>
                             <View style={styles.paymentMethodInfo}>
-                                <Text style={styles.paymentMethodName}>Wallet Yukpo</Text>
+                                <Text style={styles.paymentMethodName}>{t('covoituragePaymentFlow.walletYukpo')}</Text>
                                 <Text style={styles.paymentMethodBalance}>
-                                    Solde: {balance.toLocaleString('fr-FR')} {devise}
+                                    {t('covoituragePaymentFlow.solde')} {balance.toLocaleString()} {devise}
                                 </Text>
                             </View>
                             {selectedMethod === 'wallet' && (
@@ -197,7 +197,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                         </View>
                         {balance < total && selectedMethod === 'wallet' && (
                             <Text style={styles.insufficientBalance}>
-                                Solde insuffisant. Rechargez votre wallet.
+                                {t('covoituragePaymentFlow.soldeInsuffisantRechargez')}
                             </Text>
                         )}
                     </TouchableOpacity>
@@ -261,7 +261,7 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                 <View style={styles.securityInfo}>
                     <SafeIcon name="shield" size={16} color="#10B981" />
                     <Text style={styles.securityText}>
-                        Paiement sécurisé et crypté. Vos données sont protégées.
+                        {t('covoituragePaymentFlow.paiementSecurise') || 'Paiement sécurisé et crypté. Vos données sont protégées.'}
                     </Text>
                 </View>
 
@@ -269,8 +269,8 @@ const CovoituragePaymentFlow: React.FC<CovoituragePaymentFlowProps> = ({
                 <NativeButton
                     title={
                         processing
-                            ? 'Traitement...'
-                            : `Payer ${total.toLocaleString('fr-FR')} ${devise}`
+                            ? (t('common.processing') || 'Traitement...')
+                            : `${t('common.pay') || 'Payer'} ${total.toLocaleString()} ${devise}`
                     }
                     onPress={handlePayment}
                     disabled={processing || (selectedMethod === 'wallet' && balance < total)}

@@ -28,7 +28,7 @@ const LoadingScreen = () => (
 // Écran d'accueil minimal
 const SimpleHomeScreen = () => (
     <SafeNativeView style={styles.container} edges={['top', 'bottom']}>
-        <Text style={styles.title}>🏠 Accueil Yukpo</Text>
+        <Text style={styles.title}>\uD83C\uDFE0 Accueil Yukpo</Text>
         <Text style={styles.subtitle}>Application en cours de stabilisation</Text>
         <Text style={styles.info}>
             Les fonctionnalités seront réactivées progressivement
@@ -43,10 +43,10 @@ const MainTabs = () => (
             tabBarIcon: ({ route }: any) => {
                 const getIcon = (routeName: string) => {
                     switch (routeName) {
-                        case 'Home': return '🏠';
-                        case 'Services': return '🛍️';
-                        case 'Account': return '👤';
-                        default: return '🏠';
+                        case 'Home': return '\uD83C\uDFE0';
+                        case 'Services': return '\uD83D\uDECD️';
+                        case 'Account': return '\uD83D\uDC64';
+                        default: return '\uD83C\uDFE0';
                     }
                 };
                 return <Text style={{ fontSize: 20 }}>{getIcon(route.name)}</Text>;

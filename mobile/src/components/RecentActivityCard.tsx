@@ -26,13 +26,13 @@ const RecentActivityCard: React.FC<RecentActivityCardProps> = ({
 }) => {
     const getActivityIcon = (type: string) => {
         switch (type) {
-            case 'view': return '👁️';
-            case 'message': return '💬';
-            case 'call': return '📞';
+            case 'view': return '\uD83D\uDC41️';
+            case 'message': return '\uD83D\uDCAC';
+            case 'call': return '\uD83D\uDCDE';
             case 'service_created': return '✨';
             case 'service_updated': return '✏️';
             case 'rating': return '⭐';
-            default: return '📋';
+            default: return '\uD83D\uDCCB';
         }
     };
 
@@ -74,7 +74,7 @@ const RecentActivityCard: React.FC<RecentActivityCardProps> = ({
                     <Text style={styles.title}>{t('recentActivityCard.activiteRecente')}</Text>
                 </View>
                 <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyIcon}>📊</Text>
+                    <Text style={styles.emptyIcon}>\uD83D\uDCCA</Text>
                     <Text style={styles.emptyTitle}>{t('recentActivityCard.aucuneActivite')}</Text>
                     <Text style={styles.emptyText}>
                         Vos interactions et activités récentes apparaîtront ici

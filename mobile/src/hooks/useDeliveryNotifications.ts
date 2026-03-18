@@ -1,5 +1,5 @@
 /**
- * 🔔 Hook pour notifications de livraison
+ * \uD83D\uDD14 Hook pour notifications de livraison
  * Intégration complète avec le système de livraison
  */
 

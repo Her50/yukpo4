@@ -221,7 +221,7 @@ const TrocMatchingScreen: React.FC = () => {
                                         <View style={styles.matchMeta}>
                                             {match.distance_km && (
                                                 <Text style={styles.metaText}>
-                                                    📍 {match.distance_km.toFixed(1)} km
+                                                    \uD83D\uDCCD {match.distance_km.toFixed(1)} km
                                                 </Text>
                                             )}
                                             <Text style={styles.metaText}>
@@ -229,7 +229,7 @@ const TrocMatchingScreen: React.FC = () => {
                                             </Text>
                                         </View>
                                         <NativeButton
-                                            title="💬 Proposer ce troc"
+                                            title="\uD83D\uDCAC Proposer ce troc"
                                             variant="primary"
                                             onPress={() => handleCreateDirectTroc(match)}
                                             style={styles.actionButton}

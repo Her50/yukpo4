@@ -455,7 +455,7 @@ pub struct UserStats {
     pub avg_rating: Option<f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct MatchingCandidate {
     pub id: i32,
     pub user_id: i32,

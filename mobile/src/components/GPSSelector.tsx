@@ -6,7 +6,6 @@ import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-na
 import { Button, Card, Paragraph, Title } from 'react-native-paper';
 import { theme } from '../theme/theme';
 import InteractiveMap from './InteractiveMap';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface GPSSelectorProps {
     visible: boolean;
@@ -21,8 +20,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
     onSelect,
     currentLocation
 }) => {
-        const { t } = useLanguageSafe();
-const [location, setLocation] = useState<Location.LocationObject | null>(null);
+    const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [loading, setLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
     const [showMap, setShowMap] = useState(false);
@@ -46,7 +44,7 @@ const [location, setLocation] = useState<Location.LocationObject | null>(null);
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
-                    t('gPSSelector.laccesALaLocalisationEstNecessairePourUtiliser'),
+                    'L\'accès à la localisation est nécessaire pour utiliser cette fonctionnalité.',
                     [{ text: 'OK' }]
                 );
                 return;
@@ -57,7 +55,7 @@ const [location, setLocation] = useState<Location.LocationObject | null>(null);
             console.error('Erreur permission GPS:', error);
             // ✅ CORRECTION: Ne pas afficher d'alerte si timeout
             if (error.message !== 'Permission timeout') {
-                Alert.alert('Erreur', 'Impossible d\t('gPSSelector.accederALaLocalisation'));
+                Alert.alert('Erreur', 'Impossible d\'accéder à la localisation');
             }
         }
     };
@@ -81,7 +79,7 @@ const [location, setLocation] = useState<Location.LocationObject | null>(null);
             console.error('Erreur GPS:', error);
             // ✅ CORRECTION: Gestion d'erreur plus douce
             if (error.message === 'GPS timeout') {
-                Alert.alert('GPS lent', t('gPSSelector.laLocalisationPrendDuTempsReessayez')adresse.');
+                Alert.alert('GPS lent', 'La localisation prend du temps. Réessayez ou utilisez la recherche d\'adresse.');
             } else {
                 Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle');
             }
@@ -132,29 +130,29 @@ const [location, setLocation] = useState<Location.LocationObject | null>(null);
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                         <Text style={styles.closeIcon}>❌</Text>
                     </TouchableOpacity>
-                    <Title style={styles.title}>{t('gPSSelector.selectionnerUnePosition')}</Title>
+                    <Title style={styles.title}>Sélectionner une position</Title>
                 </View>
 
                 <View style={styles.content}>
                     <Card style={styles.card}>
                         <View style={styles.cardContent}>
                             <View style={styles.iconContainer}>
-                                <Text style={styles.locationIcon}>🗺️</Text>
+                                <Text style={styles.locationIcon}>\uD83D\uDDFA️</Text>
                             </View>
 
-                            <Title style={styles.cardTitle}>{t('gPSSelector.positionGps')}/Title>
+                            <Title style={styles.cardTitle}>Position GPS</Title>
                             <Paragraph style={styles.cardDescription}>
                                 Choisissez votre position pour une recherche plus précise
                             </Paragraph>
 
                             {loading ? (
                                 <View style={styles.loadingContainer}>
-                                    <Text style={styles.loadingText}>{t('gPSSelector.recuperationDeVotrePosition')}</Text>
+                                    <Text style={styles.loadingText}>Récupération de votre position...</Text>
                                 </View>
                             ) : location ? (
                                 <View style={styles.locationInfo}>
                                     <View style={styles.coordinatesContainer}>
-                                        <Text style={styles.mapIcon}>🗺️</Text>
+                                        <Text style={styles.mapIcon}>\uD83D\uDDFA️</Text>
                                         <Text style={styles.coordinatesText}>
                                             {formatCoordinates(location.coords.latitude, location.coords.longitude)}
                                         </Text>
@@ -169,7 +167,7 @@ const [location, setLocation] = useState<Location.LocationObject | null>(null);
                                 </View>
                             ) : (
                                 <View style={styles.noLocationContainer}>
-                                    <Text style={styles.noLocationIcon}>📍</Text>
+                                    <Text style={styles.noLocationIcon}>\uD83D\uDCCD</Text>
                                     <Text style={styles.noLocationText}>
                                         Position non disponible
                                     </Text>
@@ -194,7 +192,7 @@ const [location, setLocation] = useState<Location.LocationObject | null>(null);
                                     style={styles.mapButton}
                                     contentStyle={styles.buttonContent}
                                 >
-                                    <Text style={styles.buttonIconOutlined}>🗺️</Text>
+                                    <Text style={styles.buttonIconOutlined}>\uD83D\uDDFA️</Text>
                                     <Text style={[styles.buttonText, { color: theme.colors.primary }]}>
                                         Sélectionner sur carte
                                     </Text>
@@ -207,7 +205,7 @@ const [location, setLocation] = useState<Location.LocationObject | null>(null);
                                     style={styles.refreshButton}
                                     contentStyle={styles.buttonContent}
                                 >
-                                    <Text style={styles.buttonIconOutlined}>🔄</Text>
+                                    <Text style={styles.buttonIconOutlined}>\uD83D\uDD04</Text>
                                     <Text style={[styles.buttonText, { color: theme.colors.primary }]}>
                                         Actualiser
                                     </Text>
@@ -219,9 +217,9 @@ const [location, setLocation] = useState<Location.LocationObject | null>(null);
                     {currentLocation && (
                         <Card style={styles.currentCard}>
                             <View style={styles.cardContent}>
-                                <Title style={styles.currentTitle}>{t('gPSSelector.positionActuelle')}/Title>
+                                <Title style={styles.currentTitle}>Position actuelle</Title>
                                 <View style={styles.coordinatesContainer}>
-                                    <Text style={styles.pinIcon}>📌</Text>
+                                    <Text style={styles.pinIcon}>\uD83D\uDCCC</Text>
                                     <Text style={styles.coordinatesText}>
                                         {formatCoordinates(currentLocation.lat, currentLocation.lng)}
                                     </Text>

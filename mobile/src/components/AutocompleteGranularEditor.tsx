@@ -274,7 +274,7 @@ const [showModal, setShowModal] = useState(false);
                 {subChar.suggestions.length > 0 && (
                     <View style={styles.suggestionsContainer}>
                         <Text style={styles.suggestionsHeader}>
-                            💡 {subChar.suggestions.length} suggestion(s) trouvée(s) :
+                            \uD83D\uDCA1 {subChar.suggestions.length} suggestion(s) trouvée(s) :
                         </Text>
                         {subChar.suggestions.map((suggestion, idx) => (
                             <View key={idx} style={styles.suggestionItem}>
@@ -343,7 +343,7 @@ const [showModal, setShowModal] = useState(false);
                     {required && <Text style={styles.required}> *</Text>}
                 </Text>
                 <Text style={styles.helperText}>
-                    💡 Tapez pour rechercher les caractéristiques de votre produit et modifiez si besoin
+                    \uD83D\uDCA1 Tapez pour rechercher les caractéristiques de votre produit et modifiez si besoin
                     {generateDynamicExample() && (
                         <Text style={styles.exampleText}> • {generateDynamicExample()}</Text>
                     )}
@@ -353,7 +353,7 @@ const [showModal, setShowModal] = useState(false);
             {/* Champ de saisie rapide avec bouton Ajouter aligné */}
             <View style={styles.quickInputWrapper}>
                 <Text style={styles.quickInputLabel}>
-                    📝 {currentValues.length > 0 ? t('autocompleteGranularEditor.ajoutees', { currentValues_length: currentValues.length }) : t('autocompleteGranularEditor.aucuneCaracteristiqueAjoutee')}
+                    \uD83D\uDCDD {currentValues.length > 0 ? t('autocompleteGranularEditor.ajoutees', { currentValues_length: currentValues.length }) : t('autocompleteGranularEditor.aucuneCaracteristiqueAjoutee')}
                 </Text>
                 <TouchableOpacity
                     style={styles.quickInputContainer}

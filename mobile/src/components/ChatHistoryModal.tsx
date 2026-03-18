@@ -479,7 +479,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
               onPress={sendMessage}
               disabled={!newMessage.trim() || sendingMessage}
             >
-              <Text style={styles.sendIcon}>📤</Text>
+              <Text style={styles.sendIcon}>\uD83D\uDCE4</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -499,7 +499,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Title style={styles.headerTitle}>
-              💬 Historique des conversations
+              \uD83D\uDCAC Historique des conversations
             </Title>
             {unreadTotalCount > 0 ? (
               <View style={styles.unreadBadge}>
@@ -519,7 +519,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
         {/* Filtres */}
         <View style={styles.filtersContainer}>
           <View style={styles.searchContainer}>
-            <Text style={styles.searchIcon}>🔍</Text>
+            <Text style={styles.searchIcon}>\uD83D\uDD0D</Text>
             <TextInput
               style={styles.searchInput}
               placeholder={t('chatHistory.rechercherUneConversation')}
@@ -560,7 +560,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
             </View>
           ) : filteredChatHistories.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>💬</Text>
+              <Text style={styles.emptyIcon}>\uD83D\uDCAC</Text>
               <Text style={styles.emptyText}>{t('chatHistory.aucuneConversationTrouvee')}</Text>
             </View>
           ) : (

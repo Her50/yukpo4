@@ -215,7 +215,7 @@ const LabAIAnalysisScreen: React.FC = () => {
                                 Obtenez une analyse détaillée de vos résultats avec détection d'anomalies et recommandations personnalisées
                             </Text>
                             <NativeButton
-                                title="🤖 Analyser avec IA"
+                                title="\uD83E\uDD16 Analyser avec IA"
                                 onPress={handleAnalyzeWithAI}
                                 disabled={analyzing}
                                 variant="primary"

@@ -80,7 +80,7 @@ const [assets, setAssets] = useState<Asset[]>([]);
             if (!result.canceled && result.assets[0]) {
                 const asset = result.assets[0];
                 // TODO: Upload vers le backend
-                Alert.alert('Info', 'Upload d\t('assetLibrary.imageAImplementer'));
+                Alert.alert('Info', 'Upload d\'image à implémenter');
             }
         } catch (error) {
             console.error('[AssetLibrary] Erreur upload image:', error);
@@ -99,11 +99,11 @@ const [assets, setAssets] = useState<Asset[]>([]);
             if (!result.canceled && result.assets[0]) {
                 const asset = result.assets[0];
                 // TODO: Upload vers le backend
-                Alert.alert('Info', t('assetLibrary.uploadDeVideoAImplementer'));
+                Alert.alert('Info', 'Upload de vidéo à implémenter');
             }
         } catch (error) {
             console.error('[AssetLibrary] Erreur upload vidéo:', error);
-            Alert.alert('Erreur', 'Impossible d\t('assetLibrary.uploaderLaVideo'));
+            Alert.alert('Erreur', 'Impossible d\'uploader la vidéo');
         }
     }, []);
 
@@ -166,7 +166,7 @@ const [assets, setAssets] = useState<Asset[]>([]);
                                 styles.filterText,
                                 filterType === t && styles.filterTextActive,
                             ]}>
-                                {t === 'all' ? 'Tous' : t === 'image' ? '📷 Images' : t('assetLibrary.videos')}
+                                {t === 'all' ? 'Tous' : t === 'image' ? '\uD83D\uDCF7 Images' : t('assetLibrary.videos')}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -249,7 +249,7 @@ const [assets, setAssets] = useState<Asset[]>([]);
             )}
 
             <Text style={styles.countText}>
-                {filteredAssets.length} média{filteredAssets.length > 1 ? 'x' : 't('assetLibrary.trouvefilteredassetslength1')s' : ''}
+                {filteredAssets.length} média{filteredAssets.length > 1 ? 'x' : ''} trouvé{filteredAssets.length > 1 ? 's' : ''}
             </Text>
         </NativeCard>
     );

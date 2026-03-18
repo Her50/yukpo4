@@ -96,7 +96,7 @@ const [points, setPoints] = useState(0);
                 activeOpacity={0.7}
             >
                 <Animated.View style={[styles.compactBadge, animatedStyle]}>
-                    <Text style={styles.compactIcon}>🏆</Text>
+                    <Text style={styles.compactIcon}>\uD83C\uDFC6</Text>
                     <Text style={styles.compactPoints}>{points != null ? String(points) : '0'}</Text>
                 </Animated.View>
             </TouchableOpacity>
@@ -111,11 +111,11 @@ const [points, setPoints] = useState(0);
         >
             <Animated.View style={[styles.badge, animatedStyle]}>
                 <View style={styles.badgeRow}>
-                    <Text style={styles.icon}>🏆</Text>
+                    <Text style={styles.icon}>\uD83C\uDFC6</Text>
                     <View style={styles.stats}>
                         <Text style={styles.points}>{points != null ? String(points) : '0'} pts</Text>
                         {streak != null && streak > 0 && (
-                            <Text style={styles.streak}>🔥 {String(streak)}j</Text>
+                            <Text style={styles.streak}>\uD83D\uDD25 {String(streak)}j</Text>
                         )}
                         {badges != null && badges > 0 && (
                             <Text style={styles.badges}>⭐ {String(badges)}</Text>

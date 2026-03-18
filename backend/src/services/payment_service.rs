@@ -234,13 +234,19 @@ impl PaymentService {
         let aggregator = PaymentAggregator::new();
         let full_phone = format!("{}{}", country_code, phone_number);
 
+        let detected_country = detect_country_from_phone(&full_phone);
+        let auto_currency = currency_for_country(detected_country).to_string();
+
         let request = InitPaymentRequest {
             user_id: 0, // sera renseigné par le caller
             amount: amount as i64,
-            currency: "XAF".to_string(),
+            currency: auto_currency.clone(),
             channel: PayChannel::OrangeMoney,
             phone_number: Some(full_phone.clone()),
-            description: format!("Recharge Yukpo {} XAF via Orange Money", amount as i64),
+            description: format!(
+                "Recharge Yukpo {} {} via Orange Money",
+                amount as i64, auto_currency
+            ),
             customer_email: None,
             customer_name: None,
             metadata: Some(serde_json::json!({"internal_txn": transaction_id})),
@@ -291,13 +297,19 @@ impl PaymentService {
         let aggregator = PaymentAggregator::new();
         let full_phone = format!("{}{}", country_code, phone_number);
 
+        let detected_country = detect_country_from_phone(&full_phone);
+        let auto_currency = currency_for_country(detected_country).to_string();
+
         let request = InitPaymentRequest {
             user_id: 0,
             amount: amount as i64,
-            currency: "XAF".to_string(),
+            currency: auto_currency.clone(),
             channel: PayChannel::MtnMoney,
             phone_number: Some(full_phone.clone()),
-            description: format!("Recharge Yukpo {} XAF via MTN MoMo", amount as i64),
+            description: format!(
+                "Recharge Yukpo {} {} via MTN MoMo",
+                amount as i64, auto_currency
+            ),
             customer_email: None,
             customer_name: None,
             metadata: Some(serde_json::json!({"internal_txn": transaction_id})),
@@ -351,13 +363,20 @@ impl PaymentService {
         // On ne transmet JAMAIS les numéros de carte directement (PCI DSS)
         let aggregator = PaymentAggregator::new();
 
+        // Pour les cartes, la devise dépend du pays du porteur (pas de téléphone)
+        // On utilise XAF par défaut pour les paiements par carte via CinetPay
+        let card_currency = "XAF".to_string();
+
         let request = InitPaymentRequest {
             user_id: 0,
             amount: amount as i64,
-            currency: "XAF".to_string(),
+            currency: card_currency.clone(),
             channel: PayChannel::Visa,
             phone_number: None,
-            description: format!("Recharge Yukpo {} XAF par carte", amount as i64),
+            description: format!(
+                "Recharge Yukpo {} {} par carte",
+                amount as i64, card_currency
+            ),
             customer_email: None,
             customer_name: Some(cardholder_name.to_string()),
             metadata: Some(serde_json::json!({"internal_txn": transaction_id})),
@@ -430,15 +449,21 @@ impl PaymentService {
             .and_then(|t| t.as_str())
             .ok_or("Token d'accès PayPal non trouvé")?;
 
-        // 2. Créer l'ordre PayPal
+        // 2. Créer l'ordre PayPal — convertir XAF -> USD via le taux centralisé
+        let usd_rate = crate::services::payment_aggregator::exchange_rate_to_xaf("USD");
+        let usd_amount = if usd_rate > 0.0 {
+            amount / usd_rate
+        } else {
+            amount / 610.0
+        };
         let order_payload = serde_json::json!({
             "intent": "CAPTURE",
             "purchase_units": [{
                 "reference_id": transaction_id,
                 "description": format!("Recharge Yukpo Tokens - {}", email),
                 "amount": {
-                    "currency_code": "XAF",
-                    "value": amount.to_string()
+                    "currency_code": "USD",
+                    "value": format!("{:.2}", usd_amount)
                 },
                 "custom_id": email
             }]
@@ -532,8 +557,8 @@ impl PaymentService {
     }
 
     /// Ajouter des tokens à un utilisateur
+    /// Met à jour BOTH users.tokens_balance ET user_wallets.balance_cents dans une transaction atomique
     pub async fn add_tokens_to_user(&self, user_id: i32, amount: f64) -> Result<(), String> {
-        // Calculer les tokens (1 XAF = 1 token)
         let tokens = amount as i32;
         let bonus = if amount >= 10000.0 {
             (amount * 0.2) as i32
@@ -546,32 +571,63 @@ impl PaymentService {
         };
 
         let total_tokens = tokens + bonus;
+        let total_cents = (total_tokens as i64) * 100;
 
-        // Mettre à jour le solde de l'utilisateur (requête dynamique pour éviter les problèmes de compilation)
+        // Atomic transaction: all 3 updates succeed or none do
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| format!("Erreur début transaction: {}", e))?;
+
+        // 1. Update users.tokens_balance (legacy, whole XAF)
         sqlx::query("UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2")
             .bind(total_tokens as i64)
             .bind(user_id)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await
             .map_err(|e| format!("Erreur mise à jour solde: {}", e))?;
 
-        // Enregistrer la transaction de tokens
+        // 2. SYNC: Update user_wallets.balance_cents (canonical wallet)
         sqlx::query(
-            r#"
-            INSERT INTO token_transactions 
+            r#"INSERT INTO user_wallets (user_id, balance_cents, currency, updated_at, created_at)
+            VALUES ($1, $2, 'XAF', NOW(), NOW())
+            ON CONFLICT (user_id, currency) DO UPDATE SET
+                balance_cents = user_wallets.balance_cents + $2,
+                updated_at = NOW()"#,
+        )
+        .bind(user_id)
+        .bind(total_cents)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| format!("Erreur sync wallet: {}", e))?;
+
+        // 3. Record token transaction for audit trail
+        sqlx::query(
+            r#"INSERT INTO token_transactions 
             (user_id, amount, bonus, total, transaction_type, description, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, NOW())
-            "#,
+            VALUES ($1, $2, $3, $4, $5, $6, NOW())"#,
         )
         .bind(user_id)
         .bind(tokens as i32)
         .bind(bonus as i32)
         .bind(total_tokens as i32)
         .bind("recharge")
-        .bind(format!("Recharge de {} XAF", amount))
-        .execute(&self.pool)
+        .bind(format!("Recharge de {} XAF (+{} bonus)", amount, bonus))
+        .execute(&mut *tx)
         .await
         .map_err(|e| format!("Erreur enregistrement transaction: {}", e))?;
+
+        tx.commit().await.map_err(|e| format!("Erreur commit transaction: {}", e))?;
+
+        log::info!(
+            "[add_tokens_to_user] {} XAF + {} bonus = {} tokens ({} cents) crédités pour user {}",
+            tokens,
+            bonus,
+            total_tokens,
+            total_cents,
+            user_id
+        );
 
         Ok(())
     }

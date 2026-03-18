@@ -316,7 +316,7 @@ const LibrairieRegistrationScreen: React.FC = () => {
                     
                     {formData.gps_coordinates && (
                         <Text style={styles.gpsCoordinates}>
-                            📍 {formData.gps_coordinates}
+                            \uD83D\uDCCD {formData.gps_coordinates}
                         </Text>
                     )}
                 </View>

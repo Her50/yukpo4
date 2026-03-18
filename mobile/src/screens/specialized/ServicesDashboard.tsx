@@ -84,7 +84,7 @@ const ServicesDashboard: React.FC = () => {
     if (!stats) {
         return (
             <View style={styles.emptyContainer}>
-                <Text style={styles.emptyIcon}>📊</Text>
+                <Text style={styles.emptyIcon}>\uD83D\uDCCA</Text>
                 <Text style={styles.emptyTitle}>{t('servicesDashboard.aucuneStatistiqueDisponible')}</Text>
                 <Text style={styles.emptyText}>
                     Créez des services spécialisés pour voir vos statistiques
@@ -217,13 +217,13 @@ const ServicesDashboard: React.FC = () => {
                     <Text style={styles.sectionTitle}>{t('servicesDashboard.detailsParType')}</Text>
                     {Object.entries(stats.by_type).map(([type, data]: [string, any]) => {
                         const typeLabels: Record<string, string> = {
-                            pharmacie: '💊 Pharmacie',
+                            pharmacie: '\uD83D\uDC8A Pharmacie',
                             hopital: t('servicesDashboard.hopital'),
-                            laboratoire: '🔬 Laboratoire',
-                            banque_sang: '🩸 Banque Sang',
-                            agence_voyage: '🚌 Agence',
-                            covoiturage: '🚗 Covoiturage',
-                            taxi: '🚕 Taxi',
+                            laboratoire: '\uD83D\uDD2C Laboratoire',
+                            banque_sang: '\uD83E\uDE78 Banque Sang',
+                            agence_voyage: '\uD83D\uDE8C Agence',
+                            covoiturage: '\uD83D\uDE97 Covoiturage',
+                            taxi: '\uD83D\uDE95 Taxi',
                         };
                         return (
                             <View key={type} style={styles.typeRow}>

@@ -16,7 +16,7 @@ import {
 import { apiGet } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 export interface SelectedSeat {
     seat_id: string;

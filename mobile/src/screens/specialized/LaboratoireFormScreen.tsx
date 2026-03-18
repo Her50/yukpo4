@@ -45,8 +45,6 @@ interface ExaminationType {
 }
 
 const TYPES_LABO = ['Laboratoire', 'Centre d\'imagerie', 'Les deux'];
-const ANALYSES_OPTIONS = ['Sang', 'Urine', t('laboratoireFormScreen.bacteriologie'), 'Parasitologie', t('laboratoireFormScreen.serologie'), 'Biochimie'];
-const IMAGERIE_OPTIONS = ['Radiologie', t('laboratoireFormScreen.echographie'), 'Scanner', 'IRM', 'Mammographie'];
 
 const LaboratoireFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -57,6 +55,22 @@ const LaboratoireFormScreen: React.FC = () => {
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
     const mode = (route.params as any)?.mode as string | undefined;
+
+    const ANALYSES_OPTIONS = [
+        'Sang',
+        'Urine',
+        t('laboratoireFormScreen.bacteriologie') || 'Bactériologie',
+        'Parasitologie',
+        t('laboratoireFormScreen.serologie') || 'Sérologie',
+        'Biochimie',
+    ];
+    const IMAGERIE_OPTIONS = [
+        'Radiologie',
+        t('laboratoireFormScreen.echographie') || 'Échographie',
+        'Scanner',
+        'IRM',
+        'Mammographie',
+    ];
 
     // Dashboard state
     const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -254,10 +268,10 @@ const LaboratoireFormScreen: React.FC = () => {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
             <View style={s.statsGrid}>
                 {[
-                    { label: 'Examens', value: stats.total, icon: 'flask-conical', color: '#0891B2' },
-                    { label: 'Analyses', value: stats.analyses, icon: 'droplets', color: '#DC2626' },
-                    { label: 'Imagerie', value: stats.imagerie, icon: 'scan', color: '#8B5CF6' },
-                    { label: 'Avec prix', value: stats.avecPrix, icon: 'banknote', color: '#10B981' },
+                    { label: t('laboForm.examens') || 'Examens', value: stats.total, icon: 'flask-conical', color: '#0891B2' },
+                    { label: t('laboForm.analyses') || 'Analyses', value: stats.analyses, icon: 'droplets', color: '#DC2626' },
+                    { label: t('laboForm.imagerie') || 'Imagerie', value: stats.imagerie, icon: 'scan', color: '#8B5CF6' },
+                    { label: t('laboForm.avecPrix') || 'Avec prix', value: stats.avecPrix, icon: 'banknote', color: '#10B981' },
                 ].map((st, i) => (
                     <View key={i} style={[s.statCard, { borderLeftColor: st.color }]}>
                         <SafeIcon name={st.icon as any} size={18} color={st.color} />
@@ -266,12 +280,12 @@ const LaboratoireFormScreen: React.FC = () => {
                     </View>
                 ))}
             </View>
-            <Text style={s.sectionTitle}>Actions rapides</Text>
+            <Text style={s.sectionTitle}>{t('laboForm.actionsRapides') || 'Actions rapides'}</Text>
             <View style={s.quickRow}>
                 {[
                     { label: t('laboratoireForm.ajouterExamen'), icon: 'plus-circle', color: '#0891B2', onPress: () => { setActiveTab('exams'); setTimeout(() => openExamModal(), 200); } },
-                    { label: 'IA Analyse', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('LabAIAnalysis', { serviceId }) },
-                    { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('LabAnalytics', { serviceId }) },
+                    { label: t('laboForm.iaAnalyse') || 'IA Analyse', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('LabAIAnalysis', { serviceId }) },
+                    { label: t('laboForm.statistiques') || 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('LabAnalytics', { serviceId }) },
                     { label: t('laboratoireForm.monService'), icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
                     { label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },
                 ].map((a, i) => (
@@ -286,11 +300,11 @@ const LaboratoireFormScreen: React.FC = () => {
                 <SafeIcon name="clock" size={16} color="#6B7280" />
                 <Text style={s.infoText}>{formData.permanent_24h ? '24h/24' : `${formData.heures_ouverture} — ${formData.heures_fermeture}`}</Text>
             </View>
-            {formData.rdv_requis && <View style={s.infoCard}><SafeIcon name="calendar" size={16} color="#0891B2" /><Text style={s.infoText}>RDV requis</Text></View>}
+            {formData.rdv_requis && <View style={s.infoCard}><SafeIcon name="calendar" size={16} color="#0891B2" /><Text style={s.infoText}>{t('laboForm.rdvRequis') || 'RDV requis'}</Text></View>}
             {formData.resultats_en_ligne && <View style={s.infoCard}><SafeIcon name="globe" size={16} color="#10B981" /><Text style={s.infoText}>{t('laboratoireForm.resultatsEnLigneDisponibles')}</Text></View>}
             {examinationTypes.length > 0 && (
                 <>
-                    <View style={s.sectionRow}><Text style={s.sectionTitle}>{t('laboratoireForm.examensRecents')}</Text><TouchableOpacity onPress={() => setActiveTab('exams')}><Text style={s.seeAll}>Tout voir</Text></TouchableOpacity></View>
+                    <View style={s.sectionRow}><Text style={s.sectionTitle}>{t('laboratoireForm.examensRecents')}</Text><TouchableOpacity onPress={() => setActiveTab('exams')}><Text style={s.seeAll}>{t('laboForm.toutVoir') || 'Tout voir'}</Text></TouchableOpacity></View>
                     {examinationTypes.slice(0, 4).map((e, i) => (
                         <View key={i} style={s.examItem}>
                             <View style={[s.examDot, { backgroundColor: e.categorie === 'analyse' ? '#DC2626' : '#8B5CF6' }]} />

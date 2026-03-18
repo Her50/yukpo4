@@ -23,10 +23,10 @@ import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const STATUS_LABELS: Record<string, string> = {
     pending: 'En attente de validation',
-    validated: t('orderStatusScreen.validee'),
-    ready: t('orderStatusScreen.prete'),
-    rejected: t('orderStatusScreen.rejetee'),
-    cancelled: t('orderStatusScreen.annulee'),
+    validated: 'Validée',
+    ready: 'Prête',
+    rejected: 'Rejetée',
+    cancelled: 'Annulée',
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -62,7 +62,7 @@ const OrderStatusScreen: React.FC = () => {
             setOrder(orderData);
         } catch (err: any) {
             console.error('[OrderStatusScreen] Erreur chargement commande:', err);
-            setError(err.message || t('orderStatus.erreurLorsDuChargementDe'));
+            setError(err.message || 'Erreur lors du chargement de la commande');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -115,7 +115,7 @@ const OrderStatusScreen: React.FC = () => {
     };
 
     const formatPreparationTime = (minutes?: number): string => {
-        if (!minutes) return t('orderStatusScreen.nonDefini');
+        if (!minutes) return 'Non défini';
         if (minutes < 60) return `${minutes} min`;
         const hours = Math.floor(minutes / 60);
         const mins = minutes % 60;
@@ -129,12 +129,12 @@ const OrderStatusScreen: React.FC = () => {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-back" size={24} color={modernColors.text} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{t('orderStatus.suiviDeCommande')}</Text>
+                    <Text style={styles.headerTitle}>Suivi de commande</Text>
                     <View style={{ width: 40 }} />
                 </View>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>{t('orderStatus.chargement')}</Text>
+                    <Text style={styles.loadingText}>Chargement...</Text>
                 </View>
             </View>
         );
@@ -147,14 +147,14 @@ const OrderStatusScreen: React.FC = () => {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <SafeIcon name="arrow-back" size={24} color={modernColors.text} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{t('orderStatus.suiviDeCommande')}</Text>
+                    <Text style={styles.headerTitle}>Suivi de commande</Text>
                     <View style={{ width: 40 }} />
                 </View>
                 <View style={styles.errorContainer}>
                     <SafeIcon name="alert-circle" size={48} color={modernColors.error} />
                     <Text style={styles.errorText}>{error}</Text>
                     <TouchableOpacity style={styles.retryButton} onPress={loadOrder}>
-                        <Text style={styles.retryButtonText}>{t('orderStatus.reessayer')}</Text>
+                        <Text style={styles.retryButtonText}>Réessayer</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -174,11 +174,13 @@ const OrderStatusScreen: React.FC = () => {
                 <TouchableOpacity
                     onPress={() => navigation.goBack()}
                     style={styles.backButton}
-                    accessibilityLabel={t('orderStatusScreen.retourt('orderStatusScreen.accessibilityrolebuttonAccessibilityhintretourneAL')écran précédent"
+                    accessibilityLabel="Retour"
+                    accessibilityRole="button"
+                    accessibilityHint="Retourne à l'écran précédent"
                 >
                     <SafeIcon name="arrow-back" size={24} color={modernColors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{t('orderStatus.suiviDeCommande')}</Text>
+                <Text style={styles.headerTitle}>Suivi de commande</Text>
                 <View style={{ width: 40 }} />
             </View>
 
@@ -196,9 +198,9 @@ const OrderStatusScreen: React.FC = () => {
 
                 {/* Informations produit */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('orderStatus.informationsProduit')}</Text>
+                    <Text style={styles.sectionTitle}>Informations produit</Text>
                     <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>{t('orderStatus.serviceId')}</Text>
+                        <Text style={styles.infoLabel}>Service ID:</Text>
                         <Text style={styles.infoValue}>{order.service_id}</Text>
                     </View>
                     <View style={styles.infoRow}>
@@ -210,7 +212,7 @@ const OrderStatusScreen: React.FC = () => {
                 {/* Temps de préparation */}
                 {order.preparation_time_minutes && (
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>{t('orderStatus.tempsDePreparation')}</Text>
+                        <Text style={styles.sectionTitle}>Temps de préparation</Text>
                         <Text style={styles.preparationTime}>
                             {formatPreparationTime(order.preparation_time_minutes)}
                         </Text>
@@ -220,33 +222,33 @@ const OrderStatusScreen: React.FC = () => {
                 {/* Date de disponibilité estimée */}
                 {order.estimated_ready_at && (
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>{t('orderStatus.pretLe')}</Text>
+                        <Text style={styles.sectionTitle}>Prêt le</Text>
                         <Text style={styles.estimatedReady}>{formatDate(order.estimated_ready_at)}</Text>
                     </View>
                 )}
 
                 {/* Dates importantes */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('orderStatus.historique')}</Text>
+                    <Text style={styles.sectionTitle}>Historique</Text>
                     <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>{t('orderStatus.creeeLe')}</Text>
+                        <Text style={styles.infoLabel}>Créée le:</Text>
                         <Text style={styles.infoValue}>{formatDate(order.created_at)}</Text>
                     </View>
                     {order.validated_at && (
                         <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>{t('orderStatus.valideeLe')}</Text>
+                            <Text style={styles.infoLabel}>Validée le:</Text>
                             <Text style={styles.infoValue}>{formatDate(order.validated_at)}</Text>
                         </View>
                     )}
                     {order.rejected_at && (
                         <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>{t('orderStatus.rejeteeLe')}</Text>
+                            <Text style={styles.infoLabel}>Rejetée le:</Text>
                             <Text style={styles.infoValue}>{formatDate(order.rejected_at)}</Text>
                         </View>
                     )}
                     {order.validation_deadline && (
                         <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>{t('orderStatus.delaiValidation')}</Text>
+                            <Text style={styles.infoLabel}>Délai validation:</Text>
                             <Text style={styles.infoValue}>{formatDate(order.validation_deadline)}</Text>
                         </View>
                     )}
@@ -277,7 +279,7 @@ const OrderStatusScreen: React.FC = () => {
                                                 try {
                                                     await orderService.validateOrder(order.id, {});
                                                     loadOrder();
-                                                    Alert.alert(t('orderStatusScreen.succes'), t('orderStatusScreen.commandeValidee'));
+                                                    Alert.alert('Succès', 'Commande validée');
                                                 } catch (err: any) {
                                                     Alert.alert('Erreur', err.message);
                                                 }
@@ -291,7 +293,7 @@ const OrderStatusScreen: React.FC = () => {
                             accessibilityHint="Valide cette commande en attente"
                         >
                             <SafeIcon name="checkmark-circle" size={20} color="#FFF" />
-                            <Text style={styles.actionButtonText}>{t('orderStatus.valider')}</Text>
+                            <Text style={styles.actionButtonText}>Valider</Text>
                         </TouchableOpacity>
                     </View>
                 )}

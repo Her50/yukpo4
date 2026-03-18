@@ -14,15 +14,15 @@ import SafeStorage from '../utils/safeStorage';
 // ══════════════════════════════════════════════════════════════════════
 
 export type CoachingNotificationType =
-    | 'morning_motivation'    // 🌅 Motivation du matin (7h)
-    | 'midday_activity'       // 🏃 Rappel activité (12h30)
-    | 'evening_summary'       // 🌙 Résumé du soir (19h)
-    | 'weekly_recap'          // 📊 Bilan hebdomadaire (dimanche 10h)
-    | 'streak_reminder'       // 🔥 Rappel de série (si inactif depuis 24h)
+    | 'morning_motivation'    // \uD83C\uDF05 Motivation du matin (7h)
+    | 'midday_activity'       // \uD83C\uDFC3 Rappel activité (12h30)
+    | 'evening_summary'       // \uD83C\uDF19 Résumé du soir (19h)
+    | 'weekly_recap'          // \uD83D\uDCCA Bilan hebdomadaire (dimanche 10h)
+    | 'streak_reminder'       // \uD83D\uDD25 Rappel de série (si inactif depuis 24h)
     | 'health_alert'          // ❤️ Alerte santé (score < 50)
-    | 'eco_milestone'         // 🌿 Jalon écologique (CO2 économisé)
-    | 'challenge_progress'    // 🏆 Progression défi
-    | 'new_badge'             // 🎖️ Nouveau badge débloqué
+    | 'eco_milestone'         // \uD83C\uDF3F Jalon écologique (CO2 économisé)
+    | 'challenge_progress'    // \uD83C\uDFC6 Progression défi
+    | 'new_badge'             // \uD83C\uDF96️ Nouveau badge débloqué
     | 'speed_coaching';       // ⚡ Conseil vitesse en temps réel
 
 // ══════════════════════════════════════════════════════════════════════
@@ -40,37 +40,37 @@ interface CoachingMessage {
 
 const COACHING_MESSAGES: Record<CoachingNotificationType, CoachingMessage[]> = {
     morning_motivation: [
-        { titleKey: 'coaching.morningTitle1', bodyKey: 'coaching.morningBody1', emoji: '🌅', sound: true, vibrate: false, priority: 'default' },
-        { titleKey: 'coaching.morningTitle2', bodyKey: 'coaching.morningBody2', emoji: '💪', sound: true, vibrate: false, priority: 'default' },
-        { titleKey: 'coaching.morningTitle3', bodyKey: 'coaching.morningBody3', emoji: '🚀', sound: true, vibrate: false, priority: 'default' },
+        { titleKey: 'coaching.morningTitle1', bodyKey: 'coaching.morningBody1', emoji: '\uD83C\uDF05', sound: true, vibrate: false, priority: 'default' },
+        { titleKey: 'coaching.morningTitle2', bodyKey: 'coaching.morningBody2', emoji: '\uD83D\uDCAA', sound: true, vibrate: false, priority: 'default' },
+        { titleKey: 'coaching.morningTitle3', bodyKey: 'coaching.morningBody3', emoji: '\uD83D\uDE80', sound: true, vibrate: false, priority: 'default' },
     ],
     midday_activity: [
-        { titleKey: 'coaching.middayTitle1', bodyKey: 'coaching.middayBody1', emoji: '🏃', sound: true, vibrate: true, priority: 'default' },
-        { titleKey: 'coaching.middayTitle2', bodyKey: 'coaching.middayBody2', emoji: '🚶', sound: true, vibrate: false, priority: 'default' },
-        { titleKey: 'coaching.middayTitle3', bodyKey: 'coaching.middayBody3', emoji: '🧘', sound: true, vibrate: false, priority: 'default' },
+        { titleKey: 'coaching.middayTitle1', bodyKey: 'coaching.middayBody1', emoji: '\uD83C\uDFC3', sound: true, vibrate: true, priority: 'default' },
+        { titleKey: 'coaching.middayTitle2', bodyKey: 'coaching.middayBody2', emoji: '\uD83D\uDEB6', sound: true, vibrate: false, priority: 'default' },
+        { titleKey: 'coaching.middayTitle3', bodyKey: 'coaching.middayBody3', emoji: '\uD83E\uDDD8', sound: true, vibrate: false, priority: 'default' },
     ],
     evening_summary: [
-        { titleKey: 'coaching.eveningTitle1', bodyKey: 'coaching.eveningBody1', emoji: '🌙', sound: true, vibrate: false, priority: 'default' },
-        { titleKey: 'coaching.eveningTitle2', bodyKey: 'coaching.eveningBody2', emoji: '📊', sound: true, vibrate: false, priority: 'default' },
+        { titleKey: 'coaching.eveningTitle1', bodyKey: 'coaching.eveningBody1', emoji: '\uD83C\uDF19', sound: true, vibrate: false, priority: 'default' },
+        { titleKey: 'coaching.eveningTitle2', bodyKey: 'coaching.eveningBody2', emoji: '\uD83D\uDCCA', sound: true, vibrate: false, priority: 'default' },
     ],
     weekly_recap: [
-        { titleKey: 'coaching.weeklyTitle1', bodyKey: 'coaching.weeklyBody1', emoji: '📈', sound: true, vibrate: true, priority: 'high' },
+        { titleKey: 'coaching.weeklyTitle1', bodyKey: 'coaching.weeklyBody1', emoji: '\uD83D\uDCC8', sound: true, vibrate: true, priority: 'high' },
     ],
     streak_reminder: [
-        { titleKey: 'coaching.streakTitle1', bodyKey: 'coaching.streakBody1', emoji: '🔥', sound: true, vibrate: true, priority: 'high' },
+        { titleKey: 'coaching.streakTitle1', bodyKey: 'coaching.streakBody1', emoji: '\uD83D\uDD25', sound: true, vibrate: true, priority: 'high' },
         { titleKey: 'coaching.streakTitle2', bodyKey: 'coaching.streakBody2', emoji: '⏰', sound: true, vibrate: true, priority: 'high' },
     ],
     health_alert: [
         { titleKey: 'coaching.healthTitle1', bodyKey: 'coaching.healthBody1', emoji: '❤️', sound: true, vibrate: true, priority: 'high' },
     ],
     eco_milestone: [
-        { titleKey: 'coaching.ecoTitle1', bodyKey: 'coaching.ecoBody1', emoji: '🌿', sound: true, vibrate: false, priority: 'default' },
+        { titleKey: 'coaching.ecoTitle1', bodyKey: 'coaching.ecoBody1', emoji: '\uD83C\uDF3F', sound: true, vibrate: false, priority: 'default' },
     ],
     challenge_progress: [
-        { titleKey: 'coaching.challengeTitle1', bodyKey: 'coaching.challengeBody1', emoji: '🏆', sound: true, vibrate: false, priority: 'default' },
+        { titleKey: 'coaching.challengeTitle1', bodyKey: 'coaching.challengeBody1', emoji: '\uD83C\uDFC6', sound: true, vibrate: false, priority: 'default' },
     ],
     new_badge: [
-        { titleKey: 'coaching.badgeTitle1', bodyKey: 'coaching.badgeBody1', emoji: '🎖️', sound: true, vibrate: true, priority: 'high' },
+        { titleKey: 'coaching.badgeTitle1', bodyKey: 'coaching.badgeBody1', emoji: '\uD83C\uDF96️', sound: true, vibrate: true, priority: 'high' },
     ],
     speed_coaching: [
         { titleKey: 'coaching.speedTitle1', bodyKey: 'coaching.speedBody1', emoji: '⚡', sound: true, vibrate: true, priority: 'high' },
@@ -153,7 +153,7 @@ class CoachingNotificationService {
 
         const ids: string[] = [];
 
-        // 🌅 Matin — motivation
+        // \uD83C\uDF05 Matin — motivation
         const morningId = await this.scheduleDaily(
             'morning_motivation',
             PUSH_SCHEDULE.morning.hour,
@@ -161,7 +161,7 @@ class CoachingNotificationService {
         );
         if (morningId) ids.push(morningId);
 
-        // 🏃 Midi — rappel activité
+        // \uD83C\uDFC3 Midi — rappel activité
         const middayId = await this.scheduleDaily(
             'midday_activity',
             PUSH_SCHEDULE.midday.hour,
@@ -169,7 +169,7 @@ class CoachingNotificationService {
         );
         if (middayId) ids.push(middayId);
 
-        // 🌙 Soir — résumé
+        // \uD83C\uDF19 Soir — résumé
         const eveningId = await this.scheduleDaily(
             'evening_summary',
             PUSH_SCHEDULE.evening.hour,
@@ -177,7 +177,7 @@ class CoachingNotificationService {
         );
         if (eveningId) ids.push(eveningId);
 
-        // 📊 Dimanche — bilan hebdo
+        // \uD83D\uDCCA Dimanche — bilan hebdo
         const weeklyId = await this.scheduleWeekly(
             'weekly_recap',
             PUSH_SCHEDULE.weekly.weekday,

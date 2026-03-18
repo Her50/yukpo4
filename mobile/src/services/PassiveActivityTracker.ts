@@ -135,7 +135,7 @@ const saveSession = async (session: PassiveSession): Promise<void> => {
             // Limiter la queue à 50 sessions max pour éviter saturation stockage
             const trimmed = pending.slice(-50);
             await AsyncStorage.setItem(STORAGE_KEY_PENDING_SESSIONS, JSON.stringify(trimmed));
-            console.log('[PassiveTracker] 📦 Session mise en queue offline (' + trimmed.length + ' en attente)');
+            console.log('[PassiveTracker] \uD83D\uDCE6 Session mise en queue offline (' + trimmed.length + ' en attente)');
         } catch (queueError) {
             console.warn('[PassiveTracker] Erreur mise en queue:', queueError);
         }
@@ -150,7 +150,7 @@ const retryPendingSessions = async (): Promise<void> => {
         const pending: Array<{ payload: any; queuedAt: string }> = JSON.parse(raw);
         if (pending.length === 0) return;
 
-        console.log('[PassiveTracker] 🔄 Retry de', pending.length, 'sessions en attente...');
+        console.log('[PassiveTracker] \uD83D\uDD04 Retry de', pending.length, 'sessions en attente...');
         const failed: typeof pending = [];
 
         for (const item of pending) {
@@ -243,7 +243,7 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) =>
                     pointCount: 1,
                 };
                 await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(newSession));
-                console.log('[PassiveTracker] 🚀 Nouvelle session détectée (vitesse:', spdKmh.toFixed(1), 'km/h)');
+                console.log('[PassiveTracker] \uD83D\uDE80 Nouvelle session détectée (vitesse:', spdKmh.toFixed(1), 'km/h)');
             }
         }
     } catch (e) {

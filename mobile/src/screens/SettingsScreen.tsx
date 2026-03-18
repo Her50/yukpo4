@@ -231,7 +231,7 @@ const SettingsScreen: React.FC = () => {
 
   const renderProfileSection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>👤 Profil</Text>
+      <Text style={styles.sectionTitle}>\uD83D\uDC64 Profil</Text>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>{t('settings.prenom')}</Text>
@@ -429,7 +429,7 @@ const SettingsScreen: React.FC = () => {
 
   const renderAppearanceSection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>🎨 Apparence</Text>
+      <Text style={styles.sectionTitle}>\uD83C\uDFA8 Apparence</Text>
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
@@ -527,7 +527,7 @@ const SettingsScreen: React.FC = () => {
         style={styles.passwordButton}
         onPress={() => setShowPasswordModal(true)}
       >
-        <Text style={styles.passwordButtonText}>🔐 Changer le mot de passe</Text>
+        <Text style={styles.passwordButtonText}>\uD83D\uDD10 Changer le mot de passe</Text>
       </TouchableOpacity>
 
       <View style={styles.settingRow}>
@@ -614,11 +614,11 @@ const SettingsScreen: React.FC = () => {
       <View style={styles.tabsContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs}>
           {[
-            { id: 'profile', title: t('settingsScreen.profil'), icon: '👤' },
-            { id: 'notifications', title: t('settings.notifications'), icon: '🔔' },
-            { id: 'privacy', title: t('settings.confidentialite'), icon: '🔒' },
-            { id: 'appearance', title: '🎨 Apparence', icon: '🎨' },
-            { id: 'security', title: t('settings.securite'), icon: '🛡️' },
+            { id: 'profile', title: t('settingsScreen.profil'), icon: '\uD83D\uDC64' },
+            { id: 'notifications', title: t('settings.notifications'), icon: '\uD83D\uDD14' },
+            { id: 'privacy', title: t('settings.confidentialite'), icon: '\uD83D\uDD12' },
+            { id: 'appearance', title: '\uD83C\uDFA8 Apparence', icon: '\uD83C\uDFA8' },
+            { id: 'security', title: t('settings.securite'), icon: '\uD83D\uDEE1️' },
           ].map((tab) => (
             <TouchableOpacity
               key={tab.id}
@@ -657,7 +657,7 @@ const SettingsScreen: React.FC = () => {
           disabled={loading}
         >
           <Text style={styles.saveButtonText}>
-            {loading ? '⏳ Sauvegarde...' : '💾 Sauvegarder'}
+            {loading ? '⏳ Sauvegarde...' : '\uD83D\uDCBE Sauvegarder'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -672,7 +672,7 @@ const SettingsScreen: React.FC = () => {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>🔐 Changer le mot de passe</Text>
+              <Text style={styles.modalTitle}>\uD83D\uDD10 Changer le mot de passe</Text>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>{t('settings.motDePasseActuel')}</Text>
@@ -723,7 +723,7 @@ const SettingsScreen: React.FC = () => {
                   disabled={changingPassword}
                 >
                   <Text style={styles.modalButtonTextSave}>
-                    {changingPassword ? '⏳...' : '💾 Enregistrer'}
+                    {changingPassword ? '⏳...' : '\uD83D\uDCBE Enregistrer'}
                   </Text>
                 </TouchableOpacity>
               </View>

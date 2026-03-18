@@ -40,7 +40,7 @@ export const useFavorites = (userId?: string): FavoritesResult => {
                 setLoading(true);
                 setError(null);
 
-                console.log(`📊 [useFavorites] Chargement des favoris pour user ${userId}`);
+                console.log(`\uD83D\uDCCA [useFavorites] Chargement des favoris pour user ${userId}`);
 
                 const response = await (userApi as any).getUserFavorites(userId) as any;
 
@@ -75,7 +75,7 @@ export const useFavorites = (userId?: string): FavoritesResult => {
     // Ajouter un service aux favoris
     const addFavorite = async (serviceId: string): Promise<boolean> => {
         try {
-            console.log(`📊 [useFavorites] Ajout du service ${serviceId} aux favoris`);
+            console.log(`\uD83D\uDCCA [useFavorites] Ajout du service ${serviceId} aux favoris`);
 
             const response = await (userApi as any).addFavorite(serviceId) as any;
 
@@ -103,7 +103,7 @@ export const useFavorites = (userId?: string): FavoritesResult => {
     // Supprimer un service des favoris
     const removeFavorite = async (serviceId: string): Promise<boolean> => {
         try {
-            console.log(`📊 [useFavorites] Suppression du service ${serviceId} des favoris`);
+            console.log(`\uD83D\uDCCA [useFavorites] Suppression du service ${serviceId} des favoris`);
 
             const favorite = favorites.find(fav => fav.service_id === serviceId);
             if (!favorite) {

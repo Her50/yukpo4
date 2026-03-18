@@ -243,7 +243,7 @@ const HomeScreenNew: React.FC = () => {
                         <View style={styles.avatarContainer}>
                             <View style={styles.avatar}>
                                 {user?.photo ? (
-                                    <Text style={styles.avatarImage}>👤</Text>
+                                    <Text style={styles.avatarImage}>\uD83D\uDC64</Text>
                                 ) : (
                                     <Text style={styles.avatarText}>
                                         {user?.name?.charAt(0).toUpperCase() || 'U'}

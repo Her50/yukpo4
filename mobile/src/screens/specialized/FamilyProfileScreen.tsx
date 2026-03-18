@@ -1,6 +1,6 @@
 // ✅ Écran de modification du profil famille pour planification menus
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     Alert,
     StyleSheet,
@@ -16,53 +16,72 @@ import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { FamilyProfile, menuPlanningService } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
 
-const PREFERENCE_OPTIONS = [
-    t('familyProfileScreen.vegetarien'),
-    t('familyProfileScreen.vegan'),
-    'Halal',
-    'Cacher',
-    'Sans gluten',
-    t('familyProfileScreen.pescetarien'),
-    'Flexitarien',
-];
-
-const CUISINE_STYLES = [
-    'Africaine',
-    t('familyProfileScreen.francaise'),
-    'Italienne',
-    'Asiatique',
-    t('familyProfileScreen.mediterraneenne'),
-    t('familyProfileScreen.americaine'),
-    'Mexicaine',
-    'Indienne',
-    'Locale traditionnelle',
-];
-
-const COOKING_LEVELS = [t('familyProfileScreen.debutant'), t('familyProfileScreen.intermediaire'), t('familyProfileScreen.avance')];
-
-const ALLERGY_OPTIONS = [
-    'Arachides',
-    'Lactose',
-    'Gluten',
-    'Fruits de mer',
-    t('familyProfileScreen.ufs'),
-    'Soja',
-    'Noix',
-    'Poisson',
-];
-
-const DIETARY_RESTRICTIONS = [
-    t('familyProfileScreen.diabete'),
-    'Hypertension',
-    t('familyProfileScreen.cholesterol'),
-    'Perte de poids',
-    'Gain de poids',
-    'Sportif',
-];
-
 const FamilyProfileScreen: React.FC = () => {
     const navigation = useNavigation();
     const { t } = useLanguageSafe();
+
+    const PREFERENCE_OPTIONS = useMemo(
+        () => [
+            t('familyProfileScreen.vegetarien'),
+            t('familyProfileScreen.vegan'),
+            'Halal',
+            'Cacher',
+            'Sans gluten',
+            t('familyProfileScreen.pescetarien'),
+            'Flexitarien',
+        ],
+        [t]
+    );
+
+    const CUISINE_STYLES = useMemo(
+        () => [
+            'Africaine',
+            t('familyProfileScreen.francaise'),
+            'Italienne',
+            'Asiatique',
+            t('familyProfileScreen.mediterraneenne'),
+            t('familyProfileScreen.americaine'),
+            'Mexicaine',
+            'Indienne',
+            'Locale traditionnelle',
+        ],
+        [t]
+    );
+
+    const COOKING_LEVELS = useMemo(
+        () => [
+            t('familyProfileScreen.debutant'),
+            t('familyProfileScreen.intermediaire'),
+            t('familyProfileScreen.avance'),
+        ],
+        [t]
+    );
+
+    const ALLERGY_OPTIONS = useMemo(
+        () => [
+            'Arachides',
+            'Lactose',
+            'Gluten',
+            'Fruits de mer',
+            t('familyProfileScreen.ufs'),
+            'Soja',
+            'Noix',
+            'Poisson',
+        ],
+        [t]
+    );
+
+    const DIETARY_RESTRICTIONS = useMemo(
+        () => [
+            t('familyProfileScreen.diabete'),
+            'Hypertension',
+            t('familyProfileScreen.cholesterol'),
+            'Perte de poids',
+            'Gain de poids',
+            'Sportif',
+        ],
+        [t]
+    );
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [profile, setProfile] = useState<FamilyProfile>({
@@ -117,7 +136,7 @@ const FamilyProfileScreen: React.FC = () => {
             if (response.success) {
                 Alert.alert(t('message.success'), t('familyProfile.profileUpdated'), [
                     {
-                        text: 'OK',
+                        text: t('familyProfileScreen.ok'),
                         onPress: () => navigation.goBack(),
                     },
                 ]);
@@ -174,7 +193,7 @@ const FamilyProfileScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Profil Famille</Text>
+                <Text style={styles.title}>{t('menuPlanning.familyProfile')}</Text>
             </View>
 
             <View style={styles.form}>
@@ -183,7 +202,7 @@ const FamilyProfileScreen: React.FC = () => {
                     <Text style={styles.label}>{t('familyProfile.compositionDeLaFamille')}</Text>
                     <View style={styles.row}>
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Total</Text>
+                            <Text style={styles.inputLabel}>{t('familyProfileScreen.total')}</Text>
                             <TextInput
                                 style={styles.numberInput}
                                 value={profile.total_members > 0 ? profile.total_members.toString() : ''}
@@ -211,7 +230,7 @@ const FamilyProfileScreen: React.FC = () => {
                             />
                         </View>
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Adultes</Text>
+                            <Text style={styles.inputLabel}>{t('familyProfileScreen.adults')}</Text>
                             <TextInput
                                 style={styles.numberInput}
                                 value={profile.adults_count > 0 ? profile.adults_count.toString() : ''}
@@ -376,7 +395,7 @@ const FamilyProfileScreen: React.FC = () => {
 
                 {/* Budget et temps */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.label}>💰 Budget mensuel (FCFA)</Text>
+                    <Text style={styles.label}>\uD83D\uDCB0 Budget mensuel (FCFA)</Text>
                     {/* ✅ NOUVEAU: Presets de budget rapide */}
                     <View style={styles.chipsContainer}>
                         {[25000, 50000, 75000, 100000, 150000].map((amount) => (
@@ -420,7 +439,7 @@ const FamilyProfileScreen: React.FC = () => {
                         keyboardType="numeric"
                     />
 
-                    <Text style={[styles.label, { marginTop: 16 }]}>👨‍🍳 Niveau de cuisine</Text>
+                    <Text style={[styles.label, { marginTop: 16 }]}>\uD83D\uDC68‍\uD83C\uDF73 Niveau de cuisine</Text>
                     <View style={styles.chipsContainer}>
                         {COOKING_LEVELS.map((level) => (
                             <TouchableOpacity
@@ -445,7 +464,7 @@ const FamilyProfileScreen: React.FC = () => {
                 </NativeCard>
 
                 <NativeButton
-                    title={saving ? 'Enregistrement...' : t('familyProfileScreen.enregistrerLeProfil')}
+                    title={saving ? t('familyProfileScreen.saving') : t('familyProfileScreen.enregistrerLeProfil')}
                     onPress={handleSave}
                     loading={saving}
                     variant="primary"

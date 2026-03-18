@@ -1,5 +1,5 @@
 /**
- * 🎯 SERVICE DE PRÉ-REMPLISSAGE AUTOMATIQUE DES PRODUITS
+ * \uD83C\uDFAF SERVICE DE PRÉ-REMPLISSAGE AUTOMATIQUE DES PRODUITS
  * 
  * Ce service permet de RÉDUIRE DRASTIQUEMENT le nombre de saisies :
  * 
@@ -43,7 +43,7 @@ export interface AutoFilledFormData {
 class ProductAutoFillService {
     
     /**
-     * 🎯 FONCTION PRINCIPALE : Pré-remplir le formulaire
+     * \uD83C\uDFAF FONCTION PRINCIPALE : Pré-remplir le formulaire
      * 
      * @param productName - Le nom du produit sélectionné
      * @param userCountry - Code pays de l'utilisateur (pour localisation)
@@ -153,7 +153,7 @@ class ProductAutoFillService {
     }
     
     /**
-     * 🌍 Suggérer l'unité appropriée selon le produit
+     * \uD83C\uDF0D Suggérer l'unité appropriée selon le produit
      * (Logique africaine : sacs pour céréales, bidons pour huile, etc.)
      */
     detectAppropriateUnit(productName: string, category?: string): string {
@@ -201,7 +201,7 @@ class ProductAutoFillService {
     }
     
     /**
-     * 🧠 Proposer un enrichissement pour un produit inconnu
+     * \uD83E\uDDE0 Proposer un enrichissement pour un produit inconnu
      * (Crowdsourcing : les utilisateurs enrichissent la base)
      */
     async proposeEnrichment(
@@ -231,7 +231,7 @@ export const productAutoFillService = new ProductAutoFillService();
 
 /**
  * ═══════════════════════════════════════════════════════════════
- * 📊 EXEMPLE D'UTILISATION
+ * \uD83D\uDCCA EXEMPLE D'UTILISATION
  * ═══════════════════════════════════════════════════════════════
  * 
  * SCÉNARIO 1 : Vente d'iPhone 15 Pro Max

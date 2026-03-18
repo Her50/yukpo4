@@ -18,6 +18,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import IntelligentChat from '../../components/IntelligentChat';
+import IntelligentChatFab from '../../components/IntelligentChatFab';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import ServiceTeamManager from '../../components/ServiceTeamManager';
@@ -87,6 +89,7 @@ const HotelDashboardScreen: React.FC = () => {
     const [showNewReservationModal, setShowNewReservationModal] = useState(false);
     const [showBlockageModal, setShowBlockageModal] = useState(false);
     const [selectedProperty, setSelectedProperty] = useState<HotelProperty | null>(null);
+    const [showChat, setShowChat] = useState(false);
 
     // New reservation form
     const [newReservation, setNewReservation] = useState({
@@ -981,6 +984,26 @@ const HotelDashboardScreen: React.FC = () => {
 
             {/* Modals */}
             {renderNewReservationModal()}
+
+            {/* Intelligent Chat FAB */}
+            <IntelligentChatFab
+                onPress={() => setShowChat(true)}
+                visible={!showChat && !showNewReservationModal}
+                screenName="HotelDashboard"
+            />
+            <IntelligentChat
+                visible={showChat}
+                onClose={() => setShowChat(false)}
+                screenContext={{
+                    screenName: 'HotelDashboard',
+                    screenType: 'dashboard',
+                    userData: { role: user?.role, partner_type: user?.partner_type, name: user?.name },
+                    serviceData: {
+                        nom: t('hotelDashboard.dashboard', { partnerLabel }),
+                        produits: properties.map(p => ({ nom: p.titre, prix: p.prix_location_mensuel })),
+                    },
+                }}
+            />
         </View>
     );
 };

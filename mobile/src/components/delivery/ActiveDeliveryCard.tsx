@@ -135,7 +135,7 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
                             {/* ✅ Phase 9 - Amélioration 30 : Badge "Adresse à confirmer" si dropoff pending */}
                             {dropoffPending && (
                                 <NativeBadge
-                                    text=t('activeDeliveryCard.adresseAConfirmer')
+                                    text="Adresse à confirmer"
                                     variant="warning"
                                     size="small"
                                 />

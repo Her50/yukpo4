@@ -45,7 +45,7 @@ export const getRenderStats = (componentName?: string): RenderInfo[] => {
 
 export const clearRenderStats = () => {
     renderStats.clear();
-    console.log('[useRenderMonitor] 🗑️ Stats effacées');
+    console.log('[useRenderMonitor] \uD83D\uDDD1️ Stats effacées');
 };
 
 export const printRenderStats = () => {
@@ -56,11 +56,11 @@ export const printRenderStats = () => {
 
     const stats = Array.from(renderStats.values());
     if (stats.length === 0) {
-        console.log('[useRenderMonitor] 📊 Aucune statistique disponible');
+        console.log('[useRenderMonitor] \uD83D\uDCCA Aucune statistique disponible');
         return;
     }
 
-    console.group('📊 Statistiques de rendu');
+    console.group('\uD83D\uDCCA Statistiques de rendu');
     stats
         .sort((a, b) => b.renderCount - a.renderCount)
         .forEach((stat) => {
@@ -141,7 +141,7 @@ export const useRenderMonitor = (
         return () => {
             if (isMonitoringEnabled) {
                 console.log(
-                    `[useRenderMonitor] 🗑️ ${componentName} démonté après ${renderCountRef.current} renders`
+                    `[useRenderMonitor] \uD83D\uDDD1️ ${componentName} démonté après ${renderCountRef.current} renders`
                 );
             }
         };
@@ -189,7 +189,7 @@ export const useDetailedRenderMonitor = (
                 propsChanged.push(key);
                 if (options?.logPropsChanges) {
                     console.log(
-                        `[useDetailedRenderMonitor] 🔄 ${componentName}.${key} changé:`,
+                        `[useDetailedRenderMonitor] \uD83D\uDD04 ${componentName}.${key} changé:`,
                         prevValue,
                         '→',
                         currentValue
@@ -201,7 +201,7 @@ export const useDetailedRenderMonitor = (
         // ✅ Logger selon les options
         if (options?.logOnEveryRender || renderCountRef.current > threshold) {
             console.group(
-                `[useDetailedRenderMonitor] 📊 ${componentName} - Render #${renderCountRef.current}`
+                `[useDetailedRenderMonitor] \uD83D\uDCCA ${componentName} - Render #${renderCountRef.current}`
             );
             if (propsChanged.length > 0) {
                 console.log('Props changés:', propsChanged);

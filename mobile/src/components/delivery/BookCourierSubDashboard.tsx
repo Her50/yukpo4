@@ -7,23 +7,23 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { BookDeliveryPackage, bourseLivreV2Api } from '../../services/bourseLivreV2Api';
+import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 import { NativeCard } from '../SafeNativeDesign';
-import { modernColors } from '../../theme/modernTheme';
-import { bourseLivreV2Api, BookDeliveryPackage } from '../../services/bourseLivreV2Api';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface BookCourierSubDashboardProps {
     onRefresh?: () => void;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-    a_constituer: t('bookCourierSubDashboard.aConstituer'),
-    constitue: t('bookCourierSubDashboard.constitue'),
-    en_route: 'En route',
-    livre: t('bookCourierSubDashboard.livre'),
-    confirme: t('bookCourierSubDashboard.confirme'),
-};
+const getStatusLabels = (t: (key: string, fallback?: string) => string): Record<string, string> => ({
+    a_constituer: t('bookCourierSubDashboard.aConstituer', 'À constituer'),
+    constitue: t('bookCourierSubDashboard.constitue', 'Constitué'),
+    en_route: t('bookCourierSubDashboard.enRoute', 'En route'),
+    livre: t('bookCourierSubDashboard.livre', 'Livré'),
+    confirme: t('bookCourierSubDashboard.confirme', 'Confirmé'),
+});
 
 const STATUS_COLORS: Record<string, string> = {
     a_constituer: '#F59E0B',
@@ -34,12 +34,14 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRefresh }) => {
+    const { t } = useLanguageSafe();
+    const STATUS_LABELS = getStatusLabels(t);
     const [loading, setLoading] = useState(true);
-
-    const { t } = useLanguageSafe();    const [mesPaquets, setMesPaquets] = useState<BookDeliveryPackage[]>([]);
+    const [mesPaquets, setMesPaquets] = useState<BookDeliveryPackage[]>([]);
     const [paquetsDisponibles, setPaquetsDisponibles] = useState<BookDeliveryPackage[]>([]);
     const [stats, setStats] = useState({ actifs: 0, completes: 0, livres: 0, gains_totaux_xaf: 0 });
     const [expanded, setExpanded] = useState(true);
+    const navigation = require('@react-navigation/native')?.useNavigation?.();
 
     const loadData = useCallback(async () => {
         try {
@@ -61,8 +63,8 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
 
     const handleAcceptPackage = async (pkg: BookDeliveryPackage) => {
         Alert.alert(
-            'Accepter ce paquet ?',
-            `${pkg.nombre_livres} livre(s) - ${pkg.reference}\nDe: ${pkg.expediteur_adresse || 'N/A'}\nVers: ${pkg.destinataire_adresse || 'N/A'}`,
+            t('bookCourierSubDashboard.accepterPaquetTitre', 'Accepter ce paquet ?'),
+            `${pkg.nombre_livres} ${t('bookCourierSubDashboard.livresCountSuffix', 'livre(s)')} - ${pkg.reference}\n${t('bookCourierSubDashboard.de', 'De')}: ${pkg.expediteur_adresse || t('common.na', 'N/A')}\n${t('bookCourierSubDashboard.vers', 'Vers')}: ${pkg.destinataire_adresse || t('common.na', 'N/A')}`,
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -74,7 +76,7 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
                             loadData();
                             onRefresh?.();
                         } catch (e: any) {
-                            Alert.alert('Erreur', e?.message || 'Impossible d\'accepter ce paquet');
+                            Alert.alert(t('message.error', 'Erreur'), e?.message || t('bookCourierSubDashboard.impossibleAccepterPaquet', "Impossible d'accepter ce paquet"));
                         }
                     },
                 },
@@ -88,7 +90,7 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
             loadData();
             onRefresh?.();
         } catch (e: any) {
-            Alert.alert('Erreur', e?.message || t('bookCourierSubDashboard.impossibleDeMettreAJourLe'));
+            Alert.alert(t('message.error', 'Erreur'), e?.message || t('bookCourierSubDashboard.impossibleDeMettreAJourLe'));
         }
     };
 
@@ -173,7 +175,7 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
                             onPress={() => handleAcceptPackage(pkg)}
                         >
                             <SafeIcon name="check-circle" size={16} color="#fff" />
-                            <Text style={styles.acceptButtonText}>Accepter</Text>
+                            <Text style={styles.acceptButtonText}>{t('common.accept', 'Accepter')}</Text>
                         </TouchableOpacity>
                     ) : (
                         <>
@@ -183,7 +185,7 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
                                     onPress={() => handleUpdateStatus(pkg, 'en_route')}
                                 >
                                     <SafeIcon name="truck" size={14} color="#8B5CF6" />
-                                    <Text style={[styles.actionText, { color: '#8B5CF6' }]}>En route</Text>
+                                    <Text style={[styles.actionText, { color: '#8B5CF6' }]}>{t('bookCourierSubDashboard.enRoute', 'En route')}</Text>
                                 </TouchableOpacity>
                             )}
                             {pkg.statut === 'en_route' && (
@@ -245,7 +247,7 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
                     <View style={styles.statsRow}>
                         <View style={styles.statItem}>
                             <Text style={styles.statValue}>{stats.actifs}</Text>
-                            <Text style={styles.statLabel}>Actifs</Text>
+                            <Text style={styles.statLabel}>{t('bookCourierSubDashboard.actifs', 'Actifs')}</Text>
                         </View>
                         <View style={styles.statItem}>
                             <Text style={styles.statValue}>{stats.completes}</Text>
@@ -255,14 +257,16 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
                             <Text style={[styles.statValue, { color: '#059669' }]}>
                                 {stats.gains_totaux_xaf.toLocaleString()}
                             </Text>
-                            <Text style={styles.statLabel}>Gains XAF</Text>
+                            <Text style={styles.statLabel}>{t('bookCourierSubDashboard.gainsXaf', 'Gains XAF')}</Text>
                         </View>
                     </View>
 
                     {/* Mes paquets assignés */}
                     {mesPaquets.length > 0 && (
                         <>
-                            <Text style={styles.subsectionTitle}>Mes paquets ({mesPaquets.length})</Text>
+                            <Text style={styles.subsectionTitle}>
+                                {t('bookCourierSubDashboard.mesPaquets', 'Mes paquets')} ({mesPaquets.length})
+                            </Text>
                             {mesPaquets.map((pkg) => renderPackageCard(pkg, false))}
                         </>
                     )}
@@ -270,9 +274,30 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
                     {/* Paquets disponibles */}
                     {paquetsDisponibles.length > 0 && (
                         <>
-                            <Text style={styles.subsectionTitle}>Disponibles ({paquetsDisponibles.length})</Text>
+                            <Text style={styles.subsectionTitle}>
+                                {t('bookCourierSubDashboard.disponibles', 'Disponibles')} ({paquetsDisponibles.length})
+                            </Text>
                             {paquetsDisponibles.map((pkg) => renderPackageCard(pkg, true))}
                         </>
+                    )}
+
+                    {/* Accès rapide vers écran dédié */}
+                    {(mesPaquets.length > 0 || paquetsDisponibles.length > 0) && (
+                        <View style={styles.quickLinksRow}>
+                            <TouchableOpacity
+                                style={styles.quickLinkBtn}
+                                onPress={() => {
+                                    try {
+                                        navigation?.navigate?.('BookPackages', { mode: 'courier' });
+                                    } catch { /* noop */ }
+                                }}
+                            >
+                                <SafeIcon name="package" size={14} color={modernColors.primary} />
+                                <Text style={styles.quickLinkText}>
+                                    {t('bookCourierSubDashboard.voirTousPaquets', 'Voir tous')}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     )}
 
                     {mesPaquets.length === 0 && paquetsDisponibles.length === 0 && (
@@ -433,6 +458,28 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
         marginTop: 10,
         gap: 8,
+    },
+    quickLinksRow: {
+        flexDirection: 'row',
+        justifyContent: 'flex-start',
+        marginTop: 8,
+        marginBottom: 4,
+    },
+    quickLinkBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderRadius: 8,
+        backgroundColor: modernColors.primary + '10',
+        borderWidth: 1,
+        borderColor: modernColors.primary + '20',
+    },
+    quickLinkText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
     acceptButton: {
         flexDirection: 'row',

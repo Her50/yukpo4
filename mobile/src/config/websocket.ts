@@ -62,7 +62,7 @@ export const WEBSOCKET_CONFIG = {
     enabled: '✅ WebSockets activés - Fonctionnalités en temps réel disponibles',
     backendUnavailable: '⚠️ Serveur WebSocket non disponible - Vérifiez que le backend est en cours d\'exécution',
     connectionFailed: '❌ Échec de connexion WebSocket',
-    reconnecting: '🔄 Reconnexion WebSocket en cours...',
+    reconnecting: '\uD83D\uDD04 Reconnexion WebSocket en cours...',
     connected: '✅ WebSocket connecté',
     disconnected: '❌ WebSocket déconnecté'
   }

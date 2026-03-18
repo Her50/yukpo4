@@ -130,7 +130,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
     const quickSearches = [
         {
             id: 'proche',
-            title: 'Plus proche',
+            title: t('agenceVoyageSearch.plusProche'),
             icon: 'map-pin',
             description: t('agenceVoyageSearch.aProximite'),
             action: () => {
@@ -144,7 +144,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
             id: 'tickets',
             title: t('agenceVoyageSearchScreen.rechercherTickets'),
             icon: 'ticket',
-            description: 'Billets de bus',
+            description: t('agenceVoyageSearch.billetsDeBus'),
             action: () => {
                 hapticPress();
                 setSearchMode('tickets');
@@ -185,7 +185,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
                         </View>
                         <Text style={styles.headerTitle}>{t('agenceVoyageSearch.rechercherUneAgenceDeVoyage')}</Text>
                         <Text style={styles.headerSubtitle}>
-                            Trouvez l'agence idéale pour organiser votre voyage
+                            {t('agenceVoyageSearch.trouvezAgenceIdeale')}
                         </Text>
                     </View>
                 </View>
@@ -248,7 +248,7 @@ const AgenceVoyageSearchScreen: React.FC = () => {
 
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
-                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
+                    <Text style={styles.sectionTitle}>\uD83D\uDD0D Recherches rapides</Text>
                     <View style={styles.quickSearchesGrid}>
                         {quickSearches.map((search) => (
                             <TouchableOpacity

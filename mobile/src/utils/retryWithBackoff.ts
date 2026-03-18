@@ -67,7 +67,7 @@ export const retryWithBackoff = async <T>(
             );
 
             console.log(
-                `[RetryWithBackoff] 🔄 Tentative ${attempt + 1}/${opts.maxRetries + 1} échouée, retry dans ${delay}ms`
+                `[RetryWithBackoff] \uD83D\uDD04 Tentative ${attempt + 1}/${opts.maxRetries + 1} échouée, retry dans ${delay}ms`
             );
 
             // Attendre avant de réessayer

@@ -1,5 +1,5 @@
 /**
- * 🔗 ANALYSEUR AUTOMATIQUE DE RELATIONS ENTRE CHAMPS
+ * \uD83D\uDD17 ANALYSEUR AUTOMATIQUE DE RELATIONS ENTRE CHAMPS
  * 
  * Scanne productModalities.ts pour détecter automatiquement TOUTES les dépendances :
  * - marque → modèles
@@ -57,7 +57,7 @@ class RelationshipAnalyzer {
     async analyze() {
         if (this.initialized) return;
         
-        console.log('🔗 [RelationshipAnalyzer] Analyse des relations...');
+        console.log('\uD83D\uDD17 [RelationshipAnalyzer] Analyse des relations...');
         
         const categories = getAllCategories();
         let totalRelations = 0;
@@ -243,7 +243,7 @@ class RelationshipAnalyzer {
         const allFields = Object.keys(modalities);
         
         for (const parent of parentOptions) {
-            if (parent.includes('🆕')) continue;
+            if (parent.includes('\uD83C\uDD95')) continue;
             
             const parentKey = parent.toLowerCase().replace(/\s+/g, '_');
             
@@ -255,13 +255,13 @@ class RelationshipAnalyzer {
             
             if (matchingField) {
                 const childValues = getFieldOptions(category, matchingField);
-                mappings[parent] = childValues.filter(v => !v.includes('🆕'));
+                mappings[parent] = childValues.filter(v => !v.includes('\uD83C\uDD95'));
             }
         }
         
         if (Object.keys(mappings).length === 0) {
             // Pas de mapping explicite, relation existe quand même
-            mappings['*'] = childOptions.filter(v => !v.includes('🆕'));
+            mappings['*'] = childOptions.filter(v => !v.includes('\uD83C\uDD95'));
         }
         
         return {
@@ -291,9 +291,9 @@ class RelationshipAnalyzer {
         const mappings: Record<string, string[]> = {};
         
         for (const dep of departures) {
-            if (dep.includes('🆕')) continue;
+            if (dep.includes('\uD83C\uDD95')) continue;
             // Toutes les villes sauf la ville de départ
-            mappings[dep] = arrivals.filter(arr => arr !== dep && !arr.includes('🆕'));
+            mappings[dep] = arrivals.filter(arr => arr !== dep && !arr.includes('\uD83C\uDD95'));
         }
         
         return {
@@ -328,13 +328,13 @@ class RelationshipAnalyzer {
         const mappings: Record<string, string[]> = {};
         
         for (const parent of parentOptions) {
-            if (parent.includes('🆕')) continue;
+            if (parent.includes('\uD83C\uDD95')) continue;
             
             const parentLower = parent.toLowerCase();
             
             // Chercher des enfants qui contiennent le nom du parent
             const matchingChildren = childOptions.filter(child => 
-                !child.includes('🆕') && 
+                !child.includes('\uD83C\uDD95') && 
                 (child.toLowerCase().includes(parentLower) || 
                  parentLower.includes(child.toLowerCase()))
             );
@@ -346,7 +346,7 @@ class RelationshipAnalyzer {
         
         if (Object.keys(mappings).length === 0) {
             // Pas de pattern détecté, relation générique
-            mappings['*'] = childOptions.filter(v => !v.includes('🆕'));
+            mappings['*'] = childOptions.filter(v => !v.includes('\uD83C\uDD95'));
         }
         
         return {
@@ -445,11 +445,11 @@ class RelationshipAnalyzer {
      */
     private printSummary() {
         console.log('═══════════════════════════════════════════════════════');
-        console.log('📊 RÉSUMÉ DES RELATIONS DÉTECTÉES');
+        console.log('\uD83D\uDCCA RÉSUMÉ DES RELATIONS DÉTECTÉES');
         console.log('═══════════════════════════════════════════════════════\n');
         
         for (const [category, relations] of this.relationships.entries()) {
-            console.log(`\n📦 ${category.toUpperCase()}:`);
+            console.log(`\n\uD83D\uDCE6 ${category.toUpperCase()}:`);
             
             for (const rel of relations) {
                 const mappingCount = Object.keys(rel.mappings).length;

@@ -18,7 +18,6 @@ import { modernColors } from '../theme/modernTheme';
 import type { ArtisticFilterConfig, FilteredVideoResult } from '../types/ArtisticFilter';
 import { SafeIcon } from './SafeIcon';
 import { NativeButton, NativeInput } from './SafeNativeDesign';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ArtisticFilterSelectorProps {
     videoUrl: string;
@@ -28,15 +27,15 @@ interface ArtisticFilterSelectorProps {
 }
 
 const FILTER_CATEGORIES = [
-    { key: 'classics', label: '🎨 Classiques', icon: 'palette' },
-    { key: 'modern', label: '🌆 Modernes', icon: 'sparkles' },
-    { key: 'abstract', label: '🔷 Abstraits', icon: 'box' },
-    { key: 'vintage', label: '📷 Vintage', icon: 'camera' },
+    { key: 'classics', label: '\uD83C\uDFA8 Classiques', icon: 'palette' },
+    { key: 'modern', label: '\uD83C\uDF06 Modernes', icon: 'sparkles' },
+    { key: 'abstract', label: '\uD83D\uDD37 Abstraits', icon: 'box' },
+    { key: 'vintage', label: '\uD83D\uDCF7 Vintage', icon: 'camera' },
 ];
 
 const STYLE_PRESETS = {
     subtle: { label: 'Subtil', range: [0.1, 0.4] },
-    moderate: { label: t('artisticFilterSelector.modere'), range: [0.4, 0.7] },
+    moderate: { label: 'Modéré', range: [0.4, 0.7] },
     intense: { label: 'Intense', range: [0.7, 1.0] },
 };
 
@@ -46,8 +45,7 @@ export const ArtisticFilterSelector: React.FC<ArtisticFilterSelectorProps> = ({
     maxSelection = 3,
     showPreview = true,
 }) => {
-        const { t } = useLanguageSafe();
-const [filters, setFilters] = useState<ArtisticFilterConfig[]>([]);
+    const [filters, setFilters] = useState<ArtisticFilterConfig[]>([]);
     const [selectedFilters, setSelectedFilters] = useState<Map<string, { intensity: number }>>(new Map());
     const [loading, setLoading] = useState(true);
     const [applyingFilter, setApplyingFilter] = useState(false);
@@ -124,7 +122,7 @@ const [filters, setFilters] = useState<ArtisticFilterConfig[]>([]);
 
     const applyFilters = useCallback(async () => {
         if (selectedFilters.size === 0) {
-            setError(t('artisticFilterSelector.veuillezSelectionnerAuMoinsUn'));
+            setError('Veuillez sélectionner au moins un filtre');
             return;
         }
 
@@ -150,8 +148,8 @@ const [filters, setFilters] = useState<ArtisticFilterConfig[]>([]);
 
                 // Feedback succès
                 Alert.alert(
-                    t('artisticFilterSelector.filtresAppliques'),
-                    t('artisticFilterSelector.filtresAppliquesAvecSuccesntempsDeTraitement', { results_length: results.length, results[0]?_processing_time_ms || 0: results[0]?.processing_time_ms || 0 }),
+                    '✅ Filtres appliqués!',
+                    `${results.length} filtre(s) appliqué(s) avec succès.\nTemps de traitement: ${results[0]?.processing_time_ms || 0}ms`,
                     [{ text: 'OK' }]
                 );
             } else {
@@ -279,7 +277,7 @@ const [filters, setFilters] = useState<ArtisticFilterConfig[]>([]);
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>{t('artisticFilterSelector.chargementDesFiltresArtistiques')}</Text>
+                <Text style={styles.loadingText}>Chargement des filtres artistiques...</Text>
             </View>
         );
     }
@@ -289,7 +287,7 @@ const [filters, setFilters] = useState<ArtisticFilterConfig[]>([]);
             <View style={styles.errorContainer}>
                 <SafeIcon name="alert-circle" size={24} color={modernColors.error} />
                 <Text style={styles.errorText}>{error}</Text>
-                <NativeButton title={t('artisticFilterSelector.reessayer')} onPress={loadFilters} />
+                <NativeButton title="Réessayer" onPress={loadFilters} />
             </View>
         );
     }
@@ -297,7 +295,9 @@ const [filters, setFilters] = useState<ArtisticFilterConfig[]>([]);
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>{t('artisticFilterSelector.filtresArtistiquesIat('artisticFilterSelector.textTextStylestylessubtitleTransformezVosVideos')art • {selectedFilters.size}/{maxSelection} sélectionnés
+                <Text style={styles.title}>Filtres Artistiques IA</Text>
+                <Text style={styles.subtitle}>
+                    Transformez vos vidéos en œuvres d'art • {selectedFilters.size}/{maxSelection} sélectionnés
                 </Text>
             </View>
 
@@ -327,7 +327,7 @@ const [filters, setFilters] = useState<ArtisticFilterConfig[]>([]);
 
             <View style={styles.searchContainer}>
                 <NativeInput
-                    placeholder={t('artisticFilterSelector.rechercherUnFiltreArtisteOu')}
+                    placeholder="Rechercher un filtre, artiste ou style..."
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     style={styles.searchInput}
@@ -344,7 +344,7 @@ const [filters, setFilters] = useState<ArtisticFilterConfig[]>([]);
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
                         <SafeIcon name="search" size={48} color={modernColors.textSecondary} />
-                        <Text style={styles.emptyText}>{t('artisticFilterSelector.aucunFiltreTrouve')}</Text>
+                        <Text style={styles.emptyText}>Aucun filtre trouvé</Text>
                         <Text style={styles.emptySubtext}>Essayez d'autres termes de recherche</Text>
                     </View>
                 }

@@ -42,7 +42,7 @@ export const useServiceMedia = (serviceId: string | number): ServiceMedia => {
       try {
         setMedia(prev => ({ ...prev, loading: true, error: null }));
 
-        console.log(`📊 [useServiceMedia] Récupération des médias pour service ${serviceId}`);
+        console.log(`\uD83D\uDCCA [useServiceMedia] Récupération des médias pour service ${serviceId}`);
 
         // Appel API pour récupérer les médias du service
         const response = await (servicesApi as any).getServiceMedia(serviceId) as MediaResponse;

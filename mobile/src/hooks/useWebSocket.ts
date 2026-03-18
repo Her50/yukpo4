@@ -156,7 +156,7 @@ export const useWebSocket = (
     }
 
     const handleMessage = (message: any) => {
-      console.log('📨 [useWebSocket] Message reçu:', message.type);
+      console.log('\uD83D\uDCE8 [useWebSocket] Message reçu:', message.type);
 
       switch (message.type) {
         case 'user_status':
@@ -172,7 +172,7 @@ export const useWebSocket = (
           break;
 
         default:
-          console.log('📨 [useWebSocket] Type de message non géré:', message.type);
+          console.log('\uD83D\uDCE8 [useWebSocket] Type de message non géré:', message.type);
       }
     };
 

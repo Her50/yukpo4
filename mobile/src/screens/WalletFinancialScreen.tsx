@@ -18,8 +18,19 @@ import { NativeCard } from '../components/SafeNativeDesign';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import useUserCountry from '../hooks/useUserCountry';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+
+const currencySymbolForCountry = (code: string): string => {
+    const map: Record<string, string> = {
+        CM: 'FCFA', GA: 'FCFA', CG: 'FCFA', CF: 'FCFA', TD: 'FCFA', GQ: 'FCFA',
+        SN: 'FCFA', CI: 'FCFA', ML: 'FCFA', BF: 'FCFA', NE: 'FCFA', TG: 'FCFA', BJ: 'FCFA', GW: 'FCFA',
+        NG: '\u20a6', GH: 'GH\u20b5', KE: 'KSh', TZ: 'TSh', UG: 'USh', RW: 'FRw',
+        ZA: 'R', CD: 'FC', ET: 'Br', MG: 'Ar', MA: 'DH', DZ: 'DA', TN: 'DT', EG: 'E\u00a3',
+    };
+    return map[code?.toUpperCase()] || 'FCFA';
+};
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -65,6 +76,8 @@ const WalletFinancialScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
     const { t } = useLanguageSafe();
+    const { countryCode } = useUserCountry();
+    const currSymbol = currencySymbolForCountry(countryCode);
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -85,15 +98,23 @@ const WalletFinancialScreen: React.FC = () => {
         }, [selectedPeriod, selectedFilter])
     );
 
+    // Recompute financial summary whenever transactions change (avoids stale state)
+    useEffect(() => {
+        if (transactions.length > 0 || !loading) {
+            loadFinancialSummary();
+        }
+    }, [transactions, selectedFilter]);
+
     const loadAllData = async () => {
         if (!loading) setLoading(true);
         setError(null);
         try {
+            // Load balance and transactions first, then compute summary from fresh data
             await Promise.all([
                 loadUnifiedBalance(),
                 loadUnifiedTransactions(),
-                loadFinancialSummary()
             ]);
+            // Summary is computed in a useEffect after transactions state updates
         } catch (error) {
             console.error('[WalletFinancial] Error loading data:', error);
             setError(t('financialTracking.errorLoadingData'));
@@ -285,12 +306,13 @@ const WalletFinancialScreen: React.FC = () => {
         loadAllData();
     };
 
-    const formatCurrency = (cents: number) => {
-        const amount = Math.abs(cents) / 100;
+    const formatCurrency = (amountOrCents: number) => {
+        // Backend stores amounts in XAF (whole units), not cents.
+        const amount = Math.abs(amountOrCents);
         return new Intl.NumberFormat('fr-FR', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 0,
-        }).format(amount) + ' FCFA';
+        }).format(amount) + ' ' + currSymbol;
     };
 
     const formatDate = (dateStr: string) => {
@@ -470,7 +492,7 @@ const WalletFinancialScreen: React.FC = () => {
                         {item.description || item.reference_type || '—'}
                     </Text>
                     {item.location && (
-                        <Text style={styles.txnLocation}>📍 {item.location}</Text>
+                        <Text style={styles.txnLocation}>\uD83D\uDCCD {item.location}</Text>
                     )}
                     <Text style={styles.txnDate}>{formatDate(item.created_at)}</Text>
                     {item.trace_id && (

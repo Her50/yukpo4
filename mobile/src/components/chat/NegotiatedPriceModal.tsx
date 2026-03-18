@@ -14,7 +14,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface NegotiatedPriceModalProps {
     visible: boolean;
@@ -53,8 +53,7 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
     clientUserId,
     onPriceNegotiated,
 }) => {
-        const { t } = useLanguageSafe();
-const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
+    const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [pendingOffer, setPendingOffer] = useState<NegotiatedPriceOffer | null>(null);
     const [loadingOffer, setLoadingOffer] = useState(false);
@@ -118,7 +117,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
         }
 
         if (price >= originalPrice) {
-            Alert.alert('Erreur', t('negotiatedPriceModal.lePrixNegocieDoitEtreInferieur'));
+            Alert.alert('Erreur', 'Le prix négocié doit être inférieur au prix original');
             return;
         }
 
@@ -137,7 +136,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
                 expires_in_hours: 24,
             });
 
-            console.log('[NegotiatedPriceModal] 📤 Envoi proposition:', {
+            console.log('[NegotiatedPriceModal] \uD83D\uDCE4 Envoi proposition:', {
                 conversationId: conversationIdStr,
                 serviceId,
                 productIndex,
@@ -147,8 +146,8 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
 
             if (response.success) {
                 Alert.alert(
-                    t('negotiatedPriceModal.propositionEnvoyee'),
-                    t('negotiatedPriceModal.votrePropositionDePrixAEte'),
+                    'Proposition envoyée',
+                    'Votre proposition de prix a été envoyée au prestataire. Vous serez notifié de sa réponse.',
                     [{
                         text: 'OK', onPress: () => {
                             setNegotiatedPrice('');
@@ -167,7 +166,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
             }
         } catch (error: any) {
             console.error('[NegotiatedPriceModal] ❌ Erreur création offre:', error?.message || error);
-            Alert.alert('Erreur', t('negotiatedPriceModal.erreurLorsDeLaCreationDe', { error__message_____E: error?.message || 'Erreur inconnue' }));
+            Alert.alert('Erreur', `Erreur lors de la création de l'offre.\n\nDétail : ${error?.message || 'Erreur inconnue'}`);
         } finally {
             setLoading(false);
         }
@@ -182,8 +181,8 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
 
             if (response.success) {
                 Alert.alert(
-                    t('negotiatedPriceModal.prixNegocieAccepte'),
-                    t('negotiatedPriceModal.lePrixNegocieAEteAccepte'),
+                    'Prix négocié accepté',
+                    'Le prix négocié a été accepté et sera utilisé pour les prochaines commandes.',
                     [{
                         text: 'OK', onPress: () => {
                             setPendingOffer(null);
@@ -199,7 +198,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
             }
         } catch (error: any) {
             console.error('[NegotiatedPriceModal] ❌ Erreur acceptation offre:', error?.message || error);
-            Alert.alert('Erreur', t('negotiatedPriceModal.erreurLorsDeLacceptationDeLoffrenndetail', { error__message_____E: error?.message || 'Erreur inconnue' }));
+            Alert.alert('Erreur', `Erreur lors de l'acceptation de l'offre.\n\nDétail : ${error?.message || 'Erreur inconnue'}`);
         } finally {
             setLoading(false);
         }
@@ -213,7 +212,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
             const response = await apiPost(`/api/negotiated-prices/${pendingOffer.id}/reject`, {});
 
             if (response.success) {
-                Alert.alert(t('negotiatedPriceModal.offreRejetee'), 'L\t('negotiatedPriceModal.offreAEteRejetee'));
+                Alert.alert('Offre rejetée', 'L\'offre a été rejetée');
                 setPendingOffer(null);
                 onClose();
             } else {
@@ -223,7 +222,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
             }
         } catch (error: any) {
             console.error('[NegotiatedPriceModal] ❌ Erreur rejet offre:', error?.message || error);
-            Alert.alert('Erreur', t('negotiatedPriceModal.erreurLorsDuRejetDeLoffrenndetail', { error__message_____E: error?.message || 'Erreur inconnue' }));
+            Alert.alert('Erreur', `Erreur lors du rejet de l'offre.\n\nDétail : ${error?.message || 'Erreur inconnue'}`);
         } finally {
             setLoading(false);
         }
@@ -240,7 +239,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
                         <View style={styles.headerContent}>
                             <SafeIcon name="dollar-sign" size={24} color="#FFFFFF" />
                             <Text style={styles.headerTitle}>
-                                {isMerchant ? t('negotiatedPriceModal.propositionDePrixNegocie') : t('negotiatedPriceModal.proposerUnPrixNegocie')}
+                                {isMerchant ? 'Proposition de prix négocié' : 'Proposer un prix négocié'}
                             </Text>
                         </View>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -268,7 +267,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
                                             <Text style={styles.pendingOfferTitle}>Proposition en attente</Text>
                                         </View>
                                         <View style={styles.pendingOfferContent}>
-                                            <Text style={styles.pendingOfferLabel}>{t('negotiatedPrice.votrePrixPropose')}</Text>
+                                            <Text style={styles.pendingOfferLabel}>Votre prix proposé</Text>
                                             <Text style={styles.pendingOfferPrice}>
                                                 {(pendingOffer.negotiated_price_cents / 100).toLocaleString('fr-FR')} FCFA
                                             </Text>
@@ -286,13 +285,13 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
                                                     [
                                                         { text: t('common.no'), style: 'cancel' },
                                                         {
-                                                            text: t('negotiatedPrice.ouiAnnuler'),
+                                                            text: 'Oui, annuler',
                                                             style: 'destructive',
                                                             onPress: async () => {
                                                                 try {
                                                                     await apiPost(`/api/negotiated-prices/${pendingOffer.id}/cancel`, {});
                                                                     setPendingOffer(null);
-                                                                    Alert.alert(t('negotiatedPriceModal.succes'), t('negotiatedPriceModal.propositionAnnulee'));
+                                                                    Alert.alert('Succès', 'Proposition annulée');
                                                                 } catch (error) {
                                                                     console.error('Erreur annulation:', error);
                                                                     Alert.alert('Erreur', 'Impossible d\'annuler la proposition');
@@ -304,13 +303,13 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
                                             }}
                                         >
                                             <SafeIcon name="x" size={18} color="#FFFFFF" />
-                                            <Text style={styles.buttonText}>{t('negotiatedPriceModal.annulerLaProposition')}</Text>
+                                            <Text style={styles.buttonText}>Annuler la proposition</Text>
                                         </TouchableOpacity>
                                     </View>
                                 ) : (
                                     // ✅ Formulaire pour proposer un nouveau prix
                                     <View style={styles.merchantSection}>
-                                        <Text style={styles.label}>{t('negotiatedPrice.prixNegocieProposeFcfa')}</Text>
+                                        <Text style={styles.label}>Prix négocié proposé (FCFA) *</Text>
                                         <TextInput
                                             style={styles.input}
                                             value={negotiatedPrice}
@@ -342,7 +341,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
                                             ) : (
                                                 <>
                                                     <SafeIcon name="send" size={18} color="#FFFFFF" />
-                                                    <Text style={styles.buttonText}>{t('negotiatedPrice.envoyerLaProposition')}</Text>
+                                                    <Text style={styles.buttonText}>Envoyer la proposition</Text>
                                                 </>
                                             )}
                                         </TouchableOpacity>
@@ -357,7 +356,7 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
                                 {loadingOffer ? (
                                     <View style={styles.loadingContainer}>
                                         <ActivityIndicator size="large" color={modernColors.primary} />
-                                        <Text style={styles.loadingText}>{t('negotiatedPrice.chargementDesPropositions')}</Text>
+                                        <Text style={styles.loadingText}>Chargement des propositions...</Text>
                                     </View>
                                 ) : pendingOffer ? (
                                     <View style={styles.offerCard}>
@@ -374,13 +373,13 @@ const [negotiatedPrice, setNegotiatedPrice] = useState<string>('');
                                                 </Text>
                                             </View>
                                             <View style={styles.priceRow}>
-                                                <Text style={styles.priceLabel}>{t('negotiatedPrice.prixPropose')}</Text>
+                                                <Text style={styles.priceLabel}>Prix proposé</Text>
                                                 <Text style={styles.negotiatedPriceDisplay}>
                                                     {(pendingOffer.negotiated_price_cents / 100).toLocaleString('fr-FR')} FCFA
                                                 </Text>
                                             </View>
                                             <View style={styles.priceRow}>
-                                                <Text style={styles.priceLabel}>{t('negotiatedPrice.reduction')}</Text>
+                                                <Text style={styles.priceLabel}>Réduction</Text>
                                                 <Text style={styles.discountDisplay}>
                                                     - {((pendingOffer.original_price_cents - pendingOffer.negotiated_price_cents) / 100).toLocaleString('fr-FR')} FCFA
                                                 </Text>

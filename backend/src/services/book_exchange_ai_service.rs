@@ -27,16 +27,39 @@ pub struct SchoolSystem {
     pub hierarchy: &'static [(&'static str, &'static str, &'static str)],
 }
 
-/// Tous les systèmes scolaires supportés
+/// Tous les systèmes scolaires supportés (25 systèmes — couverture mondiale)
 pub fn get_all_school_systems() -> Vec<&'static SchoolSystem> {
     vec![
+        // Afrique
         &SYSTEM_CAMEROUN_FR,
         &SYSTEM_CAMEROUN_EN,
         &SYSTEM_NIGERIA,
-        &SYSTEM_FRANCOPHONE_WEST, // Sénégal, Côte d'Ivoire, Gabon, Togo, Bénin, Burkina, Mali, Niger, Guinée
+        &SYSTEM_FRANCOPHONE_WEST,
         &SYSTEM_RDC,
         &SYSTEM_GHANA,
         &SYSTEM_KENYA,
+        &SYSTEM_SOUTH_AFRICA,
+        &SYSTEM_ETHIOPIA,
+        &SYSTEM_NORTH_AFRICA_FR,
+        &SYSTEM_EGYPT,
+        // Europe
+        &SYSTEM_FRANCE,
+        &SYSTEM_UK,
+        &SYSTEM_GERMANY,
+        &SYSTEM_SPAIN,
+        // Amériques
+        &SYSTEM_USA,
+        &SYSTEM_BRAZIL,
+        &SYSTEM_MEXICO,
+        // Asie
+        &SYSTEM_INDIA,
+        &SYSTEM_CHINA,
+        &SYSTEM_JAPAN,
+        &SYSTEM_INDONESIA,
+        &SYSTEM_PHILIPPINES,
+        // Moyen-Orient
+        &SYSTEM_TURKEY,
+        &SYSTEM_ARAB_GULF,
     ]
 }
 
@@ -276,16 +299,534 @@ static SYSTEM_KENYA: SchoolSystem = SchoolSystem {
     ],
 };
 
+// -- Afrique du Sud --
+static SYSTEM_SOUTH_AFRICA: SchoolSystem = SchoolSystem {
+    code: "za",
+    name: "South Africa",
+    language: "en",
+    currency: "ZAR",
+    hierarchy: &[
+        ("grade r", "Grade 1", "Foundation Phase"),
+        ("grade 1", "Grade 2", "Foundation Phase"),
+        ("grade 2", "Grade 3", "Foundation Phase"),
+        ("grade 3", "Grade 4", "Foundation Phase"),
+        ("grade 4", "Grade 5", "Intermediate Phase"),
+        ("grade 5", "Grade 6", "Intermediate Phase"),
+        ("grade 6", "Grade 7", "Intermediate Phase"),
+        ("grade 7", "Grade 8", "Senior Phase"),
+        ("grade 8", "Grade 9", "Senior Phase"),
+        ("grade 9", "Grade 10", "Senior Phase"),
+        ("grade 10", "Grade 11", "FET Phase"),
+        ("grade 11", "Grade 12", "FET Phase"),
+        ("grade 12", "", "FET Phase"),
+    ],
+};
+
+// -- Éthiopie --
+static SYSTEM_ETHIOPIA: SchoolSystem = SchoolSystem {
+    code: "et",
+    name: "Ethiopia",
+    language: "en",
+    currency: "ETB",
+    hierarchy: &[
+        ("grade 1", "Grade 2", "Primary"),
+        ("grade 2", "Grade 3", "Primary"),
+        ("grade 3", "Grade 4", "Primary"),
+        ("grade 4", "Grade 5", "Primary"),
+        ("grade 5", "Grade 6", "Primary"),
+        ("grade 6", "Grade 7", "Primary"),
+        ("grade 7", "Grade 8", "Primary"),
+        ("grade 8", "Grade 9", "Primary"),
+        ("grade 9", "Grade 10", "Secondary"),
+        ("grade 10", "Grade 11", "Secondary"),
+        ("grade 11", "Grade 12", "Preparatory"),
+        ("grade 12", "", "Preparatory"),
+    ],
+};
+
+// -- Afrique du Nord francophone (Maroc, Tunisie, Algérie) --
+static SYSTEM_NORTH_AFRICA_FR: SchoolSystem = SchoolSystem {
+    code: "ma",
+    name: "Maroc / Tunisie / Algérie",
+    language: "fr",
+    currency: "MAD",
+    hierarchy: &[
+        ("1ère année primaire", "2ème année primaire", "Primaire"),
+        ("1ere annee primaire", "2ème année primaire", "Primaire"),
+        ("2ème année primaire", "3ème année primaire", "Primaire"),
+        ("2eme annee primaire", "3ème année primaire", "Primaire"),
+        ("3ème année primaire", "4ème année primaire", "Primaire"),
+        ("3eme annee primaire", "4ème année primaire", "Primaire"),
+        ("4ème année primaire", "5ème année primaire", "Primaire"),
+        ("4eme annee primaire", "5ème année primaire", "Primaire"),
+        ("5ème année primaire", "6ème année primaire", "Primaire"),
+        ("5eme annee primaire", "6ème année primaire", "Primaire"),
+        ("6ème année primaire", "1ère année collège", "Primaire"),
+        ("6eme annee primaire", "1ère année collège", "Primaire"),
+        ("1ère année collège", "2ème année collège", "Collège"),
+        ("1ere annee college", "2ème année collège", "Collège"),
+        ("2ème année collège", "3ème année collège", "Collège"),
+        ("2eme annee college", "3ème année collège", "Collège"),
+        ("3ème année collège", "Tronc commun", "Collège"),
+        ("3eme annee college", "Tronc commun", "Collège"),
+        ("tronc commun", "1ère année bac", "Lycée"),
+        ("1ère année bac", "2ème année bac", "Lycée"),
+        ("1ere annee bac", "2ème année bac", "Lycée"),
+        ("2ème année bac", "", "Lycée"),
+        ("2eme annee bac", "", "Lycée"),
+    ],
+};
+
+// -- Égypte --
+static SYSTEM_EGYPT: SchoolSystem = SchoolSystem {
+    code: "eg",
+    name: "Egypt",
+    language: "ar",
+    currency: "EGP",
+    hierarchy: &[
+        ("grade 1", "Grade 2", "Primary"),
+        ("grade 2", "Grade 3", "Primary"),
+        ("grade 3", "Grade 4", "Primary"),
+        ("grade 4", "Grade 5", "Primary"),
+        ("grade 5", "Grade 6", "Primary"),
+        ("grade 6", "Grade 7", "Preparatory"),
+        ("grade 7", "Grade 8", "Preparatory"),
+        ("grade 8", "Grade 9", "Preparatory"),
+        ("grade 9", "Grade 10", "Secondary"),
+        ("grade 10", "Grade 11", "Secondary"),
+        ("grade 11", "Grade 12", "Secondary"),
+        ("grade 12", "", "Secondary"),
+        ("thanawiya amma", "", "Secondary"),
+    ],
+};
+
+// -- France / Belgique / Suisse francophone --
+static SYSTEM_FRANCE: SchoolSystem = SchoolSystem {
+    code: "fr",
+    name: "France / Belgique / Suisse",
+    language: "fr",
+    currency: "EUR",
+    hierarchy: &[
+        ("cp", "CE1", "Élémentaire"),
+        ("ce1", "CE2", "Élémentaire"),
+        ("ce2", "CM1", "Élémentaire"),
+        ("cm1", "CM2", "Élémentaire"),
+        ("cm2", "6ème", "Élémentaire"),
+        ("6ème", "5ème", "Collège"),
+        ("6eme", "5ème", "Collège"),
+        ("5ème", "4ème", "Collège"),
+        ("5eme", "4ème", "Collège"),
+        ("4ème", "3ème", "Collège"),
+        ("4eme", "3ème", "Collège"),
+        ("3ème", "Seconde", "Collège"),
+        ("3eme", "Seconde", "Collège"),
+        ("seconde", "Première", "Lycée"),
+        ("2nde", "Première", "Lycée"),
+        ("première", "Terminale", "Lycée"),
+        ("premiere", "Terminale", "Lycée"),
+        ("1ère", "Terminale", "Lycée"),
+        ("1ere", "Terminale", "Lycée"),
+        ("terminale", "", "Lycée"),
+        ("tle", "", "Lycée"),
+    ],
+};
+
+// -- Royaume-Uni / Commonwealth (England & Wales) --
+static SYSTEM_UK: SchoolSystem = SchoolSystem {
+    code: "gb",
+    name: "United Kingdom",
+    language: "en",
+    currency: "GBP",
+    hierarchy: &[
+        ("year 1", "Year 2", "Key Stage 1"),
+        ("year 2", "Year 3", "Key Stage 1"),
+        ("year 3", "Year 4", "Key Stage 2"),
+        ("year 4", "Year 5", "Key Stage 2"),
+        ("year 5", "Year 6", "Key Stage 2"),
+        ("year 6", "Year 7", "Key Stage 2"),
+        ("year 7", "Year 8", "Key Stage 3"),
+        ("year 8", "Year 9", "Key Stage 3"),
+        ("year 9", "Year 10", "Key Stage 3"),
+        ("year 10", "Year 11", "Key Stage 4 / GCSE"),
+        ("year 11", "Year 12", "Key Stage 4 / GCSE"),
+        ("year 12", "Year 13", "Sixth Form / A-Level"),
+        ("year 13", "", "Sixth Form / A-Level"),
+        ("gcse", "Year 12", "Key Stage 4 / GCSE"),
+        ("a-level", "", "Sixth Form / A-Level"),
+        ("as-level", "Year 13", "Sixth Form / A-Level"),
+    ],
+};
+
+// -- Allemagne --
+static SYSTEM_GERMANY: SchoolSystem = SchoolSystem {
+    code: "de",
+    name: "Germany / Austria",
+    language: "de",
+    currency: "EUR",
+    hierarchy: &[
+        ("klasse 1", "Klasse 2", "Grundschule"),
+        ("klasse 2", "Klasse 3", "Grundschule"),
+        ("klasse 3", "Klasse 4", "Grundschule"),
+        ("klasse 4", "Klasse 5", "Grundschule"),
+        ("klasse 5", "Klasse 6", "Sekundarstufe I"),
+        ("klasse 6", "Klasse 7", "Sekundarstufe I"),
+        ("klasse 7", "Klasse 8", "Sekundarstufe I"),
+        ("klasse 8", "Klasse 9", "Sekundarstufe I"),
+        ("klasse 9", "Klasse 10", "Sekundarstufe I"),
+        ("klasse 10", "Klasse 11", "Sekundarstufe II"),
+        ("klasse 11", "Klasse 12", "Sekundarstufe II"),
+        ("klasse 12", "Klasse 13", "Sekundarstufe II"),
+        ("klasse 13", "", "Abitur"),
+        ("abitur", "", "Abitur"),
+    ],
+};
+
+// -- Espagne / Amérique latine hispanophone --
+static SYSTEM_SPAIN: SchoolSystem = SchoolSystem {
+    code: "es",
+    name: "España / Hispanoamérica",
+    language: "es",
+    currency: "EUR",
+    hierarchy: &[
+        ("1° primaria", "2° Primaria", "Primaria"),
+        ("1 primaria", "2° Primaria", "Primaria"),
+        ("2° primaria", "3° Primaria", "Primaria"),
+        ("2 primaria", "3° Primaria", "Primaria"),
+        ("3° primaria", "4° Primaria", "Primaria"),
+        ("3 primaria", "4° Primaria", "Primaria"),
+        ("4° primaria", "5° Primaria", "Primaria"),
+        ("4 primaria", "5° Primaria", "Primaria"),
+        ("5° primaria", "6° Primaria", "Primaria"),
+        ("5 primaria", "6° Primaria", "Primaria"),
+        ("6° primaria", "1° ESO", "Primaria"),
+        ("6 primaria", "1° ESO", "Primaria"),
+        ("1° eso", "2° ESO", "ESO"),
+        ("1 eso", "2° ESO", "ESO"),
+        ("2° eso", "3° ESO", "ESO"),
+        ("2 eso", "3° ESO", "ESO"),
+        ("3° eso", "4° ESO", "ESO"),
+        ("3 eso", "4° ESO", "ESO"),
+        ("4° eso", "1° Bachillerato", "ESO"),
+        ("4 eso", "1° Bachillerato", "ESO"),
+        ("1° bachillerato", "2° Bachillerato", "Bachillerato"),
+        ("1 bachillerato", "2° Bachillerato", "Bachillerato"),
+        ("2° bachillerato", "", "Bachillerato"),
+        ("2 bachillerato", "", "Bachillerato"),
+    ],
+};
+
+// -- États-Unis / Canada anglophone --
+static SYSTEM_USA: SchoolSystem = SchoolSystem {
+    code: "us",
+    name: "USA / Canada",
+    language: "en",
+    currency: "USD",
+    hierarchy: &[
+        ("kindergarten", "1st Grade", "Elementary"),
+        ("1st grade", "2nd Grade", "Elementary"),
+        ("grade 1", "2nd Grade", "Elementary"),
+        ("2nd grade", "3rd Grade", "Elementary"),
+        ("grade 2", "3rd Grade", "Elementary"),
+        ("3rd grade", "4th Grade", "Elementary"),
+        ("grade 3", "4th Grade", "Elementary"),
+        ("4th grade", "5th Grade", "Elementary"),
+        ("grade 4", "5th Grade", "Elementary"),
+        ("5th grade", "6th Grade", "Elementary"),
+        ("grade 5", "6th Grade", "Elementary"),
+        ("6th grade", "7th Grade", "Middle School"),
+        ("grade 6", "7th Grade", "Middle School"),
+        ("7th grade", "8th Grade", "Middle School"),
+        ("grade 7", "8th Grade", "Middle School"),
+        ("8th grade", "9th Grade", "Middle School"),
+        ("grade 8", "9th Grade", "Middle School"),
+        ("9th grade", "10th Grade", "High School"),
+        ("grade 9", "10th Grade", "High School"),
+        ("freshman", "10th Grade", "High School"),
+        ("10th grade", "11th Grade", "High School"),
+        ("grade 10", "11th Grade", "High School"),
+        ("sophomore", "11th Grade", "High School"),
+        ("11th grade", "12th Grade", "High School"),
+        ("grade 11", "12th Grade", "High School"),
+        ("junior", "12th Grade", "High School"),
+        ("12th grade", "", "High School"),
+        ("grade 12", "", "High School"),
+        ("senior", "", "High School"),
+    ],
+};
+
+// -- Brésil --
+static SYSTEM_BRAZIL: SchoolSystem = SchoolSystem {
+    code: "br",
+    name: "Brasil",
+    language: "pt",
+    currency: "BRL",
+    hierarchy: &[
+        ("1° ano", "2° Ano", "Ensino Fundamental I"),
+        ("1 ano", "2° Ano", "Ensino Fundamental I"),
+        ("2° ano", "3° Ano", "Ensino Fundamental I"),
+        ("2 ano", "3° Ano", "Ensino Fundamental I"),
+        ("3° ano", "4° Ano", "Ensino Fundamental I"),
+        ("3 ano", "4° Ano", "Ensino Fundamental I"),
+        ("4° ano", "5° Ano", "Ensino Fundamental I"),
+        ("4 ano", "5° Ano", "Ensino Fundamental I"),
+        ("5° ano", "6° Ano", "Ensino Fundamental I"),
+        ("5 ano", "6° Ano", "Ensino Fundamental I"),
+        ("6° ano", "7° Ano", "Ensino Fundamental II"),
+        ("6 ano", "7° Ano", "Ensino Fundamental II"),
+        ("7° ano", "8° Ano", "Ensino Fundamental II"),
+        ("7 ano", "8° Ano", "Ensino Fundamental II"),
+        ("8° ano", "9° Ano", "Ensino Fundamental II"),
+        ("8 ano", "9° Ano", "Ensino Fundamental II"),
+        ("9° ano", "1° Ano EM", "Ensino Fundamental II"),
+        ("9 ano", "1° Ano EM", "Ensino Fundamental II"),
+        ("1° ano em", "2° Ano EM", "Ensino Médio"),
+        ("1 ano em", "2° Ano EM", "Ensino Médio"),
+        ("2° ano em", "3° Ano EM", "Ensino Médio"),
+        ("2 ano em", "3° Ano EM", "Ensino Médio"),
+        ("3° ano em", "", "Ensino Médio"),
+        ("3 ano em", "", "Ensino Médio"),
+    ],
+};
+
+// -- Mexique / Amérique centrale --
+static SYSTEM_MEXICO: SchoolSystem = SchoolSystem {
+    code: "mx",
+    name: "México / América Central",
+    language: "es",
+    currency: "MXN",
+    hierarchy: &[
+        ("1° primaria", "2° Primaria", "Primaria"),
+        ("2° primaria", "3° Primaria", "Primaria"),
+        ("3° primaria", "4° Primaria", "Primaria"),
+        ("4° primaria", "5° Primaria", "Primaria"),
+        ("5° primaria", "6° Primaria", "Primaria"),
+        ("6° primaria", "1° Secundaria", "Primaria"),
+        ("1° secundaria", "2° Secundaria", "Secundaria"),
+        ("1 secundaria", "2° Secundaria", "Secundaria"),
+        ("2° secundaria", "3° Secundaria", "Secundaria"),
+        ("2 secundaria", "3° Secundaria", "Secundaria"),
+        ("3° secundaria", "1° Preparatoria", "Secundaria"),
+        ("3 secundaria", "1° Preparatoria", "Secundaria"),
+        ("1° preparatoria", "2° Preparatoria", "Preparatoria"),
+        ("1 preparatoria", "2° Preparatoria", "Preparatoria"),
+        ("2° preparatoria", "3° Preparatoria", "Preparatoria"),
+        ("2 preparatoria", "3° Preparatoria", "Preparatoria"),
+        ("3° preparatoria", "", "Preparatoria"),
+        ("3 preparatoria", "", "Preparatoria"),
+    ],
+};
+
+// -- Inde --
+static SYSTEM_INDIA: SchoolSystem = SchoolSystem {
+    code: "in",
+    name: "India (CBSE/ICSE)",
+    language: "en",
+    currency: "INR",
+    hierarchy: &[
+        ("class 1", "Class 2", "Primary"),
+        ("class 2", "Class 3", "Primary"),
+        ("class 3", "Class 4", "Primary"),
+        ("class 4", "Class 5", "Primary"),
+        ("class 5", "Class 6", "Upper Primary"),
+        ("class 6", "Class 7", "Upper Primary"),
+        ("class 7", "Class 8", "Upper Primary"),
+        ("class 8", "Class 9", "Upper Primary"),
+        ("class 9", "Class 10", "Secondary"),
+        ("class 10", "Class 11", "Secondary"),
+        ("class 11", "Class 12", "Senior Secondary"),
+        ("class 12", "", "Senior Secondary"),
+        ("std 1", "Std 2", "Primary"),
+        ("std 2", "Std 3", "Primary"),
+        ("std 3", "Std 4", "Primary"),
+        ("std 4", "Std 5", "Primary"),
+        ("std 5", "Std 6", "Upper Primary"),
+        ("std 6", "Std 7", "Upper Primary"),
+        ("std 7", "Std 8", "Upper Primary"),
+        ("std 8", "Std 9", "Upper Primary"),
+        ("std 9", "Std 10", "Secondary"),
+        ("std 10", "Std 11", "Secondary"),
+        ("std 11", "Std 12", "Senior Secondary"),
+        ("std 12", "", "Senior Secondary"),
+    ],
+};
+
+// -- Chine --
+static SYSTEM_CHINA: SchoolSystem = SchoolSystem {
+    code: "cn",
+    name: "China (中国)",
+    language: "zh",
+    currency: "CNY",
+    hierarchy: &[
+        ("grade 1", "Grade 2", "Primary"),
+        ("grade 2", "Grade 3", "Primary"),
+        ("grade 3", "Grade 4", "Primary"),
+        ("grade 4", "Grade 5", "Primary"),
+        ("grade 5", "Grade 6", "Primary"),
+        ("grade 6", "Grade 7", "Junior High"),
+        ("grade 7", "Grade 8", "Junior High"),
+        ("grade 8", "Grade 9", "Junior High"),
+        ("grade 9", "Grade 10", "Senior High"),
+        ("grade 10", "Grade 11", "Senior High"),
+        ("grade 11", "Grade 12", "Senior High"),
+        ("grade 12", "", "Senior High"),
+        ("小学一年级", "小学二年级", "小学"),
+        ("小学六年级", "初一", "小学"),
+        ("初一", "初二", "初中"),
+        ("初二", "初三", "初中"),
+        ("初三", "高一", "初中"),
+        ("高一", "高二", "高中"),
+        ("高二", "高三", "高中"),
+        ("高三", "", "高中"),
+    ],
+};
+
+// -- Japon --
+static SYSTEM_JAPAN: SchoolSystem = SchoolSystem {
+    code: "jp",
+    name: "Japan (日本)",
+    language: "ja",
+    currency: "JPY",
+    hierarchy: &[
+        ("grade 1", "Grade 2", "Elementary"),
+        ("grade 2", "Grade 3", "Elementary"),
+        ("grade 3", "Grade 4", "Elementary"),
+        ("grade 4", "Grade 5", "Elementary"),
+        ("grade 5", "Grade 6", "Elementary"),
+        ("grade 6", "Grade 7", "Junior High"),
+        ("grade 7", "Grade 8", "Junior High"),
+        ("grade 8", "Grade 9", "Junior High"),
+        ("grade 9", "Grade 10", "Senior High"),
+        ("grade 10", "Grade 11", "Senior High"),
+        ("grade 11", "Grade 12", "Senior High"),
+        ("grade 12", "", "Senior High"),
+        ("小1", "小2", "小学校"),
+        ("中1", "中2", "中学校"),
+        ("中2", "中3", "中学校"),
+        ("中3", "高1", "中学校"),
+        ("高1", "高2", "高校"),
+        ("高2", "高3", "高校"),
+        ("高3", "", "高校"),
+    ],
+};
+
+// -- Indonésie --
+static SYSTEM_INDONESIA: SchoolSystem = SchoolSystem {
+    code: "id",
+    name: "Indonesia",
+    language: "id",
+    currency: "IDR",
+    hierarchy: &[
+        ("kelas 1 sd", "Kelas 2 SD", "SD"),
+        ("kelas 2 sd", "Kelas 3 SD", "SD"),
+        ("kelas 3 sd", "Kelas 4 SD", "SD"),
+        ("kelas 4 sd", "Kelas 5 SD", "SD"),
+        ("kelas 5 sd", "Kelas 6 SD", "SD"),
+        ("kelas 6 sd", "Kelas 7 SMP", "SD"),
+        ("kelas 7 smp", "Kelas 8 SMP", "SMP"),
+        ("kelas 7", "Kelas 8 SMP", "SMP"),
+        ("kelas 8 smp", "Kelas 9 SMP", "SMP"),
+        ("kelas 8", "Kelas 9 SMP", "SMP"),
+        ("kelas 9 smp", "Kelas 10 SMA", "SMP"),
+        ("kelas 9", "Kelas 10 SMA", "SMP"),
+        ("kelas 10 sma", "Kelas 11 SMA", "SMA"),
+        ("kelas 10", "Kelas 11 SMA", "SMA"),
+        ("kelas 11 sma", "Kelas 12 SMA", "SMA"),
+        ("kelas 11", "Kelas 12 SMA", "SMA"),
+        ("kelas 12 sma", "", "SMA"),
+        ("kelas 12", "", "SMA"),
+    ],
+};
+
+// -- Philippines (K-12) --
+static SYSTEM_PHILIPPINES: SchoolSystem = SchoolSystem {
+    code: "ph",
+    name: "Philippines (K-12)",
+    language: "en",
+    currency: "PHP",
+    hierarchy: &[
+        ("grade 1", "Grade 2", "Elementary"),
+        ("grade 2", "Grade 3", "Elementary"),
+        ("grade 3", "Grade 4", "Elementary"),
+        ("grade 4", "Grade 5", "Elementary"),
+        ("grade 5", "Grade 6", "Elementary"),
+        ("grade 6", "Grade 7", "Elementary"),
+        ("grade 7", "Grade 8", "Junior High"),
+        ("grade 8", "Grade 9", "Junior High"),
+        ("grade 9", "Grade 10", "Junior High"),
+        ("grade 10", "Grade 11", "Senior High"),
+        ("grade 11", "Grade 12", "Senior High"),
+        ("grade 12", "", "Senior High"),
+    ],
+};
+
+// -- Turquie --
+static SYSTEM_TURKEY: SchoolSystem = SchoolSystem {
+    code: "tr",
+    name: "Türkiye",
+    language: "tr",
+    currency: "TRY",
+    hierarchy: &[
+        ("1. sinif", "2. Sınıf", "İlkokul"),
+        ("1. sınıf", "2. Sınıf", "İlkokul"),
+        ("2. sinif", "3. Sınıf", "İlkokul"),
+        ("2. sınıf", "3. Sınıf", "İlkokul"),
+        ("3. sinif", "4. Sınıf", "İlkokul"),
+        ("3. sınıf", "4. Sınıf", "İlkokul"),
+        ("4. sinif", "5. Sınıf", "İlkokul"),
+        ("4. sınıf", "5. Sınıf", "İlkokul"),
+        ("5. sinif", "6. Sınıf", "Ortaokul"),
+        ("5. sınıf", "6. Sınıf", "Ortaokul"),
+        ("6. sinif", "7. Sınıf", "Ortaokul"),
+        ("6. sınıf", "7. Sınıf", "Ortaokul"),
+        ("7. sinif", "8. Sınıf", "Ortaokul"),
+        ("7. sınıf", "8. Sınıf", "Ortaokul"),
+        ("8. sinif", "9. Sınıf", "Ortaokul"),
+        ("8. sınıf", "9. Sınıf", "Ortaokul"),
+        ("9. sinif", "10. Sınıf", "Lise"),
+        ("9. sınıf", "10. Sınıf", "Lise"),
+        ("10. sinif", "11. Sınıf", "Lise"),
+        ("10. sınıf", "11. Sınıf", "Lise"),
+        ("11. sinif", "12. Sınıf", "Lise"),
+        ("11. sınıf", "12. Sınıf", "Lise"),
+        ("12. sinif", "", "Lise"),
+        ("12. sınıf", "", "Lise"),
+    ],
+};
+
+// -- Pays du Golfe / Monde arabe (EAU, Arabie Saoudite, Qatar, Koweït, Bahreïn, Oman, Jordanie, Liban) --
+static SYSTEM_ARAB_GULF: SchoolSystem = SchoolSystem {
+    code: "ae",
+    name: "Gulf / Arab World (UAE, Saudi, etc.)",
+    language: "ar",
+    currency: "AED",
+    hierarchy: &[
+        ("grade 1", "Grade 2", "Primary"),
+        ("grade 2", "Grade 3", "Primary"),
+        ("grade 3", "Grade 4", "Primary"),
+        ("grade 4", "Grade 5", "Primary"),
+        ("grade 5", "Grade 6", "Primary"),
+        ("grade 6", "Grade 7", "Intermediate"),
+        ("grade 7", "Grade 8", "Intermediate"),
+        ("grade 8", "Grade 9", "Intermediate"),
+        ("grade 9", "Grade 10", "Secondary"),
+        ("grade 10", "Grade 11", "Secondary"),
+        ("grade 11", "Grade 12", "Secondary"),
+        ("grade 12", "", "Secondary"),
+    ],
+};
+
 // ============================================================================
 // DÉTECTION PAYS PAR GPS (bounding boxes simplifiées)
 // ============================================================================
 
 /// Détecte le code pays à partir de coordonnées GPS (lat, lng).
-/// Utilise des bounding boxes simplifiées pour les pays africains.
+/// Couverture mondiale : Afrique, Europe, Amériques, Asie, Moyen-Orient, Océanie.
 /// Retourne "cm" par défaut si aucune correspondance.
 pub fn detect_country_from_gps(lat: f64, lng: f64) -> &'static str {
-    // Bounding boxes approximatives (lat_min, lat_max, lng_min, lng_max)
+    // Bounding boxes approximatives (code, lat_min, lat_max, lng_min, lng_max)
+    // Ordre: les plus petits pays d'abord pour éviter qu'un grand pays englobe un petit
     let countries: &[(&str, f64, f64, f64, f64)] = &[
+        // ── Afrique ──
         ("cm", 1.65, 13.10, 8.40, 16.20),     // Cameroun
         ("ng", 4.20, 13.90, 2.67, 14.68),     // Nigeria
         ("sn", 12.30, 16.70, -17.55, -11.35), // Sénégal
@@ -306,6 +847,63 @@ pub fn detect_country_from_gps(lat: f64, lng: f64) -> &'static str {
         ("rw", -2.84, -1.05, 28.86, 30.90),   // Rwanda
         ("td", 7.44, 23.45, 13.47, 24.00),    // Tchad
         ("cf", 2.22, 11.00, 14.42, 27.46),    // Centrafrique
+        ("za", -34.84, -22.13, 16.45, 32.89), // Afrique du Sud
+        ("et", 3.40, 14.89, 32.99, 48.00),    // Éthiopie
+        ("ma", 27.66, 35.93, -13.17, -1.00),  // Maroc
+        ("tn", 30.23, 37.35, 7.52, 11.60),    // Tunisie
+        ("dz", 18.97, 37.09, -8.67, 12.00),   // Algérie
+        ("eg", 22.00, 31.67, 24.70, 36.90),   // Égypte
+        ("mg", -25.61, -11.95, 43.18, 50.48), // Madagascar
+        ("mz", -26.87, -10.47, 30.21, 40.84), // Mozambique
+        ("ao", -18.04, -4.38, 11.64, 24.08),  // Angola
+        ("zm", -18.08, -8.22, 21.99, 33.71),  // Zambie
+        ("zw", -22.42, -15.61, 25.24, 33.07), // Zimbabwe
+        // ── Europe ──
+        ("fr", 41.33, 51.12, -5.14, 9.56),  // France
+        ("gb", 49.90, 60.85, -8.62, 1.77),  // Royaume-Uni
+        ("de", 47.27, 55.06, 5.87, 15.04),  // Allemagne
+        ("es", 35.95, 43.79, -9.30, 4.33),  // Espagne
+        ("it", 36.65, 47.09, 6.63, 18.52),  // Italie
+        ("pt", 36.96, 42.15, -9.50, -6.19), // Portugal
+        ("be", 49.50, 51.50, 2.55, 6.40),   // Belgique
+        ("ch", 45.82, 47.81, 5.96, 10.49),  // Suisse
+        ("nl", 50.75, 53.47, 3.36, 7.21),   // Pays-Bas
+        ("at", 46.37, 49.02, 9.53, 17.16),  // Autriche
+        ("pl", 49.00, 54.84, 14.12, 24.15), // Pologne
+        ("ro", 43.62, 48.27, 20.26, 29.69), // Roumanie
+        ("se", 55.34, 69.06, 11.11, 24.17), // Suède
+        // ── Amériques ──
+        ("us", 24.52, 49.38, -124.77, -66.95), // USA (48 états)
+        ("ca", 41.68, 83.11, -141.00, -52.62), // Canada
+        ("mx", 14.53, 32.72, -118.40, -86.71), // Mexique
+        ("br", -33.75, 5.27, -73.99, -34.79),  // Brésil
+        ("co", -4.23, 12.46, -79.00, -66.87),  // Colombie
+        ("ar", -55.06, -21.78, -73.58, -53.64), // Argentine
+        ("pe", -18.35, -0.04, -81.33, -68.65), // Pérou
+        ("cl", -55.98, -17.50, -75.64, -66.96), // Chili
+        // ── Asie ──
+        ("in", 6.75, 35.50, 68.16, 97.40),    // Inde
+        ("cn", 18.15, 53.56, 73.50, 134.77),  // Chine
+        ("jp", 24.25, 45.52, 122.93, 153.99), // Japon
+        ("kr", 33.11, 38.62, 124.60, 131.87), // Corée du Sud
+        ("id", -11.00, 6.08, 95.01, 141.02),  // Indonésie
+        ("ph", 4.59, 21.12, 116.95, 126.60),  // Philippines
+        ("vn", 8.56, 23.39, 102.14, 109.46),  // Vietnam
+        ("th", 5.61, 20.46, 97.35, 105.64),   // Thaïlande
+        ("my", 0.85, 7.36, 99.64, 119.27),    // Malaisie
+        ("bd", 20.67, 26.63, 88.01, 92.67),   // Bangladesh
+        ("pk", 23.69, 37.08, 60.87, 77.84),   // Pakistan
+        // ── Moyen-Orient ──
+        ("tr", 35.82, 42.11, 25.66, 44.83), // Turquie
+        ("ae", 22.63, 26.08, 51.50, 56.38), // EAU
+        ("sa", 16.38, 32.15, 34.57, 55.67), // Arabie Saoudite
+        ("iq", 29.06, 37.38, 38.79, 48.57), // Irak
+        ("ir", 25.06, 39.78, 44.05, 63.32), // Iran
+        ("lb", 33.05, 34.69, 35.10, 36.62), // Liban
+        ("jo", 29.18, 33.38, 34.96, 39.30), // Jordanie
+        // ── Océanie ──
+        ("au", -43.64, -10.06, 113.16, 153.64), // Australie
+        ("nz", -47.29, -34.39, 166.43, 178.57), // Nouvelle-Zélande
     ];
     for &(code, lat_min, lat_max, lng_min, lng_max) in countries {
         if lat >= lat_min && lat <= lat_max && lng >= lng_min && lng <= lng_max {
@@ -316,18 +914,49 @@ pub fn detect_country_from_gps(lat: f64, lng: f64) -> &'static str {
 }
 
 /// Retourne le système scolaire approprié pour un code pays.
-/// Gère les regroupements (ex: Sénégal, Côte d'Ivoire → même système francophone).
+/// Couverture mondiale avec regroupements par système similaire.
 pub fn get_school_system_for_country(country_code: &str) -> &'static SchoolSystem {
     match country_code {
-        "cm" => &SYSTEM_CAMEROUN_FR, // Défaut francophone, l'IA affinera si anglophone
+        // Afrique
+        "cm" => &SYSTEM_CAMEROUN_FR,
         "ng" => &SYSTEM_NIGERIA,
         "gh" => &SYSTEM_GHANA,
         "ke" | "tz" | "ug" | "rw" => &SYSTEM_KENYA,
         "cd" => &SYSTEM_RDC,
+        "za" | "zw" | "zm" | "mz" | "ao" => &SYSTEM_SOUTH_AFRICA,
+        "et" => &SYSTEM_ETHIOPIA,
+        "eg" => &SYSTEM_EGYPT,
+        "ma" | "tn" | "dz" => &SYSTEM_NORTH_AFRICA_FR,
+        "mg" => &SYSTEM_FRANCOPHONE_WEST, // Madagascar système francophone
         "sn" | "ci" | "ga" | "cg" | "tg" | "bj" | "bf" | "ml" | "ne" | "gn" | "td" | "cf" => {
             &SYSTEM_FRANCOPHONE_WEST
         }
-        _ => &SYSTEM_CAMEROUN_FR, // Fallback global
+        // Europe
+        "fr" | "be" | "ch" | "lu" | "mc" => &SYSTEM_FRANCE,
+        "gb" | "ie" | "au" | "nz" => &SYSTEM_UK, // Commonwealth
+        "de" | "at" => &SYSTEM_GERMANY,
+        "es" | "co" | "ar" | "pe" | "cl" | "ve" | "ec" | "bo" | "py" | "uy" | "cr" | "pa"
+        | "gt" | "hn" | "sv" | "ni" | "cu" | "do" | "pr" => &SYSTEM_SPAIN,
+        "it" | "pt" | "ro" | "nl" | "se" | "pl" => &SYSTEM_FRANCE, // Systèmes similaires au français
+        // Amériques
+        "us" | "ca" => &SYSTEM_USA,
+        "br" => &SYSTEM_BRAZIL,
+        "mx" => &SYSTEM_MEXICO,
+        // Asie
+        "in" | "bd" | "pk" | "lk" | "np" => &SYSTEM_INDIA,
+        "cn" | "hk" | "tw" => &SYSTEM_CHINA,
+        "jp" => &SYSTEM_JAPAN,
+        "id" => &SYSTEM_INDONESIA,
+        "ph" => &SYSTEM_PHILIPPINES,
+        "kr" | "vn" | "th" | "my" | "mm" | "kh" | "la" => &SYSTEM_USA, // Beaucoup utilisent Grade 1-12
+        // Moyen-Orient
+        "tr" => &SYSTEM_TURKEY,
+        "ae" | "sa" | "qa" | "kw" | "bh" | "om" | "iq" | "jo" | "lb" | "sy" | "ps" => {
+            &SYSTEM_ARAB_GULF
+        }
+        "ir" => &SYSTEM_ARAB_GULF, // Structure similaire Grade 1-12
+        // Fallback
+        _ => &SYSTEM_USA, // Grade 1-12 est le plus universel comme fallback
     }
 }
 

@@ -43,7 +43,6 @@ import { CacheManager, createCacheKey } from '../utils/cache';
 import { debounce } from '../utils/debounce';
 import { hapticPress, hapticSuccess } from '../utils/hapticFeedback';
 import { logger } from '../utils/logger';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // Types et interfaces (extraits du fichier original)
 interface CombinationSuggestion {
@@ -240,7 +239,6 @@ const convertFileToBase64 = async (uri: string): Promise<string> => {
 
 const ResultatBesoinScreen: React.FC = () => {
     const navigation = useNavigation();
-    const { t } = useLanguageSafe();
     const route = useRoute();
     const { location } = useLocation();
     const { user } = useAuth();
@@ -670,7 +668,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const requestImagePermissions = useCallback(async (): Promise<boolean> => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission requise', 'Nous avons besoin de l\t('resultatBesoinScreen.refactored.autorisationPourAccederAVosImages'));
+            Alert.alert('Permission requise', 'Nous avons besoin de l\'autorisation pour accéder à vos images.');
             return false;
         }
         return true;
@@ -679,7 +677,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const takeSearchPhoto = useCallback(async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission requise', t('resultatBesoinScreen.refactored.laCameraEstNecessairePourPrendre'));
+            Alert.alert('Permission requise', 'La caméra est nécessaire pour prendre une photo.');
             return;
         }
         try {
@@ -718,8 +716,8 @@ const ResultatBesoinScreen: React.FC = () => {
                 }
             }
         } catch (error) {
-            logger.error(t('resultatBesoinScreen.refactored.resultatbesoinscreenErreurSelectionImages'), error);
-            Alert.alert('Erreur', t('resultatBesoinScreen.refactored.impossibleDeSelectionnerDesImages'));
+            logger.error('[ResultatBesoinScreen] Erreur sélection images:', error);
+            Alert.alert('Erreur', 'Impossible de sélectionner des images.');
         }
     }, [requestImagePermissions]);
 
@@ -736,8 +734,8 @@ const ResultatBesoinScreen: React.FC = () => {
                 setSearchDocuments((prev) => [{ name: asset.name ?? 'Document', base64 }, ...prev].slice(0, 5));
             }
         } catch (error) {
-            logger.error(t('resultatBesoinScreen.refactored.resultatbesoinscreenErreurSelectionDocument'), error);
-            Alert.alert('Erreur', t('resultatBesoinScreen.refactored.impossibleDeSelectionnerLeDocument'));
+            logger.error('[ResultatBesoinScreen] Erreur sélection document:', error);
+            Alert.alert('Erreur', 'Impossible de sélectionner le document.');
         }
     }, []);
 
@@ -838,7 +836,7 @@ const ResultatBesoinScreen: React.FC = () => {
             const productName = product.nom || 'Ce produit';
             const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
             const shareUrl = `${SHARE_BASE_URL}/product/${product.product_index ?? 0}?serviceId=${product.service_id}`;
-            const shareMessage = t('resultatBesoinScreen.refactored.decouvrezSurYukpomnangnn', { productName: productName, shareUrl: shareUrl });
+            const shareMessage = `\uD83C\uDF1F Découvrez "${productName}" sur Yukpomnang\n\n${shareUrl}`;
             const result = await Share.share({
                 message: shareMessage,
                 title: productName,
@@ -1050,7 +1048,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.filtersScroll}
                 >
-                    <Text style={styles.filtersLabel}>{t('resultatBesoinScreen.refactored.filtres')}</Text>
+                    <Text style={styles.filtersLabel}>Filtres :</Text>
                     {filters.map((filter, index) => (
                         <View key={index} style={styles.filterChip}>
                             <Text style={styles.filterText}>{filter}</Text>
@@ -1116,7 +1114,7 @@ const ResultatBesoinScreen: React.FC = () => {
             <Animated.View style={[styles.collapsibleHeader, { transform: [{ translateY: headerTranslate }] }]}>
                 <NavigatorToolbar
                     title="Recherche intelligente"
-                    subtitle={filters.length > 0 ? `Filtres actifs (${filters.length})` : t('resultatBesoinScreen.refactored.resultatsPersonnalises')}
+                    subtitle={filters.length > 0 ? `Filtres actifs (${filters.length})` : 'Résultats personnalisés'}
                     rightSlot={(
                         <TouchableOpacity
                             style={styles.filterButton}

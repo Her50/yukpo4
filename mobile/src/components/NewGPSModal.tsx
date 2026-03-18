@@ -15,7 +15,6 @@ import {
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -32,10 +31,9 @@ const NewGPSModal: React.FC<NewGPSModalProps> = ({
     onClose,
     onSelect,
     currentLocation,
-    title={t('newGPS.selectionnerUneLocalisation')},
+    title = 'Sélectionner une localisation',
 }) => {
-        const { t } = useLanguageSafe();
-const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(
+    const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(
         currentLocation ? { lat: currentLocation.lat, lng: currentLocation.lng } : null
     );
     const [loading, setLoading] = useState(false);
@@ -56,8 +54,8 @@ const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number 
 
             if (status !== 'granted') {
                 Alert.alert(
-                    t('newGPSModal.permissionRefusee'),
-                    t('newGPSModal.nousAvonsBesoinDeVotrePermission')
+                    'Permission refusée',
+                    'Nous avons besoin de votre permission pour accéder à votre position'
                 );
                 setLoading(false);
                 return;
@@ -134,7 +132,7 @@ const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number 
                 });
                 setAddress(searchQuery);
             } else {
-                Alert.alert(t('newGPSModal.aucunResultat'), t('newGPSModal.aucunePositionTrouveePourCetteAdresse'));
+                Alert.alert('Aucun résultat', 'Aucune position trouvée pour cette adresse');
             }
             setLoading(false);
         } catch (error) {
@@ -175,7 +173,7 @@ const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number 
     // Confirmer la sélection
     const handleConfirm = () => {
         if (!selectedCoords) {
-            Alert.alert('Erreur', t('newGPSModal.veuillezSelectionnerUnePositionSurLa'));
+            Alert.alert('Erreur', 'Veuillez sélectionner une position sur la carte');
             return;
         }
 
@@ -209,7 +207,7 @@ const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number 
                         <SafeIcon name="search" size={20} color={modernColors.textSecondary} />
                         <TextInput
                             style={styles.searchInput}
-                            placeholder={t('newGPS.rechercherUneAdresse')}
+                            placeholder="Rechercher une adresse..."
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                             onSubmitEditing={searchAddress}
@@ -220,7 +218,7 @@ const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number 
                         onPress={searchAddress}
                         disabled={loading}
                     >
-                        <Text style={styles.searchButtonText}>{t('newGPS.rechercher')}</Text>
+                        <Text style={styles.searchButtonText}>Rechercher</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -260,7 +258,7 @@ const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number 
                                     latitude: selectedCoords.lat,
                                     longitude: selectedCoords.lng,
                                 }}
-                                title={t('newGPS.positionSelectionnee')}
+                                title="Position sélectionnée"
                                 description={address}
                                 pinColor={modernColors.primary}
                             />
@@ -283,7 +281,7 @@ const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number 
                 {/* Boutons d'action */}
                 <View style={styles.actionsContainer}>
                     <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-                        <Text style={styles.cancelButtonText}>{t('newGPSModal.annuler')}</Text>
+                        <Text style={styles.cancelButtonText}>Annuler</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.confirmButton, !selectedCoords && styles.confirmButtonDisabled]}
@@ -291,7 +289,7 @@ const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number 
                         disabled={!selectedCoords}
                     >
                         <SafeIcon name="check" size={20} color="#FFFFFF" />
-                        <Text style={styles.confirmButtonText}>{t('newGPSModal.confirmer')}</Text>
+                        <Text style={styles.confirmButtonText}>Confirmer</Text>
                     </TouchableOpacity>
                 </View>
             </View>

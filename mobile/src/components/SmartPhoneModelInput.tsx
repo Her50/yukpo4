@@ -11,7 +11,6 @@ import {
 import { apiGet, apiPost } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface SmartPhoneModelInputProps {
     marque: string; // Marque du smartphone (pour suggestions contextuelles)
@@ -28,12 +27,11 @@ const SmartPhoneModelInput: React.FC<SmartPhoneModelInputProps> = ({
     value,
     onChangeText,
     placeholder = 'Ex: iPhone 14 Pro, Galaxy S23',
-    label={t('smartPhoneModelInput.modele')},
+    label = 'Modèle',
     required = false,
     autoLoadLastUsed = true,
 }) => {
-        const { t } = useLanguageSafe();
-const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
     const [allModels, setAllModels] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
@@ -151,7 +149,7 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
                         brand: marque,
                         model: normalized
                     });
-                    console.log(`📱 [SmartPhoneModelInput] Modèle sauvegardé en DB: ${normalized}`);
+                    console.log(`\uD83D\uDCF1 [SmartPhoneModelInput] Modèle sauvegardé en DB: ${normalized}`);
                 } catch (dbError) {
                     console.warn('[SmartPhoneModelInput] Erreur sauvegarde DB:', dbError);
                 }
@@ -259,7 +257,7 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
                     }}
                 >
                     <SafeIcon name="clock" size={14} color="#6366F1" />
-                    <Text style={styles.lastUsedText}>{t('smartPhoneModelInput.lastValue')}: {lastUsedValue}</Text>
+                    <Text style={styles.lastUsedText}>Dernière valeur : {lastUsedValue}</Text>
                 </TouchableOpacity>
             )}
 
@@ -301,7 +299,7 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
             {!marque && (
                 <View style={styles.hintBox}>
                     <SafeIcon name="info" size={14} color="#6366F1" />
-                    <Text style={styles.hintText}>{t('smartPhoneModelInput.selectionnezDabordUneMarque')}</Text>
+                    <Text style={styles.hintText}>Sélectionnez d'abord une marque</Text>
                 </View>
             )}
         </View>

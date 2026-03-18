@@ -7,7 +7,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 export default function App() {
-  console.log('[App.MINIMAL] 🚀 Test minimal - Démarrage');
+  console.log('[App.MINIMAL] \uD83D\uDE80 Test minimal - Démarrage');
   
   return (
     <View style={styles.container}>

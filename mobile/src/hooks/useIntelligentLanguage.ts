@@ -7,8 +7,11 @@
 import * as Localization from 'expo-localization';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { apiPost } from '../services/api';
 import { languageDetectionService } from '../services/languageDetectionService';
 import SafeStorage from '../utils/safeStorage';
+
+const translationApiCache = new Map<string, string>();
 
 const LANGUAGE_STORAGE_KEY = 'intelligent_language_preference';
 const TRANSLATION_CACHE_KEY = 'translation_cache';
@@ -177,14 +180,26 @@ export const useIntelligentLanguage = () => {
         }
 
         try {
-            // Pour l'instant, retourner le texte tel quel
-            // TODO: Intégrer avec un service de traduction (Google Translate API, DeepL, etc.)
-            // const translated = await translationService.translate(text, 'fr', currentLanguage);
+            const apiCacheKey = `${text}||fr||${currentLanguage}`;
+            if (translationApiCache.has(apiCacheKey)) {
+                const cached = translationApiCache.get(apiCacheKey)!;
+                if (!cacheRef.current[cacheKey]) {
+                    cacheRef.current[cacheKey] = {};
+                }
+                cacheRef.current[cacheKey][currentLanguage] = cached;
+                return cached;
+            }
 
-            // Simuler une traduction (à remplacer par un vrai service)
-            const translated = text; // Placeholder
+            const response = await apiPost<{ translated: string }>('/api/multilingue/translate', {
+                text,
+                source_lang: 'fr',
+                target_lang: currentLanguage,
+            });
 
-            // Mettre en cache
+            const translated = response.data?.translated ?? text;
+
+            translationApiCache.set(apiCacheKey, translated);
+
             if (!cacheRef.current[cacheKey]) {
                 cacheRef.current[cacheKey] = {};
             }

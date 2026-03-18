@@ -35,25 +35,25 @@ export interface VehicleOption {
 
 // ✅ CONSTANTE PARTAGÉE : Options de transport disponibles pour les coursiers et les commandes
 export const VEHICLE_TRANSPORT_OPTIONS: VehicleOption[] = [
-    { value: 'bike', label: 'Vélo cargo', icon: '🚲', requiresLicense: false },
-    { value: 'motorcycle', label: 'Moto', icon: '🏍️', requiresLicense: true },
-    { value: 'tricycle', label: 'Tricycle', icon: '🛺', requiresLicense: true },
-    { value: 'car', label: 'Voiture', icon: '🚗', requiresLicense: true },
-    { value: 'pickup', label: 'Pick-up', icon: '🛻', requiresLicense: true },
-    { value: 'van', label: 'Fourgonnette', icon: '🚐', requiresLicense: true },
-    { value: 'truck', label: 'Camion', icon: '🚚', requiresLicense: true },
-    { value: 'walking', label: 'À pied', icon: '🚶', requiresLicense: false },
+    { value: 'bike', label: 'Vélo cargo', icon: '\uD83D\uDEB2', requiresLicense: false },
+    { value: 'motorcycle', label: 'Moto', icon: '\uD83C\uDFCD️', requiresLicense: true },
+    { value: 'tricycle', label: 'Tricycle', icon: '\uD83D\uDEFA', requiresLicense: true },
+    { value: 'car', label: 'Voiture', icon: '\uD83D\uDE97', requiresLicense: true },
+    { value: 'pickup', label: 'Pick-up', icon: '\uD83D\uDEFB', requiresLicense: true },
+    { value: 'van', label: 'Fourgonnette', icon: '\uD83D\uDE90', requiresLicense: true },
+    { value: 'truck', label: 'Camion', icon: '\uD83D\uDE9A', requiresLicense: true },
+    { value: 'walking', label: 'À pied', icon: '\uD83D\uDEB6', requiresLicense: false },
 ];
 
 // Format pour les Alert.alert (avec emoji dans le label)
 export const VEHICLE_TRANSPORT_OPTIONS_FOR_ALERT: Array<{ value: VehicleType; label: string }> = [
-    { value: 'bike', label: '🚲 Vélo cargo' },
-    { value: 'motorcycle', label: '🏍️ Moto' },
-    { value: 'tricycle', label: '🛺 Tricycle' },
-    { value: 'car', label: '🚗 Voiture' },
-    { value: 'pickup', label: '🛻 Pick-up' },
-    { value: 'van', label: '🚐 Fourgonnette' },
-    { value: 'truck', label: '🚚 Camion' },
-    { value: 'walking', label: '🚶 Piéton' },
+    { value: 'bike', label: '\uD83D\uDEB2 Vélo cargo' },
+    { value: 'motorcycle', label: '\uD83C\uDFCD️ Moto' },
+    { value: 'tricycle', label: '\uD83D\uDEFA Tricycle' },
+    { value: 'car', label: '\uD83D\uDE97 Voiture' },
+    { value: 'pickup', label: '\uD83D\uDEFB Pick-up' },
+    { value: 'van', label: '\uD83D\uDE90 Fourgonnette' },
+    { value: 'truck', label: '\uD83D\uDE9A Camion' },
+    { value: 'walking', label: '\uD83D\uDEB6 Piéton' },
 ];
 

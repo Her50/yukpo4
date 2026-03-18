@@ -13,7 +13,6 @@ import {
     View,
 } from 'react-native';
 import { apiGet } from '../../services/api';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Fourniture {
     id: number;
@@ -28,7 +27,6 @@ interface Fourniture {
 
 const FournituresScolairesScreen: React.FC = () => {
     const navigation = useNavigation() as any;
-    const { t } = useLanguageSafe();
     const route = useRoute();
     const etablissementId = (route.params as any)?.etablissement_id;
 
@@ -82,10 +80,10 @@ const FournituresScolairesScreen: React.FC = () => {
     const renderFourniture = ({ item }: { item: Fourniture }) => (
         <View style={styles.card}>
             <Text style={styles.cardTitle}>
-                {item.nom_etablissement || t('fournituresScolairesScreen.etablissement', { item_etablissement_id: item.etablissement_id })}
+                {item.nom_etablissement || `Établissement #${item.etablissement_id}`}
             </Text>
-            <Text style={styles.cardSubtitle}>📚 Niveau: {item.niveau}</Text>
-            <Text style={styles.cardSubtitle}>📅 Année: {item.annee_scolaire}</Text>
+            <Text style={styles.cardSubtitle}>\uD83D\uDCDA Niveau: {item.niveau}</Text>
+            <Text style={styles.cardSubtitle}>\uD83D\uDCC5 Année: {item.annee_scolaire}</Text>
             {item.liste_fournitures && typeof item.liste_fournitures === 'object' && (
                 <Text style={styles.cardSubtitle}>
                     {Object.keys(item.liste_fournitures).length} catégorie(s)
@@ -96,11 +94,11 @@ const FournituresScolairesScreen: React.FC = () => {
                     style={styles.downloadButton}
                     onPress={() => handleDownload(item.url_liste!)}
                 >
-                    <Text style={styles.downloadButtonText}>{t('fournituresScolaires.telechargerPdf')}</Text>
+                    <Text style={styles.downloadButtonText}>\uD83D\uDCE5 Télécharger PDF</Text>
                 </TouchableOpacity>
             ) : (
                 <View style={styles.infoBox}>
-                    <Text style={styles.infoText}>{t('fournituresScolaires.listeDisponibleEnLigne')}</Text>
+                    <Text style={styles.infoText}>Liste disponible en ligne</Text>
                 </View>
             )}
             {item.etablissement_id && (
@@ -108,7 +106,7 @@ const FournituresScolairesScreen: React.FC = () => {
                     style={styles.linkButton}
                     onPress={() => navigation.navigate('EtablissementDetails', { id: item.etablissement_id })}
                 >
-                    <Text style={styles.linkButtonText}>{t('fournituresScolaires.voirLetablissement')}</Text>
+                    <Text style={styles.linkButtonText}>Voir l'établissement</Text>
                 </TouchableOpacity>
             )}
         </View>
@@ -120,13 +118,13 @@ const FournituresScolairesScreen: React.FC = () => {
             <View style={styles.filtersContainer}>
                 <TextInput
                     style={styles.input}
-                    placeholder={t('fournituresScolaires.niveauEx6eme')}
+                    placeholder="Niveau (ex: 6ème)"
                     value={niveau}
                     onChangeText={setNiveau}
                 />
                 <TextInput
                     style={styles.input}
-                    placeholder={t('fournituresScolaires.anneeEx20242025')}
+                    placeholder="Année (ex: 2024-2025)"
                     value={annee}
                     onChangeText={setAnnee}
                 />
@@ -137,7 +135,7 @@ const FournituresScolairesScreen: React.FC = () => {
                         searchFournitures();
                     }}
                 >
-                    <Text style={styles.searchButtonText}>{t('fournituresScolaires.rechercher')}</Text>
+                    <Text style={styles.searchButtonText}>Rechercher</Text>
                 </TouchableOpacity>
             </View>
 
@@ -145,12 +143,12 @@ const FournituresScolairesScreen: React.FC = () => {
             {loading ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color="#3B82F6" />
-                    <Text style={styles.loadingText}>{t('fournituresScolaires.chargement')}</Text>
+                    <Text style={styles.loadingText}>Chargement...</Text>
                 </View>
             ) : fournitures.length > 0 ? (
                 <>
                     <Text style={styles.resultsCount}>
-                        {total} liste{total > 1 ? 's' : 't('fournituresScolairesScreen.trouveetotal1')s' : ''}
+                        {total} liste{total > 1 ? 's' : ''} trouvée{total > 1 ? 's' : ''}
                     </Text>
                     <FlatList
                         data={fournitures}
@@ -167,7 +165,7 @@ const FournituresScolairesScreen: React.FC = () => {
                 </>
             ) : (
                 <View style={styles.centerContainer}>
-                    <Text style={styles.emptyText}>{t('fournituresScolaires.aucuneListeTrouvee')}</Text>
+                    <Text style={styles.emptyText}>Aucune liste trouvée</Text>
                 </View>
             )}
         </View>

@@ -5,7 +5,6 @@ import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeCard, NativeInput } from './SafeNativeDesign';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export interface CustomAudience {
     id: string;
@@ -29,8 +28,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
     onAudiencesChange,
     userId,
 }) => {
-        const { t } = useLanguageSafe();
-const [audiences, setAudiences] = useState<CustomAudience[]>([]);
+    const [audiences, setAudiences] = useState<CustomAudience[]>([]);
     const [loading, setLoading] = useState(false);
     const [expanded, setExpanded] = useState(false);
     const [showCreateForm, setShowCreateForm] = useState(false);
@@ -80,13 +78,13 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
             });
 
             if (response.success) {
-                Alert.alert(t('customAudienceManager.succes'), t('customAudienceManager.audienceLookalikeCreeeAvecSucces'));
+                Alert.alert('Succès', 'Audience lookalike créée avec succès');
                 setShowCreateForm(false);
                 setCreateType(null);
                 setNewAudienceName('');
                 loadAudiences();
             } else {
-                Alert.alert('Erreur', response.error || t('customAudienceManager.impossibleDeCreerL')audience');
+                Alert.alert('Erreur', response.error || 'Impossible de créer l\'audience');
             }
         } catch (error) {
             console.error('[CustomAudienceManager] Erreur création lookalike:', error);
@@ -113,7 +111,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
                 if ((result as any).type === 'success') {
                     // Lire le fichier CSV et extraire les données
                     // TODO: Implémenter la lecture du CSV
-                    Alert.alert('Info', t('customAudienceManager.importCsvAImplementer'));
+                    Alert.alert('Info', 'Import CSV à implémenter');
                 }
             } catch (error) {
                 console.error('[CustomAudienceManager] Erreur import CSV:', error);
@@ -122,7 +120,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
         }
 
         if (!customData.trim()) {
-            Alert.alert('Erreur', t('customAudienceManager.veuillezEntrerDesDonnees'));
+            Alert.alert('Erreur', 'Veuillez entrer des données');
             return;
         }
 
@@ -133,7 +131,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
             .filter(item => item.length > 0);
 
         if (items.length === 0) {
-            Alert.alert('Erreur', t('customAudienceManager.aucuneDonneeValideTrouvee'));
+            Alert.alert('Erreur', 'Aucune donnée valide trouvée');
             return;
         }
 
@@ -147,14 +145,14 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
             });
 
             if (response.success) {
-                Alert.alert(t('customAudienceManager.succes'), t('customAudienceManager.audienceCreeeAvecContacts', { items_length: items.length }));
+                Alert.alert('Succès', `Audience créée avec ${items.length} contacts`);
                 setShowCreateForm(false);
                 setCreateType(null);
                 setNewAudienceName('');
                 setCustomData('');
                 loadAudiences();
             } else {
-                Alert.alert('Erreur', response.error || t('customAudienceManager.impossibleDeCreerL')audience');
+                Alert.alert('Erreur', response.error || 'Impossible de créer l\'audience');
             }
         } catch (error) {
             console.error('[CustomAudienceManager] Erreur création custom:', error);
@@ -191,7 +189,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
         <NativeCard style={styles.container}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.title}>{t('customAudienceManager.audiencesPersonnalisees')}</Text>
+                    <Text style={styles.title}>\uD83D\uDC65 Audiences Personnalisées</Text>
                     <Text style={styles.subtitle}>
                         Ciblez des utilisateurs similaires ou importez vos propres listes
                     </Text>
@@ -208,7 +206,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
                     onPress={() => setShowCreateForm(true)}
                 >
                     <SafeIcon name="plus" size={18} color="#fff" />
-                    <Text style={styles.createButtonText}>{t('customAudienceManager.creerUneAudience')}</Text>
+                    <Text style={styles.createButtonText}>Créer une audience</Text>
                 </TouchableOpacity>
             )}
 
@@ -216,7 +214,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
             {showCreateForm && (
                 <View style={styles.createForm}>
                     <View style={styles.formHeader}>
-                        <Text style={styles.formTitle}>{t('customAudienceManager.creerUneAudience')}</Text>
+                        <Text style={styles.formTitle}>Créer une audience</Text>
                         <TouchableOpacity onPress={() => {
                             setShowCreateForm(false);
                             setCreateType(null);
@@ -253,7 +251,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
                     ) : createType === 'lookalike' ? (
                         <View style={styles.formContent}>
                             <NativeInput
-                                placeholder={t('customAudienceManager.nomDeL')}audience"
+                                placeholder="Nom de l'audience"
                                 value={newAudienceName}
                                 onChangeText={setNewAudienceName}
                                 style={styles.input}
@@ -265,7 +263,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
                                 onChangeText={setLookalikeSource}
                                 style={styles.input}
                             />
-                            <Text style={styles.label}>{t('customAudienceManager.similarite110')}</Text>
+                            <Text style={styles.label}>Similarité (1-10)</Text>
                             <View style={styles.similarityRow}>
                                 {[1, 3, 5, 7, 10].map((val) => (
                                     <TouchableOpacity
@@ -296,7 +294,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
                                         setNewAudienceName('');
                                     }}
                                 >
-                                    <Text style={styles.cancelButtonText}>{t('customAudienceManager.annuler')}</Text>
+                                    <Text style={styles.cancelButtonText}>Annuler</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={styles.submitButton}
@@ -306,7 +304,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
                                     {loading ? (
                                         <ActivityIndicator size="small" color="#fff" />
                                     ) : (
-                                        <Text style={styles.submitButtonText}>{t('customAudienceManager.creer')}</Text>
+                                        <Text style={styles.submitButtonText}>Créer</Text>
                                     )}
                                 </TouchableOpacity>
                             </View>
@@ -314,7 +312,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
                     ) : (
                         <View style={styles.formContent}>
                             <NativeInput
-                                placeholder={t('customAudienceManager.nomDeL')}audience"
+                                placeholder="Nom de l'audience"
                                 value={newAudienceName}
                                 onChangeText={setNewAudienceName}
                                 style={styles.input}
@@ -334,7 +332,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
                                             styles.sourceText,
                                             customSource === source && styles.sourceTextActive,
                                         ]}>
-                                            {source === 'email' ? '📧 Emails' : source === 'phone' ? t('customAudienceManager.telephones') : '📄 CSV'}
+                                            {source === 'email' ? '\uD83D\uDCE7 Emails' : source === 'phone' ? '\uD83D\uDCF1 Téléphones' : '\uD83D\uDCC4 CSV'}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
@@ -359,7 +357,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
                                                 copyToCacheDirectory: true,
                                             });
                                             if ((result as any).type === 'success') {
-                                                Alert.alert('Info', t('customAudienceManager.fichierSelectionne', { _result_as_any__name: (result as any).name }));
+                                                Alert.alert('Info', `Fichier sélectionné: ${(result as any).name}`);
                                                 // TODO: Lire et parser le CSV
                                             }
                                         } catch (error) {
@@ -380,7 +378,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
                                         setCustomData('');
                                     }}
                                 >
-                                    <Text style={styles.cancelButtonText}>{t('customAudienceManager.annuler')}</Text>
+                                    <Text style={styles.cancelButtonText}>Annuler</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={styles.submitButton}
@@ -390,7 +388,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
                                     {loading ? (
                                         <ActivityIndicator size="small" color="#fff" />
                                     ) : (
-                                        <Text style={styles.submitButtonText}>{t('customAudienceManager.creer')}</Text>
+                                        <Text style={styles.submitButtonText}>Créer</Text>
                                     )}
                                 </TouchableOpacity>
                             </View>
@@ -409,7 +407,7 @@ const [audiences, setAudiences] = useState<CustomAudience[]>([]);
                     ) : audiences.length === 0 ? (
                         <View style={styles.emptyState}>
                             <SafeIcon name="users" size={48} color={modernColors.border} />
-                            <Text style={styles.emptyText}>{t('customAudienceManager.aucuneAudience')}</Text>
+                            <Text style={styles.emptyText}>Aucune audience</Text>
                             <Text style={styles.emptySubtext}>
                                 Créez votre première audience pour cibler précisément vos publicités
                             </Text>

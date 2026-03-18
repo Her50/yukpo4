@@ -25,12 +25,12 @@ export interface SystemeEducatif {
 }
 
 // ============================================================================
-// 🇨🇲 SYSTÈME ÉDUCATIF CAMEROUN (Francophone + Anglophone)
+// \uD83C\uDDE8\uD83C\uDDF2 SYSTÈME ÉDUCATIF CAMEROUN (Francophone + Anglophone)
 // ============================================================================
 export const SYSTEME_CAMEROUN: SystemeEducatif = {
     codePays: 'CM',
     nomPays: 'Cameroun',
-    emoji: '🇨🇲',
+    emoji: '\uD83C\uDDE8\uD83C\uDDF2',
     niveaux: [
         // Maternelle
         { code: 'MAT_PS', nom: 'Petite Section', age: '3-4 ans', type: 'maternelle' },
@@ -94,12 +94,12 @@ export const SYSTEME_CAMEROUN: SystemeEducatif = {
 };
 
 // ============================================================================
-// 🇨🇩 SYSTÈME ÉDUCATIF RDC
+// \uD83C\uDDE8\uD83C\uDDE9 SYSTÈME ÉDUCATIF RDC
 // ============================================================================
 export const SYSTEME_RDC: SystemeEducatif = {
     codePays: 'CD',
     nomPays: 'RDC',
-    emoji: '🇨🇩',
+    emoji: '\uD83C\uDDE8\uD83C\uDDE9',
     niveaux: [
         // Maternelle
         { code: 'MAT_PS', nom: 'Maternelle Petite Section', age: '3-4 ans', type: 'maternelle' },
@@ -142,12 +142,12 @@ export const SYSTEME_RDC: SystemeEducatif = {
 };
 
 // ============================================================================
-// 🇨🇮 SYSTÈME ÉDUCATIF CÔTE D'IVOIRE
+// \uD83C\uDDE8\uD83C\uDDEE SYSTÈME ÉDUCATIF CÔTE D'IVOIRE
 // ============================================================================
 export const SYSTEME_COTE_IVOIRE: SystemeEducatif = {
     codePays: 'CI',
     nomPays: 'Côte d\'Ivoire',
-    emoji: '🇨🇮',
+    emoji: '\uD83C\uDDE8\uD83C\uDDEE',
     niveaux: [
         // Préscolaire
         { code: 'PRE_PS', nom: 'Petite Section', age: '3-4 ans', type: 'maternelle' },
@@ -193,12 +193,12 @@ export const SYSTEME_COTE_IVOIRE: SystemeEducatif = {
 };
 
 // ============================================================================
-// 🇸🇳 SYSTÈME ÉDUCATIF SÉNÉGAL
+// \uD83C\uDDF8\uD83C\uDDF3 SYSTÈME ÉDUCATIF SÉNÉGAL
 // ============================================================================
 export const SYSTEME_SENEGAL: SystemeEducatif = {
     codePays: 'SN',
     nomPays: 'Sénégal',
-    emoji: '🇸🇳',
+    emoji: '\uD83C\uDDF8\uD83C\uDDF3',
     niveaux: [
         // Préscolaire
         { code: 'PRE', nom: 'Préscolaire (3-6 ans)', age: '3-6 ans', type: 'maternelle' },
@@ -240,12 +240,12 @@ export const SYSTEME_SENEGAL: SystemeEducatif = {
 };
 
 // ============================================================================
-// 🇲🇱 SYSTÈME ÉDUCATIF MALI
+// \uD83C\uDDF2\uD83C\uDDF1 SYSTÈME ÉDUCATIF MALI
 // ============================================================================
 export const SYSTEME_MALI: SystemeEducatif = {
     codePays: 'ML',
     nomPays: 'Mali',
-    emoji: '🇲🇱',
+    emoji: '\uD83C\uDDF2\uD83C\uDDF1',
     niveaux: [
         // Préscolaire
         { code: 'PRE', nom: 'Préscolaire', age: '3-6 ans', type: 'maternelle' },
@@ -286,7 +286,7 @@ export const SYSTEME_MALI: SystemeEducatif = {
 export const SYSTEME_GENERIQUE: SystemeEducatif = {
     codePays: 'GEN',
     nomPays: 'Générique',
-    emoji: '🌍',
+    emoji: '\uD83C\uDF0D',
     niveaux: [
         { code: 'MAT', nom: 'Maternelle (3-6 ans)', type: 'maternelle' },
         { code: 'PRI_CP', nom: 'CP', type: 'primaire' },
@@ -384,10 +384,10 @@ export const genererNiveauxScolaires = (codePays: string = 'CM'): string[] => {
 
     // Options globales
     niveaux.push('──────────────────');
-    niveaux.push('📚 Tous niveaux (Maternelle → Terminale)');
-    niveaux.push('🎓 Enseignement supérieur uniquement');
-    niveaux.push('👨‍🎓 Formation adultes / Remise à niveau');
-    niveaux.push('🆕 Autre (préciser)');
+    niveaux.push('\uD83D\uDCDA Tous niveaux (Maternelle → Terminale)');
+    niveaux.push('\uD83C\uDF93 Enseignement supérieur uniquement');
+    niveaux.push('\uD83D\uDC68‍\uD83C\uDF93 Formation adultes / Remise à niveau');
+    niveaux.push('\uD83C\uDD95 Autre (préciser)');
 
     return niveaux;
 };
@@ -415,7 +415,7 @@ export const genererMatieres = (codePays: string = 'CM'): string[] => {
     }
 
     // Matières universelles (tous pays)
-    matieres.push('─── 🌍 MATIÈRES UNIVERSELLES ───');
+    matieres.push('─── \uD83C\uDF0D MATIÈRES UNIVERSELLES ───');
     matieres.push('Informatique / Bureautique');
     matieres.push('Économie / Gestion');
     matieres.push('Comptabilité');
@@ -425,10 +425,10 @@ export const genererMatieres = (codePays: string = 'CM'): string[] => {
 
     // Options spéciales
     matieres.push('──────────────────');
-    matieres.push('📚 Aide aux devoirs (toutes matières)');
-    matieres.push('🎯 Méthodologie & organisation');
-    matieres.push('📝 Préparation examens nationaux');
-    matieres.push('🆕 Autre matière (préciser)');
+    matieres.push('\uD83D\uDCDA Aide aux devoirs (toutes matières)');
+    matieres.push('\uD83C\uDFAF Méthodologie & organisation');
+    matieres.push('\uD83D\uDCDD Préparation examens nationaux');
+    matieres.push('\uD83C\uDD95 Autre matière (préciser)');
 
     return matieres;
 };

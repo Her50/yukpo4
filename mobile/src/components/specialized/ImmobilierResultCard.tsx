@@ -14,7 +14,7 @@ import { RealEstateProperty } from '../../services/immobilierService';
 import { mediaService } from '../../services/mediaService';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -52,9 +52,9 @@ const ImmobilierResultCard: React.FC<ImmobilierResultCardProps> = ({ property, o
     };
 
     const getStatusIcon = (statut: string) => {
-        if (statut.includes('vendre')) return '💰';
-        if (statut.includes('louer')) return '🏠';
-        return '🏡';
+        if (statut.includes('vendre')) return '\uD83D\uDCB0';
+        if (statut.includes('louer')) return '\uD83C\uDFE0';
+        return '\uD83C\uDFE1';
     };
 
     const photos = property.photos || [];
@@ -128,7 +128,7 @@ const ImmobilierResultCard: React.FC<ImmobilierResultCardProps> = ({ property, o
                     </View>
                     {property.is_available_now && (
                         <View style={styles.badge}>
-                            <Text style={styles.badgeText}>🟢 DISPONIBLE</Text>
+                            <Text style={styles.badgeText}>\uD83D\uDFE2 DISPONIBLE</Text>
                         </View>
                     )}
                 </View>

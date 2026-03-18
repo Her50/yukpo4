@@ -1,5 +1,5 @@
 /**
- * 🔧 EXTRACTEUR AUTOMATIQUE DE CONFIGURATION DE FORMULAIRE
+ * \uD83D\uDD27 EXTRACTEUR AUTOMATIQUE DE CONFIGURATION DE FORMULAIRE
  * 
  * Ce système analyse ProductManagerMobile.tsx et extrait automatiquement
  * la structure des formulaires existants pour générer les configurations.
@@ -107,7 +107,7 @@ export function generateBasicFormConfig(category: string): CompleteFormConfig {
             ],
             hints: [
                 {
-                    text: '💰 Consultez les prix du marché pour rester compétitif',
+                    text: '\uD83D\uDCB0 Consultez les prix du marché pour rester compétitif',
                     icon: 'trending-up'
                 }
             ]
@@ -280,16 +280,16 @@ function getCategoryIcon(category: string): string {
 function getCategoryHints(category: string): Array<{ text: string; icon: string }> {
     const hints: Record<string, Array<{ text: string; icon: string }>> = {
         'telephone': [
-            { text: '💡 Téléphones débloqués : +30% de visibilité', icon: 'info' }
+            { text: '\uD83D\uDCA1 Téléphones débloqués : +30% de visibilité', icon: 'info' }
         ],
         'automobile': [
-            { text: '🚗 Véhicule dédouané = vente plus rapide', icon: 'check-circle' }
+            { text: '\uD83D\uDE97 Véhicule dédouané = vente plus rapide', icon: 'check-circle' }
         ],
         'agriculture': [
-            { text: '🌾 Précisez la variété pour les grossistes', icon: 'trending-up' }
+            { text: '\uD83C\uDF3E Précisez la variété pour les grossistes', icon: 'trending-up' }
         ],
         'immobilier': [
-            { text: '📍 GPS = +60% de visibilité', icon: 'map-pin' }
+            { text: '\uD83D\uDCCD GPS = +60% de visibilité', icon: 'map-pin' }
         ]
     };
 

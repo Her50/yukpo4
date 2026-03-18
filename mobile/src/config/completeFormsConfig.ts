@@ -1,5 +1,5 @@
 /**
- * 🎯 CONFIGURATION COMPLÈTE DES 60+ FORMULAIRES
+ * \uD83C\uDFAF CONFIGURATION COMPLÈTE DES 60+ FORMULAIRES
  * 
  * Ce fichier capture TOUTE la complexité de chaque formulaire :
  * - Sections organisées
@@ -100,7 +100,7 @@ export interface CompleteFormConfig {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 📱 TÉLÉPHONE - Configuration complète
+// \uD83D\uDCF1 TÉLÉPHONE - Configuration complète
 // ═══════════════════════════════════════════════════════════════
 
 export const TELEPHONE_FORM_CONFIG: CompleteFormConfig = {
@@ -237,7 +237,7 @@ export const TELEPHONE_FORM_CONFIG: CompleteFormConfig = {
             ],
             hints: [
                 {
-                    text: '💡 Plus de détails techniques = plus d\'acheteurs intéressés',
+                    text: '\uD83D\uDCA1 Plus de détails techniques = plus d\'acheteurs intéressés',
                     icon: 'info'
                 }
             ]
@@ -286,7 +286,7 @@ export const TELEPHONE_FORM_CONFIG: CompleteFormConfig = {
             ],
             hints: [
                 {
-                    text: '💰 Consultez les prix du marché pour rester compétitif',
+                    text: '\uD83D\uDCB0 Consultez les prix du marché pour rester compétitif',
                     icon: 'trending-up'
                 }
             ]
@@ -310,7 +310,7 @@ export const TELEPHONE_FORM_CONFIG: CompleteFormConfig = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 🚗 AUTOMOBILE - Configuration complète
+// \uD83D\uDE97 AUTOMOBILE - Configuration complète
 // ═══════════════════════════════════════════════════════════════
 
 export const AUTOMOBILE_FORM_CONFIG: CompleteFormConfig = {
@@ -514,7 +514,7 @@ export const AUTOMOBILE_FORM_CONFIG: CompleteFormConfig = {
             ],
             hints: [
                 {
-                    text: '🚗 Plus d\'équipements = prix de vente plus élevé',
+                    text: '\uD83D\uDE97 Plus d\'équipements = prix de vente plus élevé',
                     icon: 'trending-up'
                 }
             ]
@@ -547,7 +547,7 @@ export const AUTOMOBILE_FORM_CONFIG: CompleteFormConfig = {
             ],
             hints: [
                 {
-                    text: '💡 Véhicule dédouané = vente plus rapide',
+                    text: '\uD83D\uDCA1 Véhicule dédouané = vente plus rapide',
                     icon: 'check-circle'
                 }
             ]
@@ -566,7 +566,7 @@ export const AUTOMOBILE_FORM_CONFIG: CompleteFormConfig = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 🌾 AGRICULTURE - Configuration complète
+// \uD83C\uDF3E AGRICULTURE - Configuration complète
 // ═══════════════════════════════════════════════════════════════
 
 export const AGRICULTURE_FORM_CONFIG: CompleteFormConfig = {
@@ -644,11 +644,11 @@ export const AGRICULTURE_FORM_CONFIG: CompleteFormConfig = {
             ],
             hints: [
                 {
-                    text: '🌾 Précisez la variété pour attirer les grossistes',
+                    text: '\uD83C\uDF3E Précisez la variété pour attirer les grossistes',
                     icon: 'trending-up'
                 },
                 {
-                    text: '📦 Indiquez le conditionnement (sac 50kg standard Afrique)',
+                    text: '\uD83D\uDCE6 Indiquez le conditionnement (sac 50kg standard Afrique)',
                     icon: 'info'
                 }
             ]
@@ -666,7 +666,7 @@ export const AGRICULTURE_FORM_CONFIG: CompleteFormConfig = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 🏠 IMMOBILIER - Configuration complète
+// \uD83C\uDFE0 IMMOBILIER - Configuration complète
 // ═══════════════════════════════════════════════════════════════
 
 export const IMMOBILIER_FORM_CONFIG: CompleteFormConfig = {
@@ -768,7 +768,7 @@ export const IMMOBILIER_FORM_CONFIG: CompleteFormConfig = {
             ],
             hints: [
                 {
-                    text: '📍 La localisation GPS augmente la visibilité de +60%',
+                    text: '\uD83D\uDCCD La localisation GPS augmente la visibilité de +60%',
                     icon: 'trending-up'
                 }
             ]
@@ -822,7 +822,7 @@ export const IMMOBILIER_FORM_CONFIG: CompleteFormConfig = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 👕 VÊTEMENT - Configuration complète avec variantes
+// \uD83D\uDC55 VÊTEMENT - Configuration complète avec variantes
 // ═══════════════════════════════════════════════════════════════
 
 export const VETEMENT_FORM_CONFIG: CompleteFormConfig = {
@@ -915,7 +915,7 @@ export const VETEMENT_FORM_CONFIG: CompleteFormConfig = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 🎯 MAPPING CATÉGORIE → CONFIGURATION
+// \uD83C\uDFAF MAPPING CATÉGORIE → CONFIGURATION
 // ═══════════════════════════════════════════════════════════════
 
 export const FORMS_CONFIG_MAP: Record<string, CompleteFormConfig> = {

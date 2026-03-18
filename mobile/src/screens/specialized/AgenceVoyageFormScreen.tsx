@@ -52,7 +52,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user, logout } = useAuth();
-    const { t } = useLanguageSafe();
+    const { t, language: activeLang } = useLanguageSafe();
     const getDayLabel = (value: number) => ({ 1: t('agenceVoyageForm.jourLundi'), 2: t('agenceVoyageForm.jourMardi'), 3: t('agenceVoyageForm.jourMercredi'), 4: t('agenceVoyageForm.jourJeudi'), 5: t('agenceVoyageForm.jourVendredi'), 6: t('agenceVoyageForm.jourSamedi'), 7: t('agenceVoyageForm.jourDimanche') }[value] || '');
     const getDayShort = (value: number) => ({ 1: t('agenceVoyageForm.jourLun'), 2: t('agenceVoyageForm.jourMar'), 3: t('agenceVoyageForm.jourMer'), 4: t('agenceVoyageForm.jourJeu'), 5: t('agenceVoyageForm.jourVen'), 6: t('agenceVoyageForm.jourSam'), 7: t('agenceVoyageForm.jourDim') }[value] || '');
     const servicesLabel = (svc: string) => ({ 'Billetterie bus': t('agenceVoyageForm.billetterieBus'), 'Billetterie avion': t('agenceVoyageForm.billetterieAvion'), 'Organisation voyages': t('agenceVoyageForm.organisationVoyages'), 'Visa': t('agenceVoyageForm.visaService') }[svc] || svc);
@@ -116,8 +116,9 @@ const AgenceVoyageFormScreen: React.FC = () => {
         setLoadingAI(true);
         try {
             const resp = await apiPost('/api/ai/chat', {
-                message: `En tant qu'expert en gestion d'agences de voyage, analyse mon agence "${formData.nom_agence}" avec ${selectedDestinations.length} destinations, ${schedules.length} horaires et ${selectedCompagnies.length} compagnies. Destinations: ${selectedDestinations.map((d: any) => d.place_name || d.raw || d).join(', ')}. Services: ${selectedServices.join(', ')}. Donne-moi 3 recommandations concrètes et courtes pour améliorer mon chiffre d'affaires et améliorer la satisfaction client.`,
+                message: `As a travel agency management expert, analyze my agency "${formData.nom_agence}" with ${selectedDestinations.length} destinations, ${schedules.length} schedules and ${selectedCompagnies.length} companies. Destinations: ${selectedDestinations.map((d: any) => d.place_name || d.raw || d).join(', ')}. Services: ${selectedServices.join(', ')}. Give me 3 concrete and short recommendations to improve revenue and customer satisfaction. Respond in the user's language.`,
                 context: 'travel_agency_partner_dashboard',
+                language: activeLang,
             });
             const d = (resp?.data || resp) as any;
             setAiSuggestion(d?.response || d?.message || d?.data?.response || t('agenceVoyageForm.aucuneSuggestionDisponible'));

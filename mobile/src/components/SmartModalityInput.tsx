@@ -76,7 +76,7 @@ const [suggestions, setSuggestions] = useState<string[]>([]);
                 // Si le champ est vide et qu'on doit auto-charger, pré-remplir
                 if (autoLoadLastUsed && !value) {
                     onChangeText(lastUsed);
-                    console.log(`💡 [SmartModalityInput] Dernière valeur chargée pour ${fieldKey}: ${lastUsed}`);
+                    console.log(`\uD83D\uDCA1 [SmartModalityInput] Dernière valeur chargée pour ${fieldKey}: ${lastUsed}`);
                 }
             }
         } catch (error) {

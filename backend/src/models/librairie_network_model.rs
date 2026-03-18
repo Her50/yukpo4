@@ -48,8 +48,9 @@ pub struct CommandeMixte {
     pub id: Uuid,
     pub user_id: i32,
     pub librairie_id: i32,
-    pub livres_neufs: Vec<LivreNeufCommande>,
-    pub livres_occasion: Vec<LivreOccasionCommande>,
+    pub livres_neufs: serde_json::Value,
+    pub livres_occasion: serde_json::Value,
+    pub budget_total: f64,
     pub montant_total: f64,
     pub statut: CommandeStatut,
     pub date_creation: DateTime<Utc>,
@@ -95,6 +96,12 @@ pub enum CommandeStatut {
     Retournee,
 }
 
+impl std::fmt::Display for CommandeStatut {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct PrixOfficielProgramme {
     pub id: i32,
@@ -115,14 +122,19 @@ pub struct PrixOfficielProgramme {
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct QRCodeCoursier {
     pub id: Uuid,
-    pub commande_id: Uuid,
+    pub commande_id: Option<Uuid>,
+    pub paquet_id: Option<Uuid>,
     pub coursier_id: i32,
+    pub code_secret: Option<String>,
     pub qr_code_data: String,
     pub statut: QRStatut,
+    pub timestamp_generation: DateTime<Utc>,
     pub date_generation: DateTime<Utc>,
     pub date_scan: Option<DateTime<Utc>>,
     pub location_scan: Option<String>,
     pub valide: bool,
+    pub livres_attendus: Option<serde_json::Value>,
+    pub destinations: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::Type)]
@@ -200,6 +212,7 @@ pub enum TransactionStatut {
 pub struct ChaineLivraisonUnifiee {
     pub id: Uuid,
     pub commande_id: Uuid,
+    pub reference_chaine: Option<String>,
     pub etape_actuelle: EtapeLivraison,
     pub date_creation: DateTime<Utc>,
     pub date_mise_a_jour: DateTime<Utc>,

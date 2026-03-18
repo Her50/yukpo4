@@ -76,7 +76,7 @@ const [challenges, setChallenges] = useState<Challenge[]>([]);
             <View style={styles.overlay}>
                 <View style={styles.container}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>🎯 Challenges</Text>
+                        <Text style={styles.title}>\uD83C\uDFAF Challenges</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color="#6B7280" />
                         </TouchableOpacity>

@@ -238,5 +238,45 @@ export const taxiService = {
         );
         return response;
     },
+
+    // ✅ Réserver un taxi (passager)
+    bookTaxi: async (taxiId: number, data: {
+        departure_gps?: string;
+        arrival_gps?: string;
+        notes?: string;
+        insurance_type?: string;
+    }) => {
+        const response = await apiPost<{ success: boolean; reservation_id: number; message: string }>(
+            `/api/taxis/${taxiId}/book`,
+            data
+        );
+        return response;
+    },
+
+    // ✅ Mettre à jour la disponibilité (chauffeur)
+    updateAvailability: async (taxiId: number, disponible: boolean) => {
+        const response = await apiPost<{ success: boolean }>(
+            `/api/taxis/${taxiId}/update-availability`,
+            { disponible }
+        );
+        return response;
+    },
+
+    // ✅ Mettre à jour la position GPS (chauffeur)
+    updateGPS: async (taxiId: number, lat: number, lng: number) => {
+        const response = await apiPost<{ success: boolean }>(
+            `/api/taxis/${taxiId}/update-gps`,
+            { gps_actuel: `${lat},${lng}` }
+        );
+        return response;
+    },
+
+    // ✅ Obtenir la position du chauffeur (passager - pour tracking)
+    getDriverLocation: async (taxiId: number) => {
+        const response = await apiGet<{ success: boolean; data: { latitude: number; longitude: number; heading?: number; status?: string } }>(
+            `/api/taxis/${taxiId}/location`
+        );
+        return response;
+    },
 };
 

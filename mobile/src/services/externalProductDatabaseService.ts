@@ -1,5 +1,5 @@
 /**
- * 🌍 SERVICE D'IMPORT ET SYNCHRONISATION DES BASES DE DONNÉES EXTERNES
+ * \uD83C\uDF0D SERVICE D'IMPORT ET SYNCHRONISATION DES BASES DE DONNÉES EXTERNES
  * 
  * Ce service permet d'importer et synchroniser des produits depuis
  * plusieurs sources de données africaines pour enrichir l'autocomplétion.
@@ -134,7 +134,7 @@ class ExternalProductDatabaseService {
         };
 
         try {
-            console.log(`[ExternalDB] 🌍 Synchronisation Open Food Facts: "${query}"`);
+            console.log(`[ExternalDB] \uD83C\uDF0D Synchronisation Open Food Facts: "${query}"`);
 
             // Construire l'URL de recherche
             const searchParams = new URLSearchParams({
@@ -148,7 +148,7 @@ class ExternalProductDatabaseService {
             });
 
             const url = `https://world.openfoodfacts.org/cgi/search.pl?${searchParams}`;
-            console.log(`[ExternalDB] 📡 Requête: ${url}`);
+            console.log(`[ExternalDB] \uD83D\uDCE1 Requête: ${url}`);
 
             const response = await fetch(url);
             if (!response.ok) {
@@ -314,7 +314,7 @@ class ExternalProductDatabaseService {
         };
 
         try {
-            console.log(`[ExternalDB] 📦 Import base locale: ${sourceId} (${products.length} produits)`);
+            console.log(`[ExternalDB] \uD83D\uDCE6 Import base locale: ${sourceId} (${products.length} produits)`);
 
             for (const product of products) {
                 try {
@@ -391,7 +391,7 @@ class ExternalProductDatabaseService {
                 ? this.getSourcesForCountry(countryCode)
                 : Array.from(this.sources.values()).filter(s => s.enabled);
 
-            console.log(`[ExternalDB] 🔄 Synchronisation de ${sources.length} sources...`);
+            console.log(`[ExternalDB] \uD83D\uDD04 Synchronisation de ${sources.length} sources...`);
 
             for (const source of sources) {
                 try {

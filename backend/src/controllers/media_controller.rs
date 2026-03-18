@@ -100,7 +100,8 @@ pub async fn upload_media(
         "[upload_media] Called for user_id={}, service_id={}, product_index={:?}",
         user.id, service_id, query.product_index
     );
-    let owner = match sqlx::query_scalar!("SELECT user_id FROM services WHERE id = $1", service_id)
+    let owner = match sqlx::query_scalar::<_, i32>("SELECT user_id FROM services WHERE id = $1")
+        .bind(service_id)
         .fetch_optional(&pool)
         .await
     {
@@ -400,12 +401,10 @@ pub async fn delete_media(
             return Err(AppError::from(e));
         }
     };
-    let owner = match sqlx::query_scalar!(
-        "SELECT user_id FROM services WHERE id = $1",
-        record.service_id
-    )
-    .fetch_optional(&pool)
-    .await
+    let owner = match sqlx::query_scalar::<_, i32>("SELECT user_id FROM services WHERE id = $1")
+        .bind(record.service_id)
+        .fetch_optional(&pool)
+        .await
     {
         Ok(o) => o,
         Err(e) => {

@@ -1,5 +1,5 @@
 /**
- * 🎯 HOOK : Pré-remplissage automatique de produit
+ * \uD83C\uDFAF HOOK : Pré-remplissage automatique de produit
  * 
  * Ce hook analyse le nom d'un produit et pré-remplit automatiquement
  * les champs du formulaire (marque, modèle, caractéristiques, etc.)

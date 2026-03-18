@@ -92,7 +92,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
     // Triage IA
     const performTriage = async () => {
         if (!symptoms.trim()) {
-            Alert.alert('Erreur', t('hospitalAIFeatures.veuillezDecrireVosSymptomes'));
+            Alert.alert('Erreur', 'Veuillez décrire vos symptômes');
             return;
         }
 
@@ -119,7 +119,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
     // Recommandations IA
     const getRecommendations = async () => {
         if (!recommendationQuery.trim()) {
-            Alert.alert('Erreur', t('hospitalAIFeatures.veuillezDecrireVotreBesoinMedical'));
+            Alert.alert('Erreur', 'Veuillez décrire votre besoin médical');
             return;
         }
 
@@ -145,7 +145,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
     // Temps d'attente
     const getWaitTime = async () => {
         if (!hospitalId) {
-            Alert.alert('Erreur', t('hospitalAIFeatures.idHopitalRequis'));
+            Alert.alert('Erreur', 'ID hôpital requis');
             return;
         }
 
@@ -169,7 +169,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
     // Créneaux disponibles
     const getAvailableSlots = async () => {
         if (!hospitalId) {
-            Alert.alert('Erreur', t('hospitalAIFeatures.idHopitalRequis'));
+            Alert.alert('Erreur', 'ID hôpital requis');
             return;
         }
 
@@ -183,7 +183,7 @@ const HospitalAIFeatures: React.FC<HospitalAIFeaturesProps> = ({
             if (response?.success && response?.data) {
                 setAvailableSlots((response.data as any).slots || []);
             } else {
-                Alert.alert('Erreur', response?.message || 'Impossible d\t('hospitalAIFeatures.obtenirLesCreneaux'));
+                Alert.alert('Erreur', response?.message || 'Impossible d\'obtenir les créneaux');
             }
         } catch (error: any) {
             console.error('[HospitalAIFeatures] Erreur créneaux:', error);

@@ -94,7 +94,7 @@ export const useServiceStats = (
 
                 if (response.success && response.data) {
                     const data = response.data;
-                    console.log(`📊 [useServiceStats] Statistiques réelles récupérées pour service ${serviceId}:`, data);
+                    console.log(`\uD83D\uDCCA [useServiceStats] Statistiques réelles récupérées pour service ${serviceId}:`, data);
 
                     // Calculer l'âge du service
                     const createdDate = new Date(singleCreatedAt);
@@ -117,7 +117,7 @@ export const useServiceStats = (
                     }
                 } else {
                     // Si l'API n'existe pas encore, utiliser des données basées sur l'activité réelle
-                    console.log(`📊 [useServiceStats] API stats non disponible, génération basée sur l'activité pour service ${singleServiceId}`);
+                    console.log(`\uD83D\uDCCA [useServiceStats] API stats non disponible, génération basée sur l'activité pour service ${singleServiceId}`);
 
                     // ✅ CORRIGÉ: Récupérer les données d'interaction avec apiGet
                     const interactionsResponse = await apiGet(API_ENDPOINTS.SERVICES.INTERACTIONS(singleServiceId));

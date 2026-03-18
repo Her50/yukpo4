@@ -27,7 +27,7 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
 
     const handleGetRecommendations = async () => {
         if (!user) {
-            Alert.alert('Erreur', t('orientationAIRecommendationsScreen.vousDevezEtreConnecte'));
+            Alert.alert('Erreur', 'Vous devez être connecté');
             return;
         }
 
@@ -37,11 +37,11 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
             if (!profile) {
                 Alert.alert(
                     'Profil requis',
-                    t('orientationAIRecommendationsScreen.veuillezDabordCompleterVotreProfilEtudiant'),
+                    'Veuillez d\'abord compléter votre profil étudiant',
                     [
                         { text: t('common.cancel'), style: 'cancel' },
                         {
-                            text: t('orientationAIRecommendations.creerProfil'),
+                            text: 'Créer profil',
                             onPress: () => navigation.navigate('ProfilEtudiant')
                         }
                     ]
@@ -66,7 +66,7 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
             }
         } catch (error: any) {
             console.error('[OrientationAIRecommendations] Erreur:', error);
-            Alert.alert('Erreur', 'Impossible d\t('orientationAIRecommendationsScreen.obtenirLesRecommandationsVeuillezReessayer'));
+            Alert.alert('Erreur', 'Impossible d\'obtenir les recommandations. Veuillez réessayer.');
         } finally {
             setLoading(false);
         }
@@ -89,7 +89,7 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
                         L'IA analysera votre profil et vous proposera les meilleurs programmes
                     </Text>
                     <NativeButton
-                        title={loading ? t('orientationAIRecommendationsScreen.generationEnCours') : t('orientationAIRecommendationsScreen.genererLesRecommandations')}
+                        title={loading ? 'Génération en cours...' : 'Générer les recommandations'}
                         onPress={handleGetRecommendations}
                         variant="primary"
                         disabled={loading}
@@ -99,7 +99,7 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
             ) : (
                 <View>
                     <Text style={styles.resultsTitle}>
-                        {recommendations.length} programme{recommendations.length > 1 ? 's' : 't('orientationAIRecommendationsScreen.recommanderecommendationslength1')s' : ''}
+                        {recommendations.length} programme{recommendations.length > 1 ? 's' : ''} recommandé{recommendations.length > 1 ? 's' : ''}
                     </Text>
                     {recommendations.map((rec, index) => (
                         <NativeCard key={index} style={styles.recommendationCard}>
@@ -124,7 +124,7 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
                             )}
                             {rec.points_forts && rec.points_forts.length > 0 && (
                                 <View style={styles.pointsSection}>
-                                    <Text style={styles.pointsLabel}>{t('orientationAIRecommendations.pointsForts')}</Text>
+                                    <Text style={styles.pointsLabel}>Points forts:</Text>
                                     {rec.points_forts.map((point: string, idx: number) => (
                                         <Text key={idx} style={styles.pointText}>• {point}</Text>
                                     ))}
@@ -132,7 +132,7 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
                             )}
                             {rec.points_faibles && rec.points_faibles.length > 0 && (
                                 <View style={styles.pointsSection}>
-                                    <Text style={styles.pointsLabel}>{t('orientationAIRecommendations.pointsAAmeliorer')}</Text>
+                                    <Text style={styles.pointsLabel}>Points à améliorer:</Text>
                                     {rec.points_faibles.map((point: string, idx: number) => (
                                         <Text key={idx} style={styles.pointText}>• {point}</Text>
                                     ))}
@@ -146,7 +146,7 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
                                     }
                                 }}
                             >
-                                <Text style={styles.detailsButtonText}>{t('orientationAIRecommendations.voirLesDetails')}</Text>
+                                <Text style={styles.detailsButtonText}>Voir les détails</Text>
                                 <SafeIcon name="chevron-right" size={16} color={modernColors.primary} />
                             </TouchableOpacity>
                         </NativeCard>
@@ -166,7 +166,7 @@ const OrientationAIRecommendationsScreen: React.FC = () => {
             {loading && (
                 <View style={styles.loadingOverlay}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>{t('orientationAIRecommendations.generationEnCours')}</Text>
+                    <Text style={styles.loadingText}>Génération en cours...</Text>
                 </View>
             )}
         </ScrollView>

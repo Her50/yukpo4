@@ -251,7 +251,7 @@ const LaboratoireListScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <Text style={styles.title}>
-                    {laboratoires.length} laboratoire{laboratoires.length > 1 ? 's' : 't('laboratoireListScreen.trouvelaboratoireslength1')s' : ''}
+                    {laboratoires.length} laboratoire{laboratoires.length > 1 ? 's' : ''} trouvé{laboratoires.length > 1 ? 's' : ''}
                 </Text>
             </View>
 

@@ -64,7 +64,7 @@ const formatCount = (count: number): string => {
 };
 
 const normalizeVideoUrl = (url: any): string | null => {
-    console.log(`🎯 [VideoFeedScreen] normalizeVideoUrl appelé avec:`, url, typeof url);
+    console.log(`\uD83C\uDFAF [VideoFeedScreen] normalizeVideoUrl appelé avec:`, url, typeof url);
 
     if (!url) {
         console.log(`❌ [VideoFeedScreen] normalizeVideoUrl: url est falsy`);
@@ -90,7 +90,7 @@ const normalizeVideoUrl = (url: any): string | null => {
 
     const cdnUrl = mediaService.getVideoUrl(trimmed);
     const result = cdnUrl || trimmed;
-    console.log(`🌐 [VideoFeedScreen] normalizeVideoUrl: CDN URL générée:`, cdnUrl, 'résultat final:', result);
+    console.log(`\uD83C\uDF10 [VideoFeedScreen] normalizeVideoUrl: CDN URL générée:`, cdnUrl, 'résultat final:', result);
     return result;
 };
 
@@ -110,49 +110,29 @@ const isVideoUrl = (url: string): boolean => {
 // - Une string directe: "url"
 // - Un tableau: ["url1", "url2"]
 // - Un objet {valeur: ["url1", "url2"]} (format formulaire dynamique)
-// ✅ FIX 2026-03-15: Itérer pour trouver la première VRAIE vidéo (pas juste le premier élément)
-// Avant: si data.videos = ["image.jpg", "video.mp4"], retournait "image.jpg" → rejeté par isVideoUrl → item perdu
 const extractVideoFromField = (field: any): string | null => {
     if (!field) return null;
     if (typeof field === 'string') return field;
-
-    // Helper: trouver la première vraie vidéo dans un tableau
-    const findFirstVideo = (arr: any[]): string | null => {
-        // D'abord chercher une URL qui passe isVideoUrl
-        for (const item of arr) {
-            if (typeof item === 'string' && item.trim() && isVideoUrl(item.trim())) {
-                return item.trim();
-            }
-        }
-        // Fallback: retourner la première string non-vide (pour les URLs sans extension)
-        for (const item of arr) {
-            if (typeof item === 'string' && item.trim()) {
-                return item.trim();
-            }
-        }
-        return null;
-    };
-
-    if (Array.isArray(field)) return findFirstVideo(field);
+    if (Array.isArray(field)) return field[0] || null;
     if (typeof field === 'object' && field.valeur) {
         if (typeof field.valeur === 'string') return field.valeur;
-        if (Array.isArray(field.valeur)) return findFirstVideo(field.valeur);
+        if (Array.isArray(field.valeur)) return field.valeur[0] || null;
     }
     return null;
 };
 
 const normalizeFeed = (raw: any[]): FeedItem[] => {
-    console.log(`🚀 [VideoFeedScreen] normalizeFeed START - ${raw.length} items bruts`);
+    console.log(`\uD83D\uDE80 [VideoFeedScreen] normalizeFeed START - ${raw.length} items bruts`);
 
     if (!Array.isArray(raw)) {
         console.warn(`❌ [VideoFeedScreen] normalizeFeed: raw n'est pas un tableau`, typeof raw, raw);
         return [];
     }
-    console.log(`📊 [VideoFeedScreen] normalizeFeed: ${raw.length} items bruts à traiter`);
+    console.log(`\uD83D\uDCCA [VideoFeedScreen] normalizeFeed: ${raw.length} items bruts à traiter`);
 
     const results = raw
         .map((item, index) => {
-            console.log(`\n🔍 [VideoFeedScreen] Traitement item ${index}:`, item?.data?.nom || 'Sans nom');
+            console.log(`\n\uD83D\uDD0D [VideoFeedScreen] Traitement item ${index}:`, item?.data?.nom || 'Sans nom');
 
             // ✅ CORRIGÉ 2026-03-04: Chercher la vidéo dans tous les formats possibles
             const rawVideo =
@@ -163,10 +143,10 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 extractVideoFromField(item?.data?.videos) ||
                 extractVideoFromField(item?.videos);
 
-            console.log(`📹 [VideoFeedScreen] rawVideo trouvé:`, rawVideo ? 'OUI' : 'NON');
+            console.log(`\uD83D\uDCF9 [VideoFeedScreen] rawVideo trouvé:`, rawVideo ? 'OUI' : 'NON');
             if (rawVideo) {
-                console.log(`📹 [VideoFeedScreen] rawVideo type:`, typeof rawVideo);
-                console.log(`📹 [VideoFeedScreen] rawVideo preview:`, String(rawVideo).substring(0, 100) + '...');
+                console.log(`\uD83D\uDCF9 [VideoFeedScreen] rawVideo type:`, typeof rawVideo);
+                console.log(`\uD83D\uDCF9 [VideoFeedScreen] rawVideo preview:`, String(rawVideo).substring(0, 100) + '...');
             }
 
             if (!rawVideo) {
@@ -182,7 +162,7 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
             }
 
             const video = normalizeVideoUrl(rawVideo);
-            console.log(`🎬 [VideoFeedScreen] normalizeVideoUrl result:`, video ? 'VALID' : 'NULL');
+            console.log(`\uD83C\uDFAC [VideoFeedScreen] normalizeVideoUrl result:`, video ? 'VALID' : 'NULL');
 
             if (!video) {
                 console.log(`❌ [VideoFeedScreen] Item ${index} ignoré: normalizeVideoUrl a retourné null pour`, rawVideo);
@@ -200,7 +180,7 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 item?.title ||
                 item?.data?.titre ||
                 item?.data?.title ||
-                t('videoFeedScreen.video', { index + 1: index + 1 });
+                `Vidéo ${index + 1}`;
             const id =
                 item?.id ||
                 item?.content_id ||
@@ -229,7 +209,7 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 serviceData?.livraison_type
             );
 
-            console.log(`🚚 [VideoFeedScreen] Livraison détectée: ${hasDelivery ? 'OUI' : 'NON'}`);
+            console.log(`\uD83D\uDE9A [VideoFeedScreen] Livraison détectée: ${hasDelivery ? 'OUI' : 'NON'}`);
 
             const result = {
                 id: String(id),
@@ -257,17 +237,17 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
         })
         .filter((item): item is FeedItem => item !== null && item !== undefined) as FeedItem[];
 
-    console.log(`🎯 [VideoFeedScreen] normalizeFeed END - ${results.length} items validés`);
+    console.log(`\uD83C\uDFAF [VideoFeedScreen] normalizeFeed END - ${results.length} items validés`);
     return results;
 };
 
 const REACTIONS = [
     { type: 'love', emoji: '❤️', label: "J'adore" },
-    { type: 'like', emoji: '👍', label: "J'aime" },
-    { type: 'wow', emoji: '😮', label: 'Impressionnant' },
-    { type: 'interested', emoji: '🎯', label: t('videoFeed.interessant') },
-    { type: 'thinking', emoji: '🤔', label: t('videoFeed.aReflechir') },
-    { type: 'disappointed', emoji: '😕', label: t('videoFeed.decu') },
+    { type: 'like', emoji: '\uD83D\uDC4D', label: "J'aime" },
+    { type: 'wow', emoji: '\uD83D\uDE2E', label: 'Impressionnant' },
+    { type: 'interested', emoji: '\uD83C\uDFAF', label: 'Intéressant' },
+    { type: 'thinking', emoji: '\uD83E\uDD14', label: 'À réfléchir' },
+    { type: 'disappointed', emoji: '\uD83D\uDE15', label: 'Déçu' },
 ];
 
 const viewabilityConfig = {
@@ -444,7 +424,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         await videoCacheService.preloadVideo(nextItem.videoUrl);
                     } catch (error) {
                         // Ignorer erreurs de préchargement
-                        console.debug(t('videoFeedScreen.videofeedscreenPrechargementEchouePourIndex'), nextIndex);
+                        console.debug('[VideoFeedScreen] Préchargement échoué pour index', nextIndex);
                     }
                 }
             }
@@ -781,10 +761,10 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 ? `${SHARE_BASE_URL}/product/${item.serviceId}_${item.productIndex ?? 0}`
                 : item.videoUrl;
 
-            let shareText = `🎬 ${item.titre}`;
+            let shareText = `\uD83C\uDFAC ${item.titre}`;
             if (item.description) shareText += `\n\n${item.description}`;
-            if (item.sellerName) shareText += `\n🏪 ${item.sellerName}`;
-            shareText += `\n\n🔗 Voir sur Yukpo:\n${shareUrl}`;
+            if (item.sellerName) shareText += `\n\uD83C\uDFEA ${item.sellerName}`;
+            shareText += `\n\n\uD83D\uDD17 Voir sur Yukpo:\n${shareUrl}`;
 
             await Share.share({ message: shareText, url: shareUrl, title: item.titre });
         } catch (error) {
@@ -843,7 +823,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     // ✅ AJOUT: Gérer le clic sur le bouton de livraison
     const handleDeliveryOrder = useCallback((item: FeedItem) => {
         if (item.serviceId && item.hasDelivery) {
-            console.log(`🚚 [VideoFeedScreen] Ouverture modal de livraison pour le service ${item.serviceId}`);
+            console.log(`\uD83D\uDE9A [VideoFeedScreen] Ouverture modal de livraison pour le service ${item.serviceId}`);
             setSelectedDeliveryItem(item);
             setShowDeliveryModal(true);
         } else {
@@ -853,7 +833,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     // ✅ AJOUT: Gérer la réussite de la commande de livraison
     const handleDeliverySuccess = useCallback((deliveryId: string) => {
-        console.log(`🎯 [VideoFeedScreen] Livraison créée avec succès: ${deliveryId}`);
+        console.log(`\uD83C\uDFAF [VideoFeedScreen] Livraison créée avec succès: ${deliveryId}`);
         setShowDeliveryModal(false);
         setSelectedDeliveryItem(null);
 
@@ -995,7 +975,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                                     activeOpacity={0.8}
                                 >
                                     <SafeIcon name="shopping-cart" size={18} color="#fff" type="lucide" />
-                                    <Text style={styles.centeredDeliveryText}>{t('videoFeed.commander')}</Text>
+                                    <Text style={styles.centeredDeliveryText}>Commander</Text>
                                 </TouchableOpacity>
                             )}
 
@@ -1052,7 +1032,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     </TouchableOpacity>
                     {item.isPaid && (
                         <View style={styles.sponsoredBadgeInline}>
-                            <Text style={styles.sponsoredText}>{t('videoFeed.sponsorise')}</Text>
+                            <Text style={styles.sponsoredText}>Sponsorisé</Text>
                         </View>
                     )}
                 </View>
@@ -1136,7 +1116,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 {isActive && (
                     <View style={styles.playIndicator}>
                         <Text style={styles.playIndicatorText}>
-                            {playCount[contentId] === 1 ? '🔄' : '▶️'} {playCount[contentId] || 1}/2
+                            {playCount[contentId] === 1 ? '\uD83D\uDD04' : '▶️'} {playCount[contentId] || 1}/2
                         </Text>
                     </View>
                 )}
@@ -1152,7 +1132,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                                 activeOpacity={0.8}
                             >
                                 <SafeIcon name="shopping-bag" size={14} color="#fff" type="lucide" />
-                                <Text style={styles.ctaText}>{t('videoFeed.voirLeProduit')}</Text>
+                                <Text style={styles.ctaText}>Voir le produit</Text>
                             </TouchableOpacity>
                         )}
 
@@ -1164,7 +1144,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                                 activeOpacity={0.8}
                             >
                                 <SafeIcon name="truck" size={14} color="#fff" type="lucide" />
-                                <Text style={styles.deliveryText}>{t('videoFeed.commander')}</Text>
+                                <Text style={styles.deliveryText}>Commander</Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -1247,7 +1227,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         <View style={styles.actionIconBg}>
                             <SafeIcon name="share" size={22} color="#fff" type="lucide" />
                         </View>
-                        <Text style={styles.actionLabel}>{t('videoFeed.partager')}</Text>
+                        <Text style={styles.actionLabel}>Partager</Text>
                     </TouchableOpacity>
 
                     {/* ✅ NOUVEAU 2026-03-14: Partage interne vidéo */}
@@ -1257,14 +1237,14 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                                 contentType: 'video',
                                 serviceId: item.serviceId ?? null,
                                 productIndex: item.productIndex ?? null,
-                                title: item.titre || t('videoFeed.video'),
+                                title: item.titre || 'Vidéo',
                                 description: item.description || '',
                                 extraData: { videoUrl: item.videoUrl, sellerName: item.sellerName },
                             }}
                             iconSize={22}
                             iconColor="#fff"
                             showLabel
-                            label={t('videoFeed.envoyer')}
+                            label="Envoyer"
                             style={{ alignItems: 'center', padding: 0 }}
                         />
                     </View>
@@ -1293,7 +1273,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
             <SafeNativeView style={styles.centered}>
                 <StatusBar barStyle="light-content" backgroundColor="#000" />
                 <ActivityIndicator size="large" color="#FF2D55" />
-                <Text style={styles.loadingText}>{t('videoFeed.chargementDesVideos')}</Text>
+                <Text style={styles.loadingText}>Chargement des vidéos…</Text>
             </SafeNativeView>
         );
     }
@@ -1303,13 +1283,13 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
             <SafeNativeView style={styles.centered}>
                 <StatusBar barStyle="light-content" backgroundColor="#000" />
                 <SafeIcon name="video-off" size={64} color="#4B5563" type="lucide" />
-                <Text style={styles.emptyTitle}>{t('videoFeed.aucuneVideoDisponible')}</Text>
+                <Text style={styles.emptyTitle}>Aucune vidéo disponible</Text>
                 <Text style={styles.emptySubtitle}>
-                    {t('videoFeed.revenezPlusTard')}
+                    Revenez plus tard ou créez votre première vidéo.
                 </Text>
                 <TouchableOpacity style={styles.reloadButton} onPress={() => fetchFeed()}>
                     <SafeIcon name="refresh-cw" size={18} color="#fff" type="lucide" />
-                    <Text style={styles.reloadText}>{t('videoFeed.recharger')}</Text>
+                    <Text style={styles.reloadText}>Recharger</Text>
                 </TouchableOpacity>
             </SafeNativeView>
         );
@@ -1346,7 +1326,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         <TextInput
                             ref={searchInputRef}
                             style={styles.searchInput}
-                            placeholder={t('videoFeed.rechercherDesVideos')}
+                            placeholder="Rechercher des vidéos..."
                             placeholderTextColor="#9CA3AF"
                             value={searchQuery}
                             onChangeText={setSearchQuery}
@@ -1357,7 +1337,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         </TouchableOpacity>
                     </View>
                     {searchQuery.length > 0 && filteredFeed.length === 0 && (
-                        <Text style={styles.searchNoResults}>{t('videoFeed.aucuneVideoTrouvee')}</Text>
+                        <Text style={styles.searchNoResults}>Aucune vidéo trouvée</Text>
                     )}
                 </Animated.View>
             )}
@@ -1416,7 +1396,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 <View style={styles.commentsModalOverlay}>
                     <View style={styles.commentsModalContainer}>
                         <View style={styles.commentsModalHeader}>
-                            <Text style={styles.commentsModalTitle}>{t('videoFeed.commentaires')}</Text>
+                            <Text style={styles.commentsModalTitle}>Commentaires</Text>
                             <TouchableOpacity
                                 onPress={() => setCommentsModalItem(null)}
                                 style={styles.commentsModalClose}

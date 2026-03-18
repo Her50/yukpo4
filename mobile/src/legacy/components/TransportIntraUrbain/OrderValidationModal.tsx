@@ -91,7 +91,7 @@ const OrderValidationModal: React.FC<OrderValidationModalProps> = ({
                 <ScrollView style={styles.content}>
                     {/* Informations chauffeur */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>🚗 Chauffeur</Text>
+                        <Text style={styles.sectionTitle}>\uD83D\uDE97 Chauffeur</Text>
                         <View style={styles.infoCard}>
                             <View style={styles.infoRow}>
                                 <SafeIcon name="user" size={16} color="#F59E0B" />
@@ -108,7 +108,7 @@ const OrderValidationModal: React.FC<OrderValidationModalProps> = ({
 
                     {/* Itinéraire */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>📍 Itinéraire</Text>
+                        <Text style={styles.sectionTitle}>\uD83D\uDCCD Itinéraire</Text>
                         <View style={styles.infoCard}>
                             <View style={styles.routeItem}>
                                 <View style={styles.routeDot} />
@@ -150,7 +150,7 @@ const OrderValidationModal: React.FC<OrderValidationModalProps> = ({
 
                     {/* Prix */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>💰 Prix</Text>
+                        <Text style={styles.sectionTitle}>\uD83D\uDCB0 Prix</Text>
                         <View style={styles.priceCard}>
                             <Text style={styles.priceLabel}>Prix convenu</Text>
                             <Text style={styles.priceValue}>{orderDetails.agreedPrice} FCFA</Text>
@@ -174,7 +174,7 @@ const OrderValidationModal: React.FC<OrderValidationModalProps> = ({
 
                     {/* Mode de paiement */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>💳 Mode de paiement</Text>
+                        <Text style={styles.sectionTitle}>\uD83D\uDCB3 Mode de paiement</Text>
                         <View style={styles.paymentOptions}>
                             {orderDetails.paymentMethods.map((method, index) => (
                                 <TouchableOpacity

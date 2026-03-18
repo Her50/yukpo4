@@ -15,7 +15,6 @@ import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Slot {
     id: number;
@@ -45,8 +44,7 @@ const BookAppointmentScreen: React.FC<BookAppointmentScreenProps> = ({ route, na
     const { user } = useAuth();
     const { serviceId, serviceType, serviceName } = route.params;
 
-        const { t } = useLanguageSafe();
-const [selectedDate, setSelectedDate] = useState<string>('');
+    const [selectedDate, setSelectedDate] = useState<string>('');
     const [datesWithSlots, setDatesWithSlots] = useState<string[]>([]);
     const [slots, setSlots] = useState<Slot[]>([]);
     const [loading, setLoading] = useState(true);
@@ -121,7 +119,7 @@ const [selectedDate, setSelectedDate] = useState<string>('');
 
     const handleBookSlot = async () => {
         if (!selectedSlot) {
-            Alert.alert('Erreur', t('bookAppointmentScreen.veuillezSelectionnerUnCreneau'));
+            Alert.alert('Erreur', 'Veuillez sélectionner un créneau');
             return;
         }
         if (!patientName.trim()) {
@@ -140,12 +138,12 @@ const [selectedDate, setSelectedDate] = useState<string>('');
 
             if (response.success) {
                 Alert.alert(
-                    t('bookAppointmentScreen.reservationConfirmee'),
-                    t('bookAppointmentScreen.votreRendezvousDuAAEte', { formatDateDisplay(selectedDate): formatDateDisplay(selectedDate), selectedSlot_start_time?_substring(0, 5): selectedSlot.start_time?.substring(0, 5) }),
+                    'Réservation confirmée',
+                    `Votre rendez-vous du ${formatDateDisplay(selectedDate)} à ${selectedSlot.start_time?.substring(0, 5)} a été enregistré.\n\nVous recevrez une notification quand le prestataire aura confirmé.`,
                     [{ text: 'OK', onPress: () => navigation.goBack() }]
                 );
             } else {
-                Alert.alert('Erreur', (response as any).error || t('bookAppointment.impossibleDeReserver'));
+                Alert.alert('Erreur', (response as any).error || 'Impossible de réserver');
             }
         } catch (error: any) {
             Alert.alert('Erreur', error.message || 'Une erreur est survenue');
@@ -183,14 +181,14 @@ const [selectedDate, setSelectedDate] = useState<string>('');
                 <View style={{ flex: 1 }}>
                     <Text style={styles.headerTitle}>Prendre rendez-vous</Text>
                     <Text style={styles.headerSubtitle}>
-                        {serviceName || (serviceType === 'hopital' ? t('bookAppointmentScreen.hopitalClinique') : 'Laboratoire / Imagerie')}
+                        {serviceName || (serviceType === 'hopital' ? 'Hôpital / Clinique' : 'Laboratoire / Imagerie')}
                     </Text>
                 </View>
             </View>
 
             <ScrollView style={styles.scrollContent}>
                 {/* Date Selector */}
-                <Text style={styles.sectionTitle}>{t('bookAppointment.choisirUneDate')}</Text>
+                <Text style={styles.sectionTitle}>Choisir une date</Text>
                 {datesWithSlots.length > 0 ? (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateScroll}>
                         {datesWithSlots.map((date) => (
@@ -269,7 +267,7 @@ const [selectedDate, setSelectedDate] = useState<string>('');
                             </View>
                         ) : (
                             <View style={styles.noSlots}>
-                                <Text style={styles.noSlotsText}>{t('bookAppointment.aucunCreneauDisponibleCeJour')}</Text>
+                                <Text style={styles.noSlotsText}>Aucun créneau disponible ce jour</Text>
                             </View>
                         )}
                     </>
@@ -278,7 +276,7 @@ const [selectedDate, setSelectedDate] = useState<string>('');
                 {/* Booking Form */}
                 {selectedSlot && (
                     <View style={styles.bookingForm}>
-                        <Text style={styles.sectionTitle}>{t('bookAppointment.vosInformations')}</Text>
+                        <Text style={styles.sectionTitle}>Vos informations</Text>
 
                         <View style={styles.selectedSlotBanner}>
                             <SafeIcon name="check-circle" size={20} color="#059669" />
@@ -288,15 +286,15 @@ const [selectedDate, setSelectedDate] = useState<string>('');
                             </Text>
                         </View>
 
-                        <Text style={styles.fieldLabel}>{t('bookAppointment.nomDuPatient')}</Text>
+                        <Text style={styles.fieldLabel}>Nom du patient *</Text>
                         <NativeInput
                             value={patientName}
                             onChangeText={setPatientName}
-                            placeholder={t('bookAppointment.nomCompletDuPatient')}
+                            placeholder="Nom complet du patient"
                         />
 
                         <Text style={styles.fieldLabel}>
-                            {serviceType === 'hopital' ? 'Motif de consultation' : t('bookAppointmentScreen.typeDexamenSouhaite')}
+                            {serviceType === 'hopital' ? 'Motif de consultation' : 'Type d\'examen souhaité'}
                         </Text>
                         <NativeInput
                             value={reason}
@@ -305,11 +303,11 @@ const [selectedDate, setSelectedDate] = useState<string>('');
                             multiline
                         />
 
-                        <Text style={styles.fieldLabel}>{t('bookAppointment.notesSupplementaires')}</Text>
+                        <Text style={styles.fieldLabel}>Notes supplémentaires</Text>
                         <NativeInput
                             value={notes}
                             onChangeText={setNotes}
-                            placeholder={t('bookAppointment.informationsComplementaires')}
+                            placeholder="Informations complémentaires..."
                             multiline
                         />
 
@@ -321,7 +319,7 @@ const [selectedDate, setSelectedDate] = useState<string>('');
                         )}
 
                         <NativeButton
-                            title={booking ? t('bookAppointmentScreen.reservationEnCours') : t('bookAppointmentScreen.confirmerLeRendezvous')}
+                            title={booking ? 'Réservation en cours...' : 'Confirmer le rendez-vous'}
                             onPress={handleBookSlot}
                             disabled={booking}
                         />

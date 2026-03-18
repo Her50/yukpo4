@@ -26,7 +26,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
     fieldName,
     onSelect,
     required = false,
-    placeholder={t('multiSelectModalitySelector.selectionner')},
+    placeholder = 'Sélectionner...',
     maxSelections = 10,
     customOptions: propsCustomOptions // ✅ NOUVEAU: Renommer pour éviter conflit
 }) => {
@@ -90,8 +90,8 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
             const combinedOptions = [...new Set([...staticOptions, ...customOptions])];
 
             // ✅ Ajouter une option sentinelle pour l'ajout manuel
-            if (!combinedOptions.some(opt => opt.includes('🆕 Autre'))) {
-                combinedOptions.push('🆕 Autre (ajouter)');
+            if (!combinedOptions.some(opt => opt.includes('\uD83C\uDD95 Autre'))) {
+                combinedOptions.push('\uD83C\uDD95 Autre (ajouter)');
             }
 
             setAllOptions(combinedOptions);
@@ -105,7 +105,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
     };
 
     const toggleSelection = async (option: string) => {
-        if (option.includes('🆕 Autre')) {
+        if (option.includes('\uD83C\uDD95 Autre')) {
             // ✅ Ouvrir la modale d'ajout (compatible Android/iOS)
             setShowAddModal(true);
         } else {
@@ -121,7 +121,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                 if (values.length >= maxSelections) {
                     Alert.alert(
                         '⚠️ Limite atteinte',
-                        t('multiSelectModalitySelector.vousNePouvezSelectionnerQueS', { maxSelections: maxSelections, label_toLowerCase(): label.toLowerCase() }),
+                        `Vous ne pouvez sélectionner que ${maxSelections} ${label.toLowerCase()}s maximum.`,
                         [{ text: 'OK' }]
                     );
                     return;
@@ -144,8 +144,8 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
 
     const clearAll = () => {
         Alert.alert(
-            t('multiSelectModalitySelector.effacerToutesLesSelections'),
-            t('multiSelectModalitySelector.voulezvousEffacerToutesLesSSelectionnees', { label_toLowerCase(): label.toLowerCase() }),
+            'Effacer toutes les sélections',
+            `Voulez-vous effacer toutes les ${label.toLowerCase()}s sélectionnées ?`,
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -160,7 +160,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
     const getDisplayText = () => {
         if (values.length === 0) return placeholder;
         if (values.length === 1) return values[0];
-        return t('multiSelectModalitySelector.selectionne', { values_length: values.length, label_toLowerCase__: label.toLowerCase(), values_length___1____s___: values.length > 1 ? 's' : '', values_length___1____s___: values.length > 1 ? 's' : '' });
+        return `${values.length} ${label.toLowerCase()}${values.length > 1 ? 's' : ''} sélectionné${values.length > 1 ? 's' : ''}`;
     };
 
     // ✅ NOUVEAU : Filtrer les options selon la recherche
@@ -240,7 +240,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
             {/* Indicateur du nombre d'options disponibles */}
             {allOptions.length > 0 && !loading && (
                 <Text style={styles.optionsCount}>
-                    {allOptions.length} option{allOptions.length > 1 ? 's' : ''} disponible{allOptions.length > 1 ? 's' : ''}{allOptions.some(opt => !opt.includes('🆕')) ? t('multiSelectModalitySelector.inclutLesModalitesPartagees') : ''}
+                    {allOptions.length} option{allOptions.length > 1 ? 's' : ''} disponible{allOptions.length > 1 ? 's' : ''}{allOptions.some(opt => !opt.includes('\uD83C\uDD95')) ? ' (inclut les modalités partagées)' : ''}
                 </Text>
             )}
             {loading && (
@@ -289,7 +289,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                         {searchQuery.trim() && (
                             <View style={styles.searchResultsInfo}>
                                 <Text style={styles.searchResultsText}>
-                                    {filteredOptions.length} résultat{filteredOptions.length > 1 ? 's' : 't('multiSelectModalitySelector.trouvefilteredoptionslength1')s' : ''}
+                                    {filteredOptions.length} résultat{filteredOptions.length > 1 ? 's' : ''} trouvé{filteredOptions.length > 1 ? 's' : ''}
                                 </Text>
                             </View>
                         )}
@@ -415,7 +415,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                                 style={[styles.addModalButton, { backgroundColor: '#F3F4F6' }]}
                                 onPress={() => { setShowAddModal(false); setNewModalityText(''); }}
                             >
-                                <Text style={[styles.addModalButtonText, { color: modernColors.textSecondary }]}>{t('multiSelectModalitySelector.annuler')}</Text>
+                                <Text style={[styles.addModalButtonText, { color: modernColors.textSecondary }]}>Annuler</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.addModalButton, { backgroundColor: modernColors.primary }]}
@@ -425,8 +425,8 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
 
                                     const newModality = text;
 
-                                    if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('🆕'))) {
-                                        Alert.alert(t('multiSelectModalitySelector.modaliteExistante'), t('multiSelectModalitySelector.existeDejaDansLaListe', { newModality: newModality }), [{ text: 'OK' }]);
+                                    if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('\uD83C\uDD95'))) {
+                                        Alert.alert('⚠️ Modalité existante', `"${newModality}" existe déjà dans la liste.`, [{ text: 'OK' }]);
                                         return;
                                     }
 
@@ -443,16 +443,16 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                                         setShowAddModal(false);
                                         setNewModalityText('');
                                         Alert.alert(
-                                            t('multiSelectModalitySelector.modaliteAjoutee'),
-                                            t('multiSelectModalitySelector.aEteAjouteEtSelectionne', { newModality: newModality }),
+                                            '✅ Modalité ajoutée',
+                                            `"${newModality}" a été ajouté et sélectionné !`,
                                             [{ text: 'OK' }]
                                         );
                                     } else {
-                                        Alert.alert('❌ Erreur', 'Impossible d\t('multiSelectModalitySelector.ajouterLaModalite'), [{ text: 'OK' }]);
+                                        Alert.alert('❌ Erreur', 'Impossible d\'ajouter la modalité.', [{ text: 'OK' }]);
                                     }
                                 }}
                             >
-                                <Text style={[styles.addModalButtonText, { color: '#FFFFFF' }]}>{t('multiSelectModalitySelector.ajouter')}</Text>
+                                <Text style={[styles.addModalButtonText, { color: '#FFFFFF' }]}>Ajouter</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

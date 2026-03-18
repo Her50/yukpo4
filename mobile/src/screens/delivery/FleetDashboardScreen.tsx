@@ -1,3 +1,4 @@
+import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -60,7 +61,7 @@ interface FleetApplication {
     has_documents: boolean;
 }
 
-type TabKey = 'overview' | 'couriers' | 'applications';
+type TabKey = 'overview' | 'couriers' | 'applications' | 'analytics';
 
 const PARTNER_TYPE_LABELS: Record<string, string> = {
     chauffeur: 'Chauffeurs',
@@ -615,6 +616,97 @@ const FleetDashboardScreen: React.FC = () => {
         </View>
     );
 
+    // ========== TAB: ANALYTICS ==========
+
+    const renderAnalytics = () => {
+        const metrics = [
+            { label: 'Coursiers actifs', value: stats.total_couriers, icon: 'users', color: modernColors.primary },
+            { label: 'Livraisons (30j)', value: stats.completed_deliveries_30d, icon: 'check-circle', color: '#22c55e' },
+            { label: 'En cours', value: stats.active_deliveries, icon: 'truck', color: '#3b82f6' },
+            { label: 'Note moyenne', value: `${stats.avg_rating.toFixed(1)}/5`, icon: 'star', color: '#f59e0b' },
+        ];
+
+        const topCouriers = [...couriers]
+            .sort((a, b) => b.deliveries_30d - a.deliveries_30d)
+            .slice(0, 5);
+        const maxDeliveries = topCouriers.length > 0 ? topCouriers[0].deliveries_30d : 1;
+
+        return (
+            <ScrollView
+                style={styles.tabContent}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[modernColors.primary]} />}
+                showsVerticalScrollIndicator={false}
+            >
+                <Text style={styles.sectionTitle}>Analytics</Text>
+
+                {/* Revenue Summary */}
+                <NativeCard style={styles.analyticsRevenueCard}>
+                    <View style={styles.analyticsRevenueHeader}>
+                        <View style={styles.analyticsRevenueIconWrap}>
+                            <SafeIcon name="trending-up" size={24} color="#fff" type="lucide" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.analyticsRevenueLabel}>Revenus ce mois</Text>
+                            <Text style={styles.analyticsRevenueValue}>
+                                {formatCurrency(stats.monthly_revenue_cents)}
+                            </Text>
+                        </View>
+                    </View>
+                </NativeCard>
+
+                {/* Key Metrics */}
+                <Text style={styles.sectionSubtitle}>Metriques cles</Text>
+                <View style={styles.analyticsMetricsGrid}>
+                    {metrics.map((m) => (
+                        <NativeCard key={m.label} style={styles.analyticsMetricCard}>
+                            <SafeIcon name={m.icon} size={22} color={m.color} type="lucide" />
+                            <Text style={styles.analyticsMetricValue}>
+                                {typeof m.value === 'number' ? m.value : m.value}
+                            </Text>
+                            <Text style={styles.analyticsMetricLabel}>{m.label}</Text>
+                        </NativeCard>
+                    ))}
+                </View>
+
+                {/* Top Couriers Performance */}
+                <Text style={styles.sectionSubtitle}>Performance des coursiers</Text>
+                {topCouriers.length === 0 ? (
+                    <NativeCard style={styles.emptyCard}>
+                        <SafeIcon name="bar-chart-2" size={48} color={modernColors.textSecondary} type="lucide" />
+                        <Text style={styles.emptyTitle}>Aucune donnee</Text>
+                        <Text style={styles.emptyText}>
+                            Les performances apparaitront ici lorsque vos coursiers effectueront des livraisons.
+                        </Text>
+                    </NativeCard>
+                ) : (
+                    <NativeCard style={styles.analyticsCouriersCard}>
+                        {topCouriers.map((c, idx) => {
+                            const barRatio = maxDeliveries > 0 ? c.deliveries_30d / maxDeliveries : 0;
+                            const barColor = idx === 0 ? '#22c55e' : idx === 1 ? '#3b82f6' : idx === 2 ? '#f59e0b' : '#8b5cf6';
+                            return (
+                                <View key={c.courier_id} style={styles.analyticsCourierRow}>
+                                    <Text style={styles.analyticsCourierRank}>#{idx + 1}</Text>
+                                    <View style={styles.analyticsCourierInfo}>
+                                        <Text style={styles.analyticsCourierName} numberOfLines={1}>{c.name}</Text>
+                                        <View style={styles.analyticsBarBg}>
+                                            <View style={[styles.analyticsBar, { width: `${Math.max(barRatio * 100, 5)}%`, backgroundColor: barColor }]} />
+                                        </View>
+                                    </View>
+                                    <View style={styles.analyticsCourierStats}>
+                                        <Text style={styles.analyticsCourierDeliveries}>{c.deliveries_30d}</Text>
+                                        <Text style={styles.analyticsCourierRating}>{c.rating.toFixed(1)} ★</Text>
+                                    </View>
+                                </View>
+                            );
+                        })}
+                    </NativeCard>
+                )}
+
+                <View style={{ height: 30 }} />
+            </ScrollView>
+        );
+    };
+
     // ========== MAIN RENDER ==========
 
     if (loading) {
@@ -647,6 +739,7 @@ const FleetDashboardScreen: React.FC = () => {
                     { key: 'overview' as TabKey, label: 'Apercu', icon: 'layout-dashboard' },
                     { key: 'couriers' as TabKey, label: fleetLabel, icon: 'users' },
                     { key: 'applications' as TabKey, label: 'Candidatures', icon: 'user-plus', badge: stats.pending_applications },
+                    { key: 'analytics' as TabKey, label: 'Analytics', icon: 'bar-chart-2' },
                 ]).map((tab) => (
                     <TouchableOpacity
                         key={tab.key}
@@ -675,6 +768,7 @@ const FleetDashboardScreen: React.FC = () => {
             {activeTab === 'overview' && renderOverview()}
             {activeTab === 'couriers' && renderCouriers()}
             {activeTab === 'applications' && renderApplications()}
+            {activeTab === 'analytics' && renderAnalytics()}
 
             {/* Reject Modal */}
             <Modal visible={rejectModalVisible} transparent animationType="slide">
@@ -1218,6 +1312,116 @@ const styles = StyleSheet.create({
     modalRejectText: {
         color: '#fff',
         fontWeight: '600',
+    },
+    // Analytics
+    analyticsRevenueCard: {
+        padding: 20,
+        borderRadius: 14,
+        marginBottom: 16,
+        backgroundColor: '#22c55e10',
+    },
+    analyticsRevenueHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+    },
+    analyticsRevenueIconWrap: {
+        width: 48,
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: '#22c55e',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    analyticsRevenueLabel: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        marginBottom: 2,
+    },
+    analyticsRevenueValue: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    analyticsMetricsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+        marginTop: 10,
+        marginBottom: 20,
+    },
+    analyticsMetricCard: {
+        width: '48%' as any,
+        flexGrow: 1,
+        flexBasis: '45%',
+        padding: 14,
+        alignItems: 'center',
+        borderRadius: 12,
+    },
+    analyticsMetricValue: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginTop: 6,
+    },
+    analyticsMetricLabel: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        marginTop: 2,
+        textAlign: 'center',
+    },
+    analyticsCouriersCard: {
+        padding: 14,
+        borderRadius: 12,
+        marginTop: 10,
+        marginBottom: 10,
+    },
+    analyticsCourierRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 10,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: modernColors.border,
+    },
+    analyticsCourierRank: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: modernColors.textSecondary,
+        width: 28,
+        textAlign: 'center',
+    },
+    analyticsCourierInfo: {
+        flex: 1,
+        gap: 4,
+    },
+    analyticsCourierName: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    analyticsBarBg: {
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: modernColors.border,
+        overflow: 'hidden',
+    },
+    analyticsBar: {
+        height: 8,
+        borderRadius: 4,
+    },
+    analyticsCourierStats: {
+        alignItems: 'flex-end',
+    },
+    analyticsCourierDeliveries: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    analyticsCourierRating: {
+        fontSize: 11,
+        color: '#f59e0b',
+        fontWeight: '500',
     },
 });
 

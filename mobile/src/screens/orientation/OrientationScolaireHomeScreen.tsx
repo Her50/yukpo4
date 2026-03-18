@@ -258,10 +258,9 @@ const OrientationScolaireHomeScreen: React.FC = () => {
 
         const result = await callWithFallback(
             async () => {
-                const { apiPost } = require('../../services/api');
-                const response = await apiPost('/api/orientation/ai/academic-search', {
-                    query: academicQuery.trim(),
-                    context: { service: 'orientation_scolaire', domain: 'education' },
+                const response = await orientationScolaireService.academicSearch(academicQuery.trim(), {
+                    service: 'orientation_scolaire',
+                    domain: 'education',
                 });
                 if (response?.success) {
                     return response.response || response.data?.response || response.data?.message || null;
@@ -269,19 +268,19 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                 return null;
             },
             'orientation_academic',
-            t('orientationScolaireHomeScreen.rechercheAcademique', { academicQuery_trim(): academicQuery.trim() }),
+            `Recherche académique: ${academicQuery.trim()}`,
             () => {
                 const q = academicQuery.trim().toLowerCase();
                 if (q.includes('bourse') || q.includes('scholarship')) {
                     return 'Les bourses disponibles au Cameroun incluent: Bourses d\'excellence du MINESUP, Bourses de la coopération française (Campus France), Bourses DAAD (Allemagne), Bourses Commonwealth. Consultez votre établissement pour les détails.';
                 }
                 if (q.includes('concours') || q.includes('admission')) {
-                    return t('orientationScolaireHomeScreen.lesPrincipauxConcoursAuCamerounEnam');
+                    return 'Les principaux concours au Cameroun: ENAM, ENSP, ENS, École Polytechnique, FMSB, IUT. Les inscriptions ouvrent généralement entre mars et juin. Vérifiez les dates sur le site du MINESUP.';
                 }
-                if (q.includes(t('orientationScolaireHomeScreen.universite')) || q.includes(t('orientationScolaireHomeScreen.faculte'))) {
-                    return t('orientationScolaireHomeScreen.leCamerounCompte8UniversitesD')\u00c9tat (Yaoundé I & II, Douala, Dschang, Buea, Bamenda, Maroua, Ngaoundéré) et de nombreuses universités privées. Choisissez en fonction de la filière souhaitée.';
+                if (q.includes('université') || q.includes('faculté')) {
+                    return 'Le Cameroun compte 8 universités d\'\u00c9tat (Yaoundé I & II, Douala, Dschang, Buea, Bamenda, Maroua, Ngaoundéré) et de nombreuses universités privées. Choisissez en fonction de la filière souhaitée.';
                 }
-                return t('orientationScolaireHomeScreen.pourDesConseilsPersonnalisesEnOrientationScolaire');
+                return 'Pour des conseils personnalisés en orientation scolaire, créez votre profil étudiant et consultez les recommandations IA. Vous pouvez aussi contacter un conseiller d\'orientation.';
             }
         );
 
@@ -291,7 +290,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                 toaster?.show?.(t('orientationScolaire.responseLocalData'), 'info');
             }
         } else {
-            setAcademicResponse(t('orientationScolaireHomeScreen.consultezUnConseillerDorientationPourDesConseilsPersonnalise'));
+            setAcademicResponse('Consultez un conseiller d\'orientation pour des conseils personnalisés.');
             toaster?.show?.(t('orientationScolaire.aiTemporarilyUnavailable'), 'error');
         }
         setLoadingAI(false);
@@ -304,11 +303,11 @@ const OrientationScolaireHomeScreen: React.FC = () => {
     };
 
     const tabs: Array<{ id: TabType; label: string; icon: string }> = [
-        { id: 'etablissements', label: t('orientationScolaireHome.etablissements'), icon: 'school' },
-        { id: 'programmes', label: 'Programmes', icon: 'book-open' },
-        { id: 'concours', label: 'Concours', icon: 'trophy' },
-        { id: 'conferences', label: t('orientationScolaireHome.conferences'), icon: 'video' },
-        { id: 'fournitures', label: 'Fournitures', icon: 'shopping-bag' },
+        { id: 'etablissements', label: t('orientationScolaire.tabs.etablissements'), icon: 'school' },
+        { id: 'programmes', label: t('orientationScolaire.tabs.programmes'), icon: 'book-open' },
+        { id: 'concours', label: t('orientationScolaire.tabs.concours'), icon: 'trophy' },
+        { id: 'conferences', label: t('orientationScolaire.tabs.conferences'), icon: 'video' },
+        { id: 'fournitures', label: t('orientationScolaire.tabs.fournitures'), icon: 'shopping-bag' },
     ];
 
     return (
@@ -330,10 +329,10 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                             <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>Orientation Scolaire</Text>
+                            <Text style={styles.headerTitle}>{t('orientationScolaire.title')}</Text>
                             <Text style={styles.headerSubtitle}>
                                 {activeTab === 'etablissements' && totalEtablissements > 0 && (
-                                    t('orientationScolaireHomeScreen.etablissement', { totalEtablissements: totalEtablissements, totalEtablissements > 1 ? 's' : '': totalEtablissements > 1 ? 's' : '' })
+                                    `${totalEtablissements} établissement${totalEtablissements > 1 ? 's' : ''}`
                                 )}
                             </Text>
                         </View>
@@ -363,7 +362,17 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                             <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder={`Rechercher ${activeTab === 'etablissements' ? t('orientationScolaireHomeScreen.unEtablissement') : activeTab === 'programmes' ? 'un programme' : activeTab === 'concours' ? 'un concours' : activeTab === 'conferences' ? t('orientationScolaireHomeScreen.uneConference') : 'des fournitures'}...`}
+                                placeholder={t('orientationScolaire.searchPlaceholder', {
+                                    target: activeTab === 'etablissements'
+                                        ? t('orientationScolaire.searchTargets.etablissements')
+                                        : activeTab === 'programmes'
+                                            ? t('orientationScolaire.searchTargets.programmes')
+                                            : activeTab === 'concours'
+                                                ? t('orientationScolaire.searchTargets.concours')
+                                                : activeTab === 'conferences'
+                                                    ? t('orientationScolaire.searchTargets.conferences')
+                                                    : t('orientationScolaire.searchTargets.fournitures'),
+                                })}
                                 placeholderTextColor="#9CA3AF"
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
@@ -422,7 +431,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                                 styles.aiSearchButtonText,
                                 loading && styles.aiSearchButtonTextDisabled
                             ]}>
-                                Recherche académique IA
+                                {t('orientationScolaire.aiAcademicSearchButton')}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -496,7 +505,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
             {loading && (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>{t('orientationScolaireHome.chargement')}</Text>
+                    <Text style={styles.loadingText}>{t('orientationScolaire.loading')}</Text>
                 </View>
             )}
 
@@ -525,7 +534,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="school" size={64} color="#9CA3AF" />
-                            <Text style={styles.emptyText}>{t('orientationScolaireHome.aucunEtablissementTrouve')}</Text>
+                            <Text style={styles.emptyText}>{t('orientationScolaire.empty.etablissements')}</Text>
                         </View>
                     }
                 />
@@ -555,7 +564,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="book-open" size={64} color="#9CA3AF" />
-                            <Text style={styles.emptyText}>{t('orientationScolaireHome.aucunProgrammeTrouve')}</Text>
+                            <Text style={styles.emptyText}>{t('orientationScolaire.empty.programmes')}</Text>
                         </View>
                     }
                 />
@@ -585,7 +594,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="trophy" size={64} color="#9CA3AF" />
-                            <Text style={styles.emptyText}>{t('orientationScolaireHome.aucunConcoursActif')}</Text>
+                            <Text style={styles.emptyText}>{t('orientationScolaire.empty.concours')}</Text>
                         </View>
                     }
                 />
@@ -615,7 +624,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="video" size={64} color="#9CA3AF" />
-                            <Text style={styles.emptyText}>{t('orientationScolaireHome.aucuneConferenceProgrammee')}</Text>
+                            <Text style={styles.emptyText}>{t('orientationScolaire.empty.conferences')}</Text>
                         </View>
                     }
                 />
@@ -645,7 +654,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="shopping-bag" size={64} color="#9CA3AF" />
-                            <Text style={styles.emptyText}>{t('orientationScolaireHome.aucuneFournitureTrouvee')}</Text>
+                            <Text style={styles.emptyText}>{t('orientationScolaire.empty.fournitures')}</Text>
                         </View>
                     }
                 />
@@ -897,7 +906,11 @@ const AIModal: React.FC<AIModalProps> = ({
                 <View style={styles.modalContent}>
                     <View style={styles.modalHeader}>
                         <Text style={styles.modalTitle}>
-                            {mode === 'analyze' ? 'Analyse de Profil IA' : mode === 'recommendations' ? 'Recommandations IA' : 'Comparaison IA'}
+                            {mode === 'analyze'
+                                ? t('orientationScolaire.aiModal.titleAnalyze')
+                                : mode === 'recommendations'
+                                    ? t('orientationScolaire.aiModal.titleRecommendations')
+                                    : t('orientationScolaire.aiModal.titleCompare')}
                         </Text>
                         <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
                             <SafeIcon name="x" size={24} color="#111827" type="lucide" />
@@ -908,13 +921,13 @@ const AIModal: React.FC<AIModalProps> = ({
                         {/* ✅ NOUVEAU: Mode recherche académique */}
                         {mode === 'academic' ? (
                             <View style={styles.academicContainer}>
-                                <Text style={styles.academicTitle}>{t('orientationScolaireHome.rechercheAcademiqueIa')}</Text>
+                                <Text style={styles.academicTitle}>{t('orientationScolaire.aiModal.academicTitle')}</Text>
                                 <Text style={styles.academicSubtitle}>
-                                    Posez vos questions sur les cours, programmes, examens, etc.
+                                    {t('orientationScolaire.aiModal.academicSubtitle')}
                                 </Text>
                                 <TextInput
                                     style={styles.academicInput}
-                                    placeholder={t('orientationScolaireHome.exCommentReussirL')}examen de mathématiques en terminale ?"
+                                    placeholder={t('orientationScolaire.aiModal.academicPlaceholder')}
                                     placeholderTextColor="#9CA3AF"
                                     value={academicQuery}
                                     onChangeText={onAcademicQueryChange}
@@ -928,12 +941,12 @@ const AIModal: React.FC<AIModalProps> = ({
                                 >
                                     <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
                                     <Text style={styles.academicSearchButtonText}>
-                                        {loading ? 'Recherche...' : 'Rechercher'}
+                                        {loading ? t('orientationScolaire.aiModal.searching') : t('orientationScolaire.aiModal.search')}
                                     </Text>
                                 </TouchableOpacity>
                                 {academicResponse && (
                                     <View style={styles.academicResponseContainer}>
-                                        <Text style={styles.academicResponseTitle}>{t('orientationScolaireHome.reponseIa')}</Text>
+                                        <Text style={styles.academicResponseTitle}>{t('orientationScolaire.aiModal.answerTitle')}</Text>
                                         <Text style={styles.academicResponseText}>{academicResponse}</Text>
                                     </View>
                                 )}
@@ -942,35 +955,35 @@ const AIModal: React.FC<AIModalProps> = ({
                             <View style={styles.noProfileContainer}>
                                 <SafeIcon name="user" size={64} color="#9CA3AF" />
                                 <Text style={styles.noProfileText}>
-                                    Créez votre profil étudiant pour utiliser les fonctionnalités IA
+                                    {t('orientationScolaire.aiModal.noProfileText')}
                                 </Text>
                                 <TouchableOpacity
                                     style={styles.createProfileButton}
                                     onPress={onCreateProfile}
                                 >
-                                    <Text style={styles.createProfileButtonText}>{t('orientationScolaireHome.creerMonProfil')}</Text>
+                                    <Text style={styles.createProfileButtonText}>{t('orientationScolaire.aiModal.createProfile')}</Text>
                                 </TouchableOpacity>
                             </View>
                         ) : loading ? (
                             <View style={styles.aiLoadingContainer}>
                                 <ActivityIndicator size="large" color="#8B5CF6" />
-                                <Text style={styles.aiLoadingText}>Analyse en cours...</Text>
+                                <Text style={styles.aiLoadingText}>{t('orientationScolaire.aiModal.analyzing')}</Text>
                             </View>
                         ) : mode === 'analyze' && profileAnalysis ? (
                             <View style={styles.analysisContainer}>
                                 <View style={styles.scoreContainer}>
                                     <View style={styles.scoreItem}>
-                                        <Text style={styles.scoreLabel}>{t('orientationScolaireHome.scoreAcademique')}</Text>
+                                        <Text style={styles.scoreLabel}>{t('orientationScolaire.aiModal.scoreAcademic')}</Text>
                                         <Text style={styles.scoreValue}>{profileAnalysis.score_academique.toFixed(1)}/100</Text>
                                     </View>
                                     <View style={styles.scoreItem}>
-                                        <Text style={styles.scoreLabel}>{t('orientationScolaireHome.scoreInterets')}</Text>
+                                        <Text style={styles.scoreLabel}>{t('orientationScolaire.aiModal.scoreInterests')}</Text>
                                         <Text style={styles.scoreValue}>{profileAnalysis.score_interets.toFixed(1)}/100</Text>
                                     </View>
                                 </View>
                                 {profileAnalysis.points_forts.length > 0 && (
                                     <View style={styles.pointsContainer}>
-                                        <Text style={styles.pointsTitle}>{t('orientationScolaireHome.pointsForts')}</Text>
+                                        <Text style={styles.pointsTitle}>{t('orientationScolaire.aiModal.strengths')}</Text>
                                         {profileAnalysis.points_forts.map((point, i) => (
                                             <Text key={i} style={styles.pointText}>• {point}</Text>
                                         ))}
@@ -978,14 +991,14 @@ const AIModal: React.FC<AIModalProps> = ({
                                 )}
                                 {profileAnalysis.filieres_suggestees.length > 0 && (
                                     <View style={styles.suggestionsContainer}>
-                                        <Text style={styles.suggestionsTitle}>{t('orientationScolaireHome.filieresSuggerees')}</Text>
+                                        <Text style={styles.suggestionsTitle}>{t('orientationScolaire.aiModal.suggestedTracks')}</Text>
                                         {profileAnalysis.filieres_suggestees.map((filiere, i) => (
                                             <Text key={i} style={styles.suggestionText}>• {filiere}</Text>
                                         ))}
                                     </View>
                                 )}
                                 <View style={styles.recommendationsContainer}>
-                                    <Text style={styles.recommendationsTitle}>Recommandations:</Text>
+                                    <Text style={styles.recommendationsTitle}>{t('orientationScolaire.aiModal.recommendationsTitle')}</Text>
                                     <Text style={styles.recommendationsText}>{profileAnalysis.recommendations}</Text>
                                 </View>
                             </View>
@@ -995,14 +1008,14 @@ const AIModal: React.FC<AIModalProps> = ({
                                     <View key={i} style={styles.recommendationCard}>
                                         <Text style={styles.recommendationTitle}>{rec.filiere}</Text>
                                         <Text style={styles.recommendationScore}>
-                                            Score: {rec.score_total.toFixed(1)}/100
+                                            {t('orientationScolaire.aiModal.scoreLabel', { score: rec.score_total.toFixed(1) })}
                                         </Text>
                                         <Text style={styles.recommendationReasoning}>{rec.reasoning}</Text>
                                     </View>
                                 ))}
                             </View>
                         ) : (
-                            <Text style={styles.placeholderText}>{t('orientationScolaireHome.aucuneDonneeDisponible')}</Text>
+                            <Text style={styles.placeholderText}>{t('orientationScolaire.aiModal.noData')}</Text>
                         )}
                     </ScrollView>
                 </View>

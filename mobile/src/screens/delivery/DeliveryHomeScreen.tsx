@@ -9,6 +9,7 @@ import SkeletonDeliveryCard from '../../components/delivery/SkeletonDeliveryCard
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import BookUserSubDashboard from '../../components/delivery/BookUserSubDashboard';
 import { useDeliveryContext } from '../../contexts/DeliveryContext';
 import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
@@ -142,7 +143,7 @@ const DeliveryHomeScreen: React.FC = () => {
             return;
         }
 
-        console.log('[DeliveryHomeScreen] 🛒 Navigation vers DeliveryShoppingFlow');
+        console.log('[DeliveryHomeScreen] \uD83D\uDED2 Navigation vers DeliveryShoppingFlow');
         setNavigating(true);
 
         try {
@@ -172,7 +173,7 @@ const DeliveryHomeScreen: React.FC = () => {
             return;
         }
 
-        console.log('[DeliveryHomeScreen] 📦 Navigation vers DeliveryParcelFlowNew');
+        console.log('[DeliveryHomeScreen] \uD83D\uDCE6 Navigation vers DeliveryParcelFlowNew');
         setNavigating(true);
 
         try {
@@ -209,7 +210,7 @@ const DeliveryHomeScreen: React.FC = () => {
             return;
         }
 
-        console.log('[DeliveryHomeScreen] 📍 Ouverture livraison:', deliveryId);
+        console.log('[DeliveryHomeScreen] \uD83D\uDCCD Ouverture livraison:', deliveryId);
         setNavigating(true);
         setActiveDeliveryId(deliveryId);
 
@@ -258,7 +259,7 @@ const DeliveryHomeScreen: React.FC = () => {
                                 title={t('deliveryHome.verifierLaConnexion')}
                                 variant='outline'
                                 onPress={() => {
-                                    console.log('[DeliveryHomeScreen] 🔄 Tentative de reconnexion...');
+                                    console.log('[DeliveryHomeScreen] \uD83D\uDD04 Tentative de reconnexion...');
                                     if (typeof retryPendingMutations === 'function') {
                                         retryPendingMutations();
                                     } else {
@@ -281,7 +282,7 @@ const DeliveryHomeScreen: React.FC = () => {
                                 title='Forcer la synchronisation'
                                 variant='ghost'
                                 onPress={() => {
-                                    console.log('[DeliveryHomeScreen] 🔄 Forçage synchronisation...');
+                                    console.log('[DeliveryHomeScreen] \uD83D\uDD04 Forçage synchronisation...');
                                     if (typeof retryPendingMutations === 'function') {
                                         retryPendingMutations();
                                     } else {

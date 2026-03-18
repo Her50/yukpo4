@@ -24,7 +24,7 @@ const YukpoLogo: React.FC<YukpoLogoProps> = ({
         fontSize: size * 0.4,
         color
       }]}>
-        🎧
+        \uD83C\uDFA7
       </Text>
 
       {/* Petites ondes sonores */}

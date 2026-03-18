@@ -15,7 +15,7 @@ import { modernColors } from '../../theme/modernTheme';
 import ChatModalMobile from '../ChatModalMobile';
 import OrderDeliveryModal from '../delivery/OrderDeliveryModal';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface BloodBankResultCardProps {
     banque: {

@@ -52,11 +52,11 @@ const [forecast, setForecast] = useState<WeatherForecast[]>([]);
         const desc = description.toLowerCase();
         if (desc.includes('sun') || desc.includes('clear')) return '☀️';
         if (desc.includes('cloud')) return '☁️';
-        if (desc.includes('rain')) return '🌧️';
+        if (desc.includes('rain')) return '\uD83C\uDF27️';
         if (desc.includes('storm')) return '⛈️';
         if (desc.includes('snow')) return '❄️';
-        if (desc.includes('fog') || desc.includes('mist')) return '🌫️';
-        return '🌤️';
+        if (desc.includes('fog') || desc.includes('mist')) return '\uD83C\uDF2B️';
+        return '\uD83C\uDF24️';
     };
 
     // Fonction pour formater la date
@@ -281,7 +281,7 @@ const [forecast, setForecast] = useState<WeatherForecast[]>([]);
             }
 
             console.log('[WeatherForecastModal] ✅ Données mockées générées:', mockForecast.length, 'jours');
-            console.log('[WeatherForecastModal] 📅 Plage:', mockForecast[0]?.day, 'à', mockForecast[mockForecast.length - 1]?.day);
+            console.log('[WeatherForecastModal] \uD83D\uDCC5 Plage:', mockForecast[0]?.day, 'à', mockForecast[mockForecast.length - 1]?.day);
 
             setForecast(mockForecast);
             setError(null); // Pas d'erreur, on utilise les données mockées
@@ -331,16 +331,16 @@ const [forecast, setForecast] = useState<WeatherForecast[]>([]);
 
             <View style={styles.detailsContainer}>
                 <View style={styles.detailItem}>
-                    <Text style={styles.detailIcon}>💧</Text>
+                    <Text style={styles.detailIcon}>\uD83D\uDCA7</Text>
                     <Text style={styles.detailText}>{item.humidity}%</Text>
                 </View>
                 <View style={styles.detailItem}>
-                    <Text style={styles.detailIcon}>💨</Text>
+                    <Text style={styles.detailIcon}>\uD83D\uDCA8</Text>
                     <Text style={styles.detailText}>{item.windSpeed} km/h</Text>
                 </View>
                 {item.precipitation > 0 && (
                     <View style={styles.detailItem}>
-                        <Text style={styles.detailIcon}>🌧️</Text>
+                        <Text style={styles.detailIcon}>\uD83C\uDF27️</Text>
                         <Text style={styles.detailText}>{item.precipitation}mm</Text>
                     </View>
                 )}
@@ -400,7 +400,7 @@ const [forecast, setForecast] = useState<WeatherForecast[]>([]);
                         </View>
                     ) : error && forecast.length === 0 ? (
                         <View style={styles.errorContainer}>
-                            <Text style={styles.errorIcon}>🌤️</Text>
+                            <Text style={styles.errorIcon}>\uD83C\uDF24️</Text>
                             <Text style={styles.errorText}>{error}</Text>
                             <TouchableOpacity style={styles.retryButton} onPress={() => fetchWeatherForecast()}>
                                 <Text style={styles.retryButtonText}>{t('weatherForecast.reessayer')}</Text>
@@ -414,7 +414,7 @@ const [forecast, setForecast] = useState<WeatherForecast[]>([]);
                         </View>
                     ) : (
                         <View style={styles.errorContainer}>
-                            <Text style={styles.errorIcon}>🌤️</Text>
+                            <Text style={styles.errorIcon}>\uD83C\uDF24️</Text>
                             <Text style={styles.errorText}>{t('weatherForecast.aucuneDonneeMeteoDisponible')}</Text>
                             <TouchableOpacity style={styles.retryButton} onPress={() => fetchWeatherForecast()}>
                                 <Text style={styles.retryButtonText}>{t('weatherForecast.chargerLesDonnees')}</Text>

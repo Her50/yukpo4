@@ -128,42 +128,42 @@ const EnhancedSettingsScreen: React.FC = () => {
         {
             id: 'profile',
             title: t('enhancedSettingsScreen.profil'),
-            icon: '👤',
+            icon: '\uD83D\uDC64',
             color: '#3B82F6',
             description: t('enhancedSettings.gererVosInformationsPersonnelles')
         },
         {
             id: 'notifications',
             title: 'Notifications',
-            icon: '🔔',
+            icon: '\uD83D\uDD14',
             color: '#F59E0B',
             description: t('enhancedSettings.controlerVosNotifications')
         },
         {
             id: 'privacy',
             title: t('enhancedSettings.confidentialite'),
-            icon: '🔒',
+            icon: '\uD83D\uDD12',
             color: '#EF4444',
             description: t('enhancedSettings.gererVotreViePrivee')
         },
         {
             id: 'appearance',
             title: 'Apparence',
-            icon: '🎨',
+            icon: '\uD83C\uDFA8',
             color: '#8B5CF6',
             description: 'Personnaliser l\'interface'
         },
         {
             id: 'security',
             title: t('enhancedSettings.securite'),
-            icon: '🛡️',
+            icon: '\uD83D\uDEE1️',
             color: '#10B981',
             description: t('enhancedSettings.securiserVotreCompte')
         },
         {
             id: 'data',
             title: t('enhancedSettings.donnees'),
-            icon: '💾',
+            icon: '\uD83D\uDCBE',
             color: '#6B7280',
             description: t('enhancedSettings.gererVosDonnees')
         }

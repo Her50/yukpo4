@@ -26,7 +26,6 @@ import ProductMediaCarousel from './ProductMediaCarousel';
 import SafeIcon from './SafeIcon';
 import ServiceGalleryModal from './ServiceGalleryModal';
 import { ServiceRating } from './ServiceRating';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -41,38 +40,38 @@ interface ProductCardProps {
 
 // Ô£à NOUVEAU : Constantes pour r├®actions
 const REACTIONS = [
-  { type: 'love', emoji: t('productCardRestored.ona'), label: 'J\'adore' },
-  { type: 'like', emoji: t('productCardRestored.i'), label: 'J\'aime' },
-  { type: 'wow', emoji: t('productCardRestored.y'), label: 'Impressionnant' },
+  { type: 'love', emoji: 'ÔØñ´©Å', label: 'J\'adore' },
+  { type: 'like', emoji: '­ƒæì', label: 'J\'aime' },
+  { type: 'wow', emoji: '­ƒÿ«', label: 'Impressionnant' },
   { type: 'interested', emoji: '­ƒÄ»', label: 'Int├®ressant' },
-  { type: 'thinking', emoji: t('productCard_restored.no'), label: t('productCard_restored.cRflchir') },
-  { type: 'disappointed', emoji: t('productCardRestored.yo'), label: 'D├®├ºu' },
+  { type: 'thinking', emoji: '­ƒñö', label: '├Ç r├®fl├®chir' },
+  { type: 'disappointed', emoji: '­ƒÿò', label: 'D├®├ºu' },
 ];
 
 // Mapper codes pays ÔåÆ drapeaux emoji
 const getCountryFlag = (country?: string): string => {
   const countryMap: Record<string, string> = {
-    'Cameroun': t('productCardRestored.cc'),
-    'Cameroon': t('productCardRestored.cc'),
-    'Gabon': t('productCardRestored.cc'),
-    'Congo': t('productCardRestored.cc'),
-    'RDC': t('productCardRestored.cc'),
-    'S├®n├®gal': t('productCardRestored.cc'),
-    'Senegal': t('productCardRestored.cc'),
-    'C├┤te d\'Ivoire': t('productCardRestored.cc'),
-    'Mali': t('productCardRestored.cc'),
-    'Burkina': t('productCardRestored.cc'),
-    'Niger': t('productCardRestored.cc'),
-    'Tchad': t('productCardRestored.cc'),
-    'Togo': t('productCardRestored.cc'),
-    'B├®nin': t('productCardRestored.cc'),
-    'Guin├®e': t('productCardRestored.cc'),
-    'Madagascar': t('productCardRestored.cc'),
-    'France': t('productCardRestored.cca'),
-    'USA': t('productCardRestored.cc'),
+    'Cameroun': '­ƒç¿­ƒç▓',
+    'Cameroon': '­ƒç¿­ƒç▓',
+    'Gabon': '­ƒç¼­ƒçª',
+    'Congo': '­ƒç¿­ƒç¼',
+    'RDC': '­ƒç¿­ƒç®',
+    'S├®n├®gal': '­ƒç©­ƒç│',
+    'Senegal': '­ƒç©­ƒç│',
+    'C├┤te d\'Ivoire': '­ƒç¿­ƒç«',
+    'Mali': '­ƒç▓­ƒç▒',
+    'Burkina': '­ƒçº­ƒç½',
+    'Niger': '­ƒç│­ƒç¬',
+    'Tchad': '­ƒç╣­ƒç®',
+    'Togo': '­ƒç╣­ƒç¼',
+    'B├®nin': '­ƒçº­ƒç»',
+    'Guin├®e': '­ƒç¼­ƒç│',
+    'Madagascar': '­ƒç▓­ƒç¼',
+    'France': '­ƒç½­ƒçÀ',
+    'USA': '­ƒç║­ƒç©',
   };
 
-  if (!country) return t('productCard_restored.ii');
+  if (!country) return '­ƒîì';
 
   for (const [key, flag] of Object.entries(countryMap)) {
     if (country.toLowerCase().includes(key.toLowerCase())) {
@@ -80,7 +79,7 @@ const getCountryFlag = (country?: string): string => {
     }
   }
 
-  return t('productCard_restored.ii');
+  return '­ƒîì';
 };
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -92,7 +91,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onChatPress,
 }) => {
   const navigation = useNavigation();
-    const { t } = useLanguageSafe();
   const [imageError, setImageError] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
@@ -174,7 +172,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         ? `${process.env.EXPO_PUBLIC_SHARE_URL}/service/${product.service_id || service?.id}`
         : `https://yukpomnang.com/service/${product.service_id || service?.id}`;
 
-      const shareMessage = `­ƒøì´©Å ${productName}\n\n${productDesc ? `${productDesc}\n\n` : ''}${price ? t('productCard_restored.prixN', { price: price }) : 't('productCard_restored.locationOiLocationnnt')productCardRestored.nouVoirCeProduitn', { shareUrl: shareUrl });
+      const shareMessage = `­ƒøì´©Å ${productName}\n\n${productDesc ? `${productDesc}\n\n` : ''}${price ? `­ƒÆ░ Prix: ${price}\n` : ''}${location ? `­ƒôì ${location}\n\n` : '\n'}­ƒöù Voir ce produit:\n${shareUrl}`;
 
       const result = await Share.share({
         message: shareMessage,
@@ -359,14 +357,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
             {/* Ô£à NOUVEAU : Badge popularit├® (coin inf├®rieur gauche) */}
             {isTrending && (
               <View style={styles.trendingBadge}>
-                <Text style={styles.trendingEmoji}>{t('productCard_restored.onon')}</Text>
+                <Text style={styles.trendingEmoji}>­ƒöÑ­ƒöÑ</Text>
                 <Text style={styles.trendingText}>Tendance</Text>
                 <Text style={styles.trendingCount}>{usageCount}├ù</Text>
               </View>
             )}
             {!isTrending && isPopular && (
               <View style={styles.popularBadge}>
-                <Text style={styles.popularEmoji}>{t('productCard_restored.on')}</Text>
+                <Text style={styles.popularEmoji}>­ƒöÑ</Text>
                 <Text style={styles.popularText}>Populaire</Text>
                 <Text style={styles.popularCount}>{usageCount}├ù</Text>
               </View>
@@ -638,7 +636,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </View>
 
                 <View style={styles.priceFromContainer}>
-                  <Text style={styles.priceFromLabel}>{t('productCard_restored.cPartirDe')}</Text>
+                  <Text style={styles.priceFromLabel}>├Ç partir de</Text>
                   <Text style={styles.priceFromValue}>
                     {displayPrice.toLocaleString()} {devise}
                   </Text>
@@ -659,13 +657,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
             {/* Actions */}
             <View style={styles.actions}>
               <NativeButton
-                title={t('productCard_restored.chat')}
+                title="­ƒÆ¼ Chat"
                 variant="primary"
                 onPress={handleChatPress}
                 style={styles.actionButton}
               />
               <NativeButton
-                title={t('productCard_restored.uaVoir')}
+                title="­ƒæü´©Å Voir"
                 variant="secondary"
                 onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
                 style={styles.actionButton}
@@ -686,7 +684,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 onPress={handleShare}
               >
                 <SafeIcon name="Redo2" size={18} color={modernColors.primary} />
-                <Text style={styles.secondaryActionText}>{t('productCardRestored.partager')}</Text>
+                <Text style={styles.secondaryActionText}>Partager</Text>
               </TouchableOpacity>
             </View>
 
@@ -696,7 +694,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 <View style={styles.footerItem}>
                   <SafeIcon name="map-pin" size={12} color="#9CA3AF" />
                   <Text style={styles.footerText}>
-                    {distanceKm < 1 ? 'Tr├¿s proche' : distanceKm < 5 ? t('productCard_restored.cProximit') : `${distanceKm.toFixed(0)}km`}
+                    {distanceKm < 1 ? 'Tr├¿s proche' : distanceKm < 5 ? '├Ç proximit├®' : `${distanceKm.toFixed(0)}km`}
                   </Text>
                 </View>
               )}

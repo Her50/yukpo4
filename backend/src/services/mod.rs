@@ -68,6 +68,7 @@ pub mod embedding_service;
 pub mod embedding_tracker;
 pub mod emploi_ai_service; // ✅ NOUVEAU: Service IA emploi
 pub mod enrich_google_places; // ✅ NOUVEAU: Enrichissement services avec données Google Places complètes
+pub mod exchange_rate_service; // ✅ 2026-03-18: Taux de change live via ExchangeRate-API (gratuit, cache 24h)
 pub mod exhaustive_combination_generator;
 pub mod file_extractor;
 pub mod flash_sale_cache; // ✅ NOUVEAU: Cache Redis pour Flash Sales

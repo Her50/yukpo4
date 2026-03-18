@@ -257,7 +257,7 @@ const CreateOffreScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Publier une offre</Text>
+                <Text style={styles.title}>{t('createOffre.publierUneOffre')}</Text>
                 {/* ✅ NOUVEAU: Bouton IA */}
                 <TouchableOpacity
                     onPress={() => {
@@ -288,7 +288,7 @@ const CreateOffreScreen: React.FC = () => {
             <NativeCard style={styles.card}>
                 {/* Titre */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Titre du poste *</Text>
+                    <Text style={styles.label}>{t('createOffre.titreDuPoste')}</Text>
                     <NativeInput
                         value={formData.titre_poste}
                         onChangeText={(text) => setFormData({ ...formData, titre_poste: text })}
@@ -298,7 +298,7 @@ const CreateOffreScreen: React.FC = () => {
 
                 {/* Description */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Description *</Text>
+                    <Text style={styles.label}>{t('createOffre.description')}</Text>
                     <TextInput
                         style={styles.textArea}
                         value={formData.description}
@@ -385,7 +385,7 @@ const CreateOffreScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.label}>Adresse</Text>
+                    <Text style={styles.label}>{t('createOffre.adresse')}</Text>
                     <NativeInput
                         value={formData.adresse}
                         onChangeText={(text) => setFormData({ ...formData, adresse: text })}
@@ -394,7 +394,7 @@ const CreateOffreScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.label}>GPS</Text>
+                    <Text style={styles.label}>{t('createOffre.gps')}</Text>
                     <View style={styles.gpsRow}>
                         <NativeInput
                             value={formData.gps}
@@ -424,7 +424,7 @@ const CreateOffreScreen: React.FC = () => {
                 {/* Salaire */}
                 <View style={styles.row}>
                     <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
-                        <Text style={styles.label}>Salaire min (XAF)</Text>
+                        <Text style={styles.label}>{t('createOffre.salaireMin')}</Text>
                         <NativeInput
                             value={formData.salaire_min}
                             onChangeText={(text) => setFormData({ ...formData, salaire_min: text })}
@@ -433,7 +433,7 @@ const CreateOffreScreen: React.FC = () => {
                         />
                     </View>
                     <View style={[styles.field, { flex: 1, marginLeft: 8 }]}>
-                        <Text style={styles.label}>Salaire max (XAF)</Text>
+                        <Text style={styles.label}>{t('createOffre.salaireMax')}</Text>
                         <NativeInput
                             value={formData.salaire_max}
                             onChangeText={(text) => setFormData({ ...formData, salaire_max: text })}
@@ -480,7 +480,7 @@ const CreateOffreScreen: React.FC = () => {
 
                 {/* Bouton submit */}
                 <NativeButton
-                    title={loading ? t('createOffreScreen.creation') : 'Publier l\'offre'}
+                    title={loading ? t('createOffreScreen.creation') : t('createOffre.publierLoffre')}
                     onPress={handleSubmit}
                     disabled={loading}
                     style={styles.submitButton}
@@ -491,7 +491,7 @@ const CreateOffreScreen: React.FC = () => {
             <View style={styles.quickAccessSection}>
                 <Text style={styles.quickAccessTitle}>{t('createOffre.accesRapide')}</Text>
                 <Text style={styles.quickAccessSubtitle}>
-                    Une fois l'offre publiée, vous pourrez :
+                    {t('createOffre.uneFoisOffrePubliee')}
                 </Text>
 
                 <View style={styles.quickAccessButtons}>
@@ -503,9 +503,9 @@ const CreateOffreScreen: React.FC = () => {
                         }}
                     >
                         <SafeIcon name="users" size={24} color={modernColors.primary} type="lucide" />
-                        <Text style={styles.quickAccessButtonText}>Voir mes offres</Text>
+                        <Text style={styles.quickAccessButtonText}>{t('createOffre.voirMesOffres')}</Text>
                         <Text style={styles.quickAccessButtonSubtext}>
-                            Gérer vos offres et candidatures
+                            {t('createOffre.gererVosOffresEtCandidatures')}
                         </Text>
                     </TouchableOpacity>
 
@@ -517,9 +517,9 @@ const CreateOffreScreen: React.FC = () => {
                         }}
                     >
                         <SafeIcon name="brain" size={24} color={modernColors.primary} type="lucide" />
-                        <Text style={styles.quickAccessButtonText}>Analyser les CV (IA)</Text>
+                        <Text style={styles.quickAccessButtonText}>{t('createOffre.analyserLesCvIa')}</Text>
                         <Text style={styles.quickAccessButtonSubtext}>
-                            Disponible après publication
+                            {t('createOffre.disponibleApresPublication')}
                         </Text>
                     </TouchableOpacity>
 
@@ -531,9 +531,9 @@ const CreateOffreScreen: React.FC = () => {
                         }}
                     >
                         <SafeIcon name="target" size={24} color={modernColors.primary} type="lucide" />
-                        <Text style={styles.quickAccessButtonText}>Matching candidats</Text>
+                        <Text style={styles.quickAccessButtonText}>{t('createOffre.matchingCandidats')}</Text>
                         <Text style={styles.quickAccessButtonSubtext}>
-                            Trouver les meilleurs profils
+                            {t('createOffre.trouverLesMeilleursProfils')}
                         </Text>
                     </TouchableOpacity>
                 </View>

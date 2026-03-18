@@ -10,8 +10,9 @@ interface SidebarMenuProps {
 }
 
 // Note: ROUTES_CONFIG doit être adapté pour React Native
-// Pour l'instant, on utilise un placeholder vide
-const ROUTES_CONFIG: any[] = [];
+const ROUTES_CONFIG: { path: string; label: string; icon?: string; iconType?: string; roles: Role[] }[] = [
+  { path: 'LivreScolaireHome', label: 'Bourse du Livre', icon: 'book-open', iconType: 'lucide', roles: ['public', 'user', 'admin'] },
+];
 
 const SidebarMenu: React.FC<SidebarMenuProps> = ({ currentRole }) => {
   const navigation = useNavigation();
@@ -34,9 +35,9 @@ const SidebarMenu: React.FC<SidebarMenuProps> = ({ currentRole }) => {
   const sectionOrder: Role[] = ['admin', 'user', 'public'];
 
   const roleLabels: Record<Role, string> = {
-    admin: '🔐 Admin',
-    user: '👤 Utilisateur',
-    public: '🌐 Public',
+    admin: '\uD83D\uDD10 Admin',
+    user: '\uD83D\uDC64 Utilisateur',
+    public: '\uD83C\uDF10 Public',
   };
 
   const handleNavigate = (path: string) => {

@@ -48,7 +48,7 @@ export const generateProductShareMessage = (data: ProductShareData): string => {
   const { productName, productDescription, price, devise, location, productId, serviceId } = data;
 
   // Construire le message avec le format optimal
-  let message = `🛍️ ${productName}\n\n`;
+  let message = `\uD83D\uDECD️ ${productName}\n\n`;
 
   // Description (si disponible)
   if (productDescription && productDescription.trim()) {
@@ -61,12 +61,12 @@ export const generateProductShareMessage = (data: ProductShareData): string => {
       ? price.toLocaleString()
       : price;
     const deviseStr = devise || 'XAF';
-    message += `💰 Prix: ${priceStr} ${deviseStr}\n`;
+    message += `\uD83D\uDCB0 Prix: ${priceStr} ${deviseStr}\n`;
   }
 
   // Lieu (si disponible)
   if (location && location.trim()) {
-    message += `📍 ${location.trim()}\n`;
+    message += `\uD83D\uDCCD ${location.trim()}\n`;
   }
 
   // ✅ CORRIGÉ: Utiliser UN SEUL lien intelligent qui détecte automatiquement mobile/web
@@ -75,7 +75,7 @@ export const generateProductShareMessage = (data: ProductShareData): string => {
   const smartLink = generateSmartShareLink(productId, serviceId);
 
   // ✅ UN SEUL lien intelligent qui fonctionne sur tous les appareils
-  message += `\n🔗 Voir ce produit:\n${smartLink}`;
+  message += `\n\uD83D\uDD17 Voir ce produit:\n${smartLink}`;
 
   return message;
 };

@@ -38,7 +38,10 @@ const MyPharmacyOrdersScreen: React.FC = () => {
         if (user) {
             loadOrders(true);
         } else {
-            Alert.alert('Connexion requise', 'Veuillez vous connecter pour voir vos commandes');
+            Alert.alert(
+                t('myPharmacyOrdersScreen.loginRequiredTitle') || 'Connexion requise',
+                t('myPharmacyOrdersScreen.loginRequiredBody') || 'Veuillez vous connecter pour voir vos commandes'
+            );
             navigation.goBack();
         }
     }, [statusFilter]);
@@ -74,11 +77,17 @@ const MyPharmacyOrdersScreen: React.FC = () => {
                 setHasMore(newOrders.length === limit);
                 setPage(currentPage + 1);
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de charger les commandes');
+                Alert.alert(
+                    t('message.error'),
+                    response.error || (t('myPharmacyOrdersScreen.cannotLoadOrders') || 'Impossible de charger les commandes')
+                );
             }
         } catch (error: any) {
             console.error('[MyPharmacyOrdersScreen] Erreur chargement:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les commandes');
+            Alert.alert(
+                t('message.error'),
+                error.message || (t('myPharmacyOrdersScreen.cannotLoadOrders') || 'Impossible de charger les commandes')
+            );
         } finally {
             setLoading(false);
             setRefreshing(false);

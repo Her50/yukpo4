@@ -355,7 +355,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
                             onPress={() => { hapticPress(); (navigation as any).navigate('MesBesoinsLivres'); }}
                         >
                             <SafeIcon name="clipboard-list" size={18} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.v2ActionText}>Mes Besoins</Text>
+                            <Text style={styles.v2ActionText}>{t('mesBesoinsLivres.mesBesoins', 'Mes Besoins')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.v2ActionBtn, { backgroundColor: 'rgba(5,150,105,0.3)' }]}
@@ -409,7 +409,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
                             <SafeIcon name="book" size={64} color="#9CA3AF" />
                             <Text style={styles.emptyText}>{t('livreScolaireHome.aucunLivreTrouve')}</Text>
                             <Text style={styles.emptySubtext}>
-                                Essayez de modifier vos critères de recherche
+                                {t('livreScolaireHome.conseilModifierCriteres', 'Essayez de modifier vos critères de recherche')}
                             </Text>
                         </View>
                     }
@@ -541,6 +541,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
     saving,
     analyzing,
 }) => {
+    const { t } = useLanguageSafe();
     return (
         <Modal
             visible={visible}
@@ -562,10 +563,10 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
                             <View style={styles.analyzingContainer}>
                                 <ActivityIndicator size="large" color="#F59E0B" />
                                 <Text style={styles.analyzingText}>
-                                    Analyse de l'image en cours...
+                                    {t('livreScolaireHome.analyseEnCours', "Analyse de l'image en cours...")}
                                 </Text>
                                 <Text style={styles.analyzingSubtext}>
-                                    L'IA extrait les caractéristiques de votre livre
+                                    {t('livreScolaireHome.iaExtraitCaracteristiques', "L'IA extrait les caractéristiques de votre livre")}
                                 </Text>
                             </View>
                         ) : bookInfo ? (
@@ -580,12 +581,12 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
                                 <View style={styles.bookInfoContainer}>
                                     <Text style={styles.bookInfoTitle}>{t('livreScolaireHome.informationsDetectees')}</Text>
                                     <View style={styles.bookInfoRow}>
-                                        <Text style={styles.bookInfoLabel}>Titre:</Text>
+                                        <Text style={styles.bookInfoLabel}>{t('livreScolaireHome.titre', 'Titre')}:</Text>
                                         <Text style={styles.bookInfoValue}>{bookInfo.titre}</Text>
                                     </View>
                                     {bookInfo.auteur && (
                                         <View style={styles.bookInfoRow}>
-                                            <Text style={styles.bookInfoLabel}>Auteur:</Text>
+                                            <Text style={styles.bookInfoLabel}>{t('livreScolaireHome.auteur', 'Auteur')}:</Text>
                                             <Text style={styles.bookInfoValue}>{bookInfo.auteur}</Text>
                                         </View>
                                     )}
@@ -597,7 +598,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
                                     )}
                                     {bookInfo.classe_actuelle && (
                                         <View style={styles.bookInfoRow}>
-                                            <Text style={styles.bookInfoLabel}>Classe:</Text>
+                                            <Text style={styles.bookInfoLabel}>{t('livreScolaireHome.classe', 'Classe')}:</Text>
                                             <Text style={styles.bookInfoValue}>
                                                 {bookInfo.classe_actuelle} → {bookInfo.classe_souhaitee || '?'}
                                             </Text>
@@ -611,7 +612,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
                                         <View style={styles.warningBox}>
                                             <SafeIcon name="alert-triangle" size={16} color="#F59E0B" type="lucide" />
                                             <Text style={styles.warningText}>
-                                                Certaines informations peuvent nécessiter une vérification
+                                                {t('livreScolaireHome.verificationNecessaire', 'Certaines informations peuvent nécessiter une vérification')}
                                             </Text>
                                         </View>
                                     )}
@@ -627,7 +628,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
                                         keyboardType="numeric"
                                     />
                                     <Text style={styles.priceHint}>
-                                        Indiquez le prix auquel vous souhaitez vendre ce livre
+                                        {t('livreScolaireHome.indiquezPrix', 'Indiquez le prix auquel vous souhaitez vendre ce livre')}
                                     </Text>
                                 </View>
                             </>
@@ -635,7 +636,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
                             <View style={styles.errorContainer}>
                                 <SafeIcon name="alert-circle" size={48} color="#EF4444" />
                                 <Text style={styles.errorText}>
-                                    Impossible d'analyser l'image
+                                    {t('livreScolaireHome.impossibleAnalyser', "Impossible d'analyser l'image")}
                                 </Text>
                             </View>
                         )}
@@ -657,7 +658,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({
                                 {saving ? (
                                     <ActivityIndicator color="#FFFFFF" />
                                 ) : (
-                                    <Text style={styles.saveButtonText}>Publier</Text>
+                                    <Text style={styles.saveButtonText}>{t('livreScolaireHome.publier', 'Publier')}</Text>
                                 )}
                             </TouchableOpacity>
                         </View>

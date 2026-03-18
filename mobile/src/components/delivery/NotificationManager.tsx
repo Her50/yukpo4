@@ -1,5 +1,5 @@
 /**
- * 🔔 Gestionnaire de notifications push pour livraisons
+ * \uD83D\uDD14 Gestionnaire de notifications push pour livraisons
  * Système complet niveau Uber Eats / DoorDash
  */
 
@@ -8,7 +8,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import { DeliverySummary } from '../../types/delivery';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 // Configuration des notifications
 Notifications.setNotificationHandler({
@@ -28,8 +27,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({
     delivery,
     onNotificationPress,
 }) => {
-        const { t } = useLanguageSafe();
-const [expoPushToken, setExpoPushToken] = useState<string>('');
+    const [expoPushToken, setExpoPushToken] = useState<string>('');
     const [notification, setNotification] = useState<Notifications.Notification | null>(null);
     const notificationListener = useRef<Notifications.Subscription>();
     const responseListener = useRef<Notifications.Subscription>();
@@ -81,17 +79,17 @@ export const sendDeliveryStatusNotification = async (
     body: string
 ) => {
     const statusEmojis: Record<string, string> = {
-        'assigned': '👤',
-        'en_route_pickup': '🚚',
-        'shopping_in_progress': '🛒',
-        'en_route_delivery': '📦',
+        'assigned': '\uD83D\uDC64',
+        'en_route_pickup': '\uD83D\uDE9A',
+        'shopping_in_progress': '\uD83D\uDED2',
+        'en_route_delivery': '\uD83D\uDCE6',
         'delivered': '✅',
         'cancelled': '❌',
     };
 
     await Notifications.scheduleNotificationAsync({
         content: {
-            title: `${statusEmojis[status] || '📦'} ${title}`,
+            title: `${statusEmojis[status] || '\uD83D\uDCE6'} ${title}`,
             body,
             data: { deliveryId, status },
             sound: true,
@@ -111,8 +109,8 @@ export const sendNewDeliveryAvailableNotification = async (
 ) => {
     await Notifications.scheduleNotificationAsync({
         content: {
-            title: t('notificationManager.nouvelleLivraisonDisponible'),
-            body: t('notificationManager.livraisonAKmFcfa', { distance_toFixed(1): distance.toFixed(1), estimatedEarnings_toLocaleString('fr-FR'): estimatedEarnings.toLocaleString('fr-FR') }),
+            title: '\uD83D\uDE9A Nouvelle livraison disponible',
+            body: `Livraison à ${distance.toFixed(1)} km • ~${estimatedEarnings.toLocaleString('fr-FR')} FCFA`,
             data: { deliveryId, type: 'new_delivery' },
             sound: true,
             priority: Notifications.AndroidNotificationPriority.HIGH,
@@ -129,7 +127,7 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
 
     if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('delivery-updates', {
-            name: t('notificationManager.misesAJourDeLivraison'),
+            name: 'Mises à jour de livraison',
             importance: Notifications.AndroidImportance.MAX,
             vibrationPattern: [0, 250, 250, 250],
             lightColor: modernColors.primary,

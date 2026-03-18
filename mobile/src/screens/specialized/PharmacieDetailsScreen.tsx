@@ -255,12 +255,12 @@ const PharmacieDetailsScreen: React.FC = () => {
                     <View style={st.heroBadges}>
                         <View style={[st.badge, { backgroundColor: isOpen ? 'rgba(255,255,255,0.25)' : 'rgba(239,68,68,0.3)' }]}>
                             <View style={[st.badgeDot, { backgroundColor: isOpen ? '#fff' : '#FCA5A5' }]} />
-                            <Text style={st.badgeText}>{isOpen ? 'Ouvert' : t('pharmacieDetailsScreen.ferme')}</Text>
+                            <Text style={st.badgeText}>{isOpen ? (t('pharmacieDetailsScreen.ouvert') || 'Ouvert') : t('pharmacieDetailsScreen.ferme')}</Text>
                         </View>
                         {isGuard && (
                             <View style={[st.badge, { backgroundColor: 'rgba(59,130,246,0.3)' }]}>
                                 <SafeIcon name="shield-check" size={12} color="#fff" />
-                                <Text style={st.badgeText}>De garde</Text>
+                                <Text style={st.badgeText}>{t('pharmacieDetailsScreen.deGarde') || 'De garde'}</Text>
                             </View>
                         )}
                         {pharmacie.is_verified && (

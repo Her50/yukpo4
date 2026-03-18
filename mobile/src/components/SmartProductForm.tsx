@@ -1,8 +1,10 @@
 /**
- * 🎯 FORMULAIRE INTELLIGENT DE PRODUIT
+ * \uD83C\uDFAF FORMULAIRE INTELLIGENT DE PRODUIT
  * 
  * Ce composant RÉVOLUTIONNE la saisie :
- * - Lt('smartProductForm.utilisateurSelectionneUnProduitLeSysteme')utilisateur ne remplit que 3-4 champs restants
+ * - L'utilisateur sélectionne UN produit
+ * - Le système pré-remplit 10-12 champs automatiquement
+ * - L'utilisateur ne remplit que 3-4 champs restants
  * 
  * RÉSULTAT : UX 4x plus rapide ! ⚡
  */
@@ -70,7 +72,7 @@ const [productQuery, setProductQuery] = useState('');
     };
     
     /**
-     * 🎯 MAGIE ICI : Sélection du produit et pré-remplissage automatique !
+     * \uD83C\uDFAF MAGIE ICI : Sélection du produit et pré-remplissage automatique !
      */
     const handleProductSelect = async (productName: string) => {
         setProductQuery(productName);
@@ -102,7 +104,14 @@ const [productQuery, setProductQuery] = useState('');
             
         } catch (error) {
             console.error('[SmartProductForm] Erreur auto-fill:', error);
-            Alert.alert('Erreur', 'Impossible de charger les informations du produitt('smartProductForm.finallySetloadingfalseMiseAJourD')un champ utilisateur
+            Alert.alert('Erreur', 'Impossible de charger les informations du produit');
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    /**
+     * Mise à jour d'un champ utilisateur
      */
     const handleUserInput = (field: string, value: any) => {
         setUserInputs(prev => ({
@@ -210,7 +219,7 @@ const [productQuery, setProductQuery] = useState('');
                     </View>
                     
                     <Text style={styles.helpText}>
-                        💡 Ces informations ont été remplies automatiquement. Vous pouvez les modifier si nécessaire.
+                        \uD83D\uDCA1 Ces informations ont été remplies automatiquement. Vous pouvez les modifier si nécessaire.
                     </Text>
                 </View>
             )}
@@ -303,7 +312,7 @@ const [productQuery, setProductQuery] = useState('');
                     </TouchableOpacity>
                     
                     <Text style={styles.footerText}>
-                        💪 Vous avez économisé {fieldsSaved} saisies grâce au pré-remplissage automatique !
+                        \uD83D\uDCAA Vous avez économisé {fieldsSaved} saisies grâce au pré-remplissage automatique !
                     </Text>
                 </View>
             )}

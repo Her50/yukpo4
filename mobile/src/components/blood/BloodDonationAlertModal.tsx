@@ -16,7 +16,7 @@ import {
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface BloodDonationAlertModalProps {
     visible: boolean;
@@ -204,10 +204,10 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
                             <View style={styles.headerText}>
                                 <Text style={[styles.urgencyTitle, { color: getUrgencyColor() }]}>
                                     {requestData.is_urgent && requestData.urgence_level === 'critique'
-                                        ? '🚨 URGENCE CRITIQUE'
+                                        ? '\uD83D\uDEA8 URGENCE CRITIQUE'
                                         : requestData.is_urgent
                                             ? '⚠️ URGENCE'
-                                            : '🩸 Demande de don'}
+                                            : '\uD83E\uDE78 Demande de don'}
                                 </Text>
                                 <Text style={styles.banqueName}>{requestData.banque_sang_nom}</Text>
                             </View>

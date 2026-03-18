@@ -346,6 +346,14 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let paiement_agrege =
         crate::routes::paiement_agrege_routes::paiement_agrege_routes(state.clone());
 
+    let multilingue = crate::routes::multilingue_routes::multilingue_routes(state.clone());
+
+    // ✅ 2026-03-18: Routes taux de change live
+    let exchange_rates = Router::new().nest(
+        "/api/exchange-rates",
+        crate::routes::exchange_rate_routes::exchange_rate_routes(),
+    );
+
     // ✅ NOUVEAU 2026-03-06: Configuration WhatsApp Business
     let whatsapp = whatsapp_routes::create_whatsapp_routes(state.clone());
 
@@ -446,6 +454,8 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(librairie_network) // ✅ NOUVEAU 2026-03-16: Routes réseau de librairies
         .merge(paiement_agrege) // ✅ NOUVEAU 2026-03-16: Routes paiements agrégés
         .merge(whatsapp) // ✅ NOUVEAU 2026-03-06: Routes WhatsApp Business API
+        .merge(multilingue)
+        .merge(exchange_rates) // ✅ 2026-03-18: Routes taux de change live (ExchangeRate-API)
         .merge(test_routes) // ✅ NOUVEAU: Routes pour page de téléchargement APK test
         .merge(mobile_logs)
         .merge(navigation) // ✅ NOUVEAU: Routes navigation intelligente

@@ -1,5 +1,5 @@
 /**
- * 🎬 ARVideoEditorVisionCamera - Éditeur vidéo AR avec VisionCamera
+ * \uD83C\uDFAC ARVideoEditorVisionCamera - Éditeur vidéo AR avec VisionCamera
  * Phase 2: Migration vers react-native-vision-camera pour tracking AR réel
  * 
  * Cette version utilise react-native-vision-camera avec Frame Processor
@@ -22,7 +22,6 @@ import { createARPlugin } from '../native/ARPlugin';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -53,8 +52,7 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
 }) => {
     const { hasPermission, requestPermission } = useCameraPermission();
     const device = useCameraDevice('back');
-        const { t } = useLanguageSafe();
-const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
+    const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
     const [arMode, setArMode] = useState<ARMode>('preview');
     const [isRecording, setIsRecording] = useState(false);
     const [recordingDuration, setRecordingDuration] = useState(0);
@@ -134,12 +132,12 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
 
     const handleStartRecording = useCallback(async () => {
         if (!cameraRef.current || !hasPermission) {
-            Alert.alert('Erreur', t('aRVideoEditorVisionCamera.permissionsCameraRequises'));
+            Alert.alert('Erreur', 'Permissions caméra requises');
             return;
         }
 
         if (trackingState !== 'tracking') {
-            Alert.alert('Erreur', t('aRVideoEditorVisionCamera.veuillezAttendreLaDetectionD')une surface AR');
+            Alert.alert('Erreur', 'Veuillez attendre la détection d\'une surface AR');
             return;
         }
 
@@ -168,7 +166,7 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
                 },
                 onRecordingError: (error) => {
                     console.error('[ARVideoEditor] Erreur enregistrement:', error);
-                    Alert.alert('Erreur', 'Impossible d\t('aRVideoEditorVisionCamera.enregistrerLaVideo'));
+                    Alert.alert('Erreur', 'Impossible d\'enregistrer la vidéo');
                     setIsRecording(false);
                     setArMode('preview');
                     if (recordingTimerRef.current) {
@@ -181,7 +179,7 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
             console.log('[ARVideoEditor] Démarrage enregistrement AR...');
         } catch (error) {
             console.error('[ARVideoEditor] Erreur enregistrement:', error);
-            Alert.alert('Erreur', t('aRVideoEditorVisionCamera.impossibleDeDemarrerL')enregistrement');
+            Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement');
             setIsRecording(false);
             setArMode('preview');
         }
@@ -211,7 +209,7 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>{t('aRVideoEditorVisionCamera.verificationDesPermissions')}</Text>
+                <Text style={styles.loadingText}>Vérification des permissions...</Text>
             </View>
         );
     }
@@ -221,7 +219,7 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
             <View style={styles.container}>
                 <NativeCard style={styles.permissionCard}>
                     <SafeIcon name="camera-off" size={64} color={modernColors.primary} />
-                    <Text style={styles.permissionTitle}>{t('aRVideoEditorVisionCamera.cameraNonDisponible')}</Text>
+                    <Text style={styles.permissionTitle}>Caméra non disponible</Text>
                     <Text style={styles.permissionText}>
                         Aucune caméra arrière trouvée sur cet appareil.
                     </Text>
@@ -235,9 +233,9 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
         switch (trackingState) {
             case 'tracking':
                 const quality = arTrackingResult?.trackingQuality || 'good';
-                return t('aRVideoEditorVisionCamera.surfaceDetecteeQualite', { quality === 'excellent' ? 'Excellente' : 'Bonne': quality === 'excellent' ? 'Excellente' : 'Bonne' });
+                return `Surface détectée (${quality === 'excellent' ? 'Excellente' : 'Bonne'} qualité)`;
             case 'tracking_lost':
-                return t('aRVideoEditorVisionCamera.surfacePerdueDeplacezLaCamera');
+                return 'Surface perdue - Déplacez la caméra';
             case 'error':
                 return 'Erreur de tracking AR';
             default:
@@ -305,7 +303,7 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
                         <View style={styles.controls}>
                             {!videoUri && !isRecording ? (
                                 <NativeButton
-                                    title={t('aRVideoEditorVisionCamera.demarrerL')}enregistrement"
+                                    title="Démarrer l'enregistrement"
                                     variant="primary"
                                     size="large"
                                     onPress={handleStartRecording}
@@ -314,7 +312,7 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
                             ) : (
                                 <View style={styles.recordingControls}>
                                     <NativeButton
-                                        title={t('aRVideoEditorVisionCamera.arreterS', { recordingDuration: recordingDuration })}
+                                        title={`Arrêter (${recordingDuration}s)`}
                                         variant="danger"
                                         size="large"
                                         onPress={handleStopRecording}
@@ -324,7 +322,7 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
 
                             {!videoUri && onClose && (
                                 <NativeButton
-                                    title={t('aRVideoEditorVisionCamera.fermer')}
+                                    title="Fermer"
                                     variant="secondary"
                                     size="medium"
                                     onPress={onClose}
@@ -346,13 +344,13 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
                     <View style={styles.postCaptureContent}>
                         <NativeCard style={styles.videoPreviewCard}>
                             <SafeIcon name="check-circle" size={64} color={modernColors.success} />
-                            <Text style={styles.successText}>{t('aRVideoEditorVisionCamera.videoEnregistreeAvecSucces')}</Text>
-                            <Text style={styles.successSubtext}>{t('aRVideoEditorVisionCamera.pretPourLetapeSuivante')}</Text>
+                            <Text style={styles.successText}>Vidéo enregistrée avec succès !</Text>
+                            <Text style={styles.successSubtext}>Prêt pour l'étape suivante</Text>
                         </NativeCard>
 
                         <View style={styles.actionButtons}>
                             <NativeButton
-                                title={t('aRVideoEditorVisionCamera.utiliserCetteVideo')}
+                                title="✅ Utiliser cette vidéo"
                                 variant="primary"
                                 size="large"
                                 onPress={() => {
@@ -364,7 +362,7 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
                             />
 
                             <NativeButton
-                                title={t('aRVideoEditorVisionCamera.reenregistrer')}
+                                title="\uD83D\uDD04 Réenregistrer"
                                 variant="secondary"
                                 size="medium"
                                 onPress={() => {
@@ -378,7 +376,7 @@ const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
 
                         {onClose && (
                             <NativeButton
-                                title={t('aRVideoEditorVisionCamera.fermer')}
+                                title="Fermer"
                                 variant="secondary"
                                 size="medium"
                                 onPress={onClose}

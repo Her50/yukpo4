@@ -75,12 +75,12 @@ const PharmacyAnalyticsScreen: React.FC = () => {
                     );
                 }
             } else {
-                Alert.alert('Erreur', t('pharmacyAnalyticsScreen.impossibleDeVerifierLesPermissions'));
+                Alert.alert(t('message.error') || 'Erreur', t('pharmacyAnalyticsScreen.impossibleDeVerifierLesPermissions'));
                 navigation.goBack();
             }
         } catch (error: any) {
             console.error('[PharmacyAnalyticsScreen] Erreur vérification propriétaire:', error);
-            Alert.alert('Erreur', t('pharmacyAnalyticsScreen.impossibleDeVerifierLesPermissions'));
+            Alert.alert(t('message.error') || 'Erreur', t('pharmacyAnalyticsScreen.impossibleDeVerifierLesPermissions'));
             navigation.goBack();
         }
     };
@@ -93,11 +93,11 @@ const PharmacyAnalyticsScreen: React.FC = () => {
             if (response.success && response.data) {
                 setAnalytics(response.data.analytics);
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de charger les analytics');
+                Alert.alert(t('message.error') || 'Erreur', response.error || (t('pharmacyAnalytics.impossibleCharger') || 'Impossible de charger les analytics'));
             }
         } catch (error: any) {
             console.error('[PharmacyAnalyticsScreen] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger les analytics');
+            Alert.alert(t('message.error') || 'Erreur', error.message || (t('pharmacyAnalytics.impossibleCharger') || 'Impossible de charger les analytics'));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -142,7 +142,7 @@ const PharmacyAnalyticsScreen: React.FC = () => {
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
                 <Text style={styles.loadingText}>
-                    {isAuthorized === null ? 'Vérification des permissions...' : 'Chargement des analytics...'}
+                    {isAuthorized === null ? (t('pharmacyAnalytics.verificationPermissions') || 'Vérification des permissions...') : (t('pharmacyAnalytics.chargementAnalytics') || 'Chargement des analytics...')}
                 </Text>
             </View>
         );
@@ -156,7 +156,7 @@ const PharmacyAnalyticsScreen: React.FC = () => {
     if (!analytics) {
         return (
             <View style={styles.centerContainer}>
-                <Text style={styles.errorText}>Analytics non disponibles</Text>
+                <Text style={styles.errorText}>{t('pharmacyAnalytics.nonDisponibles') || 'Analytics non disponibles'}</Text>
                 <NativeButton
                     title={t('pharmacyAnalytics.reessayer')}
                     onPress={loadAnalytics}
@@ -173,7 +173,7 @@ const PharmacyAnalyticsScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Analytics Pharmacie</Text>
+                <Text style={styles.title}>{t('pharmacyAnalytics.titre') || 'Analytics Pharmacie'}</Text>
             </View>
 
             <ScrollView
@@ -243,19 +243,19 @@ const PharmacyAnalyticsScreen: React.FC = () => {
                 <View style={styles.statsGrid}>
                     <StatCard
                         icon="shopping-cart"
-                        title="Total commandes"
+                        title={t('pharmacyAnalytics.totalCommandes') || 'Total commandes'}
                         value={formatNumber(analytics.total_orders)}
                         color={modernColors.primary}
                     />
                     <StatCard
                         icon="calendar"
-                        title="Commandes (7j)"
+                        title={t('pharmacyAnalytics.commandes7j') || 'Commandes (7j)'}
                         value={formatNumber(analytics.orders_7d)}
                         color={modernColors.info}
                     />
                     <StatCard
                         icon="calendar"
-                        title="Commandes (30j)"
+                        title={t('pharmacyAnalytics.commandes30j') || 'Commandes (30j)'}
                         value={formatNumber(analytics.orders_30d)}
                         color={modernColors.success}
                     />

@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import ReactNative from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image: RNImage } = ReactNative;
 
@@ -22,8 +21,7 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
     onBannerChange,
     readonly = false
 }) => {
-        const { t } = useLanguageSafe();
-const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
+    const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
 
     const pickImage = async (type: 'logo' | 'banner') => {
         try {
@@ -37,8 +35,8 @@ const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
 
             if (!permissionResult.granted) {
                 Alert.alert(
-                    t('brandingManagerMobile.permissionRefusee'),
-                    t('brandingManagerMobile.vousDevezAutoriserLaccesALaGaleriePour')
+                    'Permission refusée',
+                    'Vous devez autoriser l\'accès à la galerie pour ajouter des images'
                 );
                 return;
             }
@@ -70,7 +68,7 @@ const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
             if (error.message === 'Permission timeout') {
                 console.warn('Timeout permission galerie - continuer sans image');
             } else {
-                Alert.alert('Erreur', t('brandingManagerMobile.impossibleDeSelectionnerL')image');
+                Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
             }
         }
     };
@@ -86,7 +84,7 @@ const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
     if (readonly) {
         return (
             <View style={styles.readonlyContainer}>
-                <Text style={styles.readonlyText}>{t('brandingManagerMobile.identiteVisuelleLectureSeule')}</Text>
+                <Text style={styles.readonlyText}>Identité visuelle (lecture seule)</Text>
                 <View style={styles.readonlyGrid}>
                     {logo.length > 0 && (
                         <View style={styles.readonlyItem}>
@@ -97,7 +95,7 @@ const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
                     {banner.length > 0 && (
                         <View style={styles.readonlyItem}>
                             <SafeIcon name="image" size={20} color="#8B5CF6" />
-                            <Text style={styles.readonlyLabel}>{t('brandingManagerMobile.banniere')}</Text>
+                            <Text style={styles.readonlyLabel}>Bannière</Text>
                         </View>
                     )}
                 </View>
@@ -107,8 +105,8 @@ const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>{t('brandingManagerMobile.identiteVisuelle')}</Text>
-            <Text style={styles.subtitle}>{t('brandingManagerMobile.logoEtBanniereDeVotre')}</Text>
+            <Text style={styles.title}>Identité Visuelle</Text>
+            <Text style={styles.subtitle}>Logo et bannière de votre service</Text>
 
             {/* Logo */}
             <View style={styles.section}>
@@ -123,8 +121,8 @@ const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
                         onPress={() => pickImage('logo')}
                     >
                         <SafeIcon name="upload" size={32} color="#3B82F6" />
-                        <Text style={[styles.uploadText, { color: '#3B82F6' }]}>{t('brandingManagerMobile.telechargerLeLogo')}</Text>
-                        <Text style={styles.uploadHint}>{t('brandingManagerMobile.formatCarreRecommande')}</Text>
+                        <Text style={[styles.uploadText, { color: '#3B82F6' }]}>Télécharger le logo</Text>
+                        <Text style={styles.uploadHint}>Format carré recommandé</Text>
                     </TouchableOpacity>
                 ) : (
                     <View style={styles.previewContainer}>
@@ -140,14 +138,14 @@ const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
                                 onPress={() => pickImage('logo')}
                             >
                                 <SafeIcon name="edit-2" size={16} color="#3B82F6" />
-                                <Text style={styles.changeButtonText}>{t('brandingManagerMobile.modifier')}</Text>
+                                <Text style={styles.changeButtonText}>Modifier</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.actionButton, styles.deleteButton]}
                                 onPress={() => removeImage('logo')}
                             >
                                 <SafeIcon name="trash-2" size={16} color="#EF4444" />
-                                <Text style={styles.deleteButtonText}>{t('brandingManagerMobile.supprimer')}</Text>
+                                <Text style={styles.deleteButtonText}>Supprimer</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -158,7 +156,7 @@ const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                     <SafeIcon name="flag" size={20} color="#8B5CF6" />
-                    <Text style={styles.sectionTitle}>{t('brandingManagerMobile.banniere')}</Text>
+                    <Text style={styles.sectionTitle}>Bannière</Text>
                 </View>
 
                 {banner.length === 0 ? (
@@ -167,8 +165,8 @@ const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
                         onPress={() => pickImage('banner')}
                     >
                         <SafeIcon name="upload" size={32} color="#8B5CF6" />
-                        <Text style={[styles.uploadText, { color: '#8B5CF6' }]}>{t('brandingManagerMobile.telechargerLaBanniere')}</Text>
-                        <Text style={styles.uploadHint}>{t('brandingManagerMobile.formatRectangleRecommande169')}</Text>
+                        <Text style={[styles.uploadText, { color: '#8B5CF6' }]}>Télécharger la bannière</Text>
+                        <Text style={styles.uploadHint}>Format rectangle recommandé (16:9)</Text>
                     </TouchableOpacity>
                 ) : (
                     <View style={styles.previewContainer}>
@@ -184,14 +182,14 @@ const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
                                 onPress={() => pickImage('banner')}
                             >
                                 <SafeIcon name="edit-2" size={16} color="#8B5CF6" />
-                                <Text style={styles.changeButtonText}>{t('brandingManagerMobile.modifier')}</Text>
+                                <Text style={styles.changeButtonText}>Modifier</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.actionButton, styles.deleteButton]}
                                 onPress={() => removeImage('banner')}
                             >
                                 <SafeIcon name="trash-2" size={16} color="#EF4444" />
-                                <Text style={styles.deleteButtonText}>{t('brandingManagerMobile.supprimer')}</Text>
+                                <Text style={styles.deleteButtonText}>Supprimer</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -201,7 +199,7 @@ const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
             {/* Conseil */}
             <View style={styles.hintBox}>
                 <Text style={styles.hintText}>
-                    💡 <Text style={styles.hintBold}>Conseil :</Text>{t('brandingManagerMobile.unLogoProfessionnelEtUneBelle')}
+                    \uD83D\uDCA1 <Text style={styles.hintBold}>Conseil :</Text> Un logo professionnel et une belle bannière renforcent votre identité de marque
                 </Text>
             </View>
 

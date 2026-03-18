@@ -69,7 +69,7 @@ export const useWhyDidYouUpdate = (
             // ✅ Logger uniquement s'il y a des changements
             if (Object.keys(changedProps).length > 0) {
                 console.group(
-                    `[useWhyDidYouUpdate] 🔄 ${componentName} a re-rendu`
+                    `[useWhyDidYouUpdate] \uD83D\uDD04 ${componentName} a re-rendu`
                 );
                 Object.entries(changedProps).forEach(([key, { from, to }]) => {
                     console.log(

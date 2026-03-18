@@ -143,12 +143,12 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                 return null;
             },
             'cuisine_recette',
-            t('menuPlanningHubScreen.genererRecette', { recipeRequest_trim(): recipeRequest.trim() }),
+            `Générer recette: ${recipeRequest.trim()}`,
             () => {
                 const name = recipeRequest.trim();
                 return {
                     recipe_name: name,
-                    description: t('menuPlanningHubScreen.recetteTraditionnelleDeRecetteGenereeLocalement', { name: name }),
+                    description: `Recette traditionnelle de ${name}. Recette générée localement — consultez un livre de cuisine pour les détails.`,
                     cuisine_style: 'camerounaise',
                     meal_type: ['dejeuner', 'diner'],
                     difficulty: 'moyen',
@@ -156,16 +156,16 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                     cook_time_minutes: 45,
                     servings: { number: 4, size: 'portions' },
                     ingredients: [
-                        { name: t('menuPlanningHubScreen.ingredientPrincipal'), quantity: 500, unit: 'g' },
-                        { name: 'Huile', quantity: 3, unit: t('menuPlanningHubScreen.cuilleresASoupe') },
-                        { name: 'Oignon', quantity: 2, unit: t('menuPlanningHubScreen.pieces') },
-                        { name: 'Sel et poivre', quantity: 1, unit: t('menuPlanningHubScreen.pincee') },
+                        { name: 'Ingrédient principal', quantity: 500, unit: 'g' },
+                        { name: 'Huile', quantity: 3, unit: 'cuillères à soupe' },
+                        { name: 'Oignon', quantity: 2, unit: 'pièces' },
+                        { name: 'Sel et poivre', quantity: 1, unit: 'pincée' },
                     ],
                     instructions: [
-                        t('menuPlanningHubScreen.preparerEtLaverTousLesIngredients'),
+                        'Préparer et laver tous les ingrédients.',
                         'Faire chauffer l\'huile dans une marmite.',
                         'Ajouter les oignons et faire revenir 5 min.',
-                        t('menuPlanningHubScreen.ajouterLingredientPrincipalEtCuireAFeuMoyen'),
+                        'Ajouter l\'ingrédient principal et cuire à feu moyen.',
                         'Assaisonner et servir chaud.',
                     ],
                     nutrition_per_serving: { calories: 350, proteins: 25, carbs: 40, fats: 12, fiber: 5 },
@@ -258,7 +258,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                     t('menuPlanning.menuGeneratedMsg', { period: menuPeriod === '1_week' ? t('menuPlanning.weekly') : menuPeriod === '2_weeks' ? t('menuPlanning.biweekly') : t('menuPlanning.monthly') }),
                     [
                         {
-                            text: t('menuPlanningHub.voirLeMenu'),
+                            text: t('menuPlanning.viewCalendar'),
                             onPress: () => {
                                 navigation.navigate('MenuWeekCalendar' as never, {
                                     menu: response.data.menu,
@@ -281,7 +281,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>{t('menuPlanningHub.chargement')}</Text>
+                <Text style={styles.loadingText}>{t('menuPlanning.loading')}</Text>
             </View>
         );
     }
@@ -315,10 +315,10 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                     </TouchableOpacity>
                     <View style={styles.headerTitleContainer}>
                         <SafeIcon name="UtensilsCrossed" size={32} color="#fff" type="lucide" />
-                        <Text style={styles.headerTitle}>Planification Menus</Text>
+                        <Text style={styles.headerTitle}>{t('menuPlanning.headerTitle')}</Text>
                     </View>
                     <Text style={styles.headerSubtitle}>
-                        Organisez vos repas de la semaine
+                        {t('menuPlanning.headerSubtitle')}
                     </Text>
                     {/* ✅ NOUVEAU: Bouton profil famille en haut à droite */}
                     <TouchableOpacity
@@ -341,7 +341,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                     <View style={styles.profileHeader}>
                         <View style={styles.profileHeaderLeft}>
                             <SafeIcon name="Users" size={18} color={modernColors.primary} type="lucide" />
-                            <Text style={styles.profileSectionTitle}>Profil Famille</Text>
+                            <Text style={styles.profileSectionTitle}>{t('menuPlanning.familyProfile')}</Text>
                         </View>
                         {/* ✅ NOUVEAU: Bouton miniaturisé en haut à droite */}
                         <TouchableOpacity
@@ -362,17 +362,17 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             {/* ✅ SIMPLIFIÉ: Afficher seulement le nombre total de personnes */}
                             {typeof profile.total_members === 'number' && profile.total_members > 0 ? (
                                 <Text style={styles.profileTextCompact}>
-                                    👥 {profile.total_members} personne{profile.total_members > 1 ? 's' : ''} dans la famille
+                                    \uD83D\uDC65 {profile.total_members > 1 ? t('menuPlanning.peopleInFamilyPlural', { count: profile.total_members }) : t('menuPlanning.peopleInFamily', { count: profile.total_members })}
                                 </Text>
                             ) : (
                                 <Text style={styles.profileTextCompact}>
-                                    👥 Profil configuré
+                                    \uD83D\uDC65 {t('menuPlanning.profileConfigured')}
                                 </Text>
                             )}
                         </View>
                     ) : (
                         <Text style={styles.profileEmptyText}>
-                            Aucun profil configuré
+                            {t('menuPlanning.noProfileConfigured')}
                         </Text>
                     )}
                 </NativeCard>
@@ -380,7 +380,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
 
             {/* ✅ RÉORGANISÉ: Section génération menu (fonctionnalité principale) */}
             <View style={[styles.section, styles.menuSection]}>
-                <Text style={styles.sectionTitle}>{t('menuPlanningHub.menuDeLaSemaine')}</Text>
+                <Text style={styles.sectionTitle}>{t('menuPlanning.weekMenuTitle')}</Text>
 
                 {currentMenu ? (
                     <NativeCard style={styles.menuCard}>
@@ -393,14 +393,14 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             </Text>
                             {currentMenu.total_estimated_cost && (
                                 <Text style={styles.menuCostText}>
-                                    💰 {currentMenu.total_estimated_cost.toLocaleString()} FCFA
+                                    \uD83D\uDCB0 {currentMenu.total_estimated_cost.toLocaleString()} FCFA
                                 </Text>
                             )}
                         </View>
 
                         <View style={styles.menuActions}>
                             <NativeButton
-                                title={t('menuPlanningHub.voirLeCalendrier')}
+                                title={t('menuPlanning.viewCalendar')}
                                 onPress={() => {
                                     navigation.navigate('MenuWeekCalendar' as never, {
                                         menu: currentMenu,
@@ -409,7 +409,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                 style={styles.menuActionButton}
                             />
                             <NativeButton
-                                title="Liste de courses"
+                                title={t('menuPlanning.shoppingList')}
                                 variant="outline"
                                 onPress={() => {
                                     navigation.navigate('ShoppingList' as never, {
@@ -424,15 +424,15 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                     <NativeCard style={styles.generateCard}>
                         <SafeIcon name="utensils-crossed" size={48} color={modernColors.primary} type="lucide" />
                         <Text style={styles.generateTitle}>
-                            Générez votre menu personnalisé
+                            {t('menuPlanning.generateYourMenu')}
                         </Text>
                         <Text style={styles.generateSubtitle}>
-                            Notre IA vous propose un menu personnalisé selon vos préférences et votre budget
+                            {t('menuPlanning.generateYourMenuSubtitle')}
                         </Text>
 
                         {/* Sélecteur de période */}
                         <View style={styles.periodSelector}>
-                            <Text style={styles.periodLabel}>{t('menuPlanningHub.periodeDuMenu')}</Text>
+                            <Text style={styles.periodLabel}>{t('menuPlanning.menuPeriodLabel')}</Text>
                             <View style={styles.periodButtons}>
                                 <TouchableOpacity
                                     style={[
@@ -445,7 +445,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                         styles.periodButtonText,
                                         menuPeriod === '1_week' && styles.periodButtonTextActive
                                     ]}>
-                                        1 semaine
+                                        {t('menuPlanning.oneWeek')}
                                     </Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
@@ -459,7 +459,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                         styles.periodButtonText,
                                         menuPeriod === '2_weeks' && styles.periodButtonTextActive
                                     ]}>
-                                        15 jours
+                                        {t('menuPlanning.twoWeeks')}
                                     </Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
@@ -473,14 +473,14 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                         styles.periodButtonText,
                                         menuPeriod === '1_month' && styles.periodButtonTextActive
                                     ]}>
-                                        1 mois
+                                        {t('menuPlanning.oneMonth')}
                                     </Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
 
                         <NativeButton
-                            title={t('menuPlanningHubScreen.genererLeMenu', { menuPeriod === '1_week' ? '1 semaine' : menuPeriod === '2_weeks' ? '15 jours' : '1 mois': menuPeriod === '1_week' ? '1 semaine' : menuPeriod === '2_weeks' ? '15 jours' : '1 mois' })}
+                            title={t('menuPlanning.generateMenuWithPeriod', { periodLabel: menuPeriod === '1_week' ? t('menuPlanning.oneWeek') : menuPeriod === '2_weeks' ? t('menuPlanning.twoWeeks') : t('menuPlanning.oneMonth') })}
                             onPress={handleGenerateMenu}
                             loading={loading}
                             style={styles.generateButton}
@@ -492,14 +492,14 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
             {/* ✅ NOUVEAU: Section historique des menus et listes d'achats */}
             {(historyMenus.length > 0 || historyShoppingLists.length > 0) && (
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('menuPlanningHub.historique')}</Text>
+                    <Text style={styles.sectionTitle}>{t('menuPlanning.history')}</Text>
 
                     {/* Historique des menus */}
                     {historyMenus.length > 0 && (
                         <View style={styles.historySubsection}>
                             <View style={styles.historySubsectionHeader}>
                                 <SafeIcon name="Calendar" size={20} color={modernColors.primary} type="lucide" />
-                                <Text style={styles.historySubsectionTitle}>{t('menuPlanningHub.menusGeneres')}</Text>
+                                <Text style={styles.historySubsectionTitle}>{t('menuPlanning.generatedMenus')}</Text>
                             </View>
                             {historyMenus.slice(0, 5).map((menu) => (
                                 <TouchableOpacity
@@ -522,7 +522,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                             })}
                                         </Text>
                                         <Text style={styles.historyItemSubtitle}>
-                                            {menu.status === 'active' ? '✅ Actif' : t('menuPlanningHubScreen.archive')}
+                                            {menu.status === 'active' ? `✅ ${t('menuPlanning.active')}` : `\uD83D\uDCCB ${t('menuPlanning.archived')}`}
                                             {menu.total_budget && ` • ${menu.total_budget.toLocaleString()} FCFA`}
                                         </Text>
                                     </View>
@@ -537,7 +537,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                         <View style={styles.historySubsection}>
                             <View style={styles.historySubsectionHeader}>
                                 <SafeIcon name="ShoppingCart" size={20} color={modernColors.success} type="lucide" />
-                                <Text style={styles.historySubsectionTitle}>Listes d'achats</Text>
+                                <Text style={styles.historySubsectionTitle}>{t('menuPlanning.shoppingLists')}</Text>
                             </View>
                             {historyShoppingLists.slice(0, 5).map((list) => (
                                 <TouchableOpacity
@@ -558,7 +558,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                             })}
                                         </Text>
                                         <Text style={styles.historyItemSubtitle}>
-                                            {list.items_count} article{list.items_count > 1 ? 's' : ''}
+                                            {list.items_count > 1 ? t('menuPlanning.itemsCountPlural', { count: list.items_count }) : t('menuPlanning.itemsCount', { count: list.items_count })}
                                             {list.total_estimated_cost && ` • ${list.total_estimated_cost.toLocaleString()} FCFA`}
                                         </Text>
                                     </View>
@@ -572,7 +572,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
 
             {/* Section actions rapides */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Actions Rapides</Text>
+                <Text style={styles.sectionTitle}>{t('menuPlanning.quickActions')}</Text>
 
                 <View style={styles.quickActions}>
                     <TouchableOpacity
@@ -580,7 +580,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                         onPress={() => setShowRecipeModal(true)}
                     >
                         <SafeIcon name="BookOpen" size={28} color="#3B82F6" type="lucide" />
-                        <Text style={styles.quickActionText}>Recettes</Text>
+                        <Text style={styles.quickActionText}>{t('menuPlanning.recipes')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -588,7 +588,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                         onPress={() => navigation.navigate('ShoppingList' as never)}
                     >
                         <SafeIcon name="ShoppingCart" size={28} color="#10B981" type="lucide" />
-                        <Text style={styles.quickActionText}>{t('menuPlanningHub.listeCourses')}</Text>
+                        <Text style={styles.quickActionText}>{t('menuPlanning.shoppingListShort')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -596,7 +596,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                         onPress={() => navigation.navigate('FamilyProfile' as never)}
                     >
                         <SafeIcon name="Settings" size={28} color="#8B5CF6" type="lucide" />
-                        <Text style={styles.quickActionText}>{t('menuPlanningHub.parametres')}</Text>
+                        <Text style={styles.quickActionText}>{t('menuPlanning.settings')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -622,7 +622,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                     />
                     <View style={styles.modalContentRecipe}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{t('menuPlanningHub.rechercherUneRecette')}</Text>
+                            <Text style={styles.modalTitle}>{t('menuPlanning.searchRecipeTitle')}</Text>
                             <TouchableOpacity onPress={() => {
                                 Keyboard.dismiss();
                                 setShowRecipeModal(false);
@@ -633,15 +633,15 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
 
                         <View style={styles.modalBody}>
                             <Text style={styles.modalHint}>
-                                Entrez le nom d'un plat pour générer sa recette complète.
+                                {t('menuPlanning.searchRecipeHint')}
                             </Text>
 
                             <View style={styles.inputGroup}>
-                                <Text style={styles.label}>{t('menuPlanningHub.nomDuPlat')}</Text>
+                                <Text style={styles.label}>{t('menuPlanning.dishNameLabel')}</Text>
                                 <TextInput
                                     value={recipeRequest}
                                     onChangeText={setRecipeRequest}
-                                    placeholder={t('menuPlanningHub.exNdolePouletDgRiz')}
+                                    placeholder={t('menuPlanning.dishPlaceholder')}
                                     placeholderTextColor="#9CA3AF"
                                     onSubmitEditing={handleGenerateRecipe}
                                     returnKeyType="search"
@@ -655,7 +655,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
 
                         <View style={styles.modalFooter}>
                             <NativeButton
-                                title={t('menuPlanningHubScreen.annuler')}
+                                title={t('common.cancel')}
                                 onPress={() => {
                                     Keyboard.dismiss();
                                     setShowRecipeModal(false);
@@ -665,7 +665,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                 style={styles.modalButton}
                             />
                             <NativeButton
-                                title={loadingRecipe ? t('menuPlanningHubScreen.generation') : t('menuPlanningHubScreen.genererLaRecette')}
+                                title={loadingRecipe ? t('menuPlanning.generating') : t('menuPlanning.generateRecipe')}
                                 onPress={handleGenerateRecipe}
                                 variant="primary"
                                 style={styles.modalButton}
@@ -687,7 +687,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{t('menuPlanningHub.recetteGeneree')}</Text>
+                            <Text style={styles.modalTitle}>{t('menuPlanning.generatedRecipeTitle')}</Text>
                             <TouchableOpacity onPress={() => setShowRecipeDetails(false)}>
                                 <SafeIcon name="x" size={24} color="#6B7280" type="lucide" />
                             </TouchableOpacity>
@@ -733,7 +733,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                 {/* Ingrédients */}
                                 {generatedRecipe.ingredients && generatedRecipe.ingredients.length > 0 && (
                                     <View style={styles.recipeSection}>
-                                        <Text style={styles.recipeSectionTitle}>{t('menuPlanningHub.ingredients')}</Text>
+                                        <Text style={styles.recipeSectionTitle}>{t('menuPlanning.ingredients')}</Text>
                                         {generatedRecipe.ingredients.map((ingredient, index) => (
                                             <View key={index} style={styles.ingredientItem}>
                                                 <Text style={styles.ingredientText}>
@@ -748,7 +748,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                 {/* Instructions */}
                                 {generatedRecipe.instructions && generatedRecipe.instructions.length > 0 && (
                                     <View style={styles.recipeSection}>
-                                        <Text style={styles.recipeSectionTitle}>Instructions</Text>
+                                        <Text style={styles.recipeSectionTitle}>{t('menuPlanning.instructions')}</Text>
                                         {generatedRecipe.instructions.map((instruction, index) => (
                                             <View key={index} style={styles.instructionItem}>
                                                 <View style={styles.instructionNumber}>
@@ -763,7 +763,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                 {/* Astuces */}
                                 {generatedRecipe.tips && generatedRecipe.tips.length > 0 && (
                                     <View style={styles.recipeSection}>
-                                        <Text style={styles.recipeSectionTitle}>Astuces</Text>
+                                        <Text style={styles.recipeSectionTitle}>{t('menuPlanning.tips')}</Text>
                                         {generatedRecipe.tips.map((tip, index) => (
                                             <View key={index} style={styles.tipItem}>
                                                 <SafeIcon name="lightbulb" size={16} color="#F59E0B" type="lucide" />
@@ -776,7 +776,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                 {/* Nutrition */}
                                 {generatedRecipe.nutrition && (
                                     <View style={styles.recipeSection}>
-                                        <Text style={styles.recipeSectionTitle}>Valeurs nutritionnelles (par portion)</Text>
+                                        <Text style={styles.recipeSectionTitle}>{t('menuPlanning.nutritionPerServing')}</Text>
                                         <View style={styles.nutritionGrid}>
                                             <View style={styles.nutritionItem}>
                                                 <Text style={styles.nutritionLabel}>Calories</Text>
@@ -785,7 +785,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                                 </Text>
                                             </View>
                                             <View style={styles.nutritionItem}>
-                                                <Text style={styles.nutritionLabel}>{t('menuPlanningHub.proteines')}</Text>
+                                                <Text style={styles.nutritionLabel}>Protéines</Text>
                                                 <Text style={styles.nutritionValue}>
                                                     {generatedRecipe.nutrition.proteins.toFixed(1)}g
                                                 </Text>
@@ -809,7 +809,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                 {/* Coût estimé */}
                                 {generatedRecipe.estimated_cost && (
                                     <View style={styles.recipeSection}>
-                                        <Text style={styles.recipeSectionTitle}>{t('menuPlanningHub.coutEstime')}</Text>
+                                        <Text style={styles.recipeSectionTitle}>{t('menuPlanning.estimatedCost')}</Text>
                                         <Text style={styles.costText}>
                                             {generatedRecipe.estimated_cost.toLocaleString()} FCFA
                                         </Text>
@@ -820,7 +820,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
 
                         <View style={styles.modalFooter}>
                             <NativeButton
-                                title={t('menuPlanningHubScreen.fermer')}
+                                title={t('common.close')}
                                 onPress={() => {
                                     setShowRecipeDetails(false);
                                     setGeneratedRecipe(null);
@@ -829,7 +829,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                 style={styles.modalButton}
                             />
                             <NativeButton
-                                title={exportingRecipePDF ? t('menuPlanningHubScreen.generation') : 'Partager en PDF'}
+                                title={exportingRecipePDF ? t('menuPlanning.generating') : t('menuPlanning.shareAsPdf')}
                                 onPress={async () => {
                                     if (!generatedRecipe) return;
 
@@ -872,7 +872,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                         iconSize={16}
                                         iconColor="#059669"
                                         showLabel
-                                        label={t('menuPlanningHub.envoyerAUnUtilisateur')}
+                                        label={t('menuPlanning.sendToUser')}
                                         style={{ backgroundColor: '#ECFDF5', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 }}
                                     />
                                 </View>

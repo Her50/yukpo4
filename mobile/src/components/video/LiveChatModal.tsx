@@ -21,7 +21,7 @@ import { LiveKitChatMessage, liveKitService } from '../../services/liveKitServic
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 import { GiftSelector } from './GiftSelector';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface LiveChatModalProps {
     visible: boolean;

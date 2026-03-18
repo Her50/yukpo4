@@ -17,9 +17,9 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import SafeStorage from '../utils/safeStorage';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const PASSENGER_NAME_KEY = '@yukpomnang:passenger_name';
 
@@ -69,8 +69,8 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
     onSelectSeats,
     product
 }) => {
-        const { t } = useLanguageSafe();
-const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
+    const { t } = useLanguageSafe();
+    const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
     const [passengerNames, setPassengerNames] = useState<string[]>([]);
     const [multiSelectMode, setMultiSelectMode] = useState(false);
     const [savedPassengerName, setSavedPassengerName] = useState('');
@@ -114,10 +114,10 @@ const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
 
     const getSeatIcon = (seat: Seat) => {
         if (seat.type === 'driver') {
-            return '🚗';
+            return '\uD83D\uDE97';
         }
         if (seat.status === 'occupied' || seat.status === 'reserved') {
-            return '🔒';
+            return '\uD83D\uDD12';
         }
         const index = selectedSeats.findIndex(s => s.id === seat.id);
         if (index !== -1) {
@@ -371,7 +371,7 @@ const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
 
                             {multiSelectMode && selectedSeats.length > 0 && (
                                 <Text style={styles.multiHint}>
-                                    💡 Cliquez sur une place verte pour l'ajouter à votre sélection
+                                    \uD83D\uDCA1 Cliquez sur une place verte pour l'ajouter à votre sélection
                                 </Text>
                             )}
                         </ScrollView>
@@ -387,7 +387,7 @@ const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
                                 <Text style={styles.paymentAmount}>{totalPrice.toLocaleString()} FCFA</Text>
                             </View>
                             <Text style={styles.paymentNotice}>
-                                💰 Paiement complet immédiat • Ticket PDF instantané
+                                \uD83D\uDCB0 Paiement complet immédiat • Ticket PDF instantané
                             </Text>
                         </View>
                     )}
@@ -422,31 +422,6 @@ const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
             </View>
         </Modal>
     );
-
-    async function handleConfirm() {
-        // Vérifier que tous les noms sont remplis
-        const allNamesFilled = passengerNames.every(name => name.trim().length > 0);
-        if (!allNamesFilled) {
-            Alert.alert('Noms manquants', 'Veuillez renseigner le nom de tous les passagers');
-            return;
-        }
-
-        // Sauvegarder le premier nom
-        try {
-            await SafeStorage.setItem(PASSENGER_NAME_KEY, passengerNames[0].trim());
-        } catch (error) {
-            console.error('Erreur sauvegarde nom:', error);
-        }
-
-        // Préparer les réservations
-        const reservations = selectedSeats.map((seat, index) => ({
-            seat,
-            passengerName: passengerNames[index].trim()
-        }));
-
-        onSelectSeats(reservations);
-        onClose();
-    }
 };
 
 const styles = StyleSheet.create({

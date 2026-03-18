@@ -52,28 +52,28 @@ const [filters, setFilters] = useState<ServiceFilters>(
     }, [initialFilters]);
 
     const serviceTypes = [
-        { value: 'all', label: t('serviceFilters.tousLesTypes'), icon: '📋' },
-        { value: 'pharmacie', label: 'Pharmacie', icon: '💊' },
-        { value: 'hopital', label: t('serviceFilters.hopital'), icon: '🏥' },
-        { value: 'laboratoire', label: 'Laboratoire', icon: '🔬' },
-        { value: 'banque_sang', label: 'Banque de Sang', icon: '🩸' },
-        { value: 'agence_voyage', label: t('serviceFilters.agenceDeVoyage'), icon: '🚌' },
-        { value: 'covoiturage', label: 'Covoiturage', icon: '🚗' },
-        { value: 'taxi', label: 'Taxi', icon: '🚕' },
+        { value: 'all', label: t('serviceFilters.tousLesTypes'), icon: '\uD83D\uDCCB' },
+        { value: 'pharmacie', label: 'Pharmacie', icon: '\uD83D\uDC8A' },
+        { value: 'hopital', label: t('serviceFilters.hopital'), icon: '\uD83C\uDFE5' },
+        { value: 'laboratoire', label: 'Laboratoire', icon: '\uD83D\uDD2C' },
+        { value: 'banque_sang', label: 'Banque de Sang', icon: '\uD83E\uDE78' },
+        { value: 'agence_voyage', label: t('serviceFilters.agenceDeVoyage'), icon: '\uD83D\uDE8C' },
+        { value: 'covoiturage', label: 'Covoiturage', icon: '\uD83D\uDE97' },
+        { value: 'taxi', label: 'Taxi', icon: '\uD83D\uDE95' },
     ];
 
     const statusOptions = [
-        { value: 'all', label: 'Tous', icon: '📊' },
+        { value: 'all', label: 'Tous', icon: '\uD83D\uDCCA' },
         { value: 'active', label: 'Actifs', icon: '✅' },
         { value: 'inactive', label: 'Inactifs', icon: '❌' },
     ];
 
     const dateRanges = [
-        { value: 'all', label: t('serviceFilters.toutesLesDates'), icon: '📅' },
-        { value: 'today', label: "Aujourd'hui", icon: '🕐' },
-        { value: 'week', label: 'Cette semaine', icon: '📆' },
-        { value: 'month', label: 'Ce mois', icon: '🗓️' },
-        { value: 'year', label: t('serviceFilters.cetteAnnee'), icon: '📅' },
+        { value: 'all', label: t('serviceFilters.toutesLesDates'), icon: '\uD83D\uDCC5' },
+        { value: 'today', label: "Aujourd'hui", icon: '\uD83D\uDD50' },
+        { value: 'week', label: 'Cette semaine', icon: '\uD83D\uDCC6' },
+        { value: 'month', label: 'Ce mois', icon: '\uD83D\uDDD3️' },
+        { value: 'year', label: t('serviceFilters.cetteAnnee'), icon: '\uD83D\uDCC5' },
     ];
 
     const handleApply = () => {

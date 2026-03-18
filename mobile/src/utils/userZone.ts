@@ -5,21 +5,21 @@ import SafeStorage from './safeStorage';
 
 // Mapping pays code ISO → emoji/drapeau
 const COUNTRY_CODE_MAP: Record<string, string> = {
-    'CM': '🇨🇲', // Cameroun
-    'CI': '🇨🇮', // Côte d'Ivoire
-    'SN': '🇸🇳', // Sénégal
-    'BF': '🇧🇫', // Burkina Faso
-    'ML': '🇲🇱', // Mali
-    'TG': '🇹🇬', // Togo
-    'BJ': '🇧🇯', // Bénin
-    'NE': '🇳🇪', // Niger
-    'CD': '🇨🇩', // République Démocratique du Congo
-    'CG': '🇨🇬', // République du Congo
-    'GA': '🇬🇦', // Gabon
-    'TD': '🇹🇩', // Tchad
-    'CF': '🇨🇫', // République centrafricaine
-    'GQ': '🇬🇶', // Guinée équatoriale
-    'MG': '🇲🇬', // Madagascar
+    'CM': '\uD83C\uDDE8\uD83C\uDDF2', // Cameroun
+    'CI': '\uD83C\uDDE8\uD83C\uDDEE', // Côte d'Ivoire
+    'SN': '\uD83C\uDDF8\uD83C\uDDF3', // Sénégal
+    'BF': '\uD83C\uDDE7\uD83C\uDDEB', // Burkina Faso
+    'ML': '\uD83C\uDDF2\uD83C\uDDF1', // Mali
+    'TG': '\uD83C\uDDF9\uD83C\uDDEC', // Togo
+    'BJ': '\uD83C\uDDE7\uD83C\uDDEF', // Bénin
+    'NE': '\uD83C\uDDF3\uD83C\uDDEA', // Niger
+    'CD': '\uD83C\uDDE8\uD83C\uDDE9', // République Démocratique du Congo
+    'CG': '\uD83C\uDDE8\uD83C\uDDEC', // République du Congo
+    'GA': '\uD83C\uDDEC\uD83C\uDDE6', // Gabon
+    'TD': '\uD83C\uDDF9\uD83C\uDDE9', // Tchad
+    'CF': '\uD83C\uDDE8\uD83C\uDDEB', // République centrafricaine
+    'GQ': '\uD83C\uDDEC\uD83C\uDDF6', // Guinée équatoriale
+    'MG': '\uD83C\uDDF2\uD83C\uDDEC', // Madagascar
 };
 
 // Pays francophones africains avec leurs coordonnées approximatives
@@ -128,7 +128,7 @@ export const getUserZone = async (): Promise<string> => {
  * Obtient l'emoji pour un code pays
  */
 export const getCountryEmoji = (code: string): string => {
-    return COUNTRY_CODE_MAP[code] || '🌍';
+    return COUNTRY_CODE_MAP[code] || '\uD83C\uDF0D';
 };
 
 /**
@@ -153,7 +153,7 @@ export const sortOptionsByZone = (options: string[], userZone: string): string[]
             userZoneOptions.push(option);
         }
         // Détecter les options sans emoji (neutres)
-        else if (!/^[🇨🇲🇨🇮🇸🇳🇧🇫🇲🇱🇹🇬🇧🇯🇳🇪🇨🇩🇨🇬🇬🇦🇹🇩🇨🇫🇬🇶🇲🇬]/.test(option)) {
+        else if (!/^[\uD83C\uDDE8\uD83C\uDDF2\uD83C\uDDE8\uD83C\uDDEE\uD83C\uDDF8\uD83C\uDDF3\uD83C\uDDE7\uD83C\uDDEB\uD83C\uDDF2\uD83C\uDDF1\uD83C\uDDF9\uD83C\uDDEC\uD83C\uDDE7\uD83C\uDDEF\uD83C\uDDF3\uD83C\uDDEA\uD83C\uDDE8\uD83C\uDDE9\uD83C\uDDE8\uD83C\uDDEC\uD83C\uDDEC\uD83C\uDDE6\uD83C\uDDF9\uD83C\uDDE9\uD83C\uDDE8\uD83C\uDDEB\uD83C\uDDEC\uD83C\uDDF6\uD83C\uDDF2\uD83C\uDDEC]/.test(option)) {
             userZoneOptions.push(option); // Options neutres en premier aussi
         }
         // Autres zones

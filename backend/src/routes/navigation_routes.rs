@@ -19,6 +19,7 @@ use crate::state::AppState;
 #[derive(Deserialize)]
 struct GeocodeRequest {
     address: String,
+    lang: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -30,6 +31,7 @@ struct GeocodeResponse {
 #[derive(Deserialize)]
 struct PlaceDetailsRequest {
     place_id: String,
+    lang: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -55,6 +57,8 @@ struct RoutesRequest {
     waypoints: Option<Vec<LocationCoords>>,
     mode: Option<String>,           // driving, walking, bicycling, transit
     departure_time: Option<String>, // ISO timestamp or "now"
+    /// Langue BCP-47 simplifiée (ex: "fr", "en", "ar") pour Google APIs
+    language_hint: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -109,6 +113,8 @@ struct PointsOfInterestRequest {
     /// Comma-separated list of Google Place types to search (e.g. "pharmacy,hospital")
     /// If absent, falls back to all default types (backward compatible)
     types: Option<String>,
+    /// Langue pour Google Places (ex: "fr", "en", "ar")
+    lang: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -172,10 +178,12 @@ async fn geocode_address(
     let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
         .map_err(|_| AppError::Internal("GOOGLE_MAPS_API_KEY non configurée".to_string()))?;
 
+    let lang = params.lang.as_deref().unwrap_or("fr");
     let url = format!(
-        "https://maps.googleapis.com/maps/api/geocode/json?address={}&key={}&language=fr",
+        "https://maps.googleapis.com/maps/api/geocode/json?address={}&key={}&language={}",
         urlencoding::encode(&params.address),
-        api_key
+        api_key,
+        urlencoding::encode(lang)
     );
 
     let client = reqwest::Client::new();
@@ -241,10 +249,12 @@ async fn get_place_details(
     let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
         .map_err(|_| AppError::Internal("GOOGLE_MAPS_API_KEY non configurée".to_string()))?;
 
+    let lang = params.lang.as_deref().unwrap_or("fr");
     let url = format!(
-        "https://maps.googleapis.com/maps/api/place/details/json?place_id={}&fields=geometry,formatted_address,name&key={}&language=fr",
+        "https://maps.googleapis.com/maps/api/place/details/json?place_id={}&fields=geometry,formatted_address,name&key={}&language={}",
         urlencoding::encode(&params.place_id),
-        api_key
+        api_key,
+        urlencoding::encode(lang)
     );
 
     let client = reqwest::Client::new();
@@ -315,13 +325,15 @@ async fn get_routes(
     let travel_mode = request.mode.as_deref().unwrap_or("driving");
     let traffic_model = request.traffic_model.as_deref().unwrap_or("best_guess");
 
+    let lang = request.language_hint.as_deref().unwrap_or("fr");
     let mut url = format!(
-        "https://maps.googleapis.com/maps/api/directions/json?origin={},{}&destination={},{}&key={}&language=fr&units=metric&alternatives={}&mode={}",
+        "https://maps.googleapis.com/maps/api/directions/json?origin={},{}&destination={},{}&key={}&language={}&units=metric&alternatives={}&mode={}",
         request.origin.lat,
         request.origin.lng,
         request.destination.lat,
         request.destination.lng,
         api_key,
+        urlencoding::encode(lang),
         alternatives,
         travel_mode
     );
@@ -806,9 +818,15 @@ async fn get_points_of_interest(
 
     for (search_lat, search_lng) in &search_points {
         for poi_type in &poi_types {
+            let lang = params.lang.as_deref().unwrap_or("fr");
             let url = format!(
-                "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location={},{}&radius={}&type={}&key={}&language=fr",
-                search_lat, search_lng, radius_per_point, poi_type, api_key
+                "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location={},{}&radius={}&type={}&key={}&language={}",
+                search_lat,
+                search_lng,
+                radius_per_point,
+                poi_type,
+                api_key,
+                urlencoding::encode(lang)
             );
 
             if let Ok(response) =
@@ -1413,10 +1431,17 @@ async fn autocomplete_with_saved(
         let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
             .map_err(|_| AppError::Internal("GOOGLE_MAPS_API_KEY non configurée".to_string()))?;
 
+        // Langue passée en query (?lang=xx) ou fallback "fr"
+        let lang = params
+            .get("lang")
+            .and_then(|v| v.as_str())
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or("fr");
         let url = format!(
-            "https://maps.googleapis.com/maps/api/place/autocomplete/json?input={}&key={}&language=fr",
+            "https://maps.googleapis.com/maps/api/place/autocomplete/json?input={}&key={}&language={}",
             urlencoding::encode(query),
-            api_key
+            api_key,
+            urlencoding::encode(lang)
         );
 
         if let Ok(response) = reqwest::Client::new()
@@ -2410,6 +2435,31 @@ async fn get_ai_insights(
     Query(params): Query<ActivitySummaryQuery>,
 ) -> AppResult<Json<serde_json::Value>> {
     let period = params.period.unwrap_or_else(|| "week".to_string());
+
+    // PERF-2: Redis cache — TTL depends on period (week=30min, month=1h, year=2h)
+    let cache_key = format!("nav:ai_insights:{}:{}", user.id, period);
+    let cache_ttl_secs: u64 = match period.as_str() {
+        "week" => 1800,
+        "month" => 3600,
+        "year" => 7200,
+        _ => 1800,
+    };
+    if let Ok(mut conn) = state.redis_client.get_multiplexed_async_connection().await {
+        if let Ok(cached) =
+            redis::AsyncCommands::get::<_, Option<String>>(&mut conn, &cache_key).await
+        {
+            if let Some(json_str) = cached {
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                    log::debug!(
+                        "[Navigation AI] Cache hit for user {} period {}",
+                        user.id,
+                        period
+                    );
+                    return Ok(Json(val));
+                }
+            }
+        }
+    }
     let since = match period.as_str() {
         "week" => chrono::Utc::now() - chrono::Duration::days(7),
         "month" => chrono::Utc::now() - chrono::Duration::days(30),
@@ -3109,8 +3159,16 @@ IMPORTANT: Retourne UNIQUEMENT le JSON."#,
     if let Some(ref ai_json) = ai_deep_analysis {
         if let Some(prix_est) = ai_json.get("prix_carburant_estime") {
             if let Some(prix) = prix_est.get("prix_par_litre").and_then(|v| v.as_f64()) {
-                if prix > 0.0
-                    && (prix - geo.fuel_price_per_liter).abs() / geo.fuel_price_per_liter > 0.05
+                // SEC-9: Validate plausibility — fuel price must be between 50 and 5000 units
+                // and within 3x of the current known price (guards against LLM hallucination)
+                let plausible = prix >= 50.0
+                    && prix <= 5000.0
+                    && geo.fuel_price_per_liter > 0.0
+                    && prix / geo.fuel_price_per_liter < 3.0
+                    && geo.fuel_price_per_liter / prix < 3.0;
+                if !plausible {
+                    log::warn!("[GeoConfig] LLM fuel price rejected as implausible: {:.2} (current: {:.2})", prix, geo.fuel_price_per_liter);
+                } else if (prix - geo.fuel_price_per_liter).abs() / geo.fuel_price_per_liter > 0.05
                 {
                     // Écart > 5% — résoudre le code pays et mettre à jour en arrière-plan
                     let phone_cc: Option<String> = sqlx::query_scalar::<_, Option<String>>(
@@ -3165,7 +3223,7 @@ IMPORTANT: Retourne UNIQUEMENT le JSON."#,
     };
 
     // ─── Réponse finale ─────────────────────────────────────────────────
-    Ok(Json(serde_json::json!({
+    let response_json = serde_json::json!({
         "success": true,
         "period": period,
         // Records personnels
@@ -3251,7 +3309,21 @@ IMPORTANT: Retourne UNIQUEMENT le JSON."#,
         "ai_tips": ai_tips,
         // Analyse IA profonde (LLM réel: GPT-4o / Claude / Gemini)
         "ai_deep": ai_deep_analysis,
-    })))
+    });
+
+    // PERF-2: Write to Redis cache in background (non-blocking)
+    if let Ok(json_str) = serde_json::to_string(&response_json) {
+        let redis_client = state.redis_client.clone();
+        let key = cache_key.clone();
+        tokio::spawn(async move {
+            if let Ok(mut conn) = redis_client.get_multiplexed_async_connection().await {
+                let _: Result<(), _> =
+                    redis::AsyncCommands::set_ex(&mut conn, &key, &json_str, cache_ttl_secs).await;
+            }
+        });
+    }
+
+    Ok(Json(response_json))
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3264,7 +3336,18 @@ IMPORTANT: Retourne UNIQUEMENT le JSON."#,
 /// Vérifie: inactivité, streak cassé, objectif OMS, résumé hebdomadaire
 async fn check_and_send_navigation_push_alerts(
     State(state): State<Arc<AppState>>,
-) -> Json<serde_json::Value> {
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<Json<serde_json::Value>> {
+    // SEC-7: Vérifier que l'utilisateur est admin
+    let role: Option<String> = sqlx::query_scalar("SELECT role FROM users WHERE id = $1")
+        .bind(user.id)
+        .fetch_optional(&state.pg)
+        .await?
+        .flatten();
+    if role.as_deref() != Some("admin") {
+        return Err(AppError::Forbidden("Admin uniquement".to_string()));
+    }
+
     let now = chrono::Utc::now();
     let since_3d = now - chrono::Duration::days(3);
     let since_7d = now - chrono::Duration::days(7);
@@ -3446,9 +3529,9 @@ async fn check_and_send_navigation_push_alerts(
     }
 
     log::info!("[Navigation Push] ✅ {} notifications envoyées", total_sent);
-    Json(
+    Ok(Json(
         serde_json::json!({"success": true, "total_sent": total_sent, "inactive_users_checked": inactive_users.len(), "alerts": alerts_detail}),
-    )
+    ))
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3718,9 +3801,10 @@ async fn share_navigation_route(
 async fn share_navigation_alerts(
     Query(params): Query<ShareAlertsQuery>,
 ) -> impl axum::response::IntoResponse {
-    let location = params.location.as_deref().unwrap_or("Position actuelle");
-    let lat = params.lat.unwrap_or(3.8480); // Default: Douala
-    let lng = params.lng.unwrap_or(11.5021);
+    let location = params.location.as_deref().unwrap_or("votre position");
+    let has_coords = params.lat.is_some() && params.lng.is_some();
+    let lat = params.lat.unwrap_or(0.0);
+    let lng = params.lng.unwrap_or(0.0);
 
     let title = "🚨 Alertes Communautaires Yukpo".to_string();
     let description = format!(
@@ -3728,15 +3812,19 @@ async fn share_navigation_alerts(
         location
     );
 
+    let coord_params = if has_coords {
+        format!("&lat={}&lng={}", lat, lng)
+    } else {
+        String::new()
+    };
     let deep_link = format!(
-        "yukpomnang://navigation?tab=alerts&lat={}&lng={}&location={}",
-        lat,
-        lng,
+        "yukpomnang://navigation?tab=alerts{}&location={}",
+        coord_params,
         urlencoding::encode(location)
     );
     let intent_url = format!(
-        "intent://navigation?tab=alerts&lat={}&lng={}&location={}#Intent;scheme=yukpomnang;package=com.yukpomnang.mobile;end",
-        lat, lng, urlencoding::encode(location)
+        "intent://navigation?tab=alerts{}&location={}#Intent;scheme=yukpomnang;package=com.yukpomnang.mobile;end",
+        coord_params, urlencoding::encode(location)
     );
     let store_url = "https://play.google.com/store/apps/details?id=com.yukpomnang";
 

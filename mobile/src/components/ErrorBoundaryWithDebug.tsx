@@ -35,8 +35,8 @@ export class ErrorBoundaryWithDebug extends Component<Props, State> {
     }
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-        console.error('🔴 [ErrorBoundary] Erreur capturée:', error);
-        console.error('🔴 [ErrorBoundary] Info:', errorInfo);
+        console.error('\uD83D\uDD34 [ErrorBoundary] Erreur capturée:', error);
+        console.error('\uD83D\uDD34 [ErrorBoundary] Info:', errorInfo);
 
         this.setState({
             error,
@@ -143,7 +143,7 @@ ${errorInfo?.componentStack}
 
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>
-                            💡 Partagez cette erreur avec l'équipe de support
+                            \uD83D\uDCA1 Partagez cette erreur avec l'équipe de support
                         </Text>
                     </View>
                 </View>

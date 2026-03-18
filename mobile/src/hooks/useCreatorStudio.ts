@@ -630,7 +630,7 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
                         if (normalized.type === 'dropoff_address_provided') {
                             const { Alert } = require('react-native');
                             Alert.alert(
-                                '📍 Adresse de livraison confirmée',
+                                '\uD83D\uDCCD Adresse de livraison confirmée',
                                 'Le client a fourni son adresse de livraison. La livraison peut maintenant être assignée à un coursier.',
                                 [{ text: 'OK' }]
                             );

@@ -41,20 +41,24 @@ impl StatistiquesEmploiService {
         }
 
         // Récupérer les métriques de base
-        let offre = sqlx::query!(
-            "SELECT nombre_vues, nombre_candidatures FROM offres_emploi WHERE id = $1",
-            offre_id
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| {
-            error!("[calculate_offre_stats] Erreur: {}", e);
-            AppError::Internal(format!("Erreur récupération offre: {}", e))
-        })?
-        .ok_or_else(|| AppError::NotFound("Offre non trouvée".to_string()))?;
+        let offre =
+            sqlx::query("SELECT nombre_vues, nombre_candidatures FROM offres_emploi WHERE id = $1")
+                .bind(offre_id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| {
+                    error!("[calculate_offre_stats] Erreur: {}", e);
+                    AppError::Internal(format!("Erreur récupération offre: {}", e))
+                })?
+                .ok_or_else(|| AppError::NotFound("Offre non trouvée".to_string()))?;
 
-        let nombre_vues = offre.nombre_vues.unwrap_or(0);
-        let nombre_candidatures = offre.nombre_candidatures.unwrap_or(0);
+        use sqlx::Row;
+        let nombre_vues: i32 =
+            offre.try_get::<Option<i32>, _>("nombre_vues").unwrap_or(None).unwrap_or(0);
+        let nombre_candidatures: i32 = offre
+            .try_get::<Option<i32>, _>("nombre_candidatures")
+            .unwrap_or(None)
+            .unwrap_or(0);
 
         // Compter les candidatures qualifiées (score > 70)
         let nombre_candidatures_qualifiees: i32 = sqlx::query_scalar(

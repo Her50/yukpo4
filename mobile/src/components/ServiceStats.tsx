@@ -79,9 +79,9 @@ const ServiceStats: React.FC<ServiceStatsProps> = ({ serviceId, compact = false 
     return (
       <View style={styles.compactContainer}>
         <View style={styles.compactStatsRow}>
-          {renderStatItem('👁️', stats.views, 'Vues')}
+          {renderStatItem('\uD83D\uDC41️', stats.views, 'Vues')}
           {renderStatItem('❤️', stats.likes, 'Likes')}
-          {renderStatItem('📤', stats.shares, 'Partages')}
+          {renderStatItem('\uD83D\uDCE4', stats.shares, 'Partages')}
         </View>
         {renderRating()}
       </View>
@@ -93,10 +93,10 @@ const ServiceStats: React.FC<ServiceStatsProps> = ({ serviceId, compact = false 
       <Text style={styles.title}>{t('serviceStats.statistiquesDuService')}</Text>
 
       <View style={styles.statsGrid}>
-        {renderStatItem('👁️', stats.views, 'Vues')}
+        {renderStatItem('\uD83D\uDC41️', stats.views, 'Vues')}
         {renderStatItem('❤️', stats.likes, 'Likes')}
-        {renderStatItem('📤', stats.shares, 'Partages')}
-        {renderStatItem('📞', stats.contacts, 'Contacts')}
+        {renderStatItem('\uD83D\uDCE4', stats.shares, 'Partages')}
+        {renderStatItem('\uD83D\uDCDE', stats.contacts, 'Contacts')}
       </View>
 
       {renderRating()}

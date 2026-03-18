@@ -173,7 +173,7 @@ export function useSafeNavigation() {
 
     // ✅ Fonction pour forcer le déverrouillage (en cas d'urgence)
     const forceUnlock = useCallback(() => {
-        console.warn('[useSafeNavigation] 🔓 Force unlock appelé - Déverrouillage immédiat de la navigation');
+        console.warn('[useSafeNavigation] \uD83D\uDD13 Force unlock appelé - Déverrouillage immédiat de la navigation');
         isNavigatingRef.current = false;
         if (navigationTimeoutRef.current) {
             clearTimeout(navigationTimeoutRef.current);

@@ -67,7 +67,7 @@ class WebSocketManager implements WebSocketService {
     }
 
     this.isConnecting = true;
-    console.log(`🔌 [WebSocket] Tentative de connexion à ${this.url}...`);
+    console.log(`\uD83D\uDD0C [WebSocket] Tentative de connexion à ${this.url}...`);
 
     this.connectStartedAt = Date.now();
 
@@ -94,7 +94,7 @@ class WebSocketManager implements WebSocketService {
             ...raw,
             type: raw?.type || raw?.message_type || 'unknown',
           };
-          console.log('📨 [WebSocket] Message reçu:', message.type);
+          console.log('\uD83D\uDCE8 [WebSocket] Message reçu:', message.type);
           recordWebSocketMessage(message.type);
           this.messageCallbacks.forEach(callback => callback(message));
         } catch (error) {
@@ -104,7 +104,7 @@ class WebSocketManager implements WebSocketService {
       };
 
       this.ws.onclose = (event) => {
-        console.log('🔌 [WebSocket] Connexion fermée:', event.code, event.reason);
+        console.log('\uD83D\uDD0C [WebSocket] Connexion fermée:', event.code, event.reason);
         this.isConnecting = false;
         recordWebSocketStatusChange('offline');
         this.notifyStatusChange('offline');
@@ -148,7 +148,7 @@ class WebSocketManager implements WebSocketService {
 
   disconnect(): void {
     if (this.ws) {
-      console.log('🔌 [WebSocket] Déconnexion...');
+      console.log('\uD83D\uDD0C [WebSocket] Déconnexion...');
       this.ws.close(1000, 'Déconnexion volontaire');
       this.ws = null;
     }
@@ -164,7 +164,7 @@ class WebSocketManager implements WebSocketService {
           timestamp: new Date().toISOString()
         });
         this.ws!.send(messageStr);
-        console.log('📤 [WebSocket] Message envoyé:', message.type);
+        console.log('\uD83D\uDCE4 [WebSocket] Message envoyé:', message.type);
       } catch (error) {
         console.error('❌ [WebSocket] Erreur envoi message:', error);
       }
@@ -195,7 +195,7 @@ class WebSocketManager implements WebSocketService {
     this.reconnectAttempts++;
     const delay = this.reconnectInterval * Math.pow(2, this.reconnectAttempts - 1);
 
-    console.log(`🔄 [WebSocket] Reconnexion dans ${delay}ms (tentative ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    console.log(`\uD83D\uDD04 [WebSocket] Reconnexion dans ${delay}ms (tentative ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
     recordWebSocketReconnect(this.reconnectAttempts, delay);
 
     setTimeout(() => {

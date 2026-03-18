@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::Row;
 use std::sync::Arc;
+use uuid::Uuid;
 
 // ============================================================================
 // STRUCTURES DE REQUÊTE/RÉPONSE

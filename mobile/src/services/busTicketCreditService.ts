@@ -4,7 +4,7 @@
  * et le suivi des crédits actifs/utilisés/expirés
  */
 
-import { apiGet, apiPost } from '../utils/api';
+import { apiGet, apiPost } from './api';
 
 // ============================================================================
 // TYPES

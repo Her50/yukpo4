@@ -29,8 +29,7 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
     onSuccess,
     userId
 }) => {
-        const { t } = useLanguageSafe();
-const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [inactiveProducts, setInactiveProducts] = useState<any[]>([]);
     const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
     const [userBalance, setUserBalance] = useState<number>(0);
@@ -53,7 +52,7 @@ const [loading, setLoading] = useState(false);
             }
         } catch (error) {
             console.error('Erreur chargement produits inactifs:', error);
-            Alert.alert('Erreur', t('productReactivationModal.impossibleDeChargerLesProduitsDesactives'));
+            Alert.alert('Erreur', 'Impossible de charger les produits désactivés');
         } finally {
             setLoading(false);
         }
@@ -99,7 +98,7 @@ const [loading, setLoading] = useState(false);
 
     const handleReactivate = async () => {
         if (selectedProducts.size === 0) {
-            Alert.alert('Attention', t('productReactivationModal.veuillezSelectionnerAuMoinsUnProduit'));
+            Alert.alert('Attention', 'Veuillez sélectionner au moins un produit à réactiver');
             return;
         }
 
@@ -107,8 +106,8 @@ const [loading, setLoading] = useState(false);
 
         if (!canAffordReactivation()) {
             Alert.alert(
-                '💸 Solde insuffisant',
-                t('productReactivationModal.coutTotalFcfanvotreSoldeFcfannveuillezRecharger', { totalCost_toLocaleSt: totalCost.toLocaleString(), userBalance_toLocale: userBalance.toLocaleString() }),
+                '\uD83D\uDCB8 Solde insuffisant',
+                `Coût total : ${totalCost.toLocaleString()} FCFA\nVotre solde : ${userBalance.toLocaleString()} FCFA\n\nVeuillez recharger votre compte.`,
                 [{ text: 'OK' }]
             );
             return;
@@ -116,8 +115,8 @@ const [loading, setLoading] = useState(false);
 
         // Confirmation
         Alert.alert(
-            t('productReactivationModal.confirmerLaReactivation'),
-            t('productReactivationModal.reactiverProduitsPourFcfaNnnouveauSolde', { selectedProducts_siz: selectedProducts.size, totalCost_toLocaleSt: totalCost.toLocaleString(), _userBalance___total: (userBalance - totalCost).toLocaleString() }),
+            'Confirmer la réactivation',
+            `Réactiver ${selectedProducts.size} produit(s) pour ${totalCost.toLocaleString()} FCFA ?\n\nNouveau solde : ${(userBalance - totalCost).toLocaleString()} FCFA`,
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 { text: t('common.confirm'), onPress: performReactivation }
@@ -169,8 +168,8 @@ const [loading, setLoading] = useState(false);
 
             if (allSuccess) {
                 Alert.alert(
-                    t('productReactivationModal.reactivationReussie'),
-                    t('productReactivationModal.produitsReactivesAvecSuccesNnilsSeront', { selectedProducts_size: selectedProducts.size }),
+                    '✅ Réactivation réussie',
+                    `${selectedProducts.size} produit(s) réactivé(s) avec succès !\n\nIls seront actifs pendant 30 jours.`,
                     [{
                         text: 'OK', onPress: () => {
                             setSelectedProducts(new Set());
@@ -188,15 +187,15 @@ const [loading, setLoading] = useState(false);
                     .join('\n');
 
                 Alert.alert(
-                    t('productReactivationModal.erreurDeReactivation'),
-                    t('productReactivationModal.certainsProduitsNontPasPuEtre', { errorMessages: errorMessages })
+                    '❌ Erreur de réactivation',
+                    `Certains produits n'ont pas pu être réactivés :\n\n${errorMessages}`
                 );
             }
         } catch (error) {
             console.error('[ProductReactivation] Erreur réactivation:', error);
             Alert.alert(
                 '❌ Erreur',
-                t('productReactivationModal.erreurLorsDeLaReactivationDes', { error_message || error: error.message || error })
+                `Erreur lors de la réactivation des produits :\n\n${error.message || error}`
             );
         } finally {
             setLoading(false);
@@ -205,21 +204,21 @@ const [loading, setLoading] = useState(false);
 
     const getProductTypeIcon = (type: string) => {
         const icons: Record<string, string> = {
-            'immobilier_batiment': '🏢',
-            'immobilier_terrain': '🏞️',
-            'automobile': '🚗',
-            'vetement': '👔',
-            'chaussure': '👟',
-            'electromenager': '📱',
-            'mobilier': '🪑',
-            'aliments': '🍕',
-            'livres_fournitures': '📚',
-            'quincaillerie': '🔧',
-            'bien_etre_spa': '🧘',
-            'prestation_service': '💼',
-            'autre': '📦'
+            'immobilier_batiment': '\uD83C\uDFE2',
+            'immobilier_terrain': '\uD83C\uDFDE️',
+            'automobile': '\uD83D\uDE97',
+            'vetement': '\uD83D\uDC54',
+            'chaussure': '\uD83D\uDC5F',
+            'electromenager': '\uD83D\uDCF1',
+            'mobilier': '\uD83E\uDE91',
+            'aliments': '\uD83C\uDF55',
+            'livres_fournitures': '\uD83D\uDCDA',
+            'quincaillerie': '\uD83D\uDD27',
+            'bien_etre_spa': '\uD83E\uDDD8',
+            'prestation_service': '\uD83D\uDCBC',
+            'autre': '\uD83D\uDCE6'
         };
-        return icons[type] || '📦';
+        return icons[type] || '\uD83D\uDCE6';
     };
 
     return (
@@ -241,7 +240,7 @@ const [loading, setLoading] = useState(false);
                         <SafeIcon name="x" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                     <View style={styles.headerContent}>
-                        <Text style={styles.headerTitle}>{t('productReactivation.produitsDesactives')}</Text>
+                        <Text style={styles.headerTitle}>Produits Désactivés</Text>
                         <Text style={styles.headerSubtitle}>
                             Réactivez vos produits pour 1000 FCFA chacun
                         </Text>
@@ -252,7 +251,7 @@ const [loading, setLoading] = useState(false);
                 <View style={styles.balanceCard}>
                     <View style={styles.balanceInfo}>
                         <SafeIcon name="wallet" size={20} color={modernColors.primary} />
-                        <Text style={styles.balanceLabel}>{t('productReactivation.votreSolde')}</Text>
+                        <Text style={styles.balanceLabel}>Votre solde</Text>
                     </View>
                     <Text style={styles.balanceAmount}>
                         {userBalance.toLocaleString()} FCFA
@@ -262,7 +261,7 @@ const [loading, setLoading] = useState(false);
                 {loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>{t('productReactivation.chargement')}</Text>
+                        <Text style={styles.loadingText}>Chargement...</Text>
                     </View>
                 ) : inactiveProducts.length === 0 ? (
                     <View style={styles.emptyContainer}>
@@ -278,11 +277,11 @@ const [loading, setLoading] = useState(false);
                         <View style={styles.quickActions}>
                             <TouchableOpacity style={styles.quickButton} onPress={selectAll}>
                                 <SafeIcon name="check-square" size={18} color={modernColors.primary} />
-                                <Text style={styles.quickButtonText}>{t('productReactivation.toutSelectionner')}</Text>
+                                <Text style={styles.quickButtonText}>Tout sélectionner</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.quickButton} onPress={deselectAll}>
                                 <SafeIcon name="square" size={18} color="#6B7280" />
-                                <Text style={styles.quickButtonText}>{t('productReactivation.toutDeselectionner')}</Text>
+                                <Text style={styles.quickButtonText}>Tout désélectionner</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -354,13 +353,13 @@ const [loading, setLoading] = useState(false);
                                 {!canAffordReactivation() && selectedProducts.size > 0 && (
                                     <View style={styles.insufficientBadge}>
                                         <SafeIcon name="alert-triangle" size={16} color="#EF4444" />
-                                        <Text style={styles.insufficientText}>{t('productReactivation.soldeInsuffisant')}</Text>
+                                        <Text style={styles.insufficientText}>Solde insuffisant</Text>
                                     </View>
                                 )}
                             </View>
 
                             <NativeButton
-                                title={loading ? t('productReactivationModal.reactivation') : t('productReactivationModal.reactiverFcfa', { calculateTotalCost___toLo: calculateTotalCost().toLocaleString() })}
+                                title={loading ? "Réactivation..." : `Réactiver (${calculateTotalCost().toLocaleString()} FCFA)`}
                                 onPress={handleReactivate}
                                 variant="primary"
                                 size="large"

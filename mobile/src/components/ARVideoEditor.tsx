@@ -1,5 +1,5 @@
 /**
- * 🎬 ARVideoEditor - Éditeur vidéo immersif AR simplifié et robuste
+ * \uD83C\uDFAC ARVideoEditor - Éditeur vidéo immersif AR simplifié et robuste
  * Version reconstruite pour éviter les crashes
  * 
  * Utilise expo-image-picker pour une capture vidéo simple et fiable
@@ -52,11 +52,11 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
             if (!cameraPermission.granted) {
                 Alert.alert(
                     'Permission requise',
-                    t('aRVideoEditor.veuillezAutoriserLaccesALaCameraPourEnregistrer'),
+                    'Veuillez autoriser l\'accès à la caméra pour enregistrer une vidéo.',
                     [
                         { text: t('common.cancel'), style: 'cancel' },
                         {
-                            text: t('aRVideoEditor.ouvrirLesParametres'),
+                            text: 'Ouvrir les paramètres',
                             onPress: () => {
                                 if (Platform.OS === 'ios') {
                                     Linking.openURL('app-settings:');
@@ -95,7 +95,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
             console.error('[ARVideoEditor] ❌ Erreur capture vidéo:', error);
             Alert.alert(
                 'Erreur',
-                t('aRVideoEditor.impossibleDeCapturerLaVideo', { error?_message || 'Erreur inconnue': error?.message || 'Erreur inconnue' })
+                `Impossible de capturer la vidéo: ${error?.message || 'Erreur inconnue'}`
             );
         } finally {
             setIsCapturing(false);
@@ -176,7 +176,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                     {/* Boutons d'action */}
                     <View style={styles.actionButtonsContainer}>
                         <NativeButton
-                            title="🔄 Reprendre"
+                            title="\uD83D\uDD04 Reprendre"
                             variant="outline"
                             size="large"
                             onPress={handleRetake}
@@ -184,7 +184,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                             style={styles.actionButton}
                         />
                         <NativeButton
-                            title={isUploading ? "⏳ Upload en cours..." : t('aRVideoEditor.utiliserCetteVideo')}
+                            title={isUploading ? "⏳ Upload en cours..." : "✅ Utiliser cette vidéo"}
                             variant="primary"
                             size="large"
                             onPress={handleUseVideo}
@@ -195,7 +195,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                     {isUploading && (
                         <View style={styles.uploadingContainer}>
                             <ActivityIndicator size="small" color={modernColors.primary} />
-                            <Text style={styles.uploadingText}>{t('aRVideoEditor.uploadDeLaVideoEn')}</Text>
+                            <Text style={styles.uploadingText}>Upload de la vidéo en cours...</Text>
                         </View>
                     )}
                 </View>
@@ -226,7 +226,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                 {/* Instructions */}
                 <View style={styles.instructionsContainer}>
                     <SafeIcon name="video" size={64} color={modernColors.primary} />
-                    <Text style={styles.instructionsTitle}>{t('aRVideoEditor.videoArImmersive')}</Text>
+                    <Text style={styles.instructionsTitle}>Vidéo AR Immersive</Text>
                     <Text style={styles.instructionsText}>
                         Cliquez sur le bouton ci-dessous pour ouvrir la caméra et enregistrer une vidéo de votre produit.
                         {'\n\n'}
@@ -237,7 +237,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                 {/* Bouton de capture */}
                 <View style={styles.buttonContainer}>
                     <NativeButton
-                        title={isCapturing ? 'Capture en cours...' : t('aRVideoEditor.capturerUneVideo')}
+                        title={isCapturing ? 'Capture en cours...' : '\uD83D\uDCF9 Capturer une vidéo'}
                         variant="primary"
                         size="large"
                         onPress={handleCaptureVideo}
@@ -247,7 +247,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                     {isCapturing && (
                         <View style={styles.loadingContainer}>
                             <ActivityIndicator size="small" color={modernColors.primary} />
-                            <Text style={styles.loadingText}>{t('aRVideoEditor.ouvrirLaCamera')}</Text>
+                            <Text style={styles.loadingText}>Ouvrir la caméra...</Text>
                         </View>
                     )}
                 </View>

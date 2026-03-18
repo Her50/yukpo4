@@ -9,7 +9,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiGet, serviceService } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 const CreateServiceScreen: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -34,7 +33,6 @@ const CreateServiceScreen: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const navigation = ReactNavigation.useNavigation();
   const { location } = useLocation();
-    const { t } = useLanguageSafe();
   const { user } = useAuth();
 
   const vitesses_tarissement = ['lente', 'moyenne', 'rapide'];
@@ -109,7 +107,7 @@ const CreateServiceScreen: React.FC = () => {
   const handleSubmit = async () => {
     // Validation des champs obligatoires
     if (!formData.titre_service || !formData.description || !formData.category || !formData.whatsapp) {
-      Alert.alert('Erreur', t('createServiceScreen.veuillezRemplirTousLesChampsObligatoires'));
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires (titre, description, catégorie, WhatsApp)');
       return;
     }
 
@@ -143,7 +141,7 @@ const CreateServiceScreen: React.FC = () => {
       if (payloadSize > 50_000_000) {
         Alert.alert(
           'Payload trop volumineux',
-          t('createServiceScreen.lePayloadEstTropVolumineuxMb', { payloadSizeMB: payloadSizeMB })
+          `Le payload est trop volumineux (${payloadSizeMB} MB). La limite est de 50 MB.\n\nVeuillez réduire le nombre de médias ou leur taille.`
         );
         setLoading(false);
         return;
@@ -153,8 +151,8 @@ const CreateServiceScreen: React.FC = () => {
 
       if (response.success) {
         Alert.alert(
-          t('createServiceScreen.succes'),
-          t('createServiceScreen.serviceCreeAvecSucces'),
+          'Succès',
+          'Service créé avec succès !',
           [
             {
               text: 'OK',
@@ -167,7 +165,7 @@ const CreateServiceScreen: React.FC = () => {
         );
       } else {
         // ✅ AMÉLIORÉ: Utiliser le message d'erreur détaillé avec code
-        const errorMessage = response.error || response.message || t('createService.impossibleDeCreerLeService');
+        const errorMessage = response.error || response.message || 'Impossible de créer le service';
         const errorCode = response.code || 'UNKNOWN_ERROR';
         
         console.error('[CreateServiceScreen] Erreur création service:', {
@@ -183,10 +181,10 @@ const CreateServiceScreen: React.FC = () => {
         
         if (errorCode === 'NETWORK_ERROR') {
           alertTitle = 'Erreur de connexion';
-          alertMessage = errorMessage + t('createServiceScreen.nnleSystemeVaReessayerAutomatiquementSi');
+          alertMessage = errorMessage + '\n\nLe système va réessayer automatiquement. Si le problème persiste, vérifiez votre connexion internet.';
         } else if (errorCode === 'TIMEOUT') {
           alertTitle = 'Timeout';
-          alertMessage = errorMessage + t('createServiceScreen.nnlaRequeteAPrisTropDe');
+          alertMessage = errorMessage + '\n\nLa requête a pris trop de temps. Cela peut être dû à un grand nombre de médias ou à une connexion lente.';
         }
         
         Alert.alert(alertTitle, alertMessage);
@@ -197,13 +195,13 @@ const CreateServiceScreen: React.FC = () => {
       console.error('Erreur lors de la création du service:', error);
       
       // ✅ AMÉLIORÉ: Message d'erreur plus détaillé
-      let errorMessage = t('createServiceScreen.uneErreurEstSurvenueLorsDe');
+      let errorMessage = 'Une erreur est survenue lors de la création du service';
       if (error?.message) {
         errorMessage = error.message;
       } else if (error?.code === 'NETWORK_ERROR') {
-        errorMessage = t('createServiceScreen.erreurDeConnexionReseauVerifiezVotre');
+        errorMessage = 'Erreur de connexion réseau. Vérifiez votre connexion internet et réessayez.';
       } else if (error?.code === 'TIMEOUT') {
-        errorMessage = t('createServiceScreen.laRequeteAExpireCelaPeut');
+        errorMessage = 'La requête a expiré. Cela peut être dû à un grand nombre de médias. Réessayez avec moins de médias.';
       }
       
       Alert.alert('Erreur', errorMessage);
@@ -228,8 +226,8 @@ const CreateServiceScreen: React.FC = () => {
       <View style={styles.content}>
         {/* En-tête avec progression */}
         <View style={styles.header}>
-          <Text style={styles.title}>{t('createService.creerUnNouveauService')}</Text>
-          <Text style={styles.subtitle}>{t('createService.partagezVotreExpertiseAvecLa')}</Text>
+          <Text style={styles.title}>Créer un Nouveau Service</Text>
+          <Text style={styles.subtitle}>Partagez votre expertise avec la communauté</Text>
 
           {/* Indicateur d'étapes */}
           <View style={styles.stepsIndicator}>
@@ -252,7 +250,7 @@ const CreateServiceScreen: React.FC = () => {
               </View>
             ))}
           </View>
-          <Text style={styles.stepInfo}>{t('createServiceScreen.stepOf', { current: currentStep, total: totalSteps })}</Text>
+          <Text style={styles.stepInfo}>Étape {currentStep} sur {totalSteps}</Text>
         </View>
 
         {/* Étape 1: Informations de base */}
@@ -260,11 +258,11 @@ const CreateServiceScreen: React.FC = () => {
           <Card style={styles.card}>
             <View style={styles.cardContent}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{t('createService.informationsDeBase')}</Text>
+                <Text style={styles.sectionTitle}>Informations de Base</Text>
                 {suggestionData && (
                   <View style={styles.aiIndicator}>
                     <SafeIcon name="cpu" size={16} color={modernColors.primary} />
-                    <Text style={styles.aiText}>{t('createService.genereParLia')}</Text>
+                    <Text style={styles.aiText}>Généré par l'IA</Text>
                   </View>
                 )}
               </View>
@@ -279,20 +277,20 @@ const CreateServiceScreen: React.FC = () => {
                 }}
                 mode="outlined"
                 style={styles.input}
-                placeholder={t('createService.exCoiffureADomicile')}
+                placeholder="Ex: Coiffure à domicile"
                 editable={!suggestionData}
                 disabled={!!suggestionData}
               />
 
               <View style={styles.fieldContainer}>
-                <Text style={styles.label}>{t('createService.categorie')}</Text>
+                <Text style={styles.label}>Catégorie *</Text>
                 {suggestionData && formData.category ? (
                   <View style={styles.readOnlyField}>
                     <Text style={styles.readOnlyText}>{formData.category}</Text>
                   </View>
                 ) : (
                   <TextInput
-                    label={t('createService.entrezUneCategorie')}
+                    label="Entrez une catégorie"
                     value={formData.category}
                     onChangeText={(text) => setFormData({ ...formData, category: text })}
                     mode="outlined"
@@ -303,7 +301,7 @@ const CreateServiceScreen: React.FC = () => {
               </View>
 
               <View style={styles.switchContainer}>
-                <Text style={styles.switchLabel}>{t('createService.serviceTarissable')}</Text>
+                <Text style={styles.switchLabel}>Service tarissable</Text>
                 <Switch
                   value={formData.is_tarissable}
                   onValueChange={(value) => {
@@ -349,7 +347,7 @@ const CreateServiceScreen: React.FC = () => {
               )}
 
               <TextInput
-                label={t('createServiceScreen.description')}
+                label="Description *"
                 value={formData.description}
                 onChangeText={(text) => {
                   if (!suggestionData) {
@@ -360,7 +358,7 @@ const CreateServiceScreen: React.FC = () => {
                 multiline
                 numberOfLines={4}
                 style={styles.input}
-                placeholder={t('createService.decrivezVotreServiceEnDetail')}
+                placeholder="Décrivez votre service en détail..."
                 editable={!suggestionData}
                 disabled={!!suggestionData}
               />
@@ -372,11 +370,11 @@ const CreateServiceScreen: React.FC = () => {
         {currentStep === 2 && (
           <Card style={styles.card}>
             <View style={styles.cardContent}>
-              <Text style={styles.sectionTitle}>{t('createService.localisation')}</Text>
+              <Text style={styles.sectionTitle}>Localisation</Text>
 
               <View style={styles.gpsContainer}>
                 <TextInput
-                  label={t('createService.coordonneesGpsFixesOptionnel')}
+                  label="Coordonnées GPS fixes (optionnel)"
                   value={formData.gps_fixe}
                   onChangeText={(text) => setFormData({ ...formData, gps_fixe: text })}
                   mode="outlined"
@@ -390,16 +388,16 @@ const CreateServiceScreen: React.FC = () => {
               </View>
 
               <TextInput
-                label={t('createServiceScreen.adresse')}
+                label="Adresse"
                 value={formData.adresse}
                 onChangeText={(text) => setFormData({ ...formData, adresse: text })}
                 mode="outlined"
                 style={styles.input}
-                placeholder={t('createService.123RueDeLaPaix')}
+                placeholder="123 Rue de la Paix, Ville"
               />
 
               <TextInput
-                label={t('createService.zoneD')}intervention"
+                label="Zone d'intervention"
                 value={formData.zone_intervention}
                 onChangeText={(text) => setFormData({ ...formData, zone_intervention: text })}
                 mode="outlined"
@@ -419,7 +417,7 @@ const CreateServiceScreen: React.FC = () => {
               <View style={styles.priceContainer}>
                 <View style={styles.priceInput}>
                   <TextInput
-                    label={t('createServiceScreen.prix')}
+                    label="Prix"
                     value={formData.prix}
                     onChangeText={(text) => setFormData({ ...formData, prix: text })}
                     mode="outlined"
@@ -461,11 +459,11 @@ const CreateServiceScreen: React.FC = () => {
           <Card style={styles.card}>
             <View style={styles.cardContent}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{t('createService.informationsDeContact')}</Text>
+                <Text style={styles.sectionTitle}>Informations de Contact</Text>
                 {userContactInfo && (
                   <View style={styles.aiIndicator}>
                     <SafeIcon name="check" size={16} color={modernColors.success} />
-                    <Text style={styles.aiText}>{t('createService.prerempli')}</Text>
+                    <Text style={styles.aiText}>Pré-rempli</Text>
                   </View>
                 )}
               </View>
@@ -486,7 +484,7 @@ const CreateServiceScreen: React.FC = () => {
               )}
 
               <TextInput
-                label={t('createService.telephone')}
+                label="Téléphone"
                 value={formData.telephone}
                 onChangeText={(text) => setFormData({ ...formData, telephone: text })}
                 mode="outlined"
@@ -508,7 +506,7 @@ const CreateServiceScreen: React.FC = () => {
               />
 
               <TextInput
-                label={t('createService.horairesD')}ouverture"
+                label="Horaires d'ouverture"
                 value={formData.horaires}
                 onChangeText={(text) => setFormData({ ...formData, horaires: text })}
                 mode="outlined"
@@ -524,13 +522,13 @@ const CreateServiceScreen: React.FC = () => {
           {currentStep > 1 && (
             <TouchableOpacity style={styles.prevButton} onPress={prevStep}>
               <SafeIcon name="arrow-back" size={20} color={modernColors.primary} />
-              <Text style={styles.prevButtonText}>{t('createService.precedent')}</Text>
+              <Text style={styles.prevButtonText}>Précédent</Text>
             </TouchableOpacity>
           )}
 
           {currentStep < totalSteps ? (
             <TouchableOpacity style={styles.nextButton} onPress={nextStep}>
-              <Text style={styles.nextButtonText}>{t('createServiceScreen.suivant')}</Text>
+              <Text style={styles.nextButtonText}>Suivant</Text>
               <SafeIcon name="arrow-forward" size={20} color="#FFFFFF" />
             </TouchableOpacity>
           ) : (
@@ -541,7 +539,7 @@ const CreateServiceScreen: React.FC = () => {
             >
               <SafeIcon name="check" size={20} color="#FFFFFF" />
               <Text style={styles.submitButtonText}>
-                {loading ? t('createServiceScreen.creation') : t('createServiceScreen.creerLeService')}
+                {loading ? 'Création...' : 'Créer le Service'}
               </Text>
             </TouchableOpacity>
           )}

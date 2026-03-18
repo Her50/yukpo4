@@ -55,14 +55,14 @@ export const genererToutesLesVilles = (codePaysUtilisateur: string = 'CM'): stri
     });
   });
 
-  villes.push('🆕 Autre (ajouter)');
+  villes.push('\uD83C\uDD95 Autre (ajouter)');
   return villes;
 };
 
 // ✅ FONCTION UTILITAIRE: Génère la liste des quartiers avec PRIORITÉ au pays
 export const genererQuartiersPays = (codePays: string = 'CM'): string[] => {
   const pays = TOUS_LES_PAYS.find(p => p.code === codePays);
-  if (!pays) return ['Centre-ville', '🆕 Autre (ajouter)'];
+  if (!pays) return ['Centre-ville', '\uD83C\uDD95 Autre (ajouter)'];
 
   const quartiers: string[] = [];
   pays.villes.forEach(ville => {
@@ -76,10 +76,10 @@ export const genererQuartiersPays = (codePays: string = 'CM'): string[] => {
   });
 
   if (quartiers.length === 0) {
-    return ['Centre-ville', '🆕 Autre (ajouter)'];
+    return ['Centre-ville', '\uD83C\uDD95 Autre (ajouter)'];
   }
 
-  quartiers.push('🆕 Autre (ajouter)');
+  quartiers.push('\uD83C\uDD95 Autre (ajouter)');
   return quartiers;
 };
 
@@ -88,10 +88,10 @@ export const genererZonesIntervention = (codePaysUtilisateur: string = 'CM'): st
   const zones: string[] = [];
 
   // ════════════════════════════════════════════════════════════
-  // 📍 NIVEAU 1: ZONES LARGES (choix rapide en 1 clic)
+  // \uD83D\uDCCD NIVEAU 1: ZONES LARGES (choix rapide en 1 clic)
   // ════════════════════════════════════════════════════════════
-  zones.push('🌍 Toute l\'Afrique francophone');
-  zones.push('🌍 International (hors Afrique)');
+  zones.push('\uD83C\uDF0D Toute l\'Afrique francophone');
+  zones.push('\uD83C\uDF0D International (hors Afrique)');
 
   // Pays de l'utilisateur en PREMIER
   const paysPrioritaire = TOUS_LES_PAYS.find(p => p.code === codePaysUtilisateur);
@@ -106,10 +106,10 @@ export const genererZonesIntervention = (codePaysUtilisateur: string = 'CM'): st
       zones.push(`${pays.emoji} Tout le ${pays.nom}`);
     });
 
-  zones.push('──────── 🎯 Villes & Quartiers ci-dessous ────────');
+  zones.push('──────── \uD83C\uDFAF Villes & Quartiers ci-dessous ────────');
 
   // ════════════════════════════════════════════════════════════
-  // 📍 NIVEAU 2: PAYS DE L'UTILISATEUR (DÉTAILLÉ)
+  // \uD83D\uDCCD NIVEAU 2: PAYS DE L'UTILISATEUR (DÉTAILLÉ)
   // ════════════════════════════════════════════════════════════
   if (paysPrioritaire) {
     zones.push(`─── ${paysPrioritaire.emoji} ${paysPrioritaire.nom.toUpperCase()} (VOTRE PAYS) ───`);
@@ -131,7 +131,7 @@ export const genererZonesIntervention = (codePaysUtilisateur: string = 'CM'): st
   }
 
   // ════════════════════════════════════════════════════════════
-  // 📍 NIVEAU 3: AUTRES PAYS (villes principales uniquement)
+  // \uD83D\uDCCD NIVEAU 3: AUTRES PAYS (villes principales uniquement)
   // ════════════════════════════════════════════════════════════
   const autresPays = TOUS_LES_PAYS.filter(p => p.code !== codePaysUtilisateur);
 
@@ -146,7 +146,7 @@ export const genererZonesIntervention = (codePaysUtilisateur: string = 'CM'): st
     });
   });
 
-  zones.push('🆕 Autre (ajouter)');
+  zones.push('\uD83C\uDD95 Autre (ajouter)');
   return zones;
 };
 
@@ -156,7 +156,7 @@ export const AUTOMOBILE_MODALITIES: ModalityCategory = {
   types: [
     'Voiture', 'Moto', 'Scooter', 'Camion', 'Camionnette', 'Pick-up',
     'SUV', '4x4', 'Utilitaire', 'Minibus', 'Bus',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Types de carrosserie (NOUVEAU)
@@ -164,7 +164,7 @@ export const AUTOMOBILE_MODALITIES: ModalityCategory = {
     'Berline', 'SUV', '4x4', 'Break', 'Coupé', 'Cabriolet',
     'Monospace', 'Pick-up', 'Utilitaire', 'Roadster', 'Crossover',
     'Citadine',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Marques automobiles (ENRICHI - Focus marques populaires en Afrique)
@@ -182,7 +182,7 @@ export const AUTOMOBILE_MODALITIES: ModalityCategory = {
     'Ferrari', 'Lamborghini', 'Bentley', 'Rolls-Royce', 'Aston Martin',
     'McLaren', 'Bugatti', 'Tesla', 'Alfa Romeo', 'Maserati',
     'Jaguar', 'Mini', 'Smart',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Couleurs (ENRICHI)
@@ -191,40 +191,40 @@ export const AUTOMOBILE_MODALITIES: ModalityCategory = {
     'Beige', 'Marron', 'Orange', 'Jaune', 'Violet', 'Or', 'Bronze',
     'Bordeaux', 'Gris métallisé', 'Bleu métallisé', 'Rouge métallisé',
     'Vert métallisé', 'Bi-ton',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Types de carburant
   carburant: [
     'Essence', 'Diesel', 'Hybride', 'Hybride rechargeable',
     'Électrique', 'GPL', 'Bioéthanol', 'Hydrogène',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Types de transmission
   transmission: [
     'Manuelle', 'Automatique', 'Semi-automatique', 'CVT',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ États du véhicule
   etat: [
     'Neuf', 'Excellent état', 'Très bon état', 'Bon état',
     'État moyen', 'À réparer', 'Pour pièces',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Nombre de portes (NOUVEAU)
   portes: [
     '2 portes', '3 portes', '4 portes', '5 portes',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Nombre de places (NOUVEAU)
   places: [
     '2 places', '4 places', '5 places', '7 places',
     '9 places', '12+ places',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Papiers administratifs (NOUVEAU - Contexte africain)
@@ -232,7 +232,7 @@ export const AUTOMOBILE_MODALITIES: ModalityCategory = {
     'En règle', 'Carte grise disponible', 'Carte grise à refaire',
     'Dédouanée', 'Non dédouanée', 'À immatriculer',
     'Contrat d\'achat disponible', 'Visite technique valide',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Équipements (NOUVEAU)
@@ -246,7 +246,7 @@ export const AUTOMOBILE_MODALITIES: ModalityCategory = {
     'Apple CarPlay', 'Android Auto', 'Détecteur angle mort',
     'Freinage automatique', 'Assistance parking', 'Démarrage sans clé',
     'Hayon électrique',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -265,27 +265,27 @@ export const IMMOBILIER_MODALITIES: ModalityCategory = {
     'Immeuble de rapport', 'Immeuble commercial',
     // Autres
     'Ferme', 'Terrain nu', 'Terrain viabilisé',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ STATUTS (8) - ENRICHI
   statuts: [
     'À vendre', 'À louer (bail)', 'À louer meublé', 'Location courte durée',
     'Colocation', 'Location-vente', 'Vente en viager', 'Sous-location',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ STANDING (5) - NOUVEAU
   standing: [
     'Économique', 'Standard', 'Bon standing', 'Haut standing', 'Luxe / Prestige',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉTAT GÉNÉRAL (6) - NOUVEAU
   etat: [
     'Neuf (jamais habité)', 'Excellent état', 'Bon état', 'État moyen',
     'À rafraîchir', 'À rénover entièrement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ VILLES - Toutes les villes d'Afrique francophone avec priorité pays utilisateur
@@ -300,20 +300,20 @@ export const IMMOBILIER_MODALITIES: ModalityCategory = {
   quartiers_douala: (() => {
     const pays = TOUS_LES_PAYS.find(p => p.code === 'CM');
     const ville = pays?.villes.find(v => v.nom === 'Douala');
-    return ville?.quartiers ? [...ville.quartiers, '🆕 Autre (ajouter)'] : ['Centre-ville', '🆕 Autre (ajouter)'];
+    return ville?.quartiers ? [...ville.quartiers, '\uD83C\uDD95 Autre (ajouter)'] : ['Centre-ville', '\uD83C\uDD95 Autre (ajouter)'];
   })(),
 
   quartiers_yaounde: (() => {
     const pays = TOUS_LES_PAYS.find(p => p.code === 'CM');
     const ville = pays?.villes.find(v => v.nom === 'Yaoundé');
-    return ville?.quartiers ? [...ville.quartiers, '🆕 Autre (ajouter)'] : ['Centre-ville', '🆕 Autre (ajouter)'];
+    return ville?.quartiers ? [...ville.quartiers, '\uD83C\uDD95 Autre (ajouter)'] : ['Centre-ville', '\uD83C\uDD95 Autre (ajouter)'];
   })(),
 
   // ✅ AMEUBLEMENT (6) - ENRICHI
   ameublement: [
     'Non meublé', 'Partiellement meublé', 'Semi-meublé',
     'Meublé standard', 'Meublé + équipé', 'Meublé haut de gamme',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉQUIPEMENTS (35+) - NOUVEAU ET ADAPTÉ AU CONTEXTE CAMEROUN
@@ -336,7 +336,7 @@ export const IMMOBILIER_MODALITIES: ModalityCategory = {
     'Eau chaude', 'Chauffe-eau', 'Douche moderne',
     // Autres
     'Ascenseur', 'Concierge', 'Piscine', 'Salle de sport', 'Buanderie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ PROXIMITÉS (15+) - NOUVEAU ET ADAPTÉ
@@ -345,7 +345,7 @@ export const IMMOBILIER_MODALITIES: ModalityCategory = {
     'Hôpital', 'Pharmacie', 'Supermarché/Mahima', 'Marché', 'Station-service',
     'Banque/GAB', 'Transport public', 'Gare routière', 'Église', 'Mosquée',
     'Restaurants/Maquis', 'Centre commercial',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ACCÈS ROUTIER (8) - NOUVEAU
@@ -353,14 +353,14 @@ export const IMMOBILIER_MODALITIES: ModalityCategory = {
     'Route goudronnée', 'Route en bon état', 'Route carrossable',
     'Piste en terre', 'Rue pavée', 'Chemin d\'accès difficile',
     'Accès 4x4 recommandé', 'Zone inondable saison pluies',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE BAIL (Location) - NOUVEAU
   types_bail: [
     '1 mois renouvelable', '3 mois', '6 mois', '1 an', '2 ans',
     '3 ans et plus', 'Bail commercial 3-6-9', 'Sans bail écrit',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CONDITIONS LOCATION (12+) - NOUVEAU
@@ -370,7 +370,7 @@ export const IMMOBILIER_MODALITIES: ModalityCategory = {
     'Frais agence inclus', 'Frais agence à la charge du locataire',
     'Garant exigé', 'Fiche de paie exigée', 'Contrat de travail exigé',
     'Paiement annuel accepté', 'Paiement trimestriel accepté',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ORIENTATIONS (9) - EXISTANT
@@ -378,7 +378,7 @@ export const IMMOBILIER_MODALITIES: ModalityCategory = {
     'Nord', 'Sud', 'Est', 'Ouest',
     'Nord-Est', 'Nord-Ouest', 'Sud-Est', 'Sud-Ouest',
     'Toutes orientations',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -391,7 +391,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Lotissement résidentiel', 'Zone villa', 'Terrain constructible',
     'Terrain nu non viabilisé', 'Terrain de plantation', 'Exploitation agricole',
     'Zone artisanale',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ STATUT DU TERRAIN (8)
@@ -399,7 +399,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'À vendre', 'Vendu', 'Réservé', 'Option d\'achat',
     'En cours de viabilisation', 'Location longue durée', 'Concession foncière',
     'Disponible immédiatement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ VIABILISATION (10+) - CRITIQUE pour Cameroun
@@ -411,7 +411,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Non viabilisé', 'À viabiliser',
     'Raccordement ENEO proche (< 100m)', 'Raccordement CDE proche (< 100m)',
     'Forage existant', 'Puits existant',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ZONAGE / AFFECTATION (12+)
@@ -422,7 +422,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Zone agricole A', 'Zone mixte M',
     'Zone villas haut standing', 'Zone économique',
     'Hors plan d\'urbanisme',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FORME DU TERRAIN (10)
@@ -430,7 +430,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Rectangulaire', 'Carré', 'Irrégulier', 'Trapézoïdal', 'Triangulaire',
     'L-Shape (forme en L)', 'Angle de rue (2 façades)',
     'Longiligne', 'Polygone régulier', 'Atypique',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TOPOGRAPHIE (10+) - Important contexte Cameroun
@@ -440,7 +440,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Vallonné', 'En contrebas', 'Surplombant',
     'Zone inondable (saison pluies)', 'Terrain en hauteur (vue panoramique)',
     'Mi-pente',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ACCÈS TERRAIN (12+) - Adapté routes Cameroun
@@ -451,7 +451,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Chemin d\'accès difficile', 'Accès 4x4 recommandé',
     'Accès par rue pavée', 'Impasse', 'Voie principale',
     'Double accès (2 entrées)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ VÉGÉTATION / ÉTAT DU SOL (10+)
@@ -460,7 +460,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Arbres (bois d\'œuvre)', 'Dense (débroussaillage nécessaire)',
     'Forêt', 'Cultivé (plantation active)', 'En friche',
     'Pelouse/Gazon', 'Marécageux (assainissement requis)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ USAGE ACTUEL (8)
@@ -469,7 +469,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Cultivé (maraîchage)', 'Cultivé (palmiers à huile)',
     'Bâti (construction existante)', 'En friche',
     'Pâturage', 'Exploitation forestière',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ RÉSEAUX DISPONIBLES (10+) - Multi-sélection
@@ -480,7 +480,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Fibre optique / Internet haut débit', 'Téléphonie fixe',
     'Assainissement collectif (égouts)', 'Assainissement individuel (fosse)',
     'Gaz de ville (rare)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ DOCUMENTS FONCIERS (12+) - CRITIQUE Cameroun
@@ -492,7 +492,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Document de palabre (reconnaissance coutumière)',
     'Certificat de non-gage', 'Arrêté de lotissement',
     'Plan cadastral',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ BORNAGE / DÉLIMITATION (8)
@@ -501,7 +501,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Partiellement borné', 'Non borné',
     'Levé topographique récent (< 1 an)', 'Levé topographique ancien (> 3 ans)',
     'Clôturé (limite physique)', 'Délimitation naturelle',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CONSTRUCTIBILITÉ (10+)
@@ -513,7 +513,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Constructible (R+3 et plus)',
     'Non constructible (zone protégée)', 'Non constructible (servitude)',
     'Constructible après viabilisation', 'Constructible après assainissement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CLÔTURE / SÉCURISATION (10)
@@ -523,7 +523,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Partiellement clôturé', 'Non clôturé',
     'Portail motorisé', 'Portail manuel',
     'Gardien sur place', 'Zone sécurisée/résidentielle',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CONTRAINTES / SERVITUDES (12+)
@@ -534,7 +534,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Protection environnementale', 'Monument historique à proximité',
     'Emprise aéroportuaire', 'Nuisances sonores (route/aéroport)',
     'Assainissement obligatoire avant construction',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ VILLES CAMEROUN (60+) - Réutilisation de IMMOBILIER_MODALITIES
@@ -563,7 +563,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Mokolo', 'Kousséri', 'Yagoua', 'Guidiguis', 'Kaélé', 'Mora',
     // Villes moyennes Adamaoua
     'Meiganga', 'Tibati', 'Banyo', 'Tignère',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ QUARTIERS DOUALA (40+) - Réutilisation
@@ -584,7 +584,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Cité des Palmiers', 'Sonel', 'Camp Yabassi',
     // Autres
     'Bassa Industrial', 'Bonassama', 'Petit Pays', 'Mabanda', 'Mboppi', 'Omnisport',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ QUARTIERS YAOUNDÉ (35+) - Réutilisation
@@ -603,7 +603,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Emana', 'Etoug-Ebe', 'Nkomo', 'Essos',
     // Autres zones résidentielles
     'Mokolo', 'Madagascar', 'Mendong', 'Obili', 'Omnisport',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ PROXIMITÉS (18+) - Adapté contexte terrain
@@ -616,7 +616,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Station-service (< 1km)', 'Banque/GAB (< 2km)',
     'Transport public (< 500m)', 'Gare routière (< 3km)',
     'Aéroport (< 20km)', 'Port (< 10km)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ POTENTIEL D'USAGE (12+) - NOUVEAU
@@ -627,7 +627,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Hôtel/Auberge', 'Restaurant/Maquis',
     'Exploitation agricole', 'Élevage',
     'Industrie légère', 'Atelier artisanal',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NATURE DU SOL (10+) - Important pour construction
@@ -636,7 +636,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Rocheux', 'Limoneux', 'Mixte (sable/argile)',
     'Marécageux (nécessite remblai)', 'Tourbeux',
     'Étude de sol disponible', 'Étude de sol recommandée',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ORIENTATION / EXPOSITION (9)
@@ -644,7 +644,7 @@ export const IMMOBILIER_TERRAIN_MODALITIES: ModalityCategory = {
     'Nord', 'Sud', 'Est', 'Ouest',
     'Nord-Est', 'Nord-Ouest', 'Sud-Est', 'Sud-Ouest',
     'Toutes orientations',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -665,40 +665,40 @@ export const LOCATION_COURTE_DUREE_MODALITIES: ModalityCategory = {
     'Chambre privée', 'Chambre chez l\'habitant',
     // Luxe
     'Villa de luxe', 'Penthouse', 'Résidence touristique',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ STANDING (5)
   standing: [
     'Économique', 'Standard', 'Bon standing', 'Haut standing', 'Luxe',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉTAT GÉNÉRAL (5)
   etat: [
     'Excellent état', 'Très bon état', 'Bon état', 'Correct',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ DURÉES DE SÉJOUR MINIMUM (10)
   durees_minimum: [
     '1 nuit', '2 nuits', '3 nuits', '1 semaine', '2 semaines',
     '1 mois', 'Flexible', 'Pas de minimum',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ DURÉES DE SÉJOUR MAXIMUM (10)
   durees_maximum: [
     '7 nuits', '14 nuits', '1 mois', '2 mois', '3 mois',
     '6 mois', 'Illimité', 'À définir',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CAPACITÉ PERSONNES (10)
   capacites: [
     '1 personne', '2 personnes', '3 personnes', '4 personnes',
     '5 personnes', '6 personnes', '8 personnes', '10 personnes',
-    '12+ personnes (groupe)', '🆕 Autre (ajouter)'
+    '12+ personnes (groupe)', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ VILLES TOURISTIQUES CAMEROUN (30+) - PRIORITÉ DESTINATIONS VACANCES
@@ -716,7 +716,7 @@ export const LOCATION_COURTE_DUREE_MODALITIES: ModalityCategory = {
     // Zones spéciales
     'Mont Cameroun', 'Chutes de la Lobé', 'Lac Nyos',
     'Parc Waza', 'Réserve Dja',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ QUARTIERS TOURISTIQUES DOUALA (15+)
@@ -724,7 +724,7 @@ export const LOCATION_COURTE_DUREE_MODALITIES: ModalityCategory = {
     'Akwa (Centre affaires)', 'Bonanjo (Centre)', 'Bonapriso (Résidentiel)',
     'Bali', 'Deido', 'Yassa (Plage)', 'Bonamoussadi', 'Bessengue',
     'Logpom', 'Bonabéri', 'Aéroport', 'Zone portuaire',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ QUARTIERS TOURISTIQUES YAOUNDÉ (15+)
@@ -732,7 +732,7 @@ export const LOCATION_COURTE_DUREE_MODALITIES: ModalityCategory = {
     'Bastos (Haut standing)', 'Centre-ville', 'Nlongkak', 'Santa Barbara',
     'Golf', 'Hippodrome', 'Odza', 'Mvan', 'Emombo',
     'Mont Fébé', 'Nsimeyong', 'Aéroport Nsimalen',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ZONES TOURISTIQUES KRIBI (10+)
@@ -740,14 +740,14 @@ export const LOCATION_COURTE_DUREE_MODALITIES: ModalityCategory = {
     'Centre-ville Kribi', 'Plage publique', 'Eboundja (Plage)',
     'Grand Batanga', 'Londji', 'Chutes de la Lobé',
     'Ebodjé (tortues)', 'Bord de mer',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ZONES TOURISTIQUES LIMBE (8+)
   zones_limbe: [
     'Centre-ville Limbe', 'Down Beach', 'Mile 4', 'Botanical Garden',
     'Bord de mer', 'Vue Mont Cameroun',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉQUIPEMENTS ESSENTIELS (40+) - Adapté location vacances
@@ -775,7 +775,7 @@ export const LOCATION_COURTE_DUREE_MODALITIES: ModalityCategory = {
     'Clôture sécurisée', 'Caméras surveillance',
     // Loisirs
     'Piscine privée', 'Piscine partagée', 'Barbecue', 'Salon de jardin',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ SERVICES INCLUS (20+)
@@ -795,7 +795,7 @@ export const LOCATION_COURTE_DUREE_MODALITIES: ModalityCategory = {
     'Navette plage', 'Location voiture possible',
     // Autres
     'Petit-déjeuner inclus', 'Repas sur demande',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ POLITIQUES D'ANNULATION (8)
@@ -804,7 +804,7 @@ export const LOCATION_COURTE_DUREE_MODALITIES: ModalityCategory = {
     'Annulation gratuite (7 jours avant)', 'Annulation flexible (50% remboursé)',
     'Annulation modérée (25% retenu)', 'Annulation stricte (non remboursable)',
     'Remboursement partiel selon délai', 'À définir avec l\'hôte',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ RÈGLES DE LA MAISON (15+)
@@ -816,7 +816,7 @@ export const LOCATION_COURTE_DUREE_MODALITIES: ModalityCategory = {
     'Calme exigé après 22h', 'Invités extérieurs autorisés',
     'Invités extérieurs interdits', 'Accès piscine règlementé',
     'Respect du voisinage', 'Usage raisonnable équipements',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ PROXIMITÉS TOURISTIQUES (20+)
@@ -832,21 +832,21 @@ export const LOCATION_COURTE_DUREE_MODALITIES: ModalityCategory = {
     'Sports nautiques', 'Pêche', 'Randonnée',
     // Services
     'Transport public', 'Taxis disponibles', 'Location motos/voitures',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPE D'HÔTE (6)
   type_hote: [
     'Hôte sur place', 'Hôte à proximité', 'Hôte à distance',
     'Gestion professionnelle', 'Agence immobilière', 'Conciergerie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ LANGUES PARLÉES PAR L'HÔTE (10)
   langues_hote: [
     'Français', 'Anglais', 'Espagnol', 'Allemand', 'Italien',
     'Portugais', 'Arabe', 'Chinois', 'Langues locales (Ewondo, Douala, Bamiléké...)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MODES DE PAIEMENT ACCEPTÉS (12)
@@ -856,7 +856,7 @@ export const LOCATION_COURTE_DUREE_MODALITIES: ModalityCategory = {
     'PayPal', 'Western Union', 'MoneyGram',
     'Crypto-monnaies', 'Chèque', 'Paiement en ligne sécurisé',
     'Paiement échelonné possible',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CALENDRIER DISPONIBILITÉ (8)
@@ -864,7 +864,7 @@ export const LOCATION_COURTE_DUREE_MODALITIES: ModalityCategory = {
     'Disponible toute l\'année', 'Haute saison uniquement (Nov-Fév)',
     'Basse saison uniquement', 'Week-ends seulement',
     'Semaine seulement', 'Vacances scolaires', 'Sur demande',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -899,7 +899,7 @@ export const HOTELLERIE_MODALITIES: ModalityCategory = {
     // Établissements génériques
     'Hôtel 3 étoiles', 'Hôtel économique', 'Chambres d\'hôtes familiales',
     'Auberge confort', 'Apart-hôtel moderne',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES D'HÉBERGEMENT (15)
@@ -918,7 +918,7 @@ export const HOTELLERIE_MODALITIES: ModalityCategory = {
     'Auberge de jeunesse',
     'Camping',
     'Lodge',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CLASSEMENT/STANDING (8)
@@ -930,7 +930,7 @@ export const HOTELLERIE_MODALITIES: ModalityCategory = {
     '4 étoiles',
     '5 étoiles',
     'Palace',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE CHAMBRES (12)
@@ -946,7 +946,7 @@ export const HOTELLERIE_MODALITIES: ModalityCategory = {
     'Chambre Familiale',
     'Studio',
     'Appartement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉQUIPEMENTS (30)
@@ -963,7 +963,7 @@ export const HOTELLERIE_MODALITIES: ModalityCategory = {
     'Parking gratuit', 'Parking sécurisé', 'Ascenseur',
     // Professionnels
     'Salle de conférence', 'Centre d\'affaires', 'Salles de réunion',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ SERVICES (25)
@@ -992,7 +992,7 @@ export const HOTELLERIE_MODALITIES: ModalityCategory = {
     'Boutique de souvenirs',
     'Distributeur automatique',
     'Service médical',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FORMULES DE PENSION (8)
@@ -1004,7 +1004,7 @@ export const HOTELLERIE_MODALITIES: ModalityCategory = {
     'Demi-pension (petit-déj + dîner)',
     'Pension complète (3 repas)',
     'All inclusive (tout compris)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ZONES/QUARTIERS (20) - Contexte Cameroun
@@ -1019,7 +1019,7 @@ export const HOTELLERIE_MODALITIES: ModalityCategory = {
     'Aéroport Nsimalen',
     // Autres villes
     'Centre-ville', 'Quartier résidentiel',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CAPACITÉS (10)
@@ -1033,7 +1033,7 @@ export const HOTELLERIE_MODALITIES: ModalityCategory = {
     '8 personnes',
     '10 personnes',
     'Groupe (10+)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ POLITIQUES (12)
@@ -1049,7 +1049,7 @@ export const HOTELLERIE_MODALITIES: ModalityCategory = {
     'Fumeur accepté',
     'Non-fumeur uniquement',
     'Accessible handicapés',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ LANGUES PARLÉES (10)
@@ -1063,7 +1063,7 @@ export const HOTELLERIE_MODALITIES: ModalityCategory = {
     'Arabe',
     'Chinois',
     'Langues locales',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -1071,18 +1071,18 @@ export const HOTELLERIE_MODALITIES: ModalityCategory = {
 export const VOYAGE_MODALITIES: ModalityCategory = {
   // Compagnies de transport - ENRICHI CONTEXTE CAMEROUN
   compagniesTransport: [
-    // 🇨🇲 COMPAGNIES BUS CAMEROUN (principales)
-    '🚌 Touristique Express',
-    '🚌 Centrale Voyage',
-    '🚌 Express Voyage',
-    '🚌 Express Ferry',
-    '🚌 TGM Transport',
-    '🚌 Achille Talon',
-    '🚌 Trans Cameroun',
-    '🚌 Gazelle Voyages',
-    '🚌 Voyages Safari',
-    '🚌 Buca Voyages',
-    '🚌 Musango',
+    // \uD83C\uDDE8\uD83C\uDDF2 COMPAGNIES BUS CAMEROUN (principales)
+    '\uD83D\uDE8C Touristique Express',
+    '\uD83D\uDE8C Centrale Voyage',
+    '\uD83D\uDE8C Express Voyage',
+    '\uD83D\uDE8C Express Ferry',
+    '\uD83D\uDE8C TGM Transport',
+    '\uD83D\uDE8C Achille Talon',
+    '\uD83D\uDE8C Trans Cameroun',
+    '\uD83D\uDE8C Gazelle Voyages',
+    '\uD83D\uDE8C Voyages Safari',
+    '\uD83D\uDE8C Buca Voyages',
+    '\uD83D\uDE8C Musango',
     // ✈️ COMPAGNIES AÉRIENNES
     '✈️ Camair-Co',
     '✈️ Asky Airlines',
@@ -1097,11 +1097,11 @@ export const VOYAGE_MODALITIES: ModalityCategory = {
     '✈️ CEIBA Intercontinental',
     '✈️ South African Airways',
     '✈️ EgyptAir',
-    // 🚂 TRAINS
-    '🚂 Camrail',
-    // 🚢 BATEAUX
-    '🚢 Compagnie fluviale',
-    '🆕 Autre (ajouter)'
+    // \uD83D\uDE82 TRAINS
+    '\uD83D\uDE82 Camrail',
+    // \uD83D\uDEA2 BATEAUX
+    '\uD83D\uDEA2 Compagnie fluviale',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Villes de départ/destination - CAMEROUN + AFRIQUE FRANCOPHONE
@@ -1117,19 +1117,19 @@ export const VOYAGE_MODALITIES: ModalityCategory = {
     'Business',
     'Première classe',
     'VIP',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de véhicules de transport
   typesVehiculeTransport: [
-    '🚌 Bus',
-    '🚐 Minibus',
-    '🚐 Van climatisé',
-    '🚂 Train',
+    '\uD83D\uDE8C Bus',
+    '\uD83D\uDE90 Minibus',
+    '\uD83D\uDE90 Van climatisé',
+    '\uD83D\uDE82 Train',
     '✈️ Avion',
-    '🚢 Bateau',
+    '\uD83D\uDEA2 Bateau',
     '⛴️ Ferry',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de billets
@@ -1139,23 +1139,23 @@ export const VOYAGE_MODALITIES: ModalityCategory = {
     'Multi-destinations',
     'Open ticket',
     'Groupe (10+ personnes)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Équipements bus
   equipementsBus: [
     '❄️ Climatisation',
-    '📺 TV/Écrans',
-    '📶 Wi-Fi',
-    '🔌 Prises électriques',
-    '🍽️ Repas inclus',
-    '💧 Eau gratuite',
-    '🚽 Toilettes à bord',
-    '📦 Soute à bagages',
-    '🛏️ Sièges inclinables',
-    '📱 Chargeurs USB',
-    '🎧 Divertissement',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDCFA TV/Écrans',
+    '\uD83D\uDCF6 Wi-Fi',
+    '\uD83D\uDD0C Prises électriques',
+    '\uD83C\uDF7D️ Repas inclus',
+    '\uD83D\uDCA7 Eau gratuite',
+    '\uD83D\uDEBD Toilettes à bord',
+    '\uD83D\uDCE6 Soute à bagages',
+    '\uD83D\uDECF️ Sièges inclinables',
+    '\uD83D\uDCF1 Chargeurs USB',
+    '\uD83C\uDFA7 Divertissement',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Politiques bagage
@@ -1166,7 +1166,7 @@ export const VOYAGE_MODALITIES: ModalityCategory = {
     'Sans bagage (tarif réduit)',
     'Bagage extra payant (par kg)',
     'Bagages illimités',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Gares routières Douala
@@ -1177,7 +1177,7 @@ export const VOYAGE_MODALITIES: ModalityCategory = {
     'Carrefour Ange Raphaël',
     'Rond-point Deido',
     'Carrefour Ndokoti',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Gares routières Yaoundé
@@ -1187,7 +1187,7 @@ export const VOYAGE_MODALITIES: ModalityCategory = {
     'Carrefour Omnisport',
     'Carrefour Étoile',
     'Carrefour Mimboman',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Configuration bus (nb places)
@@ -1200,7 +1200,7 @@ export const VOYAGE_MODALITIES: ModalityCategory = {
     '50 places',
     '60 places',
     '70 places (Double étage)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -1215,69 +1215,69 @@ export const TRANSPORT_INTRA_URBAIN_MODALITIES: ModalityCategory = {
 
   // ✅ TYPES DE VÉHICULES (contexte Afrique francophone)
   types_vehicules: [
-    '🏍️ Moto-taxi (Okada/Bendskin)',
-    '🛺 Tricycle (Keke Napep)',
-    '🚗 Berline économique (4 places)',
-    '🚗 Berline confort (4 places)',
-    '🚙 SUV (5-7 places)',
-    '🚐 Minibus (9-14 places)',
-    '🚐 Van climatisé (6-8 places)',
+    '\uD83C\uDFCD️ Moto-taxi (Okada/Bendskin)',
+    '\uD83D\uDEFA Tricycle (Keke Napep)',
+    '\uD83D\uDE97 Berline économique (4 places)',
+    '\uD83D\uDE97 Berline confort (4 places)',
+    '\uD83D\uDE99 SUV (5-7 places)',
+    '\uD83D\uDE90 Minibus (9-14 places)',
+    '\uD83D\uDE90 Van climatisé (6-8 places)',
     '✨ Voiture de luxe (VIP)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CATÉGORIES DE SERVICE
   categories_service: [
-    '📍 Course simple (Point A → Point B)',
+    '\uD83D\uDCCD Course simple (Point A → Point B)',
     '⏳ Course avec attente incluse',
-    '🔄 Courses multiples (plusieurs arrêts)',
-    '📅 Service à la journée complète',
+    '\uD83D\uDD04 Courses multiples (plusieurs arrêts)',
+    '\uD83D\uDCC5 Service à la journée complète',
     '⏰ Service à l\'heure',
-    '📦 Livraison express colis',
-    '🎒 Transport scolaire régulier',
-    '🏥 Transport médical urgence',
-    '🛒 Accompagnement courses',
-    '🏢 Transport professionnel',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDCE6 Livraison express colis',
+    '\uD83C\uDF92 Transport scolaire régulier',
+    '\uD83C\uDFE5 Transport médical urgence',
+    '\uD83D\uDED2 Accompagnement courses',
+    '\uD83C\uDFE2 Transport professionnel',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ OPTIONS DE CONFORT
   options_confort: [
     '❄️ Climatisation fonctionnelle',
-    '📶 Wifi gratuit à bord',
-    '🔌 Chargeur téléphone disponible',
-    '💧 Eau fraîche offerte',
-    '🎵 Musique au choix du client',
-    '🤫 Silence garanti / calme',
-    '🧳 Coffre spacieux pour bagages',
-    '👶 Siège bébé disponible',
+    '\uD83D\uDCF6 Wifi gratuit à bord',
+    '\uD83D\uDD0C Chargeur téléphone disponible',
+    '\uD83D\uDCA7 Eau fraîche offerte',
+    '\uD83C\uDFB5 Musique au choix du client',
+    '\uD83E\uDD2B Silence garanti / calme',
+    '\uD83E\uDDF3 Coffre spacieux pour bagages',
+    '\uD83D\uDC76 Siège bébé disponible',
     '♿ Véhicule accessible PMR',
-    '🧼 Véhicule désinfecté régulièrement',
-    '🆕 Autre (ajouter)'
+    '\uD83E\uDDFC Véhicule désinfecté régulièrement',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MODES DE PAIEMENT (contexte Afrique)
   modes_paiement: [
-    '💵 Espèces uniquement',
-    '📱 Orange Money',
-    '📱 MTN Mobile Money',
-    '📱 Moov Money',
-    '💳 Carte bancaire (TPE disponible)',
-    '💸 Virement bancaire instantané',
-    '💳 Tous modes de paiement acceptés',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDCB5 Espèces uniquement',
+    '\uD83D\uDCF1 Orange Money',
+    '\uD83D\uDCF1 MTN Mobile Money',
+    '\uD83D\uDCF1 Moov Money',
+    '\uD83D\uDCB3 Carte bancaire (TPE disponible)',
+    '\uD83D\uDCB8 Virement bancaire instantané',
+    '\uD83D\uDCB3 Tous modes de paiement acceptés',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ DISPONIBILITÉ
   disponibilite: [
     '⚡ Disponible maintenant (en ligne)',
-    '🌙 Service 24h/24 7j/7',
+    '\uD83C\uDF19 Service 24h/24 7j/7',
     '☀️ Jour uniquement (6h-20h)',
-    '🌙 Nuit uniquement (20h-6h)',
-    '📅 Sur réservation uniquement',
-    '🌴 Week-end uniquement',
-    '📆 Jours ouvrables uniquement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDF19 Nuit uniquement (20h-6h)',
+    '\uD83D\uDCC5 Sur réservation uniquement',
+    '\uD83C\uDF34 Week-end uniquement',
+    '\uD83D\uDCC6 Jours ouvrables uniquement',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ZONES D'INTERVENTION (utilise fonction intelligente)
@@ -1285,19 +1285,19 @@ export const TRANSPORT_INTRA_URBAIN_MODALITIES: ModalityCategory = {
 
   // ✅ SERVICES ADDITIONNELS SPÉCIFIQUES TRANSPORT
   services_additionnels: [
-    '📍 GPS en temps réel partagé',
-    '💬 Chat instantané avec chauffeur',
-    '📞 Appel vocal/vidéo disponible',
-    '🗺️ Calcul distance exacte Google Maps',
-    '🛣️ Estimation routes non goudronnées',
-    '💰 Négociation prix en direct',
-    '📋 Devis avant course',
-    '🔒 Trajet sécurisé et assuré',
+    '\uD83D\uDCCD GPS en temps réel partagé',
+    '\uD83D\uDCAC Chat instantané avec chauffeur',
+    '\uD83D\uDCDE Appel vocal/vidéo disponible',
+    '\uD83D\uDDFA️ Calcul distance exacte Google Maps',
+    '\uD83D\uDEE3️ Estimation routes non goudronnées',
+    '\uD83D\uDCB0 Négociation prix en direct',
+    '\uD83D\uDCCB Devis avant course',
+    '\uD83D\uDD12 Trajet sécurisé et assuré',
     '⭐ Chauffeur noté et vérifié',
-    '🎁 Première course réduction',
-    '🔄 Abonnement courses régulières',
-    '👥 Course partagée (split prix)',
-    '🆕 Autre service (ajouter)'
+    '\uD83C\uDF81 Première course réduction',
+    '\uD83D\uDD04 Abonnement courses régulières',
+    '\uD83D\uDC65 Course partagée (split prix)',
+    '\uD83C\uDD95 Autre service (ajouter)'
   ],
 
   // ✅ ÉTAT DU VÉHICULE
@@ -1306,18 +1306,18 @@ export const TRANSPORT_INTRA_URBAIN_MODALITIES: ModalityCategory = {
     'Récent (2-5 ans)',
     'Bon état (5-10 ans)',
     'Fonctionnel (10+ ans)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ LANGUES PARLÉES PAR LE CHAUFFEUR
   langues_chauffeur: [
-    '🇫🇷 Français',
-    '🗣️ Anglais',
-    '🗣️ Pidgin English',
-    '🗣️ Langues locales (Ewondo, Douala, Bassa...)',
-    '🗣️ Fulfulde',
-    '🗣️ Arabe',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDDEB\uD83C\uDDF7 Français',
+    '\uD83D\uDDE3️ Anglais',
+    '\uD83D\uDDE3️ Pidgin English',
+    '\uD83D\uDDE3️ Langues locales (Ewondo, Douala, Bassa...)',
+    '\uD83D\uDDE3️ Fulfulde',
+    '\uD83D\uDDE3️ Arabe',
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -1327,19 +1327,19 @@ export const COVOITURAGE_MODALITIES: ModalityCategory = {
   villes: [
     'Douala', 'Yaoundé', 'Bafoussam', 'Garoua', 'Bamenda', 'Maroua', 'Ngaoundéré',
     'Bertoua', 'Kribi', 'Limbé', 'Edéa', 'Kumba', 'Nkongsamba', 'Ebolowa',
-    'Buéa', 'Foumban', 'Dschang', 'Mbalmayo', '🆕 Autre (ajouter)'
+    'Buéa', 'Foumban', 'Dschang', 'Mbalmayo', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de véhicules
   vehicules: [
-    'Berline', 'SUV', '4x4', 'Break', 'Minibus', 'Van', 'Pick-up', '🆕 Autre (ajouter)'
+    'Berline', 'SUV', '4x4', 'Break', 'Minibus', 'Van', 'Pick-up', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Préférences trajet
   preferences: [
     'Musique autorisée', 'Conversation', 'Silence/Calme', 'Climatisation',
     'Pause café', 'Non-fumeur', 'Animaux acceptés', 'Bagages volumineux',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Jours de la semaine
@@ -1354,40 +1354,40 @@ export const VOYAGE_TOURISME_MODALITIES: ModalityCategory = {
   types: [
     'Séjour balnéaire', 'Safari', 'Circuit touristique', 'Trek/Randonnée', 'Croisière',
     'City break', 'Voyage culturel', 'Écotourisme', 'Voyage aventure', 'Séjour détente',
-    'Voyage d\'affaires', 'Pèlerinage', '🆕 Autre (ajouter)'
+    'Voyage d\'affaires', 'Pèlerinage', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Destinations populaires
   destinations: [
     'Kribi', 'Limbé', 'Parc Waza', 'Mont Cameroun', 'Réserve Dja', 'Chutes d\'Ekom',
     'Lac Nyos', 'Foumban', 'Maroua', 'Douala', 'Yaoundé', 'Bamenda',
-    'International', '🆕 Autre (ajouter)'
+    'International', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Durées
   durees: [
     '1 jour', '2-3 jours', '4-7 jours', '1-2 semaines', '2-4 semaines',
-    'Plus d\'un mois', '🆕 Autre (ajouter)'
+    'Plus d\'un mois', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Services inclus
   services: [
     'Hébergement', 'Transport', 'Repas', 'Guide touristique', 'Activités',
     'Visites guidées', 'Assurance voyage', 'Vol inclus', 'Location véhicule',
-    'Transferts aéroport', '🆕 Autre (ajouter)'
+    'Transferts aéroport', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types d'hébergement
   hebergements: [
     'Hôtel 3*', 'Hôtel 4*', 'Hôtel 5*', 'Resort', 'Chambre d\'hôte', 'Camping',
-    'Lodge', 'Auberge', 'Appartement', 'Villa', '🆕 Autre (ajouter)'
+    'Lodge', 'Auberge', 'Appartement', 'Villa', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
 // ✅ MODALITÉS VÊTEMENTS (TEXTILE) - ENRICHI
 // ✅ MODALITÉS VÊTEMENTS & PRÊT-À-PORTER - AFRIQUE FRANCOPHONE (ENRICHI)
 export const VETEMENTS_MODALITIES: ModalityCategory = {
-  // 👕 Types de vêtements (45+ options)
+  // \uD83D\uDC55 Types de vêtements (45+ options)
   types: [
     // Hauts
     'T-shirt', 'Polo', 'Chemise', 'Chemise africaine', 'Chemisette', 'Débardeur', 'Tunique',
@@ -1408,15 +1408,15 @@ export const VETEMENTS_MODALITIES: ModalityCategory = {
     // Accessoires vestimentaires
     'Cravate', 'Nœud papillon', 'Écharpe', 'Foulard', 'Châle', 'Ceinture',
     'Sous-vêtements', 'Maillot de bain', 'Pyjama', 'Kimono', 'Peignoir',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 👤 Genres (6 options)
+  // \uD83D\uDC64 Genres (6 options)
   genres: [
-    'Homme', 'Femme', 'Enfant', 'Bébé', 'Unisexe', 'Mixte', '🆕 Autre (ajouter)'
+    'Homme', 'Femme', 'Enfant', 'Bébé', 'Unisexe', 'Mixte', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 📏 Tailles (30+ options - lettres + chiffres)
+  // \uD83D\uDCCF Tailles (30+ options - lettres + chiffres)
   tailles: [
     // Tailles lettres
     'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '4XL', '5XL',
@@ -1426,10 +1426,10 @@ export const VETEMENTS_MODALITIES: ModalityCategory = {
     '26', '28', '30', '32', '34', '36', '38', '40', '42', '44',
     // Enfants
     '2 ans', '4 ans', '6 ans', '8 ans', '10 ans', '12 ans', '14 ans', '16 ans',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 🎨 Couleurs (35+ options incluant motifs africains)
+  // \uD83C\uDFA8 Couleurs (35+ options incluant motifs africains)
   couleurs: [
     // Couleurs unies basiques
     'Blanc', 'Blanc cassé', 'Écru', 'Crème', 'Beige', 'Noir', 'Gris clair', 'Gris', 'Gris foncé',
@@ -1443,10 +1443,10 @@ export const VETEMENTS_MODALITIES: ModalityCategory = {
     'Multicolore', 'Bicolore', 'Imprimé', 'Imprimé africain', 'Wax', 'Pagne', 'Kente',
     'Bogolan', 'Batik', 'Tie & Dye', 'Rayé', 'À pois', 'À carreaux', 'Floral',
     'Géométrique', 'Animal print', 'Camouflage',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 🧵 Matières (25+ options)
+  // \uD83E\uDDF5 Matières (25+ options)
   matieres: [
     // Naturelles
     'Coton', '100% Coton', 'Coton bio', 'Coton peigné', 'Coton égyptien',
@@ -1460,10 +1460,10 @@ export const VETEMENTS_MODALITIES: ModalityCategory = {
     'Wax', 'Pagne', 'Bazin', 'Bazin riche', 'Bogolan', 'Kente', 'Ankara', 'Batik',
     // Mélanges
     'Mélange coton-polyester', 'Mélange', 'Fibres naturelles', 'Fibres synthétiques',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 🏷️ Marques vêtements (60+ marques internationales + locales africaines)
+  // \uD83C\uDFF7️ Marques vêtements (60+ marques internationales + locales africaines)
   marques: [
     // Sport (15)
     'Nike', 'Adidas', 'Puma', 'Reebok', 'Under Armour', 'New Balance', 'Asics',
@@ -1484,7 +1484,7 @@ export const VETEMENTS_MODALITIES: ModalityCategory = {
     'Afriek (Bénin)', 'Modahnik (Cameroun)',
     // Autres
     'Sans marque', 'Marque locale', 'Couture sur mesure', 'Fait main',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✨ États (8 options)
@@ -1492,10 +1492,10 @@ export const VETEMENTS_MODALITIES: ModalityCategory = {
     'Neuf avec étiquette', 'Neuf sans étiquette', 'Jamais porté',
     'Occasion - Excellent état', 'Occasion - Bon état', 'Occasion - État moyen',
     'Vintage', 'Seconde main',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 💎 Styles (20+ options)
+  // \uD83D\uDC8E Styles (20+ options)
   styles: [
     // Styles généraux
     'Casual', 'Décontracté', 'Formel', 'Chic', 'Élégant', 'Classique', 'Moderne', 'Minimaliste',
@@ -1507,16 +1507,16 @@ export const VETEMENTS_MODALITIES: ModalityCategory = {
     'Vintage', 'Rétro', 'Rock', 'Punk', 'Grunge', 'Preppy',
     // Styles africains
     'Africain', 'Afro', 'Afro-fusion', 'Wax moderne', 'Pagne chic', 'Traditionnel moderne',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 🌡️ Saisons (5 options)
+  // \uD83C\uDF21️ Saisons (5 options)
   saisons: [
     'Été', 'Hiver', 'Automne', 'Printemps', 'Mi-saison', 'Toutes saisons',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 🎨 Motifs/Patrons (20+ options)
+  // \uD83C\uDFA8 Motifs/Patrons (20+ options)
   motifs: [
     // Basiques
     'Uni', 'Rayé', 'Rayures horizontales', 'Rayures verticales', 'À pois', 'Pois fins', 'Gros pois',
@@ -1530,7 +1530,7 @@ export const VETEMENTS_MODALITIES: ModalityCategory = {
     'Motifs ethniques', 'Motifs tribaux', 'Motifs géométriques africains',
     // Autres
     'Logo', 'Texte', 'Brodé', 'Sequins', 'Paillettes', 'Dentelle',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✂️ Coupes (15+ options)
@@ -1541,10 +1541,10 @@ export const VETEMENTS_MODALITIES: ModalityCategory = {
     // Coupes hauts
     'Ajusté', 'Cintré', 'Ample', 'Col V', 'Col rond', 'Col polo', 'Sans manches',
     'Manches courtes', 'Manches longues', 'Manches 3/4',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 🎯 Occasions (15+ options)
+  // \uD83C\uDFAF Occasions (15+ options)
   occasions: [
     // Quotidien
     'Quotidien', 'Tous les jours', 'Décontracté', 'Week-end', 'Vacances',
@@ -1555,16 +1555,16 @@ export const VETEMENTS_MODALITIES: ModalityCategory = {
     'Gala', 'Cocktail', 'Dîner', 'Concert', 'Festival',
     // Sport & loisirs
     'Sport', 'Gym', 'Yoga', 'Running', 'Plage', 'Piscine',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 🏭 Origine fabrication (10+ options)
+  // \uD83C\uDFED Origine fabrication (10+ options)
   origines: [
     'Made in China', 'Made in Turkey', 'Made in Bangladesh', 'Made in India',
     'Made in Vietnam', 'Made in Morocco', 'Made in Tunisia', 'Made in Egypt',
     'Made in Cameroun', 'Made in Côte d\'Ivoire', 'Made in Sénégal', 'Made in Africa',
     'Made in Europe', 'Made in France', 'Made in Italy', 'Made in Spain',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -1573,49 +1573,49 @@ export const CHAUSSURES_MODALITIES: ModalityCategory = {
   // Pointures
   pointures: [
     '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47',
-    '48', '49', '50', '🆕 Autre (ajouter)'
+    '48', '49', '50', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de chaussures
   types: [
     'Baskets', 'Chaussures de ville', 'Bottes', 'Sandales', 'Tongs', 'Mocassins',
     'Derbies', 'Escarpins', 'Tennis', 'Chaussures de sport', 'Chaussures de sécurité',
-    'Bottines', 'Ballerines', 'Talons', 'Chaussons', '🆕 Autre (ajouter)'
+    'Bottines', 'Ballerines', 'Talons', 'Chaussons', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Marques chaussures
   marques: [
     'Nike', 'Adidas', 'Puma', 'Reebok', 'Converse', 'Vans', 'Timberland', 'Dr. Martens',
-    'Clarks', 'Geox', 'Ecco', 'Salomon', 'New Balance', 'Asics', '🆕 Autre (ajouter)'
+    'Clarks', 'Geox', 'Ecco', 'Salomon', 'New Balance', 'Asics', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Matériaux
   materiaux: [
     'Cuir', 'Cuir synthétique', 'Tissu', 'Synthétique', 'Toile', 'Daim', 'Caoutchouc',
-    'Plastique', 'Mesh', 'Mélange', '🆕 Autre (ajouter)'
+    'Plastique', 'Mesh', 'Mélange', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Couleurs
   couleurs: [
     'Noir', 'Blanc', 'Marron', 'Beige', 'Gris', 'Bleu', 'Rouge', 'Rose', 'Vert',
-    'Jaune', 'Orange', 'Violet', 'Multicolore', '🆕 Autre (ajouter)'
+    'Jaune', 'Orange', 'Violet', 'Multicolore', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // États
   etats: [
     'Neuf avec boîte', 'Neuf sans boîte', 'Excellent état', 'Bon état',
-    'État moyen', 'À rénover', '🆕 Autre (ajouter)'
+    'État moyen', 'À rénover', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Genres
   genres: [
-    'Homme', 'Femme', 'Enfant garçon', 'Enfant fille', 'Bébé', 'Unisexe', '🆕 Autre (ajouter)'
+    'Homme', 'Femme', 'Enfant garçon', 'Enfant fille', 'Bébé', 'Unisexe', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Usages
   usages: [
     'Sport', 'Running', 'Football', 'Basketball', 'Ville', 'Casual', 'Formel',
-    'Randonnée', 'Plage', 'Travail', 'Soirée', 'Quotidien', '🆕 Autre (ajouter)'
+    'Randonnée', 'Plage', 'Travail', 'Soirée', 'Quotidien', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -1650,7 +1650,7 @@ export const ELECTROMENAGER_MODALITIES: ModalityCategory = {
     'Fer à repasser', 'Centrale vapeur', 'Défroisseur vapeur',
     // Petit électroménager - Soins
     'Sèche-cheveux', 'Lisseur', 'Boucleur', 'Tondeuse cheveux', 'Rasoir électrique',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CATÉGORIES (8)
@@ -1662,7 +1662,7 @@ export const ELECTROMENAGER_MODALITIES: ModalityCategory = {
     'Petit électroménager - Cuisine',
     'Petit électroménager - Entretien',
     'Petit électroménager - Soins',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES (25)
@@ -1675,7 +1675,7 @@ export const ELECTROMENAGER_MODALITIES: ModalityCategory = {
     'Grille-pain', 'Friteuse', 'Multicuiseur',
     'Aspirateur', 'Nettoyeur vapeur',
     'Fer à repasser', 'Sèche-cheveux',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MARQUES (35)
@@ -1692,7 +1692,7 @@ export const ELECTROMENAGER_MODALITIES: ModalityCategory = {
     'Rowenta', 'Calor', 'Seb', 'Kenwood', 'Kitchenaid',
     'Sans marque',
     'Marque locale',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CLASSES ÉNERGÉTIQUES (11)
@@ -1707,7 +1707,7 @@ export const ELECTROMENAGER_MODALITIES: ModalityCategory = {
     'E',
     'F',
     'G',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CAPACITÉS (20)
@@ -1718,7 +1718,7 @@ export const ELECTROMENAGER_MODALITIES: ModalityCategory = {
     '3kg', '5kg', '6kg', '7kg', '8kg', '9kg', '10kg', '12kg',
     // Autres
     'Variable',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ COULEURS (12)
@@ -1734,7 +1734,7 @@ export const ELECTROMENAGER_MODALITIES: ModalityCategory = {
     'Beige',
     'Rose',
     'Multicolore',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ GARANTIES (10)
@@ -1748,7 +1748,7 @@ export const ELECTROMENAGER_MODALITIES: ModalityCategory = {
     '10 ans',
     'À vie',
     'Pas de garantie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉTATS (8)
@@ -1760,7 +1760,7 @@ export const ELECTROMENAGER_MODALITIES: ModalityCategory = {
     'État moyen',
     'Reconditionné',
     'À réparer',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FONCTIONNALITÉS (30)
@@ -1778,7 +1778,7 @@ export const ELECTROMENAGER_MODALITIES: ModalityCategory = {
     'Télécommande', 'Ioniseur',
     // Petit électroménager
     'Sans fil', 'Rechargeable', 'Pliable', 'Compact', 'Multifonction', 'Numérique',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -1817,14 +1817,14 @@ export const IMAGE_SON_MODALITIES: ModalityCategory = {
     'Vidéoprojecteur Full HD', 'Vidéoprojecteur 4K', 'Mini Projecteur',
     // Accessoires
     'Amplificateur Yamaha', 'Amplificateur Denon', 'Récepteur AV', 'Décodeur TV',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CATÉGORIES (10) - NOUVEAU
   categories: [
     'Télévision', 'Home Cinéma', 'Barre de son', 'Enceintes', 'Projecteur',
     'Amplificateur', 'Accessoires audio', 'Lecteur multimédia', 'Casque audio',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES D'ÉQUIPEMENTS (20+) - ENRICHI
@@ -1839,7 +1839,7 @@ export const IMAGE_SON_MODALITIES: ModalityCategory = {
     'Projecteur Home Cinéma', 'Projecteur portable', 'Vidéoprojecteur', 'Mini projecteur',
     // Lecteurs
     'Lecteur Blu-ray', 'Lecteur DVD', 'Lecteur multimédia', 'Décodeur',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MARQUES (30+) - ENRICHI
@@ -1852,14 +1852,14 @@ export const IMAGE_SON_MODALITIES: ModalityCategory = {
     'KEF', 'Klipsch', 'Bang & Olufsen', 'Marshall', 'Ultimate Ears',
     // Projecteurs
     'Epson', 'BenQ', 'Optoma', 'ViewSonic', 'Acer', 'Canon',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TECHNOLOGIES D'ÉCRAN (12) - NOUVEAU
   technologies_ecran: [
     'LED', 'OLED', 'QLED', 'Mini-LED', 'Neo QLED', 'NanoCell', 'Crystal UHD',
     'ULED', 'Triluminos', 'Quantum Dot', 'LCD', 'Plasma',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ RÉSOLUTIONS (10) - ENRICHI
@@ -1867,7 +1867,7 @@ export const IMAGE_SON_MODALITIES: ModalityCategory = {
     'HD (720p)', 'HD Ready (1366x768)', 'Full HD (1080p)', '2K',
     '4K UHD (3840x2160)', '4K', '8K UHD (7680x4320)', '8K',
     'QHD (2560x1440)', '1080p',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TAILLES D'ÉCRAN (18) - ENRICHI
@@ -1875,7 +1875,7 @@ export const IMAGE_SON_MODALITIES: ModalityCategory = {
     '24 pouces', '28 pouces', '32 pouces', '40 pouces', '43 pouces', '48 pouces',
     '50 pouces', '55 pouces', '58 pouces', '60 pouces', '65 pouces', '70 pouces',
     '75 pouces', '77 pouces', '82 pouces', '85 pouces', '98 pouces',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CONNECTIVITÉS (15+) - NOUVEAU
@@ -1884,7 +1884,7 @@ export const IMAGE_SON_MODALITIES: ModalityCategory = {
     'WiFi', 'WiFi 6', 'Bluetooth', 'Bluetooth 5.0', 'AirPlay',
     'Chromecast', 'Miracast', 'DLNA', 'ARC (Audio Return Channel)',
     'eARC', 'Optical (Toslink)', 'Coaxial', 'Jack 3.5mm', 'RCA',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FONCTIONNALITÉS (25+) - ENRICHI
@@ -1901,14 +1901,14 @@ export const IMAGE_SON_MODALITIES: ModalityCategory = {
     'WiFi intégré', 'Bluetooth intégré', 'Chromecast intégré', 'AirPlay 2',
     // Autres
     'Enregistrement PVR', 'Time Shift', 'Tuner TNT', 'CI+ Slot', 'USB Recording',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉTATS (8) - ENRICHI
   etats: [
     'Neuf scellé', 'Neuf avec garantie', 'Neuf déballé', 'Neuf - exposition',
     'Excellent état', 'Bon état', 'Occasion fonctionnel', 'À réparer',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ GARANTIES (8) - NOUVEAU
@@ -1916,7 +1916,7 @@ export const IMAGE_SON_MODALITIES: ModalityCategory = {
     'Garantie constructeur 1 an', 'Garantie constructeur 2 ans', 'Garantie constructeur 3 ans',
     'Garantie magasin 6 mois', 'Garantie magasin 1 an', 'Garantie étendue disponible',
     'Pas de garantie', 'Garantie expirée',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ACCESSOIRES INCLUS (20+) - NOUVEAU
@@ -1931,7 +1931,7 @@ export const IMAGE_SON_MODALITIES: ModalityCategory = {
     'Câble VGA', 'Télécommande projecteur', 'Sacoche de transport', 'Lentille de rechange',
     // Autres
     'Piles incluses', 'Adaptateur secteur', 'Mode d\'emploi français',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MODÈLES/GAMMES (10) - NOUVEAU
@@ -1939,37 +1939,37 @@ export const IMAGE_SON_MODALITIES: ModalityCategory = {
     'Entrée de gamme', 'Milieu de gamme', 'Haut de gamme', 'Premium', 'Flagship',
     'Série économique', 'Série standard', 'Série professionnelle',
     'Édition limitée', 'Reconditionné officiel',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
 // ✅ MODALITÉS TÉLÉPHONES (SMARTPHONES) - ENRICHI
-// ✅ MODALITÉS TÉLÉPHONES & ACCESSOIRES - 📱 ENRICHI AFRIQUE FRANCOPHONE
+// ✅ MODALITÉS TÉLÉPHONES & ACCESSOIRES - \uD83D\uDCF1 ENRICHI AFRIQUE FRANCOPHONE
 export const TELEPHONES_MODALITIES: ModalityCategory = {
   // ✅ Marques (TOP vendues en Afrique francophone - classement par popularité)
   marques: [
-    // 🥇 TOP 5 AFRIQUE (80% du marché Cameroun, CI, Sénégal)
+    // \uD83E\uDD47 TOP 5 AFRIQUE (80% du marché Cameroun, CI, Sénégal)
     'Tecno',      // #1 Afrique (rapport qualité-prix imbattable)
     'Infinix',    // #2 Afrique (HOT, NOTE, ZERO series)
     'Samsung',    // #3 (Galaxy A series très populaire)
     'Xiaomi',     // #4 (Redmi, POCO budget-friendly)
     'Itel',       // #5 (entrée de gamme, très accessible)
 
-    // 🥈 TRÈS POPULAIRES (milieu/haut de gamme)
+    // \uD83E\uDD48 TRÈS POPULAIRES (milieu/haut de gamme)
     'Realme',     // Budget gaming, jeunes
     'Oppo',       // Reno, A series
     'Vivo',       // Y series, selfie-focused
     'Redmi',      // Xiaomi budget
     'Poco',       // Xiaomi gaming budget
 
-    // 💎 PREMIUM (prestige, expatriés)
+    // \uD83D\uDC8E PREMIUM (prestige, expatriés)
     'Apple',      // iPhone (statut social)
     'Huawei',     // Mate, P series (avant sanctions)
     'Honor',      // Ex-Huawei, populaire
     'OnePlus',    // Flagship killer
     'Google',     // Pixel (rares mais présents)
 
-    // 📱 AUTRES MARQUES PRÉSENTES
+    // \uD83D\uDCF1 AUTRES MARQUES PRÉSENTES
     'Nokia',      // Nostalgie, robustesse
     'Motorola',   // Moto G series
     'Sony',       // Xperia (rares)
@@ -1983,7 +1983,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     'Cubot',      // Budget
     'Oukitel',    // Batterie énorme
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Modèles populaires (50+ best-sellers Afrique)
@@ -2020,7 +2020,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     // ITEL
     'Itel P55', 'Itel S23', 'Itel A70',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Capacités de stockage (réorganisées par popularité)
@@ -2033,7 +2033,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     '1TB',    // Premium
     '16GB',   // Très ancien
     '8GB',    // Feature phones
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Mémoire RAM (réorganisée)
@@ -2048,7 +2048,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     '18GB',   // ROG Phone, gaming extrême
     '1GB',    // Feature phones
     '512MB',  // Très ancien
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Couleurs (enrichi avec noms marketing)
@@ -2095,7 +2095,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     'Dégradé Arc-en-ciel',
     'Holographique',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ États (détaillés pour marketplace)
@@ -2113,7 +2113,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     'À réparer (batterie HS)',            // Batterie morte
     'À réparer (ne s\'allume pas)',       // Carte mère/autre
     'Pour pièces détachées',              // Non fonctionnel
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Opérateurs Afrique francophone (enrichi)
@@ -2122,27 +2122,27 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     'Débloqué (tous opérateurs)',
     'Dual SIM débloqué',
 
-    // 🇨🇲 CAMEROUN
+    // \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN
     'Orange Cameroun',
     'MTN Cameroun',
     'Camtel',
     'Nexttel',
 
-    // 🇨🇮 CÔTE D'IVOIRE
+    // \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE
     'Orange CI',
     'MTN CI',
     'Moov CI',
 
-    // 🇸🇳 SÉNÉGAL
+    // \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL
     'Orange Sénégal',
     'Free Sénégal',
     'Expresso Sénégal',
 
-    // 🇲🇱 MALI
+    // \uD83C\uDDF2\uD83C\uDDF1 MALI
     'Orange Mali',
     'Malitel',
 
-    // 🇬🇦 GABON
+    // \uD83C\uDDEC\uD83C\uDDE6 GABON
     'Airtel Gabon',
     'Moov Gabon',
 
@@ -2151,7 +2151,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     'Bloqué iCloud (iPhone)',
     'Bloqué compte Google',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Accessoires inclus (enrichi)
@@ -2191,7 +2191,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     'Support voiture',
     'Brassard sport',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Types d'écran (enrichi)
@@ -2221,7 +2221,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     'Mini-LED',
     'E-Ink (liseuse)',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Tailles d'écran (enrichi avec formats populaires)
@@ -2248,7 +2248,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     '7.6"', // Pliables (Galaxy Z Fold)
     '7.9"', // iPad mini
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU : Taux de rafraîchissement écran
@@ -2259,7 +2259,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     '144Hz',  // Gaming
     '165Hz',  // Gaming premium
     '240Hz',  // Gaming extrême
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU : Appareils photo (mégapixels)
@@ -2274,7 +2274,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     '64MP',
     '108MP',
     '200MP',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU : Connectivité
@@ -2290,7 +2290,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     'Bluetooth 5.0',
     'NFC',
     'Infrarouge',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU : Capacité batterie (mAh)
@@ -2300,7 +2300,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     '5000-6000 mAh',  // Très bon
     '6000-7000 mAh',  // Excellent
     '7000+ mAh',      // Exceptionnel
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU : Charge rapide
@@ -2317,7 +2317,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     '150W+',
     'Charge sans fil',
     'Charge inverse',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU : Garanties
@@ -2330,7 +2330,7 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     'AppleCare+',
     'Samsung Care+',
     'Aucune garantie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU : Sécurité biométrique
@@ -2343,242 +2343,242 @@ export const TELEPHONES_MODALITIES: ModalityCategory = {
     'Déverrouillage iris',
     'Code PIN uniquement',
     'Aucune sécurité biométrique',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
-// ✅ MODALITÉS RÉPARATEUR TÉLÉPHONE/SMARTPHONE & TABLETTES - 🌍 AFRIQUE FRANCOPHONE
+// ✅ MODALITÉS RÉPARATEUR TÉLÉPHONE/SMARTPHONE & TABLETTES - \uD83C\uDF0D AFRIQUE FRANCOPHONE
 // Catégorie spécialisée pour les services de réparation mobile
 export const REPARATEUR_TELEPHONE_TABLETTE_MODALITIES: ModalityCategory = {
   // ✅ TYPES DE SERVICES DE RÉPARATION (40+) - Classés par fréquence Afrique
   typesReparation: [
-    // 🔥 RÉPARATIONS LES PLUS COURANTES (90% des cas)
-    '📱 Remplacement écran LCD/AMOLED',
-    '📱 Réparation écran fissuré',
-    '📱 Remplacement vitre tactile',
-    '🔋 Remplacement batterie',
-    '🔋 Optimisation batterie (calibrage)',
-    '🔌 Réparation port de charge USB-C',
-    '🔌 Réparation port de charge micro-USB',
-    '🔌 Réparation port de charge Lightning (iPhone)',
-    '🔊 Réparation haut-parleur',
-    '🎤 Réparation microphone',
-    '📸 Réparation caméra arrière',
-    '🤳 Réparation caméra frontale/selfie',
+    // \uD83D\uDD25 RÉPARATIONS LES PLUS COURANTES (90% des cas)
+    '\uD83D\uDCF1 Remplacement écran LCD/AMOLED',
+    '\uD83D\uDCF1 Réparation écran fissuré',
+    '\uD83D\uDCF1 Remplacement vitre tactile',
+    '\uD83D\uDD0B Remplacement batterie',
+    '\uD83D\uDD0B Optimisation batterie (calibrage)',
+    '\uD83D\uDD0C Réparation port de charge USB-C',
+    '\uD83D\uDD0C Réparation port de charge micro-USB',
+    '\uD83D\uDD0C Réparation port de charge Lightning (iPhone)',
+    '\uD83D\uDD0A Réparation haut-parleur',
+    '\uD83C\uDFA4 Réparation microphone',
+    '\uD83D\uDCF8 Réparation caméra arrière',
+    '\uD83E\uDD33 Réparation caméra frontale/selfie',
 
-    // 🛠️ RÉPARATIONS TECHNIQUES (hardware)
-    '💧 Réparation dégâts des eaux (oxydation)',
-    '💧 Nettoyage composants après chute dans l\'eau',
-    '🔧 Remplacement carte mère',
-    '🔧 Micro-soudure composants',
-    '🔧 Réparation circuits internes',
-    '🔧 Reballing (chipset)',
-    '🎚️ Réparation boutons volume',
-    '🎚️ Réparation bouton power',
-    '🎚️ Réparation bouton home',
-    '📡 Réparation antenne WiFi',
-    '📡 Réparation antenne réseau mobile',
-    '📶 Réparation GPS',
-    '🔊 Réparation écouteur interne',
-    '🎧 Réparation prise jack 3.5mm',
-    '📳 Réparation vibreur',
-    '🌡️ Réparation capteur de proximité',
+    // \uD83D\uDEE0️ RÉPARATIONS TECHNIQUES (hardware)
+    '\uD83D\uDCA7 Réparation dégâts des eaux (oxydation)',
+    '\uD83D\uDCA7 Nettoyage composants après chute dans l\'eau',
+    '\uD83D\uDD27 Remplacement carte mère',
+    '\uD83D\uDD27 Micro-soudure composants',
+    '\uD83D\uDD27 Réparation circuits internes',
+    '\uD83D\uDD27 Reballing (chipset)',
+    '\uD83C\uDF9A️ Réparation boutons volume',
+    '\uD83C\uDF9A️ Réparation bouton power',
+    '\uD83C\uDF9A️ Réparation bouton home',
+    '\uD83D\uDCE1 Réparation antenne WiFi',
+    '\uD83D\uDCE1 Réparation antenne réseau mobile',
+    '\uD83D\uDCF6 Réparation GPS',
+    '\uD83D\uDD0A Réparation écouteur interne',
+    '\uD83C\uDFA7 Réparation prise jack 3.5mm',
+    '\uD83D\uDCF3 Réparation vibreur',
+    '\uD83C\uDF21️ Réparation capteur de proximité',
     '☀️ Réparation capteur luminosité',
 
-    // 🔐 DÉBLOCAGE & LOGICIEL (très demandé Afrique)
-    '🔓 Déblocage opérateur (tous réseaux)',
-    '🔓 Déblocage iCloud (iPhone)',
-    '🔓 Déblocage compte Google (FRP)',
-    '🔓 Déverrouillage code oublié',
-    '🔓 Déblocage schéma/motif',
-    '💾 Flash/Réinstallation système',
-    '💾 Mise à jour firmware',
-    '💾 Downgrade version Android',
-    '💾 Installation ROM custom',
-    '💾 Root/Jailbreak',
-    '💾 Suppression bloatware',
-    '🦠 Suppression virus/malware',
-    '🗑️ Récupération données (photos, contacts)',
+    // \uD83D\uDD10 DÉBLOCAGE & LOGICIEL (très demandé Afrique)
+    '\uD83D\uDD13 Déblocage opérateur (tous réseaux)',
+    '\uD83D\uDD13 Déblocage iCloud (iPhone)',
+    '\uD83D\uDD13 Déblocage compte Google (FRP)',
+    '\uD83D\uDD13 Déverrouillage code oublié',
+    '\uD83D\uDD13 Déblocage schéma/motif',
+    '\uD83D\uDCBE Flash/Réinstallation système',
+    '\uD83D\uDCBE Mise à jour firmware',
+    '\uD83D\uDCBE Downgrade version Android',
+    '\uD83D\uDCBE Installation ROM custom',
+    '\uD83D\uDCBE Root/Jailbreak',
+    '\uD83D\uDCBE Suppression bloatware',
+    '\uD83E\uDDA0 Suppression virus/malware',
+    '\uD83D\uDDD1️ Récupération données (photos, contacts)',
 
-    // 🛡️ PRÉVENTION & ENTRETIEN
-    '🛡️ Pose film protecteur écran (verre trempé)',
-    '🛡️ Pose film protecteur caméra',
-    '🛡️ Pose coque de protection',
-    '🧹 Nettoyage complet (poussière, saleté)',
-    '🧹 Nettoyage port de charge',
-    '🔋 Test diagnostic complet',
+    // \uD83D\uDEE1️ PRÉVENTION & ENTRETIEN
+    '\uD83D\uDEE1️ Pose film protecteur écran (verre trempé)',
+    '\uD83D\uDEE1️ Pose film protecteur caméra',
+    '\uD83D\uDEE1️ Pose coque de protection',
+    '\uD83E\uDDF9 Nettoyage complet (poussière, saleté)',
+    '\uD83E\uDDF9 Nettoyage port de charge',
+    '\uD83D\uDD0B Test diagnostic complet',
     '⚡ Optimisation performances',
 
-    // 🎨 PERSONNALISATION
-    '🎨 Changement coque arrière (couleur)',
-    '🎨 Customisation esthétique',
+    // \uD83C\uDFA8 PERSONNALISATION
+    '\uD83C\uDFA8 Changement coque arrière (couleur)',
+    '\uD83C\uDFA8 Customisation esthétique',
 
-    // 📱 TABLETTES SPÉCIFIQUES
-    '💻 Réparation tablette Samsung/iPad',
-    '💻 Remplacement écran tablette',
-    '💻 Remplacement batterie tablette',
+    // \uD83D\uDCF1 TABLETTES SPÉCIFIQUES
+    '\uD83D\uDCBB Réparation tablette Samsung/iPad',
+    '\uD83D\uDCBB Remplacement écran tablette',
+    '\uD83D\uDCBB Remplacement batterie tablette',
 
-    '🆕 Autre réparation (ajouter)'
+    '\uD83C\uDD95 Autre réparation (ajouter)'
   ],
 
   // ✅ MARQUES SUPPORTÉES (60+) - Priorité marques populaires Afrique
   marquesSuppoortees: [
-    // 🥇 TOP 5 AFRIQUE (expertise obligatoire)
-    '📱 Tecno (toutes séries)', // #1 Cameroun, CI, Congo
-    '📱 Infinix (toutes séries)', // #2 Afrique francophone
-    '📱 Samsung Galaxy (A, S, M, Z series)', // #3
-    '📱 Xiaomi / Redmi / Poco', // #4
-    '📱 Itel (toutes séries)', // #5 entrée de gamme
+    // \uD83E\uDD47 TOP 5 AFRIQUE (expertise obligatoire)
+    '\uD83D\uDCF1 Tecno (toutes séries)', // #1 Cameroun, CI, Congo
+    '\uD83D\uDCF1 Infinix (toutes séries)', // #2 Afrique francophone
+    '\uD83D\uDCF1 Samsung Galaxy (A, S, M, Z series)', // #3
+    '\uD83D\uDCF1 Xiaomi / Redmi / Poco', // #4
+    '\uD83D\uDCF1 Itel (toutes séries)', // #5 entrée de gamme
 
-    // 🥈 TRÈS POPULAIRES AFRIQUE
-    '📱 Realme',
-    '📱 Oppo',
-    '📱 Vivo',
-    '📱 Honor',
-    '📱 Huawei',
+    // \uD83E\uDD48 TRÈS POPULAIRES AFRIQUE
+    '\uD83D\uDCF1 Realme',
+    '\uD83D\uDCF1 Oppo',
+    '\uD83D\uDCF1 Vivo',
+    '\uD83D\uDCF1 Honor',
+    '\uD83D\uDCF1 Huawei',
 
-    // 💎 PREMIUM (expertise spécialisée = prix élevés)
-    '📱 Apple iPhone (toutes générations)',
-    '📱 iPhone 15 / 15 Pro / 15 Pro Max',
-    '📱 iPhone 14 / 14 Pro / 14 Pro Max',
-    '📱 iPhone 13 / 13 Pro / 13 Pro Max',
-    '📱 iPhone 12 / 12 Pro / 12 Pro Max',
-    '📱 iPhone 11 / 11 Pro / 11 Pro Max',
-    '📱 iPhone XR / XS / XS Max',
-    '📱 iPhone X / 8 / 8 Plus',
-    '📱 iPhone 7 / 7 Plus',
-    '📱 iPhone SE (2020/2022)',
+    // \uD83D\uDC8E PREMIUM (expertise spécialisée = prix élevés)
+    '\uD83D\uDCF1 Apple iPhone (toutes générations)',
+    '\uD83D\uDCF1 iPhone 15 / 15 Pro / 15 Pro Max',
+    '\uD83D\uDCF1 iPhone 14 / 14 Pro / 14 Pro Max',
+    '\uD83D\uDCF1 iPhone 13 / 13 Pro / 13 Pro Max',
+    '\uD83D\uDCF1 iPhone 12 / 12 Pro / 12 Pro Max',
+    '\uD83D\uDCF1 iPhone 11 / 11 Pro / 11 Pro Max',
+    '\uD83D\uDCF1 iPhone XR / XS / XS Max',
+    '\uD83D\uDCF1 iPhone X / 8 / 8 Plus',
+    '\uD83D\uDCF1 iPhone 7 / 7 Plus',
+    '\uD83D\uDCF1 iPhone SE (2020/2022)',
 
-    // 📱 AUTRES MARQUES PRÉSENTES
-    '📱 OnePlus',
-    '📱 Google Pixel',
-    '📱 Nokia',
-    '📱 Motorola',
-    '📱 Sony Xperia',
-    '📱 LG',
-    '📱 Asus (ROG Phone, ZenFone)',
-    '📱 Nothing Phone',
-    '📱 ZTE',
-    '📱 Blackview',
-    '📱 Ulefone',
-    '📱 Doogee',
-    '📱 Cubot',
-    '📱 Oukitel',
+    // \uD83D\uDCF1 AUTRES MARQUES PRÉSENTES
+    '\uD83D\uDCF1 OnePlus',
+    '\uD83D\uDCF1 Google Pixel',
+    '\uD83D\uDCF1 Nokia',
+    '\uD83D\uDCF1 Motorola',
+    '\uD83D\uDCF1 Sony Xperia',
+    '\uD83D\uDCF1 LG',
+    '\uD83D\uDCF1 Asus (ROG Phone, ZenFone)',
+    '\uD83D\uDCF1 Nothing Phone',
+    '\uD83D\uDCF1 ZTE',
+    '\uD83D\uDCF1 Blackview',
+    '\uD83D\uDCF1 Ulefone',
+    '\uD83D\uDCF1 Doogee',
+    '\uD83D\uDCF1 Cubot',
+    '\uD83D\uDCF1 Oukitel',
 
-    // 💻 TABLETTES
-    '💻 iPad (toutes générations)',
-    '💻 iPad Pro',
-    '💻 iPad Air',
-    '💻 iPad Mini',
-    '💻 Samsung Galaxy Tab',
-    '💻 Huawei MatePad',
-    '💻 Lenovo Tab',
-    '💻 Xiaomi Pad',
-    '💻 Tecno Tablet',
+    // \uD83D\uDCBB TABLETTES
+    '\uD83D\uDCBB iPad (toutes générations)',
+    '\uD83D\uDCBB iPad Pro',
+    '\uD83D\uDCBB iPad Air',
+    '\uD83D\uDCBB iPad Mini',
+    '\uD83D\uDCBB Samsung Galaxy Tab',
+    '\uD83D\uDCBB Huawei MatePad',
+    '\uD83D\uDCBB Lenovo Tab',
+    '\uD83D\uDCBB Xiaomi Pad',
+    '\uD83D\uDCBB Tecno Tablet',
 
-    '🆕 Autre marque (ajouter)'
+    '\uD83C\uDD95 Autre marque (ajouter)'
   ],
 
   // ✅ MODÈLES POPULAIRES SPÉCIFIQUES (100+) - Focus Afrique francophone par pays
   modelesPopulaires: [
     // ═══════════════════════════════════════════════════
-    // 🔥 TECNO (LEADER CAMEROUN, CI, RDC, CONGO, GABON)
+    // \uD83D\uDD25 TECNO (LEADER CAMEROUN, CI, RDC, CONGO, GABON)
     // ═══════════════════════════════════════════════════
-    '📱 Tecno Spark 10 Pro', '📱 Tecno Spark 10C', '📱 Tecno Spark 10',
-    '📱 Tecno Spark 20 Pro', '📱 Tecno Spark 20', '📱 Tecno Spark 20C',
-    '📱 Tecno Camon 20 Pro 5G', '📱 Tecno Camon 20 Pro', '📱 Tecno Camon 20',
-    '📱 Tecno Camon 19 Pro', '📱 Tecno Camon 18 Premier',
-    '📱 Tecno Phantom X2 Pro', '📱 Tecno Phantom X2', '📱 Tecno Phantom X',
-    '📱 Tecno Pova 5 Pro', '📱 Tecno Pova 5', '📱 Tecno Pova 4 Pro',
-    '📱 Tecno Pova Neo 3', '📱 Tecno Pova Neo 2',
-    '📱 Tecno Pop 8', '📱 Tecno Pop 7 Pro', '📱 Tecno Pop 7',
+    '\uD83D\uDCF1 Tecno Spark 10 Pro', '\uD83D\uDCF1 Tecno Spark 10C', '\uD83D\uDCF1 Tecno Spark 10',
+    '\uD83D\uDCF1 Tecno Spark 20 Pro', '\uD83D\uDCF1 Tecno Spark 20', '\uD83D\uDCF1 Tecno Spark 20C',
+    '\uD83D\uDCF1 Tecno Camon 20 Pro 5G', '\uD83D\uDCF1 Tecno Camon 20 Pro', '\uD83D\uDCF1 Tecno Camon 20',
+    '\uD83D\uDCF1 Tecno Camon 19 Pro', '\uD83D\uDCF1 Tecno Camon 18 Premier',
+    '\uD83D\uDCF1 Tecno Phantom X2 Pro', '\uD83D\uDCF1 Tecno Phantom X2', '\uD83D\uDCF1 Tecno Phantom X',
+    '\uD83D\uDCF1 Tecno Pova 5 Pro', '\uD83D\uDCF1 Tecno Pova 5', '\uD83D\uDCF1 Tecno Pova 4 Pro',
+    '\uD83D\uDCF1 Tecno Pova Neo 3', '\uD83D\uDCF1 Tecno Pova Neo 2',
+    '\uD83D\uDCF1 Tecno Pop 8', '\uD83D\uDCF1 Tecno Pop 7 Pro', '\uD83D\uDCF1 Tecno Pop 7',
 
     // ═══════════════════════════════════════════════════
-    // 🔥 INFINIX (LEADER MALI, BURKINA, NIGER, BÉNIN)
+    // \uD83D\uDD25 INFINIX (LEADER MALI, BURKINA, NIGER, BÉNIN)
     // ═══════════════════════════════════════════════════
-    '📱 Infinix Hot 30i', '📱 Infinix Hot 30', '📱 Infinix Hot 30 Play',
-    '📱 Infinix Hot 40i', '📱 Infinix Hot 40 Pro', '📱 Infinix Hot 40',
-    '📱 Infinix Note 30 5G', '📱 Infinix Note 30 Pro', '📱 Infinix Note 30',
-    '📱 Infinix Note 30i', '📱 Infinix Note 12 Pro', '📱 Infinix Note 12',
-    '📱 Infinix Zero 30 5G', '📱 Infinix Zero 30 4G', '📱 Infinix Zero X Pro',
-    '📱 Infinix Smart 8 HD', '📱 Infinix Smart 8 Pro', '📱 Infinix Smart 8',
-    '📱 Infinix Smart 7 HD',
+    '\uD83D\uDCF1 Infinix Hot 30i', '\uD83D\uDCF1 Infinix Hot 30', '\uD83D\uDCF1 Infinix Hot 30 Play',
+    '\uD83D\uDCF1 Infinix Hot 40i', '\uD83D\uDCF1 Infinix Hot 40 Pro', '\uD83D\uDCF1 Infinix Hot 40',
+    '\uD83D\uDCF1 Infinix Note 30 5G', '\uD83D\uDCF1 Infinix Note 30 Pro', '\uD83D\uDCF1 Infinix Note 30',
+    '\uD83D\uDCF1 Infinix Note 30i', '\uD83D\uDCF1 Infinix Note 12 Pro', '\uD83D\uDCF1 Infinix Note 12',
+    '\uD83D\uDCF1 Infinix Zero 30 5G', '\uD83D\uDCF1 Infinix Zero 30 4G', '\uD83D\uDCF1 Infinix Zero X Pro',
+    '\uD83D\uDCF1 Infinix Smart 8 HD', '\uD83D\uDCF1 Infinix Smart 8 Pro', '\uD83D\uDCF1 Infinix Smart 8',
+    '\uD83D\uDCF1 Infinix Smart 7 HD',
 
     // ═══════════════════════════════════════════════════
-    // 🔥 SAMSUNG (LEADER SÉNÉGAL, MAURICE, SEYCHELLES)
+    // \uD83D\uDD25 SAMSUNG (LEADER SÉNÉGAL, MAURICE, SEYCHELLES)
     // ═══════════════════════════════════════════════════
-    '📱 Samsung Galaxy A05', '📱 Samsung Galaxy A05s',
-    '📱 Samsung Galaxy A14 4G', '📱 Samsung Galaxy A14 5G',
-    '📱 Samsung Galaxy A24 4G', '📱 Samsung Galaxy A24',
-    '📱 Samsung Galaxy A34 5G', '📱 Samsung Galaxy A54 5G',
-    '📱 Samsung Galaxy A04', '📱 Samsung Galaxy A04e', '📱 Samsung Galaxy A04s',
-    '📱 Samsung Galaxy M14 5G', '📱 Samsung Galaxy M34 5G',
-    '📱 Samsung Galaxy S23 FE', '📱 Samsung Galaxy S23', '📱 Samsung Galaxy S23+', '📱 Samsung Galaxy S23 Ultra',
-    '📱 Samsung Galaxy S24', '📱 Samsung Galaxy S24+', '📱 Samsung Galaxy S24 Ultra',
-    '📱 Samsung Galaxy S21 FE', '📱 Samsung Galaxy S22',
-    '📱 Samsung Galaxy Z Flip 5', '📱 Samsung Galaxy Z Fold 5',
+    '\uD83D\uDCF1 Samsung Galaxy A05', '\uD83D\uDCF1 Samsung Galaxy A05s',
+    '\uD83D\uDCF1 Samsung Galaxy A14 4G', '\uD83D\uDCF1 Samsung Galaxy A14 5G',
+    '\uD83D\uDCF1 Samsung Galaxy A24 4G', '\uD83D\uDCF1 Samsung Galaxy A24',
+    '\uD83D\uDCF1 Samsung Galaxy A34 5G', '\uD83D\uDCF1 Samsung Galaxy A54 5G',
+    '\uD83D\uDCF1 Samsung Galaxy A04', '\uD83D\uDCF1 Samsung Galaxy A04e', '\uD83D\uDCF1 Samsung Galaxy A04s',
+    '\uD83D\uDCF1 Samsung Galaxy M14 5G', '\uD83D\uDCF1 Samsung Galaxy M34 5G',
+    '\uD83D\uDCF1 Samsung Galaxy S23 FE', '\uD83D\uDCF1 Samsung Galaxy S23', '\uD83D\uDCF1 Samsung Galaxy S23+', '\uD83D\uDCF1 Samsung Galaxy S23 Ultra',
+    '\uD83D\uDCF1 Samsung Galaxy S24', '\uD83D\uDCF1 Samsung Galaxy S24+', '\uD83D\uDCF1 Samsung Galaxy S24 Ultra',
+    '\uD83D\uDCF1 Samsung Galaxy S21 FE', '\uD83D\uDCF1 Samsung Galaxy S22',
+    '\uD83D\uDCF1 Samsung Galaxy Z Flip 5', '\uD83D\uDCF1 Samsung Galaxy Z Fold 5',
 
     // ═══════════════════════════════════════════════════
-    // 🔥 XIAOMI / REDMI / POCO (LEADER MADAGASCAR, MAURICE)
+    // \uD83D\uDD25 XIAOMI / REDMI / POCO (LEADER MADAGASCAR, MAURICE)
     // ═══════════════════════════════════════════════════
-    '📱 Redmi Note 13 Pro+ 5G', '📱 Redmi Note 13 Pro', '📱 Redmi Note 13 5G', '📱 Redmi Note 13',
-    '📱 Redmi Note 12 Pro+', '📱 Redmi Note 12 Pro', '📱 Redmi Note 12',
-    '📱 Redmi 13C 5G', '📱 Redmi 13C', '📱 Redmi 12C', '📱 Redmi 12',
-    '📱 Redmi A3', '📱 Redmi A2', '📱 Redmi A1',
-    '📱 Poco X6 Pro 5G', '📱 Poco X6 5G', '📱 Poco X5 Pro 5G',
-    '📱 Poco M6 Pro', '📱 Poco M6', '📱 Poco M5',
-    '📱 Poco F5 Pro 5G', '📱 Poco F5 5G',
-    '📱 Xiaomi 14 Ultra', '📱 Xiaomi 14', '📱 Xiaomi 13T Pro', '📱 Xiaomi 13T',
+    '\uD83D\uDCF1 Redmi Note 13 Pro+ 5G', '\uD83D\uDCF1 Redmi Note 13 Pro', '\uD83D\uDCF1 Redmi Note 13 5G', '\uD83D\uDCF1 Redmi Note 13',
+    '\uD83D\uDCF1 Redmi Note 12 Pro+', '\uD83D\uDCF1 Redmi Note 12 Pro', '\uD83D\uDCF1 Redmi Note 12',
+    '\uD83D\uDCF1 Redmi 13C 5G', '\uD83D\uDCF1 Redmi 13C', '\uD83D\uDCF1 Redmi 12C', '\uD83D\uDCF1 Redmi 12',
+    '\uD83D\uDCF1 Redmi A3', '\uD83D\uDCF1 Redmi A2', '\uD83D\uDCF1 Redmi A1',
+    '\uD83D\uDCF1 Poco X6 Pro 5G', '\uD83D\uDCF1 Poco X6 5G', '\uD83D\uDCF1 Poco X5 Pro 5G',
+    '\uD83D\uDCF1 Poco M6 Pro', '\uD83D\uDCF1 Poco M6', '\uD83D\uDCF1 Poco M5',
+    '\uD83D\uDCF1 Poco F5 Pro 5G', '\uD83D\uDCF1 Poco F5 5G',
+    '\uD83D\uDCF1 Xiaomi 14 Ultra', '\uD83D\uDCF1 Xiaomi 14', '\uD83D\uDCF1 Xiaomi 13T Pro', '\uD83D\uDCF1 Xiaomi 13T',
 
     // ═══════════════════════════════════════════════════
-    // 🔥 ITEL (LEADER ENTRÉE DE GAMME - TOUS PAYS)
+    // \uD83D\uDD25 ITEL (LEADER ENTRÉE DE GAMME - TOUS PAYS)
     // ═══════════════════════════════════════════════════
-    '📱 Itel P55 5G', '📱 Itel P55+', '📱 Itel P55',
-    '📱 Itel S23+', '📱 Itel S23', '📱 Itel S18',
-    '📱 Itel A70', '📱 Itel A60s', '📱 Itel A60',
-    '📱 Itel P40+', '📱 Itel P40',
+    '\uD83D\uDCF1 Itel P55 5G', '\uD83D\uDCF1 Itel P55+', '\uD83D\uDCF1 Itel P55',
+    '\uD83D\uDCF1 Itel S23+', '\uD83D\uDCF1 Itel S23', '\uD83D\uDCF1 Itel S18',
+    '\uD83D\uDCF1 Itel A70', '\uD83D\uDCF1 Itel A60s', '\uD83D\uDCF1 Itel A60',
+    '\uD83D\uDCF1 Itel P40+', '\uD83D\uDCF1 Itel P40',
 
     // ═══════════════════════════════════════════════════
-    // 💎 APPLE iPHONE (PRESTIGE - TOUS PAYS)
+    // \uD83D\uDC8E APPLE iPHONE (PRESTIGE - TOUS PAYS)
     // ═══════════════════════════════════════════════════
-    '📱 iPhone 15 Pro Max', '📱 iPhone 15 Pro', '📱 iPhone 15 Plus', '📱 iPhone 15',
-    '📱 iPhone 14 Pro Max', '📱 iPhone 14 Pro', '📱 iPhone 14 Plus', '📱 iPhone 14',
-    '📱 iPhone 13 Pro Max', '📱 iPhone 13 Pro', '📱 iPhone 13', '📱 iPhone 13 Mini',
-    '📱 iPhone 12 Pro Max', '📱 iPhone 12 Pro', '📱 iPhone 12', '📱 iPhone 12 Mini',
-    '📱 iPhone 11 Pro Max', '📱 iPhone 11 Pro', '📱 iPhone 11',
-    '📱 iPhone XR', '📱 iPhone XS Max', '📱 iPhone XS', '📱 iPhone X',
-    '📱 iPhone SE (2022)', '📱 iPhone SE (2020)',
-    '📱 iPhone 8 Plus', '📱 iPhone 8', '📱 iPhone 7 Plus', '📱 iPhone 7',
+    '\uD83D\uDCF1 iPhone 15 Pro Max', '\uD83D\uDCF1 iPhone 15 Pro', '\uD83D\uDCF1 iPhone 15 Plus', '\uD83D\uDCF1 iPhone 15',
+    '\uD83D\uDCF1 iPhone 14 Pro Max', '\uD83D\uDCF1 iPhone 14 Pro', '\uD83D\uDCF1 iPhone 14 Plus', '\uD83D\uDCF1 iPhone 14',
+    '\uD83D\uDCF1 iPhone 13 Pro Max', '\uD83D\uDCF1 iPhone 13 Pro', '\uD83D\uDCF1 iPhone 13', '\uD83D\uDCF1 iPhone 13 Mini',
+    '\uD83D\uDCF1 iPhone 12 Pro Max', '\uD83D\uDCF1 iPhone 12 Pro', '\uD83D\uDCF1 iPhone 12', '\uD83D\uDCF1 iPhone 12 Mini',
+    '\uD83D\uDCF1 iPhone 11 Pro Max', '\uD83D\uDCF1 iPhone 11 Pro', '\uD83D\uDCF1 iPhone 11',
+    '\uD83D\uDCF1 iPhone XR', '\uD83D\uDCF1 iPhone XS Max', '\uD83D\uDCF1 iPhone XS', '\uD83D\uDCF1 iPhone X',
+    '\uD83D\uDCF1 iPhone SE (2022)', '\uD83D\uDCF1 iPhone SE (2020)',
+    '\uD83D\uDCF1 iPhone 8 Plus', '\uD83D\uDCF1 iPhone 8', '\uD83D\uDCF1 iPhone 7 Plus', '\uD83D\uDCF1 iPhone 7',
 
     // ═══════════════════════════════════════════════════
-    // 📱 AUTRES MARQUES POPULAIRES
+    // \uD83D\uDCF1 AUTRES MARQUES POPULAIRES
     // ═══════════════════════════════════════════════════
-    '📱 Realme C55', '📱 Realme 11 Pro+', '📱 Realme 11', '📱 Realme GT 6',
-    '📱 Oppo A78 5G', '📱 Oppo A78', '📱 Oppo A38', '📱 Oppo Reno 11 5G',
-    '📱 Vivo Y36', '📱 Vivo Y100 5G', '📱 Vivo V29',
-    '📱 Honor X9a', '📱 Honor X8a', '📱 Honor 90',
-    '📱 Huawei Nova Y91', '📱 Huawei P60 Pro',
+    '\uD83D\uDCF1 Realme C55', '\uD83D\uDCF1 Realme 11 Pro+', '\uD83D\uDCF1 Realme 11', '\uD83D\uDCF1 Realme GT 6',
+    '\uD83D\uDCF1 Oppo A78 5G', '\uD83D\uDCF1 Oppo A78', '\uD83D\uDCF1 Oppo A38', '\uD83D\uDCF1 Oppo Reno 11 5G',
+    '\uD83D\uDCF1 Vivo Y36', '\uD83D\uDCF1 Vivo Y100 5G', '\uD83D\uDCF1 Vivo V29',
+    '\uD83D\uDCF1 Honor X9a', '\uD83D\uDCF1 Honor X8a', '\uD83D\uDCF1 Honor 90',
+    '\uD83D\uDCF1 Huawei Nova Y91', '\uD83D\uDCF1 Huawei P60 Pro',
 
-    // 💻 TABLETTES POPULAIRES
-    '💻 iPad 10.2" (9e gen)', '💻 iPad Air 5', '💻 iPad Pro 11"', '💻 iPad Pro 12.9"',
-    '💻 Samsung Galaxy Tab A9+', '💻 Samsung Galaxy Tab S9 FE',
+    // \uD83D\uDCBB TABLETTES POPULAIRES
+    '\uD83D\uDCBB iPad 10.2" (9e gen)', '\uD83D\uDCBB iPad Air 5', '\uD83D\uDCBB iPad Pro 11"', '\uD83D\uDCBB iPad Pro 12.9"',
+    '\uD83D\uDCBB Samsung Galaxy Tab A9+', '\uD83D\uDCBB Samsung Galaxy Tab S9 FE',
 
-    '🆕 Autre modèle (ajouter)'
+    '\uD83C\uDD95 Autre modèle (ajouter)'
   ],
 
   // ✅ DÉLAIS DE RÉPARATION (adaptation contexte africain)
   delaisReparation: [
     '⚡ Réparation express (1-2h)',
-    '🚀 Réparation rapide (3-6h)',
-    '📅 Réparation jour même',
-    '📅 24-48 heures',
-    '📅 2-3 jours',
-    '📅 3-5 jours',
-    '📅 5-7 jours',
-    '📅 1-2 semaines',
+    '\uD83D\uDE80 Réparation rapide (3-6h)',
+    '\uD83D\uDCC5 Réparation jour même',
+    '\uD83D\uDCC5 24-48 heures',
+    '\uD83D\uDCC5 2-3 jours',
+    '\uD83D\uDCC5 3-5 jours',
+    '\uD83D\uDCC5 5-7 jours',
+    '\uD83D\uDCC5 1-2 semaines',
     '⏰ Selon disponibilité pièces (10-15 jours)',
-    '🛫 Import pièces nécessaire (3-4 semaines)',
-    '🆕 Autre délai (ajouter)'
+    '\uD83D\uDEEB Import pièces nécessaire (3-4 semaines)',
+    '\uD83C\uDD95 Autre délai (ajouter)'
   ],
 
   // ✅ GARANTIES RÉPARATION (très important pour confiance client)
@@ -2590,9 +2590,9 @@ export const REPARATEUR_TELEPHONE_TABLETTE_MODALITIES: ModalityCategory = {
     '✅ Garantie pièces uniquement (3 mois)',
     '✅ Garantie à vie (certaines réparations)',
     '❌ Aucune garantie (pièces d\'occasion)',
-    '🔄 Garantie satisfait ou remboursé (7 jours)',
-    '🛡️ Extension garantie disponible',
-    '🆕 Autre garantie (ajouter)'
+    '\uD83D\uDD04 Garantie satisfait ou remboursé (7 jours)',
+    '\uD83D\uDEE1️ Extension garantie disponible',
+    '\uD83C\uDD95 Autre garantie (ajouter)'
   ],
 
   // ✅ QUALITÉ DES PIÈCES (transparence cruciale)
@@ -2601,84 +2601,84 @@ export const REPARATEUR_TELEPHONE_TABLETTE_MODALITIES: ModalityCategory = {
     '⭐ Pièces originales Apple (iPhone)',
     '⭐ Pièces originales Samsung',
     '⭐ Pièces officielles revendeur agréé',
-    '🔄 Pièces reconditionnées d\'origine',
+    '\uD83D\uDD04 Pièces reconditionnées d\'origine',
     '✅ Pièces compatibles premium (AAA+)',
     '✅ Pièces compatibles qualité supérieure (AAA)',
     '✅ Pièces compatibles standard (AA)',
     '⚠️ Pièces compatibles économiques (A)',
     '♻️ Pièces de récupération (occasion)',
-    '🎁 Choix client (original ou compatible)',
-    '🆕 Autre qualité (ajouter)'
+    '\uD83C\uDF81 Choix client (original ou compatible)',
+    '\uD83C\uDD95 Autre qualité (ajouter)'
   ],
 
   // ✅ CERTIFICATIONS & COMPÉTENCES (crédibilité réparateur)
   certifications: [
-    '🎓 Technicien certifié Apple (ACMT)',
-    '🎓 Technicien certifié Samsung',
-    '🎓 Technicien certifié Huawei',
-    '🎓 Certifié micro-soudure',
-    '🎓 Formation officielle constructeur',
-    '🏆 +5 ans d\'expérience',
-    '🏆 +10 ans d\'expérience',
-    '🏆 +15 ans d\'expérience',
-    '🛠️ Spécialiste iPhone exclusivement',
-    '🛠️ Spécialiste Samsung exclusivement',
-    '🛠️ Spécialiste déblocage',
-    '🛠️ Spécialiste réparation carte mère',
-    '🛠️ Spécialiste dégâts des eaux',
-    '💧 Expert récupération données',
+    '\uD83C\uDF93 Technicien certifié Apple (ACMT)',
+    '\uD83C\uDF93 Technicien certifié Samsung',
+    '\uD83C\uDF93 Technicien certifié Huawei',
+    '\uD83C\uDF93 Certifié micro-soudure',
+    '\uD83C\uDF93 Formation officielle constructeur',
+    '\uD83C\uDFC6 +5 ans d\'expérience',
+    '\uD83C\uDFC6 +10 ans d\'expérience',
+    '\uD83C\uDFC6 +15 ans d\'expérience',
+    '\uD83D\uDEE0️ Spécialiste iPhone exclusivement',
+    '\uD83D\uDEE0️ Spécialiste Samsung exclusivement',
+    '\uD83D\uDEE0️ Spécialiste déblocage',
+    '\uD83D\uDEE0️ Spécialiste réparation carte mère',
+    '\uD83D\uDEE0️ Spécialiste dégâts des eaux',
+    '\uD83D\uDCA7 Expert récupération données',
     '⚡ Diagnostic gratuit',
-    '📱 Boutique physique',
-    '🚗 Service à domicile',
-    '🆕 Autre certification (ajouter)'
+    '\uD83D\uDCF1 Boutique physique',
+    '\uD83D\uDE97 Service à domicile',
+    '\uD83C\uDD95 Autre certification (ajouter)'
   ],
 
   // ✅ PRIX RÉPARATIONS ESTIMATIFS (fourchettes réalistes Afrique francophone)
   // Cameroun, CI, Sénégal, Mali, Gabon - FCFA (XAF/XOF)
   prixEstimatifs: [
     // ÉCRANS (le plus demandé)
-    '📱 Écran Tecno/Infinix/Itel: 15.000-35.000 FCFA',
-    '📱 Écran Samsung A-series: 25.000-60.000 FCFA',
-    '📱 Écran Xiaomi/Redmi: 20.000-50.000 FCFA',
-    '📱 Écran iPhone (modèles récents): 80.000-200.000 FCFA',
-    '📱 Écran iPhone (anciens modèles): 40.000-80.000 FCFA',
+    '\uD83D\uDCF1 Écran Tecno/Infinix/Itel: 15.000-35.000 FCFA',
+    '\uD83D\uDCF1 Écran Samsung A-series: 25.000-60.000 FCFA',
+    '\uD83D\uDCF1 Écran Xiaomi/Redmi: 20.000-50.000 FCFA',
+    '\uD83D\uDCF1 Écran iPhone (modèles récents): 80.000-200.000 FCFA',
+    '\uD83D\uDCF1 Écran iPhone (anciens modèles): 40.000-80.000 FCFA',
 
     // BATTERIES
-    '🔋 Batterie Tecno/Infinix/Itel: 5.000-15.000 FCFA',
-    '🔋 Batterie Samsung: 10.000-25.000 FCFA',
-    '🔋 Batterie iPhone: 20.000-50.000 FCFA',
+    '\uD83D\uDD0B Batterie Tecno/Infinix/Itel: 5.000-15.000 FCFA',
+    '\uD83D\uDD0B Batterie Samsung: 10.000-25.000 FCFA',
+    '\uD83D\uDD0B Batterie iPhone: 20.000-50.000 FCFA',
 
     // CONNECTEURS & PORTS
-    '🔌 Port de charge (micro-USB/USB-C): 5.000-15.000 FCFA',
-    '🔌 Port Lightning (iPhone): 15.000-30.000 FCFA',
+    '\uD83D\uDD0C Port de charge (micro-USB/USB-C): 5.000-15.000 FCFA',
+    '\uD83D\uDD0C Port Lightning (iPhone): 15.000-30.000 FCFA',
 
     // DÉBLOCAGES
-    '🔓 Déblocage opérateur: 5.000-20.000 FCFA',
-    '🔓 Déblocage iCloud/Google: 20.000-100.000 FCFA',
+    '\uD83D\uDD13 Déblocage opérateur: 5.000-20.000 FCFA',
+    '\uD83D\uDD13 Déblocage iCloud/Google: 20.000-100.000 FCFA',
 
     // AUTRES
-    '🔊 Haut-parleur/microphone: 5.000-15.000 FCFA',
-    '📸 Caméra arrière: 10.000-40.000 FCFA',
-    '💧 Réparation dégâts eau: 20.000-100.000 FCFA',
-    '🔧 Carte mère: 50.000-300.000 FCFA',
+    '\uD83D\uDD0A Haut-parleur/microphone: 5.000-15.000 FCFA',
+    '\uD83D\uDCF8 Caméra arrière: 10.000-40.000 FCFA',
+    '\uD83D\uDCA7 Réparation dégâts eau: 20.000-100.000 FCFA',
+    '\uD83D\uDD27 Carte mère: 50.000-300.000 FCFA',
 
     // SERVICES
-    '🛡️ Pose film protecteur: 1.000-5.000 FCFA',
-    '💾 Flash/réinstallation: 5.000-15.000 FCFA',
-    '🔍 Diagnostic: Gratuit',
+    '\uD83D\uDEE1️ Pose film protecteur: 1.000-5.000 FCFA',
+    '\uD83D\uDCBE Flash/réinstallation: 5.000-15.000 FCFA',
+    '\uD83D\uDD0D Diagnostic: Gratuit',
 
-    '🆕 Autre tarif (ajouter)'
+    '\uD83C\uDD95 Autre tarif (ajouter)'
   ],
 
   // ✅ TYPES D'INTERVENTION (où se fait la réparation)
   typesIntervention: [
-    '🏪 En boutique/atelier (sur place)',
-    '🏠 À domicile (déplacement)',
-    '🏢 En entreprise',
-    '📦 Envoi par transporteur (réparation à distance)',
+    '\uD83C\uDFEA En boutique/atelier (sur place)',
+    '\uD83C\uDFE0 À domicile (déplacement)',
+    '\uD83C\uDFE2 En entreprise',
+    '\uD83D\uDCE6 Envoi par transporteur (réparation à distance)',
     '⚡ Service express sur place',
-    '🚗 Service mobile (atelier mobile)',
-    '🆕 Autre type (ajouter)'
+    '\uD83D\uDE97 Service mobile (atelier mobile)',
+    '\uD83C\uDD95 Autre type (ajouter)'
   ],
 
   // ✅ ZONES D'INTERVENTION (utilise le système de quartiers déjà implémenté)
@@ -2692,63 +2692,63 @@ export const REPARATEUR_TELEPHONE_TABLETTE_MODALITIES: ModalityCategory = {
 
   // ✅ SERVICES ADDITIONNELS
   servicesAdditionnels: [
-    '📦 Récupération domicile gratuite',
-    '🚗 Livraison domicile gratuite',
-    '💳 Paiement mobile money (Orange, MTN, Moov)',
-    '💳 Paiement en plusieurs fois',
-    '🎁 Devis gratuit',
-    '🔍 Diagnostic gratuit',
-    '🎁 Film protecteur offert',
-    '🎁 Coque offerte',
-    '🛡️ Assurance réparation disponible',
-    '📞 Support téléphonique gratuit',
-    '💬 Support WhatsApp 24/7',
-    '🔄 Prêt de téléphone pendant réparation',
-    '📱 Rachat ancien téléphone',
+    '\uD83D\uDCE6 Récupération domicile gratuite',
+    '\uD83D\uDE97 Livraison domicile gratuite',
+    '\uD83D\uDCB3 Paiement mobile money (Orange, MTN, Moov)',
+    '\uD83D\uDCB3 Paiement en plusieurs fois',
+    '\uD83C\uDF81 Devis gratuit',
+    '\uD83D\uDD0D Diagnostic gratuit',
+    '\uD83C\uDF81 Film protecteur offert',
+    '\uD83C\uDF81 Coque offerte',
+    '\uD83D\uDEE1️ Assurance réparation disponible',
+    '\uD83D\uDCDE Support téléphonique gratuit',
+    '\uD83D\uDCAC Support WhatsApp 24/7',
+    '\uD83D\uDD04 Prêt de téléphone pendant réparation',
+    '\uD83D\uDCF1 Rachat ancien téléphone',
     '♻️ Reprise ancien appareil',
-    '🆕 Autre service (ajouter)'
+    '\uD83C\uDD95 Autre service (ajouter)'
   ],
 
   // ✅ MODES DE PAIEMENT (contexte Afrique)
   modesPaiement: [
-    '💵 Espèces',
-    '📱 Mobile Money (Orange Money)',
-    '📱 Mobile Money (MTN Mobile Money)',
-    '📱 Mobile Money (Moov Money)',
-    '💳 Carte bancaire',
-    '💳 Virement bancaire',
-    '🏦 Paiement en boutique',
-    '📦 Paiement à la livraison',
-    '📅 Paiement en plusieurs fois',
-    '🆕 Autre mode (ajouter)'
+    '\uD83D\uDCB5 Espèces',
+    '\uD83D\uDCF1 Mobile Money (Orange Money)',
+    '\uD83D\uDCF1 Mobile Money (MTN Mobile Money)',
+    '\uD83D\uDCF1 Mobile Money (Moov Money)',
+    '\uD83D\uDCB3 Carte bancaire',
+    '\uD83D\uDCB3 Virement bancaire',
+    '\uD83C\uDFE6 Paiement en boutique',
+    '\uD83D\uDCE6 Paiement à la livraison',
+    '\uD83D\uDCC5 Paiement en plusieurs fois',
+    '\uD83C\uDD95 Autre mode (ajouter)'
   ],
 
   // ✅ LANGUES PARLÉES (important pour service client)
   languesParlees: [
-    '🇫🇷 Français',
-    '🗣️ Anglais',
-    '🗣️ Douala (Cameroun)',
-    '🗣️ Bamiléké (Cameroun)',
-    '🗣️ Ewondo (Cameroun)',
-    '🗣️ Fulfuldé (Cameroun)',
-    '🗣️ Dioula (CI, Mali, Burkina)',
-    '🗣️ Baoulé (Côte d\'Ivoire)',
-    '🗣️ Wolof (Sénégal)',
-    '🗣️ Lingala (RDC, Congo)',
-    '🗣️ Swahili (RDC)',
-    '🆕 Autre langue (ajouter)'
+    '\uD83C\uDDEB\uD83C\uDDF7 Français',
+    '\uD83D\uDDE3️ Anglais',
+    '\uD83D\uDDE3️ Douala (Cameroun)',
+    '\uD83D\uDDE3️ Bamiléké (Cameroun)',
+    '\uD83D\uDDE3️ Ewondo (Cameroun)',
+    '\uD83D\uDDE3️ Fulfuldé (Cameroun)',
+    '\uD83D\uDDE3️ Dioula (CI, Mali, Burkina)',
+    '\uD83D\uDDE3️ Baoulé (Côte d\'Ivoire)',
+    '\uD83D\uDDE3️ Wolof (Sénégal)',
+    '\uD83D\uDDE3️ Lingala (RDC, Congo)',
+    '\uD83D\uDDE3️ Swahili (RDC)',
+    '\uD83C\uDD95 Autre langue (ajouter)'
   ],
 
   // ✅ HORAIRES D'OUVERTURE
   horaires: [
-    '🕐 Lun-Ven: 8h-18h, Sam: 9h-17h',
-    '🕐 Lun-Sam: 8h-19h',
-    '🕐 Lun-Dim: 8h-20h',
-    '🕐 Tous les jours: 8h-21h',
+    '\uD83D\uDD50 Lun-Ven: 8h-18h, Sam: 9h-17h',
+    '\uD83D\uDD50 Lun-Sam: 8h-19h',
+    '\uD83D\uDD50 Lun-Dim: 8h-20h',
+    '\uD83D\uDD50 Tous les jours: 8h-21h',
     '⏰ 24h/24 (urgences)',
-    '🌙 Service de nuit disponible',
-    '📞 Sur rendez-vous uniquement',
-    '🆕 Autres horaires (ajouter)'
+    '\uD83C\uDF19 Service de nuit disponible',
+    '\uD83D\uDCDE Sur rendez-vous uniquement',
+    '\uD83C\uDD95 Autres horaires (ajouter)'
   ],
 
   // ✅ ÉTAT DES APPAREILS ACCEPTÉS
@@ -2763,504 +2763,504 @@ export const REPARATEUR_TELEPHONE_TABLETTE_MODALITIES: ModalityCategory = {
     '✅ Bloqué (iCloud, Google)',
     '✅ Tous états acceptés',
     '❌ Uniquement bon état',
-    '🆕 Autre état (ajouter)'
+    '\uD83C\uDD95 Autre état (ajouter)'
   ]
 };
 
-// ✅ MODALITÉS RÉPARATEUR INFORMATIQUE (Ordinateurs, Imprimantes, Équipements) - 🌍 AFRIQUE FRANCOPHONE
+// ✅ MODALITÉS RÉPARATEUR INFORMATIQUE (Ordinateurs, Imprimantes, Équipements) - \uD83C\uDF0D AFRIQUE FRANCOPHONE
 // Catégorie spécialisée pour les services de réparation/dépannage informatique
 export const REPARATEUR_INFORMATIQUE_MODALITIES: ModalityCategory = {
   // ✅ TYPES DE SERVICES DE RÉPARATION INFORMATIQUE (60+) - Classés par fréquence
   typesReparation: [
-    // 🔥 RÉPARATIONS HARDWARE LES PLUS COURANTES (70% des cas)
-    '💻 Réparation écran cassé/fissuré (laptop)',
-    '💻 Remplacement écran LCD/LED',
-    '💻 Réparation charnières cassées',
-    '🔋 Remplacement batterie laptop',
-    '🔋 Batterie ne charge plus',
-    '🔋 Réparation port de charge DC',
-    '🔌 Réparation port USB (2.0, 3.0, USB-C)',
-    '🔌 Réparation port HDMI',
-    '🔌 Réparation prise alimentation',
+    // \uD83D\uDD25 RÉPARATIONS HARDWARE LES PLUS COURANTES (70% des cas)
+    '\uD83D\uDCBB Réparation écran cassé/fissuré (laptop)',
+    '\uD83D\uDCBB Remplacement écran LCD/LED',
+    '\uD83D\uDCBB Réparation charnières cassées',
+    '\uD83D\uDD0B Remplacement batterie laptop',
+    '\uD83D\uDD0B Batterie ne charge plus',
+    '\uD83D\uDD0B Réparation port de charge DC',
+    '\uD83D\uDD0C Réparation port USB (2.0, 3.0, USB-C)',
+    '\uD83D\uDD0C Réparation port HDMI',
+    '\uD83D\uDD0C Réparation prise alimentation',
     '⌨️ Remplacement clavier (touches cassées/manquantes)',
     '⌨️ Réparation clavier rétroéclairé',
-    '🖱️ Réparation touchpad/pavé tactile',
-    '🔊 Réparation haut-parleurs',
-    '🎤 Réparation microphone',
-    '📸 Réparation webcam',
-    '🌡️ Nettoyage ventilateur (surchauffe)',
-    '🌡️ Remplacement ventilateur/système refroidissement',
-    '🌡️ Changement pâte thermique',
+    '\uD83D\uDDB1️ Réparation touchpad/pavé tactile',
+    '\uD83D\uDD0A Réparation haut-parleurs',
+    '\uD83C\uDFA4 Réparation microphone',
+    '\uD83D\uDCF8 Réparation webcam',
+    '\uD83C\uDF21️ Nettoyage ventilateur (surchauffe)',
+    '\uD83C\uDF21️ Remplacement ventilateur/système refroidissement',
+    '\uD83C\uDF21️ Changement pâte thermique',
 
-    // 🛠️ RÉPARATIONS TECHNIQUES AVANCÉES (hardware)
-    '💧 Réparation dégâts des eaux/liquides renversés',
-    '💧 Oxydation carte mère (eau/humidité)',
-    '💧 Séchage et nettoyage composants',
-    '🔧 Réparation carte mère',
-    '🔧 Micro-soudure composants électroniques',
-    '🔧 Remplacement chipset graphique (reballing)',
-    '🔧 Réparation circuits internes',
-    '💾 Remplacement disque dur HDD',
-    '💾 Remplacement SSD',
-    '💾 Upgrade HDD vers SSD',
-    '💾 Installation dual storage (SSD + HDD)',
-    '🧠 Upgrade RAM (ajout mémoire)',
-    '🧠 Remplacement barrettes RAM défectueuses',
-    '🎮 Remplacement carte graphique dédiée (PC bureau)',
-    '🎮 Réparation carte graphique',
+    // \uD83D\uDEE0️ RÉPARATIONS TECHNIQUES AVANCÉES (hardware)
+    '\uD83D\uDCA7 Réparation dégâts des eaux/liquides renversés',
+    '\uD83D\uDCA7 Oxydation carte mère (eau/humidité)',
+    '\uD83D\uDCA7 Séchage et nettoyage composants',
+    '\uD83D\uDD27 Réparation carte mère',
+    '\uD83D\uDD27 Micro-soudure composants électroniques',
+    '\uD83D\uDD27 Remplacement chipset graphique (reballing)',
+    '\uD83D\uDD27 Réparation circuits internes',
+    '\uD83D\uDCBE Remplacement disque dur HDD',
+    '\uD83D\uDCBE Remplacement SSD',
+    '\uD83D\uDCBE Upgrade HDD vers SSD',
+    '\uD83D\uDCBE Installation dual storage (SSD + HDD)',
+    '\uD83E\uDDE0 Upgrade RAM (ajout mémoire)',
+    '\uD83E\uDDE0 Remplacement barrettes RAM défectueuses',
+    '\uD83C\uDFAE Remplacement carte graphique dédiée (PC bureau)',
+    '\uD83C\uDFAE Réparation carte graphique',
     '⚡ Remplacement alimentation (PC bureau)',
     '⚡ Réparation bloc d\'alimentation',
-    '📡 Réparation carte WiFi',
-    '📡 Réparation Bluetooth',
-    '📡 Remplacement carte réseau Ethernet',
+    '\uD83D\uDCE1 Réparation carte WiFi',
+    '\uD83D\uDCE1 Réparation Bluetooth',
+    '\uD83D\uDCE1 Remplacement carte réseau Ethernet',
 
-    // 💻 RÉPARATIONS LOGICIELLES (très demandé Afrique)
-    '🪟 Réinstallation Windows (10, 11)',
-    '🪟 Formatage complet',
-    '🪟 Réparation système d\'exploitation',
-    '🪟 Installation macOS (Hackintosh)',
-    '🐧 Installation Linux Ubuntu/Mint',
-    '🔄 Dual boot (Windows + Linux)',
-    '💿 Installation pilotes manquants',
-    '💿 Mise à jour BIOS/UEFI',
-    '🦠 Suppression virus/malware/ransomware',
-    '🦠 Nettoyage adware/spyware',
-    '🦠 Protection antivirus professionnelle',
-    '🗑️ Récupération de données (disque défaillant)',
-    '🗑️ Restauration fichiers supprimés',
-    '🗑️ Récupération partition perdue',
+    // \uD83D\uDCBB RÉPARATIONS LOGICIELLES (très demandé Afrique)
+    '\uD83E\uDE9F Réinstallation Windows (10, 11)',
+    '\uD83E\uDE9F Formatage complet',
+    '\uD83E\uDE9F Réparation système d\'exploitation',
+    '\uD83E\uDE9F Installation macOS (Hackintosh)',
+    '\uD83D\uDC27 Installation Linux Ubuntu/Mint',
+    '\uD83D\uDD04 Dual boot (Windows + Linux)',
+    '\uD83D\uDCBF Installation pilotes manquants',
+    '\uD83D\uDCBF Mise à jour BIOS/UEFI',
+    '\uD83E\uDDA0 Suppression virus/malware/ransomware',
+    '\uD83E\uDDA0 Nettoyage adware/spyware',
+    '\uD83E\uDDA0 Protection antivirus professionnelle',
+    '\uD83D\uDDD1️ Récupération de données (disque défaillant)',
+    '\uD83D\uDDD1️ Restauration fichiers supprimés',
+    '\uD83D\uDDD1️ Récupération partition perdue',
     '⚡ Optimisation performances (lenteur)',
     '⚡ Nettoyage système (fichiers temporaires)',
     '⚡ Défragmentation disque',
     '⚡ Suppression bloatware',
 
-    // 🖨️ RÉPARATIONS IMPRIMANTES (essentiel Afrique bureautique)
-    '🖨️ Réparation imprimante jet d\'encre',
-    '🖨️ Réparation imprimante laser',
-    '🖨️ Déblocage bourrage papier récurrent',
-    '🖨️ Nettoyage têtes d\'impression',
-    '🖨️ Réparation bac à papier',
-    '🖨️ Remplacement tambour (drum)',
-    '🖨️ Réparation scanner (multifonction)',
-    '🖨️ Réparation photocopieuse',
-    '🖨️ Installation pilote imprimante',
-    '🖨️ Configuration imprimante réseau',
-    '🖨️ Réparation imprimante 3D',
+    // \uD83D\uDDA8️ RÉPARATIONS IMPRIMANTES (essentiel Afrique bureautique)
+    '\uD83D\uDDA8️ Réparation imprimante jet d\'encre',
+    '\uD83D\uDDA8️ Réparation imprimante laser',
+    '\uD83D\uDDA8️ Déblocage bourrage papier récurrent',
+    '\uD83D\uDDA8️ Nettoyage têtes d\'impression',
+    '\uD83D\uDDA8️ Réparation bac à papier',
+    '\uD83D\uDDA8️ Remplacement tambour (drum)',
+    '\uD83D\uDDA8️ Réparation scanner (multifonction)',
+    '\uD83D\uDDA8️ Réparation photocopieuse',
+    '\uD83D\uDDA8️ Installation pilote imprimante',
+    '\uD83D\uDDA8️ Configuration imprimante réseau',
+    '\uD83D\uDDA8️ Réparation imprimante 3D',
 
-    // 🌐 RÉSEAUX & CONNECTIVITÉ
-    '📶 Installation/configuration réseau WiFi',
-    '📶 Réparation connexion Internet',
-    '📶 Configuration routeur/modem',
-    '📶 Installation réseau local (LAN)',
-    '📶 Partage imprimante en réseau',
-    '🔐 Configuration VPN',
-    '🔐 Sécurisation réseau WiFi',
+    // \uD83C\uDF10 RÉSEAUX & CONNECTIVITÉ
+    '\uD83D\uDCF6 Installation/configuration réseau WiFi',
+    '\uD83D\uDCF6 Réparation connexion Internet',
+    '\uD83D\uDCF6 Configuration routeur/modem',
+    '\uD83D\uDCF6 Installation réseau local (LAN)',
+    '\uD83D\uDCF6 Partage imprimante en réseau',
+    '\uD83D\uDD10 Configuration VPN',
+    '\uD83D\uDD10 Sécurisation réseau WiFi',
 
-    // 💼 SERVICES PROFESSIONNELS
-    '📧 Configuration emails professionnels',
-    '📧 Migration données vers nouveau PC',
-    '📧 Sauvegarde automatique cloud',
-    '💼 Installation suite Office',
-    '💼 Installation logiciels professionnels',
-    '🎨 Installation logiciels design (Adobe, etc.)',
-    '🎮 Optimisation PC gaming',
-    '🎬 Installation logiciels montage vidéo',
+    // \uD83D\uDCBC SERVICES PROFESSIONNELS
+    '\uD83D\uDCE7 Configuration emails professionnels',
+    '\uD83D\uDCE7 Migration données vers nouveau PC',
+    '\uD83D\uDCE7 Sauvegarde automatique cloud',
+    '\uD83D\uDCBC Installation suite Office',
+    '\uD83D\uDCBC Installation logiciels professionnels',
+    '\uD83C\uDFA8 Installation logiciels design (Adobe, etc.)',
+    '\uD83C\uDFAE Optimisation PC gaming',
+    '\uD83C\uDFAC Installation logiciels montage vidéo',
 
-    // 🛡️ MAINTENANCE PRÉVENTIVE
-    '🧹 Nettoyage interne complet (poussière)',
-    '🧹 Nettoyage clavier/écran',
-    '🔋 Test diagnostic complet',
-    '🔧 Maintenance périodique (check-up)',
+    // \uD83D\uDEE1️ MAINTENANCE PRÉVENTIVE
+    '\uD83E\uDDF9 Nettoyage interne complet (poussière)',
+    '\uD83E\uDDF9 Nettoyage clavier/écran',
+    '\uD83D\uDD0B Test diagnostic complet',
+    '\uD83D\uDD27 Maintenance périodique (check-up)',
     '⚙️ Mise à jour logiciels/drivers',
 
-    // 🎨 AUTRES SERVICES
-    '🔓 Déverrouillage mot de passe BIOS',
-    '🔓 Récupération mot de passe Windows',
-    '🔓 Déverrouillage session utilisateur',
-    '📦 Assemblage PC sur mesure',
-    '📦 Upgrade composants (CPU, GPU, RAM)',
-    '🚚 Intervention à domicile/bureau',
+    // \uD83C\uDFA8 AUTRES SERVICES
+    '\uD83D\uDD13 Déverrouillage mot de passe BIOS',
+    '\uD83D\uDD13 Récupération mot de passe Windows',
+    '\uD83D\uDD13 Déverrouillage session utilisateur',
+    '\uD83D\uDCE6 Assemblage PC sur mesure',
+    '\uD83D\uDCE6 Upgrade composants (CPU, GPU, RAM)',
+    '\uD83D\uDE9A Intervention à domicile/bureau',
 
-    '🆕 Autre réparation (ajouter)'
+    '\uD83C\uDD95 Autre réparation (ajouter)'
   ],
 
   // ✅ MARQUES ORDINATEURS SUPPORTÉES (50+) - Focus Afrique francophone
   marquesOrdinateurs: [
-    // 🥇 TOP 5 AFRIQUE (expertise OBLIGATOIRE)
-    '💻 HP (toutes séries)', // #1 Afrique (EliteBook, ProBook, Pavilion)
-    '💻 Dell (toutes séries)', // #2 (Latitude, Inspiron, XPS)
-    '💻 Lenovo (ThinkPad, IdeaPad)', // #3
-    '💻 Asus (VivoBook, ROG, ZenBook)', // #4 Gaming + Pro
-    '💻 Acer (Aspire, Swift, Nitro)', // #5 Budget
+    // \uD83E\uDD47 TOP 5 AFRIQUE (expertise OBLIGATOIRE)
+    '\uD83D\uDCBB HP (toutes séries)', // #1 Afrique (EliteBook, ProBook, Pavilion)
+    '\uD83D\uDCBB Dell (toutes séries)', // #2 (Latitude, Inspiron, XPS)
+    '\uD83D\uDCBB Lenovo (ThinkPad, IdeaPad)', // #3
+    '\uD83D\uDCBB Asus (VivoBook, ROG, ZenBook)', // #4 Gaming + Pro
+    '\uD83D\uDCBB Acer (Aspire, Swift, Nitro)', // #5 Budget
 
-    // 🥈 TRÈS POPULAIRES AFRIQUE
-    '💻 Toshiba (Satellite, Tecra)', // Ancien mais beaucoup d'occasions
-    '💻 Samsung (Galaxy Book, Notebook)',
-    '💻 Compaq', // Ancien HP, beaucoup d'occasions
-    '💻 Packard Bell', // Occasion Europe
+    // \uD83E\uDD48 TRÈS POPULAIRES AFRIQUE
+    '\uD83D\uDCBB Toshiba (Satellite, Tecra)', // Ancien mais beaucoup d'occasions
+    '\uD83D\uDCBB Samsung (Galaxy Book, Notebook)',
+    '\uD83D\uDCBB Compaq', // Ancien HP, beaucoup d'occasions
+    '\uD83D\uDCBB Packard Bell', // Occasion Europe
 
-    // 💎 APPLE (expertise spécialisée = prix élevés)
-    '🍎 Apple MacBook Air (toutes générations)',
-    '🍎 Apple MacBook Pro (toutes générations)',
-    '🍎 Apple MacBook Pro M1/M2/M3',
-    '🍎 Apple MacBook Air M1/M2/M3',
-    '🍎 Apple iMac',
-    '🍎 Apple Mac Mini',
-    '🍎 Apple Mac Studio',
+    // \uD83D\uDC8E APPLE (expertise spécialisée = prix élevés)
+    '\uD83C\uDF4E Apple MacBook Air (toutes générations)',
+    '\uD83C\uDF4E Apple MacBook Pro (toutes générations)',
+    '\uD83C\uDF4E Apple MacBook Pro M1/M2/M3',
+    '\uD83C\uDF4E Apple MacBook Air M1/M2/M3',
+    '\uD83C\uDF4E Apple iMac',
+    '\uD83C\uDF4E Apple Mac Mini',
+    '\uD83C\uDF4E Apple Mac Studio',
 
-    // 🎮 GAMING SPÉCIALISÉ
-    '🎮 MSI (Gaming, Workstation)',
-    '🎮 Razer (Blade, Book)',
-    '🎮 Alienware (Dell Gaming)',
-    '🎮 Gigabyte (Aero, Aorus)',
+    // \uD83C\uDFAE GAMING SPÉCIALISÉ
+    '\uD83C\uDFAE MSI (Gaming, Workstation)',
+    '\uD83C\uDFAE Razer (Blade, Book)',
+    '\uD83C\uDFAE Alienware (Dell Gaming)',
+    '\uD83C\uDFAE Gigabyte (Aero, Aorus)',
 
-    // 🌍 AUTRES MARQUES PRÉSENTES
-    '💻 Microsoft Surface (Pro, Laptop, Book)',
-    '💻 LG Gram',
-    '💻 Huawei MateBook',
-    '💻 Fujitsu (LifeBook)',
-    '💻 Sony VAIO (ancien, occasion)',
+    // \uD83C\uDF0D AUTRES MARQUES PRÉSENTES
+    '\uD83D\uDCBB Microsoft Surface (Pro, Laptop, Book)',
+    '\uD83D\uDCBB LG Gram',
+    '\uD83D\uDCBB Huawei MateBook',
+    '\uD83D\uDCBB Fujitsu (LifeBook)',
+    '\uD83D\uDCBB Sony VAIO (ancien, occasion)',
 
-    '🆕 Autre marque ordinateur (ajouter)'
+    '\uD83C\uDD95 Autre marque ordinateur (ajouter)'
   ],
 
   // ✅ MARQUES IMPRIMANTES SUPPORTÉES (30+) - Essentielles Afrique bureautique
   marquesImprimantes: [
-    // 🥇 TOP 3 IMPRIMANTES AFRIQUE (90% du marché)
-    '🖨️ HP (LaserJet, DeskJet, OfficeJet)', // #1 absolu
-    '🖨️ Epson (EcoTank, WorkForce, L-series)', // #2 (populaire pour L380, L3110)
-    '🖨️ Canon (PIXMA, MAXIFY, imageCLASS)', // #3
+    // \uD83E\uDD47 TOP 3 IMPRIMANTES AFRIQUE (90% du marché)
+    '\uD83D\uDDA8️ HP (LaserJet, DeskJet, OfficeJet)', // #1 absolu
+    '\uD83D\uDDA8️ Epson (EcoTank, WorkForce, L-series)', // #2 (populaire pour L380, L3110)
+    '\uD83D\uDDA8️ Canon (PIXMA, MAXIFY, imageCLASS)', // #3
 
-    // 🥈 POPULAIRES
-    '🖨️ Brother (DCP, MFC, HL-series)',
-    '🖨️ Samsung (Xpress, ProXpress)', // Maintenant HP
-    '🖨️ Kyocera', // Bureaux professionnels
-    '🖨️ Ricoh', // Photocopieurs pro
+    // \uD83E\uDD48 POPULAIRES
+    '\uD83D\uDDA8️ Brother (DCP, MFC, HL-series)',
+    '\uD83D\uDDA8️ Samsung (Xpress, ProXpress)', // Maintenant HP
+    '\uD83D\uDDA8️ Kyocera', // Bureaux professionnels
+    '\uD83D\uDDA8️ Ricoh', // Photocopieurs pro
 
-    // 🌍 MARQUES BUDGET (très présentes Afrique)
-    '🖨️ Pantum', // Chinois, bon marché
-    '🖨️ Lexmark',
-    '🖨️ Xerox', // Pro
-    '🖨️ Sharp', // Photocopieurs
-    '🖨️ Konica Minolta', // Pro multifonctions
-    '🖨️ OKI',
-    '🖨️ Develop',
+    // \uD83C\uDF0D MARQUES BUDGET (très présentes Afrique)
+    '\uD83D\uDDA8️ Pantum', // Chinois, bon marché
+    '\uD83D\uDDA8️ Lexmark',
+    '\uD83D\uDDA8️ Xerox', // Pro
+    '\uD83D\uDDA8️ Sharp', // Photocopieurs
+    '\uD83D\uDDA8️ Konica Minolta', // Pro multifonctions
+    '\uD83D\uDDA8️ OKI',
+    '\uD83D\uDDA8️ Develop',
 
-    '🆕 Autre marque imprimante (ajouter)'
+    '\uD83C\uDD95 Autre marque imprimante (ajouter)'
   ],
 
-  // ✅ MODÈLES ORDINATEURS POPULAIRES PAR PAYS - 🌍 AFRIQUE FRANCOPHONE (200+)
+  // ✅ MODÈLES ORDINATEURS POPULAIRES PAR PAYS - \uD83C\uDF0D AFRIQUE FRANCOPHONE (200+)
   modelesOrdinateursPopulaires: [
     // ═══════════════════════════════════════════════════════════════
-    // 🇨🇲 CAMEROUN (Douala, Yaoundé, Bafoussam) - HP, Dell, Lenovo
+    // \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN (Douala, Yaoundé, Bafoussam) - HP, Dell, Lenovo
     // ═══════════════════════════════════════════════════════════════
-    '🇨🇲 HP EliteBook 840 G5/G6/G7/G8', // Pro bureautique
-    '🇨🇲 HP EliteBook 850 G5/G6/G7',
-    '🇨🇲 HP ProBook 450 G6/G7/G8/G9', // Très populaire PME
-    '🇨🇲 HP ProBook 440 G7/G8',
-    '🇨🇲 HP Pavilion 15', // Grand public
-    '🇨🇲 HP Pavilion Gaming 15',
-    '🇨🇲 HP 250 G7/G8', // Entrée de gamme
-    '🇨🇲 HP 15-dy/dw series',
-    '🇨🇲 HP Compaq 6200/8200 Pro', // Occasion courant
+    '\uD83C\uDDE8\uD83C\uDDF2 HP EliteBook 840 G5/G6/G7/G8', // Pro bureautique
+    '\uD83C\uDDE8\uD83C\uDDF2 HP EliteBook 850 G5/G6/G7',
+    '\uD83C\uDDE8\uD83C\uDDF2 HP ProBook 450 G6/G7/G8/G9', // Très populaire PME
+    '\uD83C\uDDE8\uD83C\uDDF2 HP ProBook 440 G7/G8',
+    '\uD83C\uDDE8\uD83C\uDDF2 HP Pavilion 15', // Grand public
+    '\uD83C\uDDE8\uD83C\uDDF2 HP Pavilion Gaming 15',
+    '\uD83C\uDDE8\uD83C\uDDF2 HP 250 G7/G8', // Entrée de gamme
+    '\uD83C\uDDE8\uD83C\uDDF2 HP 15-dy/dw series',
+    '\uD83C\uDDE8\uD83C\uDDF2 HP Compaq 6200/8200 Pro', // Occasion courant
 
-    '🇨🇲 Dell Latitude 5490/5500/5510/5520', // Pro très populaire
-    '🇨🇲 Dell Latitude 7490/7400/7410',
-    '🇨🇲 Dell Inspiron 15 3000/5000 series',
-    '🇨🇲 Dell Inspiron 14 5000',
-    '🇨🇲 Dell Vostro 3590/3500', // PME
-    '🇨🇲 Dell OptiPlex 3070/5070 (bureau)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Dell Latitude 5490/5500/5510/5520', // Pro très populaire
+    '\uD83C\uDDE8\uD83C\uDDF2 Dell Latitude 7490/7400/7410',
+    '\uD83C\uDDE8\uD83C\uDDF2 Dell Inspiron 15 3000/5000 series',
+    '\uD83C\uDDE8\uD83C\uDDF2 Dell Inspiron 14 5000',
+    '\uD83C\uDDE8\uD83C\uDDF2 Dell Vostro 3590/3500', // PME
+    '\uD83C\uDDE8\uD83C\uDDF2 Dell OptiPlex 3070/5070 (bureau)',
 
-    '🇨🇲 Lenovo ThinkPad E14/E15 Gen 2/3', // Pro populaire
-    '🇨🇲 Lenovo ThinkPad L14/L15',
-    '🇨🇲 Lenovo ThinkPad T14/T15',
-    '🇨🇲 Lenovo ThinkPad X1 Carbon', // Premium
-    '🇨🇲 Lenovo IdeaPad 3/5 series', // Grand public
-    '🇨🇲 Lenovo V14/V15', // Budget bureautique
+    '\uD83C\uDDE8\uD83C\uDDF2 Lenovo ThinkPad E14/E15 Gen 2/3', // Pro populaire
+    '\uD83C\uDDE8\uD83C\uDDF2 Lenovo ThinkPad L14/L15',
+    '\uD83C\uDDE8\uD83C\uDDF2 Lenovo ThinkPad T14/T15',
+    '\uD83C\uDDE8\uD83C\uDDF2 Lenovo ThinkPad X1 Carbon', // Premium
+    '\uD83C\uDDE8\uD83C\uDDF2 Lenovo IdeaPad 3/5 series', // Grand public
+    '\uD83C\uDDE8\uD83C\uDDF2 Lenovo V14/V15', // Budget bureautique
 
-    '🇨🇲 Asus VivoBook 15 X512/X515',
-    '🇨🇲 Asus VivoBook S15',
-    '🇨🇲 Asus TUF Gaming A15/F15', // Gaming populaire
-    '🇨🇲 Asus ROG Strix G15',
+    '\uD83C\uDDE8\uD83C\uDDF2 Asus VivoBook 15 X512/X515',
+    '\uD83C\uDDE8\uD83C\uDDF2 Asus VivoBook S15',
+    '\uD83C\uDDE8\uD83C\uDDF2 Asus TUF Gaming A15/F15', // Gaming populaire
+    '\uD83C\uDDE8\uD83C\uDDF2 Asus ROG Strix G15',
 
-    '🇨🇲 Acer Aspire 3/5/7 series',
-    '🇨🇲 Acer Swift 3',
-    '🇨🇲 Acer Nitro 5', // Gaming budget
+    '\uD83C\uDDE8\uD83C\uDDF2 Acer Aspire 3/5/7 series',
+    '\uD83C\uDDE8\uD83C\uDDF2 Acer Swift 3',
+    '\uD83C\uDDE8\uD83C\uDDF2 Acer Nitro 5', // Gaming budget
 
-    '🇨🇲 Toshiba Satellite C50/C55', // Occasion courant
-    '🇨🇲 Toshiba Tecra A50',
-
-    // ═══════════════════════════════════════════════════════════════
-    // 🇸🇳 SÉNÉGAL (Dakar, Thiès, Saint-Louis) - HP, Dell
-    // ═══════════════════════════════════════════════════════════════
-    '🇸🇳 HP EliteBook 840 G5/G6',
-    '🇸🇳 HP ProBook 450 G7/G8',
-    '🇸🇳 HP ProBook 640 G5',
-    '🇸🇳 HP Pavilion 14/15',
-    '🇸🇳 HP 250 G7',
-
-    '🇸🇳 Dell Latitude 5400/5500',
-    '🇸🇳 Dell Inspiron 15 3000',
-    '🇸🇳 Dell Vostro 3590',
-
-    '🇸🇳 Lenovo ThinkPad E14',
-    '🇸🇳 Lenovo IdeaPad 3',
-    '🇸🇳 Lenovo V15',
-
-    '🇸🇳 Asus VivoBook 15',
-    '🇸🇳 Acer Aspire 5',
+    '\uD83C\uDDE8\uD83C\uDDF2 Toshiba Satellite C50/C55', // Occasion courant
+    '\uD83C\uDDE8\uD83C\uDDF2 Toshiba Tecra A50',
 
     // ═══════════════════════════════════════════════════════════════
-    // 🇨🇮 CÔTE D'IVOIRE (Abidjan, Bouaké, Yamoussoukro)
+    // \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL (Dakar, Thiès, Saint-Louis) - HP, Dell
     // ═══════════════════════════════════════════════════════════════
-    '🇨🇮 HP EliteBook 840 G6/G7',
-    '🇨🇮 HP ProBook 450 G8',
-    '🇨🇮 HP Pavilion 15-eg',
-    '🇨🇮 HP 250 G8',
+    '\uD83C\uDDF8\uD83C\uDDF3 HP EliteBook 840 G5/G6',
+    '\uD83C\uDDF8\uD83C\uDDF3 HP ProBook 450 G7/G8',
+    '\uD83C\uDDF8\uD83C\uDDF3 HP ProBook 640 G5',
+    '\uD83C\uDDF8\uD83C\uDDF3 HP Pavilion 14/15',
+    '\uD83C\uDDF8\uD83C\uDDF3 HP 250 G7',
 
-    '🇨🇮 Dell Latitude 5510/5520',
-    '🇨🇮 Dell Inspiron 15 5000',
-    '🇨🇮 Dell Vostro 3500',
+    '\uD83C\uDDF8\uD83C\uDDF3 Dell Latitude 5400/5500',
+    '\uD83C\uDDF8\uD83C\uDDF3 Dell Inspiron 15 3000',
+    '\uD83C\uDDF8\uD83C\uDDF3 Dell Vostro 3590',
 
-    '🇨🇮 Lenovo ThinkPad E15 Gen 3',
-    '🇨🇮 Lenovo IdeaPad 5',
-    '🇨🇮 Lenovo V14',
+    '\uD83C\uDDF8\uD83C\uDDF3 Lenovo ThinkPad E14',
+    '\uD83C\uDDF8\uD83C\uDDF3 Lenovo IdeaPad 3',
+    '\uD83C\uDDF8\uD83C\uDDF3 Lenovo V15',
 
-    '🇨🇮 Asus VivoBook 15 X515',
-    '🇨🇮 Asus TUF Gaming F15',
-    '🇨🇮 Acer Aspire 5 A515',
-
-    // ═══════════════════════════════════════════════════════════════
-    // 🇲🇱 MALI (Bamako, Sikasso, Mopti)
-    // ═══════════════════════════════════════════════════════════════
-    '🇲🇱 HP ProBook 450 G7',
-    '🇲🇱 HP 250 G7',
-    '🇲🇱 HP Pavilion 14',
-    '🇲🇱 Dell Latitude 5490',
-    '🇲🇱 Dell Inspiron 14 3000',
-    '🇲🇱 Lenovo V15-IIL',
-    '🇲🇱 Lenovo IdeaPad 3 15',
-    '🇲🇱 Asus VivoBook 14',
-    '🇲🇱 Acer Aspire 3',
+    '\uD83C\uDDF8\uD83C\uDDF3 Asus VivoBook 15',
+    '\uD83C\uDDF8\uD83C\uDDF3 Acer Aspire 5',
 
     // ═══════════════════════════════════════════════════════════════
-    // 🇧🇫 BURKINA FASO (Ouagadougou, Bobo-Dioulasso)
+    // \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE (Abidjan, Bouaké, Yamoussoukro)
     // ═══════════════════════════════════════════════════════════════
-    '🇧🇫 HP ProBook 450 G6',
-    '🇧🇫 HP 250 G6/G7',
-    '🇧🇫 Dell Latitude 5480/5490',
-    '🇧🇫 Dell Inspiron 15 3000',
-    '🇧🇫 Lenovo V15',
-    '🇧🇫 Lenovo IdeaPad 3',
-    '🇧🇫 Asus VivoBook 15',
-    '🇧🇫 Acer Aspire 5',
+    '\uD83C\uDDE8\uD83C\uDDEE HP EliteBook 840 G6/G7',
+    '\uD83C\uDDE8\uD83C\uDDEE HP ProBook 450 G8',
+    '\uD83C\uDDE8\uD83C\uDDEE HP Pavilion 15-eg',
+    '\uD83C\uDDE8\uD83C\uDDEE HP 250 G8',
 
-    // ═══════════════════════════════════════════════════════════════
-    // 🇬🇦 GABON (Libreville, Port-Gentil)
-    // ═══════════════════════════════════════════════════════════════
-    '🇬🇦 HP EliteBook 840 G7/G8', // Plus de premium (secteur pétrolier)
-    '🇬🇦 HP ProBook 450 G8/G9',
-    '🇬🇦 Dell Latitude 5510/5520',
-    '🇬🇦 Dell XPS 13/15', // Plus de haut de gamme
-    '🇬🇦 Lenovo ThinkPad T14/T15',
-    '🇬🇦 MacBook Air M1/M2',
-    '🇬🇦 MacBook Pro 13"/14"',
+    '\uD83C\uDDE8\uD83C\uDDEE Dell Latitude 5510/5520',
+    '\uD83C\uDDE8\uD83C\uDDEE Dell Inspiron 15 5000',
+    '\uD83C\uDDE8\uD83C\uDDEE Dell Vostro 3500',
+
+    '\uD83C\uDDE8\uD83C\uDDEE Lenovo ThinkPad E15 Gen 3',
+    '\uD83C\uDDE8\uD83C\uDDEE Lenovo IdeaPad 5',
+    '\uD83C\uDDE8\uD83C\uDDEE Lenovo V14',
+
+    '\uD83C\uDDE8\uD83C\uDDEE Asus VivoBook 15 X515',
+    '\uD83C\uDDE8\uD83C\uDDEE Asus TUF Gaming F15',
+    '\uD83C\uDDE8\uD83C\uDDEE Acer Aspire 5 A515',
 
     // ═══════════════════════════════════════════════════════════════
-    // 🇨🇬 CONGO (Brazzaville, Pointe-Noire)
+    // \uD83C\uDDF2\uD83C\uDDF1 MALI (Bamako, Sikasso, Mopti)
     // ═══════════════════════════════════════════════════════════════
-    '🇨🇬 HP EliteBook 840 G6',
-    '🇨🇬 HP ProBook 450 G7',
-    '🇨🇬 Dell Latitude 5500',
-    '🇨🇬 Lenovo ThinkPad E14',
-    '🇨🇬 Asus VivoBook 15',
-    '🇨🇬 Acer Aspire 5',
-
-    // ═══════════════════════════════════════════════════════════════
-    // 🇨🇩 RDC (Kinshasa, Lubumbashi, Goma)
-    // ═══════════════════════════════════════════════════════════════
-    '🇨🇩 HP ProBook 450 G6/G7',
-    '🇨🇩 HP 250 G7',
-    '🇨🇩 HP Pavilion 15',
-    '🇨🇩 Dell Latitude 5490',
-    '🇨🇩 Dell Inspiron 15 3000',
-    '🇨🇩 Lenovo V14/V15',
-    '🇨🇩 Lenovo IdeaPad 3',
-    '🇨🇩 Asus VivoBook 14/15',
-    '🇨🇩 Acer Aspire 3/5',
+    '\uD83C\uDDF2\uD83C\uDDF1 HP ProBook 450 G7',
+    '\uD83C\uDDF2\uD83C\uDDF1 HP 250 G7',
+    '\uD83C\uDDF2\uD83C\uDDF1 HP Pavilion 14',
+    '\uD83C\uDDF2\uD83C\uDDF1 Dell Latitude 5490',
+    '\uD83C\uDDF2\uD83C\uDDF1 Dell Inspiron 14 3000',
+    '\uD83C\uDDF2\uD83C\uDDF1 Lenovo V15-IIL',
+    '\uD83C\uDDF2\uD83C\uDDF1 Lenovo IdeaPad 3 15',
+    '\uD83C\uDDF2\uD83C\uDDF1 Asus VivoBook 14',
+    '\uD83C\uDDF2\uD83C\uDDF1 Acer Aspire 3',
 
     // ═══════════════════════════════════════════════════════════════
-    // 🇹🇩 TCHAD (N'Djamena, Moundou)
+    // \uD83C\uDDE7\uD83C\uDDEB BURKINA FASO (Ouagadougou, Bobo-Dioulasso)
     // ═══════════════════════════════════════════════════════════════
-    '🇹🇩 HP ProBook 450 G7',
-    '🇹🇩 HP 250 G7',
-    '🇹🇩 Dell Latitude 5490',
-    '🇹🇩 Lenovo V15',
-    '🇹🇩 Asus VivoBook 15',
-
-    // ═══════════════════════════════════════════════════════════════
-    // 🇲🇬 MADAGASCAR (Antananarivo, Toamasina)
-    // ═══════════════════════════════════════════════════════════════
-    '🇲🇬 HP ProBook 450 G6/G7',
-    '🇲🇬 HP Pavilion 14',
-    '🇲🇬 Dell Inspiron 14 3000',
-    '🇲🇬 Lenovo IdeaPad 3',
-    '🇲🇬 Asus VivoBook 14',
-    '🇲🇬 Acer Aspire 3',
+    '\uD83C\uDDE7\uD83C\uDDEB HP ProBook 450 G6',
+    '\uD83C\uDDE7\uD83C\uDDEB HP 250 G6/G7',
+    '\uD83C\uDDE7\uD83C\uDDEB Dell Latitude 5480/5490',
+    '\uD83C\uDDE7\uD83C\uDDEB Dell Inspiron 15 3000',
+    '\uD83C\uDDE7\uD83C\uDDEB Lenovo V15',
+    '\uD83C\uDDE7\uD83C\uDDEB Lenovo IdeaPad 3',
+    '\uD83C\uDDE7\uD83C\uDDEB Asus VivoBook 15',
+    '\uD83C\uDDE7\uD83C\uDDEB Acer Aspire 5',
 
     // ═══════════════════════════════════════════════════════════════
-    // 🌍 MODÈLES OCCIDENTAUX PRÉSENTS EN AFRIQUE (import, expatriés)
+    // \uD83C\uDDEC\uD83C\uDDE6 GABON (Libreville, Port-Gentil)
     // ═══════════════════════════════════════════════════════════════
-    '🌍 HP Spectre x360',
-    '🌍 HP Envy 13/15',
-    '🌍 HP ZBook (workstation)',
+    '\uD83C\uDDEC\uD83C\uDDE6 HP EliteBook 840 G7/G8', // Plus de premium (secteur pétrolier)
+    '\uD83C\uDDEC\uD83C\uDDE6 HP ProBook 450 G8/G9',
+    '\uD83C\uDDEC\uD83C\uDDE6 Dell Latitude 5510/5520',
+    '\uD83C\uDDEC\uD83C\uDDE6 Dell XPS 13/15', // Plus de haut de gamme
+    '\uD83C\uDDEC\uD83C\uDDE6 Lenovo ThinkPad T14/T15',
+    '\uD83C\uDDEC\uD83C\uDDE6 MacBook Air M1/M2',
+    '\uD83C\uDDEC\uD83C\uDDE6 MacBook Pro 13"/14"',
 
-    '🌍 Dell XPS 13/15/17',
-    '🌍 Dell Precision (workstation)',
-    '🌍 Dell G3/G5/G7 Gaming',
+    // ═══════════════════════════════════════════════════════════════
+    // \uD83C\uDDE8\uD83C\uDDEC CONGO (Brazzaville, Pointe-Noire)
+    // ═══════════════════════════════════════════════════════════════
+    '\uD83C\uDDE8\uD83C\uDDEC HP EliteBook 840 G6',
+    '\uD83C\uDDE8\uD83C\uDDEC HP ProBook 450 G7',
+    '\uD83C\uDDE8\uD83C\uDDEC Dell Latitude 5500',
+    '\uD83C\uDDE8\uD83C\uDDEC Lenovo ThinkPad E14',
+    '\uD83C\uDDE8\uD83C\uDDEC Asus VivoBook 15',
+    '\uD83C\uDDE8\uD83C\uDDEC Acer Aspire 5',
 
-    '🌍 Lenovo ThinkPad X1 Extreme',
-    '🌍 Lenovo Legion 5/7 (gaming)',
-    '🌍 Lenovo Yoga (2-en-1)',
+    // ═══════════════════════════════════════════════════════════════
+    // \uD83C\uDDE8\uD83C\uDDE9 RDC (Kinshasa, Lubumbashi, Goma)
+    // ═══════════════════════════════════════════════════════════════
+    '\uD83C\uDDE8\uD83C\uDDE9 HP ProBook 450 G6/G7',
+    '\uD83C\uDDE8\uD83C\uDDE9 HP 250 G7',
+    '\uD83C\uDDE8\uD83C\uDDE9 HP Pavilion 15',
+    '\uD83C\uDDE8\uD83C\uDDE9 Dell Latitude 5490',
+    '\uD83C\uDDE8\uD83C\uDDE9 Dell Inspiron 15 3000',
+    '\uD83C\uDDE8\uD83C\uDDE9 Lenovo V14/V15',
+    '\uD83C\uDDE8\uD83C\uDDE9 Lenovo IdeaPad 3',
+    '\uD83C\uDDE8\uD83C\uDDE9 Asus VivoBook 14/15',
+    '\uD83C\uDDE8\uD83C\uDDE9 Acer Aspire 3/5',
 
-    '🌍 Asus ZenBook 13/14/15',
-    '🌍 Asus ROG Zephyrus',
-    '🌍 Asus ROG Flow',
+    // ═══════════════════════════════════════════════════════════════
+    // \uD83C\uDDF9\uD83C\uDDE9 TCHAD (N'Djamena, Moundou)
+    // ═══════════════════════════════════════════════════════════════
+    '\uD83C\uDDF9\uD83C\uDDE9 HP ProBook 450 G7',
+    '\uD83C\uDDF9\uD83C\uDDE9 HP 250 G7',
+    '\uD83C\uDDF9\uD83C\uDDE9 Dell Latitude 5490',
+    '\uD83C\uDDF9\uD83C\uDDE9 Lenovo V15',
+    '\uD83C\uDDF9\uD83C\uDDE9 Asus VivoBook 15',
 
-    '🌍 Acer Predator Helios',
-    '🌍 Acer ConceptD (créatifs)',
+    // ═══════════════════════════════════════════════════════════════
+    // \uD83C\uDDF2\uD83C\uDDEC MADAGASCAR (Antananarivo, Toamasina)
+    // ═══════════════════════════════════════════════════════════════
+    '\uD83C\uDDF2\uD83C\uDDEC HP ProBook 450 G6/G7',
+    '\uD83C\uDDF2\uD83C\uDDEC HP Pavilion 14',
+    '\uD83C\uDDF2\uD83C\uDDEC Dell Inspiron 14 3000',
+    '\uD83C\uDDF2\uD83C\uDDEC Lenovo IdeaPad 3',
+    '\uD83C\uDDF2\uD83C\uDDEC Asus VivoBook 14',
+    '\uD83C\uDDF2\uD83C\uDDEC Acer Aspire 3',
 
-    '🌍 MSI GF/GP/GE/GT series',
-    '🌍 MSI Creator/Prestige',
+    // ═══════════════════════════════════════════════════════════════
+    // \uD83C\uDF0D MODÈLES OCCIDENTAUX PRÉSENTS EN AFRIQUE (import, expatriés)
+    // ═══════════════════════════════════════════════════════════════
+    '\uD83C\uDF0D HP Spectre x360',
+    '\uD83C\uDF0D HP Envy 13/15',
+    '\uD83C\uDF0D HP ZBook (workstation)',
 
-    '🌍 Razer Blade 14/15/17',
+    '\uD83C\uDF0D Dell XPS 13/15/17',
+    '\uD83C\uDF0D Dell Precision (workstation)',
+    '\uD83C\uDF0D Dell G3/G5/G7 Gaming',
 
-    '🌍 Microsoft Surface Laptop 4/5',
-    '🌍 Microsoft Surface Pro 7/8/9',
-    '🌍 Microsoft Surface Book 3',
+    '\uD83C\uDF0D Lenovo ThinkPad X1 Extreme',
+    '\uD83C\uDF0D Lenovo Legion 5/7 (gaming)',
+    '\uD83C\uDF0D Lenovo Yoga (2-en-1)',
 
-    '🆕 Autre modèle (ajouter)'
+    '\uD83C\uDF0D Asus ZenBook 13/14/15',
+    '\uD83C\uDF0D Asus ROG Zephyrus',
+    '\uD83C\uDF0D Asus ROG Flow',
+
+    '\uD83C\uDF0D Acer Predator Helios',
+    '\uD83C\uDF0D Acer ConceptD (créatifs)',
+
+    '\uD83C\uDF0D MSI GF/GP/GE/GT series',
+    '\uD83C\uDF0D MSI Creator/Prestige',
+
+    '\uD83C\uDF0D Razer Blade 14/15/17',
+
+    '\uD83C\uDF0D Microsoft Surface Laptop 4/5',
+    '\uD83C\uDF0D Microsoft Surface Pro 7/8/9',
+    '\uD83C\uDF0D Microsoft Surface Book 3',
+
+    '\uD83C\uDD95 Autre modèle (ajouter)'
   ],
 
-  // ✅ MODÈLES IMPRIMANTES POPULAIRES - 🌍 AFRIQUE FRANCOPHONE (100+)
+  // ✅ MODÈLES IMPRIMANTES POPULAIRES - \uD83C\uDF0D AFRIQUE FRANCOPHONE (100+)
   modelesImprimantesPopulaires: [
     // ═══════════════════════════════════════════════════════════════
-    // 🥇 HP LASERJET (Pro bureautique, le PLUS fiable Afrique)
+    // \uD83E\uDD47 HP LASERJET (Pro bureautique, le PLUS fiable Afrique)
     // ═══════════════════════════════════════════════════════════════
-    '🖨️ HP LaserJet Pro M15w', // Compact, économique
-    '🖨️ HP LaserJet Pro M28w/M29w', // Multifonction petit bureau
-    '🖨️ HP LaserJet Pro M404/M405', // Standard bureau
-    '🖨️ HP LaserJet Pro M428/M429', // Multifonction pro
-    '🖨️ HP LaserJet Pro MFP M227/M230', // Très populaire PME
-    '🖨️ HP LaserJet Pro MFP M148/M149',
-    '🖨️ HP LaserJet P1102/P1102w', // Classique, beaucoup d'occasions
-    '🖨️ HP LaserJet 1020/1018', // Ancien, encore présent
-    '🖨️ HP LaserJet 1320', // Occasion courant
-    '🖨️ HP LaserJet 400/401', // Pro moyen
-    '🖨️ HP LaserJet Enterprise M506', // Grandes entreprises
-    '🖨️ HP LaserJet Enterprise MFP M528/M527',
+    '\uD83D\uDDA8️ HP LaserJet Pro M15w', // Compact, économique
+    '\uD83D\uDDA8️ HP LaserJet Pro M28w/M29w', // Multifonction petit bureau
+    '\uD83D\uDDA8️ HP LaserJet Pro M404/M405', // Standard bureau
+    '\uD83D\uDDA8️ HP LaserJet Pro M428/M429', // Multifonction pro
+    '\uD83D\uDDA8️ HP LaserJet Pro MFP M227/M230', // Très populaire PME
+    '\uD83D\uDDA8️ HP LaserJet Pro MFP M148/M149',
+    '\uD83D\uDDA8️ HP LaserJet P1102/P1102w', // Classique, beaucoup d'occasions
+    '\uD83D\uDDA8️ HP LaserJet 1020/1018', // Ancien, encore présent
+    '\uD83D\uDDA8️ HP LaserJet 1320', // Occasion courant
+    '\uD83D\uDDA8️ HP LaserJet 400/401', // Pro moyen
+    '\uD83D\uDDA8️ HP LaserJet Enterprise M506', // Grandes entreprises
+    '\uD83D\uDDA8️ HP LaserJet Enterprise MFP M528/M527',
 
     // ═══════════════════════════════════════════════════════════════
-    // 🥇 HP DESKJET / OFFICEJET (Jet d'encre grand public)
+    // \uD83E\uDD47 HP DESKJET / OFFICEJET (Jet d'encre grand public)
     // ═══════════════════════════════════════════════════════════════
-    '🖨️ HP DeskJet 2710/2720/2723', // Budget, maison
-    '🖨️ HP DeskJet 2130/2135', // Très populaire particuliers
-    '🖨️ HP DeskJet Ink Advantage 2675/2676',
-    '🖨️ HP DeskJet 3755/3760', // Compact
-    '🖨️ HP OfficeJet Pro 8010/8012/8015', // Pro couleur
-    '🖨️ HP OfficeJet Pro 8020/8025/8028',
-    '🖨️ HP OfficeJet Pro 9010/9012/9015',
-    '🖨️ HP Envy 6020/6030', // Grand public premium
-    '🖨️ HP Envy Photo 7820/7830',
+    '\uD83D\uDDA8️ HP DeskJet 2710/2720/2723', // Budget, maison
+    '\uD83D\uDDA8️ HP DeskJet 2130/2135', // Très populaire particuliers
+    '\uD83D\uDDA8️ HP DeskJet Ink Advantage 2675/2676',
+    '\uD83D\uDDA8️ HP DeskJet 3755/3760', // Compact
+    '\uD83D\uDDA8️ HP OfficeJet Pro 8010/8012/8015', // Pro couleur
+    '\uD83D\uDDA8️ HP OfficeJet Pro 8020/8025/8028',
+    '\uD83D\uDDA8️ HP OfficeJet Pro 9010/9012/9015',
+    '\uD83D\uDDA8️ HP Envy 6020/6030', // Grand public premium
+    '\uD83D\uDDA8️ HP Envy Photo 7820/7830',
 
     // ═══════════════════════════════════════════════════════════════
-    // 🥈 EPSON ECOTANK (Révolution Afrique - réservoirs rechargeables)
+    // \uD83E\uDD48 EPSON ECOTANK (Révolution Afrique - réservoirs rechargeables)
     // ═══════════════════════════════════════════════════════════════
-    '🖨️ Epson L120', // Iconique Afrique (impression seule)
-    '🖨️ Epson L220', // Multifonction basique
-    '🖨️ Epson L360', // Très populaire
-    '🖨️ Epson L380/L382', // 🔥 BEST-SELLER absolu Cameroun/CI/Sénégal
-    '🖨️ Epson L3110/L3116', // Nouvelle génération L380
-    '🖨️ Epson L3150/L3156', // WiFi intégré
-    '🖨️ Epson L3210/L3250/L3260', // Gamme 2022+
-    '🖨️ Epson L4150/L4160', // Premium EcoTank
-    '🖨️ Epson L5190', // Fax intégré
-    '🖨️ Epson L6160/L6170/L6190', // Pro A4
-    '🖨️ Epson L1800', // A3 photo (studios photo)
-    '🖨️ Epson L805/L810', // Photo sans bordure
-    '🖨️ Epson L850', // Photo multifonction
+    '\uD83D\uDDA8️ Epson L120', // Iconique Afrique (impression seule)
+    '\uD83D\uDDA8️ Epson L220', // Multifonction basique
+    '\uD83D\uDDA8️ Epson L360', // Très populaire
+    '\uD83D\uDDA8️ Epson L380/L382', // \uD83D\uDD25 BEST-SELLER absolu Cameroun/CI/Sénégal
+    '\uD83D\uDDA8️ Epson L3110/L3116', // Nouvelle génération L380
+    '\uD83D\uDDA8️ Epson L3150/L3156', // WiFi intégré
+    '\uD83D\uDDA8️ Epson L3210/L3250/L3260', // Gamme 2022+
+    '\uD83D\uDDA8️ Epson L4150/L4160', // Premium EcoTank
+    '\uD83D\uDDA8️ Epson L5190', // Fax intégré
+    '\uD83D\uDDA8️ Epson L6160/L6170/L6190', // Pro A4
+    '\uD83D\uDDA8️ Epson L1800', // A3 photo (studios photo)
+    '\uD83D\uDDA8️ Epson L805/L810', // Photo sans bordure
+    '\uD83D\uDDA8️ Epson L850', // Photo multifonction
 
     // ═══════════════════════════════════════════════════════════════
-    // 🥈 EPSON WORKFORCE (Pro bureautique)
+    // \uD83E\uDD48 EPSON WORKFORCE (Pro bureautique)
     // ═══════════════════════════════════════════════════════════════
-    '🖨️ Epson WorkForce WF-2010/2510',
-    '🖨️ Epson WorkForce WF-2630/2650',
-    '🖨️ Epson WorkForce WF-2850/2860',
-    '🖨️ Epson WorkForce WF-7710/7720', // A3
-    '🖨️ Epson WorkForce Pro WF-3720/3730',
-    '🖨️ Epson WorkForce Pro WF-C5790', // Entreprise
+    '\uD83D\uDDA8️ Epson WorkForce WF-2010/2510',
+    '\uD83D\uDDA8️ Epson WorkForce WF-2630/2650',
+    '\uD83D\uDDA8️ Epson WorkForce WF-2850/2860',
+    '\uD83D\uDDA8️ Epson WorkForce WF-7710/7720', // A3
+    '\uD83D\uDDA8️ Epson WorkForce Pro WF-3720/3730',
+    '\uD83D\uDDA8️ Epson WorkForce Pro WF-C5790', // Entreprise
 
     // ═══════════════════════════════════════════════════════════════
-    // 🥉 CANON PIXMA (Grand public, qualité photo)
+    // \uD83E\uDD49 CANON PIXMA (Grand public, qualité photo)
     // ═══════════════════════════════════════════════════════════════
-    '🖨️ Canon PIXMA E410', // Budget Afrique
-    '🖨️ Canon PIXMA E470/E477', // Populaire maison
-    '🖨️ Canon PIXMA TS3150/TS3350/TS3450', // Grand public
-    '🖨️ Canon PIXMA TS5150/TS5350',
-    '🖨️ Canon PIXMA MG2540/MG2550', // Classique
-    '🖨️ Canon PIXMA MG3640/MG3650',
-    '🖨️ Canon PIXMA G2010/G2020', // Réservoirs (concurrent Epson)
-    '🖨️ Canon PIXMA G3010/G3020', // 🔥 Populaire Afrique
-    '🖨️ Canon PIXMA G4010/G4020', // Fax intégré
-    '🖨️ Canon PIXMA G5040/G6040', // Pro
-    '🖨️ Canon PIXMA iP2770', // Occasion très courant
-    '🖨️ Canon PIXMA Pro-100', // Photo pro
+    '\uD83D\uDDA8️ Canon PIXMA E410', // Budget Afrique
+    '\uD83D\uDDA8️ Canon PIXMA E470/E477', // Populaire maison
+    '\uD83D\uDDA8️ Canon PIXMA TS3150/TS3350/TS3450', // Grand public
+    '\uD83D\uDDA8️ Canon PIXMA TS5150/TS5350',
+    '\uD83D\uDDA8️ Canon PIXMA MG2540/MG2550', // Classique
+    '\uD83D\uDDA8️ Canon PIXMA MG3640/MG3650',
+    '\uD83D\uDDA8️ Canon PIXMA G2010/G2020', // Réservoirs (concurrent Epson)
+    '\uD83D\uDDA8️ Canon PIXMA G3010/G3020', // \uD83D\uDD25 Populaire Afrique
+    '\uD83D\uDDA8️ Canon PIXMA G4010/G4020', // Fax intégré
+    '\uD83D\uDDA8️ Canon PIXMA G5040/G6040', // Pro
+    '\uD83D\uDDA8️ Canon PIXMA iP2770', // Occasion très courant
+    '\uD83D\uDDA8️ Canon PIXMA Pro-100', // Photo pro
 
     // ═══════════════════════════════════════════════════════════════
-    // 🥉 CANON MAXIFY / imageCLASS (Pro bureautique)
+    // \uD83E\uDD49 CANON MAXIFY / imageCLASS (Pro bureautique)
     // ═══════════════════════════════════════════════════════════════
-    '🖨️ Canon MAXIFY MB2740/MB2750',
-    '🖨️ Canon MAXIFY MB5440/MB5450', // PME
-    '🖨️ Canon MAXIFY GX6040/GX7040', // Réservoirs pro
-    '🖨️ Canon imageCLASS MF232w/MF236n', // Laser multifonction
-    '🖨️ Canon imageCLASS MF244/MF247',
-    '🖨️ Canon imageCLASS LBP6030', // Laser compact
-    '🖨️ Canon imageCLASS LBP2900', // Ancien, occasion courant
+    '\uD83D\uDDA8️ Canon MAXIFY MB2740/MB2750',
+    '\uD83D\uDDA8️ Canon MAXIFY MB5440/MB5450', // PME
+    '\uD83D\uDDA8️ Canon MAXIFY GX6040/GX7040', // Réservoirs pro
+    '\uD83D\uDDA8️ Canon imageCLASS MF232w/MF236n', // Laser multifonction
+    '\uD83D\uDDA8️ Canon imageCLASS MF244/MF247',
+    '\uD83D\uDDA8️ Canon imageCLASS LBP6030', // Laser compact
+    '\uD83D\uDDA8️ Canon imageCLASS LBP2900', // Ancien, occasion courant
 
     // ═══════════════════════════════════════════════════════════════
     // BROTHER (Fiabilité pro, laser abordable)
     // ═══════════════════════════════════════════════════════════════
-    '🖨️ Brother DCP-L2520D/L2540DW', // Laser multifonction
-    '🖨️ Brother DCP-T310/T510W', // Réservoirs
-    '🖨️ Brother DCP-T710W/T720DW',
-    '🖨️ Brother HL-L2305/L2315', // Laser simple
-    '🖨️ Brother HL-L2350DW/L2370DN',
-    '🖨️ Brother MFC-L2710DW/L2750DW', // Multifonction pro
-    '🖨️ Brother MFC-T910DW', // Réservoirs A4
-    '🖨️ Brother MFC-J491DW/J497DW',
+    '\uD83D\uDDA8️ Brother DCP-L2520D/L2540DW', // Laser multifonction
+    '\uD83D\uDDA8️ Brother DCP-T310/T510W', // Réservoirs
+    '\uD83D\uDDA8️ Brother DCP-T710W/T720DW',
+    '\uD83D\uDDA8️ Brother HL-L2305/L2315', // Laser simple
+    '\uD83D\uDDA8️ Brother HL-L2350DW/L2370DN',
+    '\uD83D\uDDA8️ Brother MFC-L2710DW/L2750DW', // Multifonction pro
+    '\uD83D\uDDA8️ Brother MFC-T910DW', // Réservoirs A4
+    '\uD83D\uDDA8️ Brother MFC-J491DW/J497DW',
 
     // ═══════════════════════════════════════════════════════════════
     // SAMSUNG / PANTUM (Budget, bon marché Afrique)
     // ═══════════════════════════════════════════════════════════════
-    '🖨️ Samsung Xpress M2020/M2070', // Laser budget
-    '🖨️ Samsung Xpress SL-M2026/M2070W',
-    '🖨️ Pantum P2500/P2502', // Chinois, économique
-    '🖨️ Pantum P2516', // Populaire PME Afrique
-    '🖨️ Pantum M6500/M6550', // Multifonction laser
-    '🖨️ Pantum M6559/M6609',
+    '\uD83D\uDDA8️ Samsung Xpress M2020/M2070', // Laser budget
+    '\uD83D\uDDA8️ Samsung Xpress SL-M2026/M2070W',
+    '\uD83D\uDDA8️ Pantum P2500/P2502', // Chinois, économique
+    '\uD83D\uDDA8️ Pantum P2516', // Populaire PME Afrique
+    '\uD83D\uDDA8️ Pantum M6500/M6550', // Multifonction laser
+    '\uD83D\uDDA8️ Pantum M6559/M6609',
 
     // ═══════════════════════════════════════════════════════════════
     // AUTRES MARQUES PRO (bureaux, entreprises)
     // ═══════════════════════════════════════════════════════════════
-    '🖨️ Kyocera ECOSYS M2040dn',
-    '🖨️ Kyocera ECOSYS P2040dw',
-    '🖨️ Ricoh SP C250DN',
-    '🖨️ Ricoh MP 2555/3055', // Photocopieur pro
-    '🖨️ Xerox WorkCentre 3025',
-    '🖨️ Xerox Phaser 3260',
-    '🖨️ Lexmark MS310/MS410',
+    '\uD83D\uDDA8️ Kyocera ECOSYS M2040dn',
+    '\uD83D\uDDA8️ Kyocera ECOSYS P2040dw',
+    '\uD83D\uDDA8️ Ricoh SP C250DN',
+    '\uD83D\uDDA8️ Ricoh MP 2555/3055', // Photocopieur pro
+    '\uD83D\uDDA8️ Xerox WorkCentre 3025',
+    '\uD83D\uDDA8️ Xerox Phaser 3260',
+    '\uD83D\uDDA8️ Lexmark MS310/MS410',
 
-    '🆕 Autre modèle imprimante (ajouter)'
+    '\uD83C\uDD95 Autre modèle imprimante (ajouter)'
   ],
 
   // ✅ TYPES DE PANNES (classification intelligente)
@@ -3268,37 +3268,37 @@ export const REPARATEUR_INFORMATIQUE_MODALITIES: ModalityCategory = {
     '⚡ Panne logicielle (système)',
     '⚡ Panne hardware (composants)',
     '⚡ Panne mixte (logiciel + hardware)',
-    '💧 Dégâts liquides/humidité',
-    '🔥 Surchauffe chronique',
-    '🔋 Problème batterie/alimentation',
-    '💻 Écran cassé/défectueux',
+    '\uD83D\uDCA7 Dégâts liquides/humidité',
+    '\uD83D\uDD25 Surchauffe chronique',
+    '\uD83D\uDD0B Problème batterie/alimentation',
+    '\uD83D\uDCBB Écran cassé/défectueux',
     '⌨️ Clavier/Touchpad défectueux',
-    '📶 Problème réseau/WiFi/Bluetooth',
-    '🦠 Virus/Malware/Ransomware',
-    '💾 Disque dur défaillant',
-    '🧠 Problème RAM',
-    '🎮 Problème carte graphique',
-    '🖨️ Imprimante ne fonctionne plus',
-    '🖨️ Bourrage papier récurrent',
-    '🖨️ Qualité impression dégradée',
-    '🔊 Pas de son',
-    '📸 Webcam ne fonctionne pas',
-    '🐢 Ordinateur très lent',
+    '\uD83D\uDCF6 Problème réseau/WiFi/Bluetooth',
+    '\uD83E\uDDA0 Virus/Malware/Ransomware',
+    '\uD83D\uDCBE Disque dur défaillant',
+    '\uD83E\uDDE0 Problème RAM',
+    '\uD83C\uDFAE Problème carte graphique',
+    '\uD83D\uDDA8️ Imprimante ne fonctionne plus',
+    '\uD83D\uDDA8️ Bourrage papier récurrent',
+    '\uD83D\uDDA8️ Qualité impression dégradée',
+    '\uD83D\uDD0A Pas de son',
+    '\uD83D\uDCF8 Webcam ne fonctionne pas',
+    '\uD83D\uDC22 Ordinateur très lent',
     '❌ Ne s\'allume plus',
     '♻️ Redémarrage en boucle',
-    '🔵 Écran bleu de la mort (BSOD)',
-    '🆕 Autre panne (ajouter)'
+    '\uD83D\uDD35 Écran bleu de la mort (BSOD)',
+    '\uD83C\uDD95 Autre panne (ajouter)'
   ],
 
   // ✅ DÉLAIS DE RÉPARATION (important pour clients)
   delaisReparation: [
     '⚡ Réparation Express (30 min - 2h)', // Logiciel simple, nettoyage
-    '🚀 Réparation rapide (même jour)', // Remplacement batterie, RAM, SSD
-    '📅 Réparation standard (1-3 jours)', // Réparations courantes
+    '\uD83D\uDE80 Réparation rapide (même jour)', // Remplacement batterie, RAM, SSD
+    '\uD83D\uDCC5 Réparation standard (1-3 jours)', // Réparations courantes
     '⏰ Réparation complexe (3-7 jours)', // Carte mère, micro-soudure
-    '🛠️ Sur commande pièces (7-15 jours)', // Import pièces détachées
-    '🔍 Diagnostic gratuit (30 min)', // Évaluation panne
-    '🆕 Autre délai (ajouter)'
+    '\uD83D\uDEE0️ Sur commande pièces (7-15 jours)', // Import pièces détachées
+    '\uD83D\uDD0D Diagnostic gratuit (30 min)', // Évaluation panne
+    '\uD83C\uDD95 Autre délai (ajouter)'
   ],
 
   // ✅ GARANTIES OFFERTES (confiance clients)
@@ -3311,73 +3311,73 @@ export const REPARATEUR_INFORMATIQUE_MODALITIES: ModalityCategory = {
     '✅ Garantie main d\'œuvre uniquement',
     '✅ Satisfaction garantie ou argent remboursé',
     '❌ Pas de garantie (réparation à risques)',
-    '🆕 Autre garantie (ajouter)'
+    '\uD83C\uDD95 Autre garantie (ajouter)'
   ],
 
   // ✅ SERVICES ADDITIONNELS
   servicesAdditionnels: [
-    '🚚 Déplacement à domicile/bureau',
-    '🚚 Récupération et livraison',
-    '📱 Diagnostic téléphonique gratuit',
-    '📱 Support technique à distance',
-    '💬 Support WhatsApp 24/7',
+    '\uD83D\uDE9A Déplacement à domicile/bureau',
+    '\uD83D\uDE9A Récupération et livraison',
+    '\uD83D\uDCF1 Diagnostic téléphonique gratuit',
+    '\uD83D\uDCF1 Support technique à distance',
+    '\uD83D\uDCAC Support WhatsApp 24/7',
     '⏰ Intervention urgence (week-end/soir)',
-    '💼 Contrat maintenance mensuel',
-    '💼 Support entreprise',
-    '📚 Formation utilisateur',
-    '💾 Sauvegarde données avant réparation',
-    '🎯 Devis gratuit',
-    '💰 Paiement échelonné accepté',
-    '💳 Mobile Money accepté (MTN/Orange)',
-    '🆕 Autre service (ajouter)'
+    '\uD83D\uDCBC Contrat maintenance mensuel',
+    '\uD83D\uDCBC Support entreprise',
+    '\uD83D\uDCDA Formation utilisateur',
+    '\uD83D\uDCBE Sauvegarde données avant réparation',
+    '\uD83C\uDFAF Devis gratuit',
+    '\uD83D\uDCB0 Paiement échelonné accepté',
+    '\uD83D\uDCB3 Mobile Money accepté (MTN/Orange)',
+    '\uD83C\uDD95 Autre service (ajouter)'
   ],
 
   // ✅ CERTIFICATIONS & EXPERTISE
   certifications: [
-    '🏅 Technicien certifié HP',
-    '🏅 Technicien certifié Dell',
-    '🏅 Technicien certifié Apple (ACMT)',
-    '🏅 Technicien certifié Lenovo',
-    '🏅 Technicien certifié Asus',
-    '🏅 Certification CompTIA A+',
-    '🏅 Certification Microsoft (MCP)',
-    '🏅 Certification Cisco (CCNA)',
-    '🏅 Formation micro-soudure',
-    '🏅 Formation récupération données',
-    '🏅 +5 ans d\'expérience',
-    '🏅 +10 ans d\'expérience',
-    '🏅 Diplôme ingénieur informatique',
-    '🏅 Diplôme technicien supérieur',
-    '🆕 Autre certification (ajouter)'
+    '\uD83C\uDFC5 Technicien certifié HP',
+    '\uD83C\uDFC5 Technicien certifié Dell',
+    '\uD83C\uDFC5 Technicien certifié Apple (ACMT)',
+    '\uD83C\uDFC5 Technicien certifié Lenovo',
+    '\uD83C\uDFC5 Technicien certifié Asus',
+    '\uD83C\uDFC5 Certification CompTIA A+',
+    '\uD83C\uDFC5 Certification Microsoft (MCP)',
+    '\uD83C\uDFC5 Certification Cisco (CCNA)',
+    '\uD83C\uDFC5 Formation micro-soudure',
+    '\uD83C\uDFC5 Formation récupération données',
+    '\uD83C\uDFC5 +5 ans d\'expérience',
+    '\uD83C\uDFC5 +10 ans d\'expérience',
+    '\uD83C\uDFC5 Diplôme ingénieur informatique',
+    '\uD83C\uDFC5 Diplôme technicien supérieur',
+    '\uD83C\uDD95 Autre certification (ajouter)'
   ],
 
   // ✅ ÉQUIPEMENTS & OUTILS DISPONIBLES
   equipementsAtelier: [
-    '🔬 Station de micro-soudure',
-    '🔬 Microscope réparation',
-    '🌡️ Station air chaud (reballing)',
+    '\uD83D\uDD2C Station de micro-soudure',
+    '\uD83D\uDD2C Microscope réparation',
+    '\uD83C\uDF21️ Station air chaud (reballing)',
     '⚡ Testeur alimentation',
-    '💾 Station récupération données',
-    '🔋 Testeur batterie',
-    '📺 Testeur écran LCD',
-    '🧰 Outils professionnels (tournevis, pinces)',
-    '🧪 Produits nettoyage professionnels',
-    '🔌 Pièces détachées en stock',
-    '💻 PC de test/diagnostic',
-    '🖨️ Pièces imprimantes en stock',
-    '🆕 Autre équipement (ajouter)'
+    '\uD83D\uDCBE Station récupération données',
+    '\uD83D\uDD0B Testeur batterie',
+    '\uD83D\uDCFA Testeur écran LCD',
+    '\uD83E\uDDF0 Outils professionnels (tournevis, pinces)',
+    '\uD83E\uDDEA Produits nettoyage professionnels',
+    '\uD83D\uDD0C Pièces détachées en stock',
+    '\uD83D\uDCBB PC de test/diagnostic',
+    '\uD83D\uDDA8️ Pièces imprimantes en stock',
+    '\uD83C\uDD95 Autre équipement (ajouter)'
   ],
 
   // ✅ ZONES D'INTERVENTION - S'adapte automatiquement au pays de l'utilisateur
   zones_intervention: genererZonesIntervention('CM') // Système intelligent africanLocations.ts
 };
 
-// ✅ MODALITÉS RÉPARATEUR ÉLECTROMÉNAGER - 🌍 AFRIQUE FRANCOPHONE
+// ✅ MODALITÉS RÉPARATEUR ÉLECTROMÉNAGER - \uD83C\uDF0D AFRIQUE FRANCOPHONE
 // Catégorie spécialisée pour les services de réparation/dépannage d'appareils électroménagers
 export const REPARATEUR_ELECTROMENAGER_MODALITIES: ModalityCategory = {
   // ✅ TYPES DE SERVICES DE RÉPARATION (80+) - Classés par fréquence Afrique
   typesReparation: [
-    // 🔥 RÉFRIGÉRATEURS & CONGÉLATEURS (très demandé)
+    // \uD83D\uDD25 RÉFRIGÉRATEURS & CONGÉLATEURS (très demandé)
     '❄️ Réparation réfrigérateur ne refroidit plus',
     '❄️ Réparation fuite gaz réfrigérant',
     '❄️ Remplacement compresseur frigo',
@@ -3390,38 +3390,38 @@ export const REPARATEUR_ELECTROMENAGER_MODALITIES: ModalityCategory = {
     '❄️ Rechargement gaz réfrigérant (R134a, R600a)',
     '❄️ Diagnostic panne réfrigérateur',
 
-    // 🍳 CUISINIÈRES & FOURS (très courant)
-    '🍳 Réparation cuisinière à gaz (brûleurs)',
-    '🍳 Réparation four électrique ne chauffe plus',
-    '🍳 Réparation four à gaz',
-    '🍳 Remplacement brûleurs cuisinière',
-    '🍳 Réparation allumage piezo cuisinière',
-    '🍳 Réparation thermostat four',
-    '🍳 Réparation porte de four',
-    '🍳 Nettoyage injecteurs gaz',
-    '🍳 Réparation four micro-ondes (combiné)',
-    '🍳 Remplacement résistance four électrique',
+    // \uD83C\uDF73 CUISINIÈRES & FOURS (très courant)
+    '\uD83C\uDF73 Réparation cuisinière à gaz (brûleurs)',
+    '\uD83C\uDF73 Réparation four électrique ne chauffe plus',
+    '\uD83C\uDF73 Réparation four à gaz',
+    '\uD83C\uDF73 Remplacement brûleurs cuisinière',
+    '\uD83C\uDF73 Réparation allumage piezo cuisinière',
+    '\uD83C\uDF73 Réparation thermostat four',
+    '\uD83C\uDF73 Réparation porte de four',
+    '\uD83C\uDF73 Nettoyage injecteurs gaz',
+    '\uD83C\uDF73 Réparation four micro-ondes (combiné)',
+    '\uD83C\uDF73 Remplacement résistance four électrique',
 
-    // 🧺 LAVE-LINGE & LAVE-VAISSELLE
-    '🧺 Réparation machine à laver ne vidange plus',
-    '🧺 Réparation lave-linge ne tourne plus',
-    '🧺 Remplacement pompe de vidange lave-linge',
-    '🧺 Réparation tambour lave-linge bloqué',
-    '🧺 Remplacement courroie lave-linge',
-    '🧺 Réparation roulement tambour (bruit)',
-    '🧺 Réparation électrovanne lave-linge',
-    '🧺 Réparation carte électronique lave-linge',
-    '🧺 Remplacement joint de porte lave-linge',
-    '🧺 Réparation lave-linge fuite d\'eau',
-    '🧺 Réparation lave-vaisselle ne lave plus',
-    '🧺 Réparation lave-vaisselle ne sèche plus',
+    // \uD83E\uDDFA LAVE-LINGE & LAVE-VAISSELLE
+    '\uD83E\uDDFA Réparation machine à laver ne vidange plus',
+    '\uD83E\uDDFA Réparation lave-linge ne tourne plus',
+    '\uD83E\uDDFA Remplacement pompe de vidange lave-linge',
+    '\uD83E\uDDFA Réparation tambour lave-linge bloqué',
+    '\uD83E\uDDFA Remplacement courroie lave-linge',
+    '\uD83E\uDDFA Réparation roulement tambour (bruit)',
+    '\uD83E\uDDFA Réparation électrovanne lave-linge',
+    '\uD83E\uDDFA Réparation carte électronique lave-linge',
+    '\uD83E\uDDFA Remplacement joint de porte lave-linge',
+    '\uD83E\uDDFA Réparation lave-linge fuite d\'eau',
+    '\uD83E\uDDFA Réparation lave-vaisselle ne lave plus',
+    '\uD83E\uDDFA Réparation lave-vaisselle ne sèche plus',
 
-    // 💨 SÈCHE-LINGE
-    '💨 Réparation sèche-linge ne chauffe plus',
-    '💨 Nettoyage condenseur sèche-linge',
-    '💨 Remplacement résistance sèche-linge',
-    '💨 Réparation thermostat sèche-linge',
-    '💨 Réparation tambour sèche-linge',
+    // \uD83D\uDCA8 SÈCHE-LINGE
+    '\uD83D\uDCA8 Réparation sèche-linge ne chauffe plus',
+    '\uD83D\uDCA8 Nettoyage condenseur sèche-linge',
+    '\uD83D\uDCA8 Remplacement résistance sèche-linge',
+    '\uD83D\uDCA8 Réparation thermostat sèche-linge',
+    '\uD83D\uDCA8 Réparation tambour sèche-linge',
 
     // ☕ PETIT ÉLECTROMÉNAGER (très demandé Afrique)
     '☕ Réparation machine à café expresso',
@@ -3430,44 +3430,44 @@ export const REPARATEUR_ELECTROMENAGER_MODALITIES: ModalityCategory = {
     '☕ Réparation machine à café capsules (Nespresso)',
     '☕ Réparation percolateur/cafetière électrique',
 
-    // 🔥 MICRO-ONDES
-    '🔥 Réparation micro-ondes ne chauffe plus',
-    '🔥 Remplacement magnétron micro-ondes',
-    '🔥 Réparation plateau tournant micro-ondes',
-    '🔥 Réparation minuterie micro-ondes',
-    '🔥 Réparation porte micro-ondes',
+    // \uD83D\uDD25 MICRO-ONDES
+    '\uD83D\uDD25 Réparation micro-ondes ne chauffe plus',
+    '\uD83D\uDD25 Remplacement magnétron micro-ondes',
+    '\uD83D\uDD25 Réparation plateau tournant micro-ondes',
+    '\uD83D\uDD25 Réparation minuterie micro-ondes',
+    '\uD83D\uDD25 Réparation porte micro-ondes',
 
-    // 🌀 MIXEURS, BLENDERS, ROBOTS
-    '🌀 Réparation mixeur/blender moteur grillé',
-    '🌀 Remplacement lames mixeur',
-    '🌀 Réparation robot culinaire',
-    '🌀 Réparation batteur électrique',
-    '🌀 Réparation hachoir à viande',
+    // \uD83C\uDF00 MIXEURS, BLENDERS, ROBOTS
+    '\uD83C\uDF00 Réparation mixeur/blender moteur grillé',
+    '\uD83C\uDF00 Remplacement lames mixeur',
+    '\uD83C\uDF00 Réparation robot culinaire',
+    '\uD83C\uDF00 Réparation batteur électrique',
+    '\uD83C\uDF00 Réparation hachoir à viande',
 
-    // 🔌 FER À REPASSER & PRESSING
-    '🔌 Réparation fer à repasser ne chauffe plus',
-    '🔌 Détartrage fer vapeur',
-    '🔌 Réparation centrale vapeur',
-    '🔌 Remplacement semelle fer à repasser',
-    '🔌 Réparation thermostat fer',
+    // \uD83D\uDD0C FER À REPASSER & PRESSING
+    '\uD83D\uDD0C Réparation fer à repasser ne chauffe plus',
+    '\uD83D\uDD0C Détartrage fer vapeur',
+    '\uD83D\uDD0C Réparation centrale vapeur',
+    '\uD83D\uDD0C Remplacement semelle fer à repasser',
+    '\uD83D\uDD0C Réparation thermostat fer',
 
-    // 🌬️ VENTILATEURS & CLIMATISEURS
-    '🌬️ Réparation ventilateur ne tourne plus',
-    '🌬️ Réparation climatiseur ne refroidit plus',
-    '🌬️ Rechargement gaz climatiseur',
-    '🌬️ Nettoyage filtre climatiseur',
-    '🌬️ Réparation compresseur climatiseur',
-    '🌬️ Réparation télécommande climatiseur',
-    '🌬️ Installation climatiseur split',
+    // \uD83C\uDF2C️ VENTILATEURS & CLIMATISEURS
+    '\uD83C\uDF2C️ Réparation ventilateur ne tourne plus',
+    '\uD83C\uDF2C️ Réparation climatiseur ne refroidit plus',
+    '\uD83C\uDF2C️ Rechargement gaz climatiseur',
+    '\uD83C\uDF2C️ Nettoyage filtre climatiseur',
+    '\uD83C\uDF2C️ Réparation compresseur climatiseur',
+    '\uD83C\uDF2C️ Réparation télécommande climatiseur',
+    '\uD83C\uDF2C️ Installation climatiseur split',
 
-    // 🔊 AUTRES APPAREILS
-    '🔊 Réparation bouilloire électrique',
-    '🔊 Réparation grille-pain',
-    '🔊 Réparation presse-agrumes',
-    '🔊 Réparation yaourtière',
-    '🔊 Réparation multicuiseur (rice cooker)',
-    '🔊 Réparation friteuse électrique',
-    '🔊 Réparation gaufrier/crêpière',
+    // \uD83D\uDD0A AUTRES APPAREILS
+    '\uD83D\uDD0A Réparation bouilloire électrique',
+    '\uD83D\uDD0A Réparation grille-pain',
+    '\uD83D\uDD0A Réparation presse-agrumes',
+    '\uD83D\uDD0A Réparation yaourtière',
+    '\uD83D\uDD0A Réparation multicuiseur (rice cooker)',
+    '\uD83D\uDD0A Réparation friteuse électrique',
+    '\uD83D\uDD0A Réparation gaufrier/crêpière',
 
     // ⚡ SERVICES GÉNÉRAUX
     '⚡ Diagnostic panne électroménager',
@@ -3476,22 +3476,22 @@ export const REPARATEUR_ELECTROMENAGER_MODALITIES: ModalityCategory = {
     '⚡ Installation appareil',
     '⚡ Conseil achat pièces détachées',
 
-    '🆕 Autre réparation (ajouter)'
+    '\uD83C\uDD95 Autre réparation (ajouter)'
   ],
 
   // ✅ MARQUES ÉLECTROMÉNAGER SUPPORTÉES (60+) - Focus Afrique francophone
   marquesElectromenager: [
-    // 🥇 TOP MARQUES AFRIQUE (expertise OBLIGATOIRE - 80% du marché)
-    '🔥 Binatone', // #1 petit électroménager Afrique
-    '🔥 Sokany', // #2 petit électroménager (mixeurs, blenders)
-    '🔥 Nexus', // #3 frigos, cuisinières Afrique
-    '🔥 Scanfrost', // #4 frigos Nigeria/Afrique de l'Ouest
-    '🔥 Hisense', // #5 frigos, clims Afrique
-    '🔥 Midea', // #6 frigos, clims, lave-linge
-    '🔥 Haier', // #7 frigos économiques Afrique
-    '🔥 Restpoint', // #8 électroménager Nigeria/Cameroun
+    // \uD83E\uDD47 TOP MARQUES AFRIQUE (expertise OBLIGATOIRE - 80% du marché)
+    '\uD83D\uDD25 Binatone', // #1 petit électroménager Afrique
+    '\uD83D\uDD25 Sokany', // #2 petit électroménager (mixeurs, blenders)
+    '\uD83D\uDD25 Nexus', // #3 frigos, cuisinières Afrique
+    '\uD83D\uDD25 Scanfrost', // #4 frigos Nigeria/Afrique de l'Ouest
+    '\uD83D\uDD25 Hisense', // #5 frigos, clims Afrique
+    '\uD83D\uDD25 Midea', // #6 frigos, clims, lave-linge
+    '\uD83D\uDD25 Haier', // #7 frigos économiques Afrique
+    '\uD83D\uDD25 Restpoint', // #8 électroménager Nigeria/Cameroun
 
-    // 🥈 MARQUES ASIATIQUES TRÈS POPULAIRES
+    // \uD83E\uDD48 MARQUES ASIATIQUES TRÈS POPULAIRES
     'LG', // Frigos, lave-linge, clims (populaire)
     'Samsung', // Frigos, lave-linge premium
     'TCL', // Frigos, clims économiques
@@ -3503,7 +3503,7 @@ export const REPARATEUR_ELECTROMENAGER_MODALITIES: ModalityCategory = {
     'Sanyo', // Frigos, micro-ondes
     'Nasco', // Ghana, présent Afrique de l'Ouest
 
-    // 💎 MARQUES PREMIUM (minoritaires mais présentes)
+    // \uD83D\uDC8E MARQUES PREMIUM (minoritaires mais présentes)
     'Whirlpool', // Lave-linge, frigos
     'Bosch', // Lave-linge, lave-vaisselle premium
     'Siemens', // Lave-linge, four premium
@@ -3511,7 +3511,7 @@ export const REPARATEUR_ELECTROMENAGER_MODALITIES: ModalityCategory = {
     'Miele', // Très haut de gamme (expatriés)
     'AEG', // Lave-linge, four
 
-    // 🌍 MARQUES EUROPÉENNES/OCCIDENTALES
+    // \uD83C\uDF0D MARQUES EUROPÉENNES/OCCIDENTALES
     'Beko', // Frigos, lave-linge budget
     'Hotpoint', // Lave-linge, frigos
     'Indesit', // Lave-linge, lave-vaisselle
@@ -3527,7 +3527,7 @@ export const REPARATEUR_ELECTROMENAGER_MODALITIES: ModalityCategory = {
     'Tefal', // Petit électroménager (multicuiseurs)
     'SEB', // Petit électroménager français
 
-    // 🌬️ SPÉCIALISTES CLIMATISATION
+    // \uD83C\uDF2C️ SPÉCIALISTES CLIMATISATION
     'Daikin', // Climatisation pro
     'Mitsubishi Electric', // Clims split
     'Gree', // Clims économiques Afrique
@@ -3535,7 +3535,7 @@ export const REPARATEUR_ELECTROMENAGER_MODALITIES: ModalityCategory = {
     'York', // Climatisation
     'Haier', // Clims économiques
 
-    // 🔧 AUTRES MARQUES PRÉSENTES
+    // \uD83D\uDD27 AUTRES MARQUES PRÉSENTES
     'Kenwood', // Mixeurs, robots cuisine
     'Braun', // Petit électroménager
     'Black & Decker', // Petit électroménager
@@ -3546,7 +3546,7 @@ export const REPARATEUR_ELECTROMENAGER_MODALITIES: ModalityCategory = {
     'Maytag', // Lave-linge Amérique
     'KitchenAid', // Robots cuisine premium
 
-    '🆕 Autre marque (ajouter)'
+    '\uD83C\uDD95 Autre marque (ajouter)'
   ],
 
   // ✅ TYPES D'APPAREILS (classification intelligente)
@@ -3612,39 +3612,39 @@ export const REPARATEUR_ELECTROMENAGER_MODALITIES: ModalityCategory = {
     'Ventilateur de table',
     'Brasseur d\'air',
 
-    '🆕 Autre appareil (ajouter)'
+    '\uD83C\uDD95 Autre appareil (ajouter)'
   ],
 
   // ✅ TYPES DE PANNES (classification par symptôme)
   typesPannes: [
     '❄️ Ne refroidit plus / Ne congèle plus',
-    '🔥 Ne chauffe plus',
+    '\uD83D\uDD25 Ne chauffe plus',
     '⚡ Ne s\'allume plus / Pas de courant',
-    '💧 Fuite d\'eau',
-    '💨 Fuite de gaz (réfrigérant ou gaz cuisine)',
-    '🔊 Bruit anormal / Vibrations',
+    '\uD83D\uDCA7 Fuite d\'eau',
+    '\uD83D\uDCA8 Fuite de gaz (réfrigérant ou gaz cuisine)',
+    '\uD83D\uDD0A Bruit anormal / Vibrations',
     '⏰ Minuterie/Programmateur défectueux',
-    '🚫 Tambour bloqué / Ne tourne plus',
-    '🌊 Ne vidange plus / Eau stagnante',
-    '🧊 Givre excessif',
-    '🔌 Court-circuit / Disjoncteur saute',
-    '💡 Éclairage ne fonctionne plus',
-    '🚪 Porte ne ferme plus correctement',
-    '🌡️ Température instable',
-    '🔧 Problème mécanique (courroie, roulement)',
-    '💻 Problème électronique (carte)',
-    '🆕 Autre panne (ajouter)'
+    '\uD83D\uDEAB Tambour bloqué / Ne tourne plus',
+    '\uD83C\uDF0A Ne vidange plus / Eau stagnante',
+    '\uD83E\uDDCA Givre excessif',
+    '\uD83D\uDD0C Court-circuit / Disjoncteur saute',
+    '\uD83D\uDCA1 Éclairage ne fonctionne plus',
+    '\uD83D\uDEAA Porte ne ferme plus correctement',
+    '\uD83C\uDF21️ Température instable',
+    '\uD83D\uDD27 Problème mécanique (courroie, roulement)',
+    '\uD83D\uDCBB Problème électronique (carte)',
+    '\uD83C\uDD95 Autre panne (ajouter)'
   ],
 
   // ✅ DÉLAIS DE RÉPARATION
   delaisReparation: [
     '⚡ Intervention express (même jour)',
-    '🚀 Intervention rapide (24-48h)',
-    '📅 Intervention standard (2-5 jours)',
-    '🛠️ Sur commande pièces (5-10 jours)',
-    '🔍 Diagnostic gratuit (30-60 min)',
+    '\uD83D\uDE80 Intervention rapide (24-48h)',
+    '\uD83D\uDCC5 Intervention standard (2-5 jours)',
+    '\uD83D\uDEE0️ Sur commande pièces (5-10 jours)',
+    '\uD83D\uDD0D Diagnostic gratuit (30-60 min)',
     '⏰ Urgence disponible (week-end/soir)',
-    '🆕 Autre délai (ajouter)'
+    '\uD83C\uDD95 Autre délai (ajouter)'
   ],
 
   // ✅ GARANTIES OFFERTES
@@ -3657,158 +3657,158 @@ export const REPARATEUR_ELECTROMENAGER_MODALITIES: ModalityCategory = {
     '✅ Garantie main d\'œuvre uniquement',
     '✅ Satisfaction garantie ou remboursé',
     '❌ Pas de garantie (réparation à risques)',
-    '🆕 Autre garantie (ajouter)'
+    '\uD83C\uDD95 Autre garantie (ajouter)'
   ],
 
   // ✅ SERVICES ADDITIONNELS
   servicesAdditionnels: [
-    '🚚 Déplacement à domicile gratuit',
-    '🚚 Déplacement à domicile (zone)',
-    '🚚 Enlèvement et retour appareil',
-    '📱 Diagnostic téléphonique gratuit',
-    '📱 Devis gratuit',
+    '\uD83D\uDE9A Déplacement à domicile gratuit',
+    '\uD83D\uDE9A Déplacement à domicile (zone)',
+    '\uD83D\uDE9A Enlèvement et retour appareil',
+    '\uD83D\uDCF1 Diagnostic téléphonique gratuit',
+    '\uD83D\uDCF1 Devis gratuit',
     '⏰ Intervention urgence 24/7',
     '⏰ Disponible week-end et jours fériés',
-    '💼 Contrat maintenance annuel',
-    '💼 Support entreprise/hôtel/restaurant',
-    '💳 Paiement Mobile Money (MTN/Orange)',
-    '💰 Paiement échelonné accepté',
-    '🔧 Installation incluse',
-    '🔧 Conseil technique gratuit',
-    '🛒 Vente pièces détachées',
+    '\uD83D\uDCBC Contrat maintenance annuel',
+    '\uD83D\uDCBC Support entreprise/hôtel/restaurant',
+    '\uD83D\uDCB3 Paiement Mobile Money (MTN/Orange)',
+    '\uD83D\uDCB0 Paiement échelonné accepté',
+    '\uD83D\uDD27 Installation incluse',
+    '\uD83D\uDD27 Conseil technique gratuit',
+    '\uD83D\uDED2 Vente pièces détachées',
     '♻️ Reprise ancien appareil',
-    '📚 Formation utilisateur',
-    '🆕 Autre service (ajouter)'
+    '\uD83D\uDCDA Formation utilisateur',
+    '\uD83C\uDD95 Autre service (ajouter)'
   ],
 
   // ✅ CERTIFICATIONS & EXPERTISE
   certifications: [
-    '🏅 Technicien frigoriste certifié',
-    '🏅 Certification gaz (cuisinières)',
-    '🏅 Agrément constructeur (LG, Samsung, etc.)',
-    '🏅 Formation technique fabricant',
-    '🎓 Diplôme électrotechnique',
-    '🎓 Diplôme froid et climatisation',
-    '🏆 +10 ans d\'expérience',
-    '🏆 +5 ans d\'expérience',
-    '🏆 +3 ans d\'expérience',
-    '🔧 Spécialiste froid (frigos, clims)',
-    '🔧 Spécialiste lave-linge',
-    '🔧 Spécialiste cuisinières gaz',
-    '🏪 Atelier professionnel équipé',
-    '👥 Équipe de techniciens',
-    '🆕 Autre certification (ajouter)'
+    '\uD83C\uDFC5 Technicien frigoriste certifié',
+    '\uD83C\uDFC5 Certification gaz (cuisinières)',
+    '\uD83C\uDFC5 Agrément constructeur (LG, Samsung, etc.)',
+    '\uD83C\uDFC5 Formation technique fabricant',
+    '\uD83C\uDF93 Diplôme électrotechnique',
+    '\uD83C\uDF93 Diplôme froid et climatisation',
+    '\uD83C\uDFC6 +10 ans d\'expérience',
+    '\uD83C\uDFC6 +5 ans d\'expérience',
+    '\uD83C\uDFC6 +3 ans d\'expérience',
+    '\uD83D\uDD27 Spécialiste froid (frigos, clims)',
+    '\uD83D\uDD27 Spécialiste lave-linge',
+    '\uD83D\uDD27 Spécialiste cuisinières gaz',
+    '\uD83C\uDFEA Atelier professionnel équipé',
+    '\uD83D\uDC65 Équipe de techniciens',
+    '\uD83C\uDD95 Autre certification (ajouter)'
   ],
 
   // ✅ ÉQUIPEMENTS & OUTILS DISPONIBLES
   equipementsAtelier: [
-    '🌡️ Manifold (mesure pression gaz)',
-    '💨 Pompe à vide frigorifique',
-    '🔧 Poste à souder (cuivre/aluminium)',
+    '\uD83C\uDF21️ Manifold (mesure pression gaz)',
+    '\uD83D\uDCA8 Pompe à vide frigorifique',
+    '\uD83D\uDD27 Poste à souder (cuivre/aluminium)',
     '⚡ Multimètre professionnel',
-    '🔌 Pince ampèremétrique',
-    '🧊 Station de récupération gaz',
-    '🛠️ Outillage complet électroménager',
-    '💾 Stock pièces détachées courantes',
-    '🔩 Compresseurs de rechange',
+    '\uD83D\uDD0C Pince ampèremétrique',
+    '\uD83E\uDDCA Station de récupération gaz',
+    '\uD83D\uDEE0️ Outillage complet électroménager',
+    '\uD83D\uDCBE Stock pièces détachées courantes',
+    '\uD83D\uDD29 Compresseurs de rechange',
     '⚙️ Thermostats de rechange',
-    '🔌 Résistances de rechange',
-    '💧 Pompes de vidange en stock',
-    '🚗 Camionnette atelier mobile',
-    '🆕 Autre équipement (ajouter)'
+    '\uD83D\uDD0C Résistances de rechange',
+    '\uD83D\uDCA7 Pompes de vidange en stock',
+    '\uD83D\uDE97 Camionnette atelier mobile',
+    '\uD83C\uDD95 Autre équipement (ajouter)'
   ],
 
   // ✅ ZONES D'INTERVENTION - S'adapte automatiquement au pays de l'utilisateur
   zones_intervention: genererZonesIntervention('CM') // Système intelligent africanLocations.ts
 };
 
-// ✅ MODALITÉS ORDINATEURS - 🌍 CONTEXTE AFRIQUE FRANCOPHONE (Cameroun focus)
+// ✅ MODALITÉS ORDINATEURS - \uD83C\uDF0D CONTEXTE AFRIQUE FRANCOPHONE (Cameroun focus)
 export const ORDINATEURS_MODALITIES: ModalityCategory = {
   // ✅ Types d'ordinateurs (réorganisés par popularité Afrique)
   types: [
-    // 🔥 PLUS POPULAIRES EN AFRIQUE
+    // \uD83D\uDD25 PLUS POPULAIRES EN AFRIQUE
     'PC Portable', // Le plus demandé (mobilité, coupures électriques)
     'PC de bureau', // Bureaux, cyber-cafés, entreprises
     'Laptop Gaming', // Jeunes, gaming, montage vidéo
     'Ultrabook', // Professionnels, expatriés
 
-    // 💎 APPLE (prestige, expatriés, professionnels)
+    // \uD83D\uDC8E APPLE (prestige, expatriés, professionnels)
     'MacBook Air', // Le plus accessible d'Apple
     'MacBook Pro',
     'iMac',
     'Mac Mini',
 
-    // 📱 TABLETTES & HYBRIDES
+    // \uD83D\uDCF1 TABLETTES & HYBRIDES
     'iPad', // Étudiants, professions libérales
     'Tablette Android',
     'Surface Pro', // 2-en-1 populaire
 
-    // 🏢 PROFESSIONNELS & SPÉCIALISÉS
+    // \uD83C\uDFE2 PROFESSIONNELS & SPÉCIALISÉS
     'Workstation', // Designers, architectes, ingénieurs
     'Chromebook', // Éducation, économique
     'All-in-One', // Espaces réduits
     'Mini PC', // Bureaux compacts
     'Serveur', // Entreprises
     'PC Assemblé sur mesure', // Techniciens locaux
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Marques (TOP vendues en Afrique francophone)
   marques: [
-    // 🥇 TOP 3 INCONTOURNABLES (80% du marché Cameroun)
+    // \uD83E\uDD47 TOP 3 INCONTOURNABLES (80% du marché Cameroun)
     'HP', // #1 en Afrique (rapport qualité-prix)
     'Dell', // #2 (bureaux, entreprises)
     'Lenovo', // #3 (ThinkPad pro, IdeaPad grand public)
 
-    // 🥈 TRÈS POPULAIRES (gaming, budget)
+    // \uD83E\uDD48 TRÈS POPULAIRES (gaming, budget)
     'Asus', // Gaming, ROG, VivoBook
     'Acer', // Budget-friendly, Aspire
     'Toshiba', // Ancienne popularité, occasion
 
-    // 💎 PREMIUM & APPLE
+    // \uD83D\uDC8E PREMIUM & APPLE
     'Apple', // MacBook, iPad (expatriés, créatifs)
     'Microsoft', // Surface (professionnels)
 
-    // 🎮 GAMING SPÉCIALISÉ
+    // \uD83C\uDFAE GAMING SPÉCIALISÉ
     'MSI', // Gaming haut de gamme
     'Razer', // Gaming premium
     'Alienware', // Gaming ultra-premium
 
-    // 🌍 MARQUES ASIATIQUES (bon rapport qualité-prix)
+    // \uD83C\uDF0D MARQUES ASIATIQUES (bon rapport qualité-prix)
     'Samsung', // Galaxy Tab, notebooks
     'Huawei', // MateBook (bon prix)
     'LG', // Gram (ultrabooks)
 
-    // 🔧 AUTRES & LOCAL
+    // \uD83D\uDD27 AUTRES & LOCAL
     'Gigabyte', // Gaming, composants
     'Sony', // VAIO (occasion)
     'Compaq', // Ancien HP (occasion)
     'Fujitsu', // Professionnel
-    'PC Assemblé local', // 🇨🇲 Techniciens Cameroun (Douala, Yaoundé)
-    '🆕 Autre (ajouter)'
+    'PC Assemblé local', // \uD83C\uDDE8\uD83C\uDDF2 Techniciens Cameroun (Douala, Yaoundé)
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Processeurs (du budget au premium)
   processeurs: [
-    // 💰 ENTRÉE DE GAMME (bureautique, étudiants)
+    // \uD83D\uDCB0 ENTRÉE DE GAMME (bureautique, étudiants)
     'Intel Celeron', // Le plus économique
     'Intel Pentium',
     'AMD Athlon',
     'AMD A4 / A6',
 
-    // 🔥 MILIEU DE GAMME (80% des ventes Afrique)
+    // \uD83D\uDD25 MILIEU DE GAMME (80% des ventes Afrique)
     'Intel Core i3', // Bureautique, navigation
     'Intel Core i5', // LE PLUS VENDU (polyvalent)
     'AMD Ryzen 3',
     'AMD Ryzen 5', // Excellent rapport qualité-prix
 
-    // 💎 HAUT DE GAMME (professionnels, gaming)
+    // \uD83D\uDC8E HAUT DE GAMME (professionnels, gaming)
     'Intel Core i7', // Développement, design, gaming
     'AMD Ryzen 7',
     'Intel Core i9', // Workstations, montage vidéo pro
     'AMD Ryzen 9',
 
-    // 🍎 APPLE SILICON (révolution performance/efficacité)
+    // \uD83C\uDF4E APPLE SILICON (révolution performance/efficacité)
     'Apple M1', // MacBook Air/Pro 2020-2021
     'Apple M2', // MacBook Air/Pro 2022-2023
     'Apple M2 Pro',
@@ -3817,65 +3817,65 @@ export const ORDINATEURS_MODALITIES: ModalityCategory = {
     'Apple M3 Pro',
     'Apple M3 Max',
 
-    // 🆕 NOUVEAUX INTEL
+    // \uD83C\uDD95 NOUVEAUX INTEL
     'Intel Core Ultra 5',
     'Intel Core Ultra 7',
     'Intel Core Ultra 9',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Mémoire RAM (réaliste pour Afrique)
   ram: [
-    '2GB', // 🇨🇲 Encore présent en Afrique (très ancien, cyber-cafés)
+    '2GB', // \uD83C\uDDE8\uD83C\uDDF2 Encore présent en Afrique (très ancien, cyber-cafés)
     '4GB', // Bureautique basique
-    '8GB', // 🔥 LE PLUS COURANT (bureautique, navigation, études)
-    '16GB', // 💎 PRO (développement, design, gaming)
+    '8GB', // \uD83D\uDD25 LE PLUS COURANT (bureautique, navigation, études)
+    '16GB', // \uD83D\uDC8E PRO (développement, design, gaming)
     '32GB', // Workstation, montage vidéo pro
     '64GB', // Rare, très haut de gamme
     '128GB', // Serveurs, workstations extrêmes
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Stockage (SSD vs HDD crucial en Afrique)
   stockage: [
-    // 💾 HDD (encore très présent, pas cher)
+    // \uD83D\uDCBE HDD (encore très présent, pas cher)
     '250GB HDD',
     '320GB HDD', // Ancien, occasion
     '500GB HDD', // Courant en occasion
-    '1TB HDD', // 🔥 HDD le plus vendu
+    '1TB HDD', // \uD83D\uDD25 HDD le plus vendu
     '2TB HDD',
 
     // ⚡ SSD (rapidité, résistance aux coupures électriques)
     '128GB SSD', // Chromebook, budget
-    '256GB SSD', // 🔥 Entrée de gamme moderne
-    '512GB SSD', // 💎 LE SWEET SPOT (pro, étudiants)
+    '256GB SSD', // \uD83D\uDD25 Entrée de gamme moderne
+    '512GB SSD', // \uD83D\uDC8E LE SWEET SPOT (pro, étudiants)
     '1TB SSD', // Haut de gamme
     '2TB SSD', // Premium
     '4TB SSD', // Très rare
 
-    // 🎯 DUAL STORAGE (populaire Cameroun)
-    '256GB SSD + 1TB HDD', // 🇨🇲 Combo intelligent (vitesse + stockage)
+    // \uD83C\uDFAF DUAL STORAGE (populaire Cameroun)
+    '256GB SSD + 1TB HDD', // \uD83C\uDDE8\uD83C\uDDF2 Combo intelligent (vitesse + stockage)
     '512GB SSD + 1TB HDD',
     'Dual Storage (autre config)',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Cartes graphiques
   cartesGraphiques: [
-    // 🔌 INTÉGRÉES (90% des laptops Afrique)
+    // \uD83D\uDD0C INTÉGRÉES (90% des laptops Afrique)
     'Intégrée Intel HD', // Ancien (2010-2018)
     'Intel UHD Graphics', // Moderne (2018+)
     'Intel Iris Xe', // Haut de gamme intégré
     'AMD Radeon Vega', // Ryzen intégré
     'Apple GPU intégrée', // M1/M2/M3
 
-    // 🎮 NVIDIA DÉDIÉES (gaming, design)
+    // \uD83C\uDFAE NVIDIA DÉDIÉES (gaming, design)
     'NVIDIA GeForce MX150', // Entrée de gamme dédié
     'NVIDIA GeForce MX250',
     'NVIDIA GeForce MX450',
-    'NVIDIA GeForce GTX 1650', // 🔥 Gaming budget
+    'NVIDIA GeForce GTX 1650', // \uD83D\uDD25 Gaming budget
     'NVIDIA GeForce GTX 1660 Ti',
     'NVIDIA GeForce RTX 2060',
     'NVIDIA GeForce RTX 3050', // Moderne milieu de gamme
@@ -3887,7 +3887,7 @@ export const ORDINATEURS_MODALITIES: ModalityCategory = {
     'NVIDIA GeForce RTX 4080', // Rare en Afrique
     'NVIDIA GeForce RTX 4090', // Très rare
 
-    // 🔴 AMD DÉDIÉES
+    // \uD83D\uDD34 AMD DÉDIÉES
     'AMD Radeon RX 6600M',
     'AMD Radeon RX 6700M',
     'AMD Radeon RX 7600M', // 2023+
@@ -3895,41 +3895,41 @@ export const ORDINATEURS_MODALITIES: ModalityCategory = {
 
     // ⚙️ AUTRES
     'Carte graphique dédiée (autre)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Systèmes d'exploitation (réalité Afrique)
   systemesExploitation: [
-    // 🪟 WINDOWS (95% du marché Afrique)
+    // \uD83E\uDE9F WINDOWS (95% du marché Afrique)
     'Windows 11 Pro', // Moderne
     'Windows 11 Home',
-    'Windows 10 Pro', // 🔥 LE PLUS COURANT (stable, compatible)
+    'Windows 10 Pro', // \uD83D\uDD25 LE PLUS COURANT (stable, compatible)
     'Windows 10 Home',
     'Windows 8.1', // Encore présent (occasion)
-    'Windows 7', // 🇨🇲 Encore utilisé (anciens PC, compatibilité)
+    'Windows 7', // \uD83C\uDDE8\uD83C\uDDF2 Encore utilisé (anciens PC, compatibilité)
 
-    // 🍎 APPLE (minoritaire, prestige)
+    // \uD83C\uDF4E APPLE (minoritaire, prestige)
     'macOS Sonoma', // 2023+
     'macOS Ventura', // 2022
     'macOS Monterey', // 2021
     'macOS Big Sur', // 2020
 
-    // 🐧 LINUX (techniciens, développeurs, universités)
+    // \uD83D\uDC27 LINUX (techniciens, développeurs, universités)
     'Linux Ubuntu', // Le plus populaire
     'Linux Mint',
     'Linux Fedora',
     'Kali Linux', // Cybersécurité
 
-    // 📦 AUTRES
+    // \uD83D\uDCE6 AUTRES
     'ChromeOS', // Chromebook (écoles)
     'FreeDOS', // PC vendus sans OS (piratage fréquent)
     'Sans OS', // Assemblés locaux
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ États (marché occasion ÉNORME en Afrique)
   etats: [
-    // 🆕 NEUF (minoritaire, cher)
+    // \uD83C\uDD95 NEUF (minoritaire, cher)
     'Neuf scellé sous garantie internationale', // Premium
     'Neuf sous garantie locale', // Importateurs Douala/Yaoundé
     'Neuf sans garantie', // Import Dubaï/Chine
@@ -3939,52 +3939,52 @@ export const ORDINATEURS_MODALITIES: ModalityCategory = {
     'Reconditionné grade A',
     'Reconditionné grade B',
 
-    // 💼 OCCASION (80% du marché Cameroun)
-    'Occasion - Excellent état', // 🔥 Bien entretenu, facture
+    // \uD83D\uDCBC OCCASION (80% du marché Cameroun)
+    'Occasion - Excellent état', // \uD83D\uDD25 Bien entretenu, facture
     'Occasion - Très bon état',
-    'Occasion - Bon état', // 🔥 LE PLUS COURANT
+    'Occasion - Bon état', // \uD83D\uDD25 LE PLUS COURANT
     'Occasion - État correct', // Usure visible, fonctionne bien
     'Occasion - État moyen', // Défauts cosmétiques
 
-    // 🔧 AUTRES
+    // \uD83D\uDD27 AUTRES
     'Pour pièces détachées', // Réparation
     'À réparer', // Panne connue
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Tailles d'écran (pratique Afrique)
   taillesEcran: [
-    // 💼 PORTABLES
+    // \uD83D\uDCBC PORTABLES
     '11.6"', // Chromebook, ultraportable
     '13.3"', // Ultrabook, MacBook Air
     '14"', // Nouveau standard 2023+
-    '15.6"', // 🔥 LE PLUS VENDU (polyvalent)
+    '15.6"', // \uD83D\uDD25 LE PLUS VENDU (polyvalent)
     '17.3"', // Gaming, workstation portable
 
-    // 🖥️ BUREAUX / ÉCRANS EXTERNES
+    // \uD83D\uDDA5️ BUREAUX / ÉCRANS EXTERNES
     '19"', // Ancien
     '21.5"', // Standard budget
     '23.8"', // Moderne
-    '24"', // 🔥 STANDARD BUREAU
+    '24"', // \uD83D\uDD25 STANDARD BUREAU
     '27"', // Premium, designers
     '32"', // Rare, professionnels
     '34"', // Ultrawide, très rare
 
-    // 📱 MINI
+    // \uD83D\uDCF1 MINI
     '10.1"', // Tablette
     'Sans écran (tour)', // PC de bureau
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Types d'écran
   typesEcran: [
-    // 🔆 STANDARDS (laptops budget/moyen)
+    // \uD83D\uDD06 STANDARDS (laptops budget/moyen)
     'TN', // Ancien, angles de vision limités
     'LED', // Standard
     'LCD',
 
-    // 💎 QUALITÉ (milieu/haut de gamme)
-    'IPS Full HD', // 🔥 LE PLUS COURANT (angles larges, couleurs)
+    // \uD83D\uDC8E QUALITÉ (milieu/haut de gamme)
+    'IPS Full HD', // \uD83D\uDD25 LE PLUS COURANT (angles larges, couleurs)
     'IPS', // Générique
     'VA', // Contraste élevé
 
@@ -3995,47 +3995,47 @@ export const ORDINATEURS_MODALITIES: ModalityCategory = {
     '4K UHD (3840x2160)', // Rare, premium
     '5K', // iMac
 
-    // 🎯 FONCTIONNALITÉS
+    // \uD83C\uDFAF FONCTIONNALITÉS
     'Tactile', // Tablettes, 2-en-1
     'Antireflet', // Travail extérieur
     'Mat',
     'Brillant',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Accessoires (CRITIQUES en Afrique - coupures électriques!)
   accessoires: [
     // ⚡ ÉLECTRICITÉ (PRIORITÉ #1 en Afrique)
-    '🔋 Onduleur/UPS', // 🇨🇲 INDISPENSABLE (coupures ENEO)
-    '🔌 Stabilisateur de tension',
+    '\uD83D\uDD0B Onduleur/UPS', // \uD83C\uDDE8\uD83C\uDDF2 INDISPENSABLE (coupures ENEO)
+    '\uD83D\uDD0C Stabilisateur de tension',
     '⚡ Batterie externe laptop',
 
-    // 🔌 ALIMENTATION
+    // \uD83D\uDD0C ALIMENTATION
     'Chargeur original',
     'Chargeur compatible',
     'Câble d\'alimentation',
     'Adaptateur secteur',
 
-    // 🖱️ PÉRIPHÉRIQUES
+    // \uD83D\uDDB1️ PÉRIPHÉRIQUES
     'Souris filaire',
     'Souris sans fil',
     'Clavier externe',
     'Clavier + souris combo',
     'Pavé numérique',
 
-    // 💼 TRANSPORT & PROTECTION
+    // \uD83D\uDCBC TRANSPORT & PROTECTION
     'Sac de transport rembourré',
     'Housse de protection',
     'Sacoche professionnelle',
 
-    // 📷 AUDIO/VIDÉO
+    // \uD83D\uDCF7 AUDIO/VIDÉO
     'Webcam HD',
     'Casque audio',
     'Écouteurs',
     'Micro externe',
     'Enceintes USB',
 
-    // 🔗 CONNECTIVITÉ
+    // \uD83D\uDD17 CONNECTIVITÉ
     'Hub USB (4+ ports)', // Manque de ports fréquent
     'Adaptateur USB-C vers HDMI',
     'Adaptateur USB-C vers USB-A',
@@ -4043,72 +4043,72 @@ export const ORDINATEURS_MODALITIES: ModalityCategory = {
     'Câble VGA', // Encore utilisé (projecteurs anciens)
     'Dock station',
 
-    // 💾 STOCKAGE
+    // \uD83D\uDCBE STOCKAGE
     'Disque dur externe 1TB',
     'Disque dur externe 2TB',
     'SSD externe',
     'Clé USB 32GB+',
 
-    // 🖥️ AFFICHAGE
+    // \uD83D\uDDA5️ AFFICHAGE
     'Support/Stand réglable',
     'Refroidisseur laptop (ventilateur)',
     'Écran externe',
 
-    // 🧹 ENTRETIEN
+    // \uD83E\uDDF9 ENTRETIEN
     'Kit de nettoyage',
     'Protection clavier',
     'Film protecteur écran',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Usages (contexte Cameroun)
   usages: [
-    // 📊 BUREAUTIQUE & PROFESSIONNEL (majoritaire)
-    'Bureautique', // 🔥 Word, Excel, navigation (90% des besoins)
+    // \uD83D\uDCCA BUREAUTIQUE & PROFESSIONNEL (majoritaire)
+    'Bureautique', // \uD83D\uDD25 Word, Excel, navigation (90% des besoins)
     'Télétravail', // Post-COVID, freelance
     'Comptabilité/Gestion', // Sage, EBP
     'Administration',
 
-    // 🎓 ÉDUCATION
-    'Étudiant', // 🔥 Université, mémoires, recherche
+    // \uD83C\uDF93 ÉDUCATION
+    'Étudiant', // \uD83D\uDD25 Université, mémoires, recherche
     'Enseignement', // Professeurs
     'Recherche académique',
 
-    // 🎨 CRÉATION & DESIGN
+    // \uD83C\uDFA8 CRÉATION & DESIGN
     'Design graphique', // Photoshop, Illustrator
     'Montage vidéo', // Mariage, événements
     'Montage photo',
     'Architecture/CAO', // AutoCAD, ArchiCAD, Revit
     'Ingénierie/DAO',
 
-    // 💻 TECHNIQUE
+    // \uD83D\uDCBB TECHNIQUE
     'Développement web', // Programmeurs
     'Développement logiciel',
     'Data Science',
     'Cybersécurité',
 
-    // 🎮 GAMING & DIVERTISSEMENT
+    // \uD83C\uDFAE GAMING & DIVERTISSEMENT
     'Gaming', // FIFA, GTA, Call of Duty, Fortnite
     'Streaming Twitch/YouTube',
     'Musique/MAO', // Production musicale, Afrobeat
 
-    // 🏢 SPÉCIALISÉ
-    'Cyber-café', // 🇨🇲 Très courant Cameroun
+    // \uD83C\uDFE2 SPÉCIALISÉ
+    'Cyber-café', // \uD83C\uDDE8\uD83C\uDDF2 Très courant Cameroun
     'Point de vente/Caisse',
     'Serveur/NAS',
 
-    // 🎯 GÉNÉRAL
+    // \uD83C\uDFAF GÉNÉRAL
     'Polyvalent', // Tout usage
     'Navigation internet basique',
     'Multimédia (films, musique)',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Logiciels inclus (réalité Afrique)
   logiciels: [
-    // 📦 SUITES BUREAUTIQUES
+    // \uD83D\uDCE6 SUITES BUREAUTIQUES
     'Microsoft Office 2021',
     'Microsoft Office 2019',
     'Microsoft Office 2016', // Encore courant
@@ -4116,58 +4116,58 @@ export const ORDINATEURS_MODALITIES: ModalityCategory = {
     'LibreOffice', // Gratuit, populaire
     'WPS Office',
 
-    // 🍎 APPLE
+    // \uD83C\uDF4E APPLE
     'Suite iWork (Pages, Numbers, Keynote)',
     'Final Cut Pro', // Montage vidéo
     'Logic Pro', // Musique
 
-    // 🎨 ADOBE (version ou piratage...)
+    // \uD83C\uDFA8 ADOBE (version ou piratage...)
     'Adobe Photoshop',
     'Adobe Illustrator',
     'Adobe Premiere Pro',
     'Adobe After Effects',
     'Adobe Creative Cloud',
 
-    // 🏗️ CAO/DAO
+    // \uD83C\uDFD7️ CAO/DAO
     'AutoCAD', // Architecture, ingénierie
     'ArchiCAD',
     'SketchUp',
     'Revit',
 
-    // 🔒 SÉCURITÉ
+    // \uD83D\uDD12 SÉCURITÉ
     'Antivirus Kaspersky',
     'Antivirus Avast',
     'Antivirus AVG',
     'Windows Defender (intégré)',
 
-    // 💻 DÉVELOPPEMENT
+    // \uD83D\uDCBB DÉVELOPPEMENT
     'Visual Studio Code',
     'Python',
     'MySQL',
     'XAMPP',
 
-    // 🎮 GAMING
+    // \uD83C\uDFAE GAMING
     'Steam',
     'Epic Games',
 
-    // 📊 COMPTABILITÉ (Cameroun)
-    'Sage Comptabilité', // 🇨🇲 Très populaire entreprises
+    // \uD83D\uDCCA COMPTABILITÉ (Cameroun)
+    'Sage Comptabilité', // \uD83C\uDDE8\uD83C\uDDF2 Très populaire entreprises
     'EBP Gestion',
     'Ciel Comptabilité',
 
-    // 🎯 AUTRES
+    // \uD83C\uDFAF AUTRES
     'Pack logiciels professionnels',
     'Logiciels préinstallés par vendeur',
     'Aucun logiciel',
     'Windows seul',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Claviers (langues et rétroéclairage)
   claviers: [
-    // 🌍 DISPOSITIONS (CRITIQUE pour Afrique francophone)
-    'AZERTY français', // 🔥 INDISPENSABLE Cameroun (français)
+    // \uD83C\uDF0D DISPOSITIONS (CRITIQUE pour Afrique francophone)
+    'AZERTY français', // \uD83D\uDD25 INDISPENSABLE Cameroun (français)
     'QWERTY US',
     'QWERTY UK',
     'QWERTZ allemand',
@@ -4178,24 +4178,24 @@ export const ORDINATEURS_MODALITIES: ModalityCategory = {
     'Rétroéclairé (couleur unique)',
     'Non rétroéclairé', // Standard
 
-    // 🎮 TYPES
+    // \uD83C\uDFAE TYPES
     'Mécanique', // Gaming, durabilité
     'Chiclet', // Macbook, ultrabook
     'Membrane', // Standard économique
     'Silencieux',
 
-    // 🎯 CARACTÉRISTIQUES
+    // \uD83C\uDFAF CARACTÉRISTIQUES
     'Pavé numérique intégré', // 15.6" et +
     'Sans pavé numérique', // 13-14"
     'Multimédia (touches médias)',
     'Résistant à l\'eau',
 
-    // 🔗 CONNECTIVITÉ
+    // \uD83D\uDD17 CONNECTIVITÉ
     'Sans fil Bluetooth',
     'Sans fil 2.4GHz',
     'Filaire USB',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -4232,7 +4232,7 @@ export const MOBILIER_MODALITIES: ModalityCategory = {
     // Jardin / Extérieur
     'Salon de jardin 4 places', 'Salon de jardin 6 places', 'Chaise longue', 'Parasol',
     'Table pliante extérieur', 'Banc de jardin',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Types de mobilier (15+)
@@ -4245,7 +4245,7 @@ export const MOBILIER_MODALITIES: ModalityCategory = {
     'Placard', 'Meuble de rangement', 'Coffre',
     'Coiffeuse', 'Console', 'Paravent',
     'Banc', 'Pouf', 'Repose-pieds',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Catégories par pièce/usage (10+)
@@ -4253,7 +4253,7 @@ export const MOBILIER_MODALITIES: ModalityCategory = {
     'Salon', 'Chambre à coucher', 'Salle à manger', 'Bureau/Travail',
     'Cuisine', 'Salle de bain', 'Entrée/Couloir', 'Rangement',
     'Enfant/Bébé', 'Jardin/Extérieur', 'Commercial/Professionnel',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Matériaux (20+) - ENRICHI avec essences locales
@@ -4269,7 +4269,7 @@ export const MOBILIER_MODALITIES: ModalityCategory = {
     'Plastique', 'Résine', 'PVC',
     'Pierre', 'Marbre', 'Granite',
     'Combinaison bois et métal', 'Combinaison bois et verre',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Styles (15+)
@@ -4280,7 +4280,7 @@ export const MOBILIER_MODALITIES: ModalityCategory = {
     'Industriel', 'Loft', 'Vintage', 'Rétro',
     'Scandinave', 'Bohème', 'Baroque', 'Art déco',
     'Ethnique', 'Exotique',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: États (6+)
@@ -4289,7 +4289,7 @@ export const MOBILIER_MODALITIES: ModalityCategory = {
     'Excellent état (comme neuf)', 'Très bon état',
     'Bon état (usage normal)', 'État moyen (quelques défauts)',
     'À rénover', 'Pièce de récupération',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Marques et fabricants (40+) - Focus Cameroun et Afrique
@@ -4309,7 +4309,7 @@ export const MOBILIER_MODALITIES: ModalityCategory = {
     'Home24', 'Wayfair', 'Zara Home',
     // Importation Chine/Asie
     'Import Chine', 'Import Dubaï', 'Import Turquie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Couleurs principales (25+)
@@ -4322,7 +4322,7 @@ export const MOBILIER_MODALITIES: ModalityCategory = {
     'Rouge', 'Bordeaux', 'Orange', 'Jaune', 'Rose',
     'Doré', 'Argenté', 'Cuivré',
     'Multicolore', 'Bicolore',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Garanties (8+)
@@ -4331,7 +4331,7 @@ export const MOBILIER_MODALITIES: ModalityCategory = {
     'Garantie 5 ans', 'Garantie à vie (structure)',
     'Garantie fabricant', 'Garantie vendeur',
     'Sans garantie', 'Occasion sans garantie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Dimensions standards (pour certains types)
@@ -4343,7 +4343,7 @@ export const MOBILIER_MODALITIES: ModalityCategory = {
     '60x60 cm', '80x80 cm', '90x90 cm', '120x80 cm', '140x90 cm', '160x90 cm', '180x90 cm',
     // Canapés (largeur)
     '150 cm (2 places)', '180 cm (2-3 places)', '200 cm (3 places)', '220 cm (3-4 places)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Services associés
@@ -4352,7 +4352,7 @@ export const MOBILIER_MODALITIES: ModalityCategory = {
     'Montage offert', 'Montage sur demande (payant)',
     'Service après-vente', 'Retour possible (7 jours)', 'Échange possible',
     'Paiement échelonné possible', 'Réservation possible',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Caractéristiques spéciales
@@ -4364,7 +4364,7 @@ export const MOBILIER_MODALITIES: ModalityCategory = {
     'Résistant aux UV', 'Pour extérieur',
     'Ergonomique', 'Orthopédique (matelas)',
     'Design personnalisable', 'Sur mesure possible',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -4379,35 +4379,35 @@ export const ALIMENTS_MODALITIES: ModalityCategory = {
     'Poulet entier', 'Cuisses de poulet', 'Ailes de poulet', 'Poisson frais',
     'Tilapia', 'Maquereau frais', 'Crevettes', 'Viande de bœuf', 'Viande de porc',
     'Viande de chèvre', 'Lait frais', 'Yaourt', 'Œufs', 'Fromage',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Catégories d'aliments
   categories: [
     'Fruits', 'Légumes', 'Viande', 'Poisson', 'Volaille', 'Produits laitiers',
     'Céréales', 'Épices', 'Boissons', 'Pâtisserie', 'Conserves', 'Surgelés',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types (aligné sur agroalimentaire)
   types: [
     'Fruits frais', 'Légumes frais', 'Viande fraîche', 'Poisson frais', 'Volaille fraîche',
     'Produits laitiers frais', 'Œufs', 'Pain et pâtisserie', 'Charcuterie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Origines
   origines: [
     'Cameroun', 'Locale', 'Afrique de l\'Ouest', 'Europe', 'Asie', 'Amérique',
     'Bio', 'Équitable', 'Traditionnelle', 'Importée',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Unités de mesure
   unites: [
     'kg', 'g', 'L', 'mL', 'pièce', 'botte', 'paquet', 'barquette',
     'filet', 'cagette', 'bouquet', 'grappe', 'douzaine',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Conditionnements
@@ -4415,28 +4415,28 @@ export const ALIMENTS_MODALITIES: ModalityCategory = {
     'En vrac', 'Barquette', 'Filet', 'Sachet', 'Cagette',
     'Botte', 'Bouquet', 'Grappe', 'Plateau', 'Emballé sous vide',
     'Emballage carton', 'Emballage plastique', 'Portion individuelle',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Méthodes de conservation
   conservation: [
     'Frais (2-8°C)', 'Surgelé (-18°C)', 'Température ambiante', 'Au sec',
     'Sous vide', 'Conserve', 'Séché', 'Fumé', 'Salé', 'Mariné',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Labels qualité
   labels_qualite: [
     'Bio', 'AB (Agriculture Biologique)', 'Label Rouge', 'AOC', 'AOP', 'IGP',
     'Commerce équitable', 'Fermier', 'Artisanal', 'Local', 'Frais du jour',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Certifications
   certifications: [
     'Bio', 'Halal', 'Kasher', 'Vegan', 'Sans gluten', 'Équitable',
     'Sans OGM', 'Sans pesticides', 'Agriculture raisonnée',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Allergènes
@@ -4444,17 +4444,17 @@ export const ALIMENTS_MODALITIES: ModalityCategory = {
     'Gluten', 'Lait', 'Lactose', 'Œufs', 'Poisson', 'Crustacés',
     'Arachides', 'Fruits à coque', 'Soja', 'Céleri', 'Moutarde',
     'Sésame', 'Sulfites',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
 // ✅ MODALITÉS AGROALIMENTAIRE (produits transformés, conditionnés)
 export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
   // ✅ FUSION ENRICHIE: Noms de produits - Produits secs, transformés ET frais avec TERMINOLOGIES LOCALES
-  // 🌍 Inclut les noms courants dans chaque pays d'Afrique francophone
+  // \uD83C\uDF0D Inclut les noms courants dans chaque pays d'Afrique francophone
   noms_produits: [
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🌾 CÉRÉALES & FÉCULENTS (40+)
+    // \uD83C\uDF3E CÉRÉALES & FÉCULENTS (40+)
     // ═══════════════════════════════════════════════════════════════════════════
     // Riz (variations locales)
     'Riz', 'Riz parfumé', 'Riz basmati', 'Riz Uncle Ben\'s', 'Riz cargo', 'Riz étuvé',
@@ -4474,10 +4474,10 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
 
     // Pain & Pâtisserie (terminologie locale)
     'Pain', 'Pain de mie', 'Baguette', 'Pain sucré', 'Croissant',
-    '🇨🇲 Puff-puff (beignet)', '🇨🇲 Beignet haricot (accara)', '🇸🇳 Fataya',
+    '\uD83C\uDDE8\uD83C\uDDF2 Puff-puff (beignet)', '\uD83C\uDDE8\uD83C\uDDF2 Beignet haricot (accara)', '\uD83C\uDDF8\uD83C\uDDF3 Fataya',
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🥛 PRODUITS LAITIERS (25+)
+    // \uD83E\uDD5B PRODUITS LAITIERS (25+)
     // ═══════════════════════════════════════════════════════════════════════════
     // Lait en poudre (marques populaires)
     'Lait Nido', 'Lait Peak', 'Lait Dano', 'Lait Three Crowns', 'Lait Cowbell',
@@ -4492,22 +4492,22 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     'Fromage fondu', 'Fromage râpé', 'Fromage blanc',
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🥚 ŒUFS (variations)
+    // \uD83E\uDD5A ŒUFS (variations)
     // ═══════════════════════════════════════════════════════════════════════════
     'Œufs', 'Œufs de poule', 'Œufs bio', 'Œufs fermiers', 'Œufs locaux',
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🛢️ HUILES & MATIÈRES GRASSES (30+)
+    // \uD83D\uDEE2️ HUILES & MATIÈRES GRASSES (30+)
     // ═══════════════════════════════════════════════════════════════════════════
     // Huiles avec marques locales
-    '🇨🇲 Huile SABC', '🇨🇲 Huile Cicam', '🇨🇲 Huile Azur', '🇨🇲 Huile Beauté d\'Afrique',
-    '🇨🇮 Huile Moossou', '🇨🇮 Huile TRITURAF',
+    '\uD83C\uDDE8\uD83C\uDDF2 Huile SABC', '\uD83C\uDDE8\uD83C\uDDF2 Huile Cicam', '\uD83C\uDDE8\uD83C\uDDF2 Huile Azur', '\uD83C\uDDE8\uD83C\uDDF2 Huile Beauté d\'Afrique',
+    '\uD83C\uDDE8\uD83C\uDDEE Huile Moossou', '\uD83C\uDDE8\uD83C\uDDEE Huile TRITURAF',
     'Huile d\'arachide', 'Huile de palme rouge', 'Huile de palmiste',
     'Huile de tournesol', 'Huile d\'olive', 'Huile de soja', 'Huile de coco',
     'Huile végétale', 'Huile mélangée',
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🧂 SEL, SUCRE, ÉPICES (40+)
+    // \uD83E\uDDC2 SEL, SUCRE, ÉPICES (40+)
     // ═══════════════════════════════════════════════════════════════════════════
     // Sel
     'Sel fin', 'Sel de mer', 'Sel gemme', 'Sel iodé', 'Gros sel',
@@ -4521,22 +4521,22 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     'Poudre Maggi', 'Jumbo en poudre',
 
     // Épices (avec noms locaux africains)
-    'Poivre noir', 'Poivre moulu', '🇨🇲 Poivre de Penja', 'Poivre blanc',
-    'Piment', 'Piment rouge', 'Piment fort', '🇨🇲 Top Piment',
+    'Poivre noir', 'Poivre moulu', '\uD83C\uDDE8\uD83C\uDDF2 Poivre de Penja', 'Poivre blanc',
+    'Piment', 'Piment rouge', 'Piment fort', '\uD83C\uDDE8\uD83C\uDDF2 Top Piment',
     'Curry', 'Curcuma', 'Gingembre moulu', 'Ail en poudre', 'Oignon en poudre',
-    '🇨🇲 Njansan', '🇨🇲 Djansang', '🇨🇲 Mbongo', '🇨🇲 4 côtés',
+    '\uD83C\uDDE8\uD83C\uDDF2 Njansan', '\uD83C\uDDE8\uD83C\uDDF2 Djansang', '\uD83C\uDDE8\uD83C\uDDF2 Mbongo', '\uD83C\uDDE8\uD83C\uDDF2 4 côtés',
     'Cannelle', 'Muscade', 'Clou de girofle', 'Thym', 'Laurier',
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🍅 SAUCES & CONDIMENTS (30+)
+    // \uD83C\uDF45 SAUCES & CONDIMENTS (30+)
     // ═══════════════════════════════════════════════════════════════════════════
     'Ketchup', 'Ketchup Heinz', 'Mayonnaise', 'Moutarde',
-    'Sauce tomate', '🇳🇬 Concentré Tasty Tom', '🇳🇬 Concentré Gino',
+    'Sauce tomate', '\uD83C\uDDF3\uD83C\uDDEC Concentré Tasty Tom', '\uD83C\uDDF3\uD83C\uDDEC Concentré Gino',
     'Concentré de tomate', 'Sauce piquante', 'Harissa', 'Sauce soja',
     'Vinaigre', 'Vinaigre blanc', 'Vinaigre de vin',
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🥫 CONSERVES (30+)
+    // \uD83E\uDD6B CONSERVES (30+)
     // ═══════════════════════════════════════════════════════════════════════════
     // Poissons en conserve
     'Sardines', 'Sardines à l\'huile', 'Sardines sauce tomate',
@@ -4564,35 +4564,35 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     'Lipton', 'Thé noir', 'Thé vert', 'Thé en sachet', 'Infusion',
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🥤 BOISSONS (50+ avec marques locales)
+    // \uD83E\uDD64 BOISSONS (50+ avec marques locales)
     // ═══════════════════════════════════════════════════════════════════════════
     // Eaux (par pays)
-    '🇨🇲 Eau Zena', '🇨🇲 Eau Supermount', '🇨🇲 Eau Tangui', '🇨🇲 Source du Pays',
-    '🇨🇮 Eau Celia', '🇨🇮 Eau Awoulaba',
-    '🇸🇳 Eau Kirene', '🇸🇳 Eau Lafi',
-    '🇲🇱 Eau Djoliba',
+    '\uD83C\uDDE8\uD83C\uDDF2 Eau Zena', '\uD83C\uDDE8\uD83C\uDDF2 Eau Supermount', '\uD83C\uDDE8\uD83C\uDDF2 Eau Tangui', '\uD83C\uDDE8\uD83C\uDDF2 Source du Pays',
+    '\uD83C\uDDE8\uD83C\uDDEE Eau Celia', '\uD83C\uDDE8\uD83C\uDDEE Eau Awoulaba',
+    '\uD83C\uDDF8\uD83C\uDDF3 Eau Kirene', '\uD83C\uDDF8\uD83C\uDDF3 Eau Lafi',
+    '\uD83C\uDDF2\uD83C\uDDF1 Eau Djoliba',
     'Eau minérale', 'Eau de source', 'Eau gazeuse',
 
     // Sodas
     'Coca-Cola', 'Fanta', 'Sprite', 'Schweppes', 'Orangina',
 
     // Jus (avec marques locales)
-    '🇨🇲 Jus Top Ananas', '🇨🇲 Jus Zena', '🇸🇳 Jus Bissap', '🇸🇳 Jus Kirene',
+    '\uD83C\uDDE8\uD83C\uDDF2 Jus Top Ananas', '\uD83C\uDDE8\uD83C\uDDF2 Jus Zena', '\uD83C\uDDF8\uD83C\uDDF3 Jus Bissap', '\uD83C\uDDF8\uD83C\uDDF3 Jus Kirene',
     'Jus d\'orange', 'Jus de fruits', 'Jus Tropicana', 'Nectar de fruits',
     'Jus de mangue', 'Jus d\'ananas', 'Jus de goyave',
 
     // Boissons maltées (très populaires)
-    '🇳🇬 Maltina', '🇳🇬 Supermalt', 'Boisson maltée',
+    '\uD83C\uDDF3\uD83C\uDDEC Maltina', '\uD83C\uDDF3\uD83C\uDDEC Supermalt', 'Boisson maltée',
 
     // Energy drinks
     'Red Bull', 'Monster', 'Boisson énergisante',
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🍪 SNACKS & CONFISERIES (40+)
+    // \uD83C\uDF6A SNACKS & CONFISERIES (40+)
     // ═══════════════════════════════════════════════════════════════════════════
     // Biscuits
     'Biscuits', 'Cookies', 'Petit-beurre', 'Biscuits salés',
-    '🇸🇳 Biscuits Patisen', 'Biscuits Marie', 'Gaufrettes',
+    '\uD83C\uDDF8\uD83C\uDDF3 Biscuits Patisen', 'Biscuits Marie', 'Gaufrettes',
 
     // Chips & snacks salés
     'Chips', 'Chips Lay\'s', 'Chips Pringles', 'Chips locales',
@@ -4604,11 +4604,11 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
 
     // Confiseries
     'Bonbons', 'Chocolat', 'Chocolat au lait', 'Chocolat noir',
-    'Chewing-gum', 'Caramels', '🇸🇳 Niokobok', 'Sucettes',
+    'Chewing-gum', 'Caramels', '\uD83C\uDDF8\uD83C\uDDF3 Niokobok', 'Sucettes',
     'Barres chocolatées', 'Barres céréales',
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🍎 FRUITS FRAIS (60+ avec noms locaux africains)
+    // \uD83C\uDF4E FRUITS FRAIS (60+ avec noms locaux africains)
     // ═══════════════════════════════════════════════════════════════════════════
     // Bananes (très important en Afrique !)
     'Banane plantain', 'Banane douce', 'Banane poyo', 'Plantain mûr', 'Plantain vert',
@@ -4626,17 +4626,17 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     'Pastèque', 'Melon', 'Melon d\'eau',
 
     // Fruits spécifiques africains (avec noms locaux)
-    '🇨🇲 Safou (prune africaine)', 'Corossol', 'Fruit de la passion',
+    '\uD83C\uDDE8\uD83C\uDDF2 Safou (prune africaine)', 'Corossol', 'Fruit de la passion',
     'Goyave', 'Maracuja',
 
     // Autres fruits
     'Pomme', 'Poire', 'Raisin', 'Fraises', 'Kiwi',
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🥬 LÉGUMES FRAIS (70+ avec noms locaux africains)
+    // \uD83E\uDD6C LÉGUMES FRAIS (70+ avec noms locaux africains)
     // ═══════════════════════════════════════════════════════════════════════════
     // Légumes feuilles (très populaires en Afrique !)
-    '🇨🇲 Ndolé (feuilles amères)', '🇨🇲 Koki (feuilles taro)', '🇨🇲 Okok (eru/gnetum)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Ndolé (feuilles amères)', '\uD83C\uDDE8\uD83C\uDDF2 Koki (feuilles taro)', '\uD83C\uDDE8\uD83C\uDDF2 Okok (eru/gnetum)',
     'Feuilles de manioc (pondu)', 'Épinards', 'Épinards africains',
     'Amarante (gboma)', 'Oseille (bissap feuilles)', 'Morelle noire',
 
@@ -4660,10 +4660,10 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     'Citrouille', 'Courge', 'Potiron',
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🍗 VIANDES & VOLAILLES (50+ avec terminologie locale)
+    // \uD83C\uDF57 VIANDES & VOLAILLES (50+ avec terminologie locale)
     // ═══════════════════════════════════════════════════════════════════════════
     // Poulet (très consommé !)
-    'Poulet entier', 'Poulet découpé', 'Poulet fermier', '🇨🇲 Poulet bicyclette (local)',
+    'Poulet entier', 'Poulet découpé', 'Poulet fermier', '\uD83C\uDDE8\uD83C\uDDF2 Poulet bicyclette (local)',
     'Cuisses de poulet', 'Ailes de poulet', 'Blanc de poulet', 'Pilons de poulet',
     'Gésiers', 'Foie de poulet', 'Poulet congelé', 'Poulet frais',
 
@@ -4676,7 +4676,7 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
 
     // Mouton & chèvre (très populaire)
     'Viande de mouton', 'Côtelettes d\'agneau', 'Gigot d\'agneau',
-    'Viande de chèvre', 'Chèvre découpée', '🇨🇲 Cabri (chevreau)',
+    'Viande de chèvre', 'Chèvre découpée', '\uD83C\uDDE8\uD83C\uDDF2 Cabri (chevreau)',
 
     // Porc
     'Viande de porc', 'Côtes de porc', 'Rôti de porc', 'Porc haché',
@@ -4686,7 +4686,7 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     'Abats', 'Foie', 'Rognons', 'Tripes', 'Pieds de bœuf',
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🐟 POISSONS & FRUITS DE MER (40+ avec espèces locales)
+    // \uD83D\uDC1F POISSONS & FRUITS DE MER (40+ avec espèces locales)
     // ═══════════════════════════════════════════════════════════════════════════
     // Poissons frais (espèces africaines)
     'Poisson frais', 'Tilapia', 'Carpe', 'Poisson-chat (Clarias)',
@@ -4701,13 +4701,13 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     'Crabes', 'Calamars', 'Poulpe', 'Moules', 'Huîtres',
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🥜 LÉGUMINEUSES & GRAINES (20+)
+    // \uD83E\uDD5C LÉGUMINEUSES & GRAINES (20+)
     // ═══════════════════════════════════════════════════════════════════════════
     'Haricots secs', 'Haricots noirs', 'Niébé (haricot local)',
     'Lentilles', 'Lentilles corail', 'Lentilles vertes',
     'Soja', 'Graines de soja', 'Arachide décortiquée', 'Arachide en coque',
 
-    '🆕 Autre produit (ajouter)'
+    '\uD83C\uDD95 Autre produit (ajouter)'
   ],
 
   // ✅ FUSION: Types - Produits secs ET frais
@@ -4721,7 +4721,7 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     // ✅ Produits frais (fusionnés de ALIMENTS_MODALITIES)
     'Fruits frais', 'Légumes frais', 'Viande fraîche', 'Poisson frais', 'Volaille fraîche',
     'Produits laitiers frais', 'Œufs', 'Pain et pâtisserie', 'Charcuterie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FUSION: Catégories - Produits secs ET frais
@@ -4733,42 +4733,42 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     // ✅ Produits frais (fusionnés de ALIMENTS_MODALITIES)
     'Fruits', 'Légumes', 'Viande', 'Poisson', 'Volaille', 'Céréales', 'Épices',
     'Pâtisserie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de riz
   riz: [
     'Riz blanc', 'Riz brun/complet', 'Riz parfumé', 'Riz basmati', 'Riz jasmin',
     'Riz cargo', 'Riz étuvé', 'Riz gluant', 'Riz long grain', 'Riz court grain',
-    'Riz sauvage', 'Riz noir', 'Riz rouge', '🆕 Autre (ajouter)'
+    'Riz sauvage', 'Riz noir', 'Riz rouge', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de pâtes
   pates: [
     'Spaghetti', 'Macaroni', 'Penne', 'Fusilli', 'Tagliatelles', 'Lasagnes',
     'Vermicelles', 'Coquillettes', 'Farfalle', 'Rigatoni', 'Nouilles chinoises',
-    'Pâtes complètes', 'Pâtes sans gluten', '🆕 Autre (ajouter)'
+    'Pâtes complètes', 'Pâtes sans gluten', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types d'huiles
   huiles: [
     'Huile d\'arachide', 'Huile de palme', 'Huile de tournesol', 'Huile d\'olive',
     'Huile de soja', 'Huile de colza', 'Huile de coco', 'Huile de sésame',
-    'Huile végétale mélangée', 'Huile de maïs', '🆕 Autre (ajouter)'
+    'Huile végétale mélangée', 'Huile de maïs', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de farines
   farines: [
     'Farine de blé', 'Farine de maïs', 'Farine de manioc', 'Farine de riz',
     'Farine complète', 'Farine de mil', 'Farine de sorgho', 'Farine de soja',
-    'Farine sans gluten', 'Farine d\'avoine', '🆕 Autre (ajouter)'
+    'Farine sans gluten', 'Farine d\'avoine', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Condiments et sauces
   condiments: [
     'Ketchup', 'Mayonnaise', 'Moutarde', 'Sauce tomate', 'Sauce soja', 'Vinaigre',
     'Sauce piquante', 'Maggi/Jumbo', 'Bouillon cube', 'Concentré de tomate',
-    'Sauce barbecue', 'Harissa', 'Piment', '🆕 Autre (ajouter)'
+    'Sauce barbecue', 'Harissa', 'Piment', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Épices
@@ -4776,28 +4776,28 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     'Poivre', 'Sel', 'Curry', 'Curcuma', 'Gingembre', 'Ail en poudre',
     'Oignon en poudre', 'Paprika', 'Cannelle', 'Muscade', 'Clou de girofle',
     'Thym', 'Laurier', 'Persil', 'Coriandre', 'Piment de Cayenne',
-    'Quatre-épices', 'Mélange d\'épices', '🆕 Autre (ajouter)'
+    'Quatre-épices', 'Mélange d\'épices', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Boissons
   boissons: [
     'Eau minérale', 'Eau gazeuse', 'Jus de fruits', 'Sodas', 'Boissons énergisantes',
     'Thé', 'Café', 'Lait en poudre', 'Lait concentré', 'Chocolat en poudre',
-    'Sirop', 'Bissap', 'Gingembre', '🆕 Autre (ajouter)'
+    'Sirop', 'Bissap', 'Gingembre', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Conserves
   conserves: [
     'Sardines', 'Thon', 'Maquereau', 'Tomates pelées', 'Haricots', 'Pois chiches',
     'Maïs', 'Champignons', 'Fruits au sirop', 'Légumes en conserve',
-    'Plats cuisinés', '🆕 Autre (ajouter)'
+    'Plats cuisinés', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Snacks et confiseries
   snacks: [
     'Chips', 'Biscuits', 'Cacahuètes', 'Noix de cajou', 'Bonbons', 'Chocolats',
     'Chewing-gum', 'Pop-corn', 'Biscuits apéritif', 'Barres céréales',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FUSION: Unités de mesure - Produits secs ET frais
@@ -4807,7 +4807,7 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     'sac', 'carton', 'pot', 'tube', 'flacon',
     // ✅ Unités frais (fusionnées de ALIMENTS_MODALITIES)
     'botte', 'barquette', 'filet', 'cagette', 'bouquet', 'grappe', 'douzaine',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FUSION: Conditionnements - Produits secs ET frais
@@ -4824,7 +4824,7 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     // ✅ Conditionnements frais (fusionnés de ALIMENTS_MODALITIES)
     'Barquette', 'Filet', 'Cagette', 'Botte', 'Bouquet', 'Grappe', 'Plateau',
     'Emballé sous vide', 'Emballage carton', 'Emballage plastique',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Formats/Conditionnements (gardé pour compatibilité)
@@ -4833,7 +4833,7 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     '1L', '2L', '5L', '20L',
     'Sachet', 'Boîte', 'Bouteille', 'Bidon', 'Sac',
     'Pack de 6', 'Pack de 12', 'Pack de 24',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Marques populaires (exemples camerounais et internationaux)
@@ -4842,21 +4842,21 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     'Maggi', 'Knorr', 'Heinz', 'Coca-Cola', 'Pepsi', 'Sprite', 'Fanta',
     'Lipton', 'Nescafé', 'Nido', 'Peak', 'Danone', 'Président',
     'La Vache qui rit', 'Jumbo', 'Nivea', 'Ferrero', 'Mars', 'Snickers',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Origine/Provenance
   origines: [
     'Cameroun', 'Locale', 'Afrique de l\'Ouest', 'Europe', 'Asie',
     'Amérique', 'Thaïlande', 'Inde', 'Pakistan', 'France', 'Italie',
-    'Chine', 'Vietnam', '🆕 Autre (ajouter)'
+    'Chine', 'Vietnam', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Certifications et labels
   certifications: [
     'Bio', 'Halal', 'Kasher', 'Sans OGM', 'Commerce équitable',
     'Label rouge', 'Agriculture biologique', 'Sans gluten', 'Vegan',
-    'Sans lactose', 'Sans sucre ajouté', '🆕 Autre (ajouter)'
+    'Sans lactose', 'Sans sucre ajouté', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Labels qualité spécifiques
@@ -4866,7 +4866,7 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     'STG (Spécialité Traditionnelle Garantie)', 'Commerce équitable', 'Max Havelaar',
     'Rainforest Alliance', 'Fair Trade', 'Ecocert', 'Demeter', 'Nature & Progrès',
     'EU Organic', 'USDA Organic', 'JAS (Japanese Agricultural Standard)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Allergènes courants
@@ -4878,7 +4878,7 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     'Noix', 'Noisettes', 'Amandes', 'Noix de cajou', 'Pistaches',
     'Soja', 'Céleri', 'Moutarde', 'Sésame', 'Lupin',
     'Sulfites', 'Anhydride sulfureux',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Conservation
@@ -4889,7 +4889,7 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
     'Sous vide', 'Atmosphère contrôlée', 'Lyophilisé',
     // ✅ Conservation frais (fusionnés de ALIMENTS_MODALITIES)
     'Conserve', 'Séché', 'Fumé', 'Salé', 'Mariné',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -4898,8 +4898,8 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
 const ALIMENTS_MODALITIES_DEPRECATED = ALIMENTS_MODALITIES;
 
 // ✅ MODALITÉS VIN ET LIQUEUR (COMMERCIALISATION) - AFRIQUE FRANCOPHONE
-// 🎯 Périmètre : Vins, Champagnes, Liqueurs, Spiritueux (Commercialisation grossiste/détail)
-// 🌍 Contexte : Marques internationales + productions africaines + liqueurs locales
+// \uD83C\uDFAF Périmètre : Vins, Champagnes, Liqueurs, Spiritueux (Commercialisation grossiste/détail)
+// \uD83C\uDF0D Contexte : Marques internationales + productions africaines + liqueurs locales
 export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
   // ✅ TYPES DE PRODUITS (40+ types)
   types_produits: [
@@ -4936,7 +4936,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     'Odontol (liqueur camerounaise)', 'Top Ananas (liqueur)', 'Mandjou (liqueur mangue)',
     'Bili-Bili (bière traditionnelle)', 'Tchapalo (bière de mil)', 'Koutoukou (alcool de palme)',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CATÉGORIES (8 catégories principales)
@@ -4949,7 +4949,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     'Liqueurs & Apéritifs',
     'Vins fortifiés (Porto, Sherry, Vermouth)',
     'Alcools traditionnels africains',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ RÉGIONS/APPELLATIONS (50+ régions)
@@ -4975,7 +4975,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     'Cameroun (productions locales)', 'Côte d\'Ivoire', 'Sénégal', 'Tunisie (Coteaux de Carthage)',
     'Maroc (Meknès, Casablanca)', 'Algérie (Mascara, Médéa)', 'Kenya', 'Éthiopie',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MARQUES/PRODUCTEURS (60+ marques - Focus Afrique francophone)
@@ -5009,7 +5009,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     'Top Pamplemousse', 'Top Orange', 'Tangui (liqueur)', 'Kulu (liqueur gingembre)',
 
     'Sans marque', 'Artisan local', 'Production familiale',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CÉPAGES (30+ cépages principaux)
@@ -5024,7 +5024,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     'Ugni Blanc', 'Colombard',
     // Assemblages
     'Assemblage Bordeaux', 'Assemblage Rhône', 'Assemblage méditerranéen',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MILLÉSIMES (Années de production)
@@ -5032,7 +5032,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     '2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017', '2016', '2015',
     '2014', '2013', '2012', '2011', '2010', '2009', '2008', '2007', '2006', '2005',
     '2000-2005 (grande année)', '1990-2000 (collection)', 'Avant 1990 (vintage)',
-    'Non millésimé', 'Sans année', '🆕 Autre (ajouter)'
+    'Non millésimé', 'Sans année', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FORMATS/CONTENANCES (15+ formats)
@@ -5042,7 +5042,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     '3L (Jéroboam)', '5L (Réhoboam)', '6L (Mathusalem)',
     'Carton 6 bouteilles', 'Carton 12 bouteilles', 'Caisse bois 6 bouteilles',
     'Caisse bois 12 bouteilles', 'Palette (grossiste)', 'Container (importation)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ DEGRÉ D'ALCOOL (Par paliers)
@@ -5050,7 +5050,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     '0-8% (Vins légers)', '8-10%', '10-12%', '12-13%', '13-14%', '14-15%',
     '15-16% (Vins puissants)', '16-20% (Vins fortifiés)', '20-30% (Liqueurs)',
     '30-40% (Spiritueux)', '40-50% (Spiritueux forts)', '50%+ (Spiritueux très forts)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE COMMERCIALISATION (Businessmodel)
@@ -5060,7 +5060,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     'Importation directe (container)', 'Dépôt-vente (consignation)',
     'Vente événementielle (mariage, fête)', 'Vente en gros (minimum 50 unités)',
     'Vente export (international)', 'Vente aux professionnels (bars, restaurants, hôtels)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CERTIFICATIONS/LABELS (15+ certifications)
@@ -5070,7 +5070,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     'Bio / Agriculture Biologique', 'Biodynamie (Demeter)', 'Haute Valeur Environnementale (HVE)',
     'Terra Vitis', 'Vin nature / Vin naturel', 'Vegan', 'Sans sulfites ajoutés',
     'Fair Trade / Commerce équitable', 'Rainforest Alliance',
-    'Sans certification', '🆕 Autre (ajouter)'
+    'Sans certification', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉTATS (Conditions de vente)
@@ -5080,7 +5080,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     'Bon état (stockage correct)', 'État moyen (stockage variable)',
     'Collection (bouteille rare, vintage)', 'Occasion (déjà ouverte, entamée)',
     'À consommer rapidement (proche DLC)', 'Déstockage (fin de série)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES D'EMBALLAGE
@@ -5089,7 +5089,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     'Carton standard (6 bouteilles)', 'Carton renforcé (12 bouteilles)',
     'Caisse bois (collection)', 'Coffret cadeau (1-3 bouteilles)',
     'Étui carton individuel', 'Film plastique (lot)', 'Palette filmée (grossiste)',
-    'Sans emballage (vrac)', '🆕 Autre (ajouter)'
+    'Sans emballage (vrac)', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ PAYS D'ORIGINE (30+ pays producteurs)
@@ -5105,7 +5105,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     'Australie', 'Nouvelle-Zélande',
     // Autres
     'Liban', 'Israël', 'Turquie', 'Géorgie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ OCCASIONS/UTILISATIONS
@@ -5114,7 +5114,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     'Mariage', 'Anniversaire', 'Fête', 'Cérémonie traditionnelle',
     'Cadeau d\'affaires', 'Réception professionnelle', 'Bar / Restaurant / Hôtel',
     'Collection / Investissement', 'Revente / Commerce',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TEMPÉRATURES DE SERVICE (Conseils)
@@ -5123,7 +5123,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     '10-12°C (Vins blancs complexes, Rosés)', '12-14°C (Vins rouges légers)',
     '14-16°C (Vins rouges moyens)', '16-18°C (Vins rouges puissants)',
     '18-20°C (Vins rouges tanniques)', 'Température ambiante',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ACCORDS METS-VINS
@@ -5131,7 +5131,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     'Viandes rouges', 'Viandes blanches', 'Poissons', 'Fruits de mer',
     'Fromages', 'Charcuterie', 'Plats épicés (cuisine africaine)',
     'Plats en sauce', 'Grillades', 'Desserts', 'Apéritif seul',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ QUANTITÉS MINIMALES (Pour grossistes)
@@ -5139,7 +5139,7 @@ export const VIN_LIQUEUR_MODALITIES: ModalityCategory = {
     '1 bouteille (détail)', '6 bouteilles (carton)', '12 bouteilles (caisse)',
     '24 bouteilles (2 cartons)', '50 bouteilles (grossiste)', '100 bouteilles (grossiste)',
     '500 bouteilles (importateur)', '1000+ bouteilles (distributeur)',
-    'Sans minimum', '🆕 Autre (ajouter)'
+    'Sans minimum', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -5163,7 +5163,7 @@ export const LIVRES_FOURNITURES_MODALITIES: ModalityCategory = {
     'Feuilles', 'Papier millimétré', 'Papier calque', 'Carnet de notes',
     // Autres (2)
     'Calculatrice scientifique', 'Trousse géométrie complète',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NIVEAUX SCOLAIRES CAMEROUN (Détaillé par classes)
@@ -5187,7 +5187,7 @@ export const LIVRES_FOURNITURES_MODALITIES: ModalityCategory = {
     'BTS (Brevet de Technicien Supérieur)', 'Formation professionnelle',
     // Autres
     'Tous niveaux', 'Autodidacte',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MATIÈRES SCOLAIRES CAMEROUN (Par cycles)
@@ -5207,7 +5207,7 @@ export const LIVRES_FOURNITURES_MODALITIES: ModalityCategory = {
     'Dessin technique', 'Électricité', 'Mécanique', 'Électronique',
     // Toutes matières
     'Toutes matières',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉDITEURS CAMEROUN (Programmes MENESRES + Locaux)
@@ -5224,7 +5224,7 @@ export const LIVRES_FOURNITURES_MODALITIES: ModalityCategory = {
     'Pilot', 'Uni-ball', 'Monteverde', 'Caran d\'Ache', 'Faber-Castell',
     // Marques calculatrices
     'Casio', 'Texas Instruments', 'HP (Hewlett-Packard)', 'Sharp',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉTATS ARTICLES (Détaillés pour prix occasion)
@@ -5233,7 +5233,7 @@ export const LIVRES_FOURNITURES_MODALITIES: ModalityCategory = {
     'Excellent état (comme neuf, très peu utilisé)', 'Bon état (peu utilisé, presque comme neuf)',
     'État moyen (utilisé mais correct)', 'Occasion (utilisation normale)',
     'Usagé (utilisé intensément mais fonctionnel)', 'À rénover (utilisable mais nécessite réparation)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ LANGUES (Contexte Cameroun bilingue)
@@ -5241,7 +5241,7 @@ export const LIVRES_FOURNITURES_MODALITIES: ModalityCategory = {
     'Français (uniquement)', 'Anglais (uniquement)',
     'Bilingue (Français-Anglais)', 'Espagnol', 'Allemand', 'Arabe',
     'Langues nationales (Duala, Ewondo, etc.)', 'Multilingue',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ PROGRAMMES MENESRES (Référentiels officiels)
@@ -5253,7 +5253,7 @@ export const LIVRES_FOURNITURES_MODALITIES: ModalityCategory = {
     'OGE (Office du Baccalauréat) - Préparation Bac',
     'CAPES - Préparation concours enseignement',
     'BEPC - Préparation brevet',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE CALCULATRICES (Par niveau)
@@ -5261,25 +5261,25 @@ export const LIVRES_FOURNITURES_MODALITIES: ModalityCategory = {
     'Calculatrice simple', 'Calculatrice scientifique',
     'Calculatrice graphique (Casio fx-9750GIII, TI-83 Plus)',
     'Calculatrice programmable', 'Calculatrice financière',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FORMATS DE CAHIERS
   formatsCahiers: [
     '17x22 (Petit format)', '21x29,7 (A4)', '24x32 (Grand format)',
-    'A5 (14,8x21)', 'Spirale 17x22', 'Spirale A4', '🆕 Autre (ajouter)'
+    'A5 (14,8x21)', 'Spirale 17x22', 'Spirale A4', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ COULEURS FOURNITURES (Pour stylos, marqueurs, etc.)
   couleursFournitures: [
     'Noir', 'Bleu', 'Rouge', 'Vert', 'Jaune', 'Orange', 'Rose', 'Violet',
     'Marron', 'Gris', 'Or', 'Argenté', 'Transparent', 'Multicolore',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
 // ✅ MODALITÉS QUINCAILLERIE - REFONTE COMPLÈTE
-// 🎯 Périmètre : UNIQUEMENT Quincaillerie (visserie, outils, matériaux, peinture, serrurerie)
+// \uD83C\uDFAF Périmètre : UNIQUEMENT Quincaillerie (visserie, outils, matériaux, peinture, serrurerie)
 // ✅ INCLUT : Accessoires électriques et plomberie (petits matériaux)
 // ❌ EXCLUS : Gros produits électriques (voir ELECTRICITE_MODALITIES), Gros sanitaires (voir SANITAIRE_MODALITIES), Services (voir PLOMBERIE_MODALITIES)
 export const QUINCAILLERIE_MODALITIES: ModalityCategory = {
@@ -5343,7 +5343,7 @@ export const QUINCAILLERIE_MODALITIES: ModalityCategory = {
     'Chaîne acier', 'Câble acier', 'Corde', 'Sandow', 'Sangle',
     'Cadre photo', 'Miroir', 'Tringle à rideau', 'Support étagère',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CATÉGORIES (10 catégories principales)
@@ -5358,7 +5358,7 @@ export const QUINCAILLERIE_MODALITIES: ModalityCategory = {
     'Accessoires plomberie',
     'Fixations & Accrochage',
     'Accessoires quincaillerie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE PRODUITS (25+ types)
@@ -5379,10 +5379,10 @@ export const QUINCAILLERIE_MODALITIES: ModalityCategory = {
     'Dominos & Wagos', 'Gaines électriques', 'Douilles & Supports', 'Prises & Interrupteurs basiques',
     // Accessoires plomberie
     'Raccords & Coudes', 'Téflon & Joints', 'Flexibles & Siphons', 'Colliers & Fixations',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // ✅ MARQUES (45+ marques - 🌍 AFRIQUE FRANCOPHONE COMPLÈTE)
+  // ✅ MARQUES (45+ marques - \uD83C\uDF0D AFRIQUE FRANCOPHONE COMPLÈTE)
   marques: [
     // Outils manuels
     'Stanley', 'Facom', 'Bahco', 'Irwin', 'Wiha', 'Wera', 'KS Tools',
@@ -5394,31 +5394,31 @@ export const QUINCAILLERIE_MODALITIES: ModalityCategory = {
     'Vachette', 'Bricard', 'Picard', 'Abus', 'Master Lock', 'Yale', 'Fichet',
 
     // ✅ MATÉRIAUX - AFRIQUE FRANCOPHONE COMPLÈTE
-    // 🇨🇲 CAMEROUN
+    // \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN
     'Cimencam (Cameroun)', 'Lafarge Cameroun', 'Dangote Cement Cameroun',
-    // 🇨🇮 CÔTE D'IVOIRE
+    // \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE
     'SCA Côte d\'Ivoire', 'Cimaf Côte d\'Ivoire', 'Lafarge Côte d\'Ivoire',
-    // 🇸🇳 SÉNÉGAL
+    // \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL
     'Sococim (Sénégal)', 'Les Ciments du Sahel (Sénégal)', 'Dangote Cement Sénégal',
-    // 🇲🇱 MALI
+    // \uD83C\uDDF2\uD83C\uDDF1 MALI
     'Diamond Cement Mali', 'Ciments du Mali',
-    // 🇧🇫 BURKINA FASO
+    // \uD83C\uDDE7\uD83C\uDDEB BURKINA FASO
     'Cim Burkina', 'ScanTogo Mines',
-    // 🇳🇪 NIGER
+    // \uD83C\uDDF3\uD83C\uDDEA NIGER
     'SN Sonichar (Niger)',
-    // 🇹🇬 TOGO
+    // \uD83C\uDDF9\uD83C\uDDEC TOGO
     'CimTogo', 'Diamond Cement Togo',
-    // 🇨🇬 CONGO-BRAZZAVILLE
+    // \uD83C\uDDE8\uD83C\uDDEC CONGO-BRAZZAVILLE
     'SCA Congo',
-    // 🇬🇦 GABON
+    // \uD83C\uDDEC\uD83C\uDDE6 GABON
     'Cimgabon',
-    // 🇧🇯 BÉNIN
+    // \uD83C\uDDE7\uD83C\uDDEF BÉNIN
     'SCB Lafarge Bénin', 'Ciments du Bénin',
-    // 🇹🇩 TCHAD
+    // \uD83C\uDDF9\uD83C\uDDE9 TCHAD
     'Ciments du Tchad',
-    // 🇨🇩 RDC
+    // \uD83C\uDDE8\uD83C\uDDE9 RDC
     'PPC Barnet (RDC)', 'Cilu (RDC)',
-    // 🇳🇬 NIGERIA (voisin important)
+    // \uD83C\uDDF3\uD83C\uDDEC NIGERIA (voisin important)
     'Dangote Cement Nigeria', 'BUA Cement Nigeria', 'Lafarge Africa Nigeria',
 
     // Internationales multi-pays
@@ -5426,21 +5426,21 @@ export const QUINCAILLERIE_MODALITIES: ModalityCategory = {
 
     // Marques locales/budget
     'Sans marque', 'Marque locale', 'Importation Chine', 'Importation Turquie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MATÉRIAUX (12+ matériaux)
   materiaux: [
     'Acier', 'Acier inoxydable', 'Acier galvanisé', 'Laiton', 'Aluminium',
     'Zinc', 'Plastique', 'PVC', 'Bois', 'Béton', 'Ciment', 'Fer',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FINITIONS/COULEURS (15+)
   finitions: [
     'Naturel', 'Brut', 'Zingué', 'Galvanisé', 'Chromé', 'Nickelé', 'Laitonné',
     'Noir', 'Blanc', 'Gris', 'Marron', 'Doré', 'Argenté', 'Peint', 'Verni',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉTATS (7 états)
@@ -5451,7 +5451,7 @@ export const QUINCAILLERIE_MODALITIES: ModalityCategory = {
     'Bon état',
     'Occasion',
     'À réparer',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ GARANTIES (7 types)
@@ -5462,7 +5462,7 @@ export const QUINCAILLERIE_MODALITIES: ModalityCategory = {
     'Garantie fabricant 1 an',
     'Garantie vendeur 3 mois',
     'Sans garantie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ UTILISATIONS (8 usages)
@@ -5475,7 +5475,7 @@ export const QUINCAILLERIE_MODALITIES: ModalityCategory = {
     'Bricolage',
     'Usage intensif',
     'Usage extérieur',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NORMES & CERTIFICATIONS (10+)
@@ -5483,7 +5483,7 @@ export const QUINCAILLERIE_MODALITIES: ModalityCategory = {
     'CE', 'NF', 'ISO 9001', 'EN 197-1 (Ciment)', 'A2P (serrurerie)',
     'DIN (norme allemande)', 'AFNOR', 'Norme européenne',
     'Certifié usage extérieur', 'Sans norme',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ UNITÉS DE VENTE (15+)
@@ -5491,14 +5491,14 @@ export const QUINCAILLERIE_MODALITIES: ModalityCategory = {
     'Pièce', 'Lot de 10', 'Lot de 50', 'Lot de 100', 'Lot de 500', 'Lot de 1000',
     'Sac 25kg', 'Sac 50kg', 'Tonne', 'm³ (mètre cube)', 'm² (mètre carré)',
     'Mètre linéaire', 'Litre', 'Pot 1L', 'Pot 2.5L', 'Pot 5L', 'Pot 10L',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ DIAMÈTRES/DIMENSIONS (Visserie - 15+)
   dimensions: [
     'M3', 'M4', 'M5', 'M6', 'M8', 'M10', 'M12', 'M14', 'M16', 'M20',
     '3mm', '4mm', '5mm', '6mm', '8mm', '10mm', '12mm',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE FOURNISSEURS (8 types)
@@ -5510,12 +5510,12 @@ export const QUINCAILLERIE_MODALITIES: ModalityCategory = {
     'Fabricant local',
     'Dépôt de matériaux',
     'Particulier',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
 // ✅ MODALITÉS SANITAIRE - NOUVELLE CATÉGORIE COMPLÈTE
-// 🎯 Périmètre : UNIQUEMENT Produits sanitaires (robinetterie, éviers, WC, douches, baignoires, tuyauterie)
+// \uD83C\uDFAF Périmètre : UNIQUEMENT Produits sanitaires (robinetterie, éviers, WC, douches, baignoires, tuyauterie)
 // ❌ EXCLUS : Services de plomberie (voir PLOMBERIE_MODALITIES), Quincaillerie (voir QUINCAILLERIE_MODALITIES)
 export const SANITAIRE_MODALITIES: ModalityCategory = {
   // ✅ NOMS DE PRODUITS (80+ produits sanitaires)
@@ -5587,7 +5587,7 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
     'Barre d\'appui', 'Barre de maintien', 'Siège de douche',
     'Balai WC', 'Brosse WC murale', 'Poubelle salle de bain',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CATÉGORIES (10 catégories)
@@ -5602,7 +5602,7 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
     'Joints & Étanchéité',
     'Accessoires salle de bain',
     'Accessoires décoratifs',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE PRODUITS (30+ types)
@@ -5622,10 +5622,10 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
     'Tuyaux PVC', 'Tuyaux PER', 'Raccords PVC', 'Raccords laiton', 'Flexibles',
     // Accessoires
     'Porte-serviettes', 'Miroirs', 'Étagères', 'Barres d\'appui', 'Accessoires WC',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // ✅ MARQUES SANITAIRE (40+ marques - 🌍 AFRIQUE FRANCOPHONE)
+  // ✅ MARQUES SANITAIRE (40+ marques - \uD83C\uDF0D AFRIQUE FRANCOPHONE)
   marques: [
     // Premium International
     'Grohe', 'Hansgrohe', 'Kohler', 'Ideal Standard', 'Roca', 'Villeroy & Boch',
@@ -5637,13 +5637,13 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
     'Selles', 'Delabie', 'Tres', 'Ramon Soler', 'Clever',
 
     // ✅ MARQUES LOCALES AFRIQUE FRANCOPHONE
-    // 🇨🇲 CAMEROUN
+    // \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN
     'Produits sanitaires Cameroun',
-    // 🇨🇮 CÔTE D'IVOIRE
+    // \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE
     'Sanitaire CI',
-    // 🇸🇳 SÉNÉGAL
+    // \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL
     'Sanitaire Sénégal',
-    // 🇳🇬 NIGERIA (gros marché voisin)
+    // \uD83C\uDDF3\uD83C\uDDEC NIGERIA (gros marché voisin)
     'Sanitaire Nigeria', 'Dorf Nigeria',
 
     // Importateurs/Distributeurs locaux
@@ -5653,7 +5653,7 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
     'Distributeur local',
     'Sans marque',
     'Marque locale',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MATÉRIAUX (12 matériaux)
@@ -5664,7 +5664,7 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
     'Céramique', 'Porcelaine', 'Grès émaillé',
     // Éviers & Vasques
     'Inox 304', 'Inox 316', 'Granit composite', 'Résine', 'Acrylique', 'Pierre naturelle', 'Verre trempé',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FINITIONS/COULEURS (20+ finitions)
@@ -5675,7 +5675,7 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
     // Céramique
     'Blanc brillant', 'Blanc mat', 'Noir', 'Gris', 'Beige', 'Ivoire',
     'Taupe', 'Bleu', 'Vert', 'Coloré',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ DIMENSIONS STANDARDS (25+ dimensions)
@@ -5690,7 +5690,7 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
     '70x70cm', '80x80cm', '90x90cm', '100x80cm', '100x100cm', '120x80cm', '120x90cm', '140x90cm',
     // Baignoires
     '140x70cm', '150x70cm', '160x70cm', '170x70cm', '180x80cm',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉTATS (7 états)
@@ -5701,7 +5701,7 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
     'Bon état',
     'Occasion',
     'Fin de série',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ GARANTIES (8 types)
@@ -5713,7 +5713,7 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
     'Garantie SAV 6 mois',
     'Garantie pièces 3 mois',
     'Sans garantie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NORMES & CERTIFICATIONS (12+)
@@ -5721,14 +5721,14 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
     'CE', 'NF', 'ACS (eau potable)', 'EN 817 (robinetterie)', 'EN 997 (WC)',
     'ISO 9001', 'Norme européenne', 'WaterSense', 'Économie d\'eau',
     'Certification écologique', 'Conformité PMR', 'Sans norme',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES D'INSTALLATION (8 types)
   installations: [
     'À poser', 'À encastrer', 'À suspendre (mural)', 'Sur colonne',
     'Sur pied', 'En applique', 'Encastrement partiel', 'Installation facile',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CARACTÉRISTIQUES TECHNIQUES (10+)
@@ -5743,7 +5743,7 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
     'Anti-bactérien',
     'Autonettoyant',
     'Résistant chocs',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ UTILISATIONS (8 usages)
@@ -5755,14 +5755,14 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
     'Construction neuve',
     'PMR (personnes à mobilité réduite)',
     'Usage intensif',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ DIAMÈTRES TUYAUTERIE (12+)
   diametres: [
     'Ø12mm', 'Ø14mm', 'Ø16mm', 'Ø20mm', 'Ø25mm', 'Ø32mm',
     'Ø40mm', 'Ø50mm', 'Ø63mm', 'Ø100mm', 'Ø110mm', 'Ø125mm',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE FOURNISSEURS (8 types)
@@ -5774,7 +5774,7 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
     'Importateur direct',
     'Plombier-vendeur',
     'Particulier',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -5783,80 +5783,80 @@ export const SANITAIRE_MODALITIES: ModalityCategory = {
 export const PRESTATIONS_SERVICE_MODALITIES: ModalityCategory = {
   // ✅ CATÉGORIES PRINCIPALES (40+) - Métiers locaux Afrique francophone
   categories: [
-    // 🏗️ BÂTIMENT & CONSTRUCTION (métiers les plus demandés)
-    '🏗️ Maçonnerie & Béton', '🏗️ Menuiserie Bois', '🏗️ Menuiserie Aluminium',
-    '🏗️ Plomberie & Sanitaire', '🏗️ Électricité Bâtiment', '🏗️ Peinture & Décoration',
-    '🏗️ Carrelage & Revêtement', '🏗️ Plâtrerie & Faux Plafonds', '🏗️ Ferraillage & Coffrage',
-    '🏗️ Toiture & Charpente', '🏗️ Étanchéité', '🏗️ Vitrerie', '🏗️ Climatisation',
+    // \uD83C\uDFD7️ BÂTIMENT & CONSTRUCTION (métiers les plus demandés)
+    '\uD83C\uDFD7️ Maçonnerie & Béton', '\uD83C\uDFD7️ Menuiserie Bois', '\uD83C\uDFD7️ Menuiserie Aluminium',
+    '\uD83C\uDFD7️ Plomberie & Sanitaire', '\uD83C\uDFD7️ Électricité Bâtiment', '\uD83C\uDFD7️ Peinture & Décoration',
+    '\uD83C\uDFD7️ Carrelage & Revêtement', '\uD83C\uDFD7️ Plâtrerie & Faux Plafonds', '\uD83C\uDFD7️ Ferraillage & Coffrage',
+    '\uD83C\uDFD7️ Toiture & Charpente', '\uD83C\uDFD7️ Étanchéité', '\uD83C\uDFD7️ Vitrerie', '\uD83C\uDFD7️ Climatisation',
 
-    // 💇 BEAUTÉ & COIFFURE (très populaire)
-    '💇 Coiffure Femme', '💇 Coiffure Homme (Barbier)', '💇 Tresses & Nattes',
-    '💇 Pose de Mèches', '💇 Manucure & Pédicure', '💇 Maquillage',
-    '💇 Massage & Spa', '💇 Esthétique & Soins', '💇 Onglerie',
+    // \uD83D\uDC87 BEAUTÉ & COIFFURE (très populaire)
+    '\uD83D\uDC87 Coiffure Femme', '\uD83D\uDC87 Coiffure Homme (Barbier)', '\uD83D\uDC87 Tresses & Nattes',
+    '\uD83D\uDC87 Pose de Mèches', '\uD83D\uDC87 Manucure & Pédicure', '\uD83D\uDC87 Maquillage',
+    '\uD83D\uDC87 Massage & Spa', '\uD83D\uDC87 Esthétique & Soins', '\uD83D\uDC87 Onglerie',
 
-    // 🔧 MÉCANIQUE & AUTOMOBILE
-    '🔧 Mécanique Auto', '🔧 Mécanique Moto', '🔧 Électricité Auto',
-    '🔧 Carrosserie & Peinture', '🔧 Climatisation Auto', '🔧 Vulcanisation (Pneus)',
-    '🔧 Lavage Auto', '🔧 Dépannage Auto',
+    // \uD83D\uDD27 MÉCANIQUE & AUTOMOBILE
+    '\uD83D\uDD27 Mécanique Auto', '\uD83D\uDD27 Mécanique Moto', '\uD83D\uDD27 Électricité Auto',
+    '\uD83D\uDD27 Carrosserie & Peinture', '\uD83D\uDD27 Climatisation Auto', '\uD83D\uDD27 Vulcanisation (Pneus)',
+    '\uD83D\uDD27 Lavage Auto', '\uD83D\uDD27 Dépannage Auto',
 
-    // 💻 INFORMATIQUE & TECHNOLOGIE (en croissance)
-    '💻 Réparation Téléphone', '💻 Réparation Ordinateur', '💻 Développement Web',
-    '💻 Développement Mobile', '💻 Graphisme & Design', '💻 Montage Vidéo',
-    '💻 Installation Réseau', '💻 Maintenance IT', '💻 Formation Informatique',
-    '💻 Cybersécurité', '💻 Création de Sites Web',
+    // \uD83D\uDCBB INFORMATIQUE & TECHNOLOGIE (en croissance)
+    '\uD83D\uDCBB Réparation Téléphone', '\uD83D\uDCBB Réparation Ordinateur', '\uD83D\uDCBB Développement Web',
+    '\uD83D\uDCBB Développement Mobile', '\uD83D\uDCBB Graphisme & Design', '\uD83D\uDCBB Montage Vidéo',
+    '\uD83D\uDCBB Installation Réseau', '\uD83D\uDCBB Maintenance IT', '\uD83D\uDCBB Formation Informatique',
+    '\uD83D\uDCBB Cybersécurité', '\uD83D\uDCBB Création de Sites Web',
 
-    // 🏠 MÉNAGE & ENTRETIEN
-    '🏠 Ménage à Domicile', '🏠 Repassage', '🏠 Jardinage', '🏠 Nettoyage Bureaux',
-    '🏠 Nettoyage Vitres', '🏠 Désinfection & Fumigation',
+    // \uD83C\uDFE0 MÉNAGE & ENTRETIEN
+    '\uD83C\uDFE0 Ménage à Domicile', '\uD83C\uDFE0 Repassage', '\uD83C\uDFE0 Jardinage', '\uD83C\uDFE0 Nettoyage Bureaux',
+    '\uD83C\uDFE0 Nettoyage Vitres', '\uD83C\uDFE0 Désinfection & Fumigation',
 
-    // 👨‍🍳 CUISINE & RESTAURATION
-    '👨‍🍳 Cuisinier à Domicile', '👨‍🍳 Traiteur Événements', '👨‍🍳 Pâtisserie',
-    '👨‍🍳 Chef à Domicile', '👨‍🍳 Livraison Repas',
+    // \uD83D\uDC68‍\uD83C\uDF73 CUISINE & RESTAURATION
+    '\uD83D\uDC68‍\uD83C\uDF73 Cuisinier à Domicile', '\uD83D\uDC68‍\uD83C\uDF73 Traiteur Événements', '\uD83D\uDC68‍\uD83C\uDF73 Pâtisserie',
+    '\uD83D\uDC68‍\uD83C\uDF73 Chef à Domicile', '\uD83D\uDC68‍\uD83C\uDF73 Livraison Repas',
 
     // ⚠️ NOTE : Formation & Éducation → Catégorie dédiée "Formation & Éducation"
     // Les cours particuliers, soutien scolaire, préparation concours sont désormais
     // dans la catégorie FORMATION_EDUCATION_MODALITIES (séparation claire)
 
-    // 🩺 SANTÉ & BIEN-ÊTRE
-    '🩺 Soins Infirmiers', '🩺 Kinésithérapie', '🩺 Aide-Soignant', '🩺 Auxiliaire de Vie',
-    '🩺 Garde-Malade', '🩺 Pharmacien à Domicile',
+    // \uD83E\uDE7A SANTÉ & BIEN-ÊTRE
+    '\uD83E\uDE7A Soins Infirmiers', '\uD83E\uDE7A Kinésithérapie', '\uD83E\uDE7A Aide-Soignant', '\uD83E\uDE7A Auxiliaire de Vie',
+    '\uD83E\uDE7A Garde-Malade', '\uD83E\uDE7A Pharmacien à Domicile',
 
-    // 👶 GARDE & ASSISTANCE
-    '👶 Garde d\'Enfants', '👶 Baby-sitting', '👶 Nounou à Domicile',
-    '👶 Accompagnement Scolaire',
+    // \uD83D\uDC76 GARDE & ASSISTANCE
+    '\uD83D\uDC76 Garde d\'Enfants', '\uD83D\uDC76 Baby-sitting', '\uD83D\uDC76 Nounou à Domicile',
+    '\uD83D\uDC76 Accompagnement Scolaire',
 
-    // 📸 ÉVÉNEMENTIEL & MULTIMÉDIA
-    '📸 Photographie', '📸 Vidéographie', '📸 DJ & Sonorisation', '📸 Animation Événements',
-    '📸 Location Matériel Sono', '📸 Décoration Événements',
+    // \uD83D\uDCF8 ÉVÉNEMENTIEL & MULTIMÉDIA
+    '\uD83D\uDCF8 Photographie', '\uD83D\uDCF8 Vidéographie', '\uD83D\uDCF8 DJ & Sonorisation', '\uD83D\uDCF8 Animation Événements',
+    '\uD83D\uDCF8 Location Matériel Sono', '\uD83D\uDCF8 Décoration Événements',
 
-    // 🚚 TRANSPORT & LOGISTIQUE
-    '🚚 Déménagement', '🚚 Transport Marchandise', '🚚 Coursier/Livreur',
-    '🚚 Chauffeur Personnel', '🚚 Location Véhicule avec Chauffeur',
+    // \uD83D\uDE9A TRANSPORT & LOGISTIQUE
+    '\uD83D\uDE9A Déménagement', '\uD83D\uDE9A Transport Marchandise', '\uD83D\uDE9A Coursier/Livreur',
+    '\uD83D\uDE9A Chauffeur Personnel', '\uD83D\uDE9A Location Véhicule avec Chauffeur',
 
-    // 🔐 SÉCURITÉ & SURVEILLANCE
-    '🔐 Agent de Sécurité', '🔐 Gardiennage', '🔐 Installation Caméras',
-    '🔐 Installation Alarmes',
+    // \uD83D\uDD10 SÉCURITÉ & SURVEILLANCE
+    '\uD83D\uDD10 Agent de Sécurité', '\uD83D\uDD10 Gardiennage', '\uD83D\uDD10 Installation Caméras',
+    '\uD83D\uDD10 Installation Alarmes',
 
-    // 🪡 COUTURE & MODE
-    '🪡 Couture sur Mesure', '🪡 Retouches Vêtements', '🪡 Stylisme',
-    '🪡 Broderie', '🪡 Tapisserie',
+    // \uD83E\uDEA1 COUTURE & MODE
+    '\uD83E\uDEA1 Couture sur Mesure', '\uD83E\uDEA1 Retouches Vêtements', '\uD83E\uDEA1 Stylisme',
+    '\uD83E\uDEA1 Broderie', '\uD83E\uDEA1 Tapisserie',
 
     // ⚡ ÉLECTRONIQUE & RÉPARATION
     '⚡ Réparation Électroménager', '⚡ Réparation TV', '⚡ Réparation Climatiseur',
     '⚡ Installation Antenne Satellite', '⚡ Réparation Générateur',
 
-    // 🎨 ARTISANAT & ART
-    '🎨 Peinture Artistique', '🎨 Sculpture', '🎨 Décoration Intérieure',
-    '🎨 Ébénisterie', '🎨 Forge & Métallurgie',
+    // \uD83C\uDFA8 ARTISANAT & ART
+    '\uD83C\uDFA8 Peinture Artistique', '\uD83C\uDFA8 Sculpture', '\uD83C\uDFA8 Décoration Intérieure',
+    '\uD83C\uDFA8 Ébénisterie', '\uD83C\uDFA8 Forge & Métallurgie',
 
-    // 📄 SERVICES ADMINISTRATIFS
-    '📄 Saisie & Frappe', '📄 Traduction', '📄 Rédaction', '📄 Comptabilité',
-    '📄 Conseil Juridique', '📄 Assistance Administrative',
+    // \uD83D\uDCC4 SERVICES ADMINISTRATIFS
+    '\uD83D\uDCC4 Saisie & Frappe', '\uD83D\uDCC4 Traduction', '\uD83D\uDCC4 Rédaction', '\uD83D\uDCC4 Comptabilité',
+    '\uD83D\uDCC4 Conseil Juridique', '\uD83D\uDCC4 Assistance Administrative',
 
-    // 🌾 AGRICULTURE & ÉLEVAGE
-    '🌾 Jardinage & Paysagisme', '🌾 Élevage', '🌾 Agriculture', '🌾 Maraîchage',
+    // \uD83C\uDF3E AGRICULTURE & ÉLEVAGE
+    '\uD83C\uDF3E Jardinage & Paysagisme', '\uD83C\uDF3E Élevage', '\uD83C\uDF3E Agriculture', '\uD83C\uDF3E Maraîchage',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE PRESTATIONS PAR NATURE (30+)
@@ -5873,7 +5873,7 @@ export const PRESTATIONS_SERVICE_MODALITIES: ModalityCategory = {
     // Urgence
     'Intervention immédiate', 'Disponible 24h/24', 'Weekend & jours fériés',
     'Sur rendez-vous uniquement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ZONES D'INTERVENTION - S'adapte automatiquement au pays de l'utilisateur
@@ -5887,7 +5887,7 @@ export const PRESTATIONS_SERVICE_MODALITIES: ModalityCategory = {
     '5-10 ans d\'expérience', '10-15 ans d\'expérience', '15-20 ans d\'expérience',
     '20+ ans d\'expérience', 'Expert reconnu', 'Maître artisan',
     'Formateur professionnel', 'Consultant senior',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CERTIFICATIONS & DIPLÔMES (contexte Afrique francophone)
@@ -5913,7 +5913,7 @@ export const PRESTATIONS_SERVICE_MODALITIES: ModalityCategory = {
     'Autodidacte expérimenté', 'Pas de certification (expérience terrain)',
     'En cours de certification',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ DISPONIBILITÉS (15+)
@@ -5932,7 +5932,7 @@ export const PRESTATIONS_SERVICE_MODALITIES: ModalityCategory = {
     // Planning
     'Sur rendez-vous uniquement', 'Planning flexible', 'À définir avec client',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MODALITÉS DE DÉPLACEMENT (8)
@@ -5940,7 +5940,7 @@ export const PRESTATIONS_SERVICE_MODALITIES: ModalityCategory = {
     'Je me déplace chez le client', 'Client vient chez moi (atelier)',
     'Les deux possibles', 'À distance (en ligne)', 'Hybride (présentiel + en ligne)',
     'Frais de déplacement inclus', 'Frais de déplacement en sus',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TARIFICATION (12 modes)
@@ -5949,7 +5949,7 @@ export const PRESTATIONS_SERVICE_MODALITIES: ModalityCategory = {
     'Prix au mois', 'Prix au m² (surface)', 'Prix au mètre linéaire',
     'Prix forfaitaire', 'Devis sur mesure', 'Sur estimation',
     'Prix négociable', 'Abonnement mensuel',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MODES DE PAIEMENT (15+) - Contexte Afrique
@@ -5968,7 +5968,7 @@ export const PRESTATIONS_SERVICE_MODALITIES: ModalityCategory = {
     'PayPal', 'Western Union', 'MoneyGram',
     'Paiement échelonné', 'Acompte + solde',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉQUIPEMENTS & OUTILS (20+)
@@ -5980,7 +5980,7 @@ export const PRESTATIONS_SERVICE_MODALITIES: ModalityCategory = {
     'Matériel de sonorisation', 'Groupe électrogène', 'Compresseur',
     'Poste à souder', 'Matériel de sécurité (EPI)', 'Stock de pièces',
     'Pas d\'équipement (client fournit)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ LANGUES PARLÉES (15+) - Contexte Afrique francophone
@@ -5997,7 +5997,7 @@ export const PRESTATIONS_SERVICE_MODALITIES: ModalityCategory = {
     // Langues internationales
     'Espagnol', 'Allemand', 'Chinois', 'Arabe',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ GARANTIES PROPOSÉES (10)
@@ -6006,7 +6006,7 @@ export const PRESTATIONS_SERVICE_MODALITIES: ModalityCategory = {
     'Garantie constructeur', 'Garantie pièces et main d\'œuvre',
     'Garantie main d\'œuvre uniquement', 'Service après-vente assuré',
     'Pas de garantie', 'Garantie selon travaux',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ RÉFÉRENCES & PORTFOLIO (8)
@@ -6015,7 +6015,7 @@ export const PRESTATIONS_SERVICE_MODALITIES: ModalityCategory = {
     'Références clients vérifiables', 'Avis clients positifs',
     'Travaux pour entreprises', 'Travaux pour particuliers',
     'Projets publics réalisés',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ DURÉES ESTIMÉES (15)
@@ -6024,14 +6024,14 @@ export const PRESTATIONS_SERVICE_MODALITIES: ModalityCategory = {
     'Journée complète (8h)', '2-3 jours', '1 semaine', '2 semaines',
     '1 mois', '2-3 mois', 'Selon ampleur du projet',
     'À définir après diagnostic', 'Variable',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE CLIENTS (8)
   types_clients: [
     'Particuliers', 'Professionnels', 'Entreprises', 'Administrations',
     'ONG', 'Collectivités', 'Tous types de clients',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ASSURANCES & RESPONSABILITÉS (6)
@@ -6039,7 +6039,7 @@ export const PRESTATIONS_SERVICE_MODALITIES: ModalityCategory = {
     'Assuré responsabilité civile professionnelle', 'Assuré tous risques',
     'Assuré dommages', 'Assurance décennale (bâtiment)',
     'Pas d\'assurance professionnelle', 'En cours de souscription',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ════════════════════════════════════════════════════════════════════════════════
@@ -6072,19 +6072,19 @@ export const PHARMACIE_MODALITIES: ModalityCategory = {
   // Types de pharmacie
   types: [
     'Pharmacie de garde', 'Pharmacie normale', 'Pharmacie hospitalière',
-    'Pharmacie vétérinaire', '🆕 Autre (ajouter)'
+    'Pharmacie vétérinaire', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Services
   services: [
     'Délivrance', 'Conseil', 'Garde', 'Vaccination', 'Mesure tension', 'Analyse rapide',
-    'Livraison', '🆕 Autre (ajouter)'
+    'Livraison', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Spécialités
   specialites: [
     'Médecine générale', 'Pédiatrie', 'Gynécologie', 'Cardiologie', 'Dermatologie',
-    'Ophtalmologie', '🆕 Autre (ajouter)'
+    'Ophtalmologie', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -6127,7 +6127,7 @@ export const COSMETIQUES_PARFUMS_MODALITIES: ModalityCategory = {
     // Soins Mains & Pieds
     'Crème mains', 'Vernis à ongles', 'Dissolvant',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MARQUES (60+) - CONTEXTUALISÉ AFRIQUE FRANCOPHONE
@@ -6164,7 +6164,7 @@ export const COSMETIQUES_PARFUMS_MODALITIES: ModalityCategory = {
     // Marques Locales Africaines
     'Maison Jacynthe (Cameroun)', 'Sika\'a (Côte d\'Ivoire)', 'Suzan ObioMa (Nigeria)',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CONCENTRATIONS (pour parfums)
@@ -6172,7 +6172,7 @@ export const COSMETIQUES_PARFUMS_MODALITIES: ModalityCategory = {
     'Eau de Cologne (EDC) 2-5%', 'Eau de toilette (EDT) 5-15%',
     'Eau de parfum (EDP) 15-20%', 'Parfum/Extrait 20-40%',
     'Huile parfumée', 'Sans alcool', 'Non applicable',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ VOLUMES/UNITÉS (25+)
@@ -6180,14 +6180,14 @@ export const COSMETIQUES_PARFUMS_MODALITIES: ModalityCategory = {
     '5ml', '10ml', '15ml', '20ml', '30ml', '50ml', '75ml', '100ml',
     '125ml', '150ml', '200ml', '250ml', '300ml', '400ml', '500ml',
     '1L', '5g', '10g', '15g', '20g', '30g', '50g', '100g', '150g', '200g',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ GENRES/CIBLES (8)
   genres: [
     'Femme', 'Homme', 'Mixte/Unisexe', 'Enfant', 'Bébé',
     'Adolescent', 'Senior', 'Tous âges',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE PEAU (12) - ENRICHI
@@ -6195,7 +6195,7 @@ export const COSMETIQUES_PARFUMS_MODALITIES: ModalityCategory = {
     'Tous types de peau', 'Peau normale', 'Peau sèche', 'Peau très sèche',
     'Peau grasse', 'Peau mixte', 'Peau sensible', 'Peau réactive',
     'Peau mature', 'Peau acnéique', 'Peau noire/métissée', 'Peau claire',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE CHEVEUX (pour produits capillaires)
@@ -6204,14 +6204,14 @@ export const COSMETIQUES_PARFUMS_MODALITIES: ModalityCategory = {
     'Cheveux mixtes', 'Cheveux crépus', 'Cheveux bouclés', 'Cheveux lisses',
     'Cheveux colorés', 'Cheveux abîmés', 'Cheveux fins', 'Cheveux épais',
     'Cheveux afro', 'Cheveux défrisés',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FINITIONS (pour maquillage)
   finitions: [
     'Mat', 'Satiné', 'Brillant', 'Nacré', 'Métallisé', 'Glowy',
     'Naturel', 'Longue tenue', 'Waterproof', 'Transfer-proof',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TEINTES/NUANCES (pour fond de teint, etc.)
@@ -6219,7 +6219,7 @@ export const COSMETIQUES_PARFUMS_MODALITIES: ModalityCategory = {
     'Très clair', 'Clair', 'Moyen clair', 'Moyen', 'Moyen foncé',
     'Foncé', 'Très foncé', 'Ebène', 'Caramel', 'Miel', 'Chocolat',
     'Ivoire', 'Beige', 'Nude', 'Rose', 'Pêche', 'Neutre',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ INGRÉDIENTS STARS (20+)
@@ -6230,7 +6230,7 @@ export const COSMETIQUES_PARFUMS_MODALITIES: ModalityCategory = {
     'Acide salicylique', 'Acide glycolique', 'Acide kojique',
     'Glutathion', 'Alpha-arbutine', 'Papaye', 'Carotte', 'Citron',
     'Miel', 'Charbon actif', 'Argile', 'SPF/Protection solaire',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ORIGINES/PAYS (15+)
@@ -6239,7 +6239,7 @@ export const COSMETIQUES_PARFUMS_MODALITIES: ModalityCategory = {
     'Corée du Sud', 'Japon', 'Chine', 'Thaïlande', 'Maroc',
     'Afrique du Sud', 'Cameroun', 'Côte d\'Ivoire', 'Sénégal',
     'Ghana', 'Nigeria',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CERTIFICATIONS/LABELS (10+)
@@ -6247,7 +6247,7 @@ export const COSMETIQUES_PARFUMS_MODALITIES: ModalityCategory = {
     'Bio', 'Naturel', 'Vegan', 'Cruelty-free', 'Sans parabènes',
     'Sans sulfates', 'Sans alcool', 'Dermatologiquement testé',
     'Hypoallergénique', 'Non comédogène', 'Halal',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -6269,7 +6269,7 @@ export const BIJOUX_MODALITIES: ModalityCategory = {
     'Piercing nez', 'Piercing oreille', 'Piercing nombril',
     // Bijoux traditionnels africains
     'Bijou traditionnel', 'Perles africaines', 'Amulette', 'Gris-gris',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MATÉRIAUX (30+) - Métaux précieux + matériaux locaux
@@ -6296,20 +6296,20 @@ export const BIJOUX_MODALITIES: ModalityCategory = {
     // Matériaux traditionnels africains
     'Perles de verre africaines', 'Bois d\'ébène', 'Bois de rose',
     'Cauri (coquillages)', 'Graines naturelles', 'Os sculpté',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CARATS OR (8) - Standards internationaux
   carats: [
     '9 carats (375)', '10 carats (417)', '14 carats (585)',
     '18 carats (750)', '21 carats (875)', '22 carats (916)',
-    '24 carats (999)', '🆕 Autre (ajouter)'
+    '24 carats (999)', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ PURETÉ ARGENT (6)
   puretes_argent: [
     '800 (Argent massif)', '925 (Sterling)', '950 (Britannique)',
-    '999 (Argent pur)', 'Plaqué argent', '🆕 Autre (ajouter)'
+    '999 (Argent pur)', 'Plaqué argent', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ STYLES DE BIJOUX (25+) - Moderne + traditionnel
@@ -6331,7 +6331,7 @@ export const BIJOUX_MODALITIES: ModalityCategory = {
     'Berbère', 'Touareg', 'Peul',
     // Sport et casual
     'Sport', 'Casual', 'Urbain',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MARQUES DE MONTRES (40+) - Luxe + populaires en Afrique
@@ -6356,7 +6356,7 @@ export const BIJOUX_MODALITIES: ModalityCategory = {
     // Populaires en Afrique
     'Curren', 'Naviforce', 'Megir', 'Lige',
     'Olevs', 'Wwoor', 'Benyar',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MARQUES BIJOUX LUXE (25+) - Internationales connues
@@ -6374,7 +6374,7 @@ export const BIJOUX_MODALITIES: ModalityCategory = {
     'Gucci', 'Prada', 'Versace',
     // Créateurs locaux africains
     'Créateur africain', 'Artisan local', 'Fait main Afrique',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉTATS (7) - Pour bijoux d'occasion
@@ -6382,7 +6382,7 @@ export const BIJOUX_MODALITIES: ModalityCategory = {
     'Neuf avec certificat', 'Neuf sans certificat',
     'Comme neuf', 'Excellent état', 'Très bon état',
     'Bon état', 'Vintage (bon état)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CERTIFICATIONS (8) - Garantie authenticité
@@ -6390,14 +6390,14 @@ export const BIJOUX_MODALITIES: ModalityCategory = {
     'Certificat d\'authenticité', 'Certificat gemmologique',
     'Certificat IGI', 'Certificat GIA', 'Certificat HRD',
     'Poinçon de garantie', 'Facture originale',
-    'Sans certificat', '🆕 Autre (ajouter)'
+    'Sans certificat', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ SEXE/DESTINATAIRE (5)
   pour_qui: [
     'Femme', 'Homme', 'Enfant',
     'Unisexe', 'Couple (alliance)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ OCCASIONS (15+) - Contexte vente
@@ -6408,7 +6408,7 @@ export const BIJOUX_MODALITIES: ModalityCategory = {
     'Communion', 'Confirmation', 'Diplôme',
     'Promotion professionnelle', 'Cadeau d\'affaires',
     'Quotidien', 'Soirée', 'Cérémonie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TAILLES BAGUES (Standards internationaux)
@@ -6416,7 +6416,7 @@ export const BIJOUX_MODALITIES: ModalityCategory = {
     '44 (EU)', '45', '46', '47', '48', '49',
     '50', '51', '52', '53', '54', '55',
     '56', '57', '58', '59', '60', '61', '62',
-    'Taille ajustable', '🆕 Autre (ajouter)'
+    'Taille ajustable', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ LONGUEURS COLLIERS/CHAÎNES (9)
@@ -6425,28 +6425,28 @@ export const BIJOUX_MODALITIES: ModalityCategory = {
     '50-55 cm (Princesse)', '60-65 cm (Matinée)',
     '70-80 cm (Opéra)', '90+ cm (Sautoir)',
     'Longueur ajustable', 'Sur mesure',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ LONGUEURS BRACELETS (7)
   longueurs_bracelets: [
     '16-17 cm (S)', '18-19 cm (M)', '20-21 cm (L)',
     '22-23 cm (XL)', 'Ajustable', 'Extensible',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ POIDS (Fourchettes approximatives)
   poids_approximatifs: [
     'Moins de 5g', '5-10g', '10-20g', '20-50g',
     '50-100g', '100-200g', 'Plus de 200g',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ GARANTIES (7)
   garanties: [
     '6 mois', '1 an', '2 ans', '3 ans',
     '5 ans', 'Garantie à vie', 'Sans garantie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ORIGINES GÉOGRAPHIQUES (12+) - Production bijoux
@@ -6456,21 +6456,21 @@ export const BIJOUX_MODALITIES: ModalityCategory = {
     'Inde', 'Chine', 'Thaïlande', 'Turquie',
     'Dubai/UAE', 'Cameroun', 'Afrique du Sud',
     'Sénégal', 'Côte d\'Ivoire', 'Mali',
-    'Artisanat local', '🆕 Autre (ajouter)'
+    'Artisanat local', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
-// ✅ MODALITÉS COIFFURE & BEAUTÉ - 🌍 CONTEXTE AFRIQUE FRANCOPHONE (Cameroun focus)
+// ✅ MODALITÉS COIFFURE & BEAUTÉ - \uD83C\uDF0D CONTEXTE AFRIQUE FRANCOPHONE (Cameroun focus)
 export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
   // ✅ Types de services/produits (réorganisés par catégorie)
   types: [
-    // 💇‍♀️ COIFFURE FEMME - PRODUITS (Extensions, Mèches)
-    '🌟 Mèches naturelles', // Les plus demandées
+    // \uD83D\uDC87‍♀️ COIFFURE FEMME - PRODUITS (Extensions, Mèches)
+    '\uD83C\uDF1F Mèches naturelles', // Les plus demandées
     'Extensions (tissage)',
     'Extensions (clips)',
     'Perruque complète',
     'Half wig (demi-perruque)',
-    'Closure 4x4', // 🇨🇲 Très populaire Cameroun
+    'Closure 4x4', // \uD83C\uDDE8\uD83C\uDDF2 Très populaire Cameroun
     'Closure 5x5',
     'Frontal 13x4',
     'Frontal 13x6',
@@ -6478,16 +6478,16 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'U-part wig',
     'Bonnet perruque',
 
-    // 💇‍♀️ COIFFURE FEMME - SERVICES (Tresses, Coiffures africaines)
-    '🌟 Tresses africaines (box braids)', // 🇨🇲 INCONTOURNABLE
-    'Nattes collées (cornrows)', // 🇨🇲 Très demandé
+    // \uD83D\uDC87‍♀️ COIFFURE FEMME - SERVICES (Tresses, Coiffures africaines)
+    '\uD83C\uDF1F Tresses africaines (box braids)', // \uD83C\uDDE8\uD83C\uDDF2 INCONTOURNABLE
+    'Nattes collées (cornrows)', // \uD83C\uDDE8\uD83C\uDDF2 Très demandé
     'Vanilles (twists)',
     'Tresses sénégalaises',
     'Tresses Ghana',
     'Tresses crochet',
     'Locks/Dreadlocks',
     'Locks entretien',
-    'Défrisage complet', // 🇨🇲 Service très demandé
+    'Défrisage complet', // \uD83C\uDDE8\uD83C\uDDF2 Service très demandé
     'Défrisage retouche racines',
     'Lissage brésilien/japonais',
     'Coloration complète',
@@ -6498,8 +6498,8 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Chignon/Coiffure mariage',
     'Coiffure événement',
 
-    // 🧔 BARBIER - SERVICES HOMME (très important en Afrique)
-    '🌟 Coupe homme (dégradé)', // 🇨🇲 Service #1 barbier
+    // \uD83E\uDDD4 BARBIER - SERVICES HOMME (très important en Afrique)
+    '\uD83C\uDF1F Coupe homme (dégradé)', // \uD83C\uDDE8\uD83C\uDDF2 Service #1 barbier
     'Coupe afro (fade)', // Très populaire jeunes
     'Coupe + Barbe',
     'Taille de barbe',
@@ -6508,7 +6508,7 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Coupe enfant',
     'Design capillaire (motifs)',
 
-    // 💅 BEAUTÉ & SOINS
+    // \uD83D\uDC85 BEAUTÉ & SOINS
     'Manucure simple',
     'Manucure + gel',
     'Pédicure simple',
@@ -6518,7 +6518,7 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Maquillage jour',
     'Maquillage soirée/mariage',
     'Soin visage complet',
-    'Soin visage anti-acné', // 🇨🇲 Demandé (climat tropical)
+    'Soin visage anti-acné', // \uD83C\uDDE8\uD83C\uDDF2 Demandé (climat tropical)
     'Soin visage éclaircissant',
     'Épilation sourcils',
     'Épilation visage',
@@ -6528,73 +6528,73 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Massage californien',
     'Massage aux pierres chaudes',
 
-    // 🧴 PRODUITS CAPILLAIRES
+    // \uD83E\uDDF4 PRODUITS CAPILLAIRES
     'Shampooing professionnel',
     'Après-shampooing',
     'Masque capillaire',
-    'Huile capillaire (karité, coco, argan)', // 🇨🇲 Produits naturels africains
+    'Huile capillaire (karité, coco, argan)', // \uD83C\uDDE8\uD83C\uDDF2 Produits naturels africains
     'Gel coiffant',
     'Crème défrisante',
     'Crème coiffante',
     'Spray fixant',
 
-    // 🎀 ACCESSOIRES
+    // \uD83C\uDF80 ACCESSOIRES
     'Accessoires coiffure (épingles, élastiques)',
     'Bonnets de nuit (satin)',
     'Foulards/Turbans',
-    'Perles/Décorations tresses', // 🇨🇲 Traditionnel africain
+    'Perles/Décorations tresses', // \uD83C\uDDE8\uD83C\uDDF2 Traditionnel africain
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Longueurs (mèches/extensions)
   longueurs: [
     '10-12 pouces (25-30cm)', // Court
     '14-16 pouces (35-40cm)', // Moyen
-    '18-20 pouces (45-50cm)', // 🔥 LE PLUS COURANT
+    '18-20 pouces (45-50cm)', // \uD83D\uDD25 LE PLUS COURANT
     '22-24 pouces (55-60cm)', // Long
     '26-28 pouces (65-70cm)', // Très long
     '30 pouces+ (75cm+)', // Extra long
     'Mix 3 longueurs (ex: 18/20/22)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Textures (cheveux)
   textures: [
-    // 🌍 TEXTURES AFRICAINES (priorité)
-    'Afro kinky (4C)', // 🇨🇲 Cheveux crépus naturels
+    // \uD83C\uDF0D TEXTURES AFRICAINES (priorité)
+    'Afro kinky (4C)', // \uD83C\uDDE8\uD83C\uDDF2 Cheveux crépus naturels
     'Kinky curly (4A/4B)', // Bouclés très serrés
     'Curly (3C)', // Bouclés moyens
     'Coily (spirales)', // En spirales
 
     // ✨ TEXTURES LISSES/ONDULÉES
     'Straight (lisse)',
-    'Yaki straight (lisse texturé)', // 🔥 Imite cheveux afros détendus
+    'Yaki straight (lisse texturé)', // \uD83D\uDD25 Imite cheveux afros détendus
     'Light yaki',
     'Italian yaki',
 
-    // 🌊 TEXTURES ONDULÉES/WAVY
-    'Body wave (ondulations douces)', // 🔥 Très populaire
+    // \uD83C\uDF0A TEXTURES ONDULÉES/WAVY
+    'Body wave (ondulations douces)', // \uD83D\uDD25 Très populaire
     'Deep wave (ondulations profondes)',
     'Water wave (ondulations naturelles)',
     'Loose wave',
     'Beach wave',
 
-    // 💫 TEXTURES BOUCLÉES
+    // \uD83D\uDCAB TEXTURES BOUCLÉES
     'Curly (bouclée)',
     'Deep curly (très bouclée)',
     'Kinky curly (afro bouclée)',
     'Jerry curly (bouclée serrée)',
     'Spiral curly',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Types de pose/installation
   typesPose: [
-    // 🔥 MÉTHODES POPULAIRES AFRIQUE
-    'Tissage cousu (sew-in)', // 🇨🇲 Méthode traditionnelle
-    'Tresse africaine (crochet)', // 🔥 Très utilisé
+    // \uD83D\uDD25 MÉTHODES POPULAIRES AFRIQUE
+    'Tissage cousu (sew-in)', // \uD83C\uDDE8\uD83C\uDDF2 Méthode traditionnelle
+    'Tresse africaine (crochet)', // \uD83D\uDD25 Très utilisé
     'Clip-in (amovible)', // Facile, réutilisable
     'Bonding (colle)', // Semi-permanent
     'Micro-links/anneaux',
@@ -6605,15 +6605,15 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Perruque full lace',
     'Quick weave (colle sur bonnet)',
     'Crochet braids',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Types de cheveux (matière)
   typesCheveux: [
-    // 🌟 CHEVEUX NATURELS (premium)
-    'Virgin hair (vierge 100%)', // 🔥 Jamais traités
+    // \uD83C\uDF1F CHEVEUX NATURELS (premium)
+    'Virgin hair (vierge 100%)', // \uD83D\uDD25 Jamais traités
     'Remy hair (cuticules alignées)', // Qualité supérieure
-    'Brazilian hair (brésilien)', // 🔥 LE PLUS DEMANDÉ Cameroun
+    'Brazilian hair (brésilien)', // \uD83D\uDD25 LE PLUS DEMANDÉ Cameroun
     'Peruvian hair (péruvien)', // Épais, résistant
     'Indian hair (indien)', // Doux, brillant
     'Malaysian hair (malaisien)', // Polyvalent
@@ -6621,34 +6621,34 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Mongolian hair (mongol)', // Épais
     'European hair (européen)', // Lisse naturel
 
-    // 🎨 CHEVEUX SYNTHÉTIQUES (économiques)
-    'Cheveux synthétiques premium', // 🇨🇲 Très populaire (prix accessible)
+    // \uD83C\uDFA8 CHEVEUX SYNTHÉTIQUES (économiques)
+    'Cheveux synthétiques premium', // \uD83C\uDDE8\uD83C\uDDF2 Très populaire (prix accessible)
     'Cheveux synthétiques résistants chaleur',
-    'Kanekalon (tresses africaines)', // 🔥 INDISPENSABLE tresses
+    'Kanekalon (tresses africaines)', // \uD83D\uDD25 INDISPENSABLE tresses
     'X-pression (tresses)', // Marque populaire
     'Toyokalon',
 
-    // 🌈 MIXTES
+    // \uD83C\uDF08 MIXTES
     'Cheveux mixtes (naturel + synthétique)',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Densités (perruques/closures)
   densites: [
     '130% (naturelle légère)',
-    '150% (naturelle moyenne)', // 🔥 Standard
+    '150% (naturelle moyenne)', // \uD83D\uDD25 Standard
     '180% (volumineuse)',
     '200% (très volumineuse)',
     '250% (ultra volumineuse)',
     '300%+',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Couleurs
   couleurs: [
-    // 🌍 COULEURS NATURELLES (priorité Afrique)
-    'Noir naturel (1B)', // 🔥 LE PLUS DEMANDÉ Cameroun
+    // \uD83C\uDF0D COULEURS NATURELLES (priorité Afrique)
+    'Noir naturel (1B)', // \uD83D\uDD25 LE PLUS DEMANDÉ Cameroun
     'Noir pur (Jet black 1)',
     'Brun très foncé (2)',
     'Brun foncé (4)',
@@ -6662,7 +6662,7 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Blond clair (16)',
     'Blond platine (613)', // Très demandé
 
-    // 🎨 COULEURS TENDANCE
+    // \uD83C\uDFA8 COULEURS TENDANCE
     'Ombré noir/brun',
     'Ombré noir/blond',
     'Balayage caramel',
@@ -6672,7 +6672,7 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Bordeaux/Vin',
     'Gris/Argenté',
 
-    // 🌈 COULEURS FANTAISIE
+    // \uD83C\uDF08 COULEURS FANTAISIE
     'Bleu',
     'Violet/Mauve',
     'Rouge',
@@ -6680,17 +6680,17 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Vert',
     'Multi-couleurs',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Origines des cheveux naturels
   origines: [
-    // 🔥 TOP 3 PLUS POPULAIRES CAMEROUN
+    // \uD83D\uDD25 TOP 3 PLUS POPULAIRES CAMEROUN
     'Brésilien', // #1 - Polyvalent, soyeux
     'Péruvien', // #2 - Épais, volume
     'Indien', // #3 - Doux, brillant
 
-    // 🌍 AUTRES ORIGINES POPULAIRES
+    // \uD83C\uDF0D AUTRES ORIGINES POPULAIRES
     'Malaisien',
     'Cambodgien',
     'Vietnamien',
@@ -6699,29 +6699,29 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Russe',
     'Birman',
 
-    // 🎨 SYNTHÉTIQUE
+    // \uD83C\uDFA8 SYNTHÉTIQUE
     'Synthétique (Kanekalon)',
     'Synthétique (X-pression)',
     'Synthétique (autre)',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Marques populaires (produits capillaires Afrique)
   marques: [
-    // 🌍 MARQUES AFRICAINES
-    'Darling (Nigeria)', // 🇨🇲 Très populaire Cameroun
+    // \uD83C\uDF0D MARQUES AFRICAINES
+    'Darling (Nigeria)', // \uD83C\uDDE8\uD83C\uDDF2 Très populaire Cameroun
     'Noble Hair (Nigeria)',
     'X-pression (tresses)',
     'Kanekalon',
     'Magic Collection',
 
-    // 🌟 MARQUES INTERNATIONALES POPULAIRES AFRIQUE
+    // \uD83C\uDF1F MARQUES INTERNATIONALES POPULAIRES AFRIQUE
     'Dark & Lovely', // Défrisants
     'SoftSheen Carson',
     'Olive Oil (ORS)',
     'Africa\'s Best',
-    'Cantu', // 🔥 Produits cheveux crépus
+    'Cantu', // \uD83D\uDD25 Produits cheveux crépus
     'Shea Moisture', // Huiles naturelles
     'Creme of Nature',
     'TCB',
@@ -6729,56 +6729,56 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Mizani',
     'Motions',
 
-    // 💎 MARQUES PREMIUM
+    // \uD83D\uDC8E MARQUES PREMIUM
     'Sensationnel',
     'Outre',
     'Freetress',
     'Bobbi Boss',
     'Shake-N-Go',
 
-    // 🧴 PRODUITS NATURELS AFRICAINS
-    'Beurre de karité pur', // 🇨🇲 Produit local
+    // \uD83E\uDDF4 PRODUITS NATURELS AFRICAINS
+    'Beurre de karité pur', // \uD83C\uDDE8\uD83C\uDDF2 Produit local
     'Huile de coco',
     'Huile d\'argan',
     'Huile de ricin noir jamaïcain',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Types de salons/établissements
   typesSalon: [
-    // 💇‍♀️ COIFFURE FEMME
+    // \uD83D\uDC87‍♀️ COIFFURE FEMME
     'Salon de coiffure mixte', // Homme + Femme
     'Salon de coiffure femme uniquement',
-    'Salon spécialisé tresses africaines', // 🇨🇲 Très courant
+    'Salon spécialisé tresses africaines', // \uD83C\uDDE8\uD83C\uDDF2 Très courant
     'Salon spécialisé tissages/extensions',
     'Salon spécialisé défrisage',
-    'Coiffure à domicile', // 🔥 Service populaire Cameroun
+    'Coiffure à domicile', // \uD83D\uDD25 Service populaire Cameroun
 
-    // 🧔 BARBIER HOMME
-    'Salon de barbier (homme)', // 🔥 Très nombreux Cameroun
+    // \uD83E\uDDD4 BARBIER HOMME
+    'Salon de barbier (homme)', // \uD83D\uDD25 Très nombreux Cameroun
     'Barbershop moderne',
     'Barbier traditionnel',
     'Barbier à domicile',
 
-    // 💅 BEAUTÉ & ESTHÉTIQUE
+    // \uD83D\uDC85 BEAUTÉ & ESTHÉTIQUE
     'Institut de beauté complet',
     'Salon manucure/pédicure',
     'Centre esthétique',
     'Spa beauté',
 
-    // 🛒 BOUTIQUES
+    // \uD83D\uDED2 BOUTIQUES
     'Boutique mèches/extensions',
     'Boutique produits capillaires',
     'Magasin professionnel coiffure',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Services proposés (salons)
   servicesProposed: [
-    // 💇‍♀️ COIFFURE FEMME
-    'Tresses africaines (box braids, nattes)', // 🇨🇲
+    // \uD83D\uDC87‍♀️ COIFFURE FEMME
+    'Tresses africaines (box braids, nattes)', // \uD83C\uDDE8\uD83C\uDDF2
     'Tissages/Extensions',
     'Défrisage',
     'Lissage brésilien',
@@ -6788,13 +6788,13 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Coiffures mariée',
     'Locks/Dreadlocks',
 
-    // 🧔 COIFFURE HOMME
-    'Coupes homme (dégradé, fade)', // 🇨🇲
+    // \uD83E\uDDD4 COIFFURE HOMME
+    'Coupes homme (dégradé, fade)', // \uD83C\uDDE8\uD83C\uDDF2
     'Taille de barbe',
     'Rasage',
     'Design capillaire',
 
-    // 💅 BEAUTÉ
+    // \uD83D\uDC85 BEAUTÉ
     'Manucure/Pédicure',
     'Pose faux ongles',
     'Maquillage',
@@ -6802,24 +6802,24 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Épilation',
     'Massage',
 
-    // 🎓 FORMATION
+    // \uD83C\uDF93 FORMATION
     'Formation coiffure',
     'Formation tressage',
     'Formation maquillage',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Durée de vie (produits)
   dureeVie: [
     '1-2 mois (synthétique tresses)',
     '2-3 mois (synthétique qualité)',
-    '3-6 mois (naturel entretien moyen)', // 🔥 Standard
+    '3-6 mois (naturel entretien moyen)', // \uD83D\uDD25 Standard
     '6-12 mois (naturel bien entretenu)',
     '1-2 ans (virgin hair premium)',
     '2+ ans (excellents soins)',
     'Réutilisable (clips)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Durées (services en salon)
@@ -6835,21 +6835,21 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
 
     // ⏱️ SERVICES LONGS
     '3-4 heures (tresses courtes)',
-    '4-6 heures (tresses moyennes)', // 🔥 Box braids standard
+    '4-6 heures (tresses moyennes)', // \uD83D\uDD25 Box braids standard
     '6-8 heures (tresses longues)',
     '8-10 heures (tresses extra longues)',
     '10+ heures (tresses très élaborées)',
 
-    // 📅 AUTRES
+    // \uD83D\uDCC5 AUTRES
     'Sur devis (selon longueur/complexité)',
     'À définir',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Types de cheveux client (pour services)
   typeCheveuxClient: [
-    'Cheveux crépus (4C)', // 🇨🇲 Majoritaire Afrique
+    'Cheveux crépus (4C)', // \uD83C\uDDE8\uD83C\uDDF2 Majoritaire Afrique
     'Cheveux frisés (4A/4B)',
     'Cheveux bouclés (3A/3B/3C)',
     'Cheveux ondulés (2A/2B/2C)',
@@ -6857,13 +6857,13 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Cheveux défrisés',
     'Cheveux mixtes',
     'Tous types',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Spécialités du salon/coiffeur
   specialites: [
-    // 🌍 COIFFURE AFRICAINE
-    'Tresses africaines expert', // 🇨🇲
+    // \uD83C\uDF0D COIFFURE AFRICAINE
+    'Tresses africaines expert', // \uD83C\uDDE8\uD83C\uDDF2
     'Nattes collées (cornrows)',
     'Locks/Dreadlocks',
     'Tissages/Extensions',
@@ -6875,17 +6875,17 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Balayage/Mèches',
     'Coupes modernes',
 
-    // 🧔 BARBIER
+    // \uD83E\uDDD4 BARBIER
     'Dégradé américain (fade)',
     'Design capillaire (motifs)',
     'Barbe professionnelle',
 
-    // 👶 AUTRES
+    // \uD83D\uDC76 AUTRES
     'Coiffure enfants',
     'Mariée/Événements',
     'Cheveux crépus spécialiste',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Niveau de prix (indication)
@@ -6896,17 +6896,17 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     '€€€€ Haut de gamme (30000-50000 XAF)',
     '€€€€€ Luxe (50000 XAF+)',
     'Sur devis',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Modes de paiement acceptés
   paiements: [
     'Espèces',
-    'Mobile Money (MTN/Orange)', // 🇨🇲 TRÈS IMPORTANT
+    'Mobile Money (MTN/Orange)', // \uD83C\uDDE8\uD83C\uDDF2 TRÈS IMPORTANT
     'Carte bancaire',
     'Virement bancaire',
     'Paiement échelonné (facilités)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Jours d'ouverture
@@ -6916,7 +6916,7 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     'Mardi-Dimanche',
     'Sur rendez-vous uniquement',
     'Tous les jours sauf dimanche',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Horaires
@@ -6927,34 +6927,34 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
     '8h-20h',
     'Horaires flexibles',
     'Sur rendez-vous',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
-// ✅ MODALITÉS COUTURIER - 🌍 CONTEXTE AFRIQUE FRANCOPHONE (Cameroun focus)
+// ✅ MODALITÉS COUTURIER - \uD83C\uDF0D CONTEXTE AFRIQUE FRANCOPHONE (Cameroun focus)
 export const COUTURIER_MODALITIES: ModalityCategory = {
   // ✅ Types de prestations/services
   types: [
-    // 🪡 CONFECTION SUR MESURE (core business)
-    '🌟 Robe sur mesure', // 🇨🇲 TRÈS DEMANDÉ
-    '🌟 Costume/Tailleur sur mesure',
-    '🌟 Boubou/Kaftan sur mesure', // 🇨🇲 INCONTOURNABLE Afrique
+    // \uD83E\uDEA1 CONFECTION SUR MESURE (core business)
+    '\uD83C\uDF1F Robe sur mesure', // \uD83C\uDDE8\uD83C\uDDF2 TRÈS DEMANDÉ
+    '\uD83C\uDF1F Costume/Tailleur sur mesure',
+    '\uD83C\uDF1F Boubou/Kaftan sur mesure', // \uD83C\uDDE8\uD83C\uDDF2 INCONTOURNABLE Afrique
     'Robe de soirée sur mesure',
-    'Robe de mariée complète', // 🇨🇲 Service premium
+    'Robe de mariée complète', // \uD83C\uDDE8\uD83C\uDDF2 Service premium
     'Robe cocktail sur mesure',
-    'Ensemble pagne complet', // 🇨🇲 Très populaire femmes
+    'Ensemble pagne complet', // \uD83C\uDDE8\uD83C\uDDF2 Très populaire femmes
     'Chemise/Chemisier sur mesure',
     'Pantalon/Jupe sur mesure',
     'Veste/Blazer sur mesure',
     'Manteau/Pardessus sur mesure',
     'Combinaison sur mesure',
 
-    // 👔 TENUES AFRICAINES TRADITIONNELLES (spécialité locale)
-    '🌟 Boubou grand bazin', // 🇲🇱 Mali, très demandé
-    '🌟 Agbada (3 pièces)', // 🇳🇬 Nigeria, populaire
-    'Dashiki sur mesure', // 🌍 Pan-africain
+    // \uD83D\uDC54 TENUES AFRICAINES TRADITIONNELLES (spécialité locale)
+    '\uD83C\uDF1F Boubou grand bazin', // \uD83C\uDDF2\uD83C\uDDF1 Mali, très demandé
+    '\uD83C\uDF1F Agbada (3 pièces)', // \uD83C\uDDF3\uD83C\uDDEC Nigeria, populaire
+    'Dashiki sur mesure', // \uD83C\uDF0D Pan-africain
     'Kaftan brodé',
-    'Kaba & Slit (Ghana)', // 🇬🇭 Style ghanéen
+    'Kaba & Slit (Ghana)', // \uD83C\uDDEC\uD83C\uDDED Style ghanéen
     'Wrapper & Blouse (Nigeria)',
     'Gandoura/Djellaba',
     'Ensemble wax complet',
@@ -6963,19 +6963,19 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Robe pagne longue',
     'Robe africaine moderne',
 
-    // 👶 ENFANTS & BÉBÉS
+    // \uD83D\uDC76 ENFANTS & BÉBÉS
     'Robe enfant sur mesure',
     'Costume enfant sur mesure',
     'Tenue africaine enfant',
     'Vêtements bébé sur mesure',
     'Tenue baptême/cérémonie',
 
-    // 🎭 ÉVÉNEMENTS SPÉCIAUX
-    '🌟 Tenue mariage complète (mariée)', // 🇨🇲 Service premium
-    '🌟 Tenue mariage complet (marié)',
+    // \uD83C\uDFAD ÉVÉNEMENTS SPÉCIAUX
+    '\uD83C\uDF1F Tenue mariage complète (mariée)', // \uD83C\uDDE8\uD83C\uDDF2 Service premium
+    '\uD83C\uDF1F Tenue mariage complet (marié)',
     'Robe demoiselle d\'honneur',
     'Tenue cortège mariage',
-    'Tenue dot/mariage traditionnel', // 🇨🇲 Cérémonie traditionnelle
+    'Tenue dot/mariage traditionnel', // \uD83C\uDDE8\uD83C\uDDF2 Cérémonie traditionnelle
     'Costume cérémonie',
     'Tenue baptême',
     'Tenue communion',
@@ -6990,22 +6990,22 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Réparation déchirure',
     'Remplacement doublure',
 
-    // 🎨 BRODERIE & DÉCORATIONS
-    'Broderie main traditionnelle', // 🇨🇲 Artisanat local
+    // \uD83C\uDFA8 BRODERIE & DÉCORATIONS
+    'Broderie main traditionnelle', // \uD83C\uDDE8\uD83C\uDDF2 Artisanat local
     'Broderie machine',
-    'Broderie perles', // 🇨🇲 Très prisé
+    'Broderie perles', // \uD83C\uDDE8\uD83C\uDDF2 Très prisé
     'Broderie fil d\'or/argent',
     'Application motifs/patchs',
     'Customisation vêtement',
 
-    // 🏠 AMEUBLEMENT TEXTILE
+    // \uD83C\uDFE0 AMEUBLEMENT TEXTILE
     'Rideaux sur mesure',
     'Coussins décoratifs',
     'Housse canapé/fauteuil',
     'Nappes & sets de table',
     'Linge de maison',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Types de vêtements (catégories)
@@ -7023,21 +7023,21 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Vêtement enfant', 'Vêtement bébé',
     // Autres
     'Ameublement', 'Accessoires',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Tissus (matières) - CRUCIAL pour l'Afrique
   tissus: [
-    // 🌟 TISSUS AFRICAINS (les plus demandés)
-    '🌟 Bazin riche (brodé)', // 🇲🇱 PREMIUM Mali
-    '🌟 Bazin riche (uni)', // Plus accessible
-    '🌟 Wax hollandais (Vlisco)', // 🇨🇲 Référence qualité
-    '🌟 Super wax (premium)',
+    // \uD83C\uDF1F TISSUS AFRICAINS (les plus demandés)
+    '\uD83C\uDF1F Bazin riche (brodé)', // \uD83C\uDDF2\uD83C\uDDF1 PREMIUM Mali
+    '\uD83C\uDF1F Bazin riche (uni)', // Plus accessible
+    '\uD83C\uDF1F Wax hollandais (Vlisco)', // \uD83C\uDDE8\uD83C\uDDF2 Référence qualité
+    '\uD83C\uDF1F Super wax (premium)',
     'Wax classique',
     'Fancy print (java)',
     'Pagne traditionnel',
-    'Kente (Ghana)', // 🇬🇭 Tissu royal
-    'Bogolan (Mali)', // 🇲🇱 Tissu traditionnel
+    'Kente (Ghana)', // \uD83C\uDDEC\uD83C\uDDED Tissu royal
+    'Bogolan (Mali)', // \uD83C\uDDF2\uD83C\uDDF1 Tissu traditionnel
     'Akwete (Nigeria)',
     'Aso-oke (Nigeria)',
     'Woodin',
@@ -7045,14 +7045,14 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'GTP',
     'Uniwax',
 
-    // 🎨 TISSUS MODERNES AFRICAINS
+    // \uD83C\uDFA8 TISSUS MODERNES AFRICAINS
     'Wax moderne imprimé',
     'Ankara (imprimé africain)',
     'Kitenge',
     'Kanga',
     'Dashiki fabric',
 
-    // 👔 TISSUS CLASSIQUES/OCCIDENTAUX
+    // \uD83D\uDC54 TISSUS CLASSIQUES/OCCIDENTAUX
     'Coton',
     'Coton peigné',
     'Popeline',
@@ -7072,7 +7072,7 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Mousseline',
     'Chiffon',
 
-    // 🧵 TISSUS FORMELS
+    // \uD83E\uDDF5 TISSUS FORMELS
     'Laine',
     'Laine peignée',
     'Cachemire',
@@ -7080,7 +7080,7 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Flanelle',
     'Gabardine',
 
-    // 👖 TISSUS CASUAL
+    // \uD83D\uDC56 TISSUS CASUAL
     'Denim/Jean',
     'Jersey',
     'Chambray',
@@ -7088,7 +7088,7 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Polyester',
     'Mélange coton-polyester',
 
-    // 🌟 TISSUS SPÉCIAUX
+    // \uD83C\uDF1F TISSUS SPÉCIAUX
     'Broderie anglaise',
     'Jacquard',
     'Brocart',
@@ -7096,14 +7096,14 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Sequins/Paillettes',
     'Tissu métallisé',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Styles de couture
   styles: [
     // Africain
-    '🌟 Traditionnel africain',
-    '🌟 Afro-fusion (moderne)', // 🇨🇲 Tendance actuelle
+    '\uD83C\uDF1F Traditionnel africain',
+    '\uD83C\uDF1F Afro-fusion (moderne)', // \uD83C\uDDE8\uD83C\uDDF2 Tendance actuelle
     'Wax moderne chic',
     'Pagne élégant',
     'Ankara fashion',
@@ -7125,21 +7125,21 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Haute couture',
     'Prêt-à-porter luxe',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Genres
   genres: [
     'Femme', 'Homme', 'Enfant (fille)', 'Enfant (garçon)',
     'Bébé', 'Unisexe', 'Couple assorti', 'Famille assortie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Occasions/Événements
   occasions: [
     // Mariages
-    '🌟 Mariage (mariée)',
-    '🌟 Mariage (marié)',
+    '\uD83C\uDF1F Mariage (mariée)',
+    '\uD83C\uDF1F Mariage (marié)',
     'Mariage traditionnel',
     'Dot (cérémonie)',
     'Demoiselle d\'honneur',
@@ -7160,19 +7160,19 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Sport/Loisirs',
     'Église/Mosquée',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Délais de confection
   delais: [
-    '⚡ Express (24-48h)', // 🇨🇲 Très demandé pour événements urgents
+    '⚡ Express (24-48h)', // \uD83C\uDDE8\uD83C\uDDF2 Très demandé pour événements urgents
     'Rapide (3-5 jours)',
     'Standard (1-2 semaines)',
     'Normal (2-3 semaines)',
     'Sur-mesure complet (3-4 semaines)',
     'Robe de mariée (4-8 semaines)',
     'À convenir',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Services inclus
@@ -7187,7 +7187,7 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Livraison à domicile',
     'Urgence acceptée',
     'Conseils entretien',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Tailles (systèmes multiples Afrique)
@@ -7204,12 +7204,12 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     '0-3 mois', '3-6 mois', '6-12 mois', '12-18 mois', '18-24 mois',
     // Sur mesure
     'Sur mesure (prise de mesures)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Niveau de finition
   finitions: [
-    '🌟 Haute couture',
+    '\uD83C\uDF1F Haute couture',
     'Finition soignée (premium)',
     'Finition standard',
     'Finition simple',
@@ -7218,7 +7218,7 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Broderie main',
     'Broderie machine',
     'Perles/Ornements',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Couleurs principales (mêmes que vêtements + wax)
@@ -7231,11 +7231,11 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Marron', 'Camel', 'Chocolat',
     'Violet', 'Mauve', 'Prune', 'Aubergine',
     // Africain
-    '🌟 Multicolore (wax/pagne)',
+    '\uD83C\uDF1F Multicolore (wax/pagne)',
     'Imprimé africain',
     'Bazin teint',
     'Doré/Argenté (broderie)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Expérience du couturier
@@ -7247,7 +7247,7 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Atelier professionnel',
     'Haute couture',
     'Diplômé école mode',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Spécialités du couturier
@@ -7259,8 +7259,8 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Spécialiste vêtements enfants',
 
     // Africain
-    '🌟 Spécialiste tenues africaines',
-    '🌟 Spécialiste bazin',
+    '\uD83C\uDF1F Spécialiste tenues africaines',
+    '\uD83C\uDF1F Spécialiste bazin',
     'Spécialiste wax/pagne',
     'Spécialiste boubou',
     'Spécialiste agbada',
@@ -7271,7 +7271,7 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Spécialiste ameublement',
     'Couturier polyvalent',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Prix/Tarification
@@ -7282,18 +7282,18 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Selon modèle',
     'Sur devis uniquement',
     'Acompte requis (30-50%)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Modes de paiement
   paiements: [
     'Espèces',
-    '🌟 Mobile Money (MTN/Orange)', // 🇨🇲 ESSENTIEL
+    '\uD83C\uDF1F Mobile Money (MTN/Orange)', // \uD83C\uDDE8\uD83C\uDDF2 ESSENTIEL
     'Carte bancaire',
     'Virement bancaire',
     'Paiement échelonné (2-3 fois)',
     'Acompte + Solde livraison',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Zones d'intervention (reprend le système général)
@@ -7306,7 +7306,7 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Marché/Centre commercial',
     'À domicile client (déplacement)',
     'Mobile (sur rendez-vous)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Jours de travail
@@ -7316,7 +7316,7 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Sur rendez-vous uniquement',
     'Du mardi au dimanche',
     'Jours ouvrables uniquement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Horaires
@@ -7327,7 +7327,7 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Horaires flexibles',
     'Sur rendez-vous',
     'Disponible week-end',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Équipements/Machines
@@ -7341,7 +7341,7 @@ export const COUTURIER_MODALITIES: ModalityCategory = {
     'Table de coupe',
     'Mannequin de couture',
     'Équipement complet atelier',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -7369,7 +7369,7 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       'Déménagement de villa/immeuble',
       'Déménagement économique',
       'Déménagement VIP/premium',
-      '🆕 Autre (ajouter)'
+      '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // ✅ Villes d'Afrique francophone (système intelligent)
@@ -7400,8 +7400,8 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       'Protection sols et murs',
       'Évaluation gratuite',
       'Inventaire détaillé',
-      '📦 Stockage temporaire',
-      '🆕 Autre (ajouter)'
+      '\uD83D\uDCE6 Stockage temporaire',
+      '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // Types de véhicules
@@ -7418,7 +7418,7 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       'Camion 4x4 (routes difficiles)',
       'Remorque pour véhicule personnel',
       'Plusieurs véhicules (fleet)',
-      '🆕 Autre (ajouter)'
+      '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // Volumes approximatifs
@@ -7436,7 +7436,7 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       'Bureau grand (60-100m³)',
       'Entreprise/Immeuble (100m³+)',
       'Déménagement partiel',
-      '🆕 Autre (ajouter)'
+      '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // Distances
@@ -7449,12 +7449,12 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       'Très longue distance (500-1000 km)',
       'National (> 1000 km)',
       'International (Europe/Amérique)',
-      '🆕 Autre (ajouter)'
+      '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // Compagnies de déménagement (par pays)
     compagnies: [
-      // 🇨🇲 CAMEROUN
+      // \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN
       'Africa Déménagement Services',
       'Camtrans Déménagement',
       'Express Déménagement Cameroun',
@@ -7464,72 +7464,72 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       'Yukpo Moving',
       'Eko Déménagement',
 
-      // 🇨🇮 CÔTE D'IVOIRE
+      // \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE
       'Abidjan Transports Express',
       'Yopougon Déménagement',
       'Cocody Moving Services',
       'Plateau Transports',
       'San-Pédro Déménagement',
 
-      // 🇸🇳 SÉNÉGAL
+      // \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL
       'Dakar Transports Rapides',
       'Pikine Déménagement',
       'Thiès Moving Express',
       'Rufisque Transports',
       'Saint-Louis Moving',
 
-      // 🇲🇱 MALI
+      // \uD83C\uDDF2\uD83C\uDDF1 MALI
       'Bamako Transports Express',
       'Sikasso Moving Services',
       'Gao Transports',
       'Ségou Déménagement',
       'Tombouctou Moving',
 
-      // 🇬🇦 GABON
+      // \uD83C\uDDEC\uD83C\uDDE6 GABON
       'Libreville Moving Express',
       'Port-Gentil Transports',
       'Franceville Déménagement',
 
-      // 🇨🇬 CONGO
+      // \uD83C\uDDE8\uD83C\uDDEC CONGO
       'Brazzaville Moving Services',
       'Pointe-Noire Transports',
       'Congo Transports Express',
 
-      // 🇨🇩 RDC
+      // \uD83C\uDDE8\uD83C\uDDE9 RDC
       'Kinshasa Moving Express',
       'Lubumbashi Transports',
       'Goma Déménagement',
       'Bukavu Moving',
 
-      // 🇲🇬 MADAGASCAR
+      // \uD83C\uDDF2\uD83C\uDDEC MADAGASCAR
       'Antananarivo Moving',
       'Toamasina Transports',
       'Antsirabe Moving Express',
 
-      // 🇳🇪 NIGER
+      // \uD83C\uDDF3\uD83C\uDDEA NIGER
       'Niamey Transports',
       'Zinder Moving',
 
-      // 🇧🇫 BURKINA FASO
+      // \uD83C\uDDE7\uD83C\uDDEB BURKINA FASO
       'Ouagadougou Moving',
       'Bobo-Dioulasso Transports',
 
-      // 🇹🇬 TOGO
+      // \uD83C\uDDF9\uD83C\uDDEC TOGO
       'Lomé Moving Express',
       'Kara Transports',
 
-      // 🇧🇯 BÉNIN
+      // \uD83C\uDDE7\uD83C\uDDEF BÉNIN
       'Cotonou Moving',
       'Porto-Novo Transports',
 
-      // 🇬🇳 GUINÉE
+      // \uD83C\uDDEC\uD83C\uDDF3 GUINÉE
       'Conakry Moving',
       'Kankan Transports',
 
-      // 🏢 INTERNATIONAL/GÉNÉRIQUES
+      // \uD83C\uDFE2 INTERNATIONAL/GÉNÉRIQUES
       'Déménageur indépendant certifié',
       'Entreprise familiale agréée',
-      '🆕 Autre (ajouter)'
+      '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // Durées estimées
@@ -7540,7 +7540,7 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       '1 journée complète',
       '2-3 jours',
       '1 semaine (stockage inclus)',
-      '🆕 Autre (ajouter)'
+      '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // Disponibilités
@@ -7551,7 +7551,7 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       'Ce mois-ci',
       'Flexible (à planifier)',
       'Urgent (le jour même)',
-      '🆕 Autre (ajouter)'
+      '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // Nombre de déménageurs
@@ -7562,7 +7562,7 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       '4-5 déménageurs',
       '6+ déménageurs (grande équipe)',
       'Équipe variable selon besoin',
-      '🆕 Autre (ajouter)'
+      '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // Types d'assurance (alias de garanties)
@@ -7573,7 +7573,7 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       'Garantie casse/dommages',
       'Garantie vol/détérioration',
       'Sans assurance (déménagement à vos risques)',
-      '🆕 Autre (ajouter)'
+      '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // Garanties et assurances (alias pour compatibilité)
@@ -7584,7 +7584,7 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       'Garantie casse/dommages',
       'Garantie vol/détérioration',
       'Sans assurance (déménagement à vos risques)',
-      '🆕 Autre (ajouter)'
+      '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // Accessibilité / Étages
@@ -7598,7 +7598,7 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       'Sous-sol',
       'Accès difficile (escaliers étroits)',
       'Accès facile (parking proche)',
-      '🆕 Autre (ajouter)'
+      '\uD83C\uDD95 Autre (ajouter)'
     ],
 
     // États des routes
@@ -7609,7 +7609,7 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       'Routes en terre (difficiles)',
       'Pistes (4x4 requis)',
       'Tous types de routes',
-      '🆕 Autre (ajouter)'
+      '\uD83C\uDD95 Autre (ajouter)'
     ]
   };
 };
@@ -7657,7 +7657,7 @@ export const JOUETS_ENFANTS_MODALITIES: ModalityCategory = {
     // Jouets traditionnels africains
     'Djembé enfant', 'Tam-tam miniature', 'Masque africain décoratif',
     'Figurine artisanale', 'Jeu traditionnel (Awalé, etc.)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TRANCHES D'ÂGE DÉTAILLÉES (12) - Précis pour sécurité
@@ -7666,7 +7666,7 @@ export const JOUETS_ENFANTS_MODALITIES: ModalityCategory = {
     '2-3 ans (Petite enfance)', '3-5 ans (Préscolaire)', '5-7 ans (Maternelle/CP)',
     '7-9 ans (Primaire)', '9-12 ans (Préadolescent)', '12-15 ans (Adolescent)',
     '15+ ans (Jeune adulte)', 'Tous âges', '0-3 ans (avec surveillance)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MARQUES (30+) - Internationales + accessibles en Afrique
@@ -7686,7 +7686,7 @@ export const JOUETS_ENFANTS_MODALITIES: ModalityCategory = {
     'Decathlon Kids', 'Smoby', 'Intex',
     // Marques locales/artisanales
     'Artisanat local', 'Fait main Cameroun', 'Made in Africa',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MATÉRIAUX (15+) - Détaillé pour sécurité
@@ -7696,7 +7696,7 @@ export const JOUETS_ENFANTS_MODALITIES: ModalityCategory = {
     'Tissu coton bio', 'Tissu polyester', 'Peluche hypoallergénique',
     'Métal (non toxique)', 'Silicone alimentaire', 'Caoutchouc naturel',
     'Carton recyclé', 'Mousse EVA', 'Matériaux mixtes',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NORMES & CERTIFICATIONS (12+) - Sécurité enfants
@@ -7706,7 +7706,7 @@ export const JOUETS_ENFANTS_MODALITIES: ModalityCategory = {
     'NF (Norme Française)', 'GS (Geprüfte Sicherheit)',
     'Sans phtalates', 'Sans BPA', 'Sans plomb',
     'Non toxique certifié', 'Hypoallergénique', 'Ignifugé',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CATÉGORIES ÉDUCATIVES (18+) - Développement enfant
@@ -7718,14 +7718,14 @@ export const JOUETS_ENFANTS_MODALITIES: ModalityCategory = {
     'Sciences & Découverte', 'Géographie & Culture',
     'Créativité & Imagination', 'Sociabilité & Partage',
     'Autonomie & Responsabilité', 'Jeu libre', 'Jeu imitatif',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ GENRE (5)
   genre: [
     'Mixte/Unisexe', 'Plutôt fille', 'Plutôt garçon',
     'Neutre', 'Pour tous',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉTAT DU PRODUIT (8)
@@ -7733,7 +7733,7 @@ export const JOUETS_ENFANTS_MODALITIES: ModalityCategory = {
     'Neuf (emballé)', 'Neuf (déballé)', 'Comme neuf',
     'Très bon état', 'Bon état', 'État moyen',
     'Occasion (à vérifier)', 'Reconditionné',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FONCTIONNALITÉS (15+) - Caractéristiques techniques
@@ -7744,7 +7744,7 @@ export const JOUETS_ENFANTS_MODALITIES: ModalityCategory = {
     'Réalité augmentée (AR)', 'Enregistrement vocal',
     'Capteurs de mouvement', 'Évolutif (plusieurs niveaux)',
     'Lavable en machine', 'Résistant à l\'eau', 'Pliable/Portable',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ALIMENTATION/ÉNERGIE (10)
@@ -7754,7 +7754,7 @@ export const JOUETS_ENFANTS_MODALITIES: ModalityCategory = {
     'Batterie rechargeable (secteur)', 'Solaire',
     'Mécanique (à remonter)', 'Hybride (piles + manuel)',
     'Secteur 220V',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ COULEURS PRINCIPALES (15+) - Multi-sélection
@@ -7762,7 +7762,7 @@ export const JOUETS_ENFANTS_MODALITIES: ModalityCategory = {
     'Rouge', 'Bleu', 'Vert', 'Jaune', 'Orange', 'Rose', 'Violet',
     'Noir', 'Blanc', 'Gris', 'Marron', 'Multicolore',
     'Pastel', 'Couleurs vives', 'Couleurs naturelles',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CONDITIONNEMENT (10) - Emballage
@@ -7771,7 +7771,7 @@ export const JOUETS_ENFANTS_MODALITIES: ModalityCategory = {
     'Emballage cadeau disponible', 'Sans emballage',
     'Emballage écologique', 'Blister', 'Sachet plastique',
     'Coffret', 'Vrac', 'Recharge/Extension',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ LIEU D'UTILISATION (8)
@@ -7779,14 +7779,14 @@ export const JOUETS_ENFANTS_MODALITIES: ModalityCategory = {
     'Intérieur', 'Extérieur', 'Intérieur & Extérieur',
     'Piscine/Plage', 'Jardin', 'Chambre', 'Salle de jeu',
     'Voyage/Voiture',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOMBRE DE JOUEURS (8) - Pour jeux de société
   nombre_joueurs: [
     'Solo (1 joueur)', '2 joueurs', '2-4 joueurs', '3-6 joueurs',
     '4-8 joueurs', '6+ joueurs', 'Illimité', 'Multijoueur en ligne',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ DURÉE DE JEU (8) - Pour jeux de société
@@ -7794,7 +7794,7 @@ export const JOUETS_ENFANTS_MODALITIES: ModalityCategory = {
     'Moins de 15 min', '15-30 min', '30 min - 1h',
     '1h - 2h', '2h et plus', 'Variable', 'Jeu infini',
     'Par manche (5-10 min)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ACCESSOIRES INCLUS (12+) - Multi-sélection
@@ -7804,14 +7804,14 @@ export const JOUETS_ENFANTS_MODALITIES: ModalityCategory = {
     'Pièces de rechange', 'Guide éducatif', 'Application mobile',
     'Certificat d\'authenticité', 'Carte de garantie',
     'Aucun accessoire',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ GARANTIE (8)
   garantie: [
     'Sans garantie', '3 mois', '6 mois', '1 an',
     '2 ans', '3 ans', '5 ans', 'Garantie à vie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -7820,17 +7820,17 @@ export const USTENSILES_CUISINE_MODALITIES: ModalityCategory = {
   // ✅ NOMS DE PRODUITS (100+ ustensiles : traditionnels africains + modernes)
   noms_produits: [
     // ===== USTENSILES TRADITIONNELS AFRICAINS =====
-    // 🌍 Pilage et broyage
+    // \uD83C\uDF0D Pilage et broyage
     'Mortier et pilon (bois)', 'Mortier et pilon (pierre)', 'Mortier électrique',
     'Pierre à moudre', 'Meule à grain traditionnelle',
 
-    // 🏺 Récipients traditionnels
+    // \uD83C\uDFFA Récipients traditionnels
     'Canari (petite taille)', 'Canari (moyenne taille)', 'Canari (grande taille)',
     'Marmite en terre cuite', 'Calebasse (grande)', 'Calebasse (petite)',
     'Panier tressé (conservation)', 'Natte de séchage',
 
     // ===== BATTERIES DE CUISINE =====
-    // 🍳 Sets complets
+    // \uD83C\uDF73 Sets complets
     'Batterie de cuisine 5 pièces', 'Batterie de cuisine 7 pièces',
     'Batterie de cuisine 10 pièces', 'Batterie de cuisine 12 pièces',
     'Batterie de cuisine professionnelle (20+ pièces)',
@@ -7910,22 +7910,22 @@ export const USTENSILES_CUISINE_MODALITIES: ModalityCategory = {
     'Torchons de cuisine (lot 6)', 'Maniques (lot 2)',
     'Dessous de plat', 'Égouttoir à vaisselle',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CATÉGORIES (11)
   categories: [
-    '🌍 Ustensiles traditionnels africains',
-    '🍳 Batteries de cuisine (sets)',
-    '🔥 Ustensiles de cuisson (casseroles, poêles)',
-    '🍽️ Vaisselle & Service (assiettes, verres)',
-    '🔪 Ustensiles de préparation (couteaux, râpes)',
+    '\uD83C\uDF0D Ustensiles traditionnels africains',
+    '\uD83C\uDF73 Batteries de cuisine (sets)',
+    '\uD83D\uDD25 Ustensiles de cuisson (casseroles, poêles)',
+    '\uD83C\uDF7D️ Vaisselle & Service (assiettes, verres)',
+    '\uD83D\uDD2A Ustensiles de préparation (couteaux, râpes)',
     '⚡ Petits électroménagers (mixeur, blender)',
-    '📦 Conservation & Stockage',
+    '\uD83D\uDCE6 Conservation & Stockage',
     '⚖️ Accessoires (balance, minuteur)',
-    '🎪 Événementiel (jetable, location)',
-    '👨‍🍳 Professionnel / Restaurant',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDFAA Événementiel (jetable, location)',
+    '\uD83D\uDC68‍\uD83C\uDF73 Professionnel / Restaurant',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES (40+)
@@ -7958,7 +7958,7 @@ export const USTENSILES_CUISINE_MODALITIES: ModalityCategory = {
     'Boîte de conservation', 'Balance', 'Minuteur', 'Thermomètre',
     'Torchon', 'Manique', 'Dessous de plat', 'Égouttoir',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MATÉRIAUX (25)
@@ -7981,7 +7981,7 @@ export const USTENSILES_CUISINE_MODALITIES: ModalityCategory = {
     // Verre & Porcelaine
     'Verre', 'Verre trempé', 'Pyrex', 'Porcelaine', 'Faïence', 'Grès',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MARQUES (45 - Focus Afrique)
@@ -8006,7 +8006,7 @@ export const USTENSILES_CUISINE_MODALITIES: ModalityCategory = {
     // ===== PROFESSIONNELLES =====
     'Beka', 'De Buyer', 'Matfer', 'Lacor',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CAPACITÉS (30)
@@ -8026,7 +8026,7 @@ export const USTENSILES_CUISINE_MODALITIES: ModalityCategory = {
     // Autres
     'Variable', 'N/A',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉTATS (7)
@@ -8037,7 +8037,7 @@ export const USTENSILES_CUISINE_MODALITIES: ModalityCategory = {
     'Bon état',
     'État correct',
     'Occasion (usure visible)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ USAGES (8)
@@ -8049,7 +8049,7 @@ export const USTENSILES_CUISINE_MODALITIES: ModalityCategory = {
     'Cuisine traditionnelle africaine',
     'Pâtisserie',
     'Location pour événements',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOMBRE DE PIÈCES DANS SET (10)
@@ -8063,7 +8063,7 @@ export const USTENSILES_CUISINE_MODALITIES: ModalityCategory = {
     '10 pièces',
     '12 pièces',
     '20+ pièces',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ COMPATIBILITÉS (feux de cuisson)
@@ -8076,7 +8076,7 @@ export const USTENSILES_CUISINE_MODALITIES: ModalityCategory = {
     'Four',
     'Micro-ondes',
     'Lave-vaisselle',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -8140,7 +8140,7 @@ export const PIECES_AUTO_MODALITIES: ModalityCategory = {
     'Joint de culasse', 'Joint de carter', 'Joint SPI',
     'Huile moteur', 'Liquide de refroidissement', 'Liquide lave-glace',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CATÉGORIES (10 catégories principales)
@@ -8155,7 +8155,7 @@ export const PIECES_AUTO_MODALITIES: ModalityCategory = {
     'Intérieur & Habitacle',
     'Électrique & Électronique',
     'Accessoires & Consommables',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE PIÈCES (20+ types détaillés)
@@ -8173,7 +8173,7 @@ export const PIECES_AUTO_MODALITIES: ModalityCategory = {
     'Pare-chocs', 'Ailes & Portes', 'Optiques (phares, feux)', 'Rétroviseurs',
     // Autres
     'Échappement (pot, catalyseur)', 'Intérieur (sièges, tableau de bord)', 'Consommables (huiles, liquides)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MARQUES DE PIÈCES (35+ marques)
@@ -8189,7 +8189,7 @@ export const PIECES_AUTO_MODALITIES: ModalityCategory = {
     'Blue Print', 'Ridex', 'Stark',
     // Marque véhicule (origine)
     'Origine constructeur (OEM)', 'Équipementier d\'origine',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MARQUES DE VÉHICULES COMPATIBLES (25+ marques populaires Cameroun)
@@ -8206,7 +8206,7 @@ export const PIECES_AUTO_MODALITIES: ModalityCategory = {
     'Changan', 'Chery', 'Geely', 'Haval',
     // Universelle
     'Universel (toutes marques)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MODÈLES POPULAIRES CAMEROUN (30+ modèles)
@@ -8225,7 +8225,7 @@ export const PIECES_AUTO_MODALITIES: ModalityCategory = {
     'Peugeot 206', 'Peugeot 207', 'Peugeot 307', 'Renault Clio', 'Renault Mégane',
     // Autres
     'Hyundai Tucson', 'Kia Sportage', 'VW Golf', 'Ford Ranger',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉTATS (8 états détaillés)
@@ -8238,7 +8238,7 @@ export const PIECES_AUTO_MODALITIES: ModalityCategory = {
     'Occasion - État faible (> 70% usure)',
     'Reconditionné (remis à neuf)',
     'À réparer (pièce défectueuse)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ GARANTIES (8 types)
@@ -8251,7 +8251,7 @@ export const PIECES_AUTO_MODALITIES: ModalityCategory = {
     'Garantie satisfait ou remboursé 7 jours',
     'Sans garantie (pièce d\'occasion)',
     'Garantie à vie (certaines pièces)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ORIGINES (11 origines - contexte Afrique)
@@ -8267,7 +8267,7 @@ export const PIECES_AUTO_MODALITIES: ModalityCategory = {
     'Origine Nigeria', // ✅ Très utilisé au Cameroun (pays voisin)
     'Fabriqué localement (Cameroun)',
     'Importé direct constructeur',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ COMPATIBILITÉS (6 niveaux)
@@ -8278,7 +8278,7 @@ export const PIECES_AUTO_MODALITIES: ModalityCategory = {
     'Nécessite vérification référence',
     'Sur commande (à vérifier)',
     'Adaptable avec modification',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MATÉRIAUX (10 matériaux)
@@ -8293,7 +8293,7 @@ export const PIECES_AUTO_MODALITIES: ModalityCategory = {
     'Céramique (plaquettes)',
     'Carbone',
     'Matériau composite',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE FOURNISSEURS (6 types)
@@ -8304,7 +8304,7 @@ export const PIECES_AUTO_MODALITIES: ModalityCategory = {
     'Importateur direct',
     'Particulier (vente pièce)',
     'Marketplace en ligne',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -8397,7 +8397,7 @@ export const PIECES_INDUSTRIELLES_MODALITIES: ModalityCategory = {
     'Câble électrique industriel',
     'Courroie de manutention',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Marques internationales très présentes en Afrique (50+)
@@ -8489,7 +8489,7 @@ export const PIECES_INDUSTRIELLES_MODALITIES: ModalityCategory = {
     'Würth',
     'Facom',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Applications industrielles en Afrique (30+)
@@ -8541,7 +8541,7 @@ export const PIECES_INDUSTRIELLES_MODALITIES: ModalityCategory = {
     'Manutention et convoyage',
     'Compresseur d\'air',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Matériaux (20+)
@@ -8568,7 +8568,7 @@ export const PIECES_INDUSTRIELLES_MODALITIES: ModalityCategory = {
     'Composite',
     'Céramique',
     'Graphite',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // États
@@ -8579,7 +8579,7 @@ export const PIECES_INDUSTRIELLES_MODALITIES: ModalityCategory = {
     'Occasion - Bon état',
     'Occasion - À réparer',
     'Reconditionné',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Normes et certifications
@@ -8594,7 +8594,7 @@ export const PIECES_INDUSTRIELLES_MODALITIES: ModalityCategory = {
     'ATEX (Zones explosives)',
     'IP (Indice de protection)',
     'Sans certification',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Garanties
@@ -8606,885 +8606,885 @@ export const PIECES_INDUSTRIELLES_MODALITIES: ModalityCategory = {
     '2 ans',
     '3 ans et plus',
     'Garantie constructeur',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
 // ✅ MODALITÉS RESTAURATION & TRAITEUR - ULTRA-COMPLET AFRIQUE FRANCOPHONE
-// 🌍 Focus: Cameroun, Côte d'Ivoire, Sénégal, Mali, Congo, Gabon, Burkina Faso, etc.
+// \uD83C\uDF0D Focus: Cameroun, Côte d'Ivoire, Sénégal, Mali, Congo, Gabon, Burkina Faso, etc.
 export const RESTAURATION_MODALITIES: ModalityCategory = {
   // ===============================================
-  // 🍽️ TYPES D'ÉTABLISSEMENTS (20+)
+  // \uD83C\uDF7D️ TYPES D'ÉTABLISSEMENTS (20+)
   // ===============================================
   types: [
     // Afrique
-    '🏠 Maquis traditionnel',
-    '🏠 Restaurant africain',
-    '🍖 Braiserie / Grillades',
-    '🍗 Poulet braisé / Rôtisserie',
-    '🐟 Poissonnerie / Poisson braisé',
-    '🥘 Traiteur événementiel',
+    '\uD83C\uDFE0 Maquis traditionnel',
+    '\uD83C\uDFE0 Restaurant africain',
+    '\uD83C\uDF56 Braiserie / Grillades',
+    '\uD83C\uDF57 Poulet braisé / Rôtisserie',
+    '\uD83D\uDC1F Poissonnerie / Poisson braisé',
+    '\uD83E\uDD58 Traiteur événementiel',
     '☕ Cafétéria / Snack',
 
     // International
-    '🍕 Pizzeria',
-    '🍔 Fast-food / Burger',
-    '🍝 Restaurant italien',
-    '🍜 Restaurant asiatique (chinois, japonais)',
-    '🥙 Restaurant libanais / Moyen-Orient',
-    '🥖 Boulangerie-pâtisserie',
-    '🧁 Pâtisserie / Salon de thé',
-    '🍰 Glacier / Crèmerie',
+    '\uD83C\uDF55 Pizzeria',
+    '\uD83C\uDF54 Fast-food / Burger',
+    '\uD83C\uDF5D Restaurant italien',
+    '\uD83C\uDF5C Restaurant asiatique (chinois, japonais)',
+    '\uD83E\uDD59 Restaurant libanais / Moyen-Orient',
+    '\uD83E\uDD56 Boulangerie-pâtisserie',
+    '\uD83E\uDDC1 Pâtisserie / Salon de thé',
+    '\uD83C\uDF70 Glacier / Crèmerie',
 
     // Moderne
-    '🚚 Food truck',
-    '🏪 Kiosque / Stand alimentaire',
-    '🍷 Restaurant gastronomique',
-    '🍸 Bar-restaurant / Lounge',
+    '\uD83D\uDE9A Food truck',
+    '\uD83C\uDFEA Kiosque / Stand alimentaire',
+    '\uD83C\uDF77 Restaurant gastronomique',
+    '\uD83C\uDF78 Bar-restaurant / Lounge',
     '☕ Café / Coffee shop',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ===============================================
-  // 🇨🇲 PLATS CAMEROUNAIS (60+ plats authentiques)
+  // \uD83C\uDDE8\uD83C\uDDF2 PLATS CAMEROUNAIS (60+ plats authentiques)
   // ===============================================
   plats_camerounais: [
-    // 🍖 VIANDES & GRILLADES
-    '🍖 Poulet DG (Directeur Général)',
-    '🍗 Poulet braisé / Kati-kati',
-    '🍗 Poulet bicyclette (poulet local)',
-    '🥩 Bœuf sauté à la tomate',
-    '🥩 Soya (brochettes de bœuf)',
-    '🥩 Khebabs (brochettes)',
-    '🐐 Chèvre rôtie / Chèvre sautée',
-    '🐐 Tchobi (sauce chèvre)',
-    '🐏 Mouton grillé / Mouton sauté',
-    '🥓 Porc sauté / Porc grillé',
-    '🥓 Porc braisé',
-    '🍖 Viande fumée / Kilichi',
+    // \uD83C\uDF56 VIANDES & GRILLADES
+    '\uD83C\uDF56 Poulet DG (Directeur Général)',
+    '\uD83C\uDF57 Poulet braisé / Kati-kati',
+    '\uD83C\uDF57 Poulet bicyclette (poulet local)',
+    '\uD83E\uDD69 Bœuf sauté à la tomate',
+    '\uD83E\uDD69 Soya (brochettes de bœuf)',
+    '\uD83E\uDD69 Khebabs (brochettes)',
+    '\uD83D\uDC10 Chèvre rôtie / Chèvre sautée',
+    '\uD83D\uDC10 Tchobi (sauce chèvre)',
+    '\uD83D\uDC0F Mouton grillé / Mouton sauté',
+    '\uD83E\uDD53 Porc sauté / Porc grillé',
+    '\uD83E\uDD53 Porc braisé',
+    '\uD83C\uDF56 Viande fumée / Kilichi',
 
-    // 🐟 POISSONS & FRUITS DE MER
-    '🐟 Poisson braisé (tilapia, capitaine, carpe)',
-    '🐟 Poisson fumé',
-    '🐟 Poisson salé séché (mbonga)',
-    '🐟 Makayabu (morue salée)',
-    '🦐 Crevettes sautées',
-    '🦐 Crevettes à la sauce tomate',
-    '🦞 Écrevisses fraîches',
-    '🐚 Escargots (congo meat)',
+    // \uD83D\uDC1F POISSONS & FRUITS DE MER
+    '\uD83D\uDC1F Poisson braisé (tilapia, capitaine, carpe)',
+    '\uD83D\uDC1F Poisson fumé',
+    '\uD83D\uDC1F Poisson salé séché (mbonga)',
+    '\uD83D\uDC1F Makayabu (morue salée)',
+    '\uD83E\uDD90 Crevettes sautées',
+    '\uD83E\uDD90 Crevettes à la sauce tomate',
+    '\uD83E\uDD9E Écrevisses fraîches',
+    '\uD83D\uDC1A Escargots (congo meat)',
 
-    // 🥘 SAUCES & PLATS EN SAUCE
-    '🥘 Ndolé (feuilles de ndolé + arachides)',
-    '🥘 Eru (okok) - légumes gluants',
-    '🥘 Koki (gâteau de haricots)',
-    '🥘 Koki Bassa (haricots triturés Bassa)',
-    '🥘 Koki du Centre (haricots du Centre)',
-    '🥘 Ikok (feuilles de manioc)',
-    '🥘 Taro sauce jaune (macabo + sauce jaune)',
-    '🥘 Kouakoukou / Macabo rapé (macabo râpé + sauce)',
-    '🥘 Sauce gombo',
-    '🥘 Sauce arachide',
-    '🥘 Sauce graine / Sauce pistache (pistache/courge)',
-    '🥘 Sauce jaune (curcuma)',
-    '🥘 Sauce tomate',
-    '🥘 Nkwem / Kwem (sauce épaisse)',
-    '🥘 Mbongo / Mbongo tchobi (sauce noire)',
-    '🥘 Nkontchap (sauce épaisse à base de légumes)',
-    '🥘 Kondré (plantain + viande)',
-    '🥘 Sanga / Sangah (maïs + feuilles de manioc)',
-    '🥘 Kati (sauce épicée)',
-    '🥗 Légumes sautés (carottes, haricots verts, etc.)',
+    // \uD83E\uDD58 SAUCES & PLATS EN SAUCE
+    '\uD83E\uDD58 Ndolé (feuilles de ndolé + arachides)',
+    '\uD83E\uDD58 Eru (okok) - légumes gluants',
+    '\uD83E\uDD58 Koki (gâteau de haricots)',
+    '\uD83E\uDD58 Koki Bassa (haricots triturés Bassa)',
+    '\uD83E\uDD58 Koki du Centre (haricots du Centre)',
+    '\uD83E\uDD58 Ikok (feuilles de manioc)',
+    '\uD83E\uDD58 Taro sauce jaune (macabo + sauce jaune)',
+    '\uD83E\uDD58 Kouakoukou / Macabo rapé (macabo râpé + sauce)',
+    '\uD83E\uDD58 Sauce gombo',
+    '\uD83E\uDD58 Sauce arachide',
+    '\uD83E\uDD58 Sauce graine / Sauce pistache (pistache/courge)',
+    '\uD83E\uDD58 Sauce jaune (curcuma)',
+    '\uD83E\uDD58 Sauce tomate',
+    '\uD83E\uDD58 Nkwem / Kwem (sauce épaisse)',
+    '\uD83E\uDD58 Mbongo / Mbongo tchobi (sauce noire)',
+    '\uD83E\uDD58 Nkontchap (sauce épaisse à base de légumes)',
+    '\uD83E\uDD58 Kondré (plantain + viande)',
+    '\uD83E\uDD58 Sanga / Sangah (maïs + feuilles de manioc)',
+    '\uD83E\uDD58 Kati (sauce épicée)',
+    '\uD83E\uDD57 Légumes sautés (carottes, haricots verts, etc.)',
 
-    // 🍚 FÉCULENTS & ACCOMPAGNEMENTS
-    '🍚 Riz blanc / Riz sauce tomate',
-    '🍚 Riz jollof / Riz au gras',
-    '🍚 Riz sauté',
-    '🌽 Couscous de maïs / Chachacha',
-    '🌽 Couscous de manioc (gari)',
-    '🌽 Bouilli de maïs / Corn fufu',
-    '🌾 Fufu (pâte de maïs fermentée)',
-    '🥔 Water fufu / Waterfufu',
-    '🍠 Igname pilée / Foufou d\'igname',
-    '🍠 Macabo bouilli / Taro',
-    '🍌 Plantain frit / Alloco',
-    '🍌 Plantain bouilli',
-    '🍌 Plantain mûr grillé',
-    '🥔 Patate douce bouillie',
-    '🥜 Miondo (bâtons de manioc)',
-    '🥜 Bobolo (pain de manioc)',
-    '🥜 Bâton de manioc',
+    // \uD83C\uDF5A FÉCULENTS & ACCOMPAGNEMENTS
+    '\uD83C\uDF5A Riz blanc / Riz sauce tomate',
+    '\uD83C\uDF5A Riz jollof / Riz au gras',
+    '\uD83C\uDF5A Riz sauté',
+    '\uD83C\uDF3D Couscous de maïs / Chachacha',
+    '\uD83C\uDF3D Couscous de manioc (gari)',
+    '\uD83C\uDF3D Bouilli de maïs / Corn fufu',
+    '\uD83C\uDF3E Fufu (pâte de maïs fermentée)',
+    '\uD83E\uDD54 Water fufu / Waterfufu',
+    '\uD83C\uDF60 Igname pilée / Foufou d\'igname',
+    '\uD83C\uDF60 Macabo bouilli / Taro',
+    '\uD83C\uDF4C Plantain frit / Alloco',
+    '\uD83C\uDF4C Plantain bouilli',
+    '\uD83C\uDF4C Plantain mûr grillé',
+    '\uD83E\uDD54 Patate douce bouillie',
+    '\uD83E\uDD5C Miondo (bâtons de manioc)',
+    '\uD83E\uDD5C Bobolo (pain de manioc)',
+    '\uD83E\uDD5C Bâton de manioc',
 
-    // 🥣 SOUPES & BOUILLONS
-    '🥣 Nkui (soupe épicée)',
-    '🥣 Ekwang (taro pilé + feuilles)',
-    '🥣 Pepper soup (soupe poivrée)',
-    '🥣 Okok (eru en soupe)',
+    // \uD83E\uDD63 SOUPES & BOUILLONS
+    '\uD83E\uDD63 Nkui (soupe épicée)',
+    '\uD83E\uDD63 Ekwang (taro pilé + feuilles)',
+    '\uD83E\uDD63 Pepper soup (soupe poivrée)',
+    '\uD83E\uDD63 Okok (eru en soupe)',
 
-    // 🥐 COLLATIONS & STREET FOOD
-    '🥐 Puff-puff (beignets sucrés)',
-    '🥐 Beignet haricot (accra)',
-    '🥐 Beignets de banane',
-    '🥐 Akara (beignets de haricots)',
-    '🥐 Beignet de maïs',
-    '🍞 Pain artisanal camerounais',
-    '🌭 Saucisses grillées',
-    '🥚 Omelette camerounaise',
-    '🥚 Œufs durs sauce tomate',
-    '🌽 Maïs bouilli / Épis grillés',
-    '🥜 Arachides grillées',
+    // \uD83E\uDD50 COLLATIONS & STREET FOOD
+    '\uD83E\uDD50 Puff-puff (beignets sucrés)',
+    '\uD83E\uDD50 Beignet haricot (accra)',
+    '\uD83E\uDD50 Beignets de banane',
+    '\uD83E\uDD50 Akara (beignets de haricots)',
+    '\uD83E\uDD50 Beignet de maïs',
+    '\uD83C\uDF5E Pain artisanal camerounais',
+    '\uD83C\uDF2D Saucisses grillées',
+    '\uD83E\uDD5A Omelette camerounaise',
+    '\uD83E\uDD5A Œufs durs sauce tomate',
+    '\uD83C\uDF3D Maïs bouilli / Épis grillés',
+    '\uD83E\uDD5C Arachides grillées',
 
-    '🆕 Autre plat camerounais (ajouter)'
+    '\uD83C\uDD95 Autre plat camerounais (ajouter)'
   ],
 
   // ===============================================
-  // 🇨🇮 PLATS IVOIRIENS (70+ plats authentiques)
+  // \uD83C\uDDE8\uD83C\uDDEE PLATS IVOIRIENS (70+ plats authentiques)
   // ===============================================
   plats_ivoiriens: [
-    // 🍖 PLATS SIGNATURE IVOIRIENS
-    '🍖 Attiéké-poisson (semoule manioc + poisson frit)',
-    '🍖 Attiéké-poulet braisé',
-    '🍖 Attiéké-viande',
-    '🍖 Aloco-poisson (plantain frit + poisson)',
-    '🍖 Aloco-œuf / Aloco-viande',
-    '🥘 Garba (attiéké + thon frit)',
-    '🥘 Kedjenou (poulet mijoté traditionnel)',
-    '🥘 Kedjenou de pintade',
-    '🥘 Kedjenou de poisson',
-    '🥘 Placali sauce graine (pâte manioc fermentée)',
-    '🥘 Placali sauce claire',
-    '🥘 Foutou sauce graine',
-    '🥘 Foutou sauce claire',
+    // \uD83C\uDF56 PLATS SIGNATURE IVOIRIENS
+    '\uD83C\uDF56 Attiéké-poisson (semoule manioc + poisson frit)',
+    '\uD83C\uDF56 Attiéké-poulet braisé',
+    '\uD83C\uDF56 Attiéké-viande',
+    '\uD83C\uDF56 Aloco-poisson (plantain frit + poisson)',
+    '\uD83C\uDF56 Aloco-œuf / Aloco-viande',
+    '\uD83E\uDD58 Garba (attiéké + thon frit)',
+    '\uD83E\uDD58 Kedjenou (poulet mijoté traditionnel)',
+    '\uD83E\uDD58 Kedjenou de pintade',
+    '\uD83E\uDD58 Kedjenou de poisson',
+    '\uD83E\uDD58 Placali sauce graine (pâte manioc fermentée)',
+    '\uD83E\uDD58 Placali sauce claire',
+    '\uD83E\uDD58 Foutou sauce graine',
+    '\uD83E\uDD58 Foutou sauce claire',
 
-    // 🥘 SAUCES TRADITIONNELLES
-    '🥘 Sauce claire (gombo + huile palme)',
-    '🥘 Sauce graine (pistache)',
-    '🥘 Sauce arachide',
-    '🥘 Sauce djoumblé (aubergine africaine)',
-    '🥘 Sauce kopé (gombo séché)',
-    '🥘 Sauce gouagouassou (gombo + aubergine)',
-    '🥘 Sauce feuilles de patate',
-    '🥘 Sauce n\'tro (graines de courge)',
-    '🥘 Sauce graine de courge',
+    // \uD83E\uDD58 SAUCES TRADITIONNELLES
+    '\uD83E\uDD58 Sauce claire (gombo + huile palme)',
+    '\uD83E\uDD58 Sauce graine (pistache)',
+    '\uD83E\uDD58 Sauce arachide',
+    '\uD83E\uDD58 Sauce djoumblé (aubergine africaine)',
+    '\uD83E\uDD58 Sauce kopé (gombo séché)',
+    '\uD83E\uDD58 Sauce gouagouassou (gombo + aubergine)',
+    '\uD83E\uDD58 Sauce feuilles de patate',
+    '\uD83E\uDD58 Sauce n\'tro (graines de courge)',
+    '\uD83E\uDD58 Sauce graine de courge',
 
-    // 🍚 RIZ & FÉCULENTS
-    '🍚 Riz gras / Riz au gras ivoirien',
-    '🍚 Riz sauce',
-    '🍚 Riz sauce tomate',
-    '🍚 Riz jollof ivoirien',
-    '🌾 Foutou banane (banane plantain pilée)',
-    '🌾 Foutou igname',
-    '🌾 Foutou manioc',
-    '🌾 Placali (pâte de manioc fermentée)',
-    '🍠 Igname bouillie / Igname pilée',
-    '🍠 Igname frite',
-    '🍌 Alloco (plantain frit)',
-    '🍌 Plantain bouilli',
-    '🥔 Tubercules bouillis (igname, manioc, etc.)',
+    // \uD83C\uDF5A RIZ & FÉCULENTS
+    '\uD83C\uDF5A Riz gras / Riz au gras ivoirien',
+    '\uD83C\uDF5A Riz sauce',
+    '\uD83C\uDF5A Riz sauce tomate',
+    '\uD83C\uDF5A Riz jollof ivoirien',
+    '\uD83C\uDF3E Foutou banane (banane plantain pilée)',
+    '\uD83C\uDF3E Foutou igname',
+    '\uD83C\uDF3E Foutou manioc',
+    '\uD83C\uDF3E Placali (pâte de manioc fermentée)',
+    '\uD83C\uDF60 Igname bouillie / Igname pilée',
+    '\uD83C\uDF60 Igname frite',
+    '\uD83C\uDF4C Alloco (plantain frit)',
+    '\uD83C\uDF4C Plantain bouilli',
+    '\uD83E\uDD54 Tubercules bouillis (igname, manioc, etc.)',
 
-    // 🍗 GRILLADES & VIANDES
-    '🍗 Poulet braisé à l\'ivoirienne',
-    '🍗 Poulet bicyclette (poulet local)',
-    '🐟 Poisson braisé (carpe, capitaine, machoiron)',
-    '🐟 Poisson fumé',
-    '🐟 Poisson frit (dorade, sole)',
-    '🐟 Brochettes de poisson',
-    '🥩 Bœuf braisé / Choukouya',
-    '🥩 Brochettes de bœuf',
-    '🐏 Mouton braisé',
-    '🐏 Brochettes de mouton',
-    '🦀 Crabes farcis',
-    '🦐 Crevettes sautées',
+    // \uD83C\uDF57 GRILLADES & VIANDES
+    '\uD83C\uDF57 Poulet braisé à l\'ivoirienne',
+    '\uD83C\uDF57 Poulet bicyclette (poulet local)',
+    '\uD83D\uDC1F Poisson braisé (carpe, capitaine, machoiron)',
+    '\uD83D\uDC1F Poisson fumé',
+    '\uD83D\uDC1F Poisson frit (dorade, sole)',
+    '\uD83D\uDC1F Brochettes de poisson',
+    '\uD83E\uDD69 Bœuf braisé / Choukouya',
+    '\uD83E\uDD69 Brochettes de bœuf',
+    '\uD83D\uDC0F Mouton braisé',
+    '\uD83D\uDC0F Brochettes de mouton',
+    '\uD83E\uDD80 Crabes farcis',
+    '\uD83E\uDD90 Crevettes sautées',
 
-    // 🥐 STREET FOOD & COLLATIONS
-    '🥐 Beignets de banane',
-    '🥐 Akara (beignets haricots)',
-    '🥐 Gbofloto (beignets sucrés)',
-    '🥐 Gnangnan (beignets de haricot)',
-    '🌭 Alloco-piment (plantain + piment)',
-    '🌭 Alloco à l\'Abidjanaise',
-    '🌽 Maïs grillé',
-    '🌽 Maïs bouilli',
-    '🥜 Arachides grillées',
-    '🥚 Garba œufs',
-    '🍞 Pain brioché ivoirien',
+    // \uD83E\uDD50 STREET FOOD & COLLATIONS
+    '\uD83E\uDD50 Beignets de banane',
+    '\uD83E\uDD50 Akara (beignets haricots)',
+    '\uD83E\uDD50 Gbofloto (beignets sucrés)',
+    '\uD83E\uDD50 Gnangnan (beignets de haricot)',
+    '\uD83C\uDF2D Alloco-piment (plantain + piment)',
+    '\uD83C\uDF2D Alloco à l\'Abidjanaise',
+    '\uD83C\uDF3D Maïs grillé',
+    '\uD83C\uDF3D Maïs bouilli',
+    '\uD83E\uDD5C Arachides grillées',
+    '\uD83E\uDD5A Garba œufs',
+    '\uD83C\uDF5E Pain brioché ivoirien',
 
-    // 🥣 SOUPES & RAGOÛTS
-    '🥣 Soupe claire de poisson',
-    '🥣 Soupe gombo',
-    '🥣 Pépé soupe (poisson séché + gombo)',
-    '🥣 Ragoût d\'igname',
+    // \uD83E\uDD63 SOUPES & RAGOÛTS
+    '\uD83E\uDD63 Soupe claire de poisson',
+    '\uD83E\uDD63 Soupe gombo',
+    '\uD83E\uDD63 Pépé soupe (poisson séché + gombo)',
+    '\uD83E\uDD63 Ragoût d\'igname',
 
-    // 🍰 DESSERTS & BOISSONS
-    '🥥 Bangui (vin de palme)',
-    '🥥 Jus de coco / Eau de coco',
-    '🍹 Gnamakoudji (jus de gingembre)',
-    '🍹 Jus de tamarin',
-    '🍰 Dégué (couscous mil au lait)',
+    // \uD83C\uDF70 DESSERTS & BOISSONS
+    '\uD83E\uDD65 Bangui (vin de palme)',
+    '\uD83E\uDD65 Jus de coco / Eau de coco',
+    '\uD83C\uDF79 Gnamakoudji (jus de gingembre)',
+    '\uD83C\uDF79 Jus de tamarin',
+    '\uD83C\uDF70 Dégué (couscous mil au lait)',
 
-    '🆕 Autre plat ivoirien (ajouter)'
+    '\uD83C\uDD95 Autre plat ivoirien (ajouter)'
   ],
 
   // ===============================================
-  // 🇸🇳 PLATS SÉNÉGALAIS (80+ plats authentiques)
+  // \uD83C\uDDF8\uD83C\uDDF3 PLATS SÉNÉGALAIS (80+ plats authentiques)
   // ===============================================
   plats_senegalais: [
-    // 🍚 PLATS SIGNATURE AU RIZ
-    '🍚 Thiéboudienne rouge (riz au poisson + sauce tomate)',
-    '🍚 Thiéboudienne blanc (riz au poisson sans tomate)',
-    '🍚 Thiébou yapp (riz à la viande)',
-    '🍚 Thiébou guinar (riz au poulet)',
-    '🍚 Thiébou kethiakh (riz sauce arachide)',
-    '🍚 Riz au gras / Riz wolof',
-    '🍚 Benachin (riz wolof one-pot)',
-    '🍚 Riz yassa',
-    '🍚 Riz sauce tomate',
+    // \uD83C\uDF5A PLATS SIGNATURE AU RIZ
+    '\uD83C\uDF5A Thiéboudienne rouge (riz au poisson + sauce tomate)',
+    '\uD83C\uDF5A Thiéboudienne blanc (riz au poisson sans tomate)',
+    '\uD83C\uDF5A Thiébou yapp (riz à la viande)',
+    '\uD83C\uDF5A Thiébou guinar (riz au poulet)',
+    '\uD83C\uDF5A Thiébou kethiakh (riz sauce arachide)',
+    '\uD83C\uDF5A Riz au gras / Riz wolof',
+    '\uD83C\uDF5A Benachin (riz wolof one-pot)',
+    '\uD83C\uDF5A Riz yassa',
+    '\uD83C\uDF5A Riz sauce tomate',
 
-    // 🍖 YASSA (PLATS CITRONNÉS)
-    '🍖 Yassa poulet (poulet citronné + oignons)',
-    '🍖 Yassa poisson',
-    '🍖 Yassa agneau',
-    '🍖 Yassa bœuf',
-    '🍖 Yassa gambas',
-    '🍖 Yassa mixte (poulet + poisson)',
+    // \uD83C\uDF56 YASSA (PLATS CITRONNÉS)
+    '\uD83C\uDF56 Yassa poulet (poulet citronné + oignons)',
+    '\uD83C\uDF56 Yassa poisson',
+    '\uD83C\uDF56 Yassa agneau',
+    '\uD83C\uDF56 Yassa bœuf',
+    '\uD83C\uDF56 Yassa gambas',
+    '\uD83C\uDF56 Yassa mixte (poulet + poisson)',
 
-    // 🥘 SAUCES & RAGOÛTS TRADITIONNELS
-    '🥘 Mafé poulet (sauce arachide)',
-    '🥘 Mafé viande',
-    '🥘 Mafé poisson',
-    '🥘 Domoda (ragoût arachide)',
-    '🥘 Caldou (sauce blanche au poisson)',
-    '🥘 Soupe Kandia (gombo + huile palme)',
-    '🥘 Soupoukandja (gombo + poisson)',
-    '🥘 Bassi salté (couscous mil + sauce)',
-    '🥘 Lakhou bissap (couscous mil au bissap)',
-    '🥘 Lakhou guerte (sauce arachide + mil)',
-    '🥘 Sauce gombo',
-    '🥘 Sauce d\'oseille (bissap)',
-    '🥘 Sauce feuilles de manioc',
-    '🥘 Sauce n\'ététou (soumbala)',
+    // \uD83E\uDD58 SAUCES & RAGOÛTS TRADITIONNELS
+    '\uD83E\uDD58 Mafé poulet (sauce arachide)',
+    '\uD83E\uDD58 Mafé viande',
+    '\uD83E\uDD58 Mafé poisson',
+    '\uD83E\uDD58 Domoda (ragoût arachide)',
+    '\uD83E\uDD58 Caldou (sauce blanche au poisson)',
+    '\uD83E\uDD58 Soupe Kandia (gombo + huile palme)',
+    '\uD83E\uDD58 Soupoukandja (gombo + poisson)',
+    '\uD83E\uDD58 Bassi salté (couscous mil + sauce)',
+    '\uD83E\uDD58 Lakhou bissap (couscous mil au bissap)',
+    '\uD83E\uDD58 Lakhou guerte (sauce arachide + mil)',
+    '\uD83E\uDD58 Sauce gombo',
+    '\uD83E\uDD58 Sauce d\'oseille (bissap)',
+    '\uD83E\uDD58 Sauce feuilles de manioc',
+    '\uD83E\uDD58 Sauce n\'ététou (soumbala)',
 
-    // 🌾 COUSCOUS & MIL
-    '🌾 Thiéré bassi salté (couscous mil + sauce)',
-    '🌾 Thiakry / Chakery (couscous mil sucré au lait)',
-    '🌾 Thiéré bou diack (couscous mil + viande)',
-    '🌾 Couscous de mil nature',
-    '🌾 Bouillie de mil',
+    // \uD83C\uDF3E COUSCOUS & MIL
+    '\uD83C\uDF3E Thiéré bassi salté (couscous mil + sauce)',
+    '\uD83C\uDF3E Thiakry / Chakery (couscous mil sucré au lait)',
+    '\uD83C\uDF3E Thiéré bou diack (couscous mil + viande)',
+    '\uD83C\uDF3E Couscous de mil nature',
+    '\uD83C\uDF3E Bouillie de mil',
 
-    // 🐟 POISSONS & FRUITS DE MER
-    '🐟 Poisson braisé Saint-Louis',
-    '🐟 Poisson fumé',
-    '🐟 Poisson yassa',
-    '🐟 Poisson thiof farci',
-    '🐟 Mérou grillé',
-    '🐟 Capitaine braisé',
-    '🦐 Gambas grillées',
-    '🦐 Crevettes à la Saint-Louisienne',
-    '🦞 Langouste grillée',
-    '🦑 Poulpe à la sauce tomate',
+    // \uD83D\uDC1F POISSONS & FRUITS DE MER
+    '\uD83D\uDC1F Poisson braisé Saint-Louis',
+    '\uD83D\uDC1F Poisson fumé',
+    '\uD83D\uDC1F Poisson yassa',
+    '\uD83D\uDC1F Poisson thiof farci',
+    '\uD83D\uDC1F Mérou grillé',
+    '\uD83D\uDC1F Capitaine braisé',
+    '\uD83E\uDD90 Gambas grillées',
+    '\uD83E\uDD90 Crevettes à la Saint-Louisienne',
+    '\uD83E\uDD9E Langouste grillée',
+    '\uD83E\uDD91 Poulpe à la sauce tomate',
 
-    // 🥩 GRILLADES & VIANDES
-    '🥩 Dibi (mouton grillé)',
-    '🥩 Dibi bœuf',
-    '🥩 Dibi haako (mouton grillé traditionnel)',
-    '🍗 Poulet yassa',
-    '🍗 Poulet DG sénégalais',
-    '🍗 Poulet rôti',
-    '🍗 Poulet bicyclette',
-    '🥩 Brochettes de bœuf',
-    '🐏 Brochettes de mouton',
+    // \uD83E\uDD69 GRILLADES & VIANDES
+    '\uD83E\uDD69 Dibi (mouton grillé)',
+    '\uD83E\uDD69 Dibi bœuf',
+    '\uD83E\uDD69 Dibi haako (mouton grillé traditionnel)',
+    '\uD83C\uDF57 Poulet yassa',
+    '\uD83C\uDF57 Poulet DG sénégalais',
+    '\uD83C\uDF57 Poulet rôti',
+    '\uD83C\uDF57 Poulet bicyclette',
+    '\uD83E\uDD69 Brochettes de bœuf',
+    '\uD83D\uDC0F Brochettes de mouton',
 
-    // 🥐 STREET FOOD & COLLATIONS
-    '🥐 Fataya (chausson viande/poisson)',
-    '🥐 Fataya au thon',
-    '🥐 Fataya au poulet',
-    '🥐 Nems sénégalais',
-    '🥐 Pastels (beignets poisson)',
-    '🥐 Accara / Akara (beignets niébé)',
-    '🥐 Beignets sucrés',
-    '🥐 Beignets de haricots',
-    '🌭 Sandwichs dakarois',
-    '🌭 Chawarma sénégalais',
-    '🥚 Omelette sénégalaise',
-    '🥚 Œufs mayo',
-    '🌽 Maïs grillé / Maïs bouilli',
+    // \uD83E\uDD50 STREET FOOD & COLLATIONS
+    '\uD83E\uDD50 Fataya (chausson viande/poisson)',
+    '\uD83E\uDD50 Fataya au thon',
+    '\uD83E\uDD50 Fataya au poulet',
+    '\uD83E\uDD50 Nems sénégalais',
+    '\uD83E\uDD50 Pastels (beignets poisson)',
+    '\uD83E\uDD50 Accara / Akara (beignets niébé)',
+    '\uD83E\uDD50 Beignets sucrés',
+    '\uD83E\uDD50 Beignets de haricots',
+    '\uD83C\uDF2D Sandwichs dakarois',
+    '\uD83C\uDF2D Chawarma sénégalais',
+    '\uD83E\uDD5A Omelette sénégalaise',
+    '\uD83E\uDD5A Œufs mayo',
+    '\uD83C\uDF3D Maïs grillé / Maïs bouilli',
 
-    // 🥣 SOUPES & BOUILLONS
-    '🥣 Soupe de poisson',
-    '🥣 Caldou blanc',
-    '🥣 Soupe kandia',
-    '🥣 Mbaxal (soupe de mil)',
+    // \uD83E\uDD63 SOUPES & BOUILLONS
+    '\uD83E\uDD63 Soupe de poisson',
+    '\uD83E\uDD63 Caldou blanc',
+    '\uD83E\uDD63 Soupe kandia',
+    '\uD83E\uDD63 Mbaxal (soupe de mil)',
 
-    // 🍰 DESSERTS & SUCRERIES
-    '🍰 Thiakry (dessert couscous mil)',
-    '🍰 Ngalakh (pâte arachide + mil)',
-    '🍰 Chakery au lait caillé',
-    '🍰 Sombi (dessert riz au lait)',
-    '🍩 Cinq centimes (beignets ronds)',
-    '🥥 Thiéré sésame',
+    // \uD83C\uDF70 DESSERTS & SUCRERIES
+    '\uD83C\uDF70 Thiakry (dessert couscous mil)',
+    '\uD83C\uDF70 Ngalakh (pâte arachide + mil)',
+    '\uD83C\uDF70 Chakery au lait caillé',
+    '\uD83C\uDF70 Sombi (dessert riz au lait)',
+    '\uD83C\uDF69 Cinq centimes (beignets ronds)',
+    '\uD83E\uDD65 Thiéré sésame',
 
-    '🆕 Autre plat sénégalais (ajouter)'
+    '\uD83C\uDD95 Autre plat sénégalais (ajouter)'
   ],
 
   // ===============================================
-  // 🇲🇱 PLATS MALIENS (50+ plats authentiques)
+  // \uD83C\uDDF2\uD83C\uDDF1 PLATS MALIENS (50+ plats authentiques)
   // ===============================================
   plats_maliens: [
-    // 🍚 RIZ & CÉRÉALES
-    '🍚 Tô (pâte de mil/sorgho + sauce)',
-    '🍚 Tô de mil',
-    '🍚 Tô de sorgho',
-    '🍚 Riz djolof malien / Riz au gras',
-    '🍚 Riz sauce',
-    '🍚 Riz sauce tomate',
-    '🌾 Fonio (céréale ancestrale)',
-    '🌾 Fonio sauce',
-    '🌾 Couscous de mil',
-    '🌾 Bouillie de mil',
-    '🌾 Bouillie de fonio',
+    // \uD83C\uDF5A RIZ & CÉRÉALES
+    '\uD83C\uDF5A Tô (pâte de mil/sorgho + sauce)',
+    '\uD83C\uDF5A Tô de mil',
+    '\uD83C\uDF5A Tô de sorgho',
+    '\uD83C\uDF5A Riz djolof malien / Riz au gras',
+    '\uD83C\uDF5A Riz sauce',
+    '\uD83C\uDF5A Riz sauce tomate',
+    '\uD83C\uDF3E Fonio (céréale ancestrale)',
+    '\uD83C\uDF3E Fonio sauce',
+    '\uD83C\uDF3E Couscous de mil',
+    '\uD83C\uDF3E Bouillie de mil',
+    '\uD83C\uDF3E Bouillie de fonio',
 
-    // 🥘 SAUCES & RAGOÛTS
-    '🥘 Tigua dega (sauce arachide malienne)',
-    '🥘 Maafé malien (sauce arachide)',
-    '🥘 Sauce d\'oseille / Djenkourou',
-    '🥘 Sauce gombo malienne',
-    '🥘 Sauce feuilles de baobab',
-    '🥘 Sauce tomate malienne',
-    '🥘 Sauce arachide viande',
-    '🥘 Tiga dege na (arachide + viande)',
+    // \uD83E\uDD58 SAUCES & RAGOÛTS
+    '\uD83E\uDD58 Tigua dega (sauce arachide malienne)',
+    '\uD83E\uDD58 Maafé malien (sauce arachide)',
+    '\uD83E\uDD58 Sauce d\'oseille / Djenkourou',
+    '\uD83E\uDD58 Sauce gombo malienne',
+    '\uD83E\uDD58 Sauce feuilles de baobab',
+    '\uD83E\uDD58 Sauce tomate malienne',
+    '\uD83E\uDD58 Sauce arachide viande',
+    '\uD83E\uDD58 Tiga dege na (arachide + viande)',
 
-    // 🍖 VIANDES & GRILLADES
-    '🍖 Poulet à la malienne',
-    '🍖 Poulet yassa malien',
-    '🥩 Viande de bœuf séchée / Kilichi',
-    '🥩 Suya malien (brochettes épicées)',
-    '🥩 Brochettes de bœuf',
-    '🐏 Mouton grillé / Méchowi',
-    '🐏 Brochettes de mouton',
-    '🐐 Viande de chèvre sauce',
+    // \uD83C\uDF56 VIANDES & GRILLADES
+    '\uD83C\uDF56 Poulet à la malienne',
+    '\uD83C\uDF56 Poulet yassa malien',
+    '\uD83E\uDD69 Viande de bœuf séchée / Kilichi',
+    '\uD83E\uDD69 Suya malien (brochettes épicées)',
+    '\uD83E\uDD69 Brochettes de bœuf',
+    '\uD83D\uDC0F Mouton grillé / Méchowi',
+    '\uD83D\uDC0F Brochettes de mouton',
+    '\uD83D\uDC10 Viande de chèvre sauce',
 
-    // 🐟 POISSONS
-    '🐟 Capitaine braisé (poisson du Niger)',
-    '🐟 Poisson fumé sauce',
-    '🐟 Poisson séché en sauce',
-    '🐟 Poisson frit malien',
+    // \uD83D\uDC1F POISSONS
+    '\uD83D\uDC1F Capitaine braisé (poisson du Niger)',
+    '\uD83D\uDC1F Poisson fumé sauce',
+    '\uD83D\uDC1F Poisson séché en sauce',
+    '\uD83D\uDC1F Poisson frit malien',
 
-    // 🥐 STREET FOOD & COLLATIONS
-    '🥐 Beignets de mil',
-    '🥐 Beignets de niébé',
-    '🥐 Masa (galettes de riz)',
-    '🥐 Degué (yaourt + mil)',
-    '🥚 Omelette malienne',
-    '🌽 Maïs grillé',
-    '🥜 Arachides grillées',
+    // \uD83E\uDD50 STREET FOOD & COLLATIONS
+    '\uD83E\uDD50 Beignets de mil',
+    '\uD83E\uDD50 Beignets de niébé',
+    '\uD83E\uDD50 Masa (galettes de riz)',
+    '\uD83E\uDD50 Degué (yaourt + mil)',
+    '\uD83E\uDD5A Omelette malienne',
+    '\uD83C\uDF3D Maïs grillé',
+    '\uD83E\uDD5C Arachides grillées',
 
-    // 🍰 DESSERTS & BOISSONS
-    '🍰 Dégué (couscous mil + lait)',
-    '🍰 Thiakry malien',
-    '🍹 Jus de tamarin',
-    '🍹 Jus de bissap',
-    '🍹 Dableni (jus hibiscus + gingembre)',
+    // \uD83C\uDF70 DESSERTS & BOISSONS
+    '\uD83C\uDF70 Dégué (couscous mil + lait)',
+    '\uD83C\uDF70 Thiakry malien',
+    '\uD83C\uDF79 Jus de tamarin',
+    '\uD83C\uDF79 Jus de bissap',
+    '\uD83C\uDF79 Dableni (jus hibiscus + gingembre)',
 
-    '🆕 Autre plat malien (ajouter)'
+    '\uD83C\uDD95 Autre plat malien (ajouter)'
   ],
 
   // ===============================================
-  // 🇬🇦 PLATS GABONAIS (45+ plats authentiques)
+  // \uD83C\uDDEC\uD83C\uDDE6 PLATS GABONAIS (45+ plats authentiques)
   // ===============================================
   plats_gabonais: [
-    // 🥘 PLATS SIGNATURE GABONAIS
-    '🥘 Nyembwé (sauce graine de courge)',
-    '🥘 Poulet Nyembwé',
-    '🥘 Poisson Nyembwé',
-    '🥘 Viande Nyembwé',
-    '🥘 Poulet Moambe (sauce palme)',
-    '🥘 Poisson Moambe',
-    '🥘 Odika (sauce mangue sauvage)',
-    '🥘 Sauce feuilles de manioc',
-    '🥘 Sauce gombo gabonaise',
-    '🥘 Sauce arachide',
+    // \uD83E\uDD58 PLATS SIGNATURE GABONAIS
+    '\uD83E\uDD58 Nyembwé (sauce graine de courge)',
+    '\uD83E\uDD58 Poulet Nyembwé',
+    '\uD83E\uDD58 Poisson Nyembwé',
+    '\uD83E\uDD58 Viande Nyembwé',
+    '\uD83E\uDD58 Poulet Moambe (sauce palme)',
+    '\uD83E\uDD58 Poisson Moambe',
+    '\uD83E\uDD58 Odika (sauce mangue sauvage)',
+    '\uD83E\uDD58 Sauce feuilles de manioc',
+    '\uD83E\uDD58 Sauce gombo gabonaise',
+    '\uD83E\uDD58 Sauce arachide',
 
-    // 🐟 POISSONS & FRUITS DE MER
-    '🐟 Poisson fumé gabonais',
-    '🐟 Poisson salé sauce',
-    '🐟 Capitaine grillé',
-    '🐟 Capitaine braisé',
-    '🐟 Makayabu (morue salée)',
-    '🐟 Poisson braisé sauce tomate',
-    '🦐 Crevettes de Libreville',
-    '🦐 Crevettes sauce tomate',
-    '🦀 Crabes sauce',
-    '🐚 Huîtres fraîches',
+    // \uD83D\uDC1F POISSONS & FRUITS DE MER
+    '\uD83D\uDC1F Poisson fumé gabonais',
+    '\uD83D\uDC1F Poisson salé sauce',
+    '\uD83D\uDC1F Capitaine grillé',
+    '\uD83D\uDC1F Capitaine braisé',
+    '\uD83D\uDC1F Makayabu (morue salée)',
+    '\uD83D\uDC1F Poisson braisé sauce tomate',
+    '\uD83E\uDD90 Crevettes de Libreville',
+    '\uD83E\uDD90 Crevettes sauce tomate',
+    '\uD83E\uDD80 Crabes sauce',
+    '\uD83D\uDC1A Huîtres fraîches',
 
-    // 🍖 VIANDES & GRILLADES
-    '🥩 Viande boucanée (fumée)',
-    '🥩 Bœuf sauté',
-    '🐐 Chèvre sauce tomate',
-    '🐐 Chèvre moambe',
-    '🍗 Poulet bicyclette',
-    '🍗 Poulet braisé gabonais',
-    '🥩 Brochettes de bœuf',
-    '🐏 Brochettes de mouton',
+    // \uD83C\uDF56 VIANDES & GRILLADES
+    '\uD83E\uDD69 Viande boucanée (fumée)',
+    '\uD83E\uDD69 Bœuf sauté',
+    '\uD83D\uDC10 Chèvre sauce tomate',
+    '\uD83D\uDC10 Chèvre moambe',
+    '\uD83C\uDF57 Poulet bicyclette',
+    '\uD83C\uDF57 Poulet braisé gabonais',
+    '\uD83E\uDD69 Brochettes de bœuf',
+    '\uD83D\uDC0F Brochettes de mouton',
 
-    // 🍚 FÉCULENTS & ACCOMPAGNEMENTS
-    '🍌 Banane plantain frite',
-    '🍌 Banane bouillie',
-    '🍌 Plantain mûr grillé',
-    '🥔 Manioc bouilli',
-    '🥔 Bâton de manioc',
-    '🥔 Tapioca',
-    '🥔 Foufou de manioc',
-    '🍠 Igname bouillie',
-    '🍠 Macabo bouilli',
-    '🍚 Riz blanc',
-    '🍚 Riz sauce gabonaise',
-    '🍚 Riz jollof gabonais',
+    // \uD83C\uDF5A FÉCULENTS & ACCOMPAGNEMENTS
+    '\uD83C\uDF4C Banane plantain frite',
+    '\uD83C\uDF4C Banane bouillie',
+    '\uD83C\uDF4C Plantain mûr grillé',
+    '\uD83E\uDD54 Manioc bouilli',
+    '\uD83E\uDD54 Bâton de manioc',
+    '\uD83E\uDD54 Tapioca',
+    '\uD83E\uDD54 Foufou de manioc',
+    '\uD83C\uDF60 Igname bouillie',
+    '\uD83C\uDF60 Macabo bouilli',
+    '\uD83C\uDF5A Riz blanc',
+    '\uD83C\uDF5A Riz sauce gabonaise',
+    '\uD83C\uDF5A Riz jollof gabonais',
 
-    // 🥐 STREET FOOD & COLLATIONS
-    '🥐 Beignets gabonais',
-    '🥐 Beignets de banane',
-    '🥚 Omelette gabonaise',
+    // \uD83E\uDD50 STREET FOOD & COLLATIONS
+    '\uD83E\uDD50 Beignets gabonais',
+    '\uD83E\uDD50 Beignets de banane',
+    '\uD83E\uDD5A Omelette gabonaise',
 
-    '🆕 Autre plat gabonais (ajouter)'
+    '\uD83C\uDD95 Autre plat gabonais (ajouter)'
   ],
 
   // ===============================================
-  // 🇨🇬 PLATS CONGOLAIS RDC/RC (60+ plats authentiques)
+  // \uD83C\uDDE8\uD83C\uDDEC PLATS CONGOLAIS RDC/RC (60+ plats authentiques)
   // ===============================================
   plats_congolais: [
-    // 🥘 PLATS SIGNATURE CONGOLAIS
-    '🥘 Moambe chicken (poulet sauce palme)',
-    '🥘 Pondu / Saka-saka (feuilles de manioc pilées)',
-    '🥘 Liboke de poisson (poisson en papillote)',
-    '🥘 Liboke de viande',
-    '🥘 Liboke de poulet',
-    '🥘 Fumbwa (épinards sauvages)',
-    '🥘 Madesu (haricots sauce palme)',
-    '🥘 Ntaba (viande de chèvre)',
-    '🥘 Sauce feuilles de patate',
-    '🥘 Sauce gombo congolaise',
-    '🥘 Sauce arachide',
+    // \uD83E\uDD58 PLATS SIGNATURE CONGOLAIS
+    '\uD83E\uDD58 Moambe chicken (poulet sauce palme)',
+    '\uD83E\uDD58 Pondu / Saka-saka (feuilles de manioc pilées)',
+    '\uD83E\uDD58 Liboke de poisson (poisson en papillote)',
+    '\uD83E\uDD58 Liboke de viande',
+    '\uD83E\uDD58 Liboke de poulet',
+    '\uD83E\uDD58 Fumbwa (épinards sauvages)',
+    '\uD83E\uDD58 Madesu (haricots sauce palme)',
+    '\uD83E\uDD58 Ntaba (viande de chèvre)',
+    '\uD83E\uDD58 Sauce feuilles de patate',
+    '\uD83E\uDD58 Sauce gombo congolaise',
+    '\uD83E\uDD58 Sauce arachide',
 
-    // 🐟 POISSONS & FRUITS DE MER
-    '🐟 Poisson salé (makayabu/makayabo)',
-    '🐟 Capitaine entier braisé',
-    '🐟 Capitaine liboke',
-    '🐟 Tilapia braisé',
-    '🐟 Tilapia frit',
-    '🐟 Poisson fumé',
-    '🐟 Sambaza (petits poissons frits)',
-    '🦐 Crevettes du fleuve Congo',
-    '🦐 Crevettes moambe',
+    // \uD83D\uDC1F POISSONS & FRUITS DE MER
+    '\uD83D\uDC1F Poisson salé (makayabu/makayabo)',
+    '\uD83D\uDC1F Capitaine entier braisé',
+    '\uD83D\uDC1F Capitaine liboke',
+    '\uD83D\uDC1F Tilapia braisé',
+    '\uD83D\uDC1F Tilapia frit',
+    '\uD83D\uDC1F Poisson fumé',
+    '\uD83D\uDC1F Sambaza (petits poissons frits)',
+    '\uD83E\uDD90 Crevettes du fleuve Congo',
+    '\uD83E\uDD90 Crevettes moambe',
 
-    // 🍖 VIANDES & GRILLADES
-    '🥩 Maboke (viande marinée grillée)',
-    '🥩 Chèvre sautée congolaise',
-    '🥩 Chèvre moambe',
-    '🥩 Bœuf sauté',
-    '🥩 Ntaba (chèvre)',
-    '🍗 Poulet moambe',
-    '🍗 Poulet liboke',
-    '🍗 Poulet bicyclette',
-    '🥩 Brochettes de bœuf',
-    '🥩 Brochettes de chèvre',
-    '🐏 Mosapia (chenilles)',
+    // \uD83C\uDF56 VIANDES & GRILLADES
+    '\uD83E\uDD69 Maboke (viande marinée grillée)',
+    '\uD83E\uDD69 Chèvre sautée congolaise',
+    '\uD83E\uDD69 Chèvre moambe',
+    '\uD83E\uDD69 Bœuf sauté',
+    '\uD83E\uDD69 Ntaba (chèvre)',
+    '\uD83C\uDF57 Poulet moambe',
+    '\uD83C\uDF57 Poulet liboke',
+    '\uD83C\uDF57 Poulet bicyclette',
+    '\uD83E\uDD69 Brochettes de bœuf',
+    '\uD83E\uDD69 Brochettes de chèvre',
+    '\uD83D\uDC0F Mosapia (chenilles)',
 
-    // 🍚 FÉCULENTS & ACCOMPAGNEMENTS
-    '🥔 Foufou de maïs',
-    '🥔 Foufou de manioc',
-    '🥔 Fufu blanc',
-    '🍖 Chikwangue (pain de manioc)',
-    '🍖 Kwanga (pain de manioc fermenté)',
-    '🥔 Bidia (farine de manioc)',
-    '🍌 Plantain frit / Makemba',
-    '🍌 Banane bouillie',
-    '🍌 Plantain bouilli',
-    '🍠 Igname pilée',
-    '🍠 Pondu na makemba (feuilles + plantain)',
-    '🍚 Riz blanc',
-    '🍚 Riz congolais sauce',
-    '🍚 Riz moambe',
+    // \uD83C\uDF5A FÉCULENTS & ACCOMPAGNEMENTS
+    '\uD83E\uDD54 Foufou de maïs',
+    '\uD83E\uDD54 Foufou de manioc',
+    '\uD83E\uDD54 Fufu blanc',
+    '\uD83C\uDF56 Chikwangue (pain de manioc)',
+    '\uD83C\uDF56 Kwanga (pain de manioc fermenté)',
+    '\uD83E\uDD54 Bidia (farine de manioc)',
+    '\uD83C\uDF4C Plantain frit / Makemba',
+    '\uD83C\uDF4C Banane bouillie',
+    '\uD83C\uDF4C Plantain bouilli',
+    '\uD83C\uDF60 Igname pilée',
+    '\uD83C\uDF60 Pondu na makemba (feuilles + plantain)',
+    '\uD83C\uDF5A Riz blanc',
+    '\uD83C\uDF5A Riz congolais sauce',
+    '\uD83C\uDF5A Riz moambe',
 
-    // 🥐 STREET FOOD & COLLATIONS
-    '🥐 Mikate (beignets congolais)',
-    '🥐 Pâté congolais',
-    '🥐 Mandazi (beignets sucrés)',
-    '🥐 Beignets de banane',
-    '🥚 Omelette congolaise',
-    '🌽 Maïs grillé / Mayi ya kalonji',
-    '🥜 Arachides grillées',
+    // \uD83E\uDD50 STREET FOOD & COLLATIONS
+    '\uD83E\uDD50 Mikate (beignets congolais)',
+    '\uD83E\uDD50 Pâté congolais',
+    '\uD83E\uDD50 Mandazi (beignets sucrés)',
+    '\uD83E\uDD50 Beignets de banane',
+    '\uD83E\uDD5A Omelette congolaise',
+    '\uD83C\uDF3D Maïs grillé / Mayi ya kalonji',
+    '\uD83E\uDD5C Arachides grillées',
 
-    // 🥣 SOUPES & RAGOÛTS
-    '🥣 Soupe de poisson',
-    '🥣 Soupe fumbwa',
-    '🥣 Soupe pondu',
+    // \uD83E\uDD63 SOUPES & RAGOÛTS
+    '\uD83E\uDD63 Soupe de poisson',
+    '\uD83E\uDD63 Soupe fumbwa',
+    '\uD83E\uDD63 Soupe pondu',
 
-    '🆕 Autre plat congolais (ajouter)'
+    '\uD83C\uDD95 Autre plat congolais (ajouter)'
   ],
 
   // ===============================================
-  // 🇧🇫 PLATS BURKINABÈ (40+ plats authentiques)
+  // \uD83C\uDDE7\uD83C\uDDEB PLATS BURKINABÈ (40+ plats authentiques)
   // ===============================================
   plats_burkinabe: [
-    // 🍚 RIZ & CÉRÉALES
-    '🍚 Riz gras burkinabè / Riz au gras',
-    '🍚 Riz sauce tomate',
-    '🍚 Riz sauce arachide',
-    '🌾 Tô de mil (pâte de mil)',
-    '🌾 Tô de sorgho',
-    '🌾 Tô de maïs',
-    '🌾 Couscous de mil',
-    '🌽 Bouillie de mil',
-    '🌽 Zoom-koom (bouillie mil froide)',
+    // \uD83C\uDF5A RIZ & CÉRÉALES
+    '\uD83C\uDF5A Riz gras burkinabè / Riz au gras',
+    '\uD83C\uDF5A Riz sauce tomate',
+    '\uD83C\uDF5A Riz sauce arachide',
+    '\uD83C\uDF3E Tô de mil (pâte de mil)',
+    '\uD83C\uDF3E Tô de sorgho',
+    '\uD83C\uDF3E Tô de maïs',
+    '\uD83C\uDF3E Couscous de mil',
+    '\uD83C\uDF3D Bouillie de mil',
+    '\uD83C\uDF3D Zoom-koom (bouillie mil froide)',
 
-    // 🥘 SAUCES & RAGOÛTS
-    '🥘 Sauce gombo burkinabè',
-    '🥘 Sauce tomate burkinabè',
-    '🥘 Sauce d\'oseille / Binga',
-    '🥘 Sauce arachide',
-    '🥘 Sauce feuilles de baobab',
-    '🥘 Riz sauce',
-    '🥘 Tô sauce',
+    // \uD83E\uDD58 SAUCES & RAGOÛTS
+    '\uD83E\uDD58 Sauce gombo burkinabè',
+    '\uD83E\uDD58 Sauce tomate burkinabè',
+    '\uD83E\uDD58 Sauce d\'oseille / Binga',
+    '\uD83E\uDD58 Sauce arachide',
+    '\uD83E\uDD58 Sauce feuilles de baobab',
+    '\uD83E\uDD58 Riz sauce',
+    '\uD83E\uDD58 Tô sauce',
 
-    // 🍖 VIANDES & GRILLADES
-    '🍖 Poulet bicyclette',
-    '🍖 Poulet braisé burkinabè',
-    '🍖 Poulet yassa',
-    '🐟 Poisson braisé du Burkina',
-    '🐟 Poisson fumé',
-    '🥩 Brochettes / Choukouya',
-    '🥩 Soumbala (condiment fermenté)',
-    '🥩 Viande séchée',
-    '🐏 Mouton grillé',
-    '🐐 Chèvre sautée',
+    // \uD83C\uDF56 VIANDES & GRILLADES
+    '\uD83C\uDF56 Poulet bicyclette',
+    '\uD83C\uDF56 Poulet braisé burkinabè',
+    '\uD83C\uDF56 Poulet yassa',
+    '\uD83D\uDC1F Poisson braisé du Burkina',
+    '\uD83D\uDC1F Poisson fumé',
+    '\uD83E\uDD69 Brochettes / Choukouya',
+    '\uD83E\uDD69 Soumbala (condiment fermenté)',
+    '\uD83E\uDD69 Viande séchée',
+    '\uD83D\uDC0F Mouton grillé',
+    '\uD83D\uDC10 Chèvre sautée',
 
-    // 🥐 STREET FOOD & COLLATIONS
-    '🥐 Beignets de mil',
-    '🥐 Beignets de niébé',
-    '🥐 Galettes de mil',
-    '🥐 Wagashi (fromage peul local)',
-    '🥚 Omelette burkinabè',
-    '🌽 Maïs grillé',
-    '🥜 Arachides grillées',
+    // \uD83E\uDD50 STREET FOOD & COLLATIONS
+    '\uD83E\uDD50 Beignets de mil',
+    '\uD83E\uDD50 Beignets de niébé',
+    '\uD83E\uDD50 Galettes de mil',
+    '\uD83E\uDD50 Wagashi (fromage peul local)',
+    '\uD83E\uDD5A Omelette burkinabè',
+    '\uD83C\uDF3D Maïs grillé',
+    '\uD83E\uDD5C Arachides grillées',
 
-    // 🍰 DESSERTS & BOISSONS
-    '🍰 Dégué burkinabè (yaourt + mil)',
-    '🍹 Zoom-koom (jus de mil)',
-    '🍹 Jus de bissap',
-    '🍹 Jus de tamarin',
+    // \uD83C\uDF70 DESSERTS & BOISSONS
+    '\uD83C\uDF70 Dégué burkinabè (yaourt + mil)',
+    '\uD83C\uDF79 Zoom-koom (jus de mil)',
+    '\uD83C\uDF79 Jus de bissap',
+    '\uD83C\uDF79 Jus de tamarin',
 
-    '🆕 Autre plat burkinabè (ajouter)'
+    '\uD83C\uDD95 Autre plat burkinabè (ajouter)'
   ],
 
   // ===============================================
-  // 🌍 AUTRES PAYS AFRIQUE FRANCOPHONE (80+ plats)
+  // \uD83C\uDF0D AUTRES PAYS AFRIQUE FRANCOPHONE (80+ plats)
   // ===============================================
   plats_autres_pays: [
-    // 🇹🇬 TOGO (20+ plats)
-    '🇹🇬 Fufu togolais / Akumè',
-    '🇹🇬 Akoumé (pâte de maïs)',
-    '🇹🇬 Akoumé sauce',
-    '🇹🇬 Djenkoumé (pâte igname)',
-    '🇹🇬 Ablo (galettes de riz fermentées)',
-    '🇹🇬 Amiwo (riz + tomate + crevettes)',
-    '🇹🇬 Gboma dessi (épinards)',
-    '🇹🇬 Atassi (riz + haricots)',
-    '🇹🇬 Ademe (sauce tomate togolaise)',
-    '🇹🇬 Kpété kpété (sauce gombo)',
-    '🇹🇬 Poisson braisé togolais',
-    '🇹🇬 Poulet braisé togolais',
-    '🇹🇬 Sauce arachide togolaise',
-    '🇹🇬 Klako (beignets de maïs)',
+    // \uD83C\uDDF9\uD83C\uDDEC TOGO (20+ plats)
+    '\uD83C\uDDF9\uD83C\uDDEC Fufu togolais / Akumè',
+    '\uD83C\uDDF9\uD83C\uDDEC Akoumé (pâte de maïs)',
+    '\uD83C\uDDF9\uD83C\uDDEC Akoumé sauce',
+    '\uD83C\uDDF9\uD83C\uDDEC Djenkoumé (pâte igname)',
+    '\uD83C\uDDF9\uD83C\uDDEC Ablo (galettes de riz fermentées)',
+    '\uD83C\uDDF9\uD83C\uDDEC Amiwo (riz + tomate + crevettes)',
+    '\uD83C\uDDF9\uD83C\uDDEC Gboma dessi (épinards)',
+    '\uD83C\uDDF9\uD83C\uDDEC Atassi (riz + haricots)',
+    '\uD83C\uDDF9\uD83C\uDDEC Ademe (sauce tomate togolaise)',
+    '\uD83C\uDDF9\uD83C\uDDEC Kpété kpété (sauce gombo)',
+    '\uD83C\uDDF9\uD83C\uDDEC Poisson braisé togolais',
+    '\uD83C\uDDF9\uD83C\uDDEC Poulet braisé togolais',
+    '\uD83C\uDDF9\uD83C\uDDEC Sauce arachide togolaise',
+    '\uD83C\uDDF9\uD83C\uDDEC Klako (beignets de maïs)',
 
-    // 🇧🇯 BÉNIN (20+ plats)
-    '🇧🇯 Akassa (pâte de maïs fermentée)',
-    '🇧🇯 Atassi (riz + haricots rouges)',
-    '🇧🇯 Amiwo (tomate + crevettes)',
-    '🇧🇯 Wagassi (fromage peul)',
-    '🇧🇯 Agouti (viande de brousse)',
-    '🇧🇯 Sauce graine béninoise',
-    '🇧🇯 Sauce gombo',
-    '🇧🇯 Ablo (gâteau de riz fermenté)',
-    '🇧🇯 Tchoukoutou (bière de mil)',
-    '🇧🇯 Fon fon (beignets haricots)',
-    '🇧🇯 Poisson fumé béninois',
-    '🇧🇯 Poulet bicyclette béninois',
-    '🇧🇯 Igname pilée béninoise',
-    '🇧🇯 Gari (semoule manioc)',
+    // \uD83C\uDDE7\uD83C\uDDEF BÉNIN (20+ plats)
+    '\uD83C\uDDE7\uD83C\uDDEF Akassa (pâte de maïs fermentée)',
+    '\uD83C\uDDE7\uD83C\uDDEF Atassi (riz + haricots rouges)',
+    '\uD83C\uDDE7\uD83C\uDDEF Amiwo (tomate + crevettes)',
+    '\uD83C\uDDE7\uD83C\uDDEF Wagassi (fromage peul)',
+    '\uD83C\uDDE7\uD83C\uDDEF Agouti (viande de brousse)',
+    '\uD83C\uDDE7\uD83C\uDDEF Sauce graine béninoise',
+    '\uD83C\uDDE7\uD83C\uDDEF Sauce gombo',
+    '\uD83C\uDDE7\uD83C\uDDEF Ablo (gâteau de riz fermenté)',
+    '\uD83C\uDDE7\uD83C\uDDEF Tchoukoutou (bière de mil)',
+    '\uD83C\uDDE7\uD83C\uDDEF Fon fon (beignets haricots)',
+    '\uD83C\uDDE7\uD83C\uDDEF Poisson fumé béninois',
+    '\uD83C\uDDE7\uD83C\uDDEF Poulet bicyclette béninois',
+    '\uD83C\uDDE7\uD83C\uDDEF Igname pilée béninoise',
+    '\uD83C\uDDE7\uD83C\uDDEF Gari (semoule manioc)',
 
-    // 🇳🇪 NIGER (15+ plats)
-    '🇳🇪 Dambou (couscous légumes)',
-    '🇳🇪 Jollof nigérien',
-    '🇳🇪 Riz sauce nigérienne',
-    '🇳🇪 Tô de mil nigérien',
-    '🇳🇪 Foura (bouillie mil)',
-    '🇳🇪 Kilishi (viande séchée)',
-    '🇳🇪 Tchoukou (jus de mil)',
-    '🇳🇪 Fura da nono (mil + lait)',
-    '🇳🇪 Kopto (brochettes)',
-    '🇳🇪 Capitaine braisé Niger',
-    '🇳🇪 Sauce gombo',
-    '🇳🇪 Maafé nigérien',
+    // \uD83C\uDDF3\uD83C\uDDEA NIGER (15+ plats)
+    '\uD83C\uDDF3\uD83C\uDDEA Dambou (couscous légumes)',
+    '\uD83C\uDDF3\uD83C\uDDEA Jollof nigérien',
+    '\uD83C\uDDF3\uD83C\uDDEA Riz sauce nigérienne',
+    '\uD83C\uDDF3\uD83C\uDDEA Tô de mil nigérien',
+    '\uD83C\uDDF3\uD83C\uDDEA Foura (bouillie mil)',
+    '\uD83C\uDDF3\uD83C\uDDEA Kilishi (viande séchée)',
+    '\uD83C\uDDF3\uD83C\uDDEA Tchoukou (jus de mil)',
+    '\uD83C\uDDF3\uD83C\uDDEA Fura da nono (mil + lait)',
+    '\uD83C\uDDF3\uD83C\uDDEA Kopto (brochettes)',
+    '\uD83C\uDDF3\uD83C\uDDEA Capitaine braisé Niger',
+    '\uD83C\uDDF3\uD83C\uDDEA Sauce gombo',
+    '\uD83C\uDDF3\uD83C\uDDEA Maafé nigérien',
 
-    // 🇹🇩 TCHAD (15+ plats)
-    '🇹🇩 Boule (pâte de mil tchadienne)',
-    '🇹🇩 Daraba (gombo + viande)',
-    '🇹🇩 Bangaou (viande séchée)',
-    '🇹🇩 Jarret de bœuf',
-    '🇹🇩 Capitaine du lac Tchad',
-    '🇹🇩 Poisson fumé tchadien',
-    '🇹🇩 Sauce gombo tchadienne',
-    '🇹🇩 Bouillie de mil',
-    '🇹🇩 Brochettes tchadiennes',
-    '🇹🇩 Aiyash (viande séchée pilée)',
-    '🇹🇩 Karantika (galette pois chiche)',
+    // \uD83C\uDDF9\uD83C\uDDE9 TCHAD (15+ plats)
+    '\uD83C\uDDF9\uD83C\uDDE9 Boule (pâte de mil tchadienne)',
+    '\uD83C\uDDF9\uD83C\uDDE9 Daraba (gombo + viande)',
+    '\uD83C\uDDF9\uD83C\uDDE9 Bangaou (viande séchée)',
+    '\uD83C\uDDF9\uD83C\uDDE9 Jarret de bœuf',
+    '\uD83C\uDDF9\uD83C\uDDE9 Capitaine du lac Tchad',
+    '\uD83C\uDDF9\uD83C\uDDE9 Poisson fumé tchadien',
+    '\uD83C\uDDF9\uD83C\uDDE9 Sauce gombo tchadienne',
+    '\uD83C\uDDF9\uD83C\uDDE9 Bouillie de mil',
+    '\uD83C\uDDF9\uD83C\uDDE9 Brochettes tchadiennes',
+    '\uD83C\uDDF9\uD83C\uDDE9 Aiyash (viande séchée pilée)',
+    '\uD83C\uDDF9\uD83C\uDDE9 Karantika (galette pois chiche)',
 
-    // 🇲🇬 MADAGASCAR (15+ plats)
-    '🇲🇬 Romazava (ragoût malgache)',
-    '🇲🇬 Ravitoto (feuilles de manioc + porc)',
-    '🇲🇬 Vary amin\'anana (riz + brèdes)',
-    '🇲🇬 Henakisoa (porc à la malgache)',
-    '🇲🇬 Zebu grillé',
-    '🇲🇬 Akoho sy voanio (poulet coco)',
-    '🇲🇬 Lasary (salade malgache)',
-    '🇲🇬 Mofo gasy (pain malgache)',
-    '🇲🇬 Koba (gâteau arachide + banane)',
-    '🇲🇬 Sambos (samoussas)',
-    '🇲🇬 Tilapia à la malgache',
-    '🇲🇬 Vary sosoa (soupe de riz)',
+    // \uD83C\uDDF2\uD83C\uDDEC MADAGASCAR (15+ plats)
+    '\uD83C\uDDF2\uD83C\uDDEC Romazava (ragoût malgache)',
+    '\uD83C\uDDF2\uD83C\uDDEC Ravitoto (feuilles de manioc + porc)',
+    '\uD83C\uDDF2\uD83C\uDDEC Vary amin\'anana (riz + brèdes)',
+    '\uD83C\uDDF2\uD83C\uDDEC Henakisoa (porc à la malgache)',
+    '\uD83C\uDDF2\uD83C\uDDEC Zebu grillé',
+    '\uD83C\uDDF2\uD83C\uDDEC Akoho sy voanio (poulet coco)',
+    '\uD83C\uDDF2\uD83C\uDDEC Lasary (salade malgache)',
+    '\uD83C\uDDF2\uD83C\uDDEC Mofo gasy (pain malgache)',
+    '\uD83C\uDDF2\uD83C\uDDEC Koba (gâteau arachide + banane)',
+    '\uD83C\uDDF2\uD83C\uDDEC Sambos (samoussas)',
+    '\uD83C\uDDF2\uD83C\uDDEC Tilapia à la malgache',
+    '\uD83C\uDDF2\uD83C\uDDEC Vary sosoa (soupe de riz)',
 
-    '🆕 Autre pays africain (ajouter)'
+    '\uD83C\uDD95 Autre pays africain (ajouter)'
   ],
 
   // ===============================================
-  // 🍕 CUISINE INTERNATIONALE
+  // \uD83C\uDF55 CUISINE INTERNATIONALE
   // ===============================================
   plats_internationaux: [
     // Italien
-    '🍕 Pizza Margherita',
-    '🍕 Pizza 4 fromages',
-    '🍕 Pizza pepperoni',
-    '🍝 Spaghetti Bolognese',
-    '🍝 Carbonara',
-    '🍝 Penne Arrabiata',
-    '🍝 Lasagnes',
+    '\uD83C\uDF55 Pizza Margherita',
+    '\uD83C\uDF55 Pizza 4 fromages',
+    '\uD83C\uDF55 Pizza pepperoni',
+    '\uD83C\uDF5D Spaghetti Bolognese',
+    '\uD83C\uDF5D Carbonara',
+    '\uD83C\uDF5D Penne Arrabiata',
+    '\uD83C\uDF5D Lasagnes',
 
     // Fast-food
-    '🍔 Burger classique',
-    '🍔 Cheeseburger',
-    '🍔 Chicken burger',
-    '🍟 Frites',
-    '🌭 Hot-dog',
-    '🥪 Sandwich club',
-    '🥙 Wrap poulet',
-    '🥙 Tacos',
+    '\uD83C\uDF54 Burger classique',
+    '\uD83C\uDF54 Cheeseburger',
+    '\uD83C\uDF54 Chicken burger',
+    '\uD83C\uDF5F Frites',
+    '\uD83C\uDF2D Hot-dog',
+    '\uD83E\uDD6A Sandwich club',
+    '\uD83E\uDD59 Wrap poulet',
+    '\uD83E\uDD59 Tacos',
 
     // Asiatique
-    '🍜 Riz cantonnais',
-    '🍜 Nouilles sautées',
-    '🍜 Nems / Rouleaux de printemps',
-    '🍜 Riz sauté poulet/crevettes',
-    '🍱 Sushi / Maki',
-    '🥟 Gyoza / Raviolis',
+    '\uD83C\uDF5C Riz cantonnais',
+    '\uD83C\uDF5C Nouilles sautées',
+    '\uD83C\uDF5C Nems / Rouleaux de printemps',
+    '\uD83C\uDF5C Riz sauté poulet/crevettes',
+    '\uD83C\uDF71 Sushi / Maki',
+    '\uD83E\uDD5F Gyoza / Raviolis',
 
     // Libanais/Moyen-Orient
-    '🥙 Chawarma poulet/viande',
-    '🥙 Falafel',
-    '🥙 Houmous + pain pita',
-    '🥙 Taboulé',
-    '🥙 Grillades libanaises',
+    '\uD83E\uDD59 Chawarma poulet/viande',
+    '\uD83E\uDD59 Falafel',
+    '\uD83E\uDD59 Houmous + pain pita',
+    '\uD83E\uDD59 Taboulé',
+    '\uD83E\uDD59 Grillades libanaises',
 
     // Français
-    '🥖 Croissant',
-    '🥖 Pain au chocolat',
-    '🥐 Baguette française',
-    '🍰 Pâtisseries françaises',
+    '\uD83E\uDD56 Croissant',
+    '\uD83E\uDD56 Pain au chocolat',
+    '\uD83E\uDD50 Baguette française',
+    '\uD83C\uDF70 Pâtisseries françaises',
 
-    '🆕 Autre international (ajouter)'
+    '\uD83C\uDD95 Autre international (ajouter)'
   ],
 
   // ===============================================
-  // 🍹 BOISSONS & DESSERTS LOCAUX
+  // \uD83C\uDF79 BOISSONS & DESSERTS LOCAUX
   // ===============================================
   boissons_locales: [
     // Jus naturels
-    '🥭 Jus de mangue',
-    '🍍 Jus d\'ananas',
-    '🍊 Jus d\'orange pressée',
-    '🍋 Citronnade / Jus de citron',
-    '🥥 Jus de coco / Eau de coco',
-    '🍉 Jus de pastèque',
-    '🥭 Jus de goyave',
-    '🍇 Jus de bissap (hibiscus)',
-    '🌾 Jus de gingembre',
-    '🥤 Jus de tamarin',
-    '🥤 Jus de baobab (pain de singe)',
+    '\uD83E\uDD6D Jus de mangue',
+    '\uD83C\uDF4D Jus d\'ananas',
+    '\uD83C\uDF4A Jus d\'orange pressée',
+    '\uD83C\uDF4B Citronnade / Jus de citron',
+    '\uD83E\uDD65 Jus de coco / Eau de coco',
+    '\uD83C\uDF49 Jus de pastèque',
+    '\uD83E\uDD6D Jus de goyave',
+    '\uD83C\uDF47 Jus de bissap (hibiscus)',
+    '\uD83C\uDF3E Jus de gingembre',
+    '\uD83E\uDD64 Jus de tamarin',
+    '\uD83E\uDD64 Jus de baobab (pain de singe)',
 
     // Boissons traditionnelles
-    '🍺 Bil-bil (bière de mil)',
-    '🍺 Tchapalo (bière de maïs)',
-    '🍺 Vin de palme / Bangui',
-    '🥛 Nkui (boisson fermentée)',
+    '\uD83C\uDF7A Bil-bil (bière de mil)',
+    '\uD83C\uDF7A Tchapalo (bière de maïs)',
+    '\uD83C\uDF7A Vin de palme / Bangui',
+    '\uD83E\uDD5B Nkui (boisson fermentée)',
 
     // Modernes
     '☕ Café',
-    '🍵 Thé Lipton / Thé à la menthe',
-    '🥤 Soda (Coca, Fanta, Sprite)',
-    '🥤 Malta Guinness / Maltina',
-    '🧃 Top Grenadine / Top Orange',
+    '\uD83C\uDF75 Thé Lipton / Thé à la menthe',
+    '\uD83E\uDD64 Soda (Coca, Fanta, Sprite)',
+    '\uD83E\uDD64 Malta Guinness / Maltina',
+    '\uD83E\uDDC3 Top Grenadine / Top Orange',
 
-    '🆕 Autre boisson (ajouter)'
+    '\uD83C\uDD95 Autre boisson (ajouter)'
   ],
 
   desserts_locaux: [
-    '🍰 Gâteau de banane',
-    '🧁 Chin-chin (beignets croustillants)',
-    '🥧 Puff-puff sucré',
-    '🍮 Thiakry / Degué (couscous mil sucré)',
-    '🍮 Chakery sénégalais',
-    '🥥 Beignets de coco',
-    '🍌 Banane flambée',
-    '🍰 Gâteaux artisanaux locaux',
-    '🍦 Glace artisanale',
-    '🍰 Pâtisseries occidentales',
-    '🆕 Autre dessert (ajouter)'
+    '\uD83C\uDF70 Gâteau de banane',
+    '\uD83E\uDDC1 Chin-chin (beignets croustillants)',
+    '\uD83E\uDD67 Puff-puff sucré',
+    '\uD83C\uDF6E Thiakry / Degué (couscous mil sucré)',
+    '\uD83C\uDF6E Chakery sénégalais',
+    '\uD83E\uDD65 Beignets de coco',
+    '\uD83C\uDF4C Banane flambée',
+    '\uD83C\uDF70 Gâteaux artisanaux locaux',
+    '\uD83C\uDF66 Glace artisanale',
+    '\uD83C\uDF70 Pâtisseries occidentales',
+    '\uD83C\uDD95 Autre dessert (ajouter)'
   ],
 
   // ===============================================
-  // 🏪 TYPES DE CUISINE (Enrichis)
+  // \uD83C\uDFEA TYPES DE CUISINE (Enrichis)
   // ===============================================
   types_cuisine: [
     // Africaine par pays
-    '🇨🇲 Cuisine camerounaise',
-    '🇨🇮 Cuisine ivoirienne',
-    '🇸🇳 Cuisine sénégalaise',
-    '🇲🇱 Cuisine malienne',
-    '🇬🇦 Cuisine gabonaise',
-    '🇨🇬 Cuisine congolaise',
-    '🇧🇫 Cuisine burkinabè',
-    '🇹🇬 Cuisine togolaise',
-    '🇧🇯 Cuisine béninoise',
-    '🇳🇪 Cuisine nigérienne',
-    '🇹🇩 Cuisine tchadienne',
-    '🇲🇬 Cuisine malgache',
-    '🌍 Cuisine africaine (générale)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Cuisine camerounaise',
+    '\uD83C\uDDE8\uD83C\uDDEE Cuisine ivoirienne',
+    '\uD83C\uDDF8\uD83C\uDDF3 Cuisine sénégalaise',
+    '\uD83C\uDDF2\uD83C\uDDF1 Cuisine malienne',
+    '\uD83C\uDDEC\uD83C\uDDE6 Cuisine gabonaise',
+    '\uD83C\uDDE8\uD83C\uDDEC Cuisine congolaise',
+    '\uD83C\uDDE7\uD83C\uDDEB Cuisine burkinabè',
+    '\uD83C\uDDF9\uD83C\uDDEC Cuisine togolaise',
+    '\uD83C\uDDE7\uD83C\uDDEF Cuisine béninoise',
+    '\uD83C\uDDF3\uD83C\uDDEA Cuisine nigérienne',
+    '\uD83C\uDDF9\uD83C\uDDE9 Cuisine tchadienne',
+    '\uD83C\uDDF2\uD83C\uDDEC Cuisine malgache',
+    '\uD83C\uDF0D Cuisine africaine (générale)',
 
     // Internationale
-    '🇫🇷 Cuisine française',
-    '🇮🇹 Cuisine italienne',
-    '🇨🇳 Cuisine chinoise',
-    '🇯🇵 Cuisine japonaise',
-    '🇱🇧 Cuisine libanaise',
-    '🇮🇳 Cuisine indienne',
-    '🇲🇽 Cuisine mexicaine',
-    '🇺🇸 Cuisine américaine',
-    '🍔 Fast-food',
+    '\uD83C\uDDEB\uD83C\uDDF7 Cuisine française',
+    '\uD83C\uDDEE\uD83C\uDDF9 Cuisine italienne',
+    '\uD83C\uDDE8\uD83C\uDDF3 Cuisine chinoise',
+    '\uD83C\uDDEF\uD83C\uDDF5 Cuisine japonaise',
+    '\uD83C\uDDF1\uD83C\uDDE7 Cuisine libanaise',
+    '\uD83C\uDDEE\uD83C\uDDF3 Cuisine indienne',
+    '\uD83C\uDDF2\uD83C\uDDFD Cuisine mexicaine',
+    '\uD83C\uDDFA\uD83C\uDDF8 Cuisine américaine',
+    '\uD83C\uDF54 Fast-food',
 
     // Spécialités
-    '🍖 Grillades / BBQ',
-    '🐟 Poissons & fruits de mer',
-    '🍕 Pizzas',
-    '🥗 Salades & Healthy',
-    '🌱 Végétarienne',
-    '🌿 Vegan',
+    '\uD83C\uDF56 Grillades / BBQ',
+    '\uD83D\uDC1F Poissons & fruits de mer',
+    '\uD83C\uDF55 Pizzas',
+    '\uD83E\uDD57 Salades & Healthy',
+    '\uD83C\uDF31 Végétarienne',
+    '\uD83C\uDF3F Vegan',
     '☪️ Halal',
     '✡️ Kasher',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ===============================================
-  // 💼 SERVICES PROPOSÉS
+  // \uD83D\uDCBC SERVICES PROPOSÉS
   // ===============================================
   services: [
-    '🍽️ Service sur place',
-    '📦 Plats à emporter',
-    '🚗 Livraison à domicile',
-    '🎉 Traiteur événementiel (mariages, baptêmes)',
-    '🏢 Traiteur entreprise (séminaires, pause-café)',
-    '🍱 Buffet sur mesure',
-    '🥘 Commandes groupées',
-    '📅 Réservations de tables',
-    '🎂 Gâteaux sur commande',
-    '🍰 Pâtisserie événementielle',
+    '\uD83C\uDF7D️ Service sur place',
+    '\uD83D\uDCE6 Plats à emporter',
+    '\uD83D\uDE97 Livraison à domicile',
+    '\uD83C\uDF89 Traiteur événementiel (mariages, baptêmes)',
+    '\uD83C\uDFE2 Traiteur entreprise (séminaires, pause-café)',
+    '\uD83C\uDF71 Buffet sur mesure',
+    '\uD83E\uDD58 Commandes groupées',
+    '\uD83D\uDCC5 Réservations de tables',
+    '\uD83C\uDF82 Gâteaux sur commande',
+    '\uD83C\uDF70 Pâtisserie événementielle',
     '☕ Service petit-déjeuner',
-    '🍽️ Brunch',
-    '🌙 Service nocturne',
-    '🆕 Autre service (ajouter)'
+    '\uD83C\uDF7D️ Brunch',
+    '\uD83C\uDF19 Service nocturne',
+    '\uD83C\uDD95 Autre service (ajouter)'
   ],
 
   // ===============================================
-  // 💰 GAMMES DE PRIX
+  // \uD83D\uDCB0 GAMMES DE PRIX
   // ===============================================
   gammes_prix: [
-    '💰 Économique (500-1500 FCFA)',
-    '💰💰 Abordable (1500-3000 FCFA)',
-    '💰💰💰 Moyen (3000-6000 FCFA)',
-    '💰💰💰💰 Élevé (6000-12000 FCFA)',
-    '💰💰💰💰💰 Premium (> 12000 FCFA)',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDCB0 Économique (500-1500 FCFA)',
+    '\uD83D\uDCB0\uD83D\uDCB0 Abordable (1500-3000 FCFA)',
+    '\uD83D\uDCB0\uD83D\uDCB0\uD83D\uDCB0 Moyen (3000-6000 FCFA)',
+    '\uD83D\uDCB0\uD83D\uDCB0\uD83D\uDCB0\uD83D\uDCB0 Élevé (6000-12000 FCFA)',
+    '\uD83D\uDCB0\uD83D\uDCB0\uD83D\uDCB0\uD83D\uDCB0\uD83D\uDCB0 Premium (> 12000 FCFA)',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ===============================================
-  // 🕐 HORAIRES DE SERVICE
+  // \uD83D\uDD50 HORAIRES DE SERVICE
   // ===============================================
   horaires: [
-    '🌅 Petit-déjeuner (6h-11h)',
+    '\uD83C\uDF05 Petit-déjeuner (6h-11h)',
     '☀️ Déjeuner (11h-16h)',
-    '🌆 Dîner (18h-23h)',
-    '🍽️ Service continu (11h-23h)',
-    '🌙 Service nocturne (20h-4h)',
+    '\uD83C\uDF06 Dîner (18h-23h)',
+    '\uD83C\uDF7D️ Service continu (11h-23h)',
+    '\uD83C\uDF19 Service nocturne (20h-4h)',
     '⏰ 24h/24',
-    '📅 Week-ends uniquement',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDCC5 Week-ends uniquement',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ===============================================
-  // 🎯 RÉGIMES ALIMENTAIRES SPÉCIAUX
+  // \uD83C\uDFAF RÉGIMES ALIMENTAIRES SPÉCIAUX
   // ===============================================
   regimes: [
     '☪️ Halal certifié',
     '✡️ Kasher',
-    '🌱 Végétarien',
-    '🌿 Vegan (100% végétal)',
-    '🌾 Sans gluten',
-    '🥛 Sans lactose',
-    '🥗 Bio / Produits locaux',
+    '\uD83C\uDF31 Végétarien',
+    '\uD83C\uDF3F Vegan (100% végétal)',
+    '\uD83C\uDF3E Sans gluten',
+    '\uD83E\uDD5B Sans lactose',
+    '\uD83E\uDD57 Bio / Produits locaux',
     '❤️ Diabétique / Faible en sucre',
-    '💪 Hyperprotéiné / Fitness',
-    '🥗 Régime méditerranéen',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDCAA Hyperprotéiné / Fitness',
+    '\uD83E\uDD57 Régime méditerranéen',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ===============================================
-  // 🏪 AMBIANCE & ÉQUIPEMENTS
+  // \uD83C\uDFEA AMBIANCE & ÉQUIPEMENTS
   // ===============================================
   ambiance: [
-    '👨‍👩‍👧‍👦 Familial',
-    '💑 Romantique',
-    '👔 Professionnel / Business',
-    '🎉 Festif / Événementiel',
-    '🌳 Terrasse / Jardin',
+    '\uD83D\uDC68‍\uD83D\uDC69‍\uD83D\uDC67‍\uD83D\uDC66 Familial',
+    '\uD83D\uDC91 Romantique',
+    '\uD83D\uDC54 Professionnel / Business',
+    '\uD83C\uDF89 Festif / Événementiel',
+    '\uD83C\uDF33 Terrasse / Jardin',
     '❄️ Climatisé',
-    '📶 Wi-Fi gratuit',
-    '🚗 Parking disponible',
+    '\uD83D\uDCF6 Wi-Fi gratuit',
+    '\uD83D\uDE97 Parking disponible',
     '♿ Accessible PMR',
-    '🎵 Musique live',
-    '📺 Écrans TV / Sports',
-    '🎮 Espace jeux enfants',
-    '🔌 Prises électriques',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDFB5 Musique live',
+    '\uD83D\uDCFA Écrans TV / Sports',
+    '\uD83C\uDFAE Espace jeux enfants',
+    '\uD83D\uDD0C Prises électriques',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ===============================================
-  // 📍 ZONES DE LIVRAISON (Cameroun - exemple)
+  // \uD83D\uDCCD ZONES DE LIVRAISON (Cameroun - exemple)
   // ===============================================
   zones_livraison_douala: [
     'Akwa', 'Bonanjo', 'Bonapriso', 'Bali', 'Deido', 'New Bell',
     'Bonabéri', 'Logbaba', 'Makepe', 'PK8', 'PK10', 'PK12',
     'Ndogpassi', 'Kotto', 'Bépanda', 'Koumassi', 'Village',
     'Bonamoussadi', 'Logpom', 'Nyalla', 'Sodiko',
-    '🌍 Toute la ville de Douala',
-    '🆕 Autre quartier (ajouter)'
+    '\uD83C\uDF0D Toute la ville de Douala',
+    '\uD83C\uDD95 Autre quartier (ajouter)'
   ],
 
   zones_livraison_yaounde: [
@@ -9492,79 +9492,79 @@ export const RESTAURATION_MODALITIES: ModalityCategory = {
     'Odza', 'Emana', 'Elig-Edzoa', 'Mendong', 'Nsam',
     'Ngousso', 'Mokolo', 'Briqueterie', 'Tsinga', 'Ekounou',
     'Nkol-Eton', 'Omnisport', 'Carrière', 'Mvog-Ada',
-    '🌍 Tout Yaoundé',
-    '🆕 Autre quartier (ajouter)'
+    '\uD83C\uDF0D Tout Yaoundé',
+    '\uD83C\uDD95 Autre quartier (ajouter)'
   ],
 
   // ===============================================
-  // 🎖️ CERTIFICATIONS & LABELS
+  // \uD83C\uDF96️ CERTIFICATIONS & LABELS
   // ===============================================
   certifications: [
     '✅ Agréé par le Ministère de la Santé',
     '✅ Certification Halal',
     '✅ Hygiène HACCP',
     '✅ ISO 22000 (Sécurité alimentaire)',
-    '🏆 Restaurant recommandé',
+    '\uD83C\uDFC6 Restaurant recommandé',
     '⭐ Classement étoiles (1-5)',
-    '🌱 Produits bio certifiés',
-    '🇨🇲 Label Made in Cameroon',
-    '🆕 Autre certification (ajouter)'
+    '\uD83C\uDF31 Produits bio certifiés',
+    '\uD83C\uDDE8\uD83C\uDDF2 Label Made in Cameroon',
+    '\uD83C\uDD95 Autre certification (ajouter)'
   ],
 
   // ===============================================
-  // 🎁 PROMOTIONS & AVANTAGES
+  // \uD83C\uDF81 PROMOTIONS & AVANTAGES
   // ===============================================
   promotions: [
-    '🎉 Promotion du jour',
-    '📅 Menu du midi réduit',
-    '👨‍👩‍👧‍👦 Offre famille',
-    '💑 Menu Saint-Valentin',
-    '🎂 Anniversaires (réduction)',
-    '🍰 Dessert offert',
-    '🥤 Boisson offerte',
-    '📦 Livraison gratuite (à partir de...)',
-    '💳 Carte de fidélité',
-    '🎁 Programme de parrainage',
-    '🆕 Autre promotion (ajouter)'
+    '\uD83C\uDF89 Promotion du jour',
+    '\uD83D\uDCC5 Menu du midi réduit',
+    '\uD83D\uDC68‍\uD83D\uDC69‍\uD83D\uDC67‍\uD83D\uDC66 Offre famille',
+    '\uD83D\uDC91 Menu Saint-Valentin',
+    '\uD83C\uDF82 Anniversaires (réduction)',
+    '\uD83C\uDF70 Dessert offert',
+    '\uD83E\uDD64 Boisson offerte',
+    '\uD83D\uDCE6 Livraison gratuite (à partir de...)',
+    '\uD83D\uDCB3 Carte de fidélité',
+    '\uD83C\uDF81 Programme de parrainage',
+    '\uD83C\uDD95 Autre promotion (ajouter)'
   ],
 
   // ===============================================
-  // 👨‍🍳 ÉQUIPE & SPÉCIALISATION
+  // \uD83D\uDC68‍\uD83C\uDF73 ÉQUIPE & SPÉCIALISATION
   // ===============================================
   specialisation_chef: [
-    '👨‍🍳 Chef camerounais traditionnel',
-    '👨‍🍳 Chef cuisine africaine',
-    '👨‍🍳 Chef cuisine française',
-    '👨‍🍳 Chef pâtissier',
-    '👨‍🍳 Chef grillades/BBQ',
-    '👨‍🍳 Chef cuisine internationale',
-    '👨‍🍳 Cuisinier autodidacte passionné',
-    '🎓 Formation hôtelière',
-    '🎓 École de cuisine professionnelle',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDC68‍\uD83C\uDF73 Chef camerounais traditionnel',
+    '\uD83D\uDC68‍\uD83C\uDF73 Chef cuisine africaine',
+    '\uD83D\uDC68‍\uD83C\uDF73 Chef cuisine française',
+    '\uD83D\uDC68‍\uD83C\uDF73 Chef pâtissier',
+    '\uD83D\uDC68‍\uD83C\uDF73 Chef grillades/BBQ',
+    '\uD83D\uDC68‍\uD83C\uDF73 Chef cuisine internationale',
+    '\uD83D\uDC68‍\uD83C\uDF73 Cuisinier autodidacte passionné',
+    '\uD83C\uDF93 Formation hôtelière',
+    '\uD83C\uDF93 École de cuisine professionnelle',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ===============================================
-  // 📸 CAPACITÉ & INFRASTRUCTURE
+  // \uD83D\uDCF8 CAPACITÉ & INFRASTRUCTURE
   // ===============================================
   capacite_accueil: [
-    '👥 Petit (1-20 personnes)',
-    '👥 Moyen (20-50 personnes)',
-    '👥 Grand (50-100 personnes)',
-    '👥 Très grand (100-200 personnes)',
-    '👥 Événementiel (200-500+ personnes)',
-    '🆕 Autre capacité (ajouter)'
+    '\uD83D\uDC65 Petit (1-20 personnes)',
+    '\uD83D\uDC65 Moyen (20-50 personnes)',
+    '\uD83D\uDC65 Grand (50-100 personnes)',
+    '\uD83D\uDC65 Très grand (100-200 personnes)',
+    '\uD83D\uDC65 Événementiel (200-500+ personnes)',
+    '\uD83C\uDD95 Autre capacité (ajouter)'
   ],
 
   type_clientele: [
-    '👨‍👩‍👧‍👦 Familles',
-    '💼 Professionnels / Entreprises',
-    '🎓 Étudiants',
-    '👔 Clientèle haut de gamme',
-    '🌍 Expatriés',
-    '🧳 Touristes',
-    '🎉 Événements privés',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDC68‍\uD83D\uDC69‍\uD83D\uDC67‍\uD83D\uDC66 Familles',
+    '\uD83D\uDCBC Professionnels / Entreprises',
+    '\uD83C\uDF93 Étudiants',
+    '\uD83D\uDC54 Clientèle haut de gamme',
+    '\uD83C\uDF0D Expatriés',
+    '\uD83E\uDDF3 Touristes',
+    '\uD83C\uDF89 Événements privés',
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -9575,41 +9575,41 @@ export const ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Smartphone', 'Tablette', 'Ordinateur portable', 'PC de bureau', 'Télévision',
     'Console de jeux', 'Appareil photo', 'Caméra', 'Drone', 'Montre connectée',
     'Écouteurs', 'Casque audio', 'Enceinte', 'Chargeur', 'Batterie externe',
-    'Accessoires', '🆕 Autre (ajouter)'
+    'Accessoires', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Marques
   marques: [
     'Apple', 'Samsung', 'Huawei', 'Xiaomi', 'Sony', 'LG', 'Panasonic', 'Canon',
-    'Nikon', 'DJI', 'Bose', 'JBL', 'Beats', 'Anker', 'Belkin', '🆕 Autre (ajouter)'
+    'Nikon', 'DJI', 'Bose', 'JBL', 'Beats', 'Anker', 'Belkin', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // États
   etats: [
     'Neuf sous garantie', 'Neuf sans garantie', 'Reconditionné', 'Occasion - Excellent',
-    'Occasion - Bon', 'Occasion - Moyen', 'Pour pièces', '🆕 Autre (ajouter)'
+    'Occasion - Bon', 'Occasion - Moyen', 'Pour pièces', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Connectivité
   connectivite: [
     'Wi-Fi', 'Bluetooth', '4G', '5G', 'NFC', 'USB-C', 'Lightning', 'HDMI',
-    'Jack 3.5mm', 'USB', 'Ethernet', '🆕 Autre (ajouter)'
+    'Jack 3.5mm', 'USB', 'Ethernet', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
 // ════════════════════════════════════════════════════════════
 // ✅ MODALITÉS SOUTIEN SCOLAIRE / RÉPÉTITEUR - AFRIQUE FRANCOPHONE
 // ════════════════════════════════════════════════════════════
-// 📚 Contexte : Cours particuliers primaire/secondaire, Aide aux devoirs,
+// \uD83D\uDCDA Contexte : Cours particuliers primaire/secondaire, Aide aux devoirs,
 //              Rattrapage scolaire, Soutien niveau Maternelle → Terminale
-// 🎯 DIFFÉRENT DE : Formation professionnelle et Préparation concours (formation_education)
-// 🌍 Zones : Cameroun, Côte d'Ivoire, Sénégal, Mali, RDC, Gabon, Congo, etc.
+// \uD83C\uDFAF DIFFÉRENT DE : Formation professionnelle et Préparation concours (formation_education)
+// \uD83C\uDF0D Zones : Cameroun, Côte d'Ivoire, Sénégal, Mali, RDC, Gabon, Congo, etc.
 // ════════════════════════════════════════════════════════════
 export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
 
   // ✅ TYPES DE SOUTIEN SCOLAIRE (15+ options)
   types_soutien: [
-    '─── 📚 SOUTIEN SCOLAIRE CLASSIQUE ───',
+    '─── \uD83D\uDCDA SOUTIEN SCOLAIRE CLASSIQUE ───',
     'Cours particuliers à domicile',
     'Cours particuliers en ligne',
     'Aide aux devoirs',
@@ -9619,60 +9619,60 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     'Remise à niveau',
     'Méthodologie & organisation',
 
-    '─── 👥 FORMAT COURS ───',
+    '─── \uD83D\uDC65 FORMAT COURS ───',
     'Cours individuels (1 élève)',
     'Cours en binôme (2 élèves)',
     'Cours en petit groupe (3-5 élèves)',
     'Cours en groupe classe (6-15 élèves)',
 
-    '🆕 Autre type (préciser)'
+    '\uD83C\uDD95 Autre type (préciser)'
   ],
 
   // ✅ NIVEAUX SCOLAIRES (Utilise genererNiveauxScolaires du système éducatif)
-  // 🔄 Focus : Maternelle → Terminale (PAS université/grandes écoles)
+  // \uD83D\uDD04 Focus : Maternelle → Terminale (PAS université/grandes écoles)
   niveaux_scolaires: [
-    '─── 🇨🇲 MATERNELLE ───',
-    '🇨🇲 Petite Section (3-4 ans)',
-    '🇨🇲 Moyenne Section (4-5 ans)',
-    '🇨🇲 Grande Section (5-6 ans)',
+    '─── \uD83C\uDDE8\uD83C\uDDF2 MATERNELLE ───',
+    '\uD83C\uDDE8\uD83C\uDDF2 Petite Section (3-4 ans)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Moyenne Section (4-5 ans)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Grande Section (5-6 ans)',
 
-    '─── 🇨🇲 PRIMAIRE ───',
-    '🇨🇲 CP (Cours Préparatoire)',
-    '🇨🇲 CE1',
-    '🇨🇲 CE2',
-    '🇨🇲 CM1',
-    '🇨🇲 CM2',
+    '─── \uD83C\uDDE8\uD83C\uDDF2 PRIMAIRE ───',
+    '\uD83C\uDDE8\uD83C\uDDF2 CP (Cours Préparatoire)',
+    '\uD83C\uDDE8\uD83C\uDDF2 CE1',
+    '\uD83C\uDDE8\uD83C\uDDF2 CE2',
+    '\uD83C\uDDE8\uD83C\uDDF2 CM1',
+    '\uD83C\uDDE8\uD83C\uDDF2 CM2',
 
-    '─── 🇨🇲 COLLÈGE ───',
-    '🇨🇲 6ème',
-    '🇨🇲 5ème',
-    '🇨🇲 4ème',
-    '🇨🇲 3ème',
+    '─── \uD83C\uDDE8\uD83C\uDDF2 COLLÈGE ───',
+    '\uD83C\uDDE8\uD83C\uDDF2 6ème',
+    '\uD83C\uDDE8\uD83C\uDDF2 5ème',
+    '\uD83C\uDDE8\uD83C\uDDF2 4ème',
+    '\uD83C\uDDE8\uD83C\uDDF2 3ème',
 
-    '─── 🇨🇲 LYCÉE ───',
-    '🇨🇲 Seconde',
-    '🇨🇲 Première',
-    '🇨🇲 Terminale',
+    '─── \uD83C\uDDE8\uD83C\uDDF2 LYCÉE ───',
+    '\uD83C\uDDE8\uD83C\uDDF2 Seconde',
+    '\uD83C\uDDE8\uD83C\uDDF2 Première',
+    '\uD83C\uDDE8\uD83C\uDDF2 Terminale',
 
     '──────────────────',
-    '📚 Tous niveaux (Maternelle → Terminale)',
-    '👶 Niveau Maternelle uniquement',
-    '📖 Niveau Primaire uniquement',
-    '📘 Niveau Collège uniquement',
-    '📕 Niveau Lycée uniquement',
-    '🆕 Autre niveau (préciser)'
+    '\uD83D\uDCDA Tous niveaux (Maternelle → Terminale)',
+    '\uD83D\uDC76 Niveau Maternelle uniquement',
+    '\uD83D\uDCD6 Niveau Primaire uniquement',
+    '\uD83D\uDCD8 Niveau Collège uniquement',
+    '\uD83D\uDCD5 Niveau Lycée uniquement',
+    '\uD83C\uDD95 Autre niveau (préciser)'
   ],
 
   // ✅ MATIÈRES ENSEIGNÉES (30+ options - Focus primaire/secondaire)
   matieres_enseignees: [
-    '─── 📐 SCIENCES & MATHÉMATIQUES ───',
+    '─── \uD83D\uDCD0 SCIENCES & MATHÉMATIQUES ───',
     'Mathématiques',
     'Physique',
     'Chimie',
     'SVT (Sciences de la Vie et de la Terre)',
     'Sciences (primaire)',
 
-    '─── 📖 LANGUES & LITTÉRATURE ───',
+    '─── \uD83D\uDCD6 LANGUES & LITTÉRATURE ───',
     'Français',
     'Anglais',
     'Espagnol',
@@ -9681,35 +9681,35 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     'Expression écrite',
     'Lecture & compréhension',
 
-    '─── 🌍 SCIENCES HUMAINES ───',
+    '─── \uD83C\uDF0D SCIENCES HUMAINES ───',
     'Histoire-Géographie',
     'Histoire',
     'Géographie',
     'Éducation civique et morale (ECM)',
     'Philosophie (Terminale)',
 
-    '─── 💼 ÉCONOMIE & GESTION ───',
+    '─── \uD83D\uDCBC ÉCONOMIE & GESTION ───',
     'Sciences économiques et sociales (SES)',
     'Économie',
     'Comptabilité',
     'Gestion',
 
-    '─── 💻 AUTRES MATIÈRES ───',
+    '─── \uD83D\uDCBB AUTRES MATIÈRES ───',
     'Informatique',
     'Arts plastiques',
     'Éducation physique (Sport)',
     'Musique',
 
     '──────────────────',
-    '📚 Aide aux devoirs (toutes matières)',
-    '🎯 Méthodologie & organisation',
-    '📝 Préparation examens (BEPC, Probatoire, Bac)',
-    '🆕 Autre matière (préciser)'
+    '\uD83D\uDCDA Aide aux devoirs (toutes matières)',
+    '\uD83C\uDFAF Méthodologie & organisation',
+    '\uD83D\uDCDD Préparation examens (BEPC, Probatoire, Bac)',
+    '\uD83C\uDD95 Autre matière (préciser)'
   ],
 
   // ✅ FORMATS & MODALITÉS (15+ options)
   formats: [
-    '─── 📍 LIEU DES COURS ───',
+    '─── \uD83D\uDCCD LIEU DES COURS ───',
     'À domicile (déplacement du répétiteur)',
     'Au domicile du répétiteur',
     'En ligne (visioconférence)',
@@ -9722,14 +9722,14 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     'Cours ponctuels (à la demande)',
     'Programme suivi sur plusieurs mois',
 
-    '─── 🕐 CRÉNEAUX HORAIRES ───',
+    '─── \uD83D\uDD50 CRÉNEAUX HORAIRES ───',
     'Après-midi (sortie école)',
     'Soir (18h-20h)',
     'Mercredi après-midi',
     'Week-end (samedi-dimanche)',
     'Vacances scolaires',
 
-    '🆕 Autre format (préciser)'
+    '\uD83C\uDD95 Autre format (préciser)'
   ],
 
   // ✅ DURÉES DE SÉANCE (10+ options)
@@ -9742,35 +9742,35 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     'Demi-journée (4 heures)',
     'Journée complète (6-8 heures)',
     'À définir selon besoins',
-    '🆕 Autre durée (préciser)'
+    '\uD83C\uDD95 Autre durée (préciser)'
   ],
 
   // ✅ TARIFICATION (15+ options)
   modes_tarification: [
-    '─── 💰 PAR SÉANCE ───',
+    '─── \uD83D\uDCB0 PAR SÉANCE ───',
     'Tarif horaire (par heure)',
     'Tarif par séance (1h-2h)',
     'Forfait 5 séances',
     'Forfait 10 séances',
     'Forfait 20 séances',
 
-    '─── 📅 PAR PÉRIODE ───',
+    '─── \uD83D\uDCC5 PAR PÉRIODE ───',
     'Forfait mensuel (4 semaines)',
     'Forfait trimestriel (3 mois)',
     'Forfait semestre (6 mois)',
     'Forfait année scolaire (9 mois)',
 
-    '─── 🎯 SPÉCIAL ───',
+    '─── \uD83C\uDFAF SPÉCIAL ───',
     'Stage vacances (prix global)',
     'Préparation examen (package complet)',
     'Tarif dégressif (groupe)',
 
-    '🆕 Autre mode (préciser)'
+    '\uD83C\uDD95 Autre mode (préciser)'
   ],
 
   // ✅ FOURCHETTES DE PRIX (Contexte Cameroun/Afrique francophone)
   fourchettes_prix: [
-    '─── 💵 TARIFS HORAIRES ───',
+    '─── \uD83D\uDCB5 TARIFS HORAIRES ───',
     'Moins de 2 000 FCFA/heure',
     '2 000 - 3 000 FCFA/heure',
     '3 000 - 5 000 FCFA/heure',
@@ -9779,7 +9779,7 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     '10 000 - 15 000 FCFA/heure',
     'Plus de 15 000 FCFA/heure',
 
-    '─── 📦 FORFAITS MENSUELS ───',
+    '─── \uD83D\uDCE6 FORFAITS MENSUELS ───',
     'Moins de 30 000 FCFA/mois',
     '30 000 - 50 000 FCFA/mois',
     '50 000 - 80 000 FCFA/mois',
@@ -9787,7 +9787,7 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     'Plus de 120 000 FCFA/mois',
 
     'Prix négociable',
-    '🆕 Autre fourchette'
+    '\uD83C\uDD95 Autre fourchette'
   ],
 
   // ✅ EXPÉRIENCE DU RÉPÉTITEUR (10+ options)
@@ -9803,31 +9803,31 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     'Enseignant en activité',
     'Enseignant retraité',
     'Professeur certifié',
-    '🆕 Autre profil'
+    '\uD83C\uDD95 Autre profil'
   ],
 
   // ✅ DIPLÔMES & CERTIFICATIONS (15+ options)
   certifications: [
-    '─── 🎓 DIPLÔMES ACADÉMIQUES ───',
+    '─── \uD83C\uDF93 DIPLÔMES ACADÉMIQUES ───',
     'Baccalauréat',
     'Licence (BAC+3)',
     'Master (BAC+5)',
     'Doctorat (BAC+8)',
     'Ingénieur',
 
-    '─── 📜 CERTIFICATIONS ENSEIGNEMENT ───',
+    '─── \uD83D\uDCDC CERTIFICATIONS ENSEIGNEMENT ───',
     'CAPIEMP (Primaire)',
     'CAPIET (Technique)',
     'DIPES I (Secondaire 1er cycle)',
     'DIPES II (Secondaire 2nd cycle)',
     'Agrégation',
 
-    '─── 🌍 CERTIFICATIONS INTERNATIONALES ───',
+    '─── \uD83C\uDF0D CERTIFICATIONS INTERNATIONALES ───',
     'TOEFL (anglais)',
     'DELF/DALF (français)',
 
     'Aucun diplôme formel (expérience pratique)',
-    '🆕 Autre certification'
+    '\uD83C\uDD95 Autre certification'
   ],
 
   // ✅ ZONES D'INTERVENTION (Auto-génération selon pays)
@@ -9835,7 +9835,7 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
 
   // ✅ DISPONIBILITÉS (12+ options)
   disponibilites: [
-    '─── 📅 JOURS ───',
+    '─── \uD83D\uDCC5 JOURS ───',
     'Lundi au vendredi',
     'Week-end uniquement',
     'Tous les jours (7j/7)',
@@ -9848,11 +9848,11 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     'Mercredi après-midi',
     'Vacances scolaires',
 
-    '─── 🔄 FLEXIBILITÉ ───',
+    '─── \uD83D\uDD04 FLEXIBILITÉ ───',
     'Horaires flexibles (à convenir)',
     'Horaires fixes uniquement',
 
-    '🆕 Autre disponibilité'
+    '\uD83C\uDD95 Autre disponibilité'
   ],
 
   // ✅ MODALITÉS DE DÉPLACEMENT (8+ options)
@@ -9864,7 +9864,7 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     'Dans un lieu neutre (bibliothèque, centre)',
     'Déplacement inclus dans le prix',
     'Frais de déplacement en sus',
-    '🆕 Autre modalité'
+    '\uD83C\uDD95 Autre modalité'
   ],
 
   // ✅ RAYON DE DÉPLACEMENT (8+ options)
@@ -9878,12 +9878,12 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     'Toute la ville',
     'Plusieurs villes',
     'Pas de déplacement (en ligne uniquement)',
-    '🆕 Autre rayon'
+    '\uD83C\uDD95 Autre rayon'
   ],
 
   // ✅ SUPPORTS PÉDAGOGIQUES (15+ options)
   supports_pedagogiques: [
-    '─── 📚 MATÉRIEL FOURNI ───',
+    '─── \uD83D\uDCDA MATÉRIEL FOURNI ───',
     'Livres et manuels scolaires',
     'Fiches de révision',
     'Exercices pratiques',
@@ -9891,31 +9891,31 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     'Supports numériques (PDF)',
     'Vidéos explicatives',
 
-    '─── 🖥️ OUTILS NUMÉRIQUES ───',
+    '─── \uD83D\uDDA5️ OUTILS NUMÉRIQUES ───',
     'Tableau blanc interactif',
     'Plateforme e-learning',
     'Applications éducatives',
     'Quiz interactifs',
 
-    '─── 📝 SUIVI ───',
+    '─── \uD83D\uDCDD SUIVI ───',
     'Cahier de suivi des progrès',
     'Rapports mensuels aux parents',
     'Tests d\'évaluation réguliers',
 
     'Aucun support (oral uniquement)',
-    '🆕 Autre support'
+    '\uD83C\uDD95 Autre support'
   ],
 
   // ✅ LANGUES D'ENSEIGNEMENT (8+ options)
   langues_enseignement: [
     'Français uniquement',
     'Anglais uniquement',
-    'Bilingue (Français-Anglais)', // 🇨🇲 Contexte Cameroun
+    'Bilingue (Français-Anglais)', // \uD83C\uDDE8\uD83C\uDDF2 Contexte Cameroun
     'Langues nationales (Duala, Ewondo, etc.)',
     'Espagnol',
     'Allemand',
     'Multilingue',
-    '🆕 Autre langue'
+    '\uD83C\uDD95 Autre langue'
   ],
 
   // ✅ OBJECTIFS PÉDAGOGIQUES (12+ options)
@@ -9931,7 +9931,7 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     'Préparer l\'orientation scolaire',
     'Aide spécialisée (dyslexie, etc.)',
     'Maintenir le niveau',
-    '🆕 Autre objectif'
+    '\uD83C\uDD95 Autre objectif'
   ],
 
   // ✅ RÉSULTATS & GARANTIES (8+ options)
@@ -9943,7 +9943,7 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     'Amélioration moyenne de 2-3 points',
     'Taux de réussite aux examens : 80%+',
     'Aucune garantie formelle',
-    '🆕 Autre garantie'
+    '\uD83C\uDD95 Autre garantie'
   ],
 
   // ✅ MODES DE PAIEMENT (12+ options)
@@ -9959,7 +9959,7 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     'Paiement échelonné possible',
     'Facilités de paiement',
     'Réduction fratrie (plusieurs enfants)',
-    '🆕 Autre mode'
+    '\uD83C\uDD95 Autre mode'
   ],
 
   // ✅ TYPE DE CONTRAT (6+ options)
@@ -9969,23 +9969,23 @@ export const SOUTIEN_SCOLAIRE_MODALITIES: ModalityCategory = {
     'Engagement trimestriel',
     'Engagement année scolaire',
     'Stage vacances (durée limitée)',
-    '🆕 Autre type'
+    '\uD83C\uDD95 Autre type'
   ]
 };
 
 // ════════════════════════════════════════════════════════════
 // ✅ MODALITÉS FORMATION & ÉDUCATION - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
 // ════════════════════════════════════════════════════════════
-// 🎓 Contexte : Formation professionnelle, Préparation concours grandes écoles,
+// \uD83C\uDF93 Contexte : Formation professionnelle, Préparation concours grandes écoles,
 //              Langues, Informatique, Métiers techniques, Certifications
 // ⚠️ DIFFÉRENT DE : Soutien scolaire primaire/secondaire (soutien_scolaire_repetiteur)
-// 🌍 Zones : Cameroun, Côte d'Ivoire, Sénégal, Mali, RDC, Gabon, Congo, etc.
+// \uD83C\uDF0D Zones : Cameroun, Côte d'Ivoire, Sénégal, Mali, RDC, Gabon, Congo, etc.
 // ════════════════════════════════════════════════════════════
 export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
 
   // ✅ TYPES DE FORMATION (30+ options)
   types_formation: [
-    '─── 🎓 FORMATION ACADÉMIQUE ───',
+    '─── \uD83C\uDF93 FORMATION ACADÉMIQUE ───',
     'Cours particuliers (toutes matières)',
     'Aide aux devoirs',
     'Rattrapage scolaire',
@@ -9994,7 +9994,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Préparation concours grandes écoles',
     'Méthodologie & organisation',
 
-    '─── 💼 FORMATION PROFESSIONNELLE ───',
+    '─── \uD83D\uDCBC FORMATION PROFESSIONNELLE ───',
     'Formation diplômante',
     'Formation qualifiante',
     'Formation certifiante',
@@ -10002,7 +10002,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Perfectionnement professionnel',
     'Formation continue (employés)',
 
-    '─── 💻 FORMATION TECHNIQUE ───',
+    '─── \uD83D\uDCBB FORMATION TECHNIQUE ───',
     'Informatique & Bureautique',
     'Programmation & Développement',
     'Design graphique',
@@ -10010,7 +10010,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Gestion de projet',
     'Entrepreneuriat',
 
-    '─── 🌍 LANGUES ───',
+    '─── \uD83C\uDF0D LANGUES ───',
     'Langues étrangères',
     'Français (FLE - Français Langue Étrangère)',
     'Anglais (cours & certifications)',
@@ -10025,7 +10025,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Climatisation & Froid',
     'Agriculture & Élevage',
 
-    '─── 🎨 ARTS & CRÉATIFS ───',
+    '─── \uD83C\uDFA8 ARTS & CRÉATIFS ───',
     'Musique & Instruments',
     'Danse & Chorégraphie',
     'Théâtre & Art dramatique',
@@ -10035,53 +10035,53 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Coiffure & Esthétique',
     'Cuisine & Pâtisserie',
 
-    '🆕 Autre type (préciser)'
+    '\uD83C\uDD95 Autre type (préciser)'
   ],
 
   // ✅ NIVEAUX SCOLAIRES (Utilise genererNiveauxScolaires du système éducatif)
-  // 🔄 Cette liste sera automatiquement remplacée par les niveaux du pays de l'utilisateur
+  // \uD83D\uDD04 Cette liste sera automatiquement remplacée par les niveaux du pays de l'utilisateur
   niveaux_scolaires: [
-    '─── 🇨🇲 MATERNELLE ───',
-    '🇨🇲 Petite Section (3-4 ans)',
-    '🇨🇲 Moyenne Section (4-5 ans)',
-    '🇨🇲 Grande Section (5-6 ans)',
+    '─── \uD83C\uDDE8\uD83C\uDDF2 MATERNELLE ───',
+    '\uD83C\uDDE8\uD83C\uDDF2 Petite Section (3-4 ans)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Moyenne Section (4-5 ans)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Grande Section (5-6 ans)',
 
-    '─── 🇨🇲 PRIMAIRE ───',
-    '🇨🇲 CP (Cours Préparatoire)',
-    '🇨🇲 CE1',
-    '🇨🇲 CE2',
-    '🇨🇲 CM1',
-    '🇨🇲 CM2',
+    '─── \uD83C\uDDE8\uD83C\uDDF2 PRIMAIRE ───',
+    '\uD83C\uDDE8\uD83C\uDDF2 CP (Cours Préparatoire)',
+    '\uD83C\uDDE8\uD83C\uDDF2 CE1',
+    '\uD83C\uDDE8\uD83C\uDDF2 CE2',
+    '\uD83C\uDDE8\uD83C\uDDF2 CM1',
+    '\uD83C\uDDE8\uD83C\uDDF2 CM2',
 
-    '─── 🇨🇲 COLLÈGE ───',
-    '🇨🇲 6ème',
-    '🇨🇲 5ème',
-    '🇨🇲 4ème',
-    '🇨🇲 3ème',
+    '─── \uD83C\uDDE8\uD83C\uDDF2 COLLÈGE ───',
+    '\uD83C\uDDE8\uD83C\uDDF2 6ème',
+    '\uD83C\uDDE8\uD83C\uDDF2 5ème',
+    '\uD83C\uDDE8\uD83C\uDDF2 4ème',
+    '\uD83C\uDDE8\uD83C\uDDF2 3ème',
 
-    '─── 🇨🇲 LYCÉE ───',
-    '🇨🇲 Seconde',
-    '🇨🇲 Première',
-    '🇨🇲 Terminale',
+    '─── \uD83C\uDDE8\uD83C\uDDF2 LYCÉE ───',
+    '\uD83C\uDDE8\uD83C\uDDF2 Seconde',
+    '\uD83C\uDDE8\uD83C\uDDF2 Première',
+    '\uD83C\uDDE8\uD83C\uDDF2 Terminale',
 
-    '─── 🇨🇲 SUPÉRIEUR ───',
-    '🇨🇲 Licence 1 (L1)',
-    '🇨🇲 Licence 2 (L2)',
-    '🇨🇲 Licence 3 (L3)',
-    '🇨🇲 Master 1 (M1)',
-    '🇨🇲 Master 2 (M2)',
-    '🇨🇲 Doctorat',
+    '─── \uD83C\uDDE8\uD83C\uDDF2 SUPÉRIEUR ───',
+    '\uD83C\uDDE8\uD83C\uDDF2 Licence 1 (L1)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Licence 2 (L2)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Licence 3 (L3)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Master 1 (M1)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Master 2 (M2)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Doctorat',
 
     '──────────────────',
-    '📚 Tous niveaux (Maternelle → Terminale)',
-    '🎓 Enseignement supérieur uniquement',
-    '👨‍🎓 Formation adultes / Remise à niveau',
-    '🆕 Autre niveau (préciser)'
+    '\uD83D\uDCDA Tous niveaux (Maternelle → Terminale)',
+    '\uD83C\uDF93 Enseignement supérieur uniquement',
+    '\uD83D\uDC68‍\uD83C\uDF93 Formation adultes / Remise à niveau',
+    '\uD83C\uDD95 Autre niveau (préciser)'
   ],
 
   // ✅ MATIÈRES ENSEIGNÉES (40+ options)
   matieres_enseignees: [
-    '─── 📐 SCIENCES & MATHÉMATIQUES ───',
+    '─── \uD83D\uDCD0 SCIENCES & MATHÉMATIQUES ───',
     'Mathématiques (tous niveaux)',
     'Mathématiques supérieures (prépa)',
     'Physique',
@@ -10090,7 +10090,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Biologie',
     'Sciences naturelles',
 
-    '─── 📖 LANGUES & LITTÉRATURE ───',
+    '─── \uD83D\uDCD6 LANGUES & LITTÉRATURE ───',
     'Français',
     'Anglais',
     'Espagnol',
@@ -10101,7 +10101,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Littérature',
     'Philosophie',
 
-    '─── 🌍 SCIENCES HUMAINES ───',
+    '─── \uD83C\uDF0D SCIENCES HUMAINES ───',
     'Histoire-Géographie',
     'Histoire',
     'Géographie',
@@ -10112,7 +10112,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Gestion',
     'Comptabilité',
 
-    '─── 💻 INFORMATIQUE & TECHNOLOGIES ───',
+    '─── \uD83D\uDCBB INFORMATIQUE & TECHNOLOGIES ───',
     'Informatique / Bureautique',
     'Programmation (Python, Java, JavaScript, etc.)',
     'Développement web',
@@ -10122,29 +10122,29 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Cybersécurité',
     'Intelligence artificielle',
 
-    '─── 🎨 ARTS & CULTURE ───',
+    '─── \uD83C\uDFA8 ARTS & CULTURE ───',
     'Arts plastiques / Dessin',
     'Musique',
     'Éducation physique (Sport)',
     'Arts & Culture',
 
     '──────────────────',
-    '📚 Aide aux devoirs (toutes matières)',
-    '🎯 Méthodologie & organisation',
-    '📝 Préparation examens nationaux',
-    '🆕 Autre matière (préciser)'
+    '\uD83D\uDCDA Aide aux devoirs (toutes matières)',
+    '\uD83C\uDFAF Méthodologie & organisation',
+    '\uD83D\uDCDD Préparation examens nationaux',
+    '\uD83C\uDD95 Autre matière (préciser)'
   ],
 
   // ✅ FORMATS DE FORMATION (20+ options)
   formats: [
-    '─── 👥 FORMAT COURS ───',
+    '─── \uD83D\uDC65 FORMAT COURS ───',
     'Cours particuliers (1-1)',
     'Cours en binôme (2 élèves)',
     'Cours en petit groupe (3-5 élèves)',
     'Cours en groupe (6-15 élèves)',
     'Cours en classe complète (15-30 élèves)',
 
-    '─── 📍 MODALITÉ ───',
+    '─── \uD83D\uDCCD MODALITÉ ───',
     'Présentiel uniquement',
     'En ligne uniquement (distanciel)',
     'Hybride (présentiel + en ligne)',
@@ -10153,7 +10153,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'En centre de formation',
     'En entreprise',
 
-    '─── 📅 FORMAT PROGRAMME ───',
+    '─── \uD83D\uDCC5 FORMAT PROGRAMME ───',
     'Stage intensif (1-2 semaines)',
     'Bootcamp (formation accélérée)',
     'Formation modulaire (par modules)',
@@ -10162,7 +10162,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Masterclass (avec expert)',
     'Conférence / Séminaire',
 
-    '🆕 Autre format (préciser)'
+    '\uD83C\uDD95 Autre format (préciser)'
   ],
 
   // ✅ DURÉES DE FORMATION (15+ options)
@@ -10175,12 +10175,12 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     '1 semaine (5 jours)',
     '2 semaines',
 
-    '─── 📅 MOYENNE DURÉE ───',
+    '─── \uD83D\uDCC5 MOYENNE DURÉE ───',
     '1 mois (4 semaines)',
     '2 mois',
     '3 mois (1 trimestre)',
 
-    '─── 📆 LONGUE DURÉE ───',
+    '─── \uD83D\uDCC6 LONGUE DURÉE ───',
     '6 mois (1 semestre)',
     '9 mois (année scolaire)',
     '1 an',
@@ -10190,7 +10190,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     '──────────────────',
     'Formation continue (sans limite)',
     'À la carte (durée flexible)',
-    '🆕 Autre durée (préciser)'
+    '\uD83C\uDD95 Autre durée (préciser)'
   ],
 
   // ✅ RYTHMES DE FORMATION (12+ options)
@@ -10203,7 +10203,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Bi-mensuel (2 fois/mois)',
     'Mensuel (1 fois/mois)',
 
-    '─── 🕐 HORAIRES ───',
+    '─── \uD83D\uDD50 HORAIRES ───',
     'Matin (8h-12h)',
     'Après-midi (14h-18h)',
     'Soir (18h-21h)',
@@ -10211,14 +10211,14 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Vacances scolaires',
     'Horaires flexibles (à définir)',
 
-    '🆕 Autre rythme (préciser)'
+    '\uD83C\uDD95 Autre rythme (préciser)'
   ],
 
   // ✅ LANGUES D'ENSEIGNEMENT (10+ options)
   langues_enseignement: [
     'Français (uniquement)',
     'Anglais (uniquement)',
-    'Bilingue (Français-Anglais)', // 🇨🇲 Contexte Cameroun
+    'Bilingue (Français-Anglais)', // \uD83C\uDDE8\uD83C\uDDF2 Contexte Cameroun
     'Espagnol',
     'Allemand',
     'Arabe',
@@ -10226,47 +10226,47 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Portugais',
     'Langues nationales (Duala, Ewondo, Wolof, etc.)',
     'Multilingue',
-    '🆕 Autre langue (préciser)'
+    '\uD83C\uDD95 Autre langue (préciser)'
   ],
 
   // ✅ PRÉPARATION CONCOURS (Utilise genererListeConcours)
-  // 🔄 Cette liste sera automatiquement remplacée par les concours du pays de l'utilisateur
+  // \uD83D\uDD04 Cette liste sera automatiquement remplacée par les concours du pays de l'utilisateur
   concours_cibles: [
-    '─── 🇨🇲 CONCOURS NATIONAUX ───',
-    '─── 🔧 Écoles d\'Ingénieurs ───',
-    '🇨🇲 Polytechnique Yaoundé',
-    '🇨🇲 Polytechnique Douala',
-    '🇨🇲 IUT Douala',
-    '🇨🇲 ENSP Yaoundé',
+    '─── \uD83C\uDDE8\uD83C\uDDF2 CONCOURS NATIONAUX ───',
+    '─── \uD83D\uDD27 Écoles d\'Ingénieurs ───',
+    '\uD83C\uDDE8\uD83C\uDDF2 Polytechnique Yaoundé',
+    '\uD83C\uDDE8\uD83C\uDDF2 Polytechnique Douala',
+    '\uD83C\uDDE8\uD83C\uDDF2 IUT Douala',
+    '\uD83C\uDDE8\uD83C\uDDF2 ENSP Yaoundé',
 
-    '─── 🩺 Médecine & Santé ───',
-    '🇨🇲 FMSB (Faculté de Médecine)',
+    '─── \uD83E\uDE7A Médecine & Santé ───',
+    '\uD83C\uDDE8\uD83C\uDDF2 FMSB (Faculté de Médecine)',
 
-    '─── 🎓 Écoles Normales (Enseignement) ───',
-    '🇨🇲 ENS Yaoundé',
+    '─── \uD83C\uDF93 Écoles Normales (Enseignement) ───',
+    '\uD83C\uDDE8\uD83C\uDDF2 ENS Yaoundé',
 
-    '─── 🏛️ Administration & Magistrature ───',
-    '🇨🇲 ENAM',
-    '🇨🇲 IRIC',
+    '─── \uD83C\uDFDB️ Administration & Magistrature ───',
+    '\uD83C\uDDE8\uD83C\uDDF2 ENAM',
+    '\uD83C\uDDE8\uD83C\uDDF2 IRIC',
 
-    '─── 💼 Commerce & Gestion ───',
-    '🇨🇲 ESSEC Douala/Yaoundé',
-
-    '──────────────────────────',
-    '─── 🇫🇷 GRANDES ÉCOLES FRANÇAISES ───',
-    '🇫🇷 Polytechnique Paris',
-    '🇫🇷 Centrale Paris',
-    '🇫🇷 HEC Paris',
+    '─── \uD83D\uDCBC Commerce & Gestion ───',
+    '\uD83C\uDDE8\uD83C\uDDF2 ESSEC Douala/Yaoundé',
 
     '──────────────────────────',
-    '🎯 Préparation concours généraux (toutes écoles)',
-    '📚 Méthodologie concours (toutes filières)',
-    '🆕 Autre concours (préciser)'
+    '─── \uD83C\uDDEB\uD83C\uDDF7 GRANDES ÉCOLES FRANÇAISES ───',
+    '\uD83C\uDDEB\uD83C\uDDF7 Polytechnique Paris',
+    '\uD83C\uDDEB\uD83C\uDDF7 Centrale Paris',
+    '\uD83C\uDDEB\uD83C\uDDF7 HEC Paris',
+
+    '──────────────────────────',
+    '\uD83C\uDFAF Préparation concours généraux (toutes écoles)',
+    '\uD83D\uDCDA Méthodologie concours (toutes filières)',
+    '\uD83C\uDD95 Autre concours (préciser)'
   ],
 
   // ✅ MATIÈRES PRÉPARATION CONCOURS (Utilise genererMatieresPreparationConcours)
   matieres_preparation_concours: [
-    '─── 🔬 MATIÈRES SCIENTIFIQUES ───',
+    '─── \uD83D\uDD2C MATIÈRES SCIENTIFIQUES ───',
     'Mathématiques (algèbre, analyse, géométrie)',
     'Mathématiques supérieures (prépa)',
     'Physique (mécanique, thermodynamique, électricité)',
@@ -10277,7 +10277,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Sciences de l\'Ingénieur (SI)',
     'Informatique & Algorithmique',
 
-    '─── 📖 MATIÈRES LITTÉRAIRES ───',
+    '─── \uD83D\uDCD6 MATIÈRES LITTÉRAIRES ───',
     'Français (dissertation, résumé, synthèse)',
     'Français avancé (commentaire, analyse)',
     'Anglais (grammaire, vocabulaire, compréhension)',
@@ -10286,7 +10286,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Philosophie',
     'Littérature',
 
-    '─── 🌍 SCIENCES HUMAINES ───',
+    '─── \uD83C\uDF0D SCIENCES HUMAINES ───',
     'Histoire-Géographie',
     'Sciences politiques',
     'Géopolitique',
@@ -10295,7 +10295,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Économie',
     'Économie approfondie (micro, macro)',
 
-    '─── 🎯 PRÉPARATION SPÉCIALISÉE ───',
+    '─── \uD83C\uDFAF PRÉPARATION SPÉCIALISÉE ───',
     'Tests psychotechniques',
     'Tests de logique & raisonnement',
     'QCM (Questions à Choix Multiples)',
@@ -10306,43 +10306,43 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Annales & sujets types',
 
     '──────────────────────────',
-    '📚 Préparation complète (toutes matières)',
-    '🎯 Méthodologie générale concours',
-    '🆕 Autre matière (préciser)'
+    '\uD83D\uDCDA Préparation complète (toutes matières)',
+    '\uD83C\uDFAF Méthodologie générale concours',
+    '\uD83C\uDD95 Autre matière (préciser)'
   ],
 
   // ✅ NOUVEAU: ANCIENS SUJETS ET ÉPREUVES DISPONIBLES
   anciens_sujets_disponibles: [
-    '─── 📋 SUJETS RÉCENTS (2020-2024) ───',
+    '─── \uD83D\uDCCB SUJETS RÉCENTS (2020-2024) ───',
     'Sujets 2024 (dernière session)',
     'Sujets 2023',
     'Sujets 2022',
     'Sujets 2021',
     'Sujets 2020',
-    '─── 📚 ARCHIVES (2015-2019) ───',
+    '─── \uD83D\uDCDA ARCHIVES (2015-2019) ───',
     'Sujets 2019',
     'Sujets 2018',
     'Sujets 2017',
     'Sujets 2016',
     'Sujets 2015',
-    '─── 🎯 TYPES D\'ÉPREUVES ───',
+    '─── \uD83C\uDFAF TYPES D\'ÉPREUVES ───',
     'Épreuves écrites (admissibilité)',
     'Épreuves orales (admission)',
     'Épreuves pratiques',
     'Épreuves de culture générale',
     'Épreuves de langue',
-    '─── 📖 SUPPORTS PÉDAGOGIQUES ───',
+    '─── \uD83D\uDCD6 SUPPORTS PÉDAGOGIQUES ───',
     'Corrigés détaillés',
     'Commentaires de correction',
     'Méthodes de résolution',
     'Conseils d\'examinateurs',
     'Statistiques de réussite',
-    '─── 🔄 FORMATS DISPONIBLES ───',
+    '─── \uD83D\uDD04 FORMATS DISPONIBLES ───',
     'PDF numérique',
     'Copies physiques',
     'Vidéos de correction',
     'Audio-explications',
-    '🆕 Autre format (préciser)'
+    '\uD83C\uDD95 Autre format (préciser)'
   ],
 
   // ✅ NOUVEAU: ANNÉES DE CONCOURS DISPONIBLES
@@ -10364,48 +10364,48 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     '2010',
     'Archive complète (2000-2009)',
     'Archive ancienne (1990-1999)',
-    '🆕 Autre année (préciser)'
+    '\uD83C\uDD95 Autre année (préciser)'
   ],
 
   // ✅ NOUVEAU: TYPES DE DOCUMENTS CONCOURS
   types_documents_concours: [
-    '─── 📝 SUJETS D\'EXAMEN ───',
+    '─── \uD83D\uDCDD SUJETS D\'EXAMEN ───',
     'Sujets d\'admissibilité',
     'Sujets d\'admission',
     'Sujets de rattrapage',
     'Sujets de session spéciale',
-    '─── 📋 CORRIGÉS ───',
+    '─── \uD83D\uDCCB CORRIGÉS ───',
     'Corrigés officiels',
     'Corrigés détaillés',
     'Corrigés commentés',
     'Corrigés vidéo',
-    '─── 📊 ANALYSES ───',
+    '─── \uD83D\uDCCA ANALYSES ───',
     'Statistiques de réussite',
     'Commentaires d\'examinateurs',
     'Conseils méthodologiques',
     'Erreurs fréquentes',
-    '─── 🎯 PRÉPARATION ───',
+    '─── \uD83C\uDFAF PRÉPARATION ───',
     'Fiches de révision',
     'QCM d\'entraînement',
     'Exercices pratiques',
     'Simulations d\'examen',
-    '🆕 Autre document (préciser)'
+    '\uD83C\uDD95 Autre document (préciser)'
   ],
 
   // ✅ NIVEAUX DE PRÉPARATION CONCOURS (Utilise getNiveauxPreparationConcours)
   niveaux_preparation_concours: [
-    '─── 📚 NIVEAU BAC (après Terminale) ───',
+    '─── \uD83D\uDCDA NIVEAU BAC (après Terminale) ───',
     'Préparation intensive (3-6 mois)',
     'Préparation longue (12 mois)',
     'Préparation très longue (18-24 mois)',
 
-    '─── 🎓 NIVEAU BAC+2 (Classes Prépa) ───',
+    '─── \uD83C\uDF93 NIVEAU BAC+2 (Classes Prépa) ───',
     'Prépa Maths Sup / Maths Spé (MPSI, PCSI)',
     'Prépa Commerciales (ECE, ECS)',
     'Prépa Littéraires (Khâgne, Hypokhâgne)',
     'Prépa Biologie (BCPST)',
 
-    '─── 🏆 NIVEAU BAC+3/+5 ───',
+    '─── \uD83C\uDFC6 NIVEAU BAC+3/+5 ───',
     'Préparation Master / Doctorat',
     'Préparation concours professionnels',
 
@@ -10415,25 +10415,25 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Cours particuliers sur mesure',
     'Formation en ligne / à distance',
 
-    '🆕 Autre format'
+    '\uD83C\uDD95 Autre format'
   ],
 
   // ✅ CERTIFICATIONS & DIPLÔMES (25+ options)
   certifications: [
-    '─── 🎓 CERTIFICATIONS ACADÉMIQUES ───',
+    '─── \uD83C\uDF93 CERTIFICATIONS ACADÉMIQUES ───',
     'Attestation de formation',
     'Certificat de formation',
     'Diplôme d\'État',
     'Diplôme universitaire',
     'Certificat de compétences',
 
-    '─── 💼 CERTIFICATIONS PROFESSIONNELLES ───',
+    '─── \uD83D\uDCBC CERTIFICATIONS PROFESSIONNELLES ───',
     'Certification métier',
     'Qualification professionnelle',
     'Habilitation professionnelle',
     'Agrément professionnel',
 
-    '─── 🌍 CERTIFICATIONS INTERNATIONALES ───',
+    '─── \uD83C\uDF0D CERTIFICATIONS INTERNATIONALES ───',
     'TOEFL (anglais)',
     'IELTS (anglais)',
     'TOEIC (anglais professionnel)',
@@ -10443,7 +10443,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Goethe-Zertifikat (allemand)',
     'HSK (chinois)',
 
-    '─── 💻 CERTIFICATIONS INFORMATIQUE ───',
+    '─── \uD83D\uDCBB CERTIFICATIONS INFORMATIQUE ───',
     'Microsoft Office Specialist (MOS)',
     'CompTIA A+',
     'Cisco CCNA',
@@ -10454,7 +10454,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     '──────────────────',
     'Aucune certification (formation simple)',
     'Certificat interne (non officiel)',
-    '🆕 Autre certification (préciser)'
+    '\uD83C\uDD95 Autre certification (préciser)'
   ],
 
   // ✅ NIVEAUX DE COMPÉTENCE (8 options)
@@ -10467,25 +10467,25 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Expert',
     'Professionnel',
     'Tous niveaux (mixte)',
-    '🆕 Autre niveau (préciser)'
+    '\uD83C\uDD95 Autre niveau (préciser)'
   ],
 
   // ✅ ÉQUIPEMENTS & SUPPORTS (15+ options)
   equipements_supports: [
-    '─── 📚 SUPPORTS PÉDAGOGIQUES ───',
+    '─── \uD83D\uDCDA SUPPORTS PÉDAGOGIQUES ───',
     'Manuels & livres fournis',
     'Supports de cours (PDF, documents)',
     'Exercices & annales',
     'Vidéos enregistrées',
     'Plateforme e-learning',
 
-    '─── 💻 ÉQUIPEMENTS TECHNIQUES ───',
+    '─── \uD83D\uDCBB ÉQUIPEMENTS TECHNIQUES ───',
     'Ordinateurs fournis',
     'Tablettes fournies',
     'Accès internet inclus',
     'Logiciels installés',
 
-    '─── 🎒 MATÉRIEL ───',
+    '─── \uD83C\uDF92 MATÉRIEL ───',
     'Matériel pédagogique fourni',
     'Outils techniques fournis (selon formation)',
     'Kit de formation complet',
@@ -10493,12 +10493,12 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     '──────────────────',
     'Apporter son propre matériel',
     'Liste de matériel fournie à l\'avance',
-    '🆕 Autre équipement (préciser)'
+    '\uD83C\uDD95 Autre équipement (préciser)'
   ],
 
   // ✅ SERVICES INCLUS (20+ options)
   services_inclus: [
-    '─── 📝 SUIVI PÉDAGOGIQUE ───',
+    '─── \uD83D\uDCDD SUIVI PÉDAGOGIQUE ───',
     'Évaluation initiale (test de niveau)',
     'Suivi personnalisé',
     'Évaluations régulières',
@@ -10506,14 +10506,14 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Compte-rendu aux parents',
     'Entretiens individuels',
 
-    '─── 🎯 ACCOMPAGNEMENT ───',
+    '─── \uD83C\uDFAF ACCOMPAGNEMENT ───',
     'Coaching & motivation',
     'Aide à l\'orientation',
     'Préparation CV & entretien',
     'Stage en entreprise',
     'Placement après formation',
 
-    '─── 💾 RESSOURCES ───',
+    '─── \uD83D\uDCBE RESSOURCES ───',
     'Accès plateforme en ligne (illimité)',
     'Bibliothèque de ressources',
     'Support technique',
@@ -10525,7 +10525,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Transport inclus',
     'Hébergement possible',
 
-    '🆕 Autre service (préciser)'
+    '\uD83C\uDD95 Autre service (préciser)'
   ],
 
   // ✅ MÉTHODES PÉDAGOGIQUES (15+ options)
@@ -10545,12 +10545,12 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'E-learning interactif',
     'Blended learning (mixte)',
     'Microlearning (capsules courtes)',
-    '🆕 Autre méthode (préciser)'
+    '\uD83C\uDD95 Autre méthode (préciser)'
   ],
 
   // ✅ PROFIL FORMATEUR (12+ options)
   profil_formateur: [
-    '─── 🎓 QUALIFICATION ───',
+    '─── \uD83C\uDF93 QUALIFICATION ───',
     'Enseignant diplômé (CAPES, Agrégation)',
     'Professeur certifié',
     'Formateur professionnel certifié',
@@ -10558,7 +10558,7 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     'Ingénieur (formation technique)',
     'Docteur (PhD)',
 
-    '─── 💼 EXPÉRIENCE ───',
+    '─── \uD83D\uDCBC EXPÉRIENCE ───',
     'Moins de 2 ans d\'expérience',
     '2-5 ans d\'expérience',
     '5-10 ans d\'expérience',
@@ -10568,338 +10568,338 @@ export const FORMATION_EDUCATION_MODALITIES: ModalityCategory = {
     '──────────────────',
     'Natif (langue maternelle - pour langues)',
     'Bilingue certifié',
-    '🆕 Autre profil (préciser)'
+    '\uD83C\uDD95 Autre profil (préciser)'
   ],
 
   // ✅ PUBLIC CIBLE (15+ options)
   public_cible: [
-    '─── 👶 ENFANTS & ADOLESCENTS ───',
+    '─── \uD83D\uDC76 ENFANTS & ADOLESCENTS ───',
     'Enfants (Maternelle-Primaire)',
     'Collégiens (6ème-3ème)',
     'Lycéens (Seconde-Terminale)',
 
-    '─── 🎓 ÉTUDIANTS ───',
+    '─── \uD83C\uDF93 ÉTUDIANTS ───',
     'Étudiants (Licence)',
     'Étudiants (Master)',
     'Étudiants (Doctorat)',
     'Élèves classes prépa',
 
-    '─── 💼 PROFESSIONNELS ───',
+    '─── \uD83D\uDCBC PROFESSIONNELS ───',
     'Salariés en activité',
     'Demandeurs d\'emploi',
     'Entrepreneurs',
     'Reconversion professionnelle',
 
-    '─── 👨‍🎓 ADULTES ───',
+    '─── \uD83D\uDC68‍\uD83C\uDF93 ADULTES ───',
     'Adultes débutants',
     'Seniors (3ème âge)',
 
     '──────────────────',
     'Tout public (enfants, ados, adultes)',
-    '🆕 Autre public (préciser)'
+    '\uD83C\uDD95 Autre public (préciser)'
   ],
 
   // ✅ TARIFICATIONS (12+ options)
   tarifications: [
-    '─── 💰 MODE DE PAIEMENT ───',
+    '─── \uD83D\uDCB0 MODE DE PAIEMENT ───',
     'Paiement unique (forfait)',
     'Paiement mensuel',
     'Paiement par session',
     'Paiement à l\'heure',
     'Paiement échelonné (plusieurs fois)',
 
-    '─── 💳 MOYENS ACCEPTÉS ───',
+    '─── \uD83D\uDCB3 MOYENS ACCEPTÉS ───',
     'Espèces uniquement',
     'Mobile Money (MTN, Orange)',
     'Virement bancaire',
     'Carte bancaire',
     'Chèque',
 
-    '─── 🎁 RÉDUCTIONS ───',
+    '─── \uD83C\uDF81 RÉDUCTIONS ───',
     'Réduction groupe (3+ personnes)',
     'Réduction longue durée',
     'Premier cours gratuit',
     'Pack découverte (tarif réduit)',
 
-    '🆕 Autre modalité (préciser)'
+    '\uD83C\uDD95 Autre modalité (préciser)'
   ]
 };
 
 // ✅ MODALITÉS ÉVÉNEMENTIEL & ORGANISATION - ENRICHI AFRIQUE FRANCOPHONE
 export const EVENEMENTIEL_MODALITIES: ModalityCategory = {
   // ===============================================
-  // 🎉 TYPES D'ÉVÉNEMENTS (30+)
+  // \uD83C\uDF89 TYPES D'ÉVÉNEMENTS (30+)
   // ===============================================
   types: [
-    // 💒 Événements traditionnels & religieux (AFRIQUE)
-    '💒 Mariage traditionnel',
-    '💒 Mariage religieux (église)',
-    '💒 Mariage civil',
-    '💒 Mariage mixte (traditionnel + religieux)',
-    '💒 Dot / Ntchounke (cérémonie traditionnelle)',
-    '💍 Fiançailles officielles',
+    // \uD83D\uDC92 Événements traditionnels & religieux (AFRIQUE)
+    '\uD83D\uDC92 Mariage traditionnel',
+    '\uD83D\uDC92 Mariage religieux (église)',
+    '\uD83D\uDC92 Mariage civil',
+    '\uD83D\uDC92 Mariage mixte (traditionnel + religieux)',
+    '\uD83D\uDC92 Dot / Ntchounke (cérémonie traditionnelle)',
+    '\uD83D\uDC8D Fiançailles officielles',
 
-    // 👶 Événements familiaux
-    '👶 Baptême',
-    '👶 Cérémonie de naissance / Présentation bébé',
-    '🎂 Anniversaire enfant',
-    '🎂 Anniversaire adulte',
-    '🎓 Remise de diplôme / Graduation',
+    // \uD83D\uDC76 Événements familiaux
+    '\uD83D\uDC76 Baptême',
+    '\uD83D\uDC76 Cérémonie de naissance / Présentation bébé',
+    '\uD83C\uDF82 Anniversaire enfant',
+    '\uD83C\uDF82 Anniversaire adulte',
+    '\uD83C\uDF93 Remise de diplôme / Graduation',
     '⚰️ Funérailles / Veillée mortuaire',
-    '🏡 Pendaison de crémaillère',
-    '💑 Demande en mariage',
+    '\uD83C\uDFE1 Pendaison de crémaillère',
+    '\uD83D\uDC91 Demande en mariage',
 
-    // 🏢 Événements professionnels
-    '🏢 Séminaire d\'entreprise',
-    '🏢 Conférence / Forum',
-    '🏢 Atelier / Formation',
-    '🏢 Team building',
-    '🏢 Lancement de produit / Service',
-    '🏢 Inauguration (magasin, bureau)',
-    '🏢 Assemblée générale',
-    '🏢 Soirée d\'entreprise / Gala',
+    // \uD83C\uDFE2 Événements professionnels
+    '\uD83C\uDFE2 Séminaire d\'entreprise',
+    '\uD83C\uDFE2 Conférence / Forum',
+    '\uD83C\uDFE2 Atelier / Formation',
+    '\uD83C\uDFE2 Team building',
+    '\uD83C\uDFE2 Lancement de produit / Service',
+    '\uD83C\uDFE2 Inauguration (magasin, bureau)',
+    '\uD83C\uDFE2 Assemblée générale',
+    '\uD83C\uDFE2 Soirée d\'entreprise / Gala',
 
-    // 🎭 Événements culturels & divertissement
-    '🎭 Concert / Spectacle musical',
-    '🎭 Festival culturel',
-    '🎭 Défilé de mode',
-    '🎭 Exposition (art, produits)',
-    '🎬 Projection de film / Avant-première',
-    '🎪 Salon professionnel / Foire',
+    // \uD83C\uDFAD Événements culturels & divertissement
+    '\uD83C\uDFAD Concert / Spectacle musical',
+    '\uD83C\uDFAD Festival culturel',
+    '\uD83C\uDFAD Défilé de mode',
+    '\uD83C\uDFAD Exposition (art, produits)',
+    '\uD83C\uDFAC Projection de film / Avant-première',
+    '\uD83C\uDFAA Salon professionnel / Foire',
 
-    // 🎊 Autres événements
-    '🎊 Cocktail / Réception',
-    '🎊 Soirée privée',
-    '🎊 Journée portes ouvertes',
-    '🎊 Levée de fonds / Charité',
+    // \uD83C\uDF8A Autres événements
+    '\uD83C\uDF8A Cocktail / Réception',
+    '\uD83C\uDF8A Soirée privée',
+    '\uD83C\uDF8A Journée portes ouvertes',
+    '\uD83C\uDF8A Levée de fonds / Charité',
 
-    '🆕 Autre type d\'événement (ajouter)'
+    '\uD83C\uDD95 Autre type d\'événement (ajouter)'
   ],
 
   // ===============================================
-  // 📋 SERVICES PROPOSÉS (40+)
+  // \uD83D\uDCCB SERVICES PROPOSÉS (40+)
   // ===============================================
   services: [
-    // 🏛️ Lieux & Infrastructures
-    '🏛️ Location de salle climatisée',
-    '🏛️ Location de jardin / Espace extérieur',
-    '🏛️ Location d\'hôtel / Salle de réception',
-    '🏛️ Location de domicile privé',
+    // \uD83C\uDFDB️ Lieux & Infrastructures
+    '\uD83C\uDFDB️ Location de salle climatisée',
+    '\uD83C\uDFDB️ Location de jardin / Espace extérieur',
+    '\uD83C\uDFDB️ Location d\'hôtel / Salle de réception',
+    '\uD83C\uDFDB️ Location de domicile privé',
     '⛺ Location de chapiteau / Tente',
     '⛺ Location de barnums',
     '⛺ Montage/démontage de structures',
 
-    // 🍽️ Restauration & Traiteur
-    '🍽️ Traiteur complet (repas + service)',
-    '🍽️ Buffet à volonté',
-    '🍽️ Repas assis / Service à table',
-    '🍽️ Cocktail dînatoire',
-    '🍽️ Pâtisserie (gâteau d\'événement)',
-    '🥤 Bar & Boissons',
+    // \uD83C\uDF7D️ Restauration & Traiteur
+    '\uD83C\uDF7D️ Traiteur complet (repas + service)',
+    '\uD83C\uDF7D️ Buffet à volonté',
+    '\uD83C\uDF7D️ Repas assis / Service à table',
+    '\uD83C\uDF7D️ Cocktail dînatoire',
+    '\uD83C\uDF7D️ Pâtisserie (gâteau d\'événement)',
+    '\uD83E\uDD64 Bar & Boissons',
     '☕ Pause-café / Collations',
 
-    // 🎨 Décoration & Ambiance
-    '🎨 Décoration florale',
-    '🎨 Décoration thématique',
-    '🎨 Arche de cérémonie',
-    '🎨 Ballons & Décorations gonflables',
-    '🎨 Nappage & Housse de chaises',
-    '🎨 Éclairage d\'ambiance / LED',
-    '🎆 Feux d\'artifice',
+    // \uD83C\uDFA8 Décoration & Ambiance
+    '\uD83C\uDFA8 Décoration florale',
+    '\uD83C\uDFA8 Décoration thématique',
+    '\uD83C\uDFA8 Arche de cérémonie',
+    '\uD83C\uDFA8 Ballons & Décorations gonflables',
+    '\uD83C\uDFA8 Nappage & Housse de chaises',
+    '\uD83C\uDFA8 Éclairage d\'ambiance / LED',
+    '\uD83C\uDF86 Feux d\'artifice',
     '✨ Fumée lourde / Effets spéciaux',
 
-    // 🎤 Animation & Divertissement
-    '🎤 DJ / Disc-jockey',
-    '🎵 Orchestre / Groupe musical',
-    '🎸 Musiciens (solistes)',
-    '🎙️ Maître de cérémonie / Présentateur',
-    '🤹 Animateurs enfants',
-    '🎭 Spectacle / Artistes (danseurs, comédiens)',
-    '🎪 Structures gonflables enfants',
+    // \uD83C\uDFA4 Animation & Divertissement
+    '\uD83C\uDFA4 DJ / Disc-jockey',
+    '\uD83C\uDFB5 Orchestre / Groupe musical',
+    '\uD83C\uDFB8 Musiciens (solistes)',
+    '\uD83C\uDF99️ Maître de cérémonie / Présentateur',
+    '\uD83E\uDD39 Animateurs enfants',
+    '\uD83C\uDFAD Spectacle / Artistes (danseurs, comédiens)',
+    '\uD83C\uDFAA Structures gonflables enfants',
 
-    // 📸 Médias & Souvenirs
-    '📸 Photographe professionnel',
-    '📹 Vidéaste / Cameraman',
-    '🎬 Drone (vidéo aérienne)',
-    '📺 Live streaming / Diffusion en direct',
-    '📱 Photobooth / Borne photo',
+    // \uD83D\uDCF8 Médias & Souvenirs
+    '\uD83D\uDCF8 Photographe professionnel',
+    '\uD83D\uDCF9 Vidéaste / Cameraman',
+    '\uD83C\uDFAC Drone (vidéo aérienne)',
+    '\uD83D\uDCFA Live streaming / Diffusion en direct',
+    '\uD83D\uDCF1 Photobooth / Borne photo',
 
-    // 🔊 Sonorisation & Technique
-    '🔊 Sonorisation complète',
-    '🎛️ Location de matériel audio',
-    '💡 Éclairage scénique',
-    '🎥 Projecteur & Écran géant',
-    '🎤 Micros sans fil',
+    // \uD83D\uDD0A Sonorisation & Technique
+    '\uD83D\uDD0A Sonorisation complète',
+    '\uD83C\uDF9B️ Location de matériel audio',
+    '\uD83D\uDCA1 Éclairage scénique',
+    '\uD83C\uDFA5 Projecteur & Écran géant',
+    '\uD83C\uDFA4 Micros sans fil',
 
-    // 🪑 Mobilier & Équipements
-    '🪑 Location de tables',
-    '🪑 Location de chaises (diverses)',
-    '🪑 Mobilier VIP / Lounge',
-    '🍽️ Vaisselle & Couverts',
-    '🍷 Verres & Service boissons',
+    // \uD83E\uDE91 Mobilier & Équipements
+    '\uD83E\uDE91 Location de tables',
+    '\uD83E\uDE91 Location de chaises (diverses)',
+    '\uD83E\uDE91 Mobilier VIP / Lounge',
+    '\uD83C\uDF7D️ Vaisselle & Couverts',
+    '\uD83C\uDF77 Verres & Service boissons',
 
-    // 🚗 Services complémentaires
-    '🚗 Valet parking',
-    '🚗 Navette / Transport invités',
-    '🚗 Location de voiture de luxe / Cortège',
-    '🔐 Service de sécurité',
-    '🧹 Nettoyage post-événement',
-    '👔 Hôtesses d\'accueil',
+    // \uD83D\uDE97 Services complémentaires
+    '\uD83D\uDE97 Valet parking',
+    '\uD83D\uDE97 Navette / Transport invités',
+    '\uD83D\uDE97 Location de voiture de luxe / Cortège',
+    '\uD83D\uDD10 Service de sécurité',
+    '\uD83E\uDDF9 Nettoyage post-événement',
+    '\uD83D\uDC54 Hôtesses d\'accueil',
 
-    // 💼 Services de coordination
-    '💼 Wedding planner / Organisateur complet',
-    '💼 Coordination jour J',
-    '📋 Gestion invitations & RSVP',
+    // \uD83D\uDCBC Services de coordination
+    '\uD83D\uDCBC Wedding planner / Organisateur complet',
+    '\uD83D\uDCBC Coordination jour J',
+    '\uD83D\uDCCB Gestion invitations & RSVP',
 
-    '🆕 Autre service (ajouter)'
+    '\uD83C\uDD95 Autre service (ajouter)'
   ],
 
   // ===============================================
-  // 👥 CAPACITÉS D'ACCUEIL
+  // \uD83D\uDC65 CAPACITÉS D'ACCUEIL
   // ===============================================
   capacites: [
-    '👥 Petit événement (10-30 personnes)',
-    '👥 Moyen événement (30-50 personnes)',
-    '👥 Grand événement (50-100 personnes)',
-    '👥 Très grand événement (100-200 personnes)',
-    '👥 Événement majeur (200-500 personnes)',
-    '👥 Événement massif (500-1000 personnes)',
-    '👥 Méga-événement (1000+ personnes)',
-    '🆕 Autre capacité (préciser)'
+    '\uD83D\uDC65 Petit événement (10-30 personnes)',
+    '\uD83D\uDC65 Moyen événement (30-50 personnes)',
+    '\uD83D\uDC65 Grand événement (50-100 personnes)',
+    '\uD83D\uDC65 Très grand événement (100-200 personnes)',
+    '\uD83D\uDC65 Événement majeur (200-500 personnes)',
+    '\uD83D\uDC65 Événement massif (500-1000 personnes)',
+    '\uD83D\uDC65 Méga-événement (1000+ personnes)',
+    '\uD83C\uDD95 Autre capacité (préciser)'
   ],
 
   // ===============================================
-  // 🪑 MOBILIER & ÉQUIPEMENTS
+  // \uD83E\uDE91 MOBILIER & ÉQUIPEMENTS
   // ===============================================
   equipements: [
     // Tables
-    '🪑 Tables rondes (8-10 places)',
-    '🪑 Tables rectangulaires (6-8 places)',
-    '🪑 Tables cocktail (hautes)',
-    '🪑 Tables buffet',
+    '\uD83E\uDE91 Tables rondes (8-10 places)',
+    '\uD83E\uDE91 Tables rectangulaires (6-8 places)',
+    '\uD83E\uDE91 Tables cocktail (hautes)',
+    '\uD83E\uDE91 Tables buffet',
 
     // Chaises
-    '🪑 Chaises Napoléon',
-    '🪑 Chaises pliantes',
-    '🪑 Chaises design / Modernes',
-    '🪑 Bancs',
+    '\uD83E\uDE91 Chaises Napoléon',
+    '\uD83E\uDE91 Chaises pliantes',
+    '\uD83E\uDE91 Chaises design / Modernes',
+    '\uD83E\uDE91 Bancs',
 
     // Vaisselle & Service
-    '🍽️ Assiettes (porcelaine, plastique)',
-    '🍷 Verres (vin, champagne, eau)',
-    '🥄 Couverts complets',
-    '🧻 Nappes & Serviettes',
-    '🪑 Housses de chaises',
+    '\uD83C\uDF7D️ Assiettes (porcelaine, plastique)',
+    '\uD83C\uDF77 Verres (vin, champagne, eau)',
+    '\uD83E\uDD44 Couverts complets',
+    '\uD83E\uDDFB Nappes & Serviettes',
+    '\uD83E\uDE91 Housses de chaises',
 
     // Technique
-    '🎥 Projecteur HD/4K',
-    '📺 Écran de projection / LED géant',
-    '🎤 Micros sans fil (main, col, serre-tête)',
-    '🔊 Enceintes puissantes',
-    '🎛️ Table de mixage',
-    '💡 Éclairage LED / Par LED',
-    '💡 Projecteurs scéniques',
-    '🎆 Machine à fumée',
+    '\uD83C\uDFA5 Projecteur HD/4K',
+    '\uD83D\uDCFA Écran de projection / LED géant',
+    '\uD83C\uDFA4 Micros sans fil (main, col, serre-tête)',
+    '\uD83D\uDD0A Enceintes puissantes',
+    '\uD83C\uDF9B️ Table de mixage',
+    '\uD83D\uDCA1 Éclairage LED / Par LED',
+    '\uD83D\uDCA1 Projecteurs scéniques',
+    '\uD83C\uDF86 Machine à fumée',
     '✨ Effets lumineux (lasers, stroboscopes)',
 
     // Climatisation & Confort
     '❄️ Climatiseurs mobiles',
-    '🌀 Ventilateurs',
+    '\uD83C\uDF00 Ventilateurs',
     '☂️ Parasols',
-    '🚽 Toilettes mobiles / VIP',
+    '\uD83D\uDEBD Toilettes mobiles / VIP',
 
     // Décoration
-    '🎈 Arche de ballons',
-    '💐 Compositions florales',
-    '🕯️ Bougies & Photophores',
-    '🪞 Tapis rouge',
-    '🎨 Structures décoratives',
+    '\uD83C\uDF88 Arche de ballons',
+    '\uD83D\uDC90 Compositions florales',
+    '\uD83D\uDD6F️ Bougies & Photophores',
+    '\uD83E\uDE9E Tapis rouge',
+    '\uD83C\uDFA8 Structures décoratives',
 
     // Cuisine & Service
-    '🍳 Cuisine mobile / Food truck',
-    '🧊 Réfrigérateurs / Glacières',
+    '\uD83C\uDF73 Cuisine mobile / Food truck',
+    '\uD83E\uDDCA Réfrigérateurs / Glacières',
     '☕ Machine à café professionnelle',
-    '🍹 Bar mobile',
+    '\uD83C\uDF79 Bar mobile',
 
-    '🆕 Autre équipement (ajouter)'
+    '\uD83C\uDD95 Autre équipement (ajouter)'
   ],
 
   // ===============================================
-  // 🎨 STYLES & THÈMES (NOUVEAU)
+  // \uD83C\uDFA8 STYLES & THÈMES (NOUVEAU)
   // ===============================================
   styles_themes: [
     // Traditionnel africain
-    '🌍 Traditionnel camerounais',
-    '🌍 Traditionnel ivoirien',
-    '🌍 Traditionnel sénégalais',
-    '🌍 Pagne africain / Wax',
+    '\uD83C\uDF0D Traditionnel camerounais',
+    '\uD83C\uDF0D Traditionnel ivoirien',
+    '\uD83C\uDF0D Traditionnel sénégalais',
+    '\uD83C\uDF0D Pagne africain / Wax',
 
     // Moderne & Occidental
-    '💎 Élégant / Chic',
-    '💎 Luxe / VIP',
-    '🌸 Romantique',
-    '🎨 Bohème',
-    '🌿 Champêtre / Nature',
-    '🎭 Vintage / Rétro',
+    '\uD83D\uDC8E Élégant / Chic',
+    '\uD83D\uDC8E Luxe / VIP',
+    '\uD83C\uDF38 Romantique',
+    '\uD83C\uDFA8 Bohème',
+    '\uD83C\uDF3F Champêtre / Nature',
+    '\uD83C\uDFAD Vintage / Rétro',
 
     // Couleurs & Ambiances
-    '🔴 Rouge & Or',
-    '💜 Violet & Argent',
-    '💙 Bleu & Blanc',
-    '💚 Vert & Doré',
-    '🖤 Noir & Blanc (élégant)',
-    '🌈 Multicolore / Festif',
+    '\uD83D\uDD34 Rouge & Or',
+    '\uD83D\uDC9C Violet & Argent',
+    '\uD83D\uDC99 Bleu & Blanc',
+    '\uD83D\uDC9A Vert & Doré',
+    '\uD83D\uDDA4 Noir & Blanc (élégant)',
+    '\uD83C\uDF08 Multicolore / Festif',
 
     // Thèmes spécifiques
-    '🎪 Cirque',
-    '🦄 Licorne / Princesse',
-    '🦸 Super-héros',
-    '🏖️ Tropical / Plage',
-    '🎬 Cinéma / Hollywood',
+    '\uD83C\uDFAA Cirque',
+    '\uD83E\uDD84 Licorne / Princesse',
+    '\uD83E\uDDB8 Super-héros',
+    '\uD83C\uDFD6️ Tropical / Plage',
+    '\uD83C\uDFAC Cinéma / Hollywood',
 
-    '🆕 Autre thème (préciser)'
+    '\uD83C\uDD95 Autre thème (préciser)'
   ],
 
   // ===============================================
-  // 💰 FORMULES & FORFAITS (NOUVEAU)
+  // \uD83D\uDCB0 FORMULES & FORFAITS (NOUVEAU)
   // ===============================================
   formules: [
-    '📦 Formule Essentielle (services de base)',
-    '📦 Formule Confort (services intermédiaires)',
-    '📦 Formule Premium (tout inclus)',
-    '📦 Formule VIP (luxe + extras)',
-    '📦 Service à la carte (modulable)',
-    '📦 Forfait demi-journée',
-    '📦 Forfait journée complète',
-    '📦 Forfait week-end',
-    '🆕 Autre formule (préciser)'
+    '\uD83D\uDCE6 Formule Essentielle (services de base)',
+    '\uD83D\uDCE6 Formule Confort (services intermédiaires)',
+    '\uD83D\uDCE6 Formule Premium (tout inclus)',
+    '\uD83D\uDCE6 Formule VIP (luxe + extras)',
+    '\uD83D\uDCE6 Service à la carte (modulable)',
+    '\uD83D\uDCE6 Forfait demi-journée',
+    '\uD83D\uDCE6 Forfait journée complète',
+    '\uD83D\uDCE6 Forfait week-end',
+    '\uD83C\uDD95 Autre formule (préciser)'
   ],
 
   // ===============================================
-  // 📅 DISPONIBILITÉS (NOUVEAU)
+  // \uD83D\uDCC5 DISPONIBILITÉS (NOUVEAU)
   // ===============================================
   disponibilites: [
-    '📅 Semaine (lundi-vendredi)',
-    '📅 Week-end (samedi-dimanche)',
-    '📅 Tous les jours',
-    '🌙 Événements de jour',
-    '🌙 Événements de soir/nuit',
-    '🌙 24h/24',
-    '🆕 Autre disponibilité (préciser)'
+    '\uD83D\uDCC5 Semaine (lundi-vendredi)',
+    '\uD83D\uDCC5 Week-end (samedi-dimanche)',
+    '\uD83D\uDCC5 Tous les jours',
+    '\uD83C\uDF19 Événements de jour',
+    '\uD83C\uDF19 Événements de soir/nuit',
+    '\uD83C\uDF19 24h/24',
+    '\uD83C\uDD95 Autre disponibilité (préciser)'
   ],
 
   // ===============================================
-  // 🎯 TYPES DE CLIENTS (NOUVEAU)
+  // \uD83C\uDFAF TYPES DE CLIENTS (NOUVEAU)
   // ===============================================
   types_clients: [
-    '👨‍👩‍👧‍👦 Particuliers / Familles',
-    '🏢 Entreprises / Sociétés',
-    '🏛️ Institutions / Administrations',
-    '🏫 Écoles / Universités',
+    '\uD83D\uDC68‍\uD83D\uDC69‍\uD83D\uDC67‍\uD83D\uDC66 Particuliers / Familles',
+    '\uD83C\uDFE2 Entreprises / Sociétés',
+    '\uD83C\uDFDB️ Institutions / Administrations',
+    '\uD83C\uDFEB Écoles / Universités',
     '⛪ Organisations religieuses',
-    '🎗️ ONG / Associations',
-    '🌍 Expatriés / Internationaux',
-    '🆕 Autre type de client (préciser)'
+    '\uD83C\uDF97️ ONG / Associations',
+    '\uD83C\uDF0D Expatriés / Internationaux',
+    '\uD83C\uDD95 Autre type de client (préciser)'
   ],
 
   // ===============================================
@@ -10921,7 +10921,7 @@ export const EVENEMENTIEL_MODALITIES: ModalityCategory = {
     '✅ Générateur/groupe électrogène',
     '✅ Paiement échelonné possible',
     '✅ Facilités de paiement',
-    '🆕 Autre option (préciser)'
+    '\uD83C\uDD95 Autre option (préciser)'
   ],
 
   // ===============================================
@@ -10929,257 +10929,257 @@ export const EVENEMENTIEL_MODALITIES: ModalityCategory = {
   // ===============================================
   delais_preparation: [
     '⚡ Événement urgent (moins de 7 jours)',
-    '📅 Court délai (7-15 jours)',
-    '📅 Délai standard (15-30 jours)',
-    '📅 Délai confortable (1-3 mois)',
-    '📅 Longue préparation (3-6 mois)',
-    '📅 Très longue préparation (6+ mois)',
-    '🆕 Autre délai (préciser)'
+    '\uD83D\uDCC5 Court délai (7-15 jours)',
+    '\uD83D\uDCC5 Délai standard (15-30 jours)',
+    '\uD83D\uDCC5 Délai confortable (1-3 mois)',
+    '\uD83D\uDCC5 Longue préparation (3-6 mois)',
+    '\uD83D\uDCC5 Très longue préparation (6+ mois)',
+    '\uD83C\uDD95 Autre délai (préciser)'
   ]
 };
 
 // ✅ MODALITÉS AGRICULTURE & ÉLEVAGE - VERSION AFRIQUE FRANCOPHONE COMPLÈTE
-// 🌾 Adapté aux réalités agricoles de chaque pays (Cameroun, Côte d'Ivoire, Sénégal, Mali, Gabon, Congo, etc.)
-// 🐄 Intègre les unités de mesure locales : seau, sac, ver, cagnon, alvéole, tas, liasse, etc.
+// \uD83C\uDF3E Adapté aux réalités agricoles de chaque pays (Cameroun, Côte d'Ivoire, Sénégal, Mali, Gabon, Congo, etc.)
+// \uD83D\uDC04 Intègre les unités de mesure locales : seau, sac, ver, cagnon, alvéole, tas, liasse, etc.
 export const AGRICULTURE_ELEVAGE_MODALITIES: ModalityCategory = {
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 📦 CATÉGORIE PRINCIPALE
+  // \uD83D\uDCE6 CATÉGORIE PRINCIPALE
   // ═══════════════════════════════════════════════════════════════════════════
   categorie_principale: [
-    '🌾 Produits Agricoles',
-    '🐄 Animaux d\'Élevage',
-    '🥚 Produits Animaux (œufs, lait, miel)',
-    '🌱 Intrants Agricoles (semences, engrais)',
-    '🚜 Matériel & Équipements',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDF3E Produits Agricoles',
+    '\uD83D\uDC04 Animaux d\'Élevage',
+    '\uD83E\uDD5A Produits Animaux (œufs, lait, miel)',
+    '\uD83C\uDF31 Intrants Agricoles (semences, engrais)',
+    '\uD83D\uDE9C Matériel & Équipements',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🌾 PRODUITS AGRICOLES PAR TYPE (150+ produits)
+  // \uD83C\uDF3E PRODUITS AGRICOLES PAR TYPE (150+ produits)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // 🥬 LÉGUMES (40+ variétés africaines)
+  // \uD83E\uDD6C LÉGUMES (40+ variétés africaines)
   legumes: [
     // Légumes feuilles (très populaires en Afrique)
-    '🥬 Ndolé (feuilles amères)', '🥬 Koki (feuilles de taro)', '🥬 Épinards africains',
-    '🥬 Gnetum (okok/eru)', '🥬 Amarante (gboma)', '🥬 Morelle noire (feuilles)',
-    '🥬 Feuilles de manioc (pondu/saka-saka)', '🥬 Feuilles de patate douce',
-    '🥬 Oseille (bissap feuilles)', '🥬 Gombo feuilles', '🥬 Persil africain',
+    '\uD83E\uDD6C Ndolé (feuilles amères)', '\uD83E\uDD6C Koki (feuilles de taro)', '\uD83E\uDD6C Épinards africains',
+    '\uD83E\uDD6C Gnetum (okok/eru)', '\uD83E\uDD6C Amarante (gboma)', '\uD83E\uDD6C Morelle noire (feuilles)',
+    '\uD83E\uDD6C Feuilles de manioc (pondu/saka-saka)', '\uD83E\uDD6C Feuilles de patate douce',
+    '\uD83E\uDD6C Oseille (bissap feuilles)', '\uD83E\uDD6C Gombo feuilles', '\uD83E\uDD6C Persil africain',
 
     // Légumes fruits
-    '🍅 Tomate fraîche', '🍅 Tomate locale', '🍅 Tomate cerise',
-    '🫑 Piment fort (pili-pili)', '🫑 Poivron vert', '🫑 Poivron rouge/jaune',
-    '🥒 Concombre', '🥒 Courgette', '🥒 Gombo (okra)',
-    '🍆 Aubergine africaine', '🍆 Aubergine violette', '🍆 Aubergine blanche',
+    '\uD83C\uDF45 Tomate fraîche', '\uD83C\uDF45 Tomate locale', '\uD83C\uDF45 Tomate cerise',
+    '\uD83E\uDED1 Piment fort (pili-pili)', '\uD83E\uDED1 Poivron vert', '\uD83E\uDED1 Poivron rouge/jaune',
+    '\uD83E\uDD52 Concombre', '\uD83E\uDD52 Courgette', '\uD83E\uDD52 Gombo (okra)',
+    '\uD83C\uDF46 Aubergine africaine', '\uD83C\uDF46 Aubergine violette', '\uD83C\uDF46 Aubergine blanche',
 
     // Légumes racines & tubercules
-    '🥕 Carotte', '🧅 Oignon rouge', '🧅 Oignon blanc', '🧅 Échalote',
-    '🧄 Ail', '🥔 Pomme de terre', '🥔 Pomme de terre douce',
+    '\uD83E\uDD55 Carotte', '\uD83E\uDDC5 Oignon rouge', '\uD83E\uDDC5 Oignon blanc', '\uD83E\uDDC5 Échalote',
+    '\uD83E\uDDC4 Ail', '\uD83E\uDD54 Pomme de terre', '\uD83E\uDD54 Pomme de terre douce',
 
     // Légumineuses fraîches
-    '🫘 Haricot vert', '🫘 Petit pois', '🫘 Niébé (haricot africain)',
+    '\uD83E\uDED8 Haricot vert', '\uD83E\uDED8 Petit pois', '\uD83E\uDED8 Niébé (haricot africain)',
 
     // Courges & cucurbitacées
-    '🎃 Citrouille', '🎃 Courge', '🎃 Potiron',
+    '\uD83C\uDF83 Citrouille', '\uD83C\uDF83 Courge', '\uD83C\uDF83 Potiron',
 
     // Aromates & condiments
-    '🌿 Céleri', '🌿 Persil', '🌿 Ciboulette', '🌿 Basilic africain',
-    '🌿 Njansan', '🌿 Kankan',
+    '\uD83C\uDF3F Céleri', '\uD83C\uDF3F Persil', '\uD83C\uDF3F Ciboulette', '\uD83C\uDF3F Basilic africain',
+    '\uD83C\uDF3F Njansan', '\uD83C\uDF3F Kankan',
 
-    '🆕 Autre légume (ajouter)'
+    '\uD83C\uDD95 Autre légume (ajouter)'
   ],
 
-  // 🍎 FRUITS (50+ variétés africaines)
+  // \uD83C\uDF4E FRUITS (50+ variétés africaines)
   fruits: [
     // Fruits tropicaux africains
-    '🍌 Banane plantain', '🍌 Banane douce', '🍌 Banane poyo',
-    '🥭 Mangue locale', '🥭 Mangue greffée', '🥭 Mangue Julie',
-    '🥑 Avocat local', '🥑 Avocat Hass', '🥑 Poire d\'avocat',
-    '🍊 Orange douce', '🍊 Orange amère', '🍋 Citron vert', '🍋 Citron jaune',
-    '🍍 Ananas Victoria', '🍍 Ananas Cayenne', '🍍 Ananas MD2',
-    '🥥 Noix de coco', '🥥 Coco sec', '🥥 Coco vert',
-    '🍈 Papaye solo', '🍈 Papaye locale',
-    '🍉 Pastèque (watermelon)', '🍉 Melon',
+    '\uD83C\uDF4C Banane plantain', '\uD83C\uDF4C Banane douce', '\uD83C\uDF4C Banane poyo',
+    '\uD83E\uDD6D Mangue locale', '\uD83E\uDD6D Mangue greffée', '\uD83E\uDD6D Mangue Julie',
+    '\uD83E\uDD51 Avocat local', '\uD83E\uDD51 Avocat Hass', '\uD83E\uDD51 Poire d\'avocat',
+    '\uD83C\uDF4A Orange douce', '\uD83C\uDF4A Orange amère', '\uD83C\uDF4B Citron vert', '\uD83C\uDF4B Citron jaune',
+    '\uD83C\uDF4D Ananas Victoria', '\uD83C\uDF4D Ananas Cayenne', '\uD83C\uDF4D Ananas MD2',
+    '\uD83E\uDD65 Noix de coco', '\uD83E\uDD65 Coco sec', '\uD83E\uDD65 Coco vert',
+    '\uD83C\uDF48 Papaye solo', '\uD83C\uDF48 Papaye locale',
+    '\uD83C\uDF49 Pastèque (watermelon)', '\uD83C\uDF49 Melon',
 
     // Fruits spécifiques africains
-    '🫐 Safou (prune africaine)', '🫐 Safoutier',
-    '🍑 Mangoustan', '🍑 Corossol (cachiman)', '🍑 Anone',
-    '🍑 Fruit de la passion', '🍑 Maracuja',
-    '🍇 Raisin local',
+    '\uD83E\uDED0 Safou (prune africaine)', '\uD83E\uDED0 Safoutier',
+    '\uD83C\uDF51 Mangoustan', '\uD83C\uDF51 Corossol (cachiman)', '\uD83C\uDF51 Anone',
+    '\uD83C\uDF51 Fruit de la passion', '\uD83C\uDF51 Maracuja',
+    '\uD83C\uDF47 Raisin local',
 
     // Fruits secs à coque
-    '🥜 Arachide (cacahuète)', '🥜 Arachide grillée', '🥜 Arachide en coque',
-    '🌰 Noix de cajou', '🌰 Karité (noix)', '🌰 Noisette locale',
-    '🌰 Pistache africaine', '🌰 Kola (noix de kola)',
+    '\uD83E\uDD5C Arachide (cacahuète)', '\uD83E\uDD5C Arachide grillée', '\uD83E\uDD5C Arachide en coque',
+    '\uD83C\uDF30 Noix de cajou', '\uD83C\uDF30 Karité (noix)', '\uD83C\uDF30 Noisette locale',
+    '\uD83C\uDF30 Pistache africaine', '\uD83C\uDF30 Kola (noix de kola)',
 
     // Fruits de palmier
-    '🫒 Noix de palme', '🫒 Régime de palme',
+    '\uD83E\uDED2 Noix de palme', '\uD83E\uDED2 Régime de palme',
 
     // Autres fruits
-    '🍓 Goyave', '🍑 Pêche locale', '🍑 Prune locale',
-    '🍋 Mandarine', '🍋 Pamplemousse',
+    '\uD83C\uDF53 Goyave', '\uD83C\uDF51 Pêche locale', '\uD83C\uDF51 Prune locale',
+    '\uD83C\uDF4B Mandarine', '\uD83C\uDF4B Pamplemousse',
 
-    '🆕 Autre fruit (ajouter)'
+    '\uD83C\uDD95 Autre fruit (ajouter)'
   ],
 
-  // 🌾 CÉRÉALES & GRAINS (25+)
+  // \uD83C\uDF3E CÉRÉALES & GRAINS (25+)
   cereales: [
-    '🌾 Maïs grain', '🌾 Maïs en épi', '🌾 Maïs blanc', '🌾 Maïs jaune',
-    '🌾 Riz paddy', '🌾 Riz cargo', '🌾 Riz blanc', '🌾 Riz parfumé',
-    '🌾 Mil (petit mil)', '🌾 Sorgho (gros mil)',
-    '🌾 Blé', '🌾 Fonio', '🌾 Orge',
-    '🌾 Sésame', '🌾 Quinoa',
-    '🆕 Autre céréale (ajouter)'
+    '\uD83C\uDF3E Maïs grain', '\uD83C\uDF3E Maïs en épi', '\uD83C\uDF3E Maïs blanc', '\uD83C\uDF3E Maïs jaune',
+    '\uD83C\uDF3E Riz paddy', '\uD83C\uDF3E Riz cargo', '\uD83C\uDF3E Riz blanc', '\uD83C\uDF3E Riz parfumé',
+    '\uD83C\uDF3E Mil (petit mil)', '\uD83C\uDF3E Sorgho (gros mil)',
+    '\uD83C\uDF3E Blé', '\uD83C\uDF3E Fonio', '\uD83C\uDF3E Orge',
+    '\uD83C\uDF3E Sésame', '\uD83C\uDF3E Quinoa',
+    '\uD83C\uDD95 Autre céréale (ajouter)'
   ],
 
-  // 🥔 TUBERCULES & RACINES (20+)
+  // \uD83E\uDD54 TUBERCULES & RACINES (20+)
   tubercules: [
-    '🥔 Manioc frais', '🥔 Manioc amer', '🥔 Manioc doux',
-    '🍠 Igname blanche', '🍠 Igname jaune', '🍠 Igname locale',
-    '🍠 Patate douce orange', '🍠 Patate douce blanche', '🍠 Patate douce violette',
-    '🥔 Macabo (taro rouge)', '🥔 Taro blanc',
-    '🥔 Pomme de terre locale', '🥔 Pomme de terre importée',
-    '🥕 Carotte tubercule',
-    '🆕 Autre tubercule (ajouter)'
+    '\uD83E\uDD54 Manioc frais', '\uD83E\uDD54 Manioc amer', '\uD83E\uDD54 Manioc doux',
+    '\uD83C\uDF60 Igname blanche', '\uD83C\uDF60 Igname jaune', '\uD83C\uDF60 Igname locale',
+    '\uD83C\uDF60 Patate douce orange', '\uD83C\uDF60 Patate douce blanche', '\uD83C\uDF60 Patate douce violette',
+    '\uD83E\uDD54 Macabo (taro rouge)', '\uD83E\uDD54 Taro blanc',
+    '\uD83E\uDD54 Pomme de terre locale', '\uD83E\uDD54 Pomme de terre importée',
+    '\uD83E\uDD55 Carotte tubercule',
+    '\uD83C\uDD95 Autre tubercule (ajouter)'
   ],
 
-  // 🫘 LÉGUMINEUSES SÈCHES (15+)
+  // \uD83E\uDED8 LÉGUMINEUSES SÈCHES (15+)
   legumineuses: [
-    '🫘 Niébé (haricot blanc local)', '🫘 Haricot rouge', '🫘 Haricot noir',
-    '🫘 Haricot blanc (lingot)', '🫘 Pois chiche',
-    '🫘 Lentilles corail', '🫘 Lentilles vertes',
-    '🫘 Soja grain', '🫘 Arachide coque', '🫘 Arachide décortiquée',
-    '🫘 Voandzou (pois de terre)', '🫘 Pois d\'Angole',
-    '🆕 Autre légumineuse (ajouter)'
+    '\uD83E\uDED8 Niébé (haricot blanc local)', '\uD83E\uDED8 Haricot rouge', '\uD83E\uDED8 Haricot noir',
+    '\uD83E\uDED8 Haricot blanc (lingot)', '\uD83E\uDED8 Pois chiche',
+    '\uD83E\uDED8 Lentilles corail', '\uD83E\uDED8 Lentilles vertes',
+    '\uD83E\uDED8 Soja grain', '\uD83E\uDED8 Arachide coque', '\uD83E\uDED8 Arachide décortiquée',
+    '\uD83E\uDED8 Voandzou (pois de terre)', '\uD83E\uDED8 Pois d\'Angole',
+    '\uD83C\uDD95 Autre légumineuse (ajouter)'
   ],
 
-  // 🌶️ ÉPICES & CONDIMENTS (30+)
+  // \uD83C\uDF36️ ÉPICES & CONDIMENTS (30+)
   epices_condiments: [
-    '🌶️ Piment rouge séché', '🌶️ Piment vert', '🌶️ Pili-pili',
-    '🌶️ Poivre noir', '🌶️ Poivre blanc', '🌶️ Poivre de Penja (Cameroun)',
-    '🧄 Ail frais', '🧄 Ail en poudre', '🧅 Oignon séché',
-    '🌿 Gingembre frais', '🌿 Gingembre séché', '🌿 Curcuma',
-    '🌿 Persil séché', '🌿 Thym', '🌿 Laurier',
-    '🌿 Cannelle', '🌿 Muscade', '🌿 Clou de girofle',
-    '🌿 Njansan (épice camerounaise)', '🌿 Djansang',
-    '🌿 Mbongo (épice noire)', '🌿 4 côtés',
-    '🌿 Cube Maggi', '🌿 Cube Jumbo', '🌿 Cube d\'arome',
-    '🧂 Sel gemme', '🧂 Sel iodé', '🧂 Sel de mer',
-    '🆕 Autre épice (ajouter)'
+    '\uD83C\uDF36️ Piment rouge séché', '\uD83C\uDF36️ Piment vert', '\uD83C\uDF36️ Pili-pili',
+    '\uD83C\uDF36️ Poivre noir', '\uD83C\uDF36️ Poivre blanc', '\uD83C\uDF36️ Poivre de Penja (Cameroun)',
+    '\uD83E\uDDC4 Ail frais', '\uD83E\uDDC4 Ail en poudre', '\uD83E\uDDC5 Oignon séché',
+    '\uD83C\uDF3F Gingembre frais', '\uD83C\uDF3F Gingembre séché', '\uD83C\uDF3F Curcuma',
+    '\uD83C\uDF3F Persil séché', '\uD83C\uDF3F Thym', '\uD83C\uDF3F Laurier',
+    '\uD83C\uDF3F Cannelle', '\uD83C\uDF3F Muscade', '\uD83C\uDF3F Clou de girofle',
+    '\uD83C\uDF3F Njansan (épice camerounaise)', '\uD83C\uDF3F Djansang',
+    '\uD83C\uDF3F Mbongo (épice noire)', '\uD83C\uDF3F 4 côtés',
+    '\uD83C\uDF3F Cube Maggi', '\uD83C\uDF3F Cube Jumbo', '\uD83C\uDF3F Cube d\'arome',
+    '\uD83E\uDDC2 Sel gemme', '\uD83E\uDDC2 Sel iodé', '\uD83E\uDDC2 Sel de mer',
+    '\uD83C\uDD95 Autre épice (ajouter)'
   ],
 
-  // 🌻 OLÉAGINEUX (15+)
+  // \uD83C\uDF3B OLÉAGINEUX (15+)
   oleagineux: [
-    '🌻 Arachide décortiquée', '🌻 Arachide en coque',
-    '🌻 Sésame', '🌻 Tournesol',
-    '🫒 Noix de palme', '🫒 Palmiste',
-    '🌰 Noix de cajou', '🌰 Karité (amandes)',
-    '🥥 Coprah (coco séché)', '🫒 Olive',
-    '🆕 Autre oléagineux (ajouter)'
+    '\uD83C\uDF3B Arachide décortiquée', '\uD83C\uDF3B Arachide en coque',
+    '\uD83C\uDF3B Sésame', '\uD83C\uDF3B Tournesol',
+    '\uD83E\uDED2 Noix de palme', '\uD83E\uDED2 Palmiste',
+    '\uD83C\uDF30 Noix de cajou', '\uD83C\uDF30 Karité (amandes)',
+    '\uD83E\uDD65 Coprah (coco séché)', '\uD83E\uDED2 Olive',
+    '\uD83C\uDD95 Autre oléagineux (ajouter)'
   ],
 
   // ☕ CULTURES DE RENTE (15+)
   cultures_rente: [
     '☕ Café arabica', '☕ Café robusta', '☕ Café cerise',
-    '🍫 Cacao fève', '🍫 Cacao marchand', '🍫 Cacao fin',
-    '🍵 Thé vert', '🍵 Thé noir',
-    '🌿 Coton graine', '🌿 Coton fibre',
-    '🌿 Tabac feuille',
-    '🌿 Hévéa (latex)', '🌿 Caoutchouc',
-    '🦴 Canne à sucre',
-    '🆕 Autre culture de rente (ajouter)'
+    '\uD83C\uDF6B Cacao fève', '\uD83C\uDF6B Cacao marchand', '\uD83C\uDF6B Cacao fin',
+    '\uD83C\uDF75 Thé vert', '\uD83C\uDF75 Thé noir',
+    '\uD83C\uDF3F Coton graine', '\uD83C\uDF3F Coton fibre',
+    '\uD83C\uDF3F Tabac feuille',
+    '\uD83C\uDF3F Hévéa (latex)', '\uD83C\uDF3F Caoutchouc',
+    '\uD83E\uDDB4 Canne à sucre',
+    '\uD83C\uDD95 Autre culture de rente (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🐄 ANIMAUX D'ÉLEVAGE (50+ types)
+  // \uD83D\uDC04 ANIMAUX D'ÉLEVAGE (50+ types)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // 🐄 BOVINS
+  // \uD83D\uDC04 BOVINS
   animaux_bovins: [
-    '🐄 Bœuf adulte (race locale)', '🐄 Vache laitière', '🐄 Vache allaitante',
-    '🐂 Taureau reproducteur', '🐂 Zébu Foulbé', '🐂 Zébu Bororo',
-    '🐂 Goudali (race camerounaise)', '🐂 Ndama (race ouest-africaine)',
-    '🐮 Veau de lait', '🐮 Génisse', '🐮 Broutard',
-    '🐂 Bœuf de trait', '🐂 Bœuf d\'embouche',
-    '🆕 Autre bovin (ajouter)'
+    '\uD83D\uDC04 Bœuf adulte (race locale)', '\uD83D\uDC04 Vache laitière', '\uD83D\uDC04 Vache allaitante',
+    '\uD83D\uDC02 Taureau reproducteur', '\uD83D\uDC02 Zébu Foulbé', '\uD83D\uDC02 Zébu Bororo',
+    '\uD83D\uDC02 Goudali (race camerounaise)', '\uD83D\uDC02 Ndama (race ouest-africaine)',
+    '\uD83D\uDC2E Veau de lait', '\uD83D\uDC2E Génisse', '\uD83D\uDC2E Broutard',
+    '\uD83D\uDC02 Bœuf de trait', '\uD83D\uDC02 Bœuf d\'embouche',
+    '\uD83C\uDD95 Autre bovin (ajouter)'
   ],
 
-  // 🐏 OVINS (moutons)
+  // \uD83D\uDC0F OVINS (moutons)
   animaux_ovins: [
-    '🐏 Mouton Djallonké (race locale)', '🐏 Mouton sahélien',
-    '🐑 Bélier reproducteur', '🐑 Brebis',
-    '🐑 Agneau de lait', '🐑 Agneau sevré',
-    '🐏 Mouton Peulh', '🐏 Mouton touareg',
-    '🐏 Mouton d\'embouche (Tabaski)', '🐏 Mouton de case',
-    '🆕 Autre ovin (ajouter)'
+    '\uD83D\uDC0F Mouton Djallonké (race locale)', '\uD83D\uDC0F Mouton sahélien',
+    '\uD83D\uDC11 Bélier reproducteur', '\uD83D\uDC11 Brebis',
+    '\uD83D\uDC11 Agneau de lait', '\uD83D\uDC11 Agneau sevré',
+    '\uD83D\uDC0F Mouton Peulh', '\uD83D\uDC0F Mouton touareg',
+    '\uD83D\uDC0F Mouton d\'embouche (Tabaski)', '\uD83D\uDC0F Mouton de case',
+    '\uD83C\uDD95 Autre ovin (ajouter)'
   ],
 
-  // 🐐 CAPRINS (chèvres)
+  // \uD83D\uDC10 CAPRINS (chèvres)
   animaux_caprins: [
-    '🐐 Chèvre naine (race locale)', '🐐 Chèvre sahélienne',
-    '🐐 Bouc reproducteur', '🐐 Chevrette',
-    '🐐 Cabri (chevreau)', '🐐 Chèvre laitière',
-    '🐐 Chèvre d\'embouche', '🐐 Chèvre de case',
-    '🆕 Autre caprin (ajouter)'
+    '\uD83D\uDC10 Chèvre naine (race locale)', '\uD83D\uDC10 Chèvre sahélienne',
+    '\uD83D\uDC10 Bouc reproducteur', '\uD83D\uDC10 Chevrette',
+    '\uD83D\uDC10 Cabri (chevreau)', '\uD83D\uDC10 Chèvre laitière',
+    '\uD83D\uDC10 Chèvre d\'embouche', '\uD83D\uDC10 Chèvre de case',
+    '\uD83C\uDD95 Autre caprin (ajouter)'
   ],
 
-  // 🐖 PORCINS (porcs)
+  // \uD83D\uDC16 PORCINS (porcs)
   animaux_porcins: [
-    '🐖 Porc local (race africaine)', '🐖 Porc amélioré',
-    '🐖 Truie reproductrice', '🐖 Verrat',
-    '🐷 Porcelet sevré', '🐷 Porcelet de lait',
-    '🐖 Porc d\'embouche (80-100kg)', '🐖 Porc charcutier (100-120kg)',
-    '🐖 Large White', '🐖 Landrace', '🐖 Duroc',
-    '🆕 Autre porcin (ajouter)'
+    '\uD83D\uDC16 Porc local (race africaine)', '\uD83D\uDC16 Porc amélioré',
+    '\uD83D\uDC16 Truie reproductrice', '\uD83D\uDC16 Verrat',
+    '\uD83D\uDC37 Porcelet sevré', '\uD83D\uDC37 Porcelet de lait',
+    '\uD83D\uDC16 Porc d\'embouche (80-100kg)', '\uD83D\uDC16 Porc charcutier (100-120kg)',
+    '\uD83D\uDC16 Large White', '\uD83D\uDC16 Landrace', '\uD83D\uDC16 Duroc',
+    '\uD83C\uDD95 Autre porcin (ajouter)'
   ],
 
-  // 🐔 VOLAILLES (25+ types)
+  // \uD83D\uDC14 VOLAILLES (25+ types)
   animaux_volailles: [
     // Poulets
-    '🐔 Poulet de chair (45 jours)', '🐔 Poulet fermier (3-4 mois)',
-    '🐔 Poulet local (bicyclette)', '🐔 Poulet villageois',
-    '🐔 Poule pondeuse', '🐔 Poule réforme', '🐔 Coq reproducteur',
-    '🐥 Poussin 1 jour', '🐥 Poussin démarré (7 jours)', '🐥 Poussin 21 jours',
+    '\uD83D\uDC14 Poulet de chair (45 jours)', '\uD83D\uDC14 Poulet fermier (3-4 mois)',
+    '\uD83D\uDC14 Poulet local (bicyclette)', '\uD83D\uDC14 Poulet villageois',
+    '\uD83D\uDC14 Poule pondeuse', '\uD83D\uDC14 Poule réforme', '\uD83D\uDC14 Coq reproducteur',
+    '\uD83D\uDC25 Poussin 1 jour', '\uD83D\uDC25 Poussin démarré (7 jours)', '\uD83D\uDC25 Poussin 21 jours',
 
     // Autres volailles
-    '🦆 Canard de Barbarie', '🦆 Canard mulard', '🦆 Canette',
-    '🦃 Dinde locale', '🦃 Dindon', '🦃 Dindonneau',
-    '🐦 Pintade locale', '🐦 Pintade méléagris', '🐦 Pintadeaux',
-    '🕊️ Pigeon', '🦅 Caille', '🦢 Oie',
+    '\uD83E\uDD86 Canard de Barbarie', '\uD83E\uDD86 Canard mulard', '\uD83E\uDD86 Canette',
+    '\uD83E\uDD83 Dinde locale', '\uD83E\uDD83 Dindon', '\uD83E\uDD83 Dindonneau',
+    '\uD83D\uDC26 Pintade locale', '\uD83D\uDC26 Pintade méléagris', '\uD83D\uDC26 Pintadeaux',
+    '\uD83D\uDD4A️ Pigeon', '\uD83E\uDD85 Caille', '\uD83E\uDDA2 Oie',
 
-    '🆕 Autre volaille (ajouter)'
+    '\uD83C\uDD95 Autre volaille (ajouter)'
   ],
 
-  // 🐰 AUTRES ANIMAUX
+  // \uD83D\uDC30 AUTRES ANIMAUX
   autres_animaux: [
-    '🐰 Lapin fermier', '🐰 Lapin géant', '🐰 Lapine reproductrice',
-    '🐌 Escargots (achatines)',
-    '🐜 Aulacodes (agoutis/grasscutters)',
-    '🦎 Varans (pour certains pays)',
-    '🆕 Autre animal (ajouter)'
+    '\uD83D\uDC30 Lapin fermier', '\uD83D\uDC30 Lapin géant', '\uD83D\uDC30 Lapine reproductrice',
+    '\uD83D\uDC0C Escargots (achatines)',
+    '\uD83D\uDC1C Aulacodes (agoutis/grasscutters)',
+    '\uD83E\uDD8E Varans (pour certains pays)',
+    '\uD83C\uDD95 Autre animal (ajouter)'
   ],
 
-  // 🐝 APICULTURE
+  // \uD83D\uDC1D APICULTURE
   apiculture: [
-    '🐝 Abeilles (essaim)', '🐝 Ruche peuplée', '🐝 Reine d\'abeilles',
-    '🍯 Miel brut', '🍯 Miel filtré', '🍯 Miel en rayon',
-    '🕯️ Cire d\'abeille', '🌿 Propolis', '🥛 Gelée royale',
-    '🆕 Autre produit apicole (ajouter)'
+    '\uD83D\uDC1D Abeilles (essaim)', '\uD83D\uDC1D Ruche peuplée', '\uD83D\uDC1D Reine d\'abeilles',
+    '\uD83C\uDF6F Miel brut', '\uD83C\uDF6F Miel filtré', '\uD83C\uDF6F Miel en rayon',
+    '\uD83D\uDD6F️ Cire d\'abeille', '\uD83C\uDF3F Propolis', '\uD83E\uDD5B Gelée royale',
+    '\uD83C\uDD95 Autre produit apicole (ajouter)'
   ],
 
-  // 🐟 AQUACULTURE / PISCICULTURE
+  // \uD83D\uDC1F AQUACULTURE / PISCICULTURE
   aquaculture: [
-    '🐟 Tilapia (alevins)', '🐟 Tilapia (poisson table 200-300g)',
-    '🐟 Poisson-chat (Clarias)', '🐟 Carpe commune',
-    '🐟 Silure africain', '🐟 Heterotis',
-    '🦐 Crevettes d\'élevage', '🦀 Crabes',
-    '🐌 Escargots aquatiques',
-    '🆕 Autre produit aquacole (ajouter)'
+    '\uD83D\uDC1F Tilapia (alevins)', '\uD83D\uDC1F Tilapia (poisson table 200-300g)',
+    '\uD83D\uDC1F Poisson-chat (Clarias)', '\uD83D\uDC1F Carpe commune',
+    '\uD83D\uDC1F Silure africain', '\uD83D\uDC1F Heterotis',
+    '\uD83E\uDD90 Crevettes d\'élevage', '\uD83E\uDD80 Crabes',
+    '\uD83D\uDC0C Escargots aquatiques',
+    '\uD83C\uDD95 Autre produit aquacole (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 📏 UNITÉS DE MESURE AFRICAINES (Adaptation locale essentielle !)
+  // \uD83D\uDCCF UNITÉS DE MESURE AFRICAINES (Adaptation locale essentielle !)
   // ═══════════════════════════════════════════════════════════════════════════
 
   unite_mesure: [
@@ -11190,119 +11190,119 @@ export const AGRICULTURE_ELEVAGE_MODALITIES: ModalityCategory = {
     '⚖️ Tonne (1000 kg)', '⚖️ Quintal (100 kg)',
 
     // ──── SEAUX (Très utilisé en Afrique !) ────
-    '🪣 Seau 2L', '🪣 Seau 5L', '🪣 Seau 10L',
-    '🪣 Seau 15L (standard)', '🪣 Seau 20L', '🪣 Seau 25L',
-    '🪣 Demi-seau', '🪣 Quart de seau',
+    '\uD83E\uDEA3 Seau 2L', '\uD83E\uDEA3 Seau 5L', '\uD83E\uDEA3 Seau 10L',
+    '\uD83E\uDEA3 Seau 15L (standard)', '\uD83E\uDEA3 Seau 20L', '\uD83E\uDEA3 Seau 25L',
+    '\uD83E\uDEA3 Demi-seau', '\uD83E\uDEA3 Quart de seau',
 
     // ──── SACS ────
-    '💼 Sac 1 kg', '💼 Sac 2 kg', '💼 Sac 5 kg',
-    '💼 Sac 10 kg', '💼 Sac 25 kg (standard)', '💼 Sac 50 kg',
-    '💼 Sac 100 kg', '💼 Grand sac (50-100kg)',
-    '💼 Demi-sac', '💼 Quart de sac',
+    '\uD83D\uDCBC Sac 1 kg', '\uD83D\uDCBC Sac 2 kg', '\uD83D\uDCBC Sac 5 kg',
+    '\uD83D\uDCBC Sac 10 kg', '\uD83D\uDCBC Sac 25 kg (standard)', '\uD83D\uDCBC Sac 50 kg',
+    '\uD83D\uDCBC Sac 100 kg', '\uD83D\uDCBC Grand sac (50-100kg)',
+    '\uD83D\uDCBC Demi-sac', '\uD83D\uDCBC Quart de sac',
 
     // ──── VER (Pour arachides, soja, etc.) ────
-    '🥜 Ver (petite mesure)', '🥜 Demi-ver', '🥜 Grand ver',
+    '\uD83E\uDD5C Ver (petite mesure)', '\uD83E\uDD5C Demi-ver', '\uD83E\uDD5C Grand ver',
 
     // ──── CAGIO / CAGEOT (Pour tomates, légumes) ────
     // Note : "Cagio" est le terme local africain, "Cageot" est le terme français
-    '🧺 Cagio petit', '🧺 Cagio moyen', '🧺 Cagio grand',
-    '🧺 Cageot bois', '🧺 Cageot plastique',
-    '🧺 Demi-cagio', '🧺 Quart de cagio',
-    '🧺 Demi-cageot', '🧺 Quart de cageot',
+    '\uD83E\uDDFA Cagio petit', '\uD83E\uDDFA Cagio moyen', '\uD83E\uDDFA Cagio grand',
+    '\uD83E\uDDFA Cageot bois', '\uD83E\uDDFA Cageot plastique',
+    '\uD83E\uDDFA Demi-cagio', '\uD83E\uDDFA Quart de cagio',
+    '\uD83E\uDDFA Demi-cageot', '\uD83E\uDDFA Quart de cageot',
 
     // ──── TAS (Pour ignames, manioc) ────
-    '🥔 Tas (petit)', '🥔 Tas (moyen)', '🥔 Tas (grand)',
-    '🥔 Demi-tas', '🥔 10 tubercules', '🥔 20 tubercules',
+    '\uD83E\uDD54 Tas (petit)', '\uD83E\uDD54 Tas (moyen)', '\uD83E\uDD54 Tas (grand)',
+    '\uD83E\uDD54 Demi-tas', '\uD83E\uDD54 10 tubercules', '\uD83E\uDD54 20 tubercules',
 
     // ──── LIASSE / BOTTE (Pour légumes feuilles) ────
-    '🥬 Liasse (petite)', '🥬 Liasse (moyenne)', '🥬 Liasse (grande)',
-    '🥬 Botte', '🥬 Demi-botte', '🥬 Fagot',
+    '\uD83E\uDD6C Liasse (petite)', '\uD83E\uDD6C Liasse (moyenne)', '\uD83E\uDD6C Liasse (grande)',
+    '\uD83E\uDD6C Botte', '\uD83E\uDD6C Demi-botte', '\uD83E\uDD6C Fagot',
 
     // ──── PANIER ────
-    '🧺 Panier petit', '🧺 Panier moyen', '🧺 Panier grand',
-    '🧺 Panier traditionnel', '🧺 Panier tressé',
+    '\uD83E\uDDFA Panier petit', '\uD83E\uDDFA Panier moyen', '\uD83E\uDDFA Panier grand',
+    '\uD83E\uDDFA Panier traditionnel', '\uD83E\uDDFA Panier tressé',
 
     // ──── ALVÉOLE (Pour œufs) ────
-    '🥚 Alvéole 6 œufs', '🥚 Alvéole 12 œufs (1 douzaine)',
-    '🥚 Alvéole 18 œufs', '🥚 Alvéole 24 œufs (2 douzaines)',
-    '🥚 Alvéole 30 œufs (plateau)', '🥚 Carton 180 œufs',
-    '🥚 Carton 360 œufs',
+    '\uD83E\uDD5A Alvéole 6 œufs', '\uD83E\uDD5A Alvéole 12 œufs (1 douzaine)',
+    '\uD83E\uDD5A Alvéole 18 œufs', '\uD83E\uDD5A Alvéole 24 œufs (2 douzaines)',
+    '\uD83E\uDD5A Alvéole 30 œufs (plateau)', '\uD83E\uDD5A Carton 180 œufs',
+    '\uD83E\uDD5A Carton 360 œufs',
 
     // ──── RÉGIME (Pour bananes, plantains) ────
-    '🍌 Régime complet', '🍌 Demi-régime', '🍌 Quart de régime',
-    '🍌 Main (5-7 bananes)', '🍌 Doigt (unité)',
+    '\uD83C\uDF4C Régime complet', '\uD83C\uDF4C Demi-régime', '\uD83C\uDF4C Quart de régime',
+    '\uD83C\uDF4C Main (5-7 bananes)', '\uD83C\uDF4C Doigt (unité)',
 
     // ──── BOUTEILLE / BIDON (Pour liquides) ────
-    '🍶 Bouteille 33cl', '🍶 Bouteille 50cl', '🍶 Bouteille 1L',
-    '🍶 Bidon 5L', '🍶 Bidon 10L', '🍶 Bidon 20L', '🍶 Bidon 25L',
-    '🍶 Jerrycan 20L', '🍶 Jerrycan 25L',
+    '\uD83C\uDF76 Bouteille 33cl', '\uD83C\uDF76 Bouteille 50cl', '\uD83C\uDF76 Bouteille 1L',
+    '\uD83C\uDF76 Bidon 5L', '\uD83C\uDF76 Bidon 10L', '\uD83C\uDF76 Bidon 20L', '\uD83C\uDF76 Bidon 25L',
+    '\uD83C\uDF76 Jerrycan 20L', '\uD83C\uDF76 Jerrycan 25L',
 
     // ──── LITRE (Pour liquides - lait, huile) ────
-    '🥛 Litre (L)', '🥛 Demi-litre (0.5L)', '🥛 Quart de litre (0.25L)',
-    '🥛 5 litres', '🥛 10 litres', '🥛 20 litres',
+    '\uD83E\uDD5B Litre (L)', '\uD83E\uDD5B Demi-litre (0.5L)', '\uD83E\uDD5B Quart de litre (0.25L)',
+    '\uD83E\uDD5B 5 litres', '\uD83E\uDD5B 10 litres', '\uD83E\uDD5B 20 litres',
 
     // ──── VRAC ────
-    '📦 Vrac (au poids)', '📦 Vrac (au volume)',
+    '\uD83D\uDCE6 Vrac (au poids)', '\uD83D\uDCE6 Vrac (au volume)',
 
     // ──── UNITÉ / PIÈCE ────
     '1️⃣ Unité', '1️⃣ Pièce', '1️⃣ Tête (pour animaux)',
     '1️⃣ Lot de 10', '1️⃣ Lot de 50', '1️⃣ Lot de 100',
 
-    '🆕 Autre unité (ajouter)'
+    '\uD83C\uDD95 Autre unité (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🌍 ORIGINE / PROVENANCE (Par pays)
+  // \uD83C\uDF0D ORIGINE / PROVENANCE (Par pays)
   // ═══════════════════════════════════════════════════════════════════════════
   origine_geographique: [
     // Cameroun (Focus principal)
-    '🇨🇲 Cameroun - Littoral (Douala, Édéa)', '🇨🇲 Cameroun - Centre (Yaoundé, Mbalmayo)',
-    '🇨🇲 Cameroun - Ouest (Bafoussam, Dschang)', '🇨🇲 Cameroun - Nord-Ouest (Bamenda)',
-    '🇨🇲 Cameroun - Sud-Ouest (Buea, Kumba)', '🇨🇲 Cameroun - Adamaoua (Ngaoundéré)',
-    '🇨🇲 Cameroun - Nord (Garoua)', '🇨🇲 Cameroun - Extrême-Nord (Maroua)',
-    '🇨🇲 Cameroun - Sud (Ebolowa, Kribi)', '🇨🇲 Cameroun - Est (Bertoua)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Cameroun - Littoral (Douala, Édéa)', '\uD83C\uDDE8\uD83C\uDDF2 Cameroun - Centre (Yaoundé, Mbalmayo)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Cameroun - Ouest (Bafoussam, Dschang)', '\uD83C\uDDE8\uD83C\uDDF2 Cameroun - Nord-Ouest (Bamenda)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Cameroun - Sud-Ouest (Buea, Kumba)', '\uD83C\uDDE8\uD83C\uDDF2 Cameroun - Adamaoua (Ngaoundéré)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Cameroun - Nord (Garoua)', '\uD83C\uDDE8\uD83C\uDDF2 Cameroun - Extrême-Nord (Maroua)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Cameroun - Sud (Ebolowa, Kribi)', '\uD83C\uDDE8\uD83C\uDDF2 Cameroun - Est (Bertoua)',
 
     // Autres pays francophones
-    '🇨🇮 Côte d\'Ivoire', '🇸🇳 Sénégal', '🇲🇱 Mali', '🇧🇯 Bénin',
-    '🇹🇬 Togo', '🇧🇫 Burkina Faso', '🇳🇪 Niger', '🇹🇩 Tchad',
-    '🇨🇩 RD Congo', '🇨🇬 Congo-Brazzaville', '🇬🇦 Gabon',
-    '🇬🇳 Guinée Conakry', '🇲🇬 Madagascar', '🇲🇦 Maroc',
+    '\uD83C\uDDE8\uD83C\uDDEE Côte d\'Ivoire', '\uD83C\uDDF8\uD83C\uDDF3 Sénégal', '\uD83C\uDDF2\uD83C\uDDF1 Mali', '\uD83C\uDDE7\uD83C\uDDEF Bénin',
+    '\uD83C\uDDF9\uD83C\uDDEC Togo', '\uD83C\uDDE7\uD83C\uDDEB Burkina Faso', '\uD83C\uDDF3\uD83C\uDDEA Niger', '\uD83C\uDDF9\uD83C\uDDE9 Tchad',
+    '\uD83C\uDDE8\uD83C\uDDE9 RD Congo', '\uD83C\uDDE8\uD83C\uDDEC Congo-Brazzaville', '\uD83C\uDDEC\uD83C\uDDE6 Gabon',
+    '\uD83C\uDDEC\uD83C\uDDF3 Guinée Conakry', '\uD83C\uDDF2\uD83C\uDDEC Madagascar', '\uD83C\uDDF2\uD83C\uDDE6 Maroc',
 
     // Production locale
-    '🏡 Production locale (village)', '🏡 Production fermière',
-    '🏡 Jardin potager', '🏡 Exploitation familiale',
+    '\uD83C\uDFE1 Production locale (village)', '\uD83C\uDFE1 Production fermière',
+    '\uD83C\uDFE1 Jardin potager', '\uD83C\uDFE1 Exploitation familiale',
 
     // Importation
-    '🌍 Importé Europe', '🌍 Importé Asie', '🌍 Importé Amérique',
+    '\uD83C\uDF0D Importé Europe', '\uD83C\uDF0D Importé Asie', '\uD83C\uDF0D Importé Amérique',
 
-    '🆕 Autre origine (ajouter)'
+    '\uD83C\uDD95 Autre origine (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🌱 MÉTHODES DE PRODUCTION
+  // \uD83C\uDF31 MÉTHODES DE PRODUCTION
   // ═══════════════════════════════════════════════════════════════════════════
   methode_production: [
     // Agriculture
-    '🌱 Agriculture biologique', '🌱 Agriculture conventionnelle',
-    '🌱 Agriculture raisonnée', '🌱 Agroécologie',
-    '🌱 Permaculture', '🌱 Agriculture traditionnelle',
-    '🌱 Culture en serre', '🌱 Culture sous abri',
-    '🌱 Plein champ', '🌱 Culture maraîchère',
-    '🌱 Culture vivrière', '🌱 Culture de rente',
-    '🌱 Hydroponie', '🌱 Culture hors-sol',
+    '\uD83C\uDF31 Agriculture biologique', '\uD83C\uDF31 Agriculture conventionnelle',
+    '\uD83C\uDF31 Agriculture raisonnée', '\uD83C\uDF31 Agroécologie',
+    '\uD83C\uDF31 Permaculture', '\uD83C\uDF31 Agriculture traditionnelle',
+    '\uD83C\uDF31 Culture en serre', '\uD83C\uDF31 Culture sous abri',
+    '\uD83C\uDF31 Plein champ', '\uD83C\uDF31 Culture maraîchère',
+    '\uD83C\uDF31 Culture vivrière', '\uD83C\uDF31 Culture de rente',
+    '\uD83C\uDF31 Hydroponie', '\uD83C\uDF31 Culture hors-sol',
 
     // Élevage
-    '🐄 Élevage traditionnel', '🐄 Élevage moderne',
-    '🐄 Élevage intensif', '🐄 Élevage semi-intensif',
-    '🐄 Élevage extensif (pâturage)', '🐄 Élevage en divagation',
-    '🐄 Élevage fermier', '🐄 Élevage biologique',
-    '🐄 Embouche (engraissement)', '🐄 Élevage laitier',
+    '\uD83D\uDC04 Élevage traditionnel', '\uD83D\uDC04 Élevage moderne',
+    '\uD83D\uDC04 Élevage intensif', '\uD83D\uDC04 Élevage semi-intensif',
+    '\uD83D\uDC04 Élevage extensif (pâturage)', '\uD83D\uDC04 Élevage en divagation',
+    '\uD83D\uDC04 Élevage fermier', '\uD83D\uDC04 Élevage biologique',
+    '\uD83D\uDC04 Embouche (engraissement)', '\uD83D\uDC04 Élevage laitier',
 
-    '🆕 Autre méthode (ajouter)'
+    '\uD83C\uDD95 Autre méthode (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🏆 QUALITÉ & LABELS
+  // \uD83C\uDFC6 QUALITÉ & LABELS
   // ═══════════════════════════════════════════════════════════════════════════
   qualite_labels: [
     '✅ Bio certifié', '✅ Agriculture biologique AB',
@@ -11311,39 +11311,39 @@ export const AGRICULTURE_ELEVAGE_MODALITIES: ModalityCategory = {
     '✅ IGP (Indication Géographique Protégée)',
     '✅ Sans pesticides', '✅ Sans OGM', '✅ Sans engrais chimiques',
     '✅ Halal', '✅ Kasher',
-    '🌟 Qualité premium', '🌟 Première qualité',
-    '🌟 Qualité standard', '🌟 Qualité économique',
-    '🌟 Produit frais du jour', '🌟 Fraîcheur garantie',
-    '🌟 Production locale', '🌟 Circuit court',
-    '🆕 Autre label (ajouter)'
+    '\uD83C\uDF1F Qualité premium', '\uD83C\uDF1F Première qualité',
+    '\uD83C\uDF1F Qualité standard', '\uD83C\uDF1F Qualité économique',
+    '\uD83C\uDF1F Produit frais du jour', '\uD83C\uDF1F Fraîcheur garantie',
+    '\uD83C\uDF1F Production locale', '\uD83C\uDF1F Circuit court',
+    '\uD83C\uDD95 Autre label (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 📅 SAISONS & DISPONIBILITÉ
+  // \uD83D\uDCC5 SAISONS & DISPONIBILITÉ
   // ═══════════════════════════════════════════════════════════════════════════
   saison_disponibilite: [
-    '🌞 Toute l\'année', '🌞 Disponible actuellement',
+    '\uD83C\uDF1E Toute l\'année', '\uD83C\uDF1E Disponible actuellement',
 
     // Saisons africaines (2 saisons principales)
     '☔ Saison des pluies (Mars-Octobre)', '☀️ Saison sèche (Novembre-Février)',
 
     // Périodes spécifiques
-    '📅 Janvier-Février', '📅 Mars-Avril', '📅 Mai-Juin',
-    '📅 Juillet-Août', '📅 Septembre-Octobre', '📅 Novembre-Décembre',
+    '\uD83D\uDCC5 Janvier-Février', '\uD83D\uDCC5 Mars-Avril', '\uD83D\uDCC5 Mai-Juin',
+    '\uD83D\uDCC5 Juillet-Août', '\uD83D\uDCC5 Septembre-Octobre', '\uD83D\uDCC5 Novembre-Décembre',
 
     // Récoltes
-    '🌾 Période de récolte', '🌾 Début de saison', '🌾 Pleine saison',
-    '🌾 Fin de saison', '🌾 Hors saison',
+    '\uD83C\uDF3E Période de récolte', '\uD83C\uDF3E Début de saison', '\uD83C\uDF3E Pleine saison',
+    '\uD83C\uDF3E Fin de saison', '\uD83C\uDF3E Hors saison',
 
     // Disponibilité spéciale
     '⏰ Sur commande uniquement', '⏰ Stock limité',
     '⏰ Arrivage hebdomadaire', '⏰ Livraison jour de marché',
 
-    '🆕 Autre période (ajouter)'
+    '\uD83C\uDD95 Autre période (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🎯 ÉTAT & FRAÎCHEUR
+  // \uD83C\uDFAF ÉTAT & FRAÎCHEUR
   // ═══════════════════════════════════════════════════════════════════════════
   etat_fraicheur: [
     // Fraîcheur produits
@@ -11351,131 +11351,131 @@ export const AGRICULTURE_ELEVAGE_MODALITIES: ModalityCategory = {
     '✨ Frais (2-3 jours)', '✨ Bon état',
 
     // État animaux
-    '🐄 Animal vivant sur pied', '🐄 Bonne santé', '🐄 Vacciné',
-    '🐄 Déparasité', '🐄 Suivi vétérinaire',
+    '\uD83D\uDC04 Animal vivant sur pied', '\uD83D\uDC04 Bonne santé', '\uD83D\uDC04 Vacciné',
+    '\uD83D\uDC04 Déparasité', '\uD83D\uDC04 Suivi vétérinaire',
 
     // Transformation
-    '📦 Produit brut', '📦 Nettoyé', '📦 Lavé', '📦 Trié',
-    '📦 Épluché', '📦 Coupé', '📦 Préparé',
-    '📦 Séché', '📦 Fumé', '📦 Salé', '📦 Fermenté',
+    '\uD83D\uDCE6 Produit brut', '\uD83D\uDCE6 Nettoyé', '\uD83D\uDCE6 Lavé', '\uD83D\uDCE6 Trié',
+    '\uD83D\uDCE6 Épluché', '\uD83D\uDCE6 Coupé', '\uD83D\uDCE6 Préparé',
+    '\uD83D\uDCE6 Séché', '\uD83D\uDCE6 Fumé', '\uD83D\uDCE6 Salé', '\uD83D\uDCE6 Fermenté',
 
     // Conservation
-    '❄️ Réfrigéré', '❄️ Congelé', '🌡️ Température ambiante',
+    '❄️ Réfrigéré', '❄️ Congelé', '\uD83C\uDF21️ Température ambiante',
 
-    '🆕 Autre état (ajouter)'
+    '\uD83C\uDD95 Autre état (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🚜 MATÉRIEL & INTRANTS AGRICOLES
+  // \uD83D\uDE9C MATÉRIEL & INTRANTS AGRICOLES
   // ═══════════════════════════════════════════════════════════════════════════
   materiel_equipements: [
     // Matériel de culture
-    '🚜 Tracteur', '🚜 Motoculteur', '🚜 Charrue',
-    '🚜 Herse', '🚜 Semoir', '🚜 Pulvérisateur',
-    '🚜 Brouette', '🚜 Arrosoir', '🚜 Pompe à eau',
+    '\uD83D\uDE9C Tracteur', '\uD83D\uDE9C Motoculteur', '\uD83D\uDE9C Charrue',
+    '\uD83D\uDE9C Herse', '\uD83D\uDE9C Semoir', '\uD83D\uDE9C Pulvérisateur',
+    '\uD83D\uDE9C Brouette', '\uD83D\uDE9C Arrosoir', '\uD83D\uDE9C Pompe à eau',
 
     // Outils manuels
     '⚒️ Machette', '⚒️ Houe', '⚒️ Pioche', '⚒️ Râteau',
     '⚒️ Pelle', '⚒️ Fourche', '⚒️ Sécateur',
 
     // Matériel d'élevage
-    '🏠 Poulailler', '🏠 Porcherie', '🏠 Étable', '🏠 Bergerie',
-    '🏠 Clapier (lapins)', '🏠 Abreuvoir', '🏠 Mangeoire',
-    '🏠 Clôture', '🏠 Filet', '🏠 Cage',
+    '\uD83C\uDFE0 Poulailler', '\uD83C\uDFE0 Porcherie', '\uD83C\uDFE0 Étable', '\uD83C\uDFE0 Bergerie',
+    '\uD83C\uDFE0 Clapier (lapins)', '\uD83C\uDFE0 Abreuvoir', '\uD83C\uDFE0 Mangeoire',
+    '\uD83C\uDFE0 Clôture', '\uD83C\uDFE0 Filet', '\uD83C\uDFE0 Cage',
 
     // Matériel de transformation
     '⚙️ Décortiqueuse', '⚙️ Égreneuse', '⚙️ Moulin',
     '⚙️ Presse à huile', '⚙️ Séchoir',
 
-    '🆕 Autre matériel (ajouter)'
+    '\uD83C\uDD95 Autre matériel (ajouter)'
   ],
 
   intrants_agricoles: [
     // Semences & plants
-    '🌱 Semences certifiées', '🌱 Semences locales', '🌱 Semences hybrides',
-    '🌱 Plants maraîchers', '🌱 Boutures', '🌱 Greffons',
+    '\uD83C\uDF31 Semences certifiées', '\uD83C\uDF31 Semences locales', '\uD83C\uDF31 Semences hybrides',
+    '\uD83C\uDF31 Plants maraîchers', '\uD83C\uDF31 Boutures', '\uD83C\uDF31 Greffons',
 
     // Engrais
-    '💚 Fumier animal', '💚 Compost', '💚 Engrais organique',
-    '💚 Engrais NPK', '💚 Urée', '💚 Engrais foliaire',
-    '💚 Engrais minéral',
+    '\uD83D\uDC9A Fumier animal', '\uD83D\uDC9A Compost', '\uD83D\uDC9A Engrais organique',
+    '\uD83D\uDC9A Engrais NPK', '\uD83D\uDC9A Urée', '\uD83D\uDC9A Engrais foliaire',
+    '\uD83D\uDC9A Engrais minéral',
 
     // Produits phytosanitaires
-    '🧪 Pesticide', '🧪 Herbicide', '🧪 Fongicide',
-    '🧪 Insecticide', '🧪 Produit bio',
+    '\uD83E\uDDEA Pesticide', '\uD83E\uDDEA Herbicide', '\uD83E\uDDEA Fongicide',
+    '\uD83E\uDDEA Insecticide', '\uD83E\uDDEA Produit bio',
 
     // Aliments animaux
-    '🌾 Aliment volaille (démarrage)', '🌾 Aliment volaille (croissance)',
-    '🌾 Aliment volaille (finition)', '🌾 Aliment pondeuse',
-    '🌾 Aliment porc', '🌾 Aliment lapin',
-    '🌾 Concentré bétail', '🌾 Tourteau', '🌾 Son de riz/maïs',
-    '🌾 Complément minéral vitaminé (CMV)',
+    '\uD83C\uDF3E Aliment volaille (démarrage)', '\uD83C\uDF3E Aliment volaille (croissance)',
+    '\uD83C\uDF3E Aliment volaille (finition)', '\uD83C\uDF3E Aliment pondeuse',
+    '\uD83C\uDF3E Aliment porc', '\uD83C\uDF3E Aliment lapin',
+    '\uD83C\uDF3E Concentré bétail', '\uD83C\uDF3E Tourteau', '\uD83C\uDF3E Son de riz/maïs',
+    '\uD83C\uDF3E Complément minéral vitaminé (CMV)',
 
     // Produits vétérinaires
-    '💉 Vaccin', '💊 Antibiotique', '💊 Antiparasitaire',
-    '💊 Vitamines', '💊 Désinfectant',
+    '\uD83D\uDC89 Vaccin', '\uD83D\uDC8A Antibiotique', '\uD83D\uDC8A Antiparasitaire',
+    '\uD83D\uDC8A Vitamines', '\uD83D\uDC8A Désinfectant',
 
-    '🆕 Autre intrant (ajouter)'
+    '\uD83C\uDD95 Autre intrant (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🏪 TYPE DE VENTE & COMMERCIALISATION
+  // \uD83C\uDFEA TYPE DE VENTE & COMMERCIALISATION
   // ═══════════════════════════════════════════════════════════════════════════
   type_vente: [
     // Modes de commercialisation standards
-    '🏪 Vente au détail', '🏪 Vente en gros', '🏪 Demi-gros',
-    '📦 Lot', '📦 Palette', '📦 Conteneur',
-    '🛒 Vente directe producteur', '🛒 Circuit court',
-    '🏪 Vente au marché', '🏪 Vente à domicile',
-    '🚚 Livraison possible', '🚚 À emporter uniquement',
-    '💰 Prix négociable', '💰 Prix fixe',
-    '📞 Sur commande', '📞 Stock disponible',
+    '\uD83C\uDFEA Vente au détail', '\uD83C\uDFEA Vente en gros', '\uD83C\uDFEA Demi-gros',
+    '\uD83D\uDCE6 Lot', '\uD83D\uDCE6 Palette', '\uD83D\uDCE6 Conteneur',
+    '\uD83D\uDED2 Vente directe producteur', '\uD83D\uDED2 Circuit court',
+    '\uD83C\uDFEA Vente au marché', '\uD83C\uDFEA Vente à domicile',
+    '\uD83D\uDE9A Livraison possible', '\uD83D\uDE9A À emporter uniquement',
+    '\uD83D\uDCB0 Prix négociable', '\uD83D\uDCB0 Prix fixe',
+    '\uD83D\uDCDE Sur commande', '\uD83D\uDCDE Stock disponible',
 
     // ✅ TERMES LOCAUX AFRIQUE FRANCOPHONE
-    // 🇨🇲 CAMEROUN
-    '🏪 Bayam-Selam (Marchande au marché - Cameroun)',
-    '🏪 Bayam Sellam (Vendeuse au marché)',
-    '🏪 Boulot (Révendeur intermédiaire)',
-    '🏪 Fournisseur fermiers locaux',
+    // \uD83C\uDDE8\uD83C\uDDF2 CAMEROUN
+    '\uD83C\uDFEA Bayam-Selam (Marchande au marché - Cameroun)',
+    '\uD83C\uDFEA Bayam Sellam (Vendeuse au marché)',
+    '\uD83C\uDFEA Boulot (Révendeur intermédiaire)',
+    '\uD83C\uDFEA Fournisseur fermiers locaux',
 
-    // 🇨🇮 CÔTE D'IVOIRE
-    '🏪 Boutiquier (Épicier Côte d\'Ivoire)',
-    '🏪 Commerçant marché Adjamé',
+    // \uD83C\uDDE8\uD83C\uDDEE CÔTE D'IVOIRE
+    '\uD83C\uDFEA Boutiquier (Épicier Côte d\'Ivoire)',
+    '\uD83C\uDFEA Commerçant marché Adjamé',
 
-    // 🇸🇳 SÉNÉGAL
-    '🏪 Détaillant ouolof',
-    '🏪 Vendeur Sandaga',
+    // \uD83C\uDDF8\uD83C\uDDF3 SÉNÉGAL
+    '\uD83C\uDFEA Détaillant ouolof',
+    '\uD83C\uDFEA Vendeur Sandaga',
 
-    // 🇲🇱 MALI
-    '🏪 Dillali (Courtier agricole - Mali)',
-    '🏪 Commerçant marché de Bamako',
+    // \uD83C\uDDF2\uD83C\uDDF1 MALI
+    '\uD83C\uDFEA Dillali (Courtier agricole - Mali)',
+    '\uD83C\uDFEA Commerçant marché de Bamako',
 
-    // 🇧🇯 BÉNIN
-    '🏪 Façonnière (Révendeuse Bénin)',
+    // \uD83C\uDDE7\uD83C\uDDEF BÉNIN
+    '\uD83C\uDFEA Façonnière (Révendeuse Bénin)',
 
-    // 🌍 TERMES GÉNÉRIQUES
-    '🏪 Révendeur professionnel', '🏪 Grossiste',
-    '🏪 Importateur agricole', '🏪 Exportateur local',
-    '🛒 Coopérative agricole', '🛒 GIE (Groupement d\'intérêt économique)',
+    // \uD83C\uDF0D TERMES GÉNÉRIQUES
+    '\uD83C\uDFEA Révendeur professionnel', '\uD83C\uDFEA Grossiste',
+    '\uD83C\uDFEA Importateur agricole', '\uD83C\uDFEA Exportateur local',
+    '\uD83D\uDED2 Coopérative agricole', '\uD83D\uDED2 GIE (Groupement d\'intérêt économique)',
 
-    '🆕 Autre type de vente (ajouter)'
+    '\uD83C\uDD95 Autre type de vente (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🚚 CONDITIONNEMENT & EMBALLAGE
+  // \uD83D\uDE9A CONDITIONNEMENT & EMBALLAGE
   // ═══════════════════════════════════════════════════════════════════════════
   conditionnement_emballage: [
-    '📦 Vrac (sans emballage)', '📦 Sac plastique', '📦 Sac papier',
-    '📦 Sac jute/toile', '📦 Sac polypropylène',
-    '📦 Carton', '📦 Cageot bois', '📦 Cageot plastique',
-    '📦 Panier traditionnel', '📦 Panier plastique tressé',
-    '📦 Filet', '📦 Film plastique', '📦 Sous vide',
-    '📦 Barquette', '📦 Boîte', '📦 Bouteille', '📦 Bidon',
-    '🆕 Autre conditionnement (ajouter)'
+    '\uD83D\uDCE6 Vrac (sans emballage)', '\uD83D\uDCE6 Sac plastique', '\uD83D\uDCE6 Sac papier',
+    '\uD83D\uDCE6 Sac jute/toile', '\uD83D\uDCE6 Sac polypropylène',
+    '\uD83D\uDCE6 Carton', '\uD83D\uDCE6 Cageot bois', '\uD83D\uDCE6 Cageot plastique',
+    '\uD83D\uDCE6 Panier traditionnel', '\uD83D\uDCE6 Panier plastique tressé',
+    '\uD83D\uDCE6 Filet', '\uD83D\uDCE6 Film plastique', '\uD83D\uDCE6 Sous vide',
+    '\uD83D\uDCE6 Barquette', '\uD83D\uDCE6 Boîte', '\uD83D\uDCE6 Bouteille', '\uD83D\uDCE6 Bidon',
+    '\uD83C\uDD95 Autre conditionnement (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🌾 ZONES D'INTERVENTION (Utilise le système existant)
+  // \uD83C\uDF3E ZONES D'INTERVENTION (Utilise le système existant)
   // ═══════════════════════════════════════════════════════════════════════════
   zones_intervention: genererZonesIntervention('CM')
 };
@@ -11503,21 +11503,21 @@ export const SPORT_FITNESS_MODALITIES: ModalityCategory = {
     'Golf', 'Squash', 'Badminton', 'Tennis de table',
     // Spécialisés
     'Spinning', 'Body Pump', 'Body Combat', 'TRX', 'Corde à sauter',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Niveaux
   niveaux: [
     'Débutant', 'Débutant avancé', 'Intermédiaire', 'Intermédiaire avancé',
     'Avancé', 'Compétition', 'Professionnel', 'Tous niveaux',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Durées des séances (structuré)
   durees: [
     '30 minutes', '45 minutes', '1 heure', '1h15', '1h30', '2 heures',
     '2h30', '3 heures', 'Demi-journée', 'Journée complète',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Équipements disponibles/fournis
@@ -11538,7 +11538,7 @@ export const SPORT_FITNESS_MODALITIES: ModalityCategory = {
     'Corde à sauter', 'Élastiques de résistance', 'Bandes élastiques', 'Gants',
     'Miroirs', 'Vestiaires', 'Douches', 'Casiers', 'Climatisation',
     'Parking', 'Wifi', 'Bar protéiné', 'Espace détente',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de services
@@ -11549,7 +11549,7 @@ export const SPORT_FITNESS_MODALITIES: ModalityCategory = {
     'Personal training', 'Programme sur mesure', 'Bilan physique initial',
     'Suivi nutritionnel', 'Plan alimentaire', 'Consultation diététique',
     'Cours d\'essai gratuit', 'Séance découverte',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Salles de sport & centres renommés (Cameroun + Afrique francophone)
@@ -11566,7 +11566,7 @@ export const SPORT_FITNESS_MODALITIES: ModalityCategory = {
     'Yoga Bastos', 'Pilates Studio Yaoundé',
     // Autres villes
     'Gym Bafoussam', 'Fitness Garoua', 'Sport Center Bamenda',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Marques populaires (focus Afrique)
@@ -11578,20 +11578,20 @@ export const SPORT_FITNESS_MODALITIES: ModalityCategory = {
     'Decathlon', 'Kipsta', 'Domyos', 'Kalenji', 'Nabaiji',
     // Autres
     'Champion', 'Umbro', 'Diadora', 'Le Coq Sportif', 'Hummel',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Tailles vêtements sport
   tailles: [
     'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Jours et horaires
   jours_disponibles: [
     'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche',
     'Lundi au Vendredi', 'Week-end uniquement', 'Tous les jours',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   horaires: [
@@ -11600,7 +11600,7 @@ export const SPORT_FITNESS_MODALITIES: ModalityCategory = {
     '14h00 - 16h00 (Début après-midi)', '16h00 - 18h00 (Fin après-midi)',
     '18h00 - 20h00 (Soirée)', '20h00 - 22h00 (Soirée tardive)',
     '06h00 - 22h00 (Ouvert toute la journée)', 'Flexible',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types d'objectifs
@@ -11609,7 +11609,7 @@ export const SPORT_FITNESS_MODALITIES: ModalityCategory = {
     'Remise en forme', 'Amélioration cardio', 'Gain de force',
     'Souplesse et mobilité', 'Préparation sportive', 'Rééducation',
     'Bien-être et détente', 'Compétition', 'Maintien de la forme',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Zones intervention (villes principales Cameroun)
@@ -11620,13 +11620,13 @@ export const SPORT_FITNESS_MODALITIES: ModalityCategory = {
     'Football', 'Basketball', 'Handball', 'Volleyball',
     'Lutte traditionnelle', 'Course à pied', 'Athlétisme',
     'Boxe', 'Arts martiaux', 'Cyclisme', 'Natation',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
 // ✅ MODALITÉS BIEN-ÊTRE & SPA
 // ════════════════════════════════════════════════════════════
-// 🧘 BIEN-ÊTRE & SPA - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
+// \uD83E\uDDD8 BIEN-ÊTRE & SPA - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
 // ════════════════════════════════════════════════════════════
 export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
   // ✅ TYPES DE SOINS (25+ options)
@@ -11668,7 +11668,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Méditation guidée',
     'Yoga & Relaxation',
     'Sophrologie (relaxation dynamique)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE MASSAGES (détaillés, 15+ options)
@@ -11688,7 +11688,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Massage femme enceinte (prénatal)',
     'Massage réflexologie (pieds, mains)',
     'Massage drainage lymphatique',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ SERVICES & ÉQUIPEMENTS (15+ options)
@@ -11708,7 +11708,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Produits africains (beurre karité, huile argan)',
     'Service à domicile',
     'Parking gratuit',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ DURÉES (10+ options)
@@ -11723,7 +11723,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Demi-journée (4h)',
     'Journée complète (8h)',
     'À la carte (durée flexible)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FORMULES & FORFAITS (12+ options)
@@ -11740,7 +11740,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Carte cadeau disponible',
     'Enterrement de vie de jeune fille',
     'Spa day (journée)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPE DE CLIENTÈLE (7+ options)
@@ -11752,7 +11752,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Femmes enceintes',
     'Seniors',
     'Sportifs (récupération)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TARIFICATION (fourchettes FCFA Afrique francophone)
@@ -11764,7 +11764,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     '50 000 - 75 000 FCFA',
     '75 000 - 100 000 FCFA',
     'Plus de 100 000 FCFA (luxe)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ SPÉCIALITÉS & BESOINS (15+ options)
@@ -11783,7 +11783,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Soins éclaircissants (teint)',
     'Soins peaux noires / métissées',
     'Soins bio / naturels',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ HORAIRES D'OUVERTURE (8+ options)
@@ -11795,7 +11795,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Jours fériés',
     'Sur rendez-vous uniquement',
     'Sans rendez-vous (walk-in)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ THÉRAPEUTES & PERSONNEL (8+ options)
@@ -11807,7 +11807,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Personnel masculin disponible',
     'Formation continue',
     'Plusieurs langues (FR, EN, etc.)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ LOCALISATION & ACCESSIBILITÉ (10+ options)
@@ -11821,7 +11821,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Arrêt de bus proche',
     'Zone sécurisée',
     'Service navette / transfert',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CERTIFICATIONS & LABELS (8+ options)
@@ -11832,7 +11832,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Hygiène & désinfection stricte',
     'Thérapeutes certifiés',
     'Membre d\'association professionnelle',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MODES DE PAIEMENT (8+ options)
@@ -11845,7 +11845,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Paiement en plusieurs fois',
     'Réduction 1ère visite',
     'Fidélité (points, réductions)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ AMBIANCE & STYLE (8+ options)
@@ -11857,7 +11857,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Naturel & Éco',
     'Oriental (style asiatique)',
     'Intime & Discret',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ PRESTATIONS COMPLÉMENTAIRES (10+ options)
@@ -11870,40 +11870,40 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Consultation bien-être',
     'Boutique produits (huiles, crèmes)',
     'Espace restauration / bar à jus',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CENTRES & SPAS RENOMMÉS (20+ Afrique francophone)
   centres_renommes: [
     // Cameroun
-    '🇨🇲 La Source du Nil (Yaoundé)',
-    '🇨🇲 Hilton Spa Yaoundé',
-    '🇨🇲 Merina Hotel Spa (Yaoundé)',
-    '🇨🇲 Pullman Douala Spa',
-    '🇨🇲 Sawa Hotel Spa (Douala)',
-    '🇨🇲 Azur Bien-Être (Douala)',
-    '🇨🇲 Zen Attitude Spa (Yaoundé)',
+    '\uD83C\uDDE8\uD83C\uDDF2 La Source du Nil (Yaoundé)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Hilton Spa Yaoundé',
+    '\uD83C\uDDE8\uD83C\uDDF2 Merina Hotel Spa (Yaoundé)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Pullman Douala Spa',
+    '\uD83C\uDDE8\uD83C\uDDF2 Sawa Hotel Spa (Douala)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Azur Bien-Être (Douala)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Zen Attitude Spa (Yaoundé)',
 
     // Côte d'Ivoire
-    '🇨🇮 Sofitel Abidjan Spa',
-    '🇨🇮 Ivoire Hotel Spa',
-    '🇨🇮 Azalaï Spa (Abidjan)',
-    '🇨🇮 Wellness Center Abidjan',
+    '\uD83C\uDDE8\uD83C\uDDEE Sofitel Abidjan Spa',
+    '\uD83C\uDDE8\uD83C\uDDEE Ivoire Hotel Spa',
+    '\uD83C\uDDE8\uD83C\uDDEE Azalaï Spa (Abidjan)',
+    '\uD83C\uDDE8\uD83C\uDDEE Wellness Center Abidjan',
 
     // Sénégal
-    '🇸🇳 Terrou-Bi Spa (Dakar)',
-    '🇸🇳 Radisson Blu Spa Dakar',
-    '🇸🇳 King Fahd Palace Spa',
-    '🇸🇳 Spa Djoloff (Dakar)',
+    '\uD83C\uDDF8\uD83C\uDDF3 Terrou-Bi Spa (Dakar)',
+    '\uD83C\uDDF8\uD83C\uDDF3 Radisson Blu Spa Dakar',
+    '\uD83C\uDDF8\uD83C\uDDF3 King Fahd Palace Spa',
+    '\uD83C\uDDF8\uD83C\uDDF3 Spa Djoloff (Dakar)',
 
     // Gabon
-    '🇬🇦 Radisson Blu Spa Libreville',
-    '🇬🇦 Hibiscus Spa (Libreville)',
+    '\uD83C\uDDEC\uD83C\uDDE6 Radisson Blu Spa Libreville',
+    '\uD83C\uDDEC\uD83C\uDDE6 Hibiscus Spa (Libreville)',
 
     // Congo
-    '🇨🇬 Pefaco Spa (Brazzaville)',
+    '\uD83C\uDDE8\uD83C\uDDEC Pefaco Spa (Brazzaville)',
 
-    '🆕 Autre spa (ajouter)'
+    '\uD83C\uDD95 Autre spa (ajouter)'
   ],
 
   // ✅ PROMOTIONS & OFFRES (8+ options)
@@ -11915,7 +11915,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Forfait anniversaire',
     'Forfait couple (Saint-Valentin)',
     'Offre parrainage',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ PRODUITS UTILISÉS (spécificité africaine, 12+ options)
@@ -11932,7 +11932,7 @@ export const BIEN_ETRE_SPA_MODALITIES: ModalityCategory = {
     'Produits locaux africains',
     'Produits de luxe internationaux',
     'Produits végans / cruelty-free',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ZONES GÉOGRAPHIQUES PRIORITAIRES
@@ -11951,195 +11951,195 @@ export const ANIMAUX_VETERINAIRE_MODALITIES: ModalityCategory = {
   // ✅ Types d'animaux (ENRICHI avec contexte africain)
   animaux: [
     // ════════ ANIMAUX DOMESTIQUES ════════
-    '🐕 Chien', '🐈 Chat',
+    '\uD83D\uDC15 Chien', '\uD83D\uDC08 Chat',
 
     // ════════ OISEAUX (très populaires en Afrique) ════════
-    '🦜 Perroquet africain', '🦜 Gris du Gabon', '🦜 Youyou du Sénégal',
-    '🦜 Inséparable', '🦜 Calopsitte', '🐦 Canari', '🐦 Pigeon',
+    '\uD83E\uDD9C Perroquet africain', '\uD83E\uDD9C Gris du Gabon', '\uD83E\uDD9C Youyou du Sénégal',
+    '\uD83E\uDD9C Inséparable', '\uD83E\uDD9C Calopsitte', '\uD83D\uDC26 Canari', '\uD83D\uDC26 Pigeon',
 
     // ════════ ANIMAUX D\'ÉLEVAGE ════════
-    '🐄 Bétail (bœuf, vache, zébu)', '🐐 Chèvre', '🐏 Mouton',
-    '🐔 Volaille (poulet, poule, coq)', '🦆 Canard', '🦃 Dinde',
-    '🦢 Oie', '🐖 Porc', '🐰 Lapin (élevage)',
+    '\uD83D\uDC04 Bétail (bœuf, vache, zébu)', '\uD83D\uDC10 Chèvre', '\uD83D\uDC0F Mouton',
+    '\uD83D\uDC14 Volaille (poulet, poule, coq)', '\uD83E\uDD86 Canard', '\uD83E\uDD83 Dinde',
+    '\uD83E\uDDA2 Oie', '\uD83D\uDC16 Porc', '\uD83D\uDC30 Lapin (élevage)',
 
     // ════════ AUTRES ════════
-    '🐟 Poisson d\'aquarium', '🦎 Reptile (lézard, gecko)',
-    '🐢 Tortue', '🐴 Cheval', '🐎 Âne', '🐹 Rongeur (hamster, cochon d\'Inde)',
+    '\uD83D\uDC1F Poisson d\'aquarium', '\uD83E\uDD8E Reptile (lézard, gecko)',
+    '\uD83D\uDC22 Tortue', '\uD83D\uDC34 Cheval', '\uD83D\uDC0E Âne', '\uD83D\uDC39 Rongeur (hamster, cochon d\'Inde)',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Services vétérinaires (ENRICHI)
   services: [
     // ════════ SOINS MÉDICAUX ════════
-    '💉 Consultation générale',
-    '💉 Vaccination (rage, parvovirose, etc.)',
-    '💊 Déparasitage (interne/externe)',
-    '💊 Traitement anti-puces/tiques',
-    '🏥 Soins d\'urgence',
-    '🩺 Diagnostic/Analyses',
+    '\uD83D\uDC89 Consultation générale',
+    '\uD83D\uDC89 Vaccination (rage, parvovirose, etc.)',
+    '\uD83D\uDC8A Déparasitage (interne/externe)',
+    '\uD83D\uDC8A Traitement anti-puces/tiques',
+    '\uD83C\uDFE5 Soins d\'urgence',
+    '\uD83E\uDE7A Diagnostic/Analyses',
 
     // ════════ CHIRURGIE ════════
     '✂️ Stérilisation/Castration',
-    '🏥 Chirurgie générale',
-    '🦴 Chirurgie orthopédique',
+    '\uD83C\uDFE5 Chirurgie générale',
+    '\uD83E\uDDB4 Chirurgie orthopédique',
 
     // ════════ SOINS SPÉCIALISÉS ════════
-    '🦷 Soins dentaires',
-    '👂 Soins oreilles/yeux',
-    '💇 Toilettage (bain, coupe)',
+    '\uD83E\uDDB7 Soins dentaires',
+    '\uD83D\uDC42 Soins oreilles/yeux',
+    '\uD83D\uDC87 Toilettage (bain, coupe)',
     '✂️ Coupe griffes/ongles',
 
     // ════════ SERVICES ════════
-    '🏠 Garde d\'animaux (pension)',
-    '🎓 Dressage/Éducation',
-    '🐕‍🦺 Dressage de garde',
-    '📋 Certificat vétérinaire',
-    '🚑 Visite à domicile',
-    '📞 Téléconsultation',
+    '\uD83C\uDFE0 Garde d\'animaux (pension)',
+    '\uD83C\uDF93 Dressage/Éducation',
+    '\uD83D\uDC15‍\uD83E\uDDBA Dressage de garde',
+    '\uD83D\uDCCB Certificat vétérinaire',
+    '\uD83D\uDE91 Visite à domicile',
+    '\uD83D\uDCDE Téléconsultation',
 
     // ════════ ÉLEVAGE ════════
-    '🐄 Suivi d\'élevage (bétail)',
-    '🐔 Suivi avicole (volaille)',
-    '🤰 Suivi de reproduction',
-    '🩺 Insémination artificielle',
+    '\uD83D\uDC04 Suivi d\'élevage (bétail)',
+    '\uD83D\uDC14 Suivi avicole (volaille)',
+    '\uD83E\uDD30 Suivi de reproduction',
+    '\uD83E\uDE7A Insémination artificielle',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Produits pour animaux (ENRICHI)
   produits: [
     // ════════ ALIMENTATION ════════
-    '🍖 Nourriture sèche (croquettes)',
-    '🥫 Nourriture humide (pâtée)',
-    '🍖 Viande fraîche',
-    '🦴 Os à mâcher',
-    '🍪 Friandises',
-    '🌾 Aliment pour volaille',
-    '🌾 Aliment pour bétail',
+    '\uD83C\uDF56 Nourriture sèche (croquettes)',
+    '\uD83E\uDD6B Nourriture humide (pâtée)',
+    '\uD83C\uDF56 Viande fraîche',
+    '\uD83E\uDDB4 Os à mâcher',
+    '\uD83C\uDF6A Friandises',
+    '\uD83C\uDF3E Aliment pour volaille',
+    '\uD83C\uDF3E Aliment pour bétail',
 
     // ════════ SANTÉ ════════
-    '💊 Médicaments vétérinaires',
-    '💉 Vaccins',
-    '💊 Antiparasitaires',
-    '💊 Vitamines/Compléments',
+    '\uD83D\uDC8A Médicaments vétérinaires',
+    '\uD83D\uDC89 Vaccins',
+    '\uD83D\uDC8A Antiparasitaires',
+    '\uD83D\uDC8A Vitamines/Compléments',
 
     // ════════ ACCESSOIRES ════════
-    '🏠 Cage/Clapier',
-    '🐟 Aquarium',
-    '🪺 Niche',
-    '🛏️ Coussin/Tapis',
-    '🪣 Litière',
-    '🥣 Gamelle (eau/nourriture)',
+    '\uD83C\uDFE0 Cage/Clapier',
+    '\uD83D\uDC1F Aquarium',
+    '\uD83E\uDEBA Niche',
+    '\uD83D\uDECF️ Coussin/Tapis',
+    '\uD83E\uDEA3 Litière',
+    '\uD83E\uDD63 Gamelle (eau/nourriture)',
 
     // ════════ ÉQUIPEMENT ════════
-    '🦴 Collier', '🦴 Laisse', '🦴 Harnais',
-    '🎾 Jouets',
-    '🎒 Sac de transport',
-    '🧼 Produits d\'hygiène',
-    '🪒 Matériel toilettage',
+    '\uD83E\uDDB4 Collier', '\uD83E\uDDB4 Laisse', '\uD83E\uDDB4 Harnais',
+    '\uD83C\uDFBE Jouets',
+    '\uD83C\uDF92 Sac de transport',
+    '\uD83E\uDDFC Produits d\'hygiène',
+    '\uD83E\uDE92 Matériel toilettage',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Races de chiens (ENRICHI avec races populaires en Afrique)
   races_chiens: [
     // ════════ RACES LOCALES/AFRICAINES ════════
-    '🐕 Chien local (race africaine)',
-    '🐕 Basenji (chien du Congo)',
-    '🐕 Sloughi (lévrier africain)',
-    '🐕 Azawakh (lévrier touareg)',
+    '\uD83D\uDC15 Chien local (race africaine)',
+    '\uD83D\uDC15 Basenji (chien du Congo)',
+    '\uD83D\uDC15 Sloughi (lévrier africain)',
+    '\uD83D\uDC15 Azawakh (lévrier touareg)',
 
     // ════════ RACES DE GARDE (très populaires) ════════
-    '🦮 Berger allemand',
-    '🦮 Rottweiler',
-    '🦮 Doberman',
-    '🦮 Malinois (Berger belge)',
-    '🦮 Pitbull/American Staffordshire',
-    '🦮 Cane Corso',
-    '🦮 Dogue allemand',
-    '🦮 Bullmastiff',
+    '\uD83E\uDDAE Berger allemand',
+    '\uD83E\uDDAE Rottweiler',
+    '\uD83E\uDDAE Doberman',
+    '\uD83E\uDDAE Malinois (Berger belge)',
+    '\uD83E\uDDAE Pitbull/American Staffordshire',
+    '\uD83E\uDDAE Cane Corso',
+    '\uD83E\uDDAE Dogue allemand',
+    '\uD83E\uDDAE Bullmastiff',
 
     // ════════ RACES COURANTES ════════
-    '🐕 Labrador',
-    '🐕 Golden Retriever',
-    '🐕 Husky',
-    '🐕 Bulldog',
+    '\uD83D\uDC15 Labrador',
+    '\uD83D\uDC15 Golden Retriever',
+    '\uD83D\uDC15 Husky',
+    '\uD83D\uDC15 Bulldog',
 
     // ════════ PETITES RACES ════════
-    '🐩 Caniche',
-    '🐕 Chihuahua',
-    '🐕 Yorkshire Terrier',
-    '🐕 Shih Tzu',
+    '\uD83D\uDC29 Caniche',
+    '\uD83D\uDC15 Chihuahua',
+    '\uD83D\uDC15 Yorkshire Terrier',
+    '\uD83D\uDC15 Shih Tzu',
 
     // ════════ AUTRES ════════
-    '🐕 Croisé/Métis',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDC15 Croisé/Métis',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Races de chats (populaires en Afrique)
   races_chats: [
-    '🐈 Chat de gouttière (race locale)',
-    '🐈 Siamois',
-    '🐈 Persan',
-    '🐈 Angora',
-    '🐈 Maine Coon',
-    '🐈 Bengal',
-    '🐈 British Shorthair',
-    '🐈 Sacré de Birmanie',
-    '🐈 Abyssin',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDC08 Chat de gouttière (race locale)',
+    '\uD83D\uDC08 Siamois',
+    '\uD83D\uDC08 Persan',
+    '\uD83D\uDC08 Angora',
+    '\uD83D\uDC08 Maine Coon',
+    '\uD83D\uDC08 Bengal',
+    '\uD83D\uDC08 British Shorthair',
+    '\uD83D\uDC08 Sacré de Birmanie',
+    '\uD83D\uDC08 Abyssin',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Âge de l'animal
   age_animal: [
-    '🐾 Chiot/Chaton (0-6 mois)',
-    '🐾 Jeune (6 mois - 2 ans)',
-    '🐾 Adulte (2-7 ans)',
-    '🐾 Senior (7-10 ans)',
-    '🐾 Très âgé (10+ ans)',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDC3E Chiot/Chaton (0-6 mois)',
+    '\uD83D\uDC3E Jeune (6 mois - 2 ans)',
+    '\uD83D\uDC3E Adulte (2-7 ans)',
+    '\uD83D\uDC3E Senior (7-10 ans)',
+    '\uD83D\uDC3E Très âgé (10+ ans)',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Taille de l'animal (pour chiens)
   taille_animal: [
-    '📏 Très petit (< 5 kg)',
-    '📏 Petit (5-10 kg)',
-    '📏 Moyen (10-25 kg)',
-    '📏 Grand (25-45 kg)',
-    '📏 Très grand (> 45 kg)',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDCCF Très petit (< 5 kg)',
+    '\uD83D\uDCCF Petit (5-10 kg)',
+    '\uD83D\uDCCF Moyen (10-25 kg)',
+    '\uD83D\uDCCF Grand (25-45 kg)',
+    '\uD83D\uDCCF Très grand (> 45 kg)',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: État de santé
   etat_sante: [
     '✅ Bonne santé',
-    '💉 Vacciné à jour',
-    '💊 Déparasité',
-    '🩺 Certificat vétérinaire disponible',
-    '🏥 En traitement',
+    '\uD83D\uDC89 Vacciné à jour',
+    '\uD83D\uDC8A Déparasité',
+    '\uD83E\uDE7A Certificat vétérinaire disponible',
+    '\uD83C\uDFE5 En traitement',
     '⚠️ Problème de santé (préciser)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Urgence
   urgence: [
-    '🚨 Urgence absolue (< 1h)',
+    '\uD83D\uDEA8 Urgence absolue (< 1h)',
     '⚡ Urgent (< 24h)',
-    '📅 Rendez-vous planifié',
-    '💊 Suivi régulier',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDCC5 Rendez-vous planifié',
+    '\uD83D\uDC8A Suivi régulier',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Horaires
   horaires: [
-    '🕐 Lundi-Vendredi (8h-17h)',
-    '🕐 Lundi-Samedi (8h-18h)',
-    '🕐 7j/7 (8h-20h)',
-    '🌙 Service de nuit disponible',
-    '🚨 Urgences 24h/24',
-    '📞 Sur rendez-vous uniquement',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDD50 Lundi-Vendredi (8h-17h)',
+    '\uD83D\uDD50 Lundi-Samedi (8h-18h)',
+    '\uD83D\uDD50 7j/7 (8h-20h)',
+    '\uD83C\uDF19 Service de nuit disponible',
+    '\uD83D\uDEA8 Urgences 24h/24',
+    '\uD83D\uDCDE Sur rendez-vous uniquement',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Zones d'intervention (vétérinaires mobiles)
@@ -12161,31 +12161,31 @@ export const NETTOYAGE_ENTRETIEN_MODALITIES: ModalityCategory = {
   types: [
     'Nettoyage de maison', 'Nettoyage de bureau', 'Nettoyage après chantier',
     'Nettoyage de vitres', 'Nettoyage de tapis', 'Nettoyage de voiture',
-    'Jardinage', 'Piscine', 'Pressing', 'Repassage', 'Désinfection', '🆕 Autre (ajouter)'
+    'Jardinage', 'Piscine', 'Pressing', 'Repassage', 'Désinfection', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Fréquences (legacy)
   frequencies: [
     'Ponctuel', 'Hebdomadaire', 'Bihebdomadaire', 'Mensuel', 'Trimestriel',
-    'Semestriel', 'Annuel', '🆕 Autre (ajouter)'
+    'Semestriel', 'Annuel', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Équipements (legacy)
   equipements: [
     'Aspirateur', 'Nettoyeur vapeur', 'Karcher', 'Balai', 'Serpillière',
-    'Produits de nettoyage inclus', 'Matériel professionnel', '🆕 Autre (ajouter)'
+    'Produits de nettoyage inclus', 'Matériel professionnel', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Surfaces (legacy)
   surfaces: [
     'Studio (< 30m²)', 'Petit appartement (30-50m²)', 'Moyen appartement (50-80m²)',
     'Grand appartement (80-120m²)', 'Maison (> 120m²)', 'Bureau', 'Local commercial',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
 // ════════════════════════════════════════════════════════════
-// 🌳 JARDINAGE & PAYSAGISME - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
+// \uD83C\uDF33 JARDINAGE & PAYSAGISME - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
 // ════════════════════════════════════════════════════════════
 // Services: Élagage palmiers, arbres fruitiers, potagers africains,
 // espaces verts tropicaux, irrigation saison sèche
@@ -12193,227 +12193,227 @@ export const NETTOYAGE_ENTRETIEN_MODALITIES: ModalityCategory = {
 export const JARDINAGE_PAYSAGISME_MODALITIES: ModalityCategory = {
   // ✅ TYPES DE SERVICES (40+ options) - Classés par popularité Afrique
   typeService: [
-    // 🔥 SERVICES POPULAIRES (50% des demandes)
-    '🌴 Élagage palmiers (royal, cocotier, dattier)',
-    '🥭 Entretien arbres fruitiers (manguier, avocatier, papayer)',
-    '🏡 Tonte pelouse/gazon (résidentiel)',
+    // \uD83D\uDD25 SERVICES POPULAIRES (50% des demandes)
+    '\uD83C\uDF34 Élagage palmiers (royal, cocotier, dattier)',
+    '\uD83E\uDD6D Entretien arbres fruitiers (manguier, avocatier, papayer)',
+    '\uD83C\uDFE1 Tonte pelouse/gazon (résidentiel)',
     '✂️ Taille de haies et arbustes',
-    '🌾 Désherbage manuel et chimique',
-    '💧 Installation système arrosage automatique',
-    '🏢 Entretien espaces verts (entreprise/hôtel)',
-    '🌱 Création et entretien potager',
+    '\uD83C\uDF3E Désherbage manuel et chimique',
+    '\uD83D\uDCA7 Installation système arrosage automatique',
+    '\uD83C\uDFE2 Entretien espaces verts (entreprise/hôtel)',
+    '\uD83C\uDF31 Création et entretien potager',
 
-    // 🎨 AMÉNAGEMENT & CRÉATION (30%)
-    '🏗️ Aménagement paysager complet',
-    '🌿 Création jardin tropical',
-    '🌸 Plantation massifs floraux',
-    '🌳 Plantation d\'arbres et arbustes',
-    '🌴 Plantation de palmiers décoratifs',
-    '🪴 Plantation haies végétales',
-    '🏞️ Création allées et bordures',
-    '🪨 Dallage et pavage jardin',
-    '🏗️ Construction terrasse en bois',
+    // \uD83C\uDFA8 AMÉNAGEMENT & CRÉATION (30%)
+    '\uD83C\uDFD7️ Aménagement paysager complet',
+    '\uD83C\uDF3F Création jardin tropical',
+    '\uD83C\uDF38 Plantation massifs floraux',
+    '\uD83C\uDF33 Plantation d\'arbres et arbustes',
+    '\uD83C\uDF34 Plantation de palmiers décoratifs',
+    '\uD83E\uDEB4 Plantation haies végétales',
+    '\uD83C\uDFDE️ Création allées et bordures',
+    '\uD83E\uDEA8 Dallage et pavage jardin',
+    '\uD83C\uDFD7️ Construction terrasse en bois',
     '⛲ Installation fontaine/bassin',
-    '🌿 Création jardin zen/japonais',
+    '\uD83C\uDF3F Création jardin zen/japonais',
 
-    // 🔧 ENTRETIEN RÉGULIER (20%)
-    '📅 Contrat entretien mensuel',
-    '📅 Contrat entretien trimestriel',
-    '🌾 Tonte gazon + ramassage',
-    '💧 Arrosage régulier (saison sèche)',
-    '🍂 Ramassage feuilles mortes',
+    // \uD83D\uDD27 ENTRETIEN RÉGULIER (20%)
+    '\uD83D\uDCC5 Contrat entretien mensuel',
+    '\uD83D\uDCC5 Contrat entretien trimestriel',
+    '\uD83C\uDF3E Tonte gazon + ramassage',
+    '\uD83D\uDCA7 Arrosage régulier (saison sèche)',
+    '\uD83C\uDF42 Ramassage feuilles mortes',
     '✂️ Taille saisonnière arbustes',
-    '🌱 Traitement phytosanitaire (anti-insectes)',
-    '🌿 Fertilisation/engrais naturel',
+    '\uD83C\uDF31 Traitement phytosanitaire (anti-insectes)',
+    '\uD83C\uDF3F Fertilisation/engrais naturel',
 
-    // 🚜 GROS TRAVAUX (10%)
-    '🪓 Abattage d\'arbres',
-    '🌳 Dessouchage',
-    '🚜 Défrichage terrain',
-    '🌾 Débroussaillage grande surface',
+    // \uD83D\uDE9C GROS TRAVAUX (10%)
+    '\uD83E\uDE93 Abattage d\'arbres',
+    '\uD83C\uDF33 Dessouchage',
+    '\uD83D\uDE9C Défrichage terrain',
+    '\uD83C\uDF3E Débroussaillage grande surface',
     '⛏️ Terrassement et nivellement',
-    '🏗️ Évacuation déchets verts',
+    '\uD83C\uDFD7️ Évacuation déchets verts',
 
-    // 🎋 SPÉCIALITÉS AFRICAINES (10%)
-    '🌴 Taille palmiers royaux en hauteur',
-    '🥭 Récolte fruits arbres fruitiers',
-    '🌱 Potager bio maraîcher africain',
-    '🌺 Jardin de plantes médicinales',
-    '🌾 Culture de gazon tropical résistant',
-    '🌿 Jardinage permaculture',
+    // \uD83C\uDF8B SPÉCIALITÉS AFRICAINES (10%)
+    '\uD83C\uDF34 Taille palmiers royaux en hauteur',
+    '\uD83E\uDD6D Récolte fruits arbres fruitiers',
+    '\uD83C\uDF31 Potager bio maraîcher africain',
+    '\uD83C\uDF3A Jardin de plantes médicinales',
+    '\uD83C\uDF3E Culture de gazon tropical résistant',
+    '\uD83C\uDF3F Jardinage permaculture',
 
-    '🆕 Autre (à préciser)'
+    '\uD83C\uDD95 Autre (à préciser)'
   ],
 
   // ✅ PLANTES TROPICALES AFRICAINES (60+ options)
   plantesAfricaines: [
-    // 🌴 PALMIERS (très populaire)
-    '🌴 Palmier royal',
-    '🥥 Cocotier',
-    '🌴 Palmier dattier',
-    '🌴 Palmier raphia',
-    '🌴 Palmier à huile',
-    '🌴 Palmier areca',
-    '🌴 Palmier nain',
+    // \uD83C\uDF34 PALMIERS (très populaire)
+    '\uD83C\uDF34 Palmier royal',
+    '\uD83E\uDD65 Cocotier',
+    '\uD83C\uDF34 Palmier dattier',
+    '\uD83C\uDF34 Palmier raphia',
+    '\uD83C\uDF34 Palmier à huile',
+    '\uD83C\uDF34 Palmier areca',
+    '\uD83C\uDF34 Palmier nain',
 
-    // 🥭 ARBRES FRUITIERS (essentiel)
-    '🥭 Manguier',
-    '🥑 Avocatier',
-    '🍈 Papayer',
-    '🍊 Oranger',
-    '🍋 Citronnier',
-    '🥭 Goyavier',
-    '🍌 Bananier',
-    '🍍 Ananas (culture)',
-    '🌰 Safoutier',
-    '🌰 Corossolier',
-    '🫐 Bissap (fleur d\'hibiscus)',
-    '🌰 Néré (soumbala)',
+    // \uD83E\uDD6D ARBRES FRUITIERS (essentiel)
+    '\uD83E\uDD6D Manguier',
+    '\uD83E\uDD51 Avocatier',
+    '\uD83C\uDF48 Papayer',
+    '\uD83C\uDF4A Oranger',
+    '\uD83C\uDF4B Citronnier',
+    '\uD83E\uDD6D Goyavier',
+    '\uD83C\uDF4C Bananier',
+    '\uD83C\uDF4D Ananas (culture)',
+    '\uD83C\uDF30 Safoutier',
+    '\uD83C\uDF30 Corossolier',
+    '\uD83E\uDED0 Bissap (fleur d\'hibiscus)',
+    '\uD83C\uDF30 Néré (soumbala)',
 
-    // 🌺 FLEURS TROPICALES
-    '🌺 Hibiscus (rose de Chine)',
-    '🌸 Bougainvilliers',
-    '🌸 Ixora (flamme des bois)',
-    '🌼 Alamanda',
-    '🌺 Frangipanier',
-    '🌷 Rose du désert (Adenium)',
-    '🌸 Laurier rose',
-    '🌺 Canna (balisier)',
+    // \uD83C\uDF3A FLEURS TROPICALES
+    '\uD83C\uDF3A Hibiscus (rose de Chine)',
+    '\uD83C\uDF38 Bougainvilliers',
+    '\uD83C\uDF38 Ixora (flamme des bois)',
+    '\uD83C\uDF3C Alamanda',
+    '\uD83C\uDF3A Frangipanier',
+    '\uD83C\uDF37 Rose du désert (Adenium)',
+    '\uD83C\uDF38 Laurier rose',
+    '\uD83C\uDF3A Canna (balisier)',
 
-    // 🌿 PLANTES ORNEMENTALES
-    '🌿 Croton (codiaeum)',
-    '🌿 Dracaena (dragonnier)',
-    '🌿 Cordyline',
-    '🌿 Asparagus',
-    '🌿 Fougère tropicale',
-    '🌵 Euphorbe cactus',
-    '🌿 Sansevière (langue de belle-mère)',
-    '🪴 Philodendron',
-    '🪴 Monstera',
+    // \uD83C\uDF3F PLANTES ORNEMENTALES
+    '\uD83C\uDF3F Croton (codiaeum)',
+    '\uD83C\uDF3F Dracaena (dragonnier)',
+    '\uD83C\uDF3F Cordyline',
+    '\uD83C\uDF3F Asparagus',
+    '\uD83C\uDF3F Fougère tropicale',
+    '\uD83C\uDF35 Euphorbe cactus',
+    '\uD83C\uDF3F Sansevière (langue de belle-mère)',
+    '\uD83E\uDEB4 Philodendron',
+    '\uD83E\uDEB4 Monstera',
 
-    // 🌱 POTAGER AFRICAIN
-    '🌶️ Piment',
-    '🍅 Tomate',
-    '🫑 Poivron',
-    '🥒 Concombre',
-    '🫛 Gombo (okra)',
-    '🥕 Carotte',
-    '🧅 Oignon',
-    '🥬 Feuilles de manioc',
-    '🥬 Feuilles d\'amarante (folong)',
-    '🥬 Épinards africains (ndolé)',
-    '🌽 Maïs',
-    '🍆 Aubergine africaine',
+    // \uD83C\uDF31 POTAGER AFRICAIN
+    '\uD83C\uDF36️ Piment',
+    '\uD83C\uDF45 Tomate',
+    '\uD83E\uDED1 Poivron',
+    '\uD83E\uDD52 Concombre',
+    '\uD83E\uDEDB Gombo (okra)',
+    '\uD83E\uDD55 Carotte',
+    '\uD83E\uDDC5 Oignon',
+    '\uD83E\uDD6C Feuilles de manioc',
+    '\uD83E\uDD6C Feuilles d\'amarante (folong)',
+    '\uD83E\uDD6C Épinards africains (ndolé)',
+    '\uD83C\uDF3D Maïs',
+    '\uD83C\uDF46 Aubergine africaine',
 
-    // 🌾 GAZON & HAIES
-    '🌾 Gazon tropical résistant',
-    '🌾 Gazon kikuyu',
-    '🌾 Gazon bahia',
-    '🌿 Haie de lauriers',
-    '🌿 Haie de thuyas',
-    '🌿 Haie de bambous',
+    // \uD83C\uDF3E GAZON & HAIES
+    '\uD83C\uDF3E Gazon tropical résistant',
+    '\uD83C\uDF3E Gazon kikuyu',
+    '\uD83C\uDF3E Gazon bahia',
+    '\uD83C\uDF3F Haie de lauriers',
+    '\uD83C\uDF3F Haie de thuyas',
+    '\uD83C\uDF3F Haie de bambous',
 
-    '🆕 Autre (à préciser)'
+    '\uD83C\uDD95 Autre (à préciser)'
   ],
 
   // ✅ MATÉRIEL & ÉQUIPEMENT (25+ options)
   materielJardinage: [
     // Motorisé
-    '🚜 Tondeuse à essence',
-    '🚜 Tondeuse électrique',
-    '🚜 Tondeuse autoportée',
+    '\uD83D\uDE9C Tondeuse à essence',
+    '\uD83D\uDE9C Tondeuse électrique',
+    '\uD83D\uDE9C Tondeuse autoportée',
     '✂️ Taille-haie motorisé',
-    '🌾 Débroussailleuse thermique',
-    '🪓 Tronçonneuse',
-    '💨 Souffleur de feuilles',
+    '\uD83C\uDF3E Débroussailleuse thermique',
+    '\uD83E\uDE93 Tronçonneuse',
+    '\uD83D\uDCA8 Souffleur de feuilles',
     '♻️ Broyeur de végétaux',
 
     // Manuel
-    '🪓 Coupe-coupe (machette africaine)',
+    '\uD83E\uDE93 Coupe-coupe (machette africaine)',
     '⚒️ Houe (daba)',
-    '🔨 Pioche',
+    '\uD83D\uDD28 Pioche',
     '⛏️ Bêche',
-    '🪝 Râteau',
-    '🪝 Fourche à bêcher',
+    '\uD83E\uDE9D Râteau',
+    '\uD83E\uDE9D Fourche à bêcher',
     '✂️ Sécateur manuel',
     '✂️ Cisaille à haies',
 
     // Arrosage
-    '💧 Système arrosage automatique',
-    '💧 Tuyau d\'arrosage',
-    '🪣 Arrosoir manuel',
-    '💦 Pulvérisateur (traitement)',
-    '💧 Pompe à eau',
+    '\uD83D\uDCA7 Système arrosage automatique',
+    '\uD83D\uDCA7 Tuyau d\'arrosage',
+    '\uD83E\uDEA3 Arrosoir manuel',
+    '\uD83D\uDCA6 Pulvérisateur (traitement)',
+    '\uD83D\uDCA7 Pompe à eau',
 
     // Autre
-    '🧤 Équipement protection (gants, bottes)',
-    '🪣 Brouette',
-    '🪜 Échelle télescopique',
-    '🆕 Autre (à préciser)'
+    '\uD83E\uDDE4 Équipement protection (gants, bottes)',
+    '\uD83E\uDEA3 Brouette',
+    '\uD83E\uDE9C Échelle télescopique',
+    '\uD83C\uDD95 Autre (à préciser)'
   ],
 
   // ✅ FRÉQUENCE D'ENTRETIEN (adaptée au climat africain)
   frequenceEntretien: [
-    '📅 Hebdomadaire (toutes les semaines)',
-    '📅 Bi-hebdomadaire (2 fois/semaine)',
-    '📅 Mensuel (1 fois/mois)',
-    '📅 Bi-mensuel (2 fois/mois)',
-    '📅 Trimestriel (tous les 3 mois)',
-    '🌧️ Début saison des pluies (mars-avril)',
+    '\uD83D\uDCC5 Hebdomadaire (toutes les semaines)',
+    '\uD83D\uDCC5 Bi-hebdomadaire (2 fois/semaine)',
+    '\uD83D\uDCC5 Mensuel (1 fois/mois)',
+    '\uD83D\uDCC5 Bi-mensuel (2 fois/mois)',
+    '\uD83D\uDCC5 Trimestriel (tous les 3 mois)',
+    '\uD83C\uDF27️ Début saison des pluies (mars-avril)',
     '☀️ Milieu saison sèche (décembre-janvier)',
-    '🌿 Intervention ponctuelle unique',
-    '🆕 Autre (à préciser)'
+    '\uD83C\uDF3F Intervention ponctuelle unique',
+    '\uD83C\uDD95 Autre (à préciser)'
   ],
 
   // ✅ TYPE DE TERRAIN (important pour devis)
   typeTerrain: [
-    '🏡 Jardin résidentiel (villa)',
-    '🏘️ Cour maison (petit jardin)',
-    '🏢 Espace vert entreprise/bureau',
-    '🏨 Jardin hôtel/résidence',
-    '🏫 Espace vert école/université',
-    '🏥 Jardin clinique/hôpital',
+    '\uD83C\uDFE1 Jardin résidentiel (villa)',
+    '\uD83C\uDFD8️ Cour maison (petit jardin)',
+    '\uD83C\uDFE2 Espace vert entreprise/bureau',
+    '\uD83C\uDFE8 Jardin hôtel/résidence',
+    '\uD83C\uDFEB Espace vert école/université',
+    '\uD83C\uDFE5 Jardin clinique/hôpital',
     '⛪ Jardin église/mosquée',
-    '🏟️ Stade/terrain de sport',
-    '🏞️ Parc public',
-    '🏗️ Chantier/terrain vague',
-    '🌴 Plantation (grande surface)',
-    '🆕 Autre (à préciser)'
+    '\uD83C\uDFDF️ Stade/terrain de sport',
+    '\uD83C\uDFDE️ Parc public',
+    '\uD83C\uDFD7️ Chantier/terrain vague',
+    '\uD83C\uDF34 Plantation (grande surface)',
+    '\uD83C\uDD95 Autre (à préciser)'
   ],
 
   // ✅ SURFACE (en m²) - Grille adaptée aux réalités africaines
   surfaceTerrain: [
-    '📏 Moins de 50 m² (petite cour)',
-    '📏 50 à 100 m² (jardin moyen)',
-    '📏 100 à 200 m² (grand jardin)',
-    '📏 200 à 500 m² (très grand jardin)',
-    '📏 500 à 1000 m² (petit espace vert)',
-    '📏 1000 à 3000 m² (grand espace vert)',
-    '📏 3000 à 5000 m² (parc)',
-    '📏 Plus de 5000 m² (grande plantation)',
-    '🆕 Autre (à préciser)'
+    '\uD83D\uDCCF Moins de 50 m² (petite cour)',
+    '\uD83D\uDCCF 50 à 100 m² (jardin moyen)',
+    '\uD83D\uDCCF 100 à 200 m² (grand jardin)',
+    '\uD83D\uDCCF 200 à 500 m² (très grand jardin)',
+    '\uD83D\uDCCF 500 à 1000 m² (petit espace vert)',
+    '\uD83D\uDCCF 1000 à 3000 m² (grand espace vert)',
+    '\uD83D\uDCCF 3000 à 5000 m² (parc)',
+    '\uD83D\uDCCF Plus de 5000 m² (grande plantation)',
+    '\uD83C\uDD95 Autre (à préciser)'
   ],
 
   // ✅ TARIFICATION (mode de facturation)
   modeTarification: [
-    '💰 Forfait intervention unique',
-    '💰 Tarif horaire (par heure)',
-    '💰 Forfait mensuel (abonnement)',
-    '💰 Forfait trimestriel',
-    '💰 Forfait annuel',
-    '💰 Prix au m² (grande surface)',
-    '💰 Devis sur mesure',
-    '🆕 Autre (à préciser)'
+    '\uD83D\uDCB0 Forfait intervention unique',
+    '\uD83D\uDCB0 Tarif horaire (par heure)',
+    '\uD83D\uDCB0 Forfait mensuel (abonnement)',
+    '\uD83D\uDCB0 Forfait trimestriel',
+    '\uD83D\uDCB0 Forfait annuel',
+    '\uD83D\uDCB0 Prix au m² (grande surface)',
+    '\uD83D\uDCB0 Devis sur mesure',
+    '\uD83C\uDD95 Autre (à préciser)'
   ],
 
   // ✅ NIVEAU D'EXPÉRIENCE
   niveauExperience: [
-    '👨‍🌾 Jardinier professionnel (5+ ans)',
-    '🎓 Paysagiste diplômé',
-    '🏢 Entreprise de paysagisme',
-    '🌱 Jardinier indépendant',
-    '👨‍🌾 Aide-jardinier',
-    '🆕 Autre (à préciser)'
+    '\uD83D\uDC68‍\uD83C\uDF3E Jardinier professionnel (5+ ans)',
+    '\uD83C\uDF93 Paysagiste diplômé',
+    '\uD83C\uDFE2 Entreprise de paysagisme',
+    '\uD83C\uDF31 Jardinier indépendant',
+    '\uD83D\uDC68‍\uD83C\uDF3E Aide-jardinier',
+    '\uD83C\uDD95 Autre (à préciser)'
   ],
 
   // ✅ PRESTATIONS INCLUSES
@@ -12425,10 +12425,10 @@ export const JARDINAGE_PAYSAGISME_MODALITIES: ModalityCategory = {
     '✅ Conseil personnalisé',
     '✅ Garantie reprise plantes',
     '❌ Matériel client uniquement',
-    '🆕 Autre (à préciser)'
+    '\uD83C\uDD95 Autre (à préciser)'
   ],
 
-  // 📍 ZONES D'INTERVENTION (système intelligent - s'adapte au pays de l'utilisateur)
+  // \uD83D\uDCCD ZONES D'INTERVENTION (système intelligent - s'adapte au pays de l'utilisateur)
   zones_intervention: genererZonesIntervention('CM') // Par défaut Cameroun, s'adapte via useUserCountry
 };
 
@@ -12470,7 +12470,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     'Formation agents de sécurité',
     'Analyse des risques',
     'Plan de sécurité sur mesure',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPE DE CLIENT (8 options)
@@ -12483,7 +12483,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     'Événements (mariages, concerts)',
     'Administrations publiques',
     'Banques & Institutions financières',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ DISPONIBILITÉ (10 options)
@@ -12496,7 +12496,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     'Intervention sur appel',
     'Événements ponctuels',
     'Horaires flexibles (à définir)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES DE CAMÉRAS (15+) - Enrichi Afrique
@@ -12516,7 +12516,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     'Caméra miniature discrète',
     'Caméra espion camouflée',
     'Caméra de comptage personnes',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ RÉSOLUTION CAMÉRA (10 options)
@@ -12527,10 +12527,10 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     '4MP - 2K',
     '5MP - 2.5K',
     '6MP',
-    '8MP (4K) - Ultra HD 🔥',
+    '8MP (4K) - Ultra HD \uD83D\uDD25',
     '12MP',
     '16MP+',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ STOCKAGE VIDÉO (12 options)
@@ -12547,7 +12547,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     'Rétention 7 jours',
     'Rétention 30 jours',
     'Rétention 60+ jours',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES D'ALARMES (15+)
@@ -12568,7 +12568,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     'Alarme incendie/fumée',
     'Alarme inondation',
     'Alarme gaz/monoxyde de carbone',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CONTRÔLE D'ACCÈS (12+ options)
@@ -12586,7 +12586,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     'Gestion visiteurs',
     'Tourniquets',
     'Sas de sécurité',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOMBRE D'AGENTS (8 options)
@@ -12598,7 +12598,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     '11-20 agents',
     '20+ agents',
     'Équipe roulante (relais)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ARMEMENT AGENTS (6 options)
@@ -12609,7 +12609,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     'Agents avec chiens dressés',
     'Équipement protection (gilet pare-balles)',
     'Équipement complet (arme + protection)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CERTIFICATIONS (15+) - Adapté contexte africain
@@ -12629,7 +12629,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     'Expérience 10+ ans',
     'Anciens militaires/policiers',
     'Agents formés et diplômés',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ DURÉE CONTRAT (12 options)
@@ -12646,13 +12646,13 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     '3 ans',
     'Longue durée (3+ ans)',
     'Contrat flexible (renouvelable)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MARQUES ÉQUIPEMENTS (25+) - Marques présentes en Afrique
   marquesEquipements: [
     // Caméras (leaders en Afrique)
-    'Hikvision 🔥',
+    'Hikvision \uD83D\uDD25',
     'Dahua ⭐',
     'Uniview',
     'Axis Communications',
@@ -12679,7 +12679,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     'CAME',
     'BFT',
     'Nice',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ GARANTIE ÉQUIPEMENTS (8 options)
@@ -12692,7 +12692,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     '10 ans',
     'Garantie à vie (pièces)',
     'Pas de garantie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ALIMENTATION ÉLECTRIQUE (10 options)
@@ -12707,7 +12707,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     'Générateur de secours',
     'PoE (Power over Ethernet)',
     'Batterie lithium rechargeable',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ FONCTIONNALITÉS CAMÉRAS (20+)
@@ -12734,7 +12734,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     'Double objectif',
     'Anti-vandalisme (IK10)',
     'Étanchéité IP66/IP67',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ SERVICES INCLUS (15+)
@@ -12754,7 +12754,7 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     'Appel forces de l\'ordre',
     'Devis et audit gratuits',
     'Test système gratuit',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPE DE SITE À SÉCURISER (20+)
@@ -12779,10 +12779,10 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
     'Site industriel',
     'Ferme / Exploitation agricole',
     'Entrepôt frigorifique',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 📍 ZONES D'INTERVENTION (système intelligent)
+  // \uD83D\uDCCD ZONES D'INTERVENTION (système intelligent)
   zones_intervention: genererZonesIntervention('CM') // Adapté au pays de l'utilisateur
 };
 
@@ -12791,49 +12791,49 @@ export const PLOMBERIE_MODALITIES: ModalityCategory = {
   // Types de prestations
   types: [
     'Installation', 'Réparation', 'Entretien', 'Dépannage', 'Débouchage',
-    'Raccordement', 'Remplacement', 'Diagnostic', '🆕 Autre (ajouter)'
+    'Raccordement', 'Remplacement', 'Diagnostic', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de services/Spécialités
   services: [
     'Installation sanitaire', 'Réparation fuite', 'Débouchage canalisations', 'Installation chaudière',
     'Installation chauffe-eau', 'Raccordement eau', 'Entretien annuel', 'Dépannage d\'urgence',
-    'Détection de fuite', 'Rénovation salle de bain', '🆕 Autre (ajouter)'
+    'Détection de fuite', 'Rénovation salle de bain', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Équipements
   equipements: [
     'Robinetterie', 'Lavabo', 'WC', 'Douche', 'Baignoire', 'Évier', 'Chauffe-eau',
-    'Chaudière', 'Tuyauterie', 'Siphon', 'Mitigeur', 'Fosse septique', '🆕 Autre (ajouter)'
+    'Chaudière', 'Tuyauterie', 'Siphon', 'Mitigeur', 'Fosse septique', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ AMÉLIORÉ: Disponibilité avec granularité fine
   disponibilites: [
     'Intervention express (1h)', 'Intervention rapide (2h)', 'Intervention sous 3h',
     'Intervention sous 6h', 'Intervention sous 12h', 'Intervention sous 24h',
-    'Urgence 24h/24', 'Rendez-vous planifié', 'Week-end disponible', '🆕 Autre (ajouter)'
+    'Urgence 24h/24', 'Rendez-vous planifié', 'Week-end disponible', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Garanties
   garanties: [
     '1 mois', '3 mois', '6 mois', '1 an', '2 ans', 'Garantie décennale',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Certifications professionnelles
   certifications: [
     'Certifié QualiPlomberie', 'Certification CAP Plomberie', 'Habilitation professionnelle',
     'Agrément assurance décennale', 'Certification sanitaire', 'Label qualité',
-    'Prestataire certifié', '🆕 Autre (ajouter)'
+    'Prestataire certifié', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NOUVEAU: Ancienneté / Expérience
   experiencePlombier: [
     'Débutant (0-2 ans)', 'Confirmé (3-5 ans)', 'Expérimenté (6-10 ans)',
-    'Expert (11-20 ans)', 'Maître-artisan (20+ ans)', '🆕 Autre (ajouter)'
+    'Expert (11-20 ans)', 'Maître-artisan (20+ ans)', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 📍 Zones d'intervention (système intelligent - s'adapte au pays de l'utilisateur)
+  // \uD83D\uDCCD Zones d'intervention (système intelligent - s'adapte au pays de l'utilisateur)
   zones_intervention: genererZonesIntervention('CM') // Par défaut Cameroun, s'adapte via useUserCountry
 };
 
@@ -12842,7 +12842,7 @@ export const ELECTRICIEN_MODALITIES: ModalityCategory = {
   // Types de prestations
   types: [
     'Installation', 'Réparation', 'Dépannage', 'Mise aux normes', 'Diagnostic',
-    'Raccordement', 'Rénovation', 'Maintenance', '🆕 Autre (ajouter)'
+    'Raccordement', 'Rénovation', 'Maintenance', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de services/Spécialités
@@ -12851,115 +12851,115 @@ export const ELECTRICIEN_MODALITIES: ModalityCategory = {
     'Installation éclairage', 'Installation prises et interrupteurs', 'Câblage maison',
     'Installation domotique', 'Installation climatisation', 'Installation chauffage électrique',
     'Détection panne', 'Réparation court-circuit', 'Installation parafoudre',
-    'Raccordement compteur', 'Rénovation installation électrique', '🆕 Autre (ajouter)'
+    'Raccordement compteur', 'Rénovation installation électrique', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Équipements
   equipements: [
     'Tableau électrique', 'Prises électriques', 'Interrupteurs', 'Disjoncteurs',
     'Éclairage', 'Luminaires', 'Câblage', 'Parafoudre', 'Différentiel',
-    'Domotique', 'Climatisation', 'Chauffage électrique', '🆕 Autre (ajouter)'
+    'Domotique', 'Climatisation', 'Chauffage électrique', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Disponibilité
   disponibilites: [
     'Urgence 24h/24', 'Intervention rapide (2h)', 'Rendez-vous sous 24h',
-    'Rendez-vous planifié', 'Week-end', '🆕 Autre (ajouter)'
+    'Rendez-vous planifié', 'Week-end', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Garanties
   garanties: [
     '3 mois', '6 mois', '1 an', '2 ans', '5 ans', 'Garantie décennale',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Certifications
   certifications: [
     'Électricien qualifié', 'Habilitation électrique', 'Certification Consuel',
-    'Qualification RGE', 'Agrément assurance', '🆕 Autre (ajouter)'
+    'Qualification RGE', 'Agrément assurance', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 📍 Zones d'intervention (système intelligent - s'adapte au pays de l'utilisateur)
+  // \uD83D\uDCCD Zones d'intervention (système intelligent - s'adapte au pays de l'utilisateur)
   zones_intervention: genererZonesIntervention('CM') // Par défaut Cameroun, s'adapte via useUserCountry
 };
 
-// ✅ MODALITÉS FORGERON / FERRONNERIE D'ART - 🌍 AFRIQUE FRANCOPHONE
+// ✅ MODALITÉS FORGERON / FERRONNERIE D'ART - \uD83C\uDF0D AFRIQUE FRANCOPHONE
 // Métier artisanal très important : sécurité (anti-vol, grilles) + décoration
 export const FORGERON_MODALITIES: ModalityCategory = {
   // ✅ TYPES DE RÉALISATIONS (50+) - Classés par popularité Afrique
   typesRealisations: [
-    // 🔥 SÉCURITÉ (80% des demandes - PRIORITÉ #1 en Afrique)
-    '🔒 Grilles de fenêtre anti-vol',
-    '🔒 Grilles de porte anti-vol',
-    '🔒 Barreaux de sécurité fixes',
-    '🔒 Barreaux de sécurité amovibles',
-    '🔒 Grilles de protection balcon',
-    '🔒 Grilles de protection terrasse',
-    '🔒 Protection fenêtre en fer forgé',
-    '🔒 Rideau métallique (boutique/magasin)',
-    '🔒 Rideau métallique (garage)',
-    '🔒 Volet roulant métallique',
-    '🔒 Grille extensible (accordéon)',
-    '🔒 Porte blindée métallique',
-    '🔒 Renfort de porte existante',
-    '🔒 Cadenas de sécurité renforcé',
+    // \uD83D\uDD25 SÉCURITÉ (80% des demandes - PRIORITÉ #1 en Afrique)
+    '\uD83D\uDD12 Grilles de fenêtre anti-vol',
+    '\uD83D\uDD12 Grilles de porte anti-vol',
+    '\uD83D\uDD12 Barreaux de sécurité fixes',
+    '\uD83D\uDD12 Barreaux de sécurité amovibles',
+    '\uD83D\uDD12 Grilles de protection balcon',
+    '\uD83D\uDD12 Grilles de protection terrasse',
+    '\uD83D\uDD12 Protection fenêtre en fer forgé',
+    '\uD83D\uDD12 Rideau métallique (boutique/magasin)',
+    '\uD83D\uDD12 Rideau métallique (garage)',
+    '\uD83D\uDD12 Volet roulant métallique',
+    '\uD83D\uDD12 Grille extensible (accordéon)',
+    '\uD83D\uDD12 Porte blindée métallique',
+    '\uD83D\uDD12 Renfort de porte existante',
+    '\uD83D\uDD12 Cadenas de sécurité renforcé',
 
-    // 🚪 PORTAILS & ENTRÉES (très demandé)
-    '🚪 Portail coulissant motorisé',
-    '🚪 Portail coulissant manuel',
-    '🚪 Portail battant 2 vantaux',
-    '🚪 Portail battant 1 vantail',
-    '🚪 Portail piéton',
-    '🚪 Portillon de jardin',
-    '🚪 Porte de garage métallique',
-    '🚪 Porte d\'entrée en fer forgé',
-    '🚪 Porte de service',
-    '🚪 Portail de villa (haut standing)',
+    // \uD83D\uDEAA PORTAILS & ENTRÉES (très demandé)
+    '\uD83D\uDEAA Portail coulissant motorisé',
+    '\uD83D\uDEAA Portail coulissant manuel',
+    '\uD83D\uDEAA Portail battant 2 vantaux',
+    '\uD83D\uDEAA Portail battant 1 vantail',
+    '\uD83D\uDEAA Portail piéton',
+    '\uD83D\uDEAA Portillon de jardin',
+    '\uD83D\uDEAA Porte de garage métallique',
+    '\uD83D\uDEAA Porte d\'entrée en fer forgé',
+    '\uD83D\uDEAA Porte de service',
+    '\uD83D\uDEAA Portail de villa (haut standing)',
 
-    // 🏗️ CLÔTURES & MURS (résidentiel + commercial)
-    '🏗️ Clôture en fer forgé',
-    '🏗️ Grillage rigide (panneau)',
-    '🏗️ Grillage souple avec poteaux',
-    '🏗️ Clôture à barreaudage',
-    '🏗️ Garde-corps / Main courante',
-    '🏗️ Brise-vue métallique',
-    '🏗️ Muret surmonté de grilles',
+    // \uD83C\uDFD7️ CLÔTURES & MURS (résidentiel + commercial)
+    '\uD83C\uDFD7️ Clôture en fer forgé',
+    '\uD83C\uDFD7️ Grillage rigide (panneau)',
+    '\uD83C\uDFD7️ Grillage souple avec poteaux',
+    '\uD83C\uDFD7️ Clôture à barreaudage',
+    '\uD83C\uDFD7️ Garde-corps / Main courante',
+    '\uD83C\uDFD7️ Brise-vue métallique',
+    '\uD83C\uDFD7️ Muret surmonté de grilles',
 
-    // 🏠 BALCONS & TERRASSES (décoration + sécurité)
-    '🏠 Garde-corps de balcon fer forgé',
-    '🏠 Garde-corps de terrasse',
-    '🏠 Rambarde d\'escalier extérieur',
-    '🏠 Rambarde d\'escalier intérieur',
-    '🏠 Main courante escalier',
-    '🏠 Balustrade décorative',
+    // \uD83C\uDFE0 BALCONS & TERRASSES (décoration + sécurité)
+    '\uD83C\uDFE0 Garde-corps de balcon fer forgé',
+    '\uD83C\uDFE0 Garde-corps de terrasse',
+    '\uD83C\uDFE0 Rambarde d\'escalier extérieur',
+    '\uD83C\uDFE0 Rambarde d\'escalier intérieur',
+    '\uD83C\uDFE0 Main courante escalier',
+    '\uD83C\uDFE0 Balustrade décorative',
 
-    // 🎨 DÉCORATION & ESTHÉTIQUE (montée en gamme)
-    '🎨 Pergola métallique',
-    '🎨 Tonnelle en fer forgé',
-    '🎨 Marquise de porte',
-    '🎨 Auvent métallique',
-    '🎨 Brise-soleil métallique',
-    '🎨 Cache-climatiseur décoratif',
-    '🎨 Claustra métallique',
-    '🎨 Paravent en fer forgé',
-    '🎨 Élément décoratif mural',
+    // \uD83C\uDFA8 DÉCORATION & ESTHÉTIQUE (montée en gamme)
+    '\uD83C\uDFA8 Pergola métallique',
+    '\uD83C\uDFA8 Tonnelle en fer forgé',
+    '\uD83C\uDFA8 Marquise de porte',
+    '\uD83C\uDFA8 Auvent métallique',
+    '\uD83C\uDFA8 Brise-soleil métallique',
+    '\uD83C\uDFA8 Cache-climatiseur décoratif',
+    '\uD83C\uDFA8 Claustra métallique',
+    '\uD83C\uDFA8 Paravent en fer forgé',
+    '\uD83C\uDFA8 Élément décoratif mural',
 
-    // 🏢 PROFESSIONNEL & COMMERCIAL
-    '🏢 Devanture de magasin',
-    '🏢 Vitrine de boutique',
-    '🏢 Porte de hangar',
-    '🏢 Structure métallique (charpente)',
-    '🏢 Passerelle métallique',
-    '🏢 Escalier métallique industriel',
+    // \uD83C\uDFE2 PROFESSIONNEL & COMMERCIAL
+    '\uD83C\uDFE2 Devanture de magasin',
+    '\uD83C\uDFE2 Vitrine de boutique',
+    '\uD83C\uDFE2 Porte de hangar',
+    '\uD83C\uDFE2 Structure métallique (charpente)',
+    '\uD83C\uDFE2 Passerelle métallique',
+    '\uD83C\uDFE2 Escalier métallique industriel',
 
-    // 🪑 MOBILIER MÉTALLIQUE (sur mesure)
-    '🪑 Table en fer forgé',
-    '🪑 Chaise en fer forgé',
-    '🪑 Banc de jardin',
-    '🪑 Salon de jardin métallique',
-    '🪑 Étagère métallique',
+    // \uD83E\uDE91 MOBILIER MÉTALLIQUE (sur mesure)
+    '\uD83E\uDE91 Table en fer forgé',
+    '\uD83E\uDE91 Chaise en fer forgé',
+    '\uD83E\uDE91 Banc de jardin',
+    '\uD83E\uDE91 Salon de jardin métallique',
+    '\uD83E\uDE91 Étagère métallique',
 
-    '🆕 Autre réalisation (ajouter)'
+    '\uD83C\uDD95 Autre réalisation (ajouter)'
   ],
 
   // ✅ TYPES DE PRESTATIONS (10+)
@@ -12974,7 +12974,7 @@ export const FORGERON_MODALITIES: ModalityCategory = {
     'Prise de mesures à domicile',
     'Maintenance et entretien',
     'Dépannage urgence',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MATÉRIAUX UTILISÉS (15+) - Adapté disponibilité Afrique
@@ -13003,40 +13003,40 @@ export const FORGERON_MODALITIES: ModalityCategory = {
     'Fer + Bois',
     'Fer + Verre',
 
-    '🆕 Autre matériau (ajouter)'
+    '\uD83C\uDD95 Autre matériau (ajouter)'
   ],
 
   // ✅ STYLES & DESIGNS (20+) - Goûts locaux + moderne
   styles: [
     // Moderne (tendance actuelle)
-    '🎨 Moderne épuré',
-    '🎨 Minimaliste contemporain',
-    '🎨 Design géométrique',
-    '🎨 Lignes droites épurées',
+    '\uD83C\uDFA8 Moderne épuré',
+    '\uD83C\uDFA8 Minimaliste contemporain',
+    '\uD83C\uDFA8 Design géométrique',
+    '\uD83C\uDFA8 Lignes droites épurées',
 
     // Classique & Traditionnel
-    '🎨 Classique élégant',
-    '🎨 Traditionnel africain',
-    '🎨 Style colonial',
-    '🎨 Baroque orné',
+    '\uD83C\uDFA8 Classique élégant',
+    '\uD83C\uDFA8 Traditionnel africain',
+    '\uD83C\uDFA8 Style colonial',
+    '\uD83C\uDFA8 Baroque orné',
 
     // Artistique & Décoratif
-    '🎨 Fer forgé artistique',
-    '🎨 Motifs floraux',
-    '🎨 Motifs géométriques',
-    '🎨 Arabesques',
-    '🎨 Volutes et spirales',
+    '\uD83C\uDFA8 Fer forgé artistique',
+    '\uD83C\uDFA8 Motifs floraux',
+    '\uD83C\uDFA8 Motifs géométriques',
+    '\uD83C\uDFA8 Arabesques',
+    '\uD83C\uDFA8 Volutes et spirales',
 
     // Fonctionnel
-    '🎨 Simple et fonctionnel',
-    '🎨 Industriel brut',
-    '🎨 Sobre et discret',
+    '\uD83C\uDFA8 Simple et fonctionnel',
+    '\uD83C\uDFA8 Industriel brut',
+    '\uD83C\uDFA8 Sobre et discret',
 
     // Sur mesure
-    '🎨 Personnalisé (nom, logo, initiales)',
-    '🎨 Création unique sur-mesure',
+    '\uD83C\uDFA8 Personnalisé (nom, logo, initiales)',
+    '\uD83C\uDFA8 Création unique sur-mesure',
 
-    '🆕 Autre style (ajouter)'
+    '\uD83C\uDD95 Autre style (ajouter)'
   ],
 
   // ✅ FINITIONS (12+) - Durabilité importante (climat tropical)
@@ -13057,7 +13057,7 @@ export const FORGERON_MODALITIES: ModalityCategory = {
     'Fer brut (sans peinture)',
     'Aspect rouillé artistique',
 
-    '🆕 Autre finition (ajouter)'
+    '\uD83C\uDD95 Autre finition (ajouter)'
   ],
 
   // ✅ DIMENSIONS STANDARD (format africain)
@@ -13081,7 +13081,7 @@ export const FORGERON_MODALITIES: ModalityCategory = {
     '10m linéaires',
 
     'Sur mesure (prise de mesure)',
-    '🆕 Autre dimension (ajouter)'
+    '\uD83C\uDD95 Autre dimension (ajouter)'
   ],
 
   // ✅ DÉLAIS DE RÉALISATION (réaliste Afrique)
@@ -13093,7 +13093,7 @@ export const FORGERON_MODALITIES: ModalityCategory = {
     '⏰ 3-4 semaines (travaux complexes)',
     '⏰ 1-2 mois (grosse commande)',
     '⏰ Selon disponibilité matériaux',
-    '🆕 Autre délai (ajouter)'
+    '\uD83C\uDD95 Autre délai (ajouter)'
   ],
 
   // ✅ GARANTIES (important pour confiance)
@@ -13105,24 +13105,24 @@ export const FORGERON_MODALITIES: ModalityCategory = {
     '✅ Garantie contre rouille (2 ans)',
     '✅ Garantie motorisation (1 an)',
     '❌ Aucune garantie',
-    '🆕 Autre garantie (ajouter)'
+    '\uD83C\uDD95 Autre garantie (ajouter)'
   ],
 
   // ✅ SERVICES INCLUS (très important)
   servicesInclus: [
-    '📐 Prise de mesures gratuite',
-    '💰 Devis détaillé gratuit',
-    '🎨 Conception/Design inclus',
-    '📋 Plans et dessins techniques',
-    '🚚 Livraison incluse',
-    '🔧 Installation complète incluse',
-    '🔧 Pose et fixation incluse',
-    '🎨 Peinture antirouille incluse',
-    '🔩 Visserie et fixations incluses',
-    '🧹 Nettoyage chantier inclus',
-    '📞 SAV et assistance inclus',
-    '🔄 Ajustements après pose',
-    '🆕 Autre service (ajouter)'
+    '\uD83D\uDCD0 Prise de mesures gratuite',
+    '\uD83D\uDCB0 Devis détaillé gratuit',
+    '\uD83C\uDFA8 Conception/Design inclus',
+    '\uD83D\uDCCB Plans et dessins techniques',
+    '\uD83D\uDE9A Livraison incluse',
+    '\uD83D\uDD27 Installation complète incluse',
+    '\uD83D\uDD27 Pose et fixation incluse',
+    '\uD83C\uDFA8 Peinture antirouille incluse',
+    '\uD83D\uDD29 Visserie et fixations incluses',
+    '\uD83E\uDDF9 Nettoyage chantier inclus',
+    '\uD83D\uDCDE SAV et assistance inclus',
+    '\uD83D\uDD04 Ajustements après pose',
+    '\uD83C\uDD95 Autre service (ajouter)'
   ],
 
   // ✅ OPTIONS & MOTORISATION (montée en gamme)
@@ -13139,19 +13139,19 @@ export const FORGERON_MODALITIES: ModalityCategory = {
     '⚡ Batterie de secours',
 
     // Sécurité
-    '🔐 Serrure multipoints',
-    '🔐 Serrure électrique',
-    '🔐 Verrou de sécurité',
-    '🔐 Cadenas haute sécurité',
-    '🔐 Gâche électrique',
+    '\uD83D\uDD10 Serrure multipoints',
+    '\uD83D\uDD10 Serrure électrique',
+    '\uD83D\uDD10 Verrou de sécurité',
+    '\uD83D\uDD10 Cadenas haute sécurité',
+    '\uD83D\uDD10 Gâche électrique',
 
     // Accessoires
-    '🔔 Sonnette',
-    '🔔 Carillon',
-    '💡 Éclairage LED intégré',
-    '🎨 Plaque de nom personnalisée',
+    '\uD83D\uDD14 Sonnette',
+    '\uD83D\uDD14 Carillon',
+    '\uD83D\uDCA1 Éclairage LED intégré',
+    '\uD83C\uDFA8 Plaque de nom personnalisée',
 
-    '🆕 Autre option (ajouter)'
+    '\uD83C\uDD95 Autre option (ajouter)'
   ],
 
   // ✅ TYPES DE FIXATION (important pour solidité)
@@ -13163,40 +13163,40 @@ export const FORGERON_MODALITIES: ModalityCategory = {
     'Fixation murale renforcée',
     'Fixation au sol (poteau)',
     'Ancrage profond (30-50cm)',
-    '🆕 Autre fixation (ajouter)'
+    '\uD83C\uDD95 Autre fixation (ajouter)'
   ],
 
   // ✅ PRIX ESTIMATIFS FCFA (fourchettes réalistes Cameroun, CI, Sénégal...)
   prixEstimatifs: [
     // SÉCURITÉ (les plus demandés)
-    '🔒 Grille fenêtre simple (1m x 1m): 25.000-50.000 FCFA',
-    '🔒 Grille fenêtre renforcée (1m x 1m): 40.000-70.000 FCFA',
-    '🔒 Barreaux porte: 35.000-80.000 FCFA',
-    '🔒 Rideau métallique boutique: 150.000-400.000 FCFA',
-    '🔒 Porte blindée: 200.000-800.000 FCFA',
+    '\uD83D\uDD12 Grille fenêtre simple (1m x 1m): 25.000-50.000 FCFA',
+    '\uD83D\uDD12 Grille fenêtre renforcée (1m x 1m): 40.000-70.000 FCFA',
+    '\uD83D\uDD12 Barreaux porte: 35.000-80.000 FCFA',
+    '\uD83D\uDD12 Rideau métallique boutique: 150.000-400.000 FCFA',
+    '\uD83D\uDD12 Porte blindée: 200.000-800.000 FCFA',
 
     // PORTAILS
-    '🚪 Portail simple (3m): 150.000-300.000 FCFA',
-    '🚪 Portail fer forgé décoratif (3m): 250.000-500.000 FCFA',
-    '🚪 Portail coulissant (4m): 300.000-600.000 FCFA',
-    '🚪 Portail motorisé (4m): 500.000-1.200.000 FCFA',
-    '🚪 Portail haut standing (5m): 800.000-2.000.000 FCFA',
+    '\uD83D\uDEAA Portail simple (3m): 150.000-300.000 FCFA',
+    '\uD83D\uDEAA Portail fer forgé décoratif (3m): 250.000-500.000 FCFA',
+    '\uD83D\uDEAA Portail coulissant (4m): 300.000-600.000 FCFA',
+    '\uD83D\uDEAA Portail motorisé (4m): 500.000-1.200.000 FCFA',
+    '\uD83D\uDEAA Portail haut standing (5m): 800.000-2.000.000 FCFA',
 
     // BALCONS & GARDE-CORPS
-    '🏠 Garde-corps balcon (mètre linéaire): 20.000-50.000 FCFA/m',
-    '🏠 Garde-corps terrasse (5m): 100.000-250.000 FCFA',
-    '🏠 Rampe escalier (mètre linéaire): 25.000-60.000 FCFA/m',
+    '\uD83C\uDFE0 Garde-corps balcon (mètre linéaire): 20.000-50.000 FCFA/m',
+    '\uD83C\uDFE0 Garde-corps terrasse (5m): 100.000-250.000 FCFA',
+    '\uD83C\uDFE0 Rampe escalier (mètre linéaire): 25.000-60.000 FCFA/m',
 
     // CLÔTURES
-    '🏗️ Clôture simple (mètre linéaire): 15.000-35.000 FCFA/m',
-    '🏗️ Clôture fer forgé (mètre linéaire): 25.000-60.000 FCFA/m',
+    '\uD83C\uDFD7️ Clôture simple (mètre linéaire): 15.000-35.000 FCFA/m',
+    '\uD83C\uDFD7️ Clôture fer forgé (mètre linéaire): 25.000-60.000 FCFA/m',
 
     // DIVERS
-    '🎨 Marquise de porte: 50.000-150.000 FCFA',
-    '🎨 Pergola métallique (3m x 3m): 200.000-500.000 FCFA',
-    '🪑 Mobilier jardin (table + 4 chaises): 150.000-400.000 FCFA',
+    '\uD83C\uDFA8 Marquise de porte: 50.000-150.000 FCFA',
+    '\uD83C\uDFA8 Pergola métallique (3m x 3m): 200.000-500.000 FCFA',
+    '\uD83E\uDE91 Mobilier jardin (table + 4 chaises): 150.000-400.000 FCFA',
 
-    '🆕 Autre tarif (ajouter)'
+    '\uD83C\uDD95 Autre tarif (ajouter)'
   ],
 
   // ✅ ÉPAISSEUR / RÉSISTANCE (sécurité importante)
@@ -13211,26 +13211,26 @@ export const FORGERON_MODALITIES: ModalityCategory = {
     'Tube 30x30mm (portails)',
     'Tube 40x40mm (portails lourds)',
     'Tube 50x50mm (portails industriels)',
-    '🆕 Autre épaisseur (ajouter)'
+    '\uD83C\uDD95 Autre épaisseur (ajouter)'
   ],
 
   // ✅ CERTIFICATIONS & COMPÉTENCES
   certifications: [
-    '🎓 Artisan professionnel agréé',
-    '🎓 Formation soudure certifiée',
-    '🏆 +5 ans d\'expérience',
-    '🏆 +10 ans d\'expérience',
-    '🏆 +15 ans d\'expérience',
-    '🏆 +20 ans d\'expérience (maître artisan)',
-    '🛠️ Spécialiste portails motorisés',
-    '🛠️ Spécialiste fer forgé artistique',
-    '🛠️ Spécialiste sécurité (anti-vol)',
-    '🛠️ Soudure TIG (inox, aluminium)',
-    '🛠️ Soudure MIG/MAG (acier)',
-    '🛠️ Soudure à l\'arc',
-    '📱 Atelier équipé moderne',
-    '🚗 Atelier mobile (déplacements)',
-    '🆕 Autre certification (ajouter)'
+    '\uD83C\uDF93 Artisan professionnel agréé',
+    '\uD83C\uDF93 Formation soudure certifiée',
+    '\uD83C\uDFC6 +5 ans d\'expérience',
+    '\uD83C\uDFC6 +10 ans d\'expérience',
+    '\uD83C\uDFC6 +15 ans d\'expérience',
+    '\uD83C\uDFC6 +20 ans d\'expérience (maître artisan)',
+    '\uD83D\uDEE0️ Spécialiste portails motorisés',
+    '\uD83D\uDEE0️ Spécialiste fer forgé artistique',
+    '\uD83D\uDEE0️ Spécialiste sécurité (anti-vol)',
+    '\uD83D\uDEE0️ Soudure TIG (inox, aluminium)',
+    '\uD83D\uDEE0️ Soudure MIG/MAG (acier)',
+    '\uD83D\uDEE0️ Soudure à l\'arc',
+    '\uD83D\uDCF1 Atelier équipé moderne',
+    '\uD83D\uDE97 Atelier mobile (déplacements)',
+    '\uD83C\uDD95 Autre certification (ajouter)'
   ],
 
   // ✅ ZONES D'INTERVENTION (utilise le système intelligent)
@@ -13244,48 +13244,48 @@ export const FORGERON_MODALITIES: ModalityCategory = {
 
   // ✅ MODES DE PAIEMENT (contexte Afrique)
   modesPaiement: [
-    '💵 Espèces',
-    '📱 Mobile Money (Orange Money)',
-    '📱 Mobile Money (MTN Mobile Money)',
-    '📱 Mobile Money (Moov Money)',
-    '💳 Virement bancaire',
-    '💳 Carte bancaire',
-    '📅 Paiement échelonné (30% avance)',
-    '📅 Paiement en 2 fois (50% avance)',
-    '📅 Paiement en 3 fois (40% avance)',
-    '💰 Acompte + solde à la livraison',
-    '🆕 Autre mode (ajouter)'
+    '\uD83D\uDCB5 Espèces',
+    '\uD83D\uDCF1 Mobile Money (Orange Money)',
+    '\uD83D\uDCF1 Mobile Money (MTN Mobile Money)',
+    '\uD83D\uDCF1 Mobile Money (Moov Money)',
+    '\uD83D\uDCB3 Virement bancaire',
+    '\uD83D\uDCB3 Carte bancaire',
+    '\uD83D\uDCC5 Paiement échelonné (30% avance)',
+    '\uD83D\uDCC5 Paiement en 2 fois (50% avance)',
+    '\uD83D\uDCC5 Paiement en 3 fois (40% avance)',
+    '\uD83D\uDCB0 Acompte + solde à la livraison',
+    '\uD83C\uDD95 Autre mode (ajouter)'
   ],
 
   // ✅ SERVICES ADDITIONNELS
   servicesAdditionnels: [
-    '📐 Étude et conception gratuite',
-    '💰 Devis détaillé et chiffré gratuit',
-    '📸 Photos de réalisations antérieures',
-    '🎨 Modèles de catalogue disponibles',
-    '🚚 Transport et livraison inclus',
-    '🔧 Installation et pose incluse',
-    '🎨 Traitement antirouille inclus',
-    '🔄 Retouches gratuites (1 mois)',
-    '📞 SAV et maintenance',
-    '🛡️ Garantie décennale disponible',
+    '\uD83D\uDCD0 Étude et conception gratuite',
+    '\uD83D\uDCB0 Devis détaillé et chiffré gratuit',
+    '\uD83D\uDCF8 Photos de réalisations antérieures',
+    '\uD83C\uDFA8 Modèles de catalogue disponibles',
+    '\uD83D\uDE9A Transport et livraison inclus',
+    '\uD83D\uDD27 Installation et pose incluse',
+    '\uD83C\uDFA8 Traitement antirouille inclus',
+    '\uD83D\uDD04 Retouches gratuites (1 mois)',
+    '\uD83D\uDCDE SAV et maintenance',
+    '\uD83D\uDEE1️ Garantie décennale disponible',
     '⚡ Intervention urgence 24h',
-    '📱 Support WhatsApp',
-    '🆕 Autre service (ajouter)'
+    '\uD83D\uDCF1 Support WhatsApp',
+    '\uD83C\uDD95 Autre service (ajouter)'
   ],
 
   // ✅ TYPES DE CLIENTS (adapté contexte)
   typesClients: [
-    '🏠 Particuliers (résidentiel)',
-    '🏢 Entreprises et commerces',
-    '🏗️ Promoteurs immobiliers',
-    '🏛️ Administrations publiques',
-    '🏨 Hôtels et résidences',
-    '🏪 Boutiques et magasins',
-    '🏭 Industries et usines',
+    '\uD83C\uDFE0 Particuliers (résidentiel)',
+    '\uD83C\uDFE2 Entreprises et commerces',
+    '\uD83C\uDFD7️ Promoteurs immobiliers',
+    '\uD83C\uDFDB️ Administrations publiques',
+    '\uD83C\uDFE8 Hôtels et résidences',
+    '\uD83C\uDFEA Boutiques et magasins',
+    '\uD83C\uDFED Industries et usines',
     '⛪ Établissements religieux',
-    '🏫 Écoles et universités',
-    '🆕 Autre type (ajouter)'
+    '\uD83C\uDFEB Écoles et universités',
+    '\uD83C\uDD95 Autre type (ajouter)'
   ],
 
   // ✅ NORMES & STANDARDS (sécurité)
@@ -13296,66 +13296,66 @@ export const FORGERON_MODALITIES: ModalityCategory = {
     '✅ Norme NF (France)',
     '✅ Test de charge validé',
     '✅ Garantie solidité 10 ans',
-    '🆕 Autre norme (ajouter)'
+    '\uD83C\uDD95 Autre norme (ajouter)'
   ],
 
   // ✅ ÉQUIPEMENTS ATELIER (crédibilité)
   equipementsAtelier: [
-    '🔧 Poste à souder professionnel',
-    '🔧 Soudure TIG (aluminium/inox)',
-    '🔧 Soudure MIG/MAG (acier)',
-    '🔧 Plieuse métallique',
-    '🔧 Cisaille',
-    '🔧 Meuleuse d\'angle',
-    '🔧 Perceuse à colonne',
-    '🔧 Tour à métaux',
-    '🔧 Fraiseuse',
-    '🔧 Forge traditionnelle',
-    '🔧 Cabine de peinture',
-    '🔧 Compresseur air',
-    '🆕 Autre équipement (ajouter)'
+    '\uD83D\uDD27 Poste à souder professionnel',
+    '\uD83D\uDD27 Soudure TIG (aluminium/inox)',
+    '\uD83D\uDD27 Soudure MIG/MAG (acier)',
+    '\uD83D\uDD27 Plieuse métallique',
+    '\uD83D\uDD27 Cisaille',
+    '\uD83D\uDD27 Meuleuse d\'angle',
+    '\uD83D\uDD27 Perceuse à colonne',
+    '\uD83D\uDD27 Tour à métaux',
+    '\uD83D\uDD27 Fraiseuse',
+    '\uD83D\uDD27 Forge traditionnelle',
+    '\uD83D\uDD27 Cabine de peinture',
+    '\uD83D\uDD27 Compresseur air',
+    '\uD83C\uDD95 Autre équipement (ajouter)'
   ],
 
   // ✅ RÉALISATIONS SPÉCIALES (portfolio)
   realisationsSpeciales: [
-    '🏆 Villas haut standing',
-    '🏆 Résidences de prestige',
-    '🏆 Ambassades et consulats',
-    '🏆 Hôtels 4-5 étoiles',
-    '🏆 Banques et institutions',
-    '🏆 Centres commerciaux',
-    '🏆 Mosquées et églises',
-    '🏆 Projets gouvernementaux',
-    '🏆 Œuvres d\'art monumentales',
-    '🆕 Autre réalisation (ajouter)'
+    '\uD83C\uDFC6 Villas haut standing',
+    '\uD83C\uDFC6 Résidences de prestige',
+    '\uD83C\uDFC6 Ambassades et consulats',
+    '\uD83C\uDFC6 Hôtels 4-5 étoiles',
+    '\uD83C\uDFC6 Banques et institutions',
+    '\uD83C\uDFC6 Centres commerciaux',
+    '\uD83C\uDFC6 Mosquées et églises',
+    '\uD83C\uDFC6 Projets gouvernementaux',
+    '\uD83C\uDFC6 Œuvres d\'art monumentales',
+    '\uD83C\uDD95 Autre réalisation (ajouter)'
   ],
 
   // ✅ LANGUES PARLÉES (service client)
   languesParlees: [
-    '🇫🇷 Français',
-    '🗣️ Anglais',
-    '🗣️ Douala (Cameroun)',
-    '🗣️ Bamiléké (Cameroun)',
-    '🗣️ Ewondo (Cameroun)',
-    '🗣️ Fulfuldé (Cameroun)',
-    '🗣️ Dioula (CI, Mali, Burkina)',
-    '🗣️ Baoulé (Côte d\'Ivoire)',
-    '🗣️ Wolof (Sénégal)',
-    '🗣️ Lingala (RDC, Congo)',
-    '🗣️ Swahili (RDC)',
-    '🆕 Autre langue (ajouter)'
+    '\uD83C\uDDEB\uD83C\uDDF7 Français',
+    '\uD83D\uDDE3️ Anglais',
+    '\uD83D\uDDE3️ Douala (Cameroun)',
+    '\uD83D\uDDE3️ Bamiléké (Cameroun)',
+    '\uD83D\uDDE3️ Ewondo (Cameroun)',
+    '\uD83D\uDDE3️ Fulfuldé (Cameroun)',
+    '\uD83D\uDDE3️ Dioula (CI, Mali, Burkina)',
+    '\uD83D\uDDE3️ Baoulé (Côte d\'Ivoire)',
+    '\uD83D\uDDE3️ Wolof (Sénégal)',
+    '\uD83D\uDDE3️ Lingala (RDC, Congo)',
+    '\uD83D\uDDE3️ Swahili (RDC)',
+    '\uD83C\uDD95 Autre langue (ajouter)'
   ],
 
   // ✅ DISPONIBILITÉ & HORAIRES
   disponibilites: [
-    '🕐 Lun-Ven: 7h-18h, Sam: 8h-17h',
-    '🕐 Lun-Sam: 7h-19h',
-    '🕐 Lun-Dim: 8h-18h',
-    '🕐 Tous les jours: 7h-20h',
+    '\uD83D\uDD50 Lun-Ven: 7h-18h, Sam: 8h-17h',
+    '\uD83D\uDD50 Lun-Sam: 7h-19h',
+    '\uD83D\uDD50 Lun-Dim: 8h-18h',
+    '\uD83D\uDD50 Tous les jours: 7h-20h',
     '⏰ Déplacements 7j/7',
-    '📞 Sur rendez-vous',
+    '\uD83D\uDCDE Sur rendez-vous',
     '⚡ Urgence 24h/24 (dépannage)',
-    '🆕 Autres horaires (ajouter)'
+    '\uD83C\uDD95 Autres horaires (ajouter)'
   ]
 };
 
@@ -13365,7 +13365,7 @@ export const ELECTRICIEN_AUTO_MODALITIES: ModalityCategory = {
   types: [
     'Diagnostic électronique', 'Réparation système électrique', 'Installation équipement',
     'Dépannage panne électrique', 'Remplacement composant', 'Maintenance préventive',
-    'Mise à jour calculateur', '🆕 Autre (ajouter)'
+    'Mise à jour calculateur', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de services/Spécialités
@@ -13375,7 +13375,7 @@ export const ELECTRICIEN_AUTO_MODALITIES: ModalityCategory = {
     'Installation caméra de recul', 'Installation GPS', 'Installation capteurs parking',
     'Réparation phares', 'Réparation feux', 'Réparation lève-vitre', 'Réparation centralisation',
     'Programmation clé électronique', 'Réparation climatisation auto', 'Diagnostic voyant moteur',
-    'Réparation calculateur', '🆕 Autre (ajouter)'
+    'Réparation calculateur', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Équipements concernés
@@ -13383,41 +13383,41 @@ export const ELECTRICIEN_AUTO_MODALITIES: ModalityCategory = {
     'Batterie', 'Alternateur', 'Démarreur', 'Faisceau électrique', 'Calculateur moteur',
     'Phares', 'Feux arrière', 'Clignotants', 'Autoradio', 'Alarme', 'Caméra de recul',
     'GPS', 'Capteurs parking', 'Lève-vitre', 'Centralisation', 'Climatisation',
-    'Essuie-glace', 'Klaxon', 'Allume-cigare', '🆕 Autre (ajouter)'
+    'Essuie-glace', 'Klaxon', 'Allume-cigare', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Véhicules pris en charge
   vehicules: [
     'Voitures légères', 'Motos', 'Scooters', '4x4 / SUV', 'Camionnettes',
-    'Poids lourds', 'Véhicules utilitaires', 'Camping-cars', '🆕 Autre (ajouter)'
+    'Poids lourds', 'Véhicules utilitaires', 'Camping-cars', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Marques spécialisées
   marques_specialisees: [
     'Toyota', 'Honda', 'Mercedes', 'BMW', 'Audi', 'Volkswagen', 'Peugeot', 'Renault',
     'Nissan', 'Hyundai', 'Kia', 'Ford', 'Chevrolet', 'Mazda', 'Suzuki',
-    'Toutes marques', '🆕 Autre (ajouter)'
+    'Toutes marques', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Disponibilité
   disponibilites: [
     'Urgence 24h/24', 'Intervention rapide (2h)', 'Rendez-vous sous 24h',
-    'Rendez-vous planifié', 'Week-end', 'Déplacement à domicile', '🆕 Autre (ajouter)'
+    'Rendez-vous planifié', 'Week-end', 'Déplacement à domicile', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Garanties
   garanties: [
     '1 mois', '3 mois', '6 mois', '1 an', '2 ans', 'Garantie pièces et main d\'œuvre',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Équipements de diagnostic
   equipements_diagnostic: [
     'Valise diagnostic OBD', 'Multimètre', 'Oscilloscope', 'Testeur de batterie',
-    'Testeur alternateur', 'Scanner électronique', '🆕 Autre (ajouter)'
+    'Testeur alternateur', 'Scanner électronique', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 📍 Zones d'intervention (système intelligent - s'adapte au pays de l'utilisateur)
+  // \uD83D\uDCCD Zones d'intervention (système intelligent - s'adapte au pays de l'utilisateur)
   zones_intervention: genererZonesIntervention('CM') // Par défaut Cameroun, s'adapte via useUserCountry
 };
 
@@ -13426,7 +13426,7 @@ export const MACON_MODALITIES: ModalityCategory = {
   // Types de prestations
   types: [
     'Construction neuve', 'Rénovation', 'Extension', 'Réparation', 'Surélévation',
-    'Aménagement', 'Démolition', 'Reprise sous-œuvre', '🆕 Autre (ajouter)'
+    'Aménagement', 'Démolition', 'Reprise sous-œuvre', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de travaux/Spécialités
@@ -13434,46 +13434,46 @@ export const MACON_MODALITIES: ModalityCategory = {
     'Fondations', 'Dalle béton', 'Mur porteur', 'Mur de clôture', 'Chape',
     'Coulage béton', 'Coffrage', 'Ferraillage', 'Enduit façade', 'Crépi',
     'Jointoiement', 'Réparation fissures', 'Extension maison', 'Garage',
-    'Terrasse béton', 'Escalier béton', 'Piscine béton', '🆕 Autre (ajouter)'
+    'Terrasse béton', 'Escalier béton', 'Piscine béton', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Matériaux utilisés
   materiaux: [
     'Béton armé', 'Parpaing', 'Brique', 'Pierre naturelle', 'Agglo',
-    'Béton cellulaire', 'Mortier', 'Ciment', 'Chaux', 'Enduit', '🆕 Autre (ajouter)'
+    'Béton cellulaire', 'Mortier', 'Ciment', 'Chaux', 'Enduit', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de bâtiments
   types_batiment: [
     'Maison individuelle', 'Immeuble', 'Villa', 'Commercial', 'Industriel',
-    'Rénovation ancien', 'Construction neuve', '🆕 Autre (ajouter)'
+    'Rénovation ancien', 'Construction neuve', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Équipements
   equipements: [
     'Bétonnière', 'Échafaudage', 'Niveau laser', 'Machines à projeter',
-    'Toupie béton', 'Outils professionnels', '🆕 Autre (ajouter)'
+    'Toupie béton', 'Outils professionnels', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Disponibilité
   disponibilites: [
     'Intervention rapide', 'Rendez-vous sous 48h', 'Rendez-vous planifié',
-    'Week-end', 'Chantiers longs', '🆕 Autre (ajouter)'
+    'Week-end', 'Chantiers longs', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Garanties
   garanties: [
     '6 mois', '1 an', '2 ans', 'Garantie décennale', 'Assurance décennale',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Certifications
   certifications: [
     'Maçon qualifié', 'Certification RGE', 'Assurance décennale', 'Qualibat',
-    'Entreprise agréée', '🆕 Autre (ajouter)'
+    'Entreprise agréée', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 📍 Zones d'intervention (système intelligent - s'adapte au pays de l'utilisateur)
+  // \uD83D\uDCCD Zones d'intervention (système intelligent - s'adapte au pays de l'utilisateur)
   zones_intervention: genererZonesIntervention('CM') // Par défaut Cameroun, s'adapte via useUserCountry
 };
 
@@ -13483,7 +13483,7 @@ export const CARRELEUR_MODALITIES: ModalityCategory = {
   types: [
     'Pose de carrelage', 'Pose de faïence', 'Pose de mosaïque', 'Rénovation carrelage',
     'Remplacement carrelage', 'Réparation joints', 'Ragréage sol', 'Étanchéité',
-    'Pose terrasse extérieure', 'Pose carrelage piscine', '🆕 Autre (ajouter)'
+    'Pose terrasse extérieure', 'Pose carrelage piscine', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de services/Spécialités
@@ -13491,92 +13491,92 @@ export const CARRELEUR_MODALITIES: ModalityCategory = {
     'Carrelage sol intérieur', 'Carrelage mural salle de bain', 'Faïence cuisine',
     'Carrelage terrasse', 'Carrelage balcon', 'Carrelage piscine', 'Mosaïque décorative',
     'Ragréage et préparation sol', 'Étanchéité salle de bain', 'Joints et finitions',
-    'Réparation carrelage cassé', 'Rénovation ancienne faïence', '🆕 Autre (ajouter)'
+    'Réparation carrelage cassé', 'Rénovation ancienne faïence', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Surfaces d'application
   surfaces: [
     'Sol intérieur', 'Sol extérieur', 'Mur salle de bain', 'Mur cuisine',
     'Terrasse', 'Balcon', 'Escalier', 'Piscine', 'Garage',
-    'Commerce/Boutique', 'Bureau', '🆕 Autre (ajouter)'
+    'Commerce/Boutique', 'Bureau', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de carrelage posés
   types_carrelage: [
     'Carrelage céramique', 'Grès cérame', 'Porcelaine', 'Faïence',
     'Mosaïque', 'Marbre', 'Granit', 'Pierre naturelle', 'Terre cuite',
-    'Tomette', 'Carrelage antidérapant', '🆕 Autre (ajouter)'
+    'Tomette', 'Carrelage antidérapant', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Formats/Dimensions
   formats: [
     'Petit format (< 20x20cm)', 'Standard (20x20 à 40x40cm)',
     'Grand format (60x60cm et +)', 'Très grand format (120x60cm)',
-    'Mosaïque (petits carreaux)', 'Sur mesure', '🆕 Autre (ajouter)'
+    'Mosaïque (petits carreaux)', 'Sur mesure', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Techniques de pose
   techniques: [
     'Pose droite classique', 'Pose en diagonale', 'Pose en chevron',
     'Pose en damier', 'Pose à joints décalés', 'Pose sans joint (rectifié)',
-    'Double encollage (grands formats)', '🆕 Autre (ajouter)'
+    'Double encollage (grands formats)', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Finitions
   finitions: [
     'Joint blanc', 'Joint gris', 'Joint noir', 'Joint coloré',
     'Joint époxy (étanche)', 'Joint fin (1-2mm)', 'Joint large (5-10mm)',
-    'Plinthe carrelage', 'Baguette d\'angle', '🆕 Autre (ajouter)'
+    'Plinthe carrelage', 'Baguette d\'angle', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Équipements et outils
   equipements: [
     'Carrelette manuelle', 'Carrelette électrique', 'Coupe-carrelage',
     'Niveau laser', 'Malaxeur', 'Croisillons et cales', 'Raclette à joint',
-    'Équipement professionnel complet', '🆕 Autre (ajouter)'
+    'Équipement professionnel complet', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Expérience
   experience: [
     'Moins de 2 ans', '2-5 ans d\'expérience', '5-10 ans d\'expérience',
     '10-15 ans d\'expérience', '15-20 ans d\'expérience',
-    'Plus de 20 ans (maître carreleur)', '🆕 Autre (ajouter)'
+    'Plus de 20 ans (maître carreleur)', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Disponibilité
   disponibilites: [
     'Disponible immédiatement', 'Intervention sous 48h', 'Rendez-vous sous 1 semaine',
     'Rendez-vous planifié', 'Week-end possible', 'Grands chantiers uniquement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Garanties
   garanties: [
     '6 mois', '1 an', '2 ans', 'Garantie décennale',
-    'Assurance responsabilité civile', '🆕 Autre (ajouter)'
+    'Assurance responsabilité civile', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Certifications
   certifications: [
     'Carreleur qualifié', 'CAP Carreleur-mosaïste', 'Formation professionnelle',
     'Artisan agréé', 'Assurance décennale', 'RGE (Reconnu Garant Environnement)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Services additionnels
   services_additionnels: [
     'Devis gratuit et détaillé', 'Conseil choix matériaux', 'Fourniture carrelage',
     'Démolition ancien carrelage', 'Évacuation gravats', 'Ragréage inclus',
-    'Nettoyage fin de chantier', 'Garantie anti-fissure', '🆕 Autre (ajouter)'
+    'Nettoyage fin de chantier', 'Garantie anti-fissure', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Modes de tarification
   tarification: [
     'Au m² (fourniture non incluse)', 'Au m² (fourniture incluse)', 'Forfait global',
-    'Devis personnalisé', 'Tarif horaire', '🆕 Autre (ajouter)'
+    'Devis personnalisé', 'Tarif horaire', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 📍 Zones d'intervention (système intelligent - s'adapte au pays de l'utilisateur)
+  // \uD83D\uDCCD Zones d'intervention (système intelligent - s'adapte au pays de l'utilisateur)
   zones_intervention: genererZonesIntervention('CM') // Par défaut Cameroun, s'adapte via useUserCountry
 };
 
@@ -13586,7 +13586,7 @@ export const INGENIEUR_ARCHI_MODALITIES: ModalityCategory = {
   types: [
     'Étude architecturale', 'Étude technique', 'Maîtrise d\'œuvre', 'Suivi de chantier',
     'Permis de construire', 'Conception 3D', 'Expertise technique', 'Audit',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de services/Spécialités
@@ -13597,51 +13597,51 @@ export const INGENIEUR_ARCHI_MODALITIES: ModalityCategory = {
     'Suivi de chantier', 'Coordination travaux', 'Réception travaux', 'Métrés / Quantitatifs',
     'Levé topographique', 'Bornage terrain', 'Implantation bâtiment', 'Étude urbanisme / PLU',
     'Conception 3D / Modélisation', 'Maquette 3D', 'Architecture d\'intérieur', 'Aménagement intérieur',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de projets
   types_projet: [
     'Maison individuelle', 'Immeuble résidentiel', 'Villa', 'Bâtiment commercial',
     'Bâtiment industriel', 'Extension / Surélévation', 'Rénovation / Réhabilitation',
-    'Aménagement intérieur', 'Piscine', 'Ouvrage d\'art', '🆕 Autre (ajouter)'
+    'Aménagement intérieur', 'Piscine', 'Ouvrage d\'art', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Domaines de compétence
   domaines: [
     'Génie civil', 'Architecture', 'Géotechnique', 'Structure béton',
     'Structure métallique', 'Bois / Charpente', 'Thermique / Énergétique',
-    'Urbanisme', 'Topographie', 'VRD (Voiries Réseaux Divers)', '🆕 Autre (ajouter)'
+    'Urbanisme', 'Topographie', 'VRD (Voiries Réseaux Divers)', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Logiciels utilisés
   logiciels: [
     'AutoCAD', 'Revit', 'ArchiCAD', 'SketchUp', 'Rhino', '3ds Max',
     'Lumion', 'Robot Structural', 'SAP2000', 'ETABS', 'Pleiades', 'Climawin',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Certifications
   certifications: [
     'Ordre des architectes', 'Ingénieur diplômé', 'Certification RGE',
     'Assurance RC Pro', 'Assurance décennale', 'Qualibat', 'OPQIBI',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Livrables
   livrables: [
     'Plans 2D', 'Plans 3D', 'Maquette numérique', 'Notice descriptive',
     'Dossier permis de construire', 'Note de calcul', 'Métrés détaillés',
-    'Cahier des charges', 'Planning travaux', '🆕 Autre (ajouter)'
+    'Cahier des charges', 'Planning travaux', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Tarification
   tarification: [
     'Au forfait', 'Au m²', 'Pourcentage du coût travaux', 'Tarif horaire',
-    'Mission complète', 'Mission partielle', '🆕 Autre (ajouter)'
+    'Mission complète', 'Mission partielle', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 📍 Zones d'intervention (système intelligent - s'adapte au pays de l'utilisateur)
+  // \uD83D\uDCCD Zones d'intervention (système intelligent - s'adapte au pays de l'utilisateur)
   zones_intervention: genererZonesIntervention('CM') // Par défaut Cameroun, s'adapte via useUserCountry
 };
 
@@ -13649,66 +13649,66 @@ export const INGENIEUR_ARCHI_MODALITIES: ModalityCategory = {
 export const PLOMBERIE_SANITAIRE_MODALITIES: ModalityCategory = {
   // Catégories de produits
   categories: [
-    '🚰 Robinetterie', '🚰 Lavabo & Évier', '🚰 WC & Toilettes', '🚰 Douche & Baignoire',
-    '🚰 Chauffe-eau', '🚰 Tuyauterie', '🚰 Accessoires', '🚰 Outils plomberie',
-    '🆕 Autre (ajouter)'
+    '\uD83D\uDEB0 Robinetterie', '\uD83D\uDEB0 Lavabo & Évier', '\uD83D\uDEB0 WC & Toilettes', '\uD83D\uDEB0 Douche & Baignoire',
+    '\uD83D\uDEB0 Chauffe-eau', '\uD83D\uDEB0 Tuyauterie', '\uD83D\uDEB0 Accessoires', '\uD83D\uDEB0 Outils plomberie',
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Marques
   marques: [
     'Grohe', 'Geberit', 'Roca', 'Hansgrohe', 'Duravit', 'Ideal Standard',
     'Jacob Delafon', 'Villeroy & Boch', 'Kohler', 'American Standard',
-    '🆕 Autre marque'
+    '\uD83C\uDD95 Autre marque'
   ],
 
   // Matériaux
   materiaux: [
     'Céramique', 'Porcelaine', 'Inox', 'Chrome', 'Laiton', 'PVC',
-    'Cuivre', 'Acier', 'Composite', '🆕 Autre (ajouter)'
+    'Cuivre', 'Acier', 'Composite', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Finitions
   finitions: [
     'Chromé', 'Blanc', 'Noir mat', 'Doré', 'Brossé', 'Satiné',
-    'Mat', 'Brillant', '🆕 Autre (ajouter)'
+    'Mat', 'Brillant', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // États
   etats: [
     'Neuf', 'Très bon état', 'Bon état', 'État correct', 'À rénover',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Garanties
   garanties: [
     'Garantie constructeur', '1 an', '2 ans', '5 ans', 'Garantie limitée',
-    'Sans garantie', '🆕 Autre (ajouter)'
+    'Sans garantie', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Livraison
   livraisons: [
     'Livraison gratuite', 'Livraison payante', 'Retrait magasin',
-    'Livraison express', '🆕 Autre (ajouter)'
+    'Livraison express', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Installation
   installations: [
     'Installation incluse', 'Installation payante', 'Installation par tiers',
-    'Auto-installation', '🆕 Autre (ajouter)'
+    'Auto-installation', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 🌍 Villes (système intelligent - s'adapte au pays de l'utilisateur)
+  // \uD83C\uDF0D Villes (système intelligent - s'adapte au pays de l'utilisateur)
   villes: genererToutesLesVilles('CM'), // Par défaut Cameroun, s'adapte via useUserCountry
 
-  // 🏘️ Quartiers (système intelligent - s'adapte au pays de l'utilisateur)
+  // \uD83C\uDFD8️ Quartiers (système intelligent - s'adapte au pays de l'utilisateur)
   quartiers: genererQuartiersPays('CM'), // Par défaut Cameroun, s'adapte via useUserCountry
 
-  // 📍 Zones d'intervention (pour services de livraison éventuels)
+  // \uD83D\uDCCD Zones d'intervention (pour services de livraison éventuels)
   zones_intervention: genererZonesIntervention('CM') // Par défaut Cameroun
 };
 
 // ════════════════════════════════════════════════════════════
-// 🧹 MODALITÉS NETTOYAGE & ENTRETIEN - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
+// \uD83E\uDDF9 MODALITÉS NETTOYAGE & ENTRETIEN - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
 // ════════════════════════════════════════════════════════════
 // Synchronisé avec categoryConfig.ts (16 filtres complets)
 // Femme de ménage, Nounou, Blanchisseur, Pressing, Gardien, Jardinier, etc.
@@ -13753,7 +13753,7 @@ export const NETTOYAGE_MODALITIES: ModalityCategory = {
     // Entretien spécifique
     'Entretien piscine', 'Entretien climatisation', 'Lavage voiture à domicile',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Fréquence de service (13+ options)
@@ -13763,7 +13763,7 @@ export const NETTOYAGE_MODALITIES: ModalityCategory = {
     'Hebdomadaire (1 fois/semaine)', 'Bi-hebdomadaire (tous les 15 jours)', 'Mensuel (1 fois/mois)',
     'Week-end uniquement', 'Soir uniquement (après 18h)', 'Nuit uniquement (garde de nuit)',
     'Horaires flexibles (à définir)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Modalité d'emploi (Live-in / Live-out)
@@ -13771,7 +13771,7 @@ export const NETTOYAGE_MODALITIES: ModalityCategory = {
     'Live-out (rentre chez elle le soir)', 'Live-in (logée sur place)',
     'Logée + nourrie (à demeure)', 'Demi-pension (déjeuner fourni)',
     'Nourrie uniquement (pas logée)', 'Autonome (non logée, non nourrie)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Horaires de travail (10+ options)
@@ -13780,20 +13780,20 @@ export const NETTOYAGE_MODALITIES: ModalityCategory = {
     'Temps partiel (2-3 heures/jour)', 'Matin uniquement (6h-12h)', 'Après-midi uniquement (12h-18h)',
     'Soirée (18h-22h)', 'Nuit (22h-6h)', '24h/24 (garde permanente)',
     'Horaires à définir (flexible)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Nombre d'enfants (pour nounou/baby-sitter)
   nombreEnfants: [
     '1 enfant', '2 enfants', '3 enfants', '4 enfants ou plus',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Âge des enfants (pour nounou)
   ageEnfants: [
     'Nouveau-né (0-6 mois)', 'Bébé (6 mois - 2 ans)', 'Tout-petit (2-4 ans)',
     'Enfant (4-8 ans)', 'Pré-ado (8-12 ans)', 'Adolescent (12+ ans)', 'Tous âges',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Tâches spécifiques (Multi-sélection - 35+ options)
@@ -13824,14 +13824,14 @@ export const NETTOYAGE_MODALITIES: ModalityCategory = {
     'Lavage voiture', 'Surveillance maison', 'Réception visiteurs/colis',
     'Soins animaux domestiques',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Expérience professionnelle (8 niveaux)
   experienceNettoyage: [
     'Débutant(e) (< 6 mois)', '6 mois - 1 an', '1-2 ans', '2-3 ans',
     '3-5 ans', '5-10 ans', '10-15 ans', '15+ ans (très expérimenté)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Langues parlées (12+ langues africaines)
@@ -13839,7 +13839,7 @@ export const NETTOYAGE_MODALITIES: ModalityCategory = {
     'Français (courant)', 'Anglais (fluent)', 'Bilingue (français-anglais)',
     'Bamiléké', 'Ewondo', 'Douala', 'Fulfuldé (Peul)', 'Bassa', 'Pidgin English',
     'Lingala', 'Wolof', 'Dioula',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Certifications & Références (8+ options)
@@ -13847,7 +13847,7 @@ export const NETTOYAGE_MODALITIES: ModalityCategory = {
     'Références vérifiées', 'Attestation formation ménagère', 'Certificat premiers secours',
     'Certificat garde d\'enfants', 'Diplôme cuisinière/cuisinier', 'Certificat sécurité/gardiennage',
     'Casier judiciaire vierge', 'Recommandations familles précédentes',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Équipements fournis par le prestataire
@@ -13855,7 +13855,7 @@ export const NETTOYAGE_MODALITIES: ModalityCategory = {
     'Produits d\'entretien', 'Aspirateur', 'Serpillière & balai', 'Matériel professionnel',
     'Nettoyeur vapeur', 'Équipement de sécurité', 'Outils de jardinage',
     'Aucun (client fournit)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Surface à entretenir (pour ménage/bureaux)
@@ -13864,7 +13864,7 @@ export const NETTOYAGE_MODALITIES: ModalityCategory = {
     'Très grand logement (200-300m²)', 'Villa/Maison (300-500m²)', 'Grande propriété (500m²+)',
     'Bureau petit (< 100m²)', 'Bureau moyen (100-300m²)', 'Bureau grand (300m²+)',
     'Immeuble/Copropriété',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Zone d'intervention (100+ quartiers Afrique) - Système intelligent
@@ -13874,7 +13874,7 @@ export const NETTOYAGE_MODALITIES: ModalityCategory = {
   disponibiliteImmediateNettoyage: [
     'Disponible immédiatement', 'Disponible cette semaine', 'Disponible dans 2 semaines',
     'Disponible dans 1 mois', 'Période de préavis (employeur actuel)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Salaire mensuel souhaité (FCFA) - Options prédéfinies
@@ -13883,7 +13883,7 @@ export const NETTOYAGE_MODALITIES: ModalityCategory = {
     '100 000 - 150 000 FCFA', '150 000 - 200 000 FCFA', '200 000 - 300 000 FCFA',
     '300 000 - 400 000 FCFA', '400 000 - 500 000 FCFA', '500 000+ FCFA',
     'À négocier',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Type de contrat
@@ -13891,39 +13891,39 @@ export const NETTOYAGE_MODALITIES: ModalityCategory = {
     'CDI (Contrat à durée indéterminée)', 'CDD (Contrat à durée déterminée)',
     'Contrat temporaire (< 3 mois)', 'Remplacement (congé/maladie)',
     'Freelance/Indépendant', 'Essai professionnel (1 mois)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Champs legacy (compatibilité ancienne version)
   types: [
     'Nettoyage résidentiel', 'Nettoyage bureaux', 'Nettoyage après travaux',
     'Nettoyage vitres', 'Nettoyage façades', 'Nettoyage moquettes/tapis',
-    'Nettoyage climatisation', 'Désinfection', '🆕 Autre (ajouter)'
+    'Nettoyage climatisation', 'Désinfection', '\uD83C\uDD95 Autre (ajouter)'
   ],
   frequences: [
     'Ponctuel', 'Hebdomadaire', 'Bi-mensuel', 'Mensuel',
-    'Trimestriel', 'Annuel', '🆕 Autre (ajouter)'
+    'Trimestriel', 'Annuel', '\uD83C\uDD95 Autre (ajouter)'
   ],
   services: [
     'Dépoussiérage', 'Aspiration', 'Lavage sols', 'Nettoyage sanitaires',
     'Nettoyage cuisine', 'Repassage', 'Vitrerie', 'Désinfection',
-    'Détachage', 'Cirage', '🆕 Autre (ajouter)'
+    'Détachage', 'Cirage', '\uD83C\uDD95 Autre (ajouter)'
   ],
   surfaces: [
     'Moins de 50m²', '50-100m²', '100-200m²', '200-500m²',
-    'Plus de 500m²', '🆕 Autre (ajouter)'
+    'Plus de 500m²', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Nouveaux champs version refonte 2025
   mode_tarification: [
     'À l\'heure', 'Au forfait', 'Au m²', 'À la journée',
     'À la semaine', 'Au mois', 'À négocier',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
   type_clientele: [
     'Particuliers', 'Entreprises', 'Collectivités', 'Commerces',
     'Bureaux', 'Copropriétés', 'Hôtels/Restaurants',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
   quartiers: [
     'Akwa', 'Bonanjo', 'Bonapriso', 'Bali', 'Bonabéri', 'Deido', 'Kotto',
@@ -13932,23 +13932,23 @@ export const NETTOYAGE_MODALITIES: ModalityCategory = {
     'Odza', 'Kondengui', 'Nkol-Eton', 'Nlongkak', 'Elig-Essono',
     'Cocody', 'Plateau', 'Marcory', 'Adjamé', 'Yopougon', 'Abobo',
     'Almadies', 'Plateau', 'Mermoz', 'Sacré-Coeur', 'Ouakam',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
   disponibilite: [
     '7j/7', 'En semaine (Lun-Ven)', 'Week-end uniquement',
     'Sur rendez-vous', 'Urgences acceptées', 'Du lundi au samedi',
     'Horaires flexibles',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
   equipements: [
     'Produits écologiques', 'Matériel professionnel', 'Aspirateur',
     'Nettoyeur vapeur', 'Balai', 'Serpillière', 'Produits désinfectants',
     'Outils jardinage', 'Aucun équipement (client fournit)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
   produits: [
     'Produits bio/écologiques', 'Produits professionnels', 'Produits standards',
-    'Vapeur/Sans chimique', '🆕 Autre (ajouter)'
+    'Vapeur/Sans chimique', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -13960,32 +13960,32 @@ export const REPARATION_MODALITIES: ModalityCategory = {
     'Réparation ordinateur', 'Réparation automobile', 'Réparation moto',
     'Réparation vélo', 'Réparation montre', 'Réparation bijoux',
     'Réparation chaussures', 'Réparation vêtements', 'Réparation meubles',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Spécialités
   specialites: [
     'Écran cassé', 'Batterie', 'Carte mère', 'Connectique', 'Logiciel',
     'Moteur', 'Freins', 'Embrayage', 'Suspension', 'Plomberie', 'Électricité',
-    'Menuiserie', 'Tapisserie', '🆕 Autre (ajouter)'
+    'Menuiserie', 'Tapisserie', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Délais d'intervention
   delais: [
     'Express (même jour)', '24-48h', '2-5 jours', '1-2 semaines',
-    'Sur devis', '🆕 Autre (ajouter)'
+    'Sur devis', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Garanties
   garanties: [
     '1 mois', '3 mois', '6 mois', '1 an', '2 ans',
-    'Garantie pièces', 'Garantie main d\'œuvre', '🆕 Autre (ajouter)'
+    'Garantie pièces', 'Garantie main d\'œuvre', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de marques
   marques: [
     'Toutes marques', 'Samsung', 'Apple', 'LG', 'Sony', 'HP', 'Dell',
-    'Lenovo', 'Asus', 'Huawei', 'Xiaomi', '🆕 Autre (ajouter)'
+    'Lenovo', 'Asus', 'Huawei', 'Xiaomi', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -14016,7 +14016,7 @@ export const ELECTRICITE_MODALITIES: ModalityCategory = {
     // Accessoires
     'Rallonge électrique', 'Enrouleur de câble', 'Domino électrique', 'Wago',
     'Boîte de dérivation', 'Support de lampe', 'Douille E27', 'Douille E14',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CATÉGORIES (15)
@@ -14035,7 +14035,7 @@ export const ELECTRICITE_MODALITIES: ModalityCategory = {
     'Matériel professionnel',
     'Installation solaire',
     'Éclairage secours',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TYPES D'ÉCLAIRAGE (20)
@@ -14059,7 +14059,7 @@ export const ELECTRICITE_MODALITIES: ModalityCategory = {
     'Guirlande lumineuse',
     'Éclairage solaire',
     'Veilleuse',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MARQUES (30)
@@ -14077,7 +14077,7 @@ export const ELECTRICITE_MODALITIES: ModalityCategory = {
     'Sans marque',
     'Marque locale',
     'Artisan',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TENSIONS (12)
@@ -14093,7 +14093,7 @@ export const ELECTRICITE_MODALITIES: ModalityCategory = {
     'Basse tension (< 50V)',
     'Solaire',
     'Batterie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ PUISSANCES (18)
@@ -14101,7 +14101,7 @@ export const ELECTRICITE_MODALITIES: ModalityCategory = {
     '3W', '5W', '7W', '9W', '10W', '12W', '15W', '18W',
     '20W', '25W', '40W', '50W', '60W', '75W', '100W', '150W',
     '200W+',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ CULOTS D'AMPOULES (16)
@@ -14121,7 +14121,7 @@ export const ELECTRICITE_MODALITIES: ModalityCategory = {
     'S14d',
     'Non applicable',
     'Intégré',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ TEMPÉRATURES DE COULEUR (9)
@@ -14134,7 +14134,7 @@ export const ELECTRICITE_MODALITIES: ModalityCategory = {
     'RGB (multicolore)',
     'RGB + Blanc',
     'Lumière jaune',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ NORMES & CERTIFICATIONS (15)
@@ -14153,7 +14153,7 @@ export const ELECTRICITE_MODALITIES: ModalityCategory = {
     'Classe III (basse tension)',
     'A+ (économie énergie)',
     'A++ (très économique)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ GARANTIES (9)
@@ -14166,7 +14166,7 @@ export const ELECTRICITE_MODALITIES: ModalityCategory = {
     '10 ans',
     '25 ans (LED)',
     'À vie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ ÉTAT (8)
@@ -14178,7 +14178,7 @@ export const ELECTRICITE_MODALITIES: ModalityCategory = {
     'Occasion',
     'Reconditionné',
     'Déstockage',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ UTILISATIONS (12)
@@ -14194,7 +14194,7 @@ export const ELECTRICITE_MODALITIES: ModalityCategory = {
     'Hôpital',
     'Entrepôt',
     'Extérieur',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -14202,14 +14202,14 @@ export const ELECTRICITE_MODALITIES: ModalityCategory = {
 export const SANTE_BEAUTE_MODALITIES: ModalityCategory = {
   types: [
     'Soins visage', 'Soins corps', 'Soins cheveux', 'Maquillage', 'Parfums',
-    'Hygiène', 'Compléments alimentaires', 'Équipement médical', '🆕 Autre (ajouter)'
+    'Hygiène', 'Compléments alimentaires', 'Équipement médical', '\uD83C\uDD95 Autre (ajouter)'
   ],
   marques: [
     'Nivea', 'L\'Oréal', 'Garnier', 'Dove', 'Neutrogena', 'Vichy',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
   etats: [
-    'Neuf scellé', 'Neuf', 'Excellent état', '🆕 Autre (ajouter)'
+    'Neuf scellé', 'Neuf', 'Excellent état', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -14217,11 +14217,11 @@ export const SANTE_BEAUTE_MODALITIES: ModalityCategory = {
 export const JURIDIQUE_MODALITIES: ModalityCategory = {
   types: [
     'Conseil juridique', 'Rédaction contrat', 'Contentieux', 'Divorce',
-    'Immobilier', 'Commercial', 'Pénal', 'Administratif', '🆕 Autre (ajouter)'
+    'Immobilier', 'Commercial', 'Pénal', 'Administratif', '\uD83C\uDD95 Autre (ajouter)'
   ],
   specialites: [
     'Droit des affaires', 'Droit du travail', 'Droit de la famille', 'Droit immobilier',
-    'Droit pénal', 'Droit fiscal', '🆕 Autre (ajouter)'
+    'Droit pénal', 'Droit fiscal', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -14229,14 +14229,14 @@ export const JURIDIQUE_MODALITIES: ModalityCategory = {
 export const MUSIQUE_SERVICES_MODALITIES: ModalityCategory = {
   types: [
     'Cours de musique', 'Animation musicale', 'DJ', 'Groupe live', 'Orchestre',
-    'Chanteur', 'Studio enregistrement', '🆕 Autre (ajouter)'
+    'Chanteur', 'Studio enregistrement', '\uD83C\uDD95 Autre (ajouter)'
   ],
   genres: [
     'Variété', 'Jazz', 'Rock', 'Pop', 'Classique', 'R&B', 'Hip-hop', 'Reggae',
-    'Afrobeat', 'Makossa', 'Coupé-décalé', '🆕 Autre (ajouter)'
+    'Afrobeat', 'Makossa', 'Coupé-décalé', '\uD83C\uDD95 Autre (ajouter)'
   ],
   durees: [
-    '1h', '2h', '3h', '4h', 'Demi-journée', 'Journée complète', '🆕 Autre (ajouter)'
+    '1h', '2h', '3h', '4h', 'Demi-journée', 'Journée complète', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -14244,14 +14244,14 @@ export const MUSIQUE_SERVICES_MODALITIES: ModalityCategory = {
 export const PHOTOGRAPHIE_MODALITIES: ModalityCategory = {
   types: [
     'Mariage', 'Événement', 'Portrait', 'Famille', 'Grossesse', 'Naissance',
-    'Commercial', 'Immobilier', 'Mode', 'Reportage', '🆕 Autre (ajouter)'
+    'Commercial', 'Immobilier', 'Mode', 'Reportage', '\uD83C\uDD95 Autre (ajouter)'
   ],
   styles: [
-    'Classique', 'Moderne', 'Artistique', 'Naturel', 'Studio', '🆕 Autre (ajouter)'
+    'Classique', 'Moderne', 'Artistique', 'Naturel', 'Studio', '\uD83C\uDD95 Autre (ajouter)'
   ],
   equipements: [
     'Drone', 'Studio mobile', 'Éclairage professionnel', 'Photobooth',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -14259,44 +14259,44 @@ export const PHOTOGRAPHIE_MODALITIES: ModalityCategory = {
 export const ENTREPRISE_INDUSTRIE_MODALITIES: ModalityCategory = {
   types: [
     'Matériel bureau', 'Machines industrielles', 'Équipement professionnel',
-    'Fournitures', 'Services aux entreprises', '🆕 Autre (ajouter)'
+    'Fournitures', 'Services aux entreprises', '\uD83C\uDD95 Autre (ajouter)'
   ],
   secteurs: [
     'Industrie', 'Commerce', 'Services', 'BTP', 'Agriculture', 'Transport',
-    'Technologie', '🆕 Autre (ajouter)'
+    'Technologie', '\uD83C\uDD95 Autre (ajouter)'
   ],
   etats: [
-    'Neuf', 'Excellent état', 'Bon état', 'Occasion', 'À rénover', '🆕 Autre (ajouter)'
+    'Neuf', 'Excellent état', 'Bon état', 'Occasion', 'À rénover', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
-// ✅ MODALITÉS DÉCORATION INTÉRIEURE - 🌍 CONTEXTE AFRIQUE FRANCOPHONE
+// ✅ MODALITÉS DÉCORATION INTÉRIEURE - \uD83C\uDF0D CONTEXTE AFRIQUE FRANCOPHONE
 export const DECORATION_MODALITIES: ModalityCategory = {
-  // 🎨 CATÉGORIES (21 types) - Focus marché africain
+  // \uD83C\uDFA8 CATÉGORIES (21 types) - Focus marché africain
   categories: [
-    // 🖼️ DÉCORATION MURALE (populaire)
-    '🖼️ Tableaux & Affiches', '🖼️ Tableaux africains', '🖼️ Art mural',
-    '🪞 Miroirs décoratifs', '🕰️ Horloges murales', '📚 Étagères décoratives',
+    // \uD83D\uDDBC️ DÉCORATION MURALE (populaire)
+    '\uD83D\uDDBC️ Tableaux & Affiches', '\uD83D\uDDBC️ Tableaux africains', '\uD83D\uDDBC️ Art mural',
+    '\uD83E\uDE9E Miroirs décoratifs', '\uD83D\uDD70️ Horloges murales', '\uD83D\uDCDA Étagères décoratives',
 
-    // 💡 LUMINAIRES (très demandé)
-    '💡 Lampes de table', '💡 Lampes sur pied', '💡 Suspensions & Lustres',
-    '💡 Appliques murales', '💡 Lampes solaires déco', // ✅ Adaptation Afrique
+    // \uD83D\uDCA1 LUMINAIRES (très demandé)
+    '\uD83D\uDCA1 Lampes de table', '\uD83D\uDCA1 Lampes sur pied', '\uD83D\uDCA1 Suspensions & Lustres',
+    '\uD83D\uDCA1 Appliques murales', '\uD83D\uDCA1 Lampes solaires déco', // ✅ Adaptation Afrique
 
-    // 🛋️ TEXTILES DÉCO
-    '🛋️ Coussins & Plaids', '🪟 Rideaux & Voilages', '🧵 Tapis & Carpettes',
+    // \uD83D\uDECB️ TEXTILES DÉCO
+    '\uD83D\uDECB️ Coussins & Plaids', '\uD83E\uDE9F Rideaux & Voilages', '\uD83E\uDDF5 Tapis & Carpettes',
 
-    // 🏺 OBJETS DÉCO
-    '🏺 Vases & Pots décoratifs', '🕯️ Bougies & Senteurs', '🗿 Sculptures & Statues',
+    // \uD83C\uDFFA OBJETS DÉCO
+    '\uD83C\uDFFA Vases & Pots décoratifs', '\uD83D\uDD6F️ Bougies & Senteurs', '\uD83D\uDDFF Sculptures & Statues',
 
-    // 🌿 AUTRES
-    '🌿 Plantes artificielles', '🖼️ Cadres photo', '🍽️ Centre de table',
+    // \uD83C\uDF3F AUTRES
+    '\uD83C\uDF3F Plantes artificielles', '\uD83D\uDDBC️ Cadres photo', '\uD83C\uDF7D️ Centre de table',
 
-    // 🌍 THÉMATIQUES AFRICAINES
-    '🌍 Objets ethniques africains', // ✅ Masques, paniers, tissus traditionnels
-    '🎭 Art africain contemporain',
+    // \uD83C\uDF0D THÉMATIQUES AFRICAINES
+    '\uD83C\uDF0D Objets ethniques africains', // ✅ Masques, paniers, tissus traditionnels
+    '\uD83C\uDFAD Art africain contemporain',
     '♻️ Objets vintage/rétro',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✨ STYLES (15) - Ajout styles africains
@@ -14308,14 +14308,14 @@ export const DECORATION_MODALITIES: ModalityCategory = {
     'Classique', 'Luxe', 'Art déco',
 
     // ALTERNATIFS
-    'Bohème', 'Ethnique africain', '🌍 Afro-chic', // ✅ Styles africains
+    'Bohème', 'Ethnique africain', '\uD83C\uDF0D Afro-chic', // ✅ Styles africains
     'Vintage', 'Rustique', 'Shabby chic', 'Tropical',
     'Éclectique',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 🏠 PIÈCES (13)
+  // \uD83C\uDFE0 PIÈCES (13)
   pieces: [
     // PRINCIPALES
     'Salon', 'Chambre adulte', 'Cuisine', 'Salle à manger', 'Bureau',
@@ -14332,10 +14332,10 @@ export const DECORATION_MODALITIES: ModalityCategory = {
     // UNIVERSEL
     'Toutes pièces',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 🔨 MATIÈRES (18)
+  // \uD83D\uDD28 MATIÈRES (18)
   matieres: [
     // NATURELLES (très prisées en Afrique)
     'Bois', 'Bois exotique', 'Bambou', 'Rotin', 'Osier', 'Raphia', // ✅ Raphia = artisanat local
@@ -14353,10 +14353,10 @@ export const DECORATION_MODALITIES: ModalityCategory = {
     // AUTRES
     'Plastique', 'Résine', 'Papier', 'Carton',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 🎨 COULEURS (20)
+  // \uD83C\uDFA8 COULEURS (20)
   couleurs: [
     // NEUTRES (base)
     'Blanc', 'Noir', 'Gris', 'Beige/Écru', 'Marron/Brun',
@@ -14372,10 +14372,10 @@ export const DECORATION_MODALITIES: ModalityCategory = {
     'Multicolore', 'Transparent', 'Naturel/Brut',
     'Motifs africains', // ✅ Wax, bogolan, kente
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 📏 TAILLES (7)
+  // \uD83D\uDCCF TAILLES (7)
   tailles: [
     'Très petit (< 20cm)',
     'Petit (20-40cm)',
@@ -14385,37 +14385,37 @@ export const DECORATION_MODALITIES: ModalityCategory = {
     'XL / Monumental (> 150cm)',
     'Set / Lot (plusieurs pièces)',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 🏷️ ÉTAT (8) - Valorisation artisanat
+  // \uD83C\uDFF7️ ÉTAT (8) - Valorisation artisanat
   etats: [
     'Neuf avec emballage',
     'Neuf sans emballage',
     'Excellent état',
     'Bon état',
     'Occasion',
-    '🎨 Artisanal fait main', // ✅ Valorise artisans locaux
+    '\uD83C\uDFA8 Artisanal fait main', // ✅ Valorise artisans locaux
     '♻️ Vintage authentique', // ✅ Valorise pièces anciennes
-    '🌍 Import Afrique', // ✅ Provenance authentique africaine
+    '\uD83C\uDF0D Import Afrique', // ✅ Provenance authentique africaine
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // 🏪 MARQUES/ORIGINE (15) - Mix international + local
+  // \uD83C\uDFEA MARQUES/ORIGINE (15) - Mix international + local
   marques: [
     // GRANDES ENSEIGNES INTERNATIONALES
     'Ikea', 'Maisons du Monde', 'Zara Home', 'H&M Home',
     'Habitat', 'Conforama', 'But', 'La Redoute', 'Alinéa', 'Casa',
 
     // ARTISANAT LOCAL (valorisation forte)
-    '🌍 Artisan local camerounais', // ✅ Spécifique au pays
-    '🌍 Artisan africain',
-    '🎨 Fait main',
+    '\uD83C\uDF0D Artisan local camerounais', // ✅ Spécifique au pays
+    '\uD83C\uDF0D Artisan africain',
+    '\uD83C\uDFA8 Fait main',
     'Sans marque',
-    '🌍 Import Afrique de l\'Ouest',
+    '\uD83C\uDF0D Import Afrique de l\'Ouest',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -14424,15 +14424,15 @@ export const ENFANTS_BEBES_MODALITIES: ModalityCategory = {
   categories: [
     'Vêtements bébé', 'Vêtements enfant', 'Chaussures', 'Poussettes', 'Sièges auto',
     'Lits & berceaux', 'Jouets', 'Alimentation', 'Hygiène', 'Puériculture',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
   ages: [
     '0-3 mois', '3-6 mois', '6-12 mois', '1-2 ans', '2-4 ans', '4-6 ans',
-    '6-8 ans', '8-10 ans', '10-12 ans', '🆕 Autre (ajouter)'
+    '6-8 ans', '8-10 ans', '10-12 ans', '\uD83C\uDD95 Autre (ajouter)'
   ],
   etats: [
     'Neuf avec étiquette', 'Neuf', 'Excellent état', 'Bon état', 'Occasion',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -14441,14 +14441,14 @@ export const BRICOLAGE_MODALITIES: ModalityCategory = {
   types: [
     'Outils manuels', 'Outils électriques', 'Matériaux construction', 'Peinture',
     'Plomberie', 'Électricité', 'Quincaillerie', 'Visserie', 'Menuiserie',
-    'Jardinage', 'Sécurité', '🆕 Autre (ajouter)'
+    'Jardinage', 'Sécurité', '\uD83C\uDD95 Autre (ajouter)'
   ],
   marques: [
     'Bosch', 'Makita', 'DeWalt', 'Stanley', 'Black & Decker', 'Ryobi',
-    'Einhell', 'Skil', 'Hitachi', '🆕 Autre (ajouter)'
+    'Einhell', 'Skil', 'Hitachi', '\uD83C\uDD95 Autre (ajouter)'
   ],
   etats: [
-    'Neuf', 'Excellent état', 'Bon état', 'Occasion', '🆕 Autre (ajouter)'
+    'Neuf', 'Excellent état', 'Bon état', 'Occasion', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -14458,269 +14458,269 @@ export const CARRELAGE_MODALITIES: ModalityCategory = {
   types: [
     'Carrelage sol', 'Carrelage mural', 'Carrelage extérieur', 'Carrelage piscine',
     'Faïence', 'Mosaïque', 'Carrelage terrasse', 'Tomette', 'Zellige (marocain)',
-    'Pavé extérieur', '🆕 Autre (ajouter)'
+    'Pavé extérieur', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Matériaux
   materiaux: [
     'Céramique', 'Porcelaine', 'Grès cérame', 'Grès émaillé', 'Marbre',
     'Granit', 'Pierre naturelle', 'Terre cuite', 'Ardoise', 'Travertin',
-    'Quartzite', '🆕 Autre (ajouter)'
+    'Quartzite', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Dimensions (✅ Adaptées au marché africain)
   dimensions: [
     '10x10cm', '15x15cm', '20x20cm', '25x25cm', '30x30cm', '33x33cm',
     '40x40cm', '45x45cm', '50x50cm', '60x60cm', '80x80cm', '100x100cm',
-    '120x60cm', 'Sur mesure', '🆕 Autre (ajouter)'
+    '120x60cm', 'Sur mesure', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Finitions
   finitions: [
     'Brillant', 'Mat', 'Satiné', 'Poli', 'Antidérapant', 'Structuré',
-    'Lappato', 'Adouci', 'Brossé', 'Flammé', '🆕 Autre (ajouter)'
+    'Lappato', 'Adouci', 'Brossé', 'Flammé', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Épaisseurs
   epaisseurs: [
     '6mm', '7mm', '8mm', '9mm', '10mm', '11mm', '12mm', '15mm', '20mm',
-    '30mm (extérieur)', '🆕 Autre (ajouter)'
+    '30mm (extérieur)', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Usage
   usages: [
     'Intérieur résidentiel', 'Intérieur commercial', 'Extérieur', 'Salle de bain',
     'Cuisine', 'Piscine', 'Terrasse', 'Garage', 'Hall d\'entrée', 'Boutique/Magasin',
-    'Hôtel/Restaurant', 'Bureau', '🆕 Autre (ajouter)'
+    'Hôtel/Restaurant', 'Bureau', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Aspects / Décors
   aspects: [
     'Uni', 'Marbré', 'Imitation bois', 'Imitation pierre', 'Imitation béton',
     'Imitation marbre', 'Métallique', 'Motif géométrique', 'Hexagonal',
-    'Format métro', 'Décor floral', 'Décor oriental', '🆕 Autre (ajouter)'
+    'Format métro', 'Décor floral', 'Décor oriental', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ MARQUES & ORIGINES (Focus Afrique Francophone + International)
   marques: [
-    // 🌍 Import Afrique du Nord (très présent en Afrique Centrale/Ouest)
+    // \uD83C\uDF0D Import Afrique du Nord (très présent en Afrique Centrale/Ouest)
     'Ceramica Flaminia (Tunisie)', 'Ceramica Cleopatra (Égypte)', 'Ceramica (Maroc)',
     'SOMOCER (Maroc)', 'CMPC (Maroc)', 'Ceramica Atlas (Maroc)',
 
-    // 🌍 Import Afrique du Sud
+    // \uD83C\uDF0D Import Afrique du Sud
     'Italtile (Afrique du Sud)', 'Johnson Tiles (Afrique du Sud)', 'Cera (Afrique du Sud)',
 
-    // 🇪🇸 Espagne (Leader en Afrique francophone)
+    // \uD83C\uDDEA\uD83C\uDDF8 Espagne (Leader en Afrique francophone)
     'Porcelanosa', 'Grespania', 'Pamesa', 'Vives', 'Tau Ceramica', 'Saloni',
     'Rocersa', 'Aparici', 'Argenta', 'Halcon',
 
-    // 🇮🇹 Italie (Haut de gamme)
+    // \uD83C\uDDEE\uD83C\uDDF9 Italie (Haut de gamme)
     'Marazzi', 'Ceramiche Keope', 'Atlas Concorde', 'Imola', 'Ragno',
     'Panaria', 'Lea Ceramiche', 'Fap Ceramiche', 'Cerdomus',
 
-    // 🇵🇹 Portugal
+    // \uD83C\uDDF5\uD83C\uDDF9 Portugal
     'Revigrés', 'Ceusa', 'Kerion Ceramics', 'Love Tiles',
 
-    // 🇹🇷 Turquie (Rapport qualité/prix)
+    // \uD83C\uDDF9\uD83C\uDDF7 Turquie (Rapport qualité/prix)
     'Kale', 'Ege Seramik', 'Çanakkale Seramik', 'Vitra', 'Topçu',
 
-    // 🇨🇳 Chine (Économique)
+    // \uD83C\uDDE8\uD83C\uDDF3 Chine (Économique)
     'Foshan (Chine)', 'Guangdong (Chine)', 'Marco Polo (Chine)', 'Eagle (Chine)',
 
-    // 🇮🇳 Inde
+    // \uD83C\uDDEE\uD83C\uDDF3 Inde
     'Kajaria', 'Somany', 'Johnson Tiles India', 'Orient Bell',
 
-    // 🌍 Production locale / Artisanal
+    // \uD83C\uDF0D Production locale / Artisanal
     'Artisan local', 'Production locale', 'Fabrication artisanale',
-    'Sans marque', '🆕 Autre (ajouter)'
+    'Sans marque', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Couleurs principales
   couleurs: [
     'Blanc', 'Beige', 'Gris clair', 'Gris foncé', 'Noir', 'Ivoire', 'Crème',
     'Marron', 'Taupe', 'Bois naturel', 'Bois foncé', 'Pierre', 'Bleu',
-    'Vert', 'Rouge', 'Multicolore', '🆕 Autre (ajouter)'
+    'Vert', 'Rouge', 'Multicolore', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Origine / Provenance
   origines: [
-    '🇪🇸 Espagne', '🇮🇹 Italie', '🇵🇹 Portugal', '🇹🇷 Turquie', '🇨🇳 Chine',
-    '🇮🇳 Inde', '🇪🇬 Égypte', '🇲🇦 Maroc', '🇹🇳 Tunisie', '🇿🇦 Afrique du Sud',
-    'Cameroun', 'Production locale', '🆕 Autre (ajouter)'
+    '\uD83C\uDDEA\uD83C\uDDF8 Espagne', '\uD83C\uDDEE\uD83C\uDDF9 Italie', '\uD83C\uDDF5\uD83C\uDDF9 Portugal', '\uD83C\uDDF9\uD83C\uDDF7 Turquie', '\uD83C\uDDE8\uD83C\uDDF3 Chine',
+    '\uD83C\uDDEE\uD83C\uDDF3 Inde', '\uD83C\uDDEA\uD83C\uDDEC Égypte', '\uD83C\uDDF2\uD83C\uDDE6 Maroc', '\uD83C\uDDF9\uD83C\uDDF3 Tunisie', '\uD83C\uDDFF\uD83C\uDDE6 Afrique du Sud',
+    'Cameroun', 'Production locale', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ État du produit
   etats: [
     'Neuf', 'En stock', 'Sur commande', 'Promotion', 'Déstockage',
-    'Fin de série', '🆕 Autre (ajouter)'
+    'Fin de série', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Conditionnement
   conditionnements: [
     'À la pièce', 'Par m²', 'Par carton (1m²)', 'Par carton (1.2m²)',
-    'Par carton (1.44m²)', 'Par palette', '🆕 Autre (ajouter)'
+    'Par carton (1.44m²)', 'Par palette', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
-// ✅ MODALITÉS MENUISERIE - 🌍 CONTEXTE AFRIQUE FRANCOPHONE (Focus Cameroun)
+// ✅ MODALITÉS MENUISERIE - \uD83C\uDF0D CONTEXTE AFRIQUE FRANCOPHONE (Focus Cameroun)
 export const MENUISERIE_MODALITIES: ModalityCategory = {
   // ═══════════════════════════════════════════════════════════════
-  // 🛠️ TYPES DE SERVICES (60+) - COMPLET CAMEROUN & AFRIQUE
+  // \uD83D\uDEE0️ TYPES DE SERVICES (60+) - COMPLET CAMEROUN & AFRIQUE
   // ═══════════════════════════════════════════════════════════════
   services: [
-    // 🪑 MEUBLES SUR MESURE (20)
-    '🪑 Fabrication salon complet (canapé, fauteuils, table basse)',
-    '🪑 Fabrication chambre à coucher (lit, armoire, coiffeuse)',
-    '🪑 Fabrication salle à manger (table, chaises, buffet)',
-    '🪑 Fabrication bureau (table bureau, bibliothèque, étagères)',
-    '🪑 Fabrication lit sur mesure (simple, double, king size)',
-    '🪑 Fabrication armoire/garde-robe sur mesure',
-    '🪑 Fabrication placard mural/encastré',
-    '🪑 Fabrication bibliothèque/étagères murales',
-    '🪑 Fabrication bar d\'intérieur/comptoir',
-    '🪑 Fabrication meuble TV/home cinéma',
-    '🪑 Fabrication table basse/console',
-    '🪑 Fabrication chaises/fauteuils',
-    '🪑 Fabrication meuble vasque/salle de bain',
-    '🪑 Fabrication cuisine équipée/aménagée',
-    '🪑 Fabrication meuble pour boutique/commerce',
-    '🪑 Fabrication présentoir produits',
-    '🪑 Fabrication rayonnage/stockage',
-    '🪑 Fabrication mobilier restaurant/maquis',
-    '🪑 Fabrication mobilier hôtel/auberge',
-    '🪑 Fabrication mobilier école/bureau',
+    // \uD83E\uDE91 MEUBLES SUR MESURE (20)
+    '\uD83E\uDE91 Fabrication salon complet (canapé, fauteuils, table basse)',
+    '\uD83E\uDE91 Fabrication chambre à coucher (lit, armoire, coiffeuse)',
+    '\uD83E\uDE91 Fabrication salle à manger (table, chaises, buffet)',
+    '\uD83E\uDE91 Fabrication bureau (table bureau, bibliothèque, étagères)',
+    '\uD83E\uDE91 Fabrication lit sur mesure (simple, double, king size)',
+    '\uD83E\uDE91 Fabrication armoire/garde-robe sur mesure',
+    '\uD83E\uDE91 Fabrication placard mural/encastré',
+    '\uD83E\uDE91 Fabrication bibliothèque/étagères murales',
+    '\uD83E\uDE91 Fabrication bar d\'intérieur/comptoir',
+    '\uD83E\uDE91 Fabrication meuble TV/home cinéma',
+    '\uD83E\uDE91 Fabrication table basse/console',
+    '\uD83E\uDE91 Fabrication chaises/fauteuils',
+    '\uD83E\uDE91 Fabrication meuble vasque/salle de bain',
+    '\uD83E\uDE91 Fabrication cuisine équipée/aménagée',
+    '\uD83E\uDE91 Fabrication meuble pour boutique/commerce',
+    '\uD83E\uDE91 Fabrication présentoir produits',
+    '\uD83E\uDE91 Fabrication rayonnage/stockage',
+    '\uD83E\uDE91 Fabrication mobilier restaurant/maquis',
+    '\uD83E\uDE91 Fabrication mobilier hôtel/auberge',
+    '\uD83E\uDE91 Fabrication mobilier école/bureau',
 
-    // 🚪 PORTES & FENÊTRES (15)
-    '🚪 Fabrication & pose porte d\'entrée bois massif',
-    '🚪 Fabrication & pose porte intérieure bois',
-    '🚪 Fabrication & pose porte blindée/sécurisée',
-    '🚪 Fabrication & pose porte coulissante',
-    '🚪 Fabrication & pose portail bois',
-    '🚪 Fabrication & pose porte garage',
-    '🪟 Fabrication & pose fenêtres bois',
-    '🪟 Fabrication & pose fenêtres bois/alu',
-    '🪟 Fabrication & pose volets bois',
-    '🪟 Fabrication & pose baies vitrées bois',
-    '🚪 Réparation/remplacement porte',
-    '🪟 Réparation/remplacement fenêtre',
-    '🔧 Dépannage serrurerie bois',
-    '🔧 Ajustement porte/fenêtre (grincement, blocage)',
-    '🔧 Remplacement gonds/charnières',
+    // \uD83D\uDEAA PORTES & FENÊTRES (15)
+    '\uD83D\uDEAA Fabrication & pose porte d\'entrée bois massif',
+    '\uD83D\uDEAA Fabrication & pose porte intérieure bois',
+    '\uD83D\uDEAA Fabrication & pose porte blindée/sécurisée',
+    '\uD83D\uDEAA Fabrication & pose porte coulissante',
+    '\uD83D\uDEAA Fabrication & pose portail bois',
+    '\uD83D\uDEAA Fabrication & pose porte garage',
+    '\uD83E\uDE9F Fabrication & pose fenêtres bois',
+    '\uD83E\uDE9F Fabrication & pose fenêtres bois/alu',
+    '\uD83E\uDE9F Fabrication & pose volets bois',
+    '\uD83E\uDE9F Fabrication & pose baies vitrées bois',
+    '\uD83D\uDEAA Réparation/remplacement porte',
+    '\uD83E\uDE9F Réparation/remplacement fenêtre',
+    '\uD83D\uDD27 Dépannage serrurerie bois',
+    '\uD83D\uDD27 Ajustement porte/fenêtre (grincement, blocage)',
+    '\uD83D\uDD27 Remplacement gonds/charnières',
 
-    // 🏠 MENUISERIE INTÉRIEURE (12)
-    '🏠 Pose parquet massif/flottant',
-    '🏠 Pose lambris mural/plafond',
-    '🏠 Pose plinthes bois',
-    '🏠 Aménagement combles/grenier',
-    '🏠 Fabrication & pose escalier bois intérieur',
-    '🏠 Habillage escalier existant',
-    '🏠 Cloison bois/séparation pièce',
-    '🏠 Faux plafond/plafond suspendu bois',
-    '🏠 Dressing/penderie sur mesure',
-    '🏠 Aménagement sous escalier',
-    '🏠 Mezzanine bois',
-    '🏠 Terrasse intérieure bois',
+    // \uD83C\uDFE0 MENUISERIE INTÉRIEURE (12)
+    '\uD83C\uDFE0 Pose parquet massif/flottant',
+    '\uD83C\uDFE0 Pose lambris mural/plafond',
+    '\uD83C\uDFE0 Pose plinthes bois',
+    '\uD83C\uDFE0 Aménagement combles/grenier',
+    '\uD83C\uDFE0 Fabrication & pose escalier bois intérieur',
+    '\uD83C\uDFE0 Habillage escalier existant',
+    '\uD83C\uDFE0 Cloison bois/séparation pièce',
+    '\uD83C\uDFE0 Faux plafond/plafond suspendu bois',
+    '\uD83C\uDFE0 Dressing/penderie sur mesure',
+    '\uD83C\uDFE0 Aménagement sous escalier',
+    '\uD83C\uDFE0 Mezzanine bois',
+    '\uD83C\uDFE0 Terrasse intérieure bois',
 
-    // 🌳 MENUISERIE EXTÉRIEURE (10)
-    '🌳 Terrasse/plancher extérieur bois',
-    '🌳 Pergola/tonnelle bois',
-    '🌳 Clôture/palissade bois',
-    '🌳 Portillon/portail bois',
-    '🌳 Abri jardin/cabanon bois',
-    '🌳 Charpente bois/toiture',
-    '🌳 Couverture/bardage bois',
-    '🌳 Kiosque/gazebo bois',
-    '🌳 Poulailler/enclos bois',
-    '🌳 Auvent/marquise bois',
+    // \uD83C\uDF33 MENUISERIE EXTÉRIEURE (10)
+    '\uD83C\uDF33 Terrasse/plancher extérieur bois',
+    '\uD83C\uDF33 Pergola/tonnelle bois',
+    '\uD83C\uDF33 Clôture/palissade bois',
+    '\uD83C\uDF33 Portillon/portail bois',
+    '\uD83C\uDF33 Abri jardin/cabanon bois',
+    '\uD83C\uDF33 Charpente bois/toiture',
+    '\uD83C\uDF33 Couverture/bardage bois',
+    '\uD83C\uDF33 Kiosque/gazebo bois',
+    '\uD83C\uDF33 Poulailler/enclos bois',
+    '\uD83C\uDF33 Auvent/marquise bois',
 
-    // 🔨 RÉPARATIONS & RESTAURATION (8)
-    '🔨 Réparation meubles anciens/endommagés',
-    '🔨 Restauration meubles (antiquité, héritage)',
-    '🔨 Vernissage/revêtement meubles',
-    '🔨 Rénovation parquet (ponçage, vitrification)',
-    '🔨 Traitement bois (anti-termites, anti-humidité)',
-    '🔨 Remplacement pièces cassées',
-    '🔨 Ajustement/renforcement structure',
-    '🔨 Transformation/modification meubles',
+    // \uD83D\uDD28 RÉPARATIONS & RESTAURATION (8)
+    '\uD83D\uDD28 Réparation meubles anciens/endommagés',
+    '\uD83D\uDD28 Restauration meubles (antiquité, héritage)',
+    '\uD83D\uDD28 Vernissage/revêtement meubles',
+    '\uD83D\uDD28 Rénovation parquet (ponçage, vitrification)',
+    '\uD83D\uDD28 Traitement bois (anti-termites, anti-humidité)',
+    '\uD83D\uDD28 Remplacement pièces cassées',
+    '\uD83D\uDD28 Ajustement/renforcement structure',
+    '\uD83D\uDD28 Transformation/modification meubles',
 
-    // 🎨 ÉBÉNISTERIE & DÉCORATION (8)
-    '🎨 Ébénisterie artistique/sculpture bois',
-    '🎨 Marqueterie/incrustation',
-    '🎨 Objets décoratifs bois (cadres, miroirs)',
-    '🎨 Portes sculptées traditionnelles',
-    '🎨 Mobilier design/contemporain',
-    '🎨 Mobilier traditionnel africain',
-    '🎨 Objets artisanaux (masques, statues)',
-    '🎨 Personnalisation/gravure sur bois',
+    // \uD83C\uDFA8 ÉBÉNISTERIE & DÉCORATION (8)
+    '\uD83C\uDFA8 Ébénisterie artistique/sculpture bois',
+    '\uD83C\uDFA8 Marqueterie/incrustation',
+    '\uD83C\uDFA8 Objets décoratifs bois (cadres, miroirs)',
+    '\uD83C\uDFA8 Portes sculptées traditionnelles',
+    '\uD83C\uDFA8 Mobilier design/contemporain',
+    '\uD83C\uDFA8 Mobilier traditionnel africain',
+    '\uD83C\uDFA8 Objets artisanaux (masques, statues)',
+    '\uD83C\uDFA8 Personnalisation/gravure sur bois',
 
-    '🆕 Autre service menuiserie (ajouter)'
+    '\uD83C\uDD95 Autre service menuiserie (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 🌲 TYPES DE BOIS (50+) - Focus BOIS AFRICAINS + Internationaux
+  // \uD83C\uDF32 TYPES DE BOIS (50+) - Focus BOIS AFRICAINS + Internationaux
   // ═══════════════════════════════════════════════════════════════
   bois: [
-    // === 🇨🇲 BOIS AFRICAINS LOCAUX (25) - POPULAIRES AU CAMEROUN ===
-    '🇨🇲 Acajou d\'Afrique (Khaya)', // Très prisé
-    '🇨🇲 Sapelli (Acajou africain)', // Noble, résistant
-    '🇨🇲 Iroko (Teck africain)', // Très durable
-    '🇨🇲 Doussié/Afzelia', // Dur, résistant termites
-    '🇨🇲 Moabi', // Bois rouge noble
-    '🇨🇲 Padouk rouge d\'Afrique', // Couleur rouge vif
-    '🇨🇲 Tali/Eloun', // Résistant, construction
-    '🇨🇲 Bilinga/Opepe', // Jaune, durable
-    '🇨🇲 Bubinga/Kevazingo', // Bois précieux
-    '🇨🇲 Wengé', // Très sombre, luxe
-    '🇨🇲 Dibétou', // Clair, économique
-    '🇨�M Framiré', // Jaune pâle
-    '🇨🇲 Kosipo', // Acajou léger
-    '🇨🇲 Sipo', // Acajou rose
-    '🇨🇲 Ayous/Obeche/Samba', // Très léger, économique
-    '🇨🇲 Azobé/Bongossi', // Ultra dur, extérieur
-    '🇨🇲 Ebène d\'Afrique', // Précieux, noir
-    '🇨🇲 Teck d\'Afrique (plantation)',
-    '🇨🇲 Eucalyptus (plantation locale)',
-    '🇨🇲 Bambou africain',
-    '🇨🇲 Palmier (bois artisanal)',
-    '🇨🇲 Fromager',
-    '🇨🇲 Niangon',
-    '🇨🇲 Tiama',
-    '🇨🇲 Bois local mixte',
+    // === \uD83C\uDDE8\uD83C\uDDF2 BOIS AFRICAINS LOCAUX (25) - POPULAIRES AU CAMEROUN ===
+    '\uD83C\uDDE8\uD83C\uDDF2 Acajou d\'Afrique (Khaya)', // Très prisé
+    '\uD83C\uDDE8\uD83C\uDDF2 Sapelli (Acajou africain)', // Noble, résistant
+    '\uD83C\uDDE8\uD83C\uDDF2 Iroko (Teck africain)', // Très durable
+    '\uD83C\uDDE8\uD83C\uDDF2 Doussié/Afzelia', // Dur, résistant termites
+    '\uD83C\uDDE8\uD83C\uDDF2 Moabi', // Bois rouge noble
+    '\uD83C\uDDE8\uD83C\uDDF2 Padouk rouge d\'Afrique', // Couleur rouge vif
+    '\uD83C\uDDE8\uD83C\uDDF2 Tali/Eloun', // Résistant, construction
+    '\uD83C\uDDE8\uD83C\uDDF2 Bilinga/Opepe', // Jaune, durable
+    '\uD83C\uDDE8\uD83C\uDDF2 Bubinga/Kevazingo', // Bois précieux
+    '\uD83C\uDDE8\uD83C\uDDF2 Wengé', // Très sombre, luxe
+    '\uD83C\uDDE8\uD83C\uDDF2 Dibétou', // Clair, économique
+    '\uD83C\uDDE8�M Framiré', // Jaune pâle
+    '\uD83C\uDDE8\uD83C\uDDF2 Kosipo', // Acajou léger
+    '\uD83C\uDDE8\uD83C\uDDF2 Sipo', // Acajou rose
+    '\uD83C\uDDE8\uD83C\uDDF2 Ayous/Obeche/Samba', // Très léger, économique
+    '\uD83C\uDDE8\uD83C\uDDF2 Azobé/Bongossi', // Ultra dur, extérieur
+    '\uD83C\uDDE8\uD83C\uDDF2 Ebène d\'Afrique', // Précieux, noir
+    '\uD83C\uDDE8\uD83C\uDDF2 Teck d\'Afrique (plantation)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Eucalyptus (plantation locale)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Bambou africain',
+    '\uD83C\uDDE8\uD83C\uDDF2 Palmier (bois artisanal)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Fromager',
+    '\uD83C\uDDE8\uD83C\uDDF2 Niangon',
+    '\uD83C\uDDE8\uD83C\uDDF2 Tiama',
+    '\uD83C\uDDE8\uD83C\uDDF2 Bois local mixte',
 
-    // === 🌍 BOIS IMPORTÉS POPULAIRES (10) ===
-    '🌍 Chêne européen', // Importé, cher
-    '🌍 Hêtre', // Importé
-    '🌍 Pin maritime',
-    '🌍 Sapin du Nord',
-    '🌍 Teck d\'Asie (Thaïlande, Birmanie)',
-    '🌍 Acajou d\'Amérique',
-    '🌍 Cerisier',
-    '🌍 Noyer',
-    '🌍 Merisier',
-    '🌍 Érable',
+    // === \uD83C\uDF0D BOIS IMPORTÉS POPULAIRES (10) ===
+    '\uD83C\uDF0D Chêne européen', // Importé, cher
+    '\uD83C\uDF0D Hêtre', // Importé
+    '\uD83C\uDF0D Pin maritime',
+    '\uD83C\uDF0D Sapin du Nord',
+    '\uD83C\uDF0D Teck d\'Asie (Thaïlande, Birmanie)',
+    '\uD83C\uDF0D Acajou d\'Amérique',
+    '\uD83C\uDF0D Cerisier',
+    '\uD83C\uDF0D Noyer',
+    '\uD83C\uDF0D Merisier',
+    '\uD83C\uDF0D Érable',
 
-    // === 🏭 PANNEAUX & DÉRIVÉS (15) - Très utilisés au Cameroun ===
-    '🏭 Contreplaqué okoumé (production locale)',
-    '🏭 Contreplaqué marine',
-    '🏭 Contreplaqué standard',
-    '🏭 MDF (Medium Density Fiberboard)',
-    '🏭 Aggloméré/Particules',
-    '🏭 OSB (Oriented Strand Board)',
-    '🏭 Latté/Lattis',
-    '🏭 Multiplis',
-    '🏭 MDF mélaminé',
-    '🏭 Aggloméré stratifié',
-    '🏭 Panneau bois massif reconstitué',
-    '🏭 HDF (High Density Fiberboard)',
-    '🏭 Panneau alvéolaire',
-    '🏭 Plywood',
-    '🏭 Isorel',
+    // === \uD83C\uDFED PANNEAUX & DÉRIVÉS (15) - Très utilisés au Cameroun ===
+    '\uD83C\uDFED Contreplaqué okoumé (production locale)',
+    '\uD83C\uDFED Contreplaqué marine',
+    '\uD83C\uDFED Contreplaqué standard',
+    '\uD83C\uDFED MDF (Medium Density Fiberboard)',
+    '\uD83C\uDFED Aggloméré/Particules',
+    '\uD83C\uDFED OSB (Oriented Strand Board)',
+    '\uD83C\uDFED Latté/Lattis',
+    '\uD83C\uDFED Multiplis',
+    '\uD83C\uDFED MDF mélaminé',
+    '\uD83C\uDFED Aggloméré stratifié',
+    '\uD83C\uDFED Panneau bois massif reconstitué',
+    '\uD83C\uDFED HDF (High Density Fiberboard)',
+    '\uD83C\uDFED Panneau alvéolaire',
+    '\uD83C\uDFED Plywood',
+    '\uD83C\uDFED Isorel',
 
-    '🆕 Autre bois (ajouter)'
+    '\uD83C\uDD95 Autre bois (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 🎨 FINITIONS & TRAITEMENTS (25+)
+  // \uD83C\uDFA8 FINITIONS & TRAITEMENTS (25+)
   // ═══════════════════════════════════════════════════════════════
   finitions: [
     // Finitions classiques
@@ -14745,11 +14745,11 @@ export const MENUISERIE_MODALITIES: ModalityCategory = {
     'Cérusé',
     'Vieilli/patiné',
 
-    '🆕 Autre finition (ajouter)'
+    '\uD83C\uDD95 Autre finition (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 🎭 STYLES DE MENUISERIE (20+)
+  // \uD83C\uDFAD STYLES DE MENUISERIE (20+)
   // ═══════════════════════════════════════════════════════════════
   styles: [
     // Styles modernes
@@ -14780,11 +14780,11 @@ export const MENUISERIE_MODALITIES: ModalityCategory = {
     'Art déco',
     'Baroque',
 
-    '🆕 Autre style (ajouter)'
+    '\uD83C\uDD95 Autre style (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 🛠️ OUTILS & ÉQUIPEMENTS (30+)
+  // \uD83D\uDEE0️ OUTILS & ÉQUIPEMENTS (30+)
   // ═══════════════════════════════════════════════════════════════
   outils_disponibles: [
     // Outils électriques
@@ -14809,11 +14809,11 @@ export const MENUISERIE_MODALITIES: ModalityCategory = {
     'Atelier semi-équipé',
     'Outils basiques manuels uniquement',
 
-    '🆕 Autre équipement (ajouter)'
+    '\uD83C\uDD95 Autre équipement (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 🎓 NIVEAUX D'EXPÉRIENCE (12)
+  // \uD83C\uDF93 NIVEAUX D'EXPÉRIENCE (12)
   // ═══════════════════════════════════════════════════════════════
   niveaux_experience: [
     'Apprenti menuisier (< 1 an)',
@@ -14827,11 +14827,11 @@ export const MENUISERIE_MODALITIES: ModalityCategory = {
     'Artisan primé/reconnu',
     'Formateur/Enseignant menuiserie',
     'Chef d\'atelier',
-    '🆕 Autre niveau (ajouter)'
+    '\uD83C\uDD95 Autre niveau (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 🎖️ CERTIFICATIONS & DIPLÔMES (15+) - Contexte Cameroun
+  // \uD83C\uDF96️ CERTIFICATIONS & DIPLÔMES (15+) - Contexte Cameroun
   // ═══════════════════════════════════════════════════════════════
   certifications: [
     // Diplômes camerounais
@@ -14857,29 +14857,29 @@ export const MENUISERIE_MODALITIES: ModalityCategory = {
     'Formation professionnelle internationale',
 
     'Autodidacte/Expérience terrain',
-    '🆕 Autre certification (ajouter)'
+    '\uD83C\uDD95 Autre certification (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 🏭 ATELIERS & FABRICANTS (20+) - Focus Cameroun
+  // \uD83C\uDFED ATELIERS & FABRICANTS (20+) - Focus Cameroun
   // ═══════════════════════════════════════════════════════════════
   marques_ateliers: [
-    // === 🇨🇲 ATELIERS CAMEROUNAIS (Douala, Yaoundé, autres) ===
-    '🇨🇲 Atelier artisanal Bonabéri (Douala)',
-    '🇨🇲 Marché bois Mboppi (Douala)',
-    '🇨🇲 Menuisiers Deido (Douala)',
-    '🇨🇲 Ateliers Nkoulouloun (Douala)',
-    '🇨🇲 Menuiserie Bassa (Douala)',
-    '🇨🇲 Atelier Mvog-Ada (Yaoundé)',
-    '🇨🇲 Menuisiers Mokolo (Yaoundé)',
-    '🇨🇲 Ateliers Melen (Yaoundé)',
-    '🇨🇲 Menuiserie Elig-Edzoa (Yaoundé)',
-    '🇨🇲 Ébénistes Bafoussam',
-    '🇨🇲 Menuisiers Garoua',
-    '🇨🇲 Artisans Maroua',
-    '🇨🇲 Menuiserie moderne Cameroun',
-    '🇨🇲 Cameroon Wood Design',
-    '🇨🇲 African Wood Craft',
+    // === \uD83C\uDDE8\uD83C\uDDF2 ATELIERS CAMEROUNAIS (Douala, Yaoundé, autres) ===
+    '\uD83C\uDDE8\uD83C\uDDF2 Atelier artisanal Bonabéri (Douala)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Marché bois Mboppi (Douala)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Menuisiers Deido (Douala)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Ateliers Nkoulouloun (Douala)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Menuiserie Bassa (Douala)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Atelier Mvog-Ada (Yaoundé)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Menuisiers Mokolo (Yaoundé)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Ateliers Melen (Yaoundé)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Menuiserie Elig-Edzoa (Yaoundé)',
+    '\uD83C\uDDE8\uD83C\uDDF2 Ébénistes Bafoussam',
+    '\uD83C\uDDE8\uD83C\uDDF2 Menuisiers Garoua',
+    '\uD83C\uDDE8\uD83C\uDDF2 Artisans Maroua',
+    '\uD83C\uDDE8\uD83C\uDDF2 Menuiserie moderne Cameroun',
+    '\uD83C\uDDE8\uD83C\uDDF2 Cameroon Wood Design',
+    '\uD83C\uDDE8\uD83C\uDDF2 African Wood Craft',
 
     // Qualifications
     'Menuisier indépendant local',
@@ -14887,7 +14887,7 @@ export const MENUISERIE_MODALITIES: ModalityCategory = {
     'Coopérative artisans menuisiers',
     'Entreprise menuiserie PME',
 
-    '🆕 Autre atelier (ajouter)'
+    '\uD83C\uDD95 Autre atelier (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
@@ -14903,11 +14903,11 @@ export const MENUISERIE_MODALITIES: ModalityCategory = {
     'Sur mesure complexe (3+ mois)',
     'À définir selon projet',
     'Production en série (stock disponible)',
-    '🆕 Autre délai (ajouter)'
+    '\uD83C\uDD95 Autre délai (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 💰 MODES DE PAIEMENT (12)
+  // \uD83D\uDCB0 MODES DE PAIEMENT (12)
   // ═══════════════════════════════════════════════════════════════
   modes_paiement: [
     'Espèces (FCFA)',
@@ -14921,11 +14921,11 @@ export const MENUISERIE_MODALITIES: ModalityCategory = {
     'Paiement complet avant fabrication',
     'Paiement à la livraison',
     'Crédit artisan (facilités)',
-    '🆕 Autre mode (ajouter)'
+    '\uD83C\uDD95 Autre mode (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 📍 ZONES D'INTERVENTION - 🌍 SYSTÈME INTELLIGENT AUTO-ADAPTATIF
+  // \uD83D\uDCCD ZONES D'INTERVENTION - \uD83C\uDF0D SYSTÈME INTELLIGENT AUTO-ADAPTATIF
   // S'adapte automatiquement au pays de l'utilisateur via getModalitiesWithUserContext()
   // Génère: pays utilisateur (prioritaire) → villes principales → autres pays Afrique
   // ═══════════════════════════════════════════════════════════════
@@ -14944,14 +14944,14 @@ export const MENUISERIE_MODALITIES: ModalityCategory = {
     'Retouches gratuites (6 mois)',
     'Remplacement pièces défectueuses',
     'Pas de garantie formelle',
-    '🆕 Autre garantie (ajouter)'
+    '\uD83C\uDD95 Autre garantie (ajouter)'
   ]
 };
 
-// ✅ MODALITÉS RÉPARATEUR/MAINTENANCE CLIMATISEUR - 🌍 CONTEXTE AFRIQUE FRANCOPHONE
+// ✅ MODALITÉS RÉPARATEUR/MAINTENANCE CLIMATISEUR - \uD83C\uDF0D CONTEXTE AFRIQUE FRANCOPHONE
 export const REPARATEUR_CLIMATISEUR_MODALITIES: ModalityCategory = {
   // ═══════════════════════════════════════════════════════════════
-  // 🛠️ TYPES DE SERVICES (25+) - COMPLET CLIMATISATION
+  // \uD83D\uDEE0️ TYPES DE SERVICES (25+) - COMPLET CLIMATISATION
   // ═══════════════════════════════════════════════════════════════
   services: [
     // Services principaux
@@ -14970,78 +14970,78 @@ export const REPARATEUR_CLIMATISEUR_MODALITIES: ModalityCategory = {
     '❄️ Diagnostic panne/Devis gratuit',
 
     // Services spécialisés
-    '🏢 Installation climatisation centrale',
-    '🏢 Maintenance climatisation bureau/commerce',
-    '🏢 Dépannage urgence 24h/24',
-    '🏢 Contrat maintenance annuel',
-    '🏢 Désinstallation/Réinstallation (déménagement)',
-    '🏢 Optimisation consommation électrique',
-    '🏢 Mise aux normes climatisation',
+    '\uD83C\uDFE2 Installation climatisation centrale',
+    '\uD83C\uDFE2 Maintenance climatisation bureau/commerce',
+    '\uD83C\uDFE2 Dépannage urgence 24h/24',
+    '\uD83C\uDFE2 Contrat maintenance annuel',
+    '\uD83C\uDFE2 Désinstallation/Réinstallation (déménagement)',
+    '\uD83C\uDFE2 Optimisation consommation électrique',
+    '\uD83C\uDFE2 Mise aux normes climatisation',
 
     // Services complémentaires
-    '🔧 Vente pièces détachées climatiseur',
-    '🔧 Conseil achat climatiseur adapté',
-    '🔧 Formation utilisation/entretien',
+    '\uD83D\uDD27 Vente pièces détachées climatiseur',
+    '\uD83D\uDD27 Conseil achat climatiseur adapté',
+    '\uD83D\uDD27 Formation utilisation/entretien',
 
-    '🆕 Autre service (ajouter)'
+    '\uD83C\uDD95 Autre service (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
   // ❄️ MARQUES CLIMATISEURS (40+) - Focus Afrique & Cameroun
   // ═══════════════════════════════════════════════════════════════
   marques_climatiseurs: [
-    // === 🇨🇳 MARQUES CHINOISES (Très populaires en Afrique) ===
-    '🇨🇳 Midea', // Leader en Afrique
-    '🇨🇳 Gree', // Très populaire
-    '🇨🇳 Haier',
-    '🇨🇳 Hisense',
-    '🇨🇳 TCL',
-    '🇨🇳 Aux',
-    '🇨🇳 Chigo',
-    '🇨🇳 Galanz',
-    '🇨🇳 Kelon',
-    '🇨🇳 Changhong',
+    // === \uD83C\uDDE8\uD83C\uDDF3 MARQUES CHINOISES (Très populaires en Afrique) ===
+    '\uD83C\uDDE8\uD83C\uDDF3 Midea', // Leader en Afrique
+    '\uD83C\uDDE8\uD83C\uDDF3 Gree', // Très populaire
+    '\uD83C\uDDE8\uD83C\uDDF3 Haier',
+    '\uD83C\uDDE8\uD83C\uDDF3 Hisense',
+    '\uD83C\uDDE8\uD83C\uDDF3 TCL',
+    '\uD83C\uDDE8\uD83C\uDDF3 Aux',
+    '\uD83C\uDDE8\uD83C\uDDF3 Chigo',
+    '\uD83C\uDDE8\uD83C\uDDF3 Galanz',
+    '\uD83C\uDDE8\uD83C\uDDF3 Kelon',
+    '\uD83C\uDDE8\uD83C\uDDF3 Changhong',
 
-    // === 🇯🇵 MARQUES JAPONAISES (Haut de gamme) ===
-    '🇯🇵 Daikin', // Premium
-    '🇯🇵 Mitsubishi Electric',
-    '🇯🇵 Mitsubishi Heavy Industries',
-    '🇯🇵 Fujitsu',
-    '🇯🇵 Toshiba',
-    '🇯🇵 Panasonic',
-    '🇯🇵 Hitachi',
-    '🇯🇵 Sharp',
+    // === \uD83C\uDDEF\uD83C\uDDF5 MARQUES JAPONAISES (Haut de gamme) ===
+    '\uD83C\uDDEF\uD83C\uDDF5 Daikin', // Premium
+    '\uD83C\uDDEF\uD83C\uDDF5 Mitsubishi Electric',
+    '\uD83C\uDDEF\uD83C\uDDF5 Mitsubishi Heavy Industries',
+    '\uD83C\uDDEF\uD83C\uDDF5 Fujitsu',
+    '\uD83C\uDDEF\uD83C\uDDF5 Toshiba',
+    '\uD83C\uDDEF\uD83C\uDDF5 Panasonic',
+    '\uD83C\uDDEF\uD83C\uDDF5 Hitachi',
+    '\uD83C\uDDEF\uD83C\uDDF5 Sharp',
 
-    // === 🇰🇷 MARQUES CORÉENNES (Milieu/Haut de gamme) ===
-    '🇰🇷 LG', // Très populaire en Afrique
-    '🇰🇷 Samsung',
-    '🇰🇷 Carrier (LG)',
+    // === \uD83C\uDDF0\uD83C\uDDF7 MARQUES CORÉENNES (Milieu/Haut de gamme) ===
+    '\uD83C\uDDF0\uD83C\uDDF7 LG', // Très populaire en Afrique
+    '\uD83C\uDDF0\uD83C\uDDF7 Samsung',
+    '\uD83C\uDDF0\uD83C\uDDF7 Carrier (LG)',
 
-    // === 🌍 MARQUES INTERNATIONALES ===
-    '🌍 Carrier (USA)',
-    '🌍 York',
-    '🌍 Trane',
-    '🌍 Lennox',
-    '🌍 Rheem',
-    '🌍 Whirlpool',
+    // === \uD83C\uDF0D MARQUES INTERNATIONALES ===
+    '\uD83C\uDF0D Carrier (USA)',
+    '\uD83C\uDF0D York',
+    '\uD83C\uDF0D Trane',
+    '\uD83C\uDF0D Lennox',
+    '\uD83C\uDF0D Rheem',
+    '\uD83C\uDF0D Whirlpool',
 
-    // === 🇪🇺 MARQUES EUROPÉENNES ===
-    '🇪🇺 Electrolux',
-    '🇪🇺 Bosch',
-    '🇪🇺 Siemens',
-    '🇪🇺 De Longhi',
+    // === \uD83C\uDDEA\uD83C\uDDFA MARQUES EUROPÉENNES ===
+    '\uD83C\uDDEA\uD83C\uDDFA Electrolux',
+    '\uD83C\uDDEA\uD83C\uDDFA Bosch',
+    '\uD83C\uDDEA\uD83C\uDDFA Siemens',
+    '\uD83C\uDDEA\uD83C\uDDFA De Longhi',
 
-    // === 🇹🇷 MARQUES TURQUES (Économiques) ===
-    '🇹🇷 Vestel',
-    '🇹🇷 Arçelik',
+    // === \uD83C\uDDF9\uD83C\uDDF7 MARQUES TURQUES (Économiques) ===
+    '\uD83C\uDDF9\uD83C\uDDF7 Vestel',
+    '\uD83C\uDDF9\uD83C\uDDF7 Arçelik',
 
     'Toutes marques',
     'Sans préférence marque',
-    '🆕 Autre marque (ajouter)'
+    '\uD83C\uDD95 Autre marque (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 🏠 TYPES DE CLIMATISEURS (15+)
+  // \uD83C\uDFE0 TYPES DE CLIMATISEURS (15+)
   // ═══════════════════════════════════════════════════════════════
   types_climatiseurs: [
     '❄️ Split mural (le plus courant)',
@@ -15058,7 +15058,7 @@ export const REPARATEUR_CLIMATISEUR_MODALITIES: ModalityCategory = {
     '❄️ Console (au sol)',
     '❄️ Armoire (standing)',
     '❄️ Réversible (chaud/froid)',
-    '🆕 Autre type (ajouter)'
+    '\uD83C\uDD95 Autre type (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
@@ -15066,86 +15066,86 @@ export const REPARATEUR_CLIMATISEUR_MODALITIES: ModalityCategory = {
   // ═══════════════════════════════════════════════════════════════
   pieces_detachees: [
     // Pièces principales
-    '🔧 Compresseur',
-    '🔧 Carte électronique/PCB',
-    '🔧 Condensateur',
-    '🔧 Ventilateur unité intérieure',
-    '🔧 Ventilateur unité extérieure',
-    '🔧 Moteur ventilateur',
-    '🔧 Télécommande',
-    '🔧 Récepteur infrarouge',
-    '🔧 Détendeur/Vanne expansion',
-    '🔧 Filtre déshydrateur',
+    '\uD83D\uDD27 Compresseur',
+    '\uD83D\uDD27 Carte électronique/PCB',
+    '\uD83D\uDD27 Condensateur',
+    '\uD83D\uDD27 Ventilateur unité intérieure',
+    '\uD83D\uDD27 Ventilateur unité extérieure',
+    '\uD83D\uDD27 Moteur ventilateur',
+    '\uD83D\uDD27 Télécommande',
+    '\uD83D\uDD27 Récepteur infrarouge',
+    '\uD83D\uDD27 Détendeur/Vanne expansion',
+    '\uD83D\uDD27 Filtre déshydrateur',
 
     // Filtres et nettoyage
-    '🔧 Filtre à air',
-    '🔧 Filtre antibactérien',
-    '🔧 Filtre charbon actif',
-    '🔧 Filtre HEPA',
+    '\uD83D\uDD27 Filtre à air',
+    '\uD83D\uDD27 Filtre antibactérien',
+    '\uD83D\uDD27 Filtre charbon actif',
+    '\uD83D\uDD27 Filtre HEPA',
 
     // Drainage
-    '🔧 Pompe de relevage condensats',
-    '🔧 Tuyau drainage',
-    '🔧 Bac condensats',
+    '\uD83D\uDD27 Pompe de relevage condensats',
+    '\uD83D\uDD27 Tuyau drainage',
+    '\uD83D\uDD27 Bac condensats',
 
     // Électronique
-    '🔧 Capteur température',
-    '🔧 Thermostat',
-    '🔧 Relais démarrage',
-    '🔧 Transformateur',
+    '\uD83D\uDD27 Capteur température',
+    '\uD83D\uDD27 Thermostat',
+    '\uD83D\uDD27 Relais démarrage',
+    '\uD83D\uDD27 Transformateur',
 
     // Tuyauterie et gaz
-    '🔧 Tuyau cuivre (frigorifique)',
-    '🔧 Gaz réfrigérant R22',
-    '🔧 Gaz réfrigérant R410A',
-    '🔧 Gaz réfrigérant R32',
-    '🔧 Vanne de service',
-    '🔧 Raccord cuivre',
+    '\uD83D\uDD27 Tuyau cuivre (frigorifique)',
+    '\uD83D\uDD27 Gaz réfrigérant R22',
+    '\uD83D\uDD27 Gaz réfrigérant R410A',
+    '\uD83D\uDD27 Gaz réfrigérant R32',
+    '\uD83D\uDD27 Vanne de service',
+    '\uD83D\uDD27 Raccord cuivre',
 
     // Accessoires
-    '🔧 Support mural',
-    '🔧 Cache climatiseur',
+    '\uD83D\uDD27 Support mural',
+    '\uD83D\uDD27 Cache climatiseur',
 
-    '🆕 Autre pièce (ajouter)'
+    '\uD83C\uDD95 Autre pièce (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 🎓 CERTIFICATIONS & QUALIFICATIONS (12+)
+  // \uD83C\uDF93 CERTIFICATIONS & QUALIFICATIONS (12+)
   // ═══════════════════════════════════════════════════════════════
   certifications: [
     // Certifications frigoristes
-    '🎓 Certificat FROID (Frigoriste qualifié)',
-    '🎓 Habilitation manipulation fluides frigorigènes',
-    '🎓 Attestation aptitude gaz fluorés',
-    '🎓 CAP Froid et Climatisation',
-    '🎓 BEP Froid et Climatisation',
-    '🎓 BTS Fluides Énergies Domotique',
-    '🎓 Formation constructeur (Daikin, Mitsubishi...)',
+    '\uD83C\uDF93 Certificat FROID (Frigoriste qualifié)',
+    '\uD83C\uDF93 Habilitation manipulation fluides frigorigènes',
+    '\uD83C\uDF93 Attestation aptitude gaz fluorés',
+    '\uD83C\uDF93 CAP Froid et Climatisation',
+    '\uD83C\uDF93 BEP Froid et Climatisation',
+    '\uD83C\uDF93 BTS Fluides Énergies Domotique',
+    '\uD83C\uDF93 Formation constructeur (Daikin, Mitsubishi...)',
 
     // Expérience
-    '🎓 Technicien certifié constructeur',
-    '🎓 Frigoriste agréé',
-    '🎓 Expert climatisation (10+ ans)',
+    '\uD83C\uDF93 Technicien certifié constructeur',
+    '\uD83C\uDF93 Frigoriste agréé',
+    '\uD83C\uDF93 Expert climatisation (10+ ans)',
 
     // Sans certification
     'Autodidacte/Expérience terrain',
-    '🆕 Autre certification (ajouter)'
+    '\uD83C\uDD95 Autre certification (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
   // ⏱️ DISPONIBILITÉS & URGENCE (10)
   // ═══════════════════════════════════════════════════════════════
   disponibilites: [
-    '🚨 Urgence 24h/24 - 7j/7',
-    '🚨 Dépannage urgence (même jour)',
+    '\uD83D\uDEA8 Urgence 24h/24 - 7j/7',
+    '\uD83D\uDEA8 Dépannage urgence (même jour)',
     '⏰ Intervention sous 2-4h',
     '⏰ Intervention sous 24h',
     '⏰ Rendez-vous sous 48h',
-    '📅 Planning semaine',
-    '📅 Week-end disponible',
-    '📅 Jours ouvrables uniquement (Lun-Ven)',
-    '📅 Sur rendez-vous uniquement',
-    '🆕 Autre disponibilité (ajouter)'
+    '\uD83D\uDCC5 Planning semaine',
+    '\uD83D\uDCC5 Week-end disponible',
+    '\uD83D\uDCC5 Jours ouvrables uniquement (Lun-Ven)',
+    '\uD83D\uDCC5 Sur rendez-vous uniquement',
+    '\uD83C\uDD95 Autre disponibilité (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
@@ -15159,41 +15159,41 @@ export const REPARATEUR_CLIMATISEUR_MODALITIES: ModalityCategory = {
     '30000 BTU+ (espace commercial)',
     'Climatisation centrale (toute puissance)',
     'Toutes puissances',
-    '🆕 Autre puissance (ajouter)'
+    '\uD83C\uDD95 Autre puissance (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 💰 MODES DE TARIFICATION (10)
+  // \uD83D\uDCB0 MODES DE TARIFICATION (10)
   // ═══════════════════════════════════════════════════════════════
   modes_tarification: [
-    '💵 Diagnostic/Devis gratuit',
-    '💵 Tarif forfaitaire intervention',
-    '💵 Tarif horaire',
-    '💵 Prix selon panne',
-    '💵 Pièces + main d\'œuvre',
-    '💵 Contrat maintenance annuel',
-    '💵 Abonnement maintenance mensuel',
-    '💵 Prix négociable',
-    '💵 Devis obligatoire avant intervention',
-    '🆕 Autre tarification (ajouter)'
+    '\uD83D\uDCB5 Diagnostic/Devis gratuit',
+    '\uD83D\uDCB5 Tarif forfaitaire intervention',
+    '\uD83D\uDCB5 Tarif horaire',
+    '\uD83D\uDCB5 Prix selon panne',
+    '\uD83D\uDCB5 Pièces + main d\'œuvre',
+    '\uD83D\uDCB5 Contrat maintenance annuel',
+    '\uD83D\uDCB5 Abonnement maintenance mensuel',
+    '\uD83D\uDCB5 Prix négociable',
+    '\uD83D\uDCB5 Devis obligatoire avant intervention',
+    '\uD83C\uDD95 Autre tarification (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 💳 MODES DE PAIEMENT (12) - Contexte Afrique
+  // \uD83D\uDCB3 MODES DE PAIEMENT (12) - Contexte Afrique
   // ═══════════════════════════════════════════════════════════════
   modes_paiement: [
-    '💳 Espèces (FCFA)',
-    '💳 Mobile Money (MTN, Orange)',
-    '💳 Virement bancaire',
-    '💳 Chèque',
-    '💳 Carte bancaire',
-    '💳 Paiement après travaux',
-    '💳 Acompte + Solde',
-    '💳 50% avant / 50% après',
-    '💳 Paiement échelonné possible',
-    '💳 Facture entreprise acceptée',
-    '💳 Paiement mobile (Wave, PayPal...)',
-    '🆕 Autre mode (ajouter)'
+    '\uD83D\uDCB3 Espèces (FCFA)',
+    '\uD83D\uDCB3 Mobile Money (MTN, Orange)',
+    '\uD83D\uDCB3 Virement bancaire',
+    '\uD83D\uDCB3 Chèque',
+    '\uD83D\uDCB3 Carte bancaire',
+    '\uD83D\uDCB3 Paiement après travaux',
+    '\uD83D\uDCB3 Acompte + Solde',
+    '\uD83D\uDCB3 50% avant / 50% après',
+    '\uD83D\uDCB3 Paiement échelonné possible',
+    '\uD83D\uDCB3 Facture entreprise acceptée',
+    '\uD83D\uDCB3 Paiement mobile (Wave, PayPal...)',
+    '\uD83C\uDD95 Autre mode (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
@@ -15208,60 +15208,60 @@ export const REPARATEUR_CLIMATISEUR_MODALITIES: ModalityCategory = {
     '✅ SAV assuré',
     '✅ Retour gratuit si panne récurrente',
     'Pas de garantie formelle',
-    '🆕 Autre garantie (ajouter)'
+    '\uD83C\uDD95 Autre garantie (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 🏢 TYPES DE CLIENTÈLE (8)
+  // \uD83C\uDFE2 TYPES DE CLIENTÈLE (8)
   // ═══════════════════════════════════════════════════════════════
   types_clients: [
-    '🏠 Particuliers/Résidentiel',
-    '🏢 Entreprises/Bureaux',
-    '🏨 Hôtels/Hébergements',
-    '🏪 Commerces/Boutiques',
-    '🏥 Hôpitaux/Cliniques',
-    '🏫 Écoles/Universités',
-    '🏭 Industrie/Usines',
+    '\uD83C\uDFE0 Particuliers/Résidentiel',
+    '\uD83C\uDFE2 Entreprises/Bureaux',
+    '\uD83C\uDFE8 Hôtels/Hébergements',
+    '\uD83C\uDFEA Commerces/Boutiques',
+    '\uD83C\uDFE5 Hôpitaux/Cliniques',
+    '\uD83C\uDFEB Écoles/Universités',
+    '\uD83C\uDFED Industrie/Usines',
     '⛪ Administrations/ONG',
-    '🆕 Autre clientèle (ajouter)'
+    '\uD83C\uDD95 Autre clientèle (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 🛠️ ÉQUIPEMENTS TECHNICIEN (12+)
+  // \uD83D\uDEE0️ ÉQUIPEMENTS TECHNICIEN (12+)
   // ═══════════════════════════════════════════════════════════════
   equipements_technicien: [
-    '🛠️ Outillage complet professionnel',
-    '🛠️ Pompe à vide',
-    '🛠️ Manomètres (groupe froid)',
-    '🛠️ Détecteur de fuite électronique',
-    '🛠️ Multimètre/Testeur électrique',
-    '🛠️ Poste à souder',
-    '🛠️ Machine à cintrer cuivre',
-    '🛠️ Pompe de relevage',
-    '🛠️ Nettoyeur haute pression',
-    '🛠️ Stock pièces détachées',
-    '🛠️ Véhicule équipé',
+    '\uD83D\uDEE0️ Outillage complet professionnel',
+    '\uD83D\uDEE0️ Pompe à vide',
+    '\uD83D\uDEE0️ Manomètres (groupe froid)',
+    '\uD83D\uDEE0️ Détecteur de fuite électronique',
+    '\uD83D\uDEE0️ Multimètre/Testeur électrique',
+    '\uD83D\uDEE0️ Poste à souder',
+    '\uD83D\uDEE0️ Machine à cintrer cuivre',
+    '\uD83D\uDEE0️ Pompe de relevage',
+    '\uD83D\uDEE0️ Nettoyeur haute pression',
+    '\uD83D\uDEE0️ Stock pièces détachées',
+    '\uD83D\uDEE0️ Véhicule équipé',
     'Équipement de base',
-    '🆕 Autre équipement (ajouter)'
+    '\uD83C\uDD95 Autre équipement (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
-  // 📍 ZONES D'INTERVENTION - 🌍 SYSTÈME INTELLIGENT AUTO-ADAPTATIF
+  // \uD83D\uDCCD ZONES D'INTERVENTION - \uD83C\uDF0D SYSTÈME INTELLIGENT AUTO-ADAPTATIF
   // S'adapte automatiquement au pays de l'utilisateur via getModalitiesWithUserContext()
   // Génère: pays utilisateur (prioritaire) → villes principales → autres pays Afrique
   // ═══════════════════════════════════════════════════════════════
   zones_intervention: genererZonesIntervention('CM'), // Par défaut Cameroun, s'adapte via useUserCountry
 
   // ═══════════════════════════════════════════════════════════════
-  // 🚗 DÉPLACEMENT (5)
+  // \uD83D\uDE97 DÉPLACEMENT (5)
   // ═══════════════════════════════════════════════════════════════
   modalites_deplacement: [
-    '🚗 Je me déplace chez le client',
-    '🏪 Client vient à l\'atelier',
-    '🚗🏪 Les deux possibles',
-    '🚗 Frais déplacement inclus',
-    '🚗 Frais déplacement selon zone',
-    '🆕 Autre modalité (ajouter)'
+    '\uD83D\uDE97 Je me déplace chez le client',
+    '\uD83C\uDFEA Client vient à l\'atelier',
+    '\uD83D\uDE97\uD83C\uDFEA Les deux possibles',
+    '\uD83D\uDE97 Frais déplacement inclus',
+    '\uD83D\uDE97 Frais déplacement selon zone',
+    '\uD83C\uDD95 Autre modalité (ajouter)'
   ],
 
   // ═══════════════════════════════════════════════════════════════
@@ -15288,7 +15288,7 @@ export const REPARATEUR_CLIMATISEUR_MODALITIES: ModalityCategory = {
     '⚠️ Filtres encrassés',
     '⚠️ Panne électronique/Carte',
     '⚠️ Autre panne (diagnostic nécessaire)',
-    '🆕 Autre problème (ajouter)'
+    '\uD83C\uDD95 Autre problème (ajouter)'
   ]
 };
 
@@ -15298,7 +15298,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
   categories: [
     'Instrument de musique', 'Accessoire musical', 'Sonorisation & Sono',
     'Matériel DJ', 'Studio & Enregistrement', 'Instrument traditionnel africain',
-    'Équipement scène', '🆕 Autre (ajouter)'
+    'Équipement scène', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ========== TYPES D'INSTRUMENTS (150+) ==========
@@ -15320,7 +15320,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
 
     // Accessoires guitares
     'Ampli guitare', 'Pédale effet guitare', 'Multi-effet guitare',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === CORDES - ORCHESTRE (15+) ===
@@ -15329,7 +15329,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Alto', 'Violoncelle', 'Contrebasse',
     'Harpe celtique', 'Harpe de concert', 'Lyre',
     'Kora', 'Ngoni', 'Mvet', 'Sanza/Kalimba',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === CLAVIERS & PIANOS (20+) ===
@@ -15346,7 +15346,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Clavier arrangeur', 'Synthétiseur', 'Synthé analogique',
     'Synthé modulaire', 'Workstation', 'Sampler',
     'Orgue électronique', 'Accordéon', 'Harmonica',
-    'Mélodica', '🆕 Autre (ajouter)'
+    'Mélodica', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === PERCUSSIONS & BATTERIES (30+) ===
@@ -15362,7 +15362,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Congas', 'Bongos', 'Timbales', 'Cajón', 'Claves',
     'Maracas', 'Güiro', 'Cowbell', 'Agogô',
 
-    // Percussions africaines traditionnelles 🌍
+    // Percussions africaines traditionnelles \uD83C\uDF0D
     'Djembé', 'Dundun', 'Balafon', 'Tam-tam', 'Talking drum',
     'Ashiko', 'Bougarabou', 'Kpanlogo', 'Sabar',
     'Shekere', 'Caxixi', 'Agogo', 'Bells africaines',
@@ -15371,7 +15371,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Cymbale crash', 'Cymbale ride', 'Charleston/Hi-hat',
     'Cymbale china', 'Cymbale splash', 'Stand cymbale',
     'Pédale grosse caisse', 'Throne batterie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === VENTS - BOIS (15+) ===
@@ -15380,7 +15380,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Piccolo', 'Clarinette Bb', 'Clarinette basse',
     'Saxophone soprano', 'Saxophone alto', 'Saxophone ténor',
     'Saxophone baryton', 'Hautbois', 'Basson',
-    'Cor anglais', 'Flûte de Pan', '🆕 Autre (ajouter)'
+    'Cor anglais', 'Flûte de Pan', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === VENTS - CUIVRES (12+) ===
@@ -15388,10 +15388,10 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Trompette Bb', 'Trompette Ut', 'Cornet', 'Bugle',
     'Trombone ténor', 'Trombone basse', 'Tuba',
     'Cor d\'harmonie', 'Euphonium', 'Sousaphone',
-    'Trompe africaine', '🆕 Autre (ajouter)'
+    'Trompe africaine', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
-  // === INSTRUMENTS TRADITIONNELS AFRICAINS (20+) 🌍 ===
+  // === INSTRUMENTS TRADITIONNELS AFRICAINS (20+) \uD83C\uDF0D ===
   instruments_africains: [
     // Cordes
     'Kora (21 cordes)', 'Ngoni', 'Mvet', 'Sanza/Kalimba/Mbira',
@@ -15406,7 +15406,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Flûte peule', 'Trompe corne', 'Sifflet bambou',
     'Vuvuzela', 'Algaita (hautbois haoussa)',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === SONORISATION & DJ (25+) ===
@@ -15427,7 +15427,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
 
     // Accessoires
     'Pied enceinte', 'Câble sono', 'Multipaire', 'DI box',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === STUDIO & ENREGISTREMENT (20+) ===
@@ -15448,7 +15448,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     // Accessoires
     'Filtre anti-pop', 'Suspension micro', 'Pied micro perche',
     'Panneau acoustique', 'Bass trap', 'Câble XLR', 'Câble Jack TRS',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === ACCESSOIRES MUSICAUX (30+) ===
@@ -15473,7 +15473,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     // Général
     'Câble instrument', 'Câble audio', 'Multiprise filtrée',
     'Pupitre partition', 'Lampe pupitre', 'Diapason',
-    'Sac transport', 'Flight case', '🆕 Autre (ajouter)'
+    'Sac transport', 'Flight case', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ========== MARQUES (50+) ==========
@@ -15491,7 +15491,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     // Entrée de gamme / Populaires Afrique
     'Washburn', 'Lag', 'Stagg', 'Harley Benton',
     'Valencia', 'Admira', 'Alhambra',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === MARQUES PIANOS & CLAVIERS ===
@@ -15503,7 +15503,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     // Pianos numériques & Claviers
     'Roland', 'Korg', 'Casio', 'Kurzweil', 'Nord',
     'Yamaha Clavinova', 'Kawai Digital', 'Alesis',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === MARQUES BATTERIES & PERCUSSIONS ===
@@ -15521,14 +15521,14 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     // Percussions africaines artisanales
     'Artisan local', 'Fait main Afrique', 'Sénégal traditionnel',
     'Mali artisanal', 'Guinée artisanal',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === MARQUES VENTS ===
   marques_vents: [
     'Yamaha', 'Buffet Crampon', 'Selmer', 'Conn',
     'Bach', 'Leblanc', 'Jupiter', 'Eastman',
-    'Antigua', 'Trevor James', '🆕 Autre (ajouter)'
+    'Antigua', 'Trevor James', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === MARQUES SONO & DJ ===
@@ -15542,9 +15542,9 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Pioneer DJ', 'Technics', 'Numark', 'Denon DJ',
     'Reloop', 'Native Instruments', 'Rane', 'Allen & Heath',
 
-    // Populaires Afrique 🌍
+    // Populaires Afrique \uD83C\uDF0D
     'Soundking', 'Audiophony', 'Power Dynamics', 'Ibiza Sound',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === MARQUES STUDIO ===
@@ -15556,14 +15556,14 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     // Interfaces & Monitoring
     'Focusrite', 'Universal Audio', 'Presonus', 'M-Audio',
     'Behringer', 'Steinberg', 'Yamaha', 'KRK', 'Adam Audio',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === MARQUES SYNTHÉTISEURS ===
   marques_synthes: [
     'Roland', 'Korg', 'Moog', 'Yamaha', 'Nord',
     'Arturia', 'Novation', 'Sequential', 'Dave Smith',
-    'Teenage Engineering', '🆕 Autre (ajouter)'
+    'Teenage Engineering', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ========== CARACTÉRISTIQUES ==========
@@ -15583,10 +15583,10 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Plastique ABS', 'Fibre de carbone', 'Composite',
     'Peau naturelle', 'Peau synthétique',
 
-    // Traditionnels africains 🌍
+    // Traditionnels africains \uD83C\uDF0D
     'Calebasse', 'Terre cuite', 'Bambou',
     'Peau de chèvre', 'Corde boyau', 'Corde nylon',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === TAILLES & DIMENSIONS ===
@@ -15609,7 +15609,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     '8 pouces (20 cm)', '10 pouces (25 cm)', '12 pouces (30 cm)',
     '14 pouces (35 cm)', 'Professionnel (40+ cm)',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === ÉTATS ===
@@ -15619,7 +15619,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Bon état fonctionnel', 'État correct',
     'À réviser/Régler', 'À réparer', 'Pour pièces',
     'Vintage/Collection', 'Antiquité',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === NIVEAUX ===
@@ -15627,7 +15627,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Débutant', 'Faux débutant', 'Intermédiaire',
     'Intermédiaire avancé', 'Avancé', 'Expert',
     'Professionnel', 'Concert/Scène', 'Studio',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === UTILISATION ===
@@ -15636,14 +15636,14 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Répétition', 'Concert/Scène', 'Studio enregistrement',
     'Église/Culte', 'Animation événement', 'Mariage',
     'DJ soirée', 'Bar/Restaurant', 'Salle spectacle',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === GARANTIES ===
   garanties: [
     'Sans garantie', '3 mois', '6 mois', '1 an',
     '2 ans', '3 ans', '5 ans', 'Garantie constructeur',
-    'Extension garantie disponible', '🆕 Autre (ajouter)'
+    'Extension garantie disponible', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === ORIGINES / FABRICATION ===
@@ -15659,12 +15659,12 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     // Amériques
     'États-Unis', 'Mexique', 'Canada', 'Brésil',
 
-    // Afrique 🌍
+    // Afrique \uD83C\uDF0D
     'Sénégal', 'Mali', 'Guinée', 'Burkina Faso',
     'Côte d\'Ivoire', 'Cameroun', 'Ghana',
     'Artisanat africain', 'Fait main local',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === GENRES MUSICAUX ===
@@ -15674,20 +15674,20 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Funk', 'Soul', 'R&B', 'Hip-hop', 'Reggae',
     'Country', 'Folk', 'Metal', 'Électro', 'House',
 
-    // Africains 🌍
+    // Africains \uD83C\uDF0D
     'Afrobeat', 'Afro-pop', 'Makossa', 'Bikutsi',
     'Coupé-décalé', 'Zouglou', 'Ndombolo', 'Soukous',
     'Mbalax', 'Highlife', 'Assiko', 'Bend-skin',
     'Musique traditionnelle', 'Gospel africain',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === ALIMENTATIONS ===
   alimentations: [
     'Secteur 220V', 'Batterie rechargeable', 'Piles AA/AAA',
     'USB', 'Adaptateur 12V', 'Phantom 48V',
-    'Alimentation mixte (secteur/batterie)', '🆕 Autre (ajouter)'
+    'Alimentation mixte (secteur/batterie)', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === CONNECTIQUES ===
@@ -15695,7 +15695,7 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Jack 6.35mm', 'Jack 3.5mm', 'XLR', 'RCA',
     'USB', 'MIDI', 'Bluetooth', 'Wi-Fi',
     'Optique/Toslink', 'Speakon', 'Ethernet',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // === ACCESSOIRES INCLUS ===
@@ -15705,15 +15705,15 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
     'Pupitre inclus', 'Casque inclus', 'Pédale incluse',
     'Support inclus', 'Manuel en français', 'Garantie carte',
     'Facture fournie', 'Certificat authenticité',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
 // ════════════════════════════════════════════════════════════
 // ✅ MODALITÉS EMPLOI & RECRUTEMENT - ULTRA-ENRICHI AFRIQUE + INTERNATIONAL
 // ════════════════════════════════════════════════════════════
-// 🎯 Objectif : Référence absolue pour publier/trouver un emploi
-// 📊 Contenu : 500+ métiers, 100+ secteurs, spécificités africaines
+// \uD83C\uDFAF Objectif : Référence absolue pour publier/trouver un emploi
+// \uD83D\uDCCA Contenu : 500+ métiers, 100+ secteurs, spécificités africaines
 // ════════════════════════════════════════════════════════════
 export const EMPLOI_MODALITIES: ModalityCategory = {
   // ✅ Types de contrat (13 options)
@@ -15731,7 +15731,7 @@ export const EMPLOI_MODALITIES: ModalityCategory = {
     'Consultant externe',
     'Service civique',
     'Bénévolat / Volontariat',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Secteurs d'activité (100+ options - contexte Afrique)
@@ -15783,7 +15783,7 @@ export const EMPLOI_MODALITIES: ModalityCategory = {
     'Fonction publique',
     'Défense/Armée/Police',
     'Autre secteur',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Niveaux d'expérience (8 options détaillées)
@@ -15796,7 +15796,7 @@ export const EMPLOI_MODALITIES: ModalityCategory = {
     '10-15 ans d\'expérience',
     '15+ ans (Expert/Senior)',
     'Peu importe (tous niveaux)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Types d'emploi / Modes de travail (11 options)
@@ -15812,7 +15812,7 @@ export const EMPLOI_MODALITIES: ModalityCategory = {
     'Travail de nuit',
     'Travail en équipe (3x8, 2x8)',
     'Week-end uniquement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Diplômes requis (10 options)
@@ -15827,7 +15827,7 @@ export const EMPLOI_MODALITIES: ModalityCategory = {
     'MBA',
     'Diplôme d\'ingénieur',
     'Formation professionnelle certifiante',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Langues (10+ langues africaines et internationales)
@@ -15853,7 +15853,7 @@ export const EMPLOI_MODALITIES: ModalityCategory = {
     'Lingala (Congo)',
     'Swahili',
     'Langues locales africaines',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Avantages sociaux (20+ options)
@@ -15878,7 +15878,7 @@ export const EMPLOI_MODALITIES: ModalityCategory = {
     'Stock-options / Participation',
     'Salle de sport / Gym',
     'Crèche d\'entreprise',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Types d'entreprise (8 options)
@@ -15891,7 +15891,7 @@ export const EMPLOI_MODALITIES: ModalityCategory = {
     'Administration publique',
     'Entreprise familiale',
     'Agence / Cabinet conseil',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Lieux de travail (système intelligent dynamique)
@@ -15951,7 +15951,7 @@ export const EMPLOI_MODALITIES: ModalityCategory = {
     'Mécanique',
     'Cuisine professionnelle',
     'Premiers secours',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Soft Skills / Compétences comportementales (30+ options)
@@ -15986,7 +15986,7 @@ export const EMPLOI_MODALITIES: ModalityCategory = {
     'Gestion de conflits',
     'Travail multiculturel',
     'Diplomatie',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Statut urgence (pour filtrage)
@@ -15994,7 +15994,7 @@ export const EMPLOI_MODALITIES: ModalityCategory = {
     'Recrutement urgent (< 1 semaine)',
     'Recrutement prioritaire (< 2 semaines)',
     'Recrutement normal',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // ✅ Date de prise de poste
@@ -16004,7 +16004,7 @@ export const EMPLOI_MODALITIES: ModalityCategory = {
     'Sous 1 mois',
     'Sous 3 mois',
     'Flexible / À définir',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -16049,7 +16049,7 @@ export const MECANICIEN_MODALITIES: ModalityCategory = {
     'Installation treuil', 'Protection bas de caisse',
     'Installation barre LED', 'Snorkel (prise d\'air haute)',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Spécialités du garage
@@ -16060,7 +16060,7 @@ export const MECANICIEN_MODALITIES: ModalityCategory = {
     'Camions/Poids lourds', 'Motos/Scooters', 'Engins TP/BTP',
     'Véhicules agricoles', 'Véhicules hybrides/électriques',
     'Véhicules anciens/collection', 'Tuning/Préparation',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Marques de véhicules traitées (focus Afrique)
@@ -16088,7 +16088,7 @@ export const MECANICIEN_MODALITIES: ModalityCategory = {
     // Indiennes
     'Tata', 'Mahindra', 'Ashok Leyland',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Certifications & qualifications
@@ -16100,7 +16100,7 @@ export const MECANICIEN_MODALITIES: ModalityCategory = {
     'Habilitation climatisation', 'Certification soudure',
     'Expert 4x4', 'Expert moteur diesel', 'Expert injection',
     'Expert transmission automatique', 'Expert véhicules hybrides',
-    'Sans certification (expérience terrain)', '🆕 Autre (ajouter)'
+    'Sans certification (expérience terrain)', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Équipements du garage
@@ -16112,7 +16112,7 @@ export const MECANICIEN_MODALITIES: ModalityCategory = {
     'Pont de levage 4 colonnes', 'Chariot hydraulique',
     'Banc de démarrage', 'Station recharge climatisation',
     'Nettoyeur haute pression', 'Aspirateur industriel',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de véhicules traités
@@ -16122,7 +16122,7 @@ export const MECANICIEN_MODALITIES: ModalityCategory = {
     'Camions', 'Poids lourds', 'Semi-remorques',
     'Motos', 'Scooters', 'Tricycles',
     'Engins BTP', 'Tracteurs agricoles', 'Engins de levage',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Services complémentaires
@@ -16134,14 +16134,14 @@ export const MECANICIEN_MODALITIES: ModalityCategory = {
     'Contrôle avant achat', 'Expertise après accident',
     'Devis gratuit', 'Garantie réparations', 'Véhicule de courtoisie',
     'Enlèvement véhicule en panne', 'Carte fidélité',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Modes de paiement
   modes_paiement: [
     'Espèces', 'Mobile Money (MTN, Orange, etc.)', 'Virement bancaire',
     'Chèque', 'Carte bancaire', 'Paiement en plusieurs fois',
-    'Facilités de paiement', '🆕 Autre (ajouter)'
+    'Facilités de paiement', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Horaires d'ouverture
@@ -16150,14 +16150,14 @@ export const MECANICIEN_MODALITIES: ModalityCategory = {
     'Lundi-Dimanche 8h-18h', 'Service 24h/24',
     'Dépannage 24h/24', 'Sur rendez-vous uniquement',
     'Sans rendez-vous', 'Horaires flexibles',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Délais d'intervention
   delais: [
     'Intervention immédiate', 'Même jour', 'Sous 24h',
     'Sous 48h', 'Sous 1 semaine', 'Sur devis',
-    'Selon disponibilité pièces', '🆕 Autre (ajouter)'
+    'Selon disponibilité pièces', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Zone d'intervention
@@ -16173,13 +16173,13 @@ export const MECANICIEN_MODALITIES: ModalityCategory = {
   langues: [
     'Français', 'Anglais', 'Pidgin', 'Fulfuldé',
     'Ewondo', 'Douala', 'Bamiléké', 'Bassa',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Prestations d'urgence
   urgence: [
     'Oui - Dépannage 24h/24', 'Oui - Dépannage jour uniquement',
-    'Non - Sur rendez-vous uniquement', '🆕 Autre (ajouter)'
+    'Non - Sur rendez-vous uniquement', '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -16230,7 +16230,7 @@ export const MECANICIEN_MOTO_MODALITIES: ModalityCategory = {
     'Dépannage moto sur route', 'Remorquage moto', 'Démarrage batterie moto',
     'Dépannage carburateur', 'Dépannage injection', 'Dépannage électrique',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Spécialités du garage moto
@@ -16240,7 +16240,7 @@ export const MECANICIEN_MOTO_MODALITIES: ModalityCategory = {
     'Motos custom', 'Motos trail/enduro', 'Motos sportives', 'Motos routières',
     'Scooters', 'Cyclomoteurs', 'Tricycles', 'Quadricycles', 'Motos anciennes',
     'Motos électriques', 'Motos hybrides', 'Tuning motos', 'Préparation course',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Marques de motos traitées (focus Afrique)
@@ -16262,7 +16262,7 @@ export const MECANICIEN_MOTO_MODALITIES: ModalityCategory = {
     // Autres asiatiques
     'Hyosung', 'SYM', 'Kymco', 'Keeway',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de motos/tricycles traités
@@ -16271,7 +16271,7 @@ export const MECANICIEN_MOTO_MODALITIES: ModalityCategory = {
     'Moto custom', 'Moto naked', 'Moto touring', 'Moto de course',
     'Scooter', 'Cyclomoteur', 'Tricycle', 'Quadricycle',
     'Moto électrique', 'Moto hybride', 'Moto ancienne',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Cylindrées spécialisées motos
@@ -16280,7 +16280,7 @@ export const MECANICIEN_MOTO_MODALITIES: ModalityCategory = {
     '200cc', '250cc', '300cc', '400cc', '500cc', '600cc',
     '750cc', '800cc', '900cc', '1000cc', '1100cc', '1200cc',
     '1300cc', '1400cc', '1600cc', '1800cc', '2000cc+',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Certifications spécialisées motos
@@ -16291,7 +16291,7 @@ export const MECANICIEN_MOTO_MODALITIES: ModalityCategory = {
     'Certification diagnostic électronique moto', 'Expert carburation',
     'Expert injection moto', 'Expert transmission moto', 'Expert électrique moto',
     'Expert suspension moto', 'Expert pneumatiques moto', 'Expert tuning moto',
-    'Sans certification (expérience terrain)', '🆕 Autre (ajouter)'
+    'Sans certification (expérience terrain)', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Équipements spécialisés garage moto
@@ -16302,7 +16302,7 @@ export const MECANICIEN_MOTO_MODALITIES: ModalityCategory = {
     'Cabine peinture moto', 'Banc de test moteur', 'Dynamomètre moto',
     'Station recharge batterie moto', 'Nettoyeur haute pression',
     'Aspirateur industriel', 'Outillage spécialisé moto',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Pièces détachées spécialisées
@@ -16313,7 +16313,7 @@ export const MECANICIEN_MOTO_MODALITIES: ModalityCategory = {
     'Amortisseurs', 'Ressorts', 'Pneus moto', 'Chambres à air',
     'Batteries moto', 'Alternateurs', 'Démarreurs', 'Bougies d\'allumage',
     'Carénages', 'Phares', 'Garde-boue', 'Selles', 'Guidons',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Services complémentaires spécialisés
@@ -16325,14 +16325,14 @@ export const MECANICIEN_MOTO_MODALITIES: ModalityCategory = {
     'Expertise après accident moto', 'Devis gratuit', 'Garantie réparations',
     'Moto de courtoisie', 'Enlèvement moto en panne', 'Carte fidélité',
     'Installation accessoires', 'Personnalisation moto', 'Tuning moto',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Modes de paiement spécialisés
   modes_paiement_moto: [
     'Espèces', 'Mobile Money (MTN, Orange, etc.)', 'Virement bancaire',
     'Chèque', 'Carte bancaire', 'Paiement en plusieurs fois',
-    'Facilités de paiement', 'Échange moto', '🆕 Autre (ajouter)'
+    'Facilités de paiement', 'Échange moto', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Horaires spécialisés
@@ -16341,7 +16341,7 @@ export const MECANICIEN_MOTO_MODALITIES: ModalityCategory = {
     'Lundi-Dimanche 8h-18h', 'Service 24h/24',
     'Dépannage 24h/24', 'Sur rendez-vous uniquement',
     'Sans rendez-vous', 'Horaires flexibles',
-    'Ouvert week-end', '🆕 Autre (ajouter)'
+    'Ouvert week-end', '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Délais d'intervention spécialisés
@@ -16349,7 +16349,7 @@ export const MECANICIEN_MOTO_MODALITIES: ModalityCategory = {
     'Intervention immédiate', 'Même jour', 'Sous 24h',
     'Sous 48h', 'Sous 1 semaine', 'Sur devis',
     'Selon disponibilité pièces', 'Urgence moto',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Zone d'intervention
@@ -16365,14 +16365,14 @@ export const MECANICIEN_MOTO_MODALITIES: ModalityCategory = {
   langues_moto: [
     'Français', 'Anglais', 'Pidgin', 'Fulfuldé',
     'Ewondo', 'Douala', 'Bamiléké', 'Bassa',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Prestations d'urgence spécialisées
   urgence_moto: [
     'Oui - Dépannage moto 24h/24', 'Oui - Dépannage jour uniquement',
     'Non - Sur rendez-vous uniquement', 'Urgence moto uniquement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -16436,7 +16436,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Protection contre coupures électriques', 'Conversion gaz écologique',
     'Réparation frigo coupure prolongée', 'Remise en service après stockage',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Marques de réfrigérateurs/congélateurs (focus Afrique + International)
@@ -16473,7 +16473,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     // Anciennes marques encore en service
     'Fagor', 'Thomson', 'Brandt', 'Vedette', 'Arthur Martin', 'Rosières',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Modèles populaires par marque (focus marques dominantes en Afrique)
@@ -16531,7 +16531,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     // ═══ CHIGO ═══
     'Chigo BCD', 'Chigo 180L', 'Chigo 220L', 'Chigo 300L',
 
-    '🆕 Autre modèle (ajouter)'
+    '\uD83C\uDD95 Autre modèle (ajouter)'
   ],
 
   // Types d'appareils frigorifiques
@@ -16564,7 +16564,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Glacière professionnelle', 'Présentoir réfrigéré',
     'Meuble frigorifique bar', 'Cave à vin',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Capacités / Volumes
@@ -16572,7 +16572,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Très petit (< 100L)', 'Petit (100-150L)', 'Moyen (150-250L)',
     'Grand (250-350L)', 'Très grand (350-500L)', 'XXL (500-700L)',
     'Professionnel (> 700L)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de pannes courantes
@@ -16621,7 +16621,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Condensation excessive à l\'extérieur', 'Eau sous le frigo',
     'Bac récupérateur déborde', 'Thermostat déréglé',
 
-    '🆕 Autre panne (ajouter)'
+    '\uD83C\uDD95 Autre panne (ajouter)'
   ],
 
   // Gaz réfrigérants utilisés
@@ -16634,7 +16634,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'R32 (HFC - nouvelle génération)',
     'R290 (Propane - écologique)',
     'R407C (HFC - remplacement R22)',
-    '🆕 Autre gaz (ajouter)'
+    '\uD83C\uDD95 Autre gaz (ajouter)'
   ],
 
   // Pièces détachées courantes
@@ -16663,7 +16663,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Stabilisateur de tension', 'Rallonge électrique renforcée',
     'Kit anti-vibration', 'Pied réglable', 'Grille condenseur',
 
-    '🆕 Autre pièce (ajouter)'
+    '\uD83C\uDD95 Autre pièce (ajouter)'
   ],
 
   // Spécialités du frigoriste
@@ -16677,7 +16677,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Réfrigérateurs No Frost', 'Réfrigérateurs Inverter',
     'Réfrigérateurs américains (Side-by-Side)', 'Anciens modèles (> 15 ans)',
     'Modèles récents (< 5 ans)', 'Frigos avec distributeur eau/glaçons',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Certifications & qualifications
@@ -16693,7 +16693,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Expert diagnostic électronique frigo', 'Expert circuit frigorifique',
     'Expert No Frost', 'Expert gaz écologiques (R600a, R290)',
     'Sans certification (expérience terrain)', 'Formation en cours',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Équipements & outillage frigoriste
@@ -16725,7 +16725,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Diable de transport frigo', 'Sangles de levage', 'Ventouse porte-vitres',
     'Chariot roulant', 'Couvertures de protection',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Services complémentaires
@@ -16742,7 +16742,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Garantie réparations (3 mois - 1 an)', 'Suivi après réparation',
     'Dépannage urgence 24h/24', 'Intervention week-end & jours fériés',
     'Paiement après réparation', 'Facilités de paiement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Disponibilités
@@ -16752,7 +16752,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Rendez-vous planifié', 'Lundi-Vendredi (8h-18h)',
     'Lundi-Samedi (8h-20h)', 'Dimanche & jours fériés',
     'Dépannage nuit (majoration)', 'Intervention week-end',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Délais d'intervention
@@ -16761,7 +16761,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Même jour', 'Sous 24h', 'Sous 48h',
     'Sous 1 semaine', 'Selon disponibilité pièces',
     'Sur devis après diagnostic', 'Urgence frigo uniquement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Garanties
@@ -16770,7 +16770,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Garantie pièces uniquement', 'Garantie main d\'œuvre uniquement',
     'Garantie totale (pièces + main d\'œuvre)', 'Garantie compresseur 2 ans',
     'Garantie gaz 6 mois', 'Sans garantie (occasion/réparation provisoire)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Tarification
@@ -16780,7 +16780,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Tarif à l\'heure', 'Tarif forfaitaire par panne',
     'Devis sur mesure', 'Tarif nuit/week-end (majoration)',
     'Tarif urgence (majoration)', 'Tarif négociable',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Modes de paiement
@@ -16789,7 +16789,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Virement bancaire', 'Chèque', 'Carte bancaire',
     'Paiement en plusieurs fois', 'Paiement après réparation',
     'Paiement à la livraison pièce', 'Facilités de paiement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Zone d'intervention (système intelligent africain)
@@ -16806,14 +16806,14 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Français', 'Anglais', 'Pidgin', 'Fulfuldé',
     'Ewondo', 'Douala', 'Bamiléké', 'Bassa',
     'Arabe', 'Lingala', 'Wolof', 'Dioula',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Expérience professionnelle
   experience_annees: [
     'Moins de 1 an', '1-2 ans', '3-5 ans', '6-10 ans',
     '11-15 ans', '16-20 ans', 'Plus de 20 ans',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Type de clientèle
@@ -16822,7 +16822,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Particuliers + Professionnels', 'Hôtels & Restaurants',
     'Commerces & Supermarchés', 'Hôpitaux & Cliniques',
     'Écoles & Universités', 'Entreprises', 'Collectivités',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Prestations d'urgence
@@ -16830,7 +16830,7 @@ export const FRIGORISTE_MODALITIES: ModalityCategory = {
     'Oui - Dépannage frigo 24h/24', 'Oui - Dépannage jour uniquement (6h-22h)',
     'Oui - Dépannage sur rendez-vous rapide', 'Non - Sur rendez-vous uniquement',
     'Urgence commerciale/restaurant prioritaire', 'Urgence médicale prioritaire',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
@@ -16907,7 +16907,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Calibration couleurs TV', 'Entretien préventif équipement audio/vidéo',
     'Consultation achat TV', 'Devis gratuit réparation',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Marques de TV (focus Afrique + International)
@@ -16937,7 +16937,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
 
     // Autres
     'Toutes marques TV',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Modèles populaires TV (focus marques dominantes en Afrique)
@@ -16985,7 +16985,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'TV LED Full HD', 'TV LED 4K UHD', 'TV LED 8K',
     'TV OLED', 'TV QLED', 'TV LCD',
 
-    '🆕 Autre modèle (ajouter)'
+    '\uD83C\uDD95 Autre modèle (ajouter)'
   ],
 
   // Types d'appareils électroniques
@@ -17037,7 +17037,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Télécommande universelle', 'Support mural TV',
     'Câble HDMI', 'Convertisseur audio/vidéo',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Tailles écran TV
@@ -17045,7 +17045,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Petit (< 32 pouces)', '32 pouces', '40 pouces', '43 pouces',
     '50 pouces', '55 pouces', '65 pouces', '75 pouces',
     'Très grand (> 75 pouces)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Technologies écran
@@ -17053,14 +17053,14 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'LED', 'OLED', 'QLED', 'Mini LED', 'Micro LED',
     'LCD', 'Plasma', 'CRT (tube cathodique)',
     'NanoCell', 'Crystal UHD', 'Neo QLED',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Résolutions
   resolutions_tv: [
     'HD Ready (720p)', 'Full HD (1080p)', '4K UHD (2160p)',
     '8K UHD (4320p)', 'SD (définition standard)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Types de pannes courantes électronique
@@ -17116,7 +17116,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Ventilateur bruyant', 'Surchauffe projecteur',
     'Pas d\'image projecteur',
 
-    '🆕 Autre panne (ajouter)'
+    '\uD83C\uDD95 Autre panne (ajouter)'
   ],
 
   // Pièces détachées électronique courantes
@@ -17160,7 +17160,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Splitter signal', 'Amplificateur antenne',
     'Carte décodeur',
 
-    '🆕 Autre pièce (ajouter)'
+    '\uD83C\uDD95 Autre pièce (ajouter)'
   ],
 
   // Spécialités du réparateur électronique
@@ -17174,7 +17174,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Vidéosurveillance', 'Interphonie vidéo',
     'Réparation carte électronique (soudure)', 'Électronique micro-soudure',
     'TV grand format (> 55")', 'TV petit format (< 40")',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Certifications & qualifications
@@ -17189,7 +17189,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Expert Smart TV & Android TV', 'Expert home cinéma',
     'Habilitation électrique (BR/BC)',
     'Sans certification (expérience terrain)', 'Formation en cours',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Équipements & outillage réparateur électronique
@@ -17224,7 +17224,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Boîte composants (condensateurs, résistances)',
     'Support TV mural', 'Établi réparation',
 
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Services complémentaires
@@ -17243,7 +17243,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Garantie réparations (3 mois - 1 an)', 'Suivi après réparation',
     'Dépannage urgence 24h/24', 'Intervention week-end & jours fériés',
     'Paiement après réparation', 'Facilités de paiement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Disponibilités
@@ -17253,7 +17253,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Rendez-vous planifié', 'Lundi-Vendredi (8h-18h)',
     'Lundi-Samedi (8h-20h)', 'Dimanche & jours fériés',
     'Dépannage nuit (majoration)', 'Intervention week-end',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Délais d'intervention
@@ -17262,7 +17262,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Même jour', 'Sous 24h', 'Sous 48h',
     'Sous 1 semaine', 'Selon disponibilité pièces',
     'Sur devis après diagnostic', 'Urgence TV uniquement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Garanties
@@ -17271,7 +17271,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Garantie pièces uniquement', 'Garantie main d\'œuvre uniquement',
     'Garantie totale (pièces + main d\'œuvre)', 'Garantie dalle 1 an',
     'Garantie carte mère 6 mois', 'Sans garantie (occasion/réparation provisoire)',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Tarification
@@ -17281,7 +17281,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Tarif à l\'heure', 'Tarif forfaitaire par panne',
     'Devis sur mesure', 'Tarif nuit/week-end (majoration)',
     'Tarif urgence (majoration)', 'Tarif négociable',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Modes de paiement
@@ -17290,7 +17290,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Virement bancaire', 'Chèque', 'Carte bancaire',
     'Paiement en plusieurs fois', 'Paiement après réparation',
     'Paiement à la livraison pièce', 'Facilités de paiement',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Zone d'intervention (système intelligent africain)
@@ -17307,14 +17307,14 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Français', 'Anglais', 'Pidgin', 'Fulfuldé',
     'Ewondo', 'Douala', 'Bamiléké', 'Bassa',
     'Arabe', 'Lingala', 'Wolof', 'Dioula',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Expérience professionnelle
   experience_annees_electronique: [
     'Moins de 1 an', '1-2 ans', '3-5 ans', '6-10 ans',
     '11-15 ans', '16-20 ans', 'Plus de 20 ans',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Type de clientèle
@@ -17323,7 +17323,7 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Particuliers + Professionnels', 'Hôtels & Restaurants',
     'Commerces & Bureaux', 'Salles de conférence',
     'Écoles & Universités', 'Entreprises', 'Collectivités',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ],
 
   // Prestations d'urgence
@@ -17331,12 +17331,12 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
     'Oui - Dépannage TV 24h/24', 'Oui - Dépannage jour uniquement (6h-22h)',
     'Oui - Dépannage sur rendez-vous rapide', 'Non - Sur rendez-vous uniquement',
     'Urgence événement/entreprise prioritaire', 'Urgence hôtel/commerce prioritaire',
-    '🆕 Autre (ajouter)'
+    '\uD83C\uDD95 Autre (ajouter)'
   ]
 };
 
 // ✅ ════════════════════════════════════════════════════════════════════════════
-// 🪟 MENUISIER ALUMINIUM - SPÉCIALISÉ AFRIQUE FRANCOPHONE
+// \uD83E\uDE9F MENUISIER ALUMINIUM - SPÉCIALISÉ AFRIQUE FRANCOPHONE
 // ✅ ════════════════════════════════════════════════════════════════════════════
 // Focus: Fenêtres, portes, baies vitrées, vitrines, vérandas, façades
 // Particularité Afrique: Climat tropical, ventilation, sécurité, prix accessibles
@@ -17345,71 +17345,71 @@ export const REPARATEUR_ELECTRONIQUE_MODALITIES: ModalityCategory = {
 export const MENUISIER_ALUMINIUM_MODALITIES: ModalityCategory = {
   // ✅ TYPES DE RÉALISATIONS (60+) - Classés par POPULARITÉ AFRIQUE
   typesRealisation: [
-    // ═══ 🪟 FENÊTRES (60% des demandes) ═══
-    '🪟 Fenêtre coulissante (2-3 vantaux)',
-    '🪟 Fenêtre coulissante (4-6 vantaux)',
-    '🪟 Fenêtre battante (1-2 vantaux)',
-    '🪟 Fenêtre oscillo-battante',
-    '🪟 Fenêtre fixe',
-    '🪟 Fenêtre avec jalousie intégrée',
-    '🪟 Fenêtre avec moucharabieh',
-    '🪟 Fenêtre anti-effraction',
-    '🪟 Baie vitrée coulissante (grande)',
-    '🪟 Baie vitrée à galandage',
-    '🪟 Baie vitrée pliante (accordéon)',
+    // ═══ \uD83E\uDE9F FENÊTRES (60% des demandes) ═══
+    '\uD83E\uDE9F Fenêtre coulissante (2-3 vantaux)',
+    '\uD83E\uDE9F Fenêtre coulissante (4-6 vantaux)',
+    '\uD83E\uDE9F Fenêtre battante (1-2 vantaux)',
+    '\uD83E\uDE9F Fenêtre oscillo-battante',
+    '\uD83E\uDE9F Fenêtre fixe',
+    '\uD83E\uDE9F Fenêtre avec jalousie intégrée',
+    '\uD83E\uDE9F Fenêtre avec moucharabieh',
+    '\uD83E\uDE9F Fenêtre anti-effraction',
+    '\uD83E\uDE9F Baie vitrée coulissante (grande)',
+    '\uD83E\uDE9F Baie vitrée à galandage',
+    '\uD83E\uDE9F Baie vitrée pliante (accordéon)',
 
-    // ═══ 🚪 PORTES & PORTAILS (25% des demandes) ═══
-    '🚪 Porte-fenêtre coulissante',
-    '🚪 Porte-fenêtre battante',
-    '🚪 Porte d\'entrée aluminium',
-    '🚪 Porte vitrée (commerce)',
-    '🚪 Porte coulissante automatique',
-    '🚪 Portail aluminium coulissant',
-    '🚪 Portail aluminium battant',
-    '🚪 Portillon piéton aluminium',
+    // ═══ \uD83D\uDEAA PORTES & PORTAILS (25% des demandes) ═══
+    '\uD83D\uDEAA Porte-fenêtre coulissante',
+    '\uD83D\uDEAA Porte-fenêtre battante',
+    '\uD83D\uDEAA Porte d\'entrée aluminium',
+    '\uD83D\uDEAA Porte vitrée (commerce)',
+    '\uD83D\uDEAA Porte coulissante automatique',
+    '\uD83D\uDEAA Portail aluminium coulissant',
+    '\uD83D\uDEAA Portail aluminium battant',
+    '\uD83D\uDEAA Portillon piéton aluminium',
 
-    // ═══ 🏪 VITRINES & DEVANTURES COMMERCIALES (20%) ═══
-    '🏪 Vitrine de magasin complète',
-    '🏪 Devanture de boutique',
-    '🏪 Vitrine avec porte vitrée',
-    '🏪 Vitrine réfrigérée (cadre alu)',
-    '🏪 Kiosque aluminium et verre',
-    '🏪 Stand exposition (structure alu)',
+    // ═══ \uD83C\uDFEA VITRINES & DEVANTURES COMMERCIALES (20%) ═══
+    '\uD83C\uDFEA Vitrine de magasin complète',
+    '\uD83C\uDFEA Devanture de boutique',
+    '\uD83C\uDFEA Vitrine avec porte vitrée',
+    '\uD83C\uDFEA Vitrine réfrigérée (cadre alu)',
+    '\uD83C\uDFEA Kiosque aluminium et verre',
+    '\uD83C\uDFEA Stand exposition (structure alu)',
 
-    // ═══ 🏢 FAÇADES & STRUCTURES (15%) ═══
-    '🏢 Façade vitrée (mur-rideau)',
-    '🏢 Habillage de façade aluminium',
-    '🏢 Bardage aluminium',
-    '🏢 Brise-soleil aluminium',
-    '🏢 Claustra aluminium ajouré',
-    '🏢 Moucharabieh aluminium',
+    // ═══ \uD83C\uDFE2 FAÇADES & STRUCTURES (15%) ═══
+    '\uD83C\uDFE2 Façade vitrée (mur-rideau)',
+    '\uD83C\uDFE2 Habillage de façade aluminium',
+    '\uD83C\uDFE2 Bardage aluminium',
+    '\uD83C\uDFE2 Brise-soleil aluminium',
+    '\uD83C\uDFE2 Claustra aluminium ajouré',
+    '\uD83C\uDFE2 Moucharabieh aluminium',
 
-    // ═══ 🌿 VÉRANDAS & PERGOLAS (10%) ═══
-    '🌿 Véranda aluminium et verre',
-    '🌿 Pergola bioclimatique alu',
-    '🌿 Pergola aluminium fixe',
-    '🌿 Abri de terrasse aluminium',
-    '🌿 Serre de jardin aluminium',
+    // ═══ \uD83C\uDF3F VÉRANDAS & PERGOLAS (10%) ═══
+    '\uD83C\uDF3F Véranda aluminium et verre',
+    '\uD83C\uDF3F Pergola bioclimatique alu',
+    '\uD83C\uDF3F Pergola aluminium fixe',
+    '\uD83C\uDF3F Abri de terrasse aluminium',
+    '\uD83C\uDF3F Serre de jardin aluminium',
 
-    // ═══ 🛡️ VOLETS & PROTECTION (8%) ═══
-    '🛡️ Volet roulant motorisé',
-    '🛡️ Volet roulant manuel',
-    '🛡️ Volet battant aluminium',
-    '🛡️ Store banne (structure alu)',
-    '🛡️ Pergola avec stores',
+    // ═══ \uD83D\uDEE1️ VOLETS & PROTECTION (8%) ═══
+    '\uD83D\uDEE1️ Volet roulant motorisé',
+    '\uD83D\uDEE1️ Volet roulant manuel',
+    '\uD83D\uDEE1️ Volet battant aluminium',
+    '\uD83D\uDEE1️ Store banne (structure alu)',
+    '\uD83D\uDEE1️ Pergola avec stores',
 
-    // ═══ 🏠 GARDE-CORPS & BALCONS (7%) ═══
-    '🏠 Garde-corps de balcon alu',
-    '🏠 Garde-corps de terrasse',
-    '🏠 Rambarde d\'escalier alu',
-    '🏠 Main courante aluminium',
-    '🏠 Balustrade vitrée (cadre alu)',
+    // ═══ \uD83C\uDFE0 GARDE-CORPS & BALCONS (7%) ═══
+    '\uD83C\uDFE0 Garde-corps de balcon alu',
+    '\uD83C\uDFE0 Garde-corps de terrasse',
+    '\uD83C\uDFE0 Rambarde d\'escalier alu',
+    '\uD83C\uDFE0 Main courante aluminium',
+    '\uD83C\uDFE0 Balustrade vitrée (cadre alu)',
 
-    // ═══ 🚪 PORTES SPÉCIALES (5%) ═══
-    '🚪 Porte coupe-feu (cadre alu)',
-    '🚪 Porte anti-panique',
-    '🚪 Porte acoustique',
-    '🚪 Porte isotherme',
+    // ═══ \uD83D\uDEAA PORTES SPÉCIALES (5%) ═══
+    '\uD83D\uDEAA Porte coupe-feu (cadre alu)',
+    '\uD83D\uDEAA Porte anti-panique',
+    '\uD83D\uDEAA Porte acoustique',
+    '\uD83D\uDEAA Porte isotherme',
 
     // ═══ ⚙️ AUTRES RÉALISATIONS ═══
     '⚙️ Fenêtre de toit (Velux type)',
@@ -17418,127 +17418,127 @@ export const MENUISIER_ALUMINIUM_MODALITIES: ModalityCategory = {
     '⚙️ Cloison vitrée aluminium',
     '⚙️ Séparation de bureau (alu+verre)',
 
-    '🆕 Autre réalisation (à préciser)'
+    '\uD83C\uDD95 Autre réalisation (à préciser)'
   ],
 
   // ✅ TYPES DE PRESTATIONS (12+)
   typesPrestations: [
-    '🔧 Fabrication sur mesure + pose',
-    '🔧 Fabrication sur mesure seule',
-    '🔧 Installation / Pose uniquement',
-    '🔧 Rénovation complète (remplacement)',
-    '🔧 Réparation / Dépannage',
-    '🔧 Entretien & maintenance',
-    '🔧 Motorisation (volets, portails)',
-    '🔧 Vitrerie (remplacement verre)',
-    '🔧 Étanchéité & joints',
-    '🔧 Mise aux normes',
-    '🔧 Extension / Agrandissement',
-    '🆕 Autre prestation (à préciser)'
+    '\uD83D\uDD27 Fabrication sur mesure + pose',
+    '\uD83D\uDD27 Fabrication sur mesure seule',
+    '\uD83D\uDD27 Installation / Pose uniquement',
+    '\uD83D\uDD27 Rénovation complète (remplacement)',
+    '\uD83D\uDD27 Réparation / Dépannage',
+    '\uD83D\uDD27 Entretien & maintenance',
+    '\uD83D\uDD27 Motorisation (volets, portails)',
+    '\uD83D\uDD27 Vitrerie (remplacement verre)',
+    '\uD83D\uDD27 Étanchéité & joints',
+    '\uD83D\uDD27 Mise aux normes',
+    '\uD83D\uDD27 Extension / Agrandissement',
+    '\uD83C\uDD95 Autre prestation (à préciser)'
   ],
 
   // ✅ TYPES D\'ALUMINIUM (10+) - Adapté disponibilité Afrique
   typesAluminium: [
     // Standard (le plus courant en Afrique)
-    '🔩 Aluminium anodisé naturel',
-    '🔩 Aluminium anodisé couleur',
-    '🔩 Aluminium thermolaqué (peinture)',
+    '\uD83D\uDD29 Aluminium anodisé naturel',
+    '\uD83D\uDD29 Aluminium anodisé couleur',
+    '\uD83D\uDD29 Aluminium thermolaqué (peinture)',
 
     // Performance
-    '🔩 Aluminium à rupture de pont thermique',
-    '🔩 Aluminium renforcé (épaisseur +)',
-    '🔩 Aluminium anti-corrosion (maritime)',
+    '\uD83D\uDD29 Aluminium à rupture de pont thermique',
+    '\uD83D\uDD29 Aluminium renforcé (épaisseur +)',
+    '\uD83D\uDD29 Aluminium anti-corrosion (maritime)',
 
     // Finitions
-    '🔩 Aluminium laqué RAL',
-    '🔩 Aluminium effet bois',
-    '🔩 Aluminium brossé',
-    '🆕 Autre type (à préciser)'
+    '\uD83D\uDD29 Aluminium laqué RAL',
+    '\uD83D\uDD29 Aluminium effet bois',
+    '\uD83D\uDD29 Aluminium brossé',
+    '\uD83C\uDD95 Autre type (à préciser)'
   ],
 
   // ✅ COULEURS ALUMINIUM (20+) - Tendances Afrique
   couleursAluminium: [
     // Classiques (80% du marché)
-    '🎨 Blanc (RAL 9016)',
-    '🎨 Gris anthracite (RAL 7016)',
-    '🎨 Noir mat (RAL 9005)',
-    '🎨 Marron (RAL 8014)',
-    '🎨 Beige / Ivoire',
-    '🎨 Aluminium naturel (anodisé)',
+    '\uD83C\uDFA8 Blanc (RAL 9016)',
+    '\uD83C\uDFA8 Gris anthracite (RAL 7016)',
+    '\uD83C\uDFA8 Noir mat (RAL 9005)',
+    '\uD83C\uDFA8 Marron (RAL 8014)',
+    '\uD83C\uDFA8 Beige / Ivoire',
+    '\uD83C\uDFA8 Aluminium naturel (anodisé)',
 
     // Tendances modernes
-    '🎨 Gris clair (RAL 7035)',
-    '🎨 Gris foncé (RAL 7021)',
-    '🎨 Vert (RAL 6005)',
-    '🎨 Bleu (RAL 5010)',
+    '\uD83C\uDFA8 Gris clair (RAL 7035)',
+    '\uD83C\uDFA8 Gris foncé (RAL 7021)',
+    '\uD83C\uDFA8 Vert (RAL 6005)',
+    '\uD83C\uDFA8 Bleu (RAL 5010)',
 
     // Effet bois (tendance)
-    '🎨 Chêne doré',
-    '🎨 Noyer',
-    '🎨 Acajou',
-    '🎨 Teck',
+    '\uD83C\uDFA8 Chêne doré',
+    '\uD83C\uDFA8 Noyer',
+    '\uD83C\uDFA8 Acajou',
+    '\uD83C\uDFA8 Teck',
 
     // Bi-coloration
-    '🎨 Blanc intérieur / Gris extérieur',
-    '🎨 Blanc intérieur / Marron extérieur',
-    '🎨 Sur mesure bi-couleur',
+    '\uD83C\uDFA8 Blanc intérieur / Gris extérieur',
+    '\uD83C\uDFA8 Blanc intérieur / Marron extérieur',
+    '\uD83C\uDFA8 Sur mesure bi-couleur',
 
-    '🆕 Autre couleur RAL (à préciser)'
+    '\uD83C\uDD95 Autre couleur RAL (à préciser)'
   ],
 
   // ✅ TYPES DE VITRAGE (15+)
   typesVitrage: [
     // Standard Afrique
-    '🪟 Simple vitrage 4mm',
-    '🪟 Simple vitrage 6mm',
+    '\uD83E\uDE9F Simple vitrage 4mm',
+    '\uD83E\uDE9F Simple vitrage 6mm',
 
     // Double vitrage (tendance croissante)
-    '🪟 Double vitrage 4/12/4',
-    '🪟 Double vitrage 4/16/4',
-    '🪟 Double vitrage phonique',
-    '🪟 Double vitrage anti-effraction',
+    '\uD83E\uDE9F Double vitrage 4/12/4',
+    '\uD83E\uDE9F Double vitrage 4/16/4',
+    '\uD83E\uDE9F Double vitrage phonique',
+    '\uD83E\uDE9F Double vitrage anti-effraction',
 
     // Spécialisé
-    '🪟 Verre feuilleté sécurité',
-    '🪟 Verre trempé securit',
-    '🪟 Verre anti-UV',
-    '🪟 Verre teinté (gris, bronze)',
-    '🪟 Verre réfléchissant',
-    '🪟 Verre opaque / dépoli',
-    '🪟 Verre ornementé',
+    '\uD83E\uDE9F Verre feuilleté sécurité',
+    '\uD83E\uDE9F Verre trempé securit',
+    '\uD83E\uDE9F Verre anti-UV',
+    '\uD83E\uDE9F Verre teinté (gris, bronze)',
+    '\uD83E\uDE9F Verre réfléchissant',
+    '\uD83E\uDE9F Verre opaque / dépoli',
+    '\uD83E\uDE9F Verre ornementé',
 
     // Sans vitrage
-    '🪟 Sans vitrage (structure seule)',
-    '🆕 Autre vitrage (à préciser)'
+    '\uD83E\uDE9F Sans vitrage (structure seule)',
+    '\uD83C\uDD95 Autre vitrage (à préciser)'
   ],
 
   // ✅ DIMENSIONS STANDARD (18+) - Marché africain
   dimensionsStandard: [
     // Fenêtres courantes
-    '📏 60 x 60 cm',
-    '📏 60 x 80 cm',
-    '📏 80 x 100 cm',
-    '📏 100 x 120 cm',
-    '📏 120 x 120 cm',
-    '📏 120 x 150 cm',
-    '📏 150 x 120 cm',
-    '📏 150 x 150 cm',
+    '\uD83D\uDCCF 60 x 60 cm',
+    '\uD83D\uDCCF 60 x 80 cm',
+    '\uD83D\uDCCF 80 x 100 cm',
+    '\uD83D\uDCCF 100 x 120 cm',
+    '\uD83D\uDCCF 120 x 120 cm',
+    '\uD83D\uDCCF 120 x 150 cm',
+    '\uD83D\uDCCF 150 x 120 cm',
+    '\uD83D\uDCCF 150 x 150 cm',
 
     // Baies vitrées
-    '📏 200 x 210 cm (2 vantaux)',
-    '📏 300 x 210 cm (3 vantaux)',
-    '📏 400 x 210 cm (4 vantaux)',
-    '📏 500 x 210 cm (5 vantaux)',
-    '📏 600 x 210 cm (6 vantaux)',
+    '\uD83D\uDCCF 200 x 210 cm (2 vantaux)',
+    '\uD83D\uDCCF 300 x 210 cm (3 vantaux)',
+    '\uD83D\uDCCF 400 x 210 cm (4 vantaux)',
+    '\uD83D\uDCCF 500 x 210 cm (5 vantaux)',
+    '\uD83D\uDCCF 600 x 210 cm (6 vantaux)',
 
     // Portes
-    '📏 80 x 210 cm (porte standard)',
-    '📏 90 x 210 cm',
-    '📏 100 x 210 cm',
+    '\uD83D\uDCCF 80 x 210 cm (porte standard)',
+    '\uD83D\uDCCF 90 x 210 cm',
+    '\uD83D\uDCCF 100 x 210 cm',
 
     // Vitrines
-    '📏 Grande vitrine (sur mesure)',
-    '📏 Sur mesure (indiquer dimensions)'
+    '\uD83D\uDCCF Grande vitrine (sur mesure)',
+    '\uD83D\uDCCF Sur mesure (indiquer dimensions)'
   ],
 
   // ✅ DÉLAIS DE RÉALISATION (8+) - Réaliste Afrique
@@ -17555,14 +17555,14 @@ export const MENUISIER_ALUMINIUM_MODALITIES: ModalityCategory = {
 
   // ✅ GARANTIES (8+)
   garanties: [
-    '🛡️ 10 ans (structure aluminium)',
-    '🛡️ 5 ans (structure + quincaillerie)',
-    '🛡️ 3 ans (structure + installation)',
-    '🛡️ 2 ans (garantie standard)',
-    '🛡️ 1 an (garantie minimale)',
-    '🛡️ Garantie décennale (entreprise)',
-    '🛡️ Garantie fabricant uniquement',
-    '🆕 Autre garantie (à préciser)'
+    '\uD83D\uDEE1️ 10 ans (structure aluminium)',
+    '\uD83D\uDEE1️ 5 ans (structure + quincaillerie)',
+    '\uD83D\uDEE1️ 3 ans (structure + installation)',
+    '\uD83D\uDEE1️ 2 ans (garantie standard)',
+    '\uD83D\uDEE1️ 1 an (garantie minimale)',
+    '\uD83D\uDEE1️ Garantie décennale (entreprise)',
+    '\uD83D\uDEE1️ Garantie fabricant uniquement',
+    '\uD83C\uDD95 Autre garantie (à préciser)'
   ],
 
   // ✅ SERVICES INCLUS (14+)
@@ -17580,17 +17580,17 @@ export const MENUISIER_ALUMINIUM_MODALITIES: ModalityCategory = {
     '✅ Entretien 1ère année',
     '✅ Formation utilisation',
     '✅ Garantie décennale',
-    '🆕 Autre service (à préciser)'
+    '\uD83C\uDD95 Autre service (à préciser)'
   ],
 
   // ✅ OPTIONS DISPONIBLES (18+)
   optionsDisponibles: [
     // Sécurité
-    '🔒 Serrure multipoints',
-    '🔒 Serrure électrique',
-    '🔒 Cylindre haute sécurité',
-    '🔒 Grilles de protection intégrées',
-    '🔒 Verre feuilleté anti-effraction',
+    '\uD83D\uDD12 Serrure multipoints',
+    '\uD83D\uDD12 Serrure électrique',
+    '\uD83D\uDD12 Cylindre haute sécurité',
+    '\uD83D\uDD12 Grilles de protection intégrées',
+    '\uD83D\uDD12 Verre feuilleté anti-effraction',
 
     // Confort
     '⚙️ Motorisation (volets, portes)',
@@ -17599,115 +17599,115 @@ export const MENUISIER_ALUMINIUM_MODALITIES: ModalityCategory = {
     '⚙️ Détecteur d\'ouverture',
 
     // Ventilation (important Afrique)
-    '🌬️ Jalousies intégrées',
-    '🌬️ Grilles de ventilation',
-    '🌬️ Moucharabieh décoratif',
+    '\uD83C\uDF2C️ Jalousies intégrées',
+    '\uD83C\uDF2C️ Grilles de ventilation',
+    '\uD83C\uDF2C️ Moucharabieh décoratif',
 
     // Accessoires
-    '🎨 Moustiquaire intégrée',
-    '🎨 Store intégré',
-    '🎨 Volet roulant',
-    '🎨 Éclairage LED intégré',
-    '🎨 Poignées design',
-    '🆕 Autre option (à préciser)'
+    '\uD83C\uDFA8 Moustiquaire intégrée',
+    '\uD83C\uDFA8 Store intégré',
+    '\uD83C\uDFA8 Volet roulant',
+    '\uD83C\uDFA8 Éclairage LED intégré',
+    '\uD83C\uDFA8 Poignées design',
+    '\uD83C\uDD95 Autre option (à préciser)'
   ],
 
   // ✅ ÉPAISSEUR PROFILÉS (8+)
   epaisseurProfil: [
-    '📐 40mm (entrée de gamme)',
-    '📐 50mm (standard)',
-    '📐 60mm (qualité)',
-    '📐 70mm (haute performance)',
-    '📐 80mm et + (très haute isolation)',
-    '📐 À rupture pont thermique',
-    '📐 Renforcé sécurité',
-    '🆕 Autre épaisseur (à préciser)'
+    '\uD83D\uDCD0 40mm (entrée de gamme)',
+    '\uD83D\uDCD0 50mm (standard)',
+    '\uD83D\uDCD0 60mm (qualité)',
+    '\uD83D\uDCD0 70mm (haute performance)',
+    '\uD83D\uDCD0 80mm et + (très haute isolation)',
+    '\uD83D\uDCD0 À rupture pont thermique',
+    '\uD83D\uDCD0 Renforcé sécurité',
+    '\uD83C\uDD95 Autre épaisseur (à préciser)'
   ],
 
   // ✅ TYPES D\'OUVERTURE (12+)
   typesOuverture: [
     '↔️ Coulissante (rails)',
     '↔️ Coulissante à galandage',
-    '🚪 Battante (1 vantail)',
-    '🚪 Battante (2 vantaux)',
-    '🪟 Oscillo-battante',
-    '🪟 Basculante',
-    '🪟 Soufflet',
-    '🪟 Pivotante',
-    '🪟 Pliante (accordéon)',
+    '\uD83D\uDEAA Battante (1 vantail)',
+    '\uD83D\uDEAA Battante (2 vantaux)',
+    '\uD83E\uDE9F Oscillo-battante',
+    '\uD83E\uDE9F Basculante',
+    '\uD83E\uDE9F Soufflet',
+    '\uD83E\uDE9F Pivotante',
+    '\uD83E\uDE9F Pliante (accordéon)',
     '⚙️ Automatique (motorisée)',
-    '🔒 Fixe (non ouvrante)',
-    '🆕 Autre système (à préciser)'
+    '\uD83D\uDD12 Fixe (non ouvrante)',
+    '\uD83C\uDD95 Autre système (à préciser)'
   ],
 
   // ✅ PRIX ESTIMATIFS FCFA (20+) - Marché Cameroun/Afrique francophone
   prixEstimatifs: [
     // ═══ FENÊTRES STANDARD ═══
-    '💰 Fenêtre coulissante 2 vantaux (80x100cm) : 45.000-80.000 FCFA',
-    '💰 Fenêtre coulissante 3 vantaux (120x120cm) : 65.000-110.000 FCFA',
-    '💰 Fenêtre battante (60x80cm) : 35.000-60.000 FCFA',
-    '💰 Fenêtre fixe (100x120cm) : 30.000-50.000 FCFA',
+    '\uD83D\uDCB0 Fenêtre coulissante 2 vantaux (80x100cm) : 45.000-80.000 FCFA',
+    '\uD83D\uDCB0 Fenêtre coulissante 3 vantaux (120x120cm) : 65.000-110.000 FCFA',
+    '\uD83D\uDCB0 Fenêtre battante (60x80cm) : 35.000-60.000 FCFA',
+    '\uD83D\uDCB0 Fenêtre fixe (100x120cm) : 30.000-50.000 FCFA',
 
     // ═══ BAIES VITRÉES ═══
-    '💰 Baie vitrée 2 vantaux (200x210cm) : 120.000-200.000 FCFA',
-    '💰 Baie vitrée 3 vantaux (300x210cm) : 180.000-300.000 FCFA',
-    '💰 Baie vitrée 4 vantaux (400x210cm) : 240.000-400.000 FCFA',
-    '💰 Baie vitrée à galandage : 300.000-600.000 FCFA',
+    '\uD83D\uDCB0 Baie vitrée 2 vantaux (200x210cm) : 120.000-200.000 FCFA',
+    '\uD83D\uDCB0 Baie vitrée 3 vantaux (300x210cm) : 180.000-300.000 FCFA',
+    '\uD83D\uDCB0 Baie vitrée 4 vantaux (400x210cm) : 240.000-400.000 FCFA',
+    '\uD83D\uDCB0 Baie vitrée à galandage : 300.000-600.000 FCFA',
 
     // ═══ PORTES ═══
-    '💰 Porte-fenêtre simple : 80.000-150.000 FCFA',
-    '💰 Porte d\'entrée aluminium : 100.000-250.000 FCFA',
-    '💰 Porte vitrée commerce : 120.000-300.000 FCFA',
-    '💰 Porte coulissante auto : 500.000-1.500.000 FCFA',
+    '\uD83D\uDCB0 Porte-fenêtre simple : 80.000-150.000 FCFA',
+    '\uD83D\uDCB0 Porte d\'entrée aluminium : 100.000-250.000 FCFA',
+    '\uD83D\uDCB0 Porte vitrée commerce : 120.000-300.000 FCFA',
+    '\uD83D\uDCB0 Porte coulissante auto : 500.000-1.500.000 FCFA',
 
     // ═══ VITRINES & DEVANTURES ═══
-    '💰 Vitrine magasin simple (3m) : 200.000-400.000 FCFA',
-    '💰 Vitrine complète (6m) : 400.000-800.000 FCFA',
-    '💰 Devanture boutique complète : 600.000-1.500.000 FCFA',
-    '💰 Kiosque aluminium + verre : 300.000-800.000 FCFA',
+    '\uD83D\uDCB0 Vitrine magasin simple (3m) : 200.000-400.000 FCFA',
+    '\uD83D\uDCB0 Vitrine complète (6m) : 400.000-800.000 FCFA',
+    '\uD83D\uDCB0 Devanture boutique complète : 600.000-1.500.000 FCFA',
+    '\uD83D\uDCB0 Kiosque aluminium + verre : 300.000-800.000 FCFA',
 
     // ═══ VÉRANDAS & PERGOLAS ═══
-    '💰 Véranda 10m² (simple) : 800.000-1.500.000 FCFA',
-    '💰 Véranda 20m² (standard) : 1.500.000-3.000.000 FCFA',
-    '💰 Pergola aluminium 10m² : 400.000-800.000 FCFA',
+    '\uD83D\uDCB0 Véranda 10m² (simple) : 800.000-1.500.000 FCFA',
+    '\uD83D\uDCB0 Véranda 20m² (standard) : 1.500.000-3.000.000 FCFA',
+    '\uD83D\uDCB0 Pergola aluminium 10m² : 400.000-800.000 FCFA',
 
     // ═══ AUTRES ═══
-    '💰 Garde-corps aluminium (mètre linéaire) : 25.000-50.000 FCFA/m',
-    '💰 Volet roulant motorisé : 80.000-200.000 FCFA'
+    '\uD83D\uDCB0 Garde-corps aluminium (mètre linéaire) : 25.000-50.000 FCFA/m',
+    '\uD83D\uDCB0 Volet roulant motorisé : 80.000-200.000 FCFA'
   ],
 
   // ✅ CERTIFICATIONS & QUALIFICATIONS (12+)
   certifications: [
-    '📜 Menuisier aluminium professionnel agréé',
-    '📜 Formation fabricant (Technal, Aliplast...)',
-    '📜 Certification pose menuiserie alu',
-    '📜 Artisan qualifié RGE (si applicable)',
-    '📜 +5 ans d\'expérience',
-    '📜 +10 ans d\'expérience',
-    '📜 +15 ans d\'expérience',
-    '📜 +20 ans d\'expérience',
-    '📜 Spécialiste vitrines commerciales',
-    '📜 Spécialiste façades vitrées',
-    '📜 Spécialiste vérandas',
-    '🆕 Autre certification (à préciser)'
+    '\uD83D\uDCDC Menuisier aluminium professionnel agréé',
+    '\uD83D\uDCDC Formation fabricant (Technal, Aliplast...)',
+    '\uD83D\uDCDC Certification pose menuiserie alu',
+    '\uD83D\uDCDC Artisan qualifié RGE (si applicable)',
+    '\uD83D\uDCDC +5 ans d\'expérience',
+    '\uD83D\uDCDC +10 ans d\'expérience',
+    '\uD83D\uDCDC +15 ans d\'expérience',
+    '\uD83D\uDCDC +20 ans d\'expérience',
+    '\uD83D\uDCDC Spécialiste vitrines commerciales',
+    '\uD83D\uDCDC Spécialiste façades vitrées',
+    '\uD83D\uDCDC Spécialiste vérandas',
+    '\uD83C\uDD95 Autre certification (à préciser)'
   ],
 
   // ✅ ÉQUIPEMENTS ATELIER (14+)
   equipementsAtelier: [
-    '🔧 Atelier complet équipé',
-    '🔧 Scie à onglet aluminium',
-    '🔧 Perceuse à colonne',
-    '🔧 Fraiseuse',
-    '🔧 Plieuse aluminium',
-    '🔧 Cisaille',
-    '🔧 Meuleuse',
-    '🔧 Poste de soudure',
-    '🔧 Table d\'assemblage',
-    '🔧 Outils de mesure professionnels',
-    '🔧 Véhicule de livraison',
-    '🔧 Échafaudage & nacelle',
-    '🔧 Outillage pose sur chantier',
-    '🆕 Autre équipement (à préciser)'
+    '\uD83D\uDD27 Atelier complet équipé',
+    '\uD83D\uDD27 Scie à onglet aluminium',
+    '\uD83D\uDD27 Perceuse à colonne',
+    '\uD83D\uDD27 Fraiseuse',
+    '\uD83D\uDD27 Plieuse aluminium',
+    '\uD83D\uDD27 Cisaille',
+    '\uD83D\uDD27 Meuleuse',
+    '\uD83D\uDD27 Poste de soudure',
+    '\uD83D\uDD27 Table d\'assemblage',
+    '\uD83D\uDD27 Outils de mesure professionnels',
+    '\uD83D\uDD27 Véhicule de livraison',
+    '\uD83D\uDD27 Échafaudage & nacelle',
+    '\uD83D\uDD27 Outillage pose sur chantier',
+    '\uD83C\uDD95 Autre équipement (à préciser)'
   ],
 
   // ✅ ZONES D\'INTERVENTION (utilise système intelligent)
@@ -17722,33 +17722,33 @@ export const MENUISIER_ALUMINIUM_MODALITIES: ModalityCategory = {
   // ✅ MODES DE PAIEMENT (12+) - Adapté Afrique
   modesPaiement: [
     // Mobile Money (le PLUS important)
-    '📱 Orange Money',
-    '📱 MTN Mobile Money',
-    '📱 Moov Money',
+    '\uD83D\uDCF1 Orange Money',
+    '\uD83D\uDCF1 MTN Mobile Money',
+    '\uD83D\uDCF1 Moov Money',
 
     // Classiques
-    '💵 Espèces',
-    '💳 Carte bancaire',
-    '🏦 Virement bancaire',
-    '📝 Chèque',
+    '\uD83D\uDCB5 Espèces',
+    '\uD83D\uDCB3 Carte bancaire',
+    '\uD83C\uDFE6 Virement bancaire',
+    '\uD83D\uDCDD Chèque',
 
     // Échelonné (très demandé)
-    '📊 Paiement échelonné (30% - 40% - 30%)',
-    '📊 Paiement en 2 fois (50% - 50%)',
-    '📊 Acompte 40% + Solde à livraison',
-    '📊 Acompte 50% + Solde à livraison',
-    '🆕 Autre mode (à préciser)'
+    '\uD83D\uDCCA Paiement échelonné (30% - 40% - 30%)',
+    '\uD83D\uDCCA Paiement en 2 fois (50% - 50%)',
+    '\uD83D\uDCCA Acompte 40% + Solde à livraison',
+    '\uD83D\uDCCA Acompte 50% + Solde à livraison',
+    '\uD83C\uDD95 Autre mode (à préciser)'
   ],
 
   // ✅ TYPES DE CLIENTS (7+)
   typesClients: [
-    '🏠 Particuliers (maisons, appartements)',
-    '🏢 Entreprises & Bureaux',
-    '🏪 Commerces & Boutiques',
-    '🏨 Hôtels & Restaurants',
-    '🏗️ Promoteurs immobiliers',
-    '🏛️ Administrations & Collectivités',
-    '🆕 Autre (à préciser)'
+    '\uD83C\uDFE0 Particuliers (maisons, appartements)',
+    '\uD83C\uDFE2 Entreprises & Bureaux',
+    '\uD83C\uDFEA Commerces & Boutiques',
+    '\uD83C\uDFE8 Hôtels & Restaurants',
+    '\uD83C\uDFD7️ Promoteurs immobiliers',
+    '\uD83C\uDFDB️ Administrations & Collectivités',
+    '\uD83C\uDD95 Autre (à préciser)'
   ],
 
   // ✅ NORMES & STANDARDS (10+)
@@ -17762,69 +17762,69 @@ export const MENUISIER_ALUMINIUM_MODALITIES: ModalityCategory = {
     '✅ Isolation thermique certifiée',
     '✅ Isolation phonique certifiée',
     '✅ Anti-effraction certifiée',
-    '🆕 Autre norme (à préciser)'
+    '\uD83C\uDD95 Autre norme (à préciser)'
   ],
 
   // ✅ MARQUES UTILISÉES (15+) - Disponibles Afrique
   marquesUtilisees: [
     // Internationales (présentes en Afrique)
-    '🏭 Technal (France)',
-    '🏭 Aliplast (Pologne)',
-    '🏭 Reynaers (Belgique)',
-    '🏭 Schüco (Allemagne)',
-    '🏭 ALUK (Chine)',
-    '🏭 Alumil (Grèce)',
+    '\uD83C\uDFED Technal (France)',
+    '\uD83C\uDFED Aliplast (Pologne)',
+    '\uD83C\uDFED Reynaers (Belgique)',
+    '\uD83C\uDFED Schüco (Allemagne)',
+    '\uD83C\uDFED ALUK (Chine)',
+    '\uD83C\uDFED Alumil (Grèce)',
 
     // Locales / Régionales
-    '🏭 Fabrication locale (Cameroun)',
-    '🏭 Fabrication Afrique',
-    '🏭 Profilés importés standard',
+    '\uD83C\uDFED Fabrication locale (Cameroun)',
+    '\uD83C\uDFED Fabrication Afrique',
+    '\uD83C\uDFED Profilés importés standard',
 
     // Chinoises (très présentes)
-    '🏭 Marques chinoises qualité',
-    '🏭 Marques chinoises économiques',
+    '\uD83C\uDFED Marques chinoises qualité',
+    '\uD83C\uDFED Marques chinoises économiques',
 
     // Mixte
-    '🏭 Profilés européens + assemblage local',
-    '🏭 Selon disponibilité marché',
-    '🏭 Plusieurs marques (polyvalent)',
-    '🆕 Autre marque (à préciser)'
+    '\uD83C\uDFED Profilés européens + assemblage local',
+    '\uD83C\uDFED Selon disponibilité marché',
+    '\uD83C\uDFED Plusieurs marques (polyvalent)',
+    '\uD83C\uDD95 Autre marque (à préciser)'
   ],
 
   // ✅ RÉALISATIONS SPÉCIALES (10+)
   realisationsSpeciales: [
-    '🎨 Façade rideau (mur-rideau)',
-    '🎨 Brise-soleil orientable',
-    '🎨 Moucharabieh moderne',
-    '🎨 Verrière d\'atelier',
-    '🎨 Serre de jardin',
-    '🎨 Pergola bioclimatique',
-    '🎨 Structure pour panneaux solaires',
-    '🎨 Auvent de terrasse',
-    '🎨 Marquise aluminium',
-    '🆕 Autre réalisation (à préciser)'
+    '\uD83C\uDFA8 Façade rideau (mur-rideau)',
+    '\uD83C\uDFA8 Brise-soleil orientable',
+    '\uD83C\uDFA8 Moucharabieh moderne',
+    '\uD83C\uDFA8 Verrière d\'atelier',
+    '\uD83C\uDFA8 Serre de jardin',
+    '\uD83C\uDFA8 Pergola bioclimatique',
+    '\uD83C\uDFA8 Structure pour panneaux solaires',
+    '\uD83C\uDFA8 Auvent de terrasse',
+    '\uD83C\uDFA8 Marquise aluminium',
+    '\uD83C\uDD95 Autre réalisation (à préciser)'
   ],
 
   // ✅ LANGUES PARLÉES (8+)
   languesParlees: [
-    '🗣️ Français',
-    '🗣️ Anglais',
-    '🗣️ Douala (Cameroun)',
-    '🗣️ Ewondo (Cameroun)',
-    '🗣️ Fulfulde',
-    '🗣️ Arabe',
-    '🗣️ Plusieurs langues locales',
-    '🆕 Autre langue (à préciser)'
+    '\uD83D\uDDE3️ Français',
+    '\uD83D\uDDE3️ Anglais',
+    '\uD83D\uDDE3️ Douala (Cameroun)',
+    '\uD83D\uDDE3️ Ewondo (Cameroun)',
+    '\uD83D\uDDE3️ Fulfulde',
+    '\uD83D\uDDE3️ Arabe',
+    '\uD83D\uDDE3️ Plusieurs langues locales',
+    '\uD83C\uDD95 Autre langue (à préciser)'
   ],
 
   // ✅ DISPONIBILITÉ (6+)
   disponibilite: [
-    '📅 Immédiate (sous 48h)',
-    '📅 Cette semaine',
-    '📅 Sous 2 semaines',
-    '📅 Sous 1 mois',
-    '📅 Sur rendez-vous',
-    '🆕 Autre (à préciser)'
+    '\uD83D\uDCC5 Immédiate (sous 48h)',
+    '\uD83D\uDCC5 Cette semaine',
+    '\uD83D\uDCC5 Sous 2 semaines',
+    '\uD83D\uDCC5 Sous 1 mois',
+    '\uD83D\uDCC5 Sur rendez-vous',
+    '\uD83C\uDD95 Autre (à préciser)'
   ],
 
   // ✅ SERVICES ADDITIONNELS (12+)
@@ -17840,12 +17840,12 @@ export const MENUISIER_ALUMINIUM_MODALITIES: ModalityCategory = {
     '➕ Motorisation ultérieure',
     '➕ Extension future',
     '➕ Showroom / Exposition',
-    '🆕 Autre service (à préciser)'
+    '\uD83C\uDD95 Autre service (à préciser)'
   ]
 };
 
 // ════════════════════════════════════════════════════════════════════════════
-// 👶 CRÈCHE & GARDERIE D'ENFANTS - 🌍 AFRIQUE FRANCOPHONE (CAMEROUN FOCUS)
+// \uD83D\uDC76 CRÈCHE & GARDERIE D'ENFANTS - \uD83C\uDF0D AFRIQUE FRANCOPHONE (CAMEROUN FOCUS)
 // ════════════════════════════════════════════════════════════════════════════
 // Contexte: Structures d'accueil petite enfance (0-6 ans)
 // Particularité Afrique: Normes locales, langues maternelles, contexte multiculturel
@@ -17855,43 +17855,43 @@ export const MENUISIER_ALUMINIUM_MODALITIES: ModalityCategory = {
 export const CRECHE_GARDERIE_MODALITIES: ModalityCategory = {
   // ✅ TYPES D'ÉTABLISSEMENT (15+) - Classés par POPULARITÉ AFRIQUE
   typesEtablissement: [
-    // ═══ 🏠 STRUCTURES PRIVÉES (70% du marché en Afrique) ═══
-    '🏠 Crèche privée (accueil journée complète)',
-    '🏠 Garderie familiale (petit effectif)',
-    '🏠 Micro-crèche (< 12 enfants)',
-    '🏠 Halte-garderie (accueil occasionnel)',
-    '🏠 Crèche parentale (gestion parents)',
-    '🏠 Jardin d\'enfants',
+    // ═══ \uD83C\uDFE0 STRUCTURES PRIVÉES (70% du marché en Afrique) ═══
+    '\uD83C\uDFE0 Crèche privée (accueil journée complète)',
+    '\uD83C\uDFE0 Garderie familiale (petit effectif)',
+    '\uD83C\uDFE0 Micro-crèche (< 12 enfants)',
+    '\uD83C\uDFE0 Halte-garderie (accueil occasionnel)',
+    '\uD83C\uDFE0 Crèche parentale (gestion parents)',
+    '\uD83C\uDFE0 Jardin d\'enfants',
 
-    // ═══ 🏢 STRUCTURES PROFESSIONNELLES (20%) ═══
-    '🏢 Crèche d\'entreprise',
-    '🏢 Garderie inter-entreprises',
-    '🏢 Crèche hospitalière (personnel médical)',
+    // ═══ \uD83C\uDFE2 STRUCTURES PROFESSIONNELLES (20%) ═══
+    '\uD83C\uDFE2 Crèche d\'entreprise',
+    '\uD83C\uDFE2 Garderie inter-entreprises',
+    '\uD83C\uDFE2 Crèche hospitalière (personnel médical)',
 
-    // ═══ 🏘️ STRUCTURES COMMUNAUTAIRES (10%) ═══
-    '🏘️ Garderie communautaire',
-    '🏘️ Crèche associative',
-    '🏘️ Garderie religieuse (église, mosquée)',
+    // ═══ \uD83C\uDFD8️ STRUCTURES COMMUNAUTAIRES (10%) ═══
+    '\uD83C\uDFD8️ Garderie communautaire',
+    '\uD83C\uDFD8️ Crèche associative',
+    '\uD83C\uDFD8️ Garderie religieuse (église, mosquée)',
 
-    // ═══ 🎓 STRUCTURES ÉDUCATIVES ═══
-    '🎓 Crèche-école (maternelle intégrée)',
-    '🎓 Centre d\'éveil et petite enfance',
+    // ═══ \uD83C\uDF93 STRUCTURES ÉDUCATIVES ═══
+    '\uD83C\uDF93 Crèche-école (maternelle intégrée)',
+    '\uD83C\uDF93 Centre d\'éveil et petite enfance',
 
-    '🆕 Autre type d\'établissement (à préciser)'
+    '\uD83C\uDD95 Autre type d\'établissement (à préciser)'
   ],
 
   // ✅ TRANCHES D'ÂGE ACCUEILLIES (10+) - Très spécifique
   tranchesAge: [
-    '👶 Bébés (0-6 mois)',
-    '👶 Nourrissons (6-12 mois)',
-    '👶 Petits (12-18 mois)',
-    '🧒 Enfants (18-24 mois)',
-    '🧒 Enfants (2-3 ans)',
-    '🧒 Enfants (3-4 ans)',
-    '👧 Grands (4-5 ans)',
-    '👧 Préscolaires (5-6 ans)',
-    '👨‍👩‍👧 Toutes tranches (0-6 ans)',
-    '🆕 Autre tranche d\'âge (à préciser)'
+    '\uD83D\uDC76 Bébés (0-6 mois)',
+    '\uD83D\uDC76 Nourrissons (6-12 mois)',
+    '\uD83D\uDC76 Petits (12-18 mois)',
+    '\uD83E\uDDD2 Enfants (18-24 mois)',
+    '\uD83E\uDDD2 Enfants (2-3 ans)',
+    '\uD83E\uDDD2 Enfants (3-4 ans)',
+    '\uD83D\uDC67 Grands (4-5 ans)',
+    '\uD83D\uDC67 Préscolaires (5-6 ans)',
+    '\uD83D\uDC68‍\uD83D\uDC69‍\uD83D\uDC67 Toutes tranches (0-6 ans)',
+    '\uD83C\uDD95 Autre tranche d\'âge (à préciser)'
   ],
 
   // ✅ HORAIRES DE GARDE (12+)
@@ -17913,117 +17913,117 @@ export const CRECHE_GARDERIE_MODALITIES: ModalityCategory = {
     '⏰ Garde week-end (samedi-dimanche)',
     '⏰ Garde 24h/24 (internat)',
 
-    '🆕 Autres horaires (à préciser)'
+    '\uD83C\uDD95 Autres horaires (à préciser)'
   ],
 
   // ✅ JOURS DE FONCTIONNEMENT (8+)
   joursFonctionnement: [
-    '📅 Lundi à Vendredi (5 jours)',
-    '📅 Lundi à Samedi (6 jours)',
-    '📅 Toute la semaine (7j/7)',
-    '📅 Ouvert jours fériés',
-    '📅 Ouvert vacances scolaires',
-    '📅 Fermé vacances scolaires',
-    '📅 Fermé jours fériés',
-    '🆕 Autre (à préciser)'
+    '\uD83D\uDCC5 Lundi à Vendredi (5 jours)',
+    '\uD83D\uDCC5 Lundi à Samedi (6 jours)',
+    '\uD83D\uDCC5 Toute la semaine (7j/7)',
+    '\uD83D\uDCC5 Ouvert jours fériés',
+    '\uD83D\uDCC5 Ouvert vacances scolaires',
+    '\uD83D\uDCC5 Fermé vacances scolaires',
+    '\uD83D\uDCC5 Fermé jours fériés',
+    '\uD83C\uDD95 Autre (à préciser)'
   ],
 
   // ✅ CAPACITÉ D'ACCUEIL (10+)
   capaciteAccueil: [
-    '👥 Très petit (1-5 enfants)',
-    '👥 Petit (6-10 enfants)',
-    '👥 Moyen (11-20 enfants)',
-    '👥 Grand (21-30 enfants)',
-    '👥 Très grand (31-50 enfants)',
-    '👥 Structure importante (51-80 enfants)',
-    '👥 Grande structure (81-120 enfants)',
-    '👥 Centre petite enfance (120+ enfants)',
-    '👥 Places disponibles immédiatement',
-    '🆕 Autre capacité (à préciser)'
+    '\uD83D\uDC65 Très petit (1-5 enfants)',
+    '\uD83D\uDC65 Petit (6-10 enfants)',
+    '\uD83D\uDC65 Moyen (11-20 enfants)',
+    '\uD83D\uDC65 Grand (21-30 enfants)',
+    '\uD83D\uDC65 Très grand (31-50 enfants)',
+    '\uD83D\uDC65 Structure importante (51-80 enfants)',
+    '\uD83D\uDC65 Grande structure (81-120 enfants)',
+    '\uD83D\uDC65 Centre petite enfance (120+ enfants)',
+    '\uD83D\uDC65 Places disponibles immédiatement',
+    '\uD83C\uDD95 Autre capacité (à préciser)'
   ],
 
   // ✅ SERVICES PROPOSÉS (25+) - Très détaillé
   servicesProproses: [
-    // ═══ 🍽️ RESTAURATION (Crucial en Afrique) ═══
-    '🍽️ Repas complets (petit-déj + déjeuner + goûter)',
-    '🍽️ Déjeuner + goûter',
-    '🍽️ Goûter uniquement',
-    '🍽️ Repas maison (cuisine sur place)',
-    '🍽️ Repas traiteur (externe)',
-    '🍽️ Régimes spéciaux (allergie, religion)',
-    '🍽️ Lait maternisé fourni',
-    '🍽️ Alimentation bio',
+    // ═══ \uD83C\uDF7D️ RESTAURATION (Crucial en Afrique) ═══
+    '\uD83C\uDF7D️ Repas complets (petit-déj + déjeuner + goûter)',
+    '\uD83C\uDF7D️ Déjeuner + goûter',
+    '\uD83C\uDF7D️ Goûter uniquement',
+    '\uD83C\uDF7D️ Repas maison (cuisine sur place)',
+    '\uD83C\uDF7D️ Repas traiteur (externe)',
+    '\uD83C\uDF7D️ Régimes spéciaux (allergie, religion)',
+    '\uD83C\uDF7D️ Lait maternisé fourni',
+    '\uD83C\uDF7D️ Alimentation bio',
 
-    // ═══ 😴 REPOS & HYGIÈNE ═══
-    '😴 Sieste surveillée',
-    '😴 Chambre de repos individuelle',
-    '😴 Couches fournies',
-    '😴 Produits d\'hygiène fournis',
-    '😴 Change régulier',
+    // ═══ \uD83D\uDE34 REPOS & HYGIÈNE ═══
+    '\uD83D\uDE34 Sieste surveillée',
+    '\uD83D\uDE34 Chambre de repos individuelle',
+    '\uD83D\uDE34 Couches fournies',
+    '\uD83D\uDE34 Produits d\'hygiène fournis',
+    '\uD83D\uDE34 Change régulier',
 
-    // ═══ 🏥 SANTÉ & SÉCURITÉ ═══
-    '🏥 Suivi médical régulier',
-    '🏥 Infirmière sur place',
-    '🏥 Pédiatre partenaire',
-    '🏥 Premiers secours',
-    '🏥 Carnet de santé suivi',
-    '🏥 Protocole médicaments',
-    '🏥 Assurance accidents',
+    // ═══ \uD83C\uDFE5 SANTÉ & SÉCURITÉ ═══
+    '\uD83C\uDFE5 Suivi médical régulier',
+    '\uD83C\uDFE5 Infirmière sur place',
+    '\uD83C\uDFE5 Pédiatre partenaire',
+    '\uD83C\uDFE5 Premiers secours',
+    '\uD83C\uDFE5 Carnet de santé suivi',
+    '\uD83C\uDFE5 Protocole médicaments',
+    '\uD83C\uDFE5 Assurance accidents',
 
-    // ═══ 🚐 TRANSPORT ═══
-    '🚐 Transport matin + soir (navette)',
-    '🚐 Transport matin seulement',
-    '🚐 Transport soir seulement',
-    '🚐 Transport sur demande',
+    // ═══ \uD83D\uDE90 TRANSPORT ═══
+    '\uD83D\uDE90 Transport matin + soir (navette)',
+    '\uD83D\uDE90 Transport matin seulement',
+    '\uD83D\uDE90 Transport soir seulement',
+    '\uD83D\uDE90 Transport sur demande',
 
-    // ═══ 📱 COMMUNICATION PARENTS ═══
-    '📱 Suivi quotidien (WhatsApp/SMS)',
-    '📱 Photos/vidéos journalières',
-    '📱 Cahier de liaison',
-    '📱 Réunions parents trimestrielles',
-    '📱 Application mobile dédiée',
-    '📱 Caméras surveillance (accès parents)',
+    // ═══ \uD83D\uDCF1 COMMUNICATION PARENTS ═══
+    '\uD83D\uDCF1 Suivi quotidien (WhatsApp/SMS)',
+    '\uD83D\uDCF1 Photos/vidéos journalières',
+    '\uD83D\uDCF1 Cahier de liaison',
+    '\uD83D\uDCF1 Réunions parents trimestrielles',
+    '\uD83D\uDCF1 Application mobile dédiée',
+    '\uD83D\uDCF1 Caméras surveillance (accès parents)',
 
-    // ═══ 🎓 PÉDAGOGIE & ÉVEIL ═══
-    '🎓 Programme éducatif structuré',
-    '🎓 Méthode Montessori',
-    '🎓 Éveil sensoriel',
-    '🎓 Préparation maternelle',
-    '🎓 Initiation lecture/écriture',
-    '🎓 Activités manuelles quotidiennes',
+    // ═══ \uD83C\uDF93 PÉDAGOGIE & ÉVEIL ═══
+    '\uD83C\uDF93 Programme éducatif structuré',
+    '\uD83C\uDF93 Méthode Montessori',
+    '\uD83C\uDF93 Éveil sensoriel',
+    '\uD83C\uDF93 Préparation maternelle',
+    '\uD83C\uDF93 Initiation lecture/écriture',
+    '\uD83C\uDF93 Activités manuelles quotidiennes',
 
-    '🆕 Autre service (à préciser)'
+    '\uD83C\uDD95 Autre service (à préciser)'
   ],
 
   // ✅ ACTIVITÉS PROPOSÉES (30+) - Très détaillé contexte africain
   activitesProposees: [
-    // ═══ 🎨 CRÉATIVITÉ & ARTS ═══
-    '🎨 Dessin & peinture',
-    '🎨 Coloriage & gommettes',
-    '🎨 Pâte à modeler / Argile',
-    '🎨 Bricolage & collage',
-    '🎨 Arts plastiques',
+    // ═══ \uD83C\uDFA8 CRÉATIVITÉ & ARTS ═══
+    '\uD83C\uDFA8 Dessin & peinture',
+    '\uD83C\uDFA8 Coloriage & gommettes',
+    '\uD83C\uDFA8 Pâte à modeler / Argile',
+    '\uD83C\uDFA8 Bricolage & collage',
+    '\uD83C\uDFA8 Arts plastiques',
 
-    // ═══ 🎵 MUSIQUE & DANSE ═══
-    '🎵 Éveil musical',
-    '🎵 Chansons enfantines',
-    '🎵 Comptines africaines',
-    '🎵 Danse & mouvement',
-    '🎵 Initiation instruments (maracas, djembé)',
+    // ═══ \uD83C\uDFB5 MUSIQUE & DANSE ═══
+    '\uD83C\uDFB5 Éveil musical',
+    '\uD83C\uDFB5 Chansons enfantines',
+    '\uD83C\uDFB5 Comptines africaines',
+    '\uD83C\uDFB5 Danse & mouvement',
+    '\uD83C\uDFB5 Initiation instruments (maracas, djembé)',
 
-    // ═══ 📚 LANGUE & COMMUNICATION ═══
-    '📚 Contes & histoires',
-    '📚 Lecture d\'albums illustrés',
-    '📚 Bibliothèque enfantine',
-    '📚 Éveil langues (français, anglais, langues locales)',
-    '📚 Marionnettes & théâtre',
+    // ═══ \uD83D\uDCDA LANGUE & COMMUNICATION ═══
+    '\uD83D\uDCDA Contes & histoires',
+    '\uD83D\uDCDA Lecture d\'albums illustrés',
+    '\uD83D\uDCDA Bibliothèque enfantine',
+    '\uD83D\uDCDA Éveil langues (français, anglais, langues locales)',
+    '\uD83D\uDCDA Marionnettes & théâtre',
 
-    // ═══ 🧩 JEUX & APPRENTISSAGE ═══
-    '🧩 Jeux éducatifs',
-    '🧩 Puzzles & encastrements',
-    '🧩 Jeux de construction (Lego, Kapla)',
-    '🧩 Jeux de société adaptés',
-    '🧩 Jeux sensoriels (matières, textures)',
+    // ═══ \uD83E\uDDE9 JEUX & APPRENTISSAGE ═══
+    '\uD83E\uDDE9 Jeux éducatifs',
+    '\uD83E\uDDE9 Puzzles & encastrements',
+    '\uD83E\uDDE9 Jeux de construction (Lego, Kapla)',
+    '\uD83E\uDDE9 Jeux de société adaptés',
+    '\uD83E\uDDE9 Jeux sensoriels (matières, textures)',
 
     // ═══ ⚽ SPORT & MOTRICITÉ ═══
     '⚽ Motricité fine',
@@ -18033,100 +18033,100 @@ export const CRECHE_GARDERIE_MODALITIES: ModalityCategory = {
     '⚽ Baby gym',
     '⚽ Activités extérieures quotidiennes',
 
-    // ═══ 🌍 CULTURE AFRICAINE (Spécificité locale) ═══
-    '🌍 Contes africains traditionnels',
-    '🌍 Initiation langues maternelles',
-    '🌍 Danses traditionnelles',
-    '🌍 Découverte culture locale',
-    '🌍 Fêtes culturelles (Ngondo, Nguon, etc.)',
+    // ═══ \uD83C\uDF0D CULTURE AFRICAINE (Spécificité locale) ═══
+    '\uD83C\uDF0D Contes africains traditionnels',
+    '\uD83C\uDF0D Initiation langues maternelles',
+    '\uD83C\uDF0D Danses traditionnelles',
+    '\uD83C\uDF0D Découverte culture locale',
+    '\uD83C\uDF0D Fêtes culturelles (Ngondo, Nguon, etc.)',
 
-    // ═══ 🌳 DÉCOUVERTE ENVIRONNEMENT ═══
-    '🌳 Jardin potager',
-    '🌳 Découverte nature',
-    '🌳 Animaux de la ferme',
-    '🌳 Sorties éducatives',
+    // ═══ \uD83C\uDF33 DÉCOUVERTE ENVIRONNEMENT ═══
+    '\uD83C\uDF33 Jardin potager',
+    '\uD83C\uDF33 Découverte nature',
+    '\uD83C\uDF33 Animaux de la ferme',
+    '\uD83C\uDF33 Sorties éducatives',
 
-    // ═══ 💻 NUMÉRIQUE (Optionnel) ═══
-    '💻 Initiation tablette éducative',
-    '💻 Jeux éducatifs numériques',
+    // ═══ \uD83D\uDCBB NUMÉRIQUE (Optionnel) ═══
+    '\uD83D\uDCBB Initiation tablette éducative',
+    '\uD83D\uDCBB Jeux éducatifs numériques',
 
-    '🆕 Autre activité (à préciser)'
+    '\uD83C\uDD95 Autre activité (à préciser)'
   ],
 
   // ✅ LANGUES PARLÉES (15+) - Contexte multilingue africain
   languesParlees: [
     // Officielles
-    '🗣️ Français',
-    '🗣️ Anglais',
+    '\uD83D\uDDE3️ Français',
+    '\uD83D\uDDE3️ Anglais',
 
     // Langues camerounaises principales
-    '🗣️ Douala (Cameroun Littoral)',
-    '🗣️ Ewondo (Cameroun Centre)',
-    '🗣️ Bamiléké / Medumba (Ouest)',
-    '🗣️ Bassa (Littoral)',
-    '🗣️ Fulfuldé (Nord)',
-    '🗣️ Pidgin English (Sud-Ouest)',
+    '\uD83D\uDDE3️ Douala (Cameroun Littoral)',
+    '\uD83D\uDDE3️ Ewondo (Cameroun Centre)',
+    '\uD83D\uDDE3️ Bamiléké / Medumba (Ouest)',
+    '\uD83D\uDDE3️ Bassa (Littoral)',
+    '\uD83D\uDDE3️ Fulfuldé (Nord)',
+    '\uD83D\uDDE3️ Pidgin English (Sud-Ouest)',
 
     // Autres langues africaines francophones
-    '🗣️ Bambara (Mali)',
-    '🗣️ Wolof (Sénégal)',
-    '🗣️ Lingala (Congo/RDC)',
-    '🗣️ Dioula (Côte d\'Ivoire)',
-    '🗣️ Fon (Bénin)',
-    '🗣️ Plusieurs langues locales',
+    '\uD83D\uDDE3️ Bambara (Mali)',
+    '\uD83D\uDDE3️ Wolof (Sénégal)',
+    '\uD83D\uDDE3️ Lingala (Congo/RDC)',
+    '\uD83D\uDDE3️ Dioula (Côte d\'Ivoire)',
+    '\uD83D\uDDE3️ Fon (Bénin)',
+    '\uD83D\uDDE3️ Plusieurs langues locales',
 
-    '🆕 Autre langue (à préciser)'
+    '\uD83C\uDD95 Autre langue (à préciser)'
   ],
 
   // ✅ ENCADREMENT & PERSONNEL (12+)
   encadrementPersonnel: [
-    '👩‍🏫 Éducateurs diplômés petite enfance',
-    '👩‍🏫 Puéricultrices diplômées',
-    '👩‍🏫 Auxiliaires petite enfance',
-    '👩‍🏫 Personnel formé premiers secours',
-    '👨‍⚕️ Infirmière sur place',
-    '👨‍⚕️ Pédiatre consultant',
-    '👩‍🍳 Cuisinière qualifiée',
-    '🧹 Personnel d\'entretien',
-    '🚐 Chauffeur navette',
-    '👥 Ratio adulte/enfant: 1 pour 5 enfants',
-    '👥 Ratio adulte/enfant: 1 pour 8 enfants',
-    '🆕 Autre encadrement (à préciser)'
+    '\uD83D\uDC69‍\uD83C\uDFEB Éducateurs diplômés petite enfance',
+    '\uD83D\uDC69‍\uD83C\uDFEB Puéricultrices diplômées',
+    '\uD83D\uDC69‍\uD83C\uDFEB Auxiliaires petite enfance',
+    '\uD83D\uDC69‍\uD83C\uDFEB Personnel formé premiers secours',
+    '\uD83D\uDC68‍⚕️ Infirmière sur place',
+    '\uD83D\uDC68‍⚕️ Pédiatre consultant',
+    '\uD83D\uDC69‍\uD83C\uDF73 Cuisinière qualifiée',
+    '\uD83E\uDDF9 Personnel d\'entretien',
+    '\uD83D\uDE90 Chauffeur navette',
+    '\uD83D\uDC65 Ratio adulte/enfant: 1 pour 5 enfants',
+    '\uD83D\uDC65 Ratio adulte/enfant: 1 pour 8 enfants',
+    '\uD83C\uDD95 Autre encadrement (à préciser)'
   ],
 
   // ✅ ÉQUIPEMENTS & INFRASTRUCTURES (20+)
   equipementsInfrastructures: [
-    // ═══ 🏠 LOCAUX ═══
-    '🏠 Locaux climatisés',
-    '🏠 Ventilation naturelle + brasseurs d\'air',
-    '🏠 Salles de jeux spacieuses',
-    '🏠 Dortoir séparé',
-    '🏠 Cuisine équipée',
-    '🏠 Sanitaires adaptés enfants',
-    '🏠 Espace extérieur sécurisé',
-    '🏠 Jardin / Cour de jeux',
+    // ═══ \uD83C\uDFE0 LOCAUX ═══
+    '\uD83C\uDFE0 Locaux climatisés',
+    '\uD83C\uDFE0 Ventilation naturelle + brasseurs d\'air',
+    '\uD83C\uDFE0 Salles de jeux spacieuses',
+    '\uD83C\uDFE0 Dortoir séparé',
+    '\uD83C\uDFE0 Cuisine équipée',
+    '\uD83C\uDFE0 Sanitaires adaptés enfants',
+    '\uD83C\uDFE0 Espace extérieur sécurisé',
+    '\uD83C\uDFE0 Jardin / Cour de jeux',
 
-    // ═══ 🛡️ SÉCURITÉ ═══
-    '🛡️ Portail sécurisé',
-    '🛡️ Gardien à l\'entrée',
-    '🛡️ Caméras de surveillance',
-    '🛡️ Clôture sécurisée',
-    '🛡️ Alarme incendie',
-    '🛡️ Extincteurs',
+    // ═══ \uD83D\uDEE1️ SÉCURITÉ ═══
+    '\uD83D\uDEE1️ Portail sécurisé',
+    '\uD83D\uDEE1️ Gardien à l\'entrée',
+    '\uD83D\uDEE1️ Caméras de surveillance',
+    '\uD83D\uDEE1️ Clôture sécurisée',
+    '\uD83D\uDEE1️ Alarme incendie',
+    '\uD83D\uDEE1️ Extincteurs',
 
     // ═══ ⚡ CONFORT ═══
     '⚡ Groupe électrogène',
     '⚡ Eau courante 24h/24',
     '⚡ Château d\'eau / Réserve',
-    '📶 Wi-Fi (communication parents)',
+    '\uD83D\uDCF6 Wi-Fi (communication parents)',
 
-    // ═══ 🎮 ÉQUIPEMENTS LUDIQUES ═══
-    '🎮 Jeux d\'extérieur (toboggan, balançoire)',
-    '🎮 Aire de jeux couverte',
-    '🎮 Bibliothèque enfantine',
-    '🎮 Jouets éducatifs variés',
+    // ═══ \uD83C\uDFAE ÉQUIPEMENTS LUDIQUES ═══
+    '\uD83C\uDFAE Jeux d\'extérieur (toboggan, balançoire)',
+    '\uD83C\uDFAE Aire de jeux couverte',
+    '\uD83C\uDFAE Bibliothèque enfantine',
+    '\uD83C\uDFAE Jouets éducatifs variés',
 
-    '🆕 Autre équipement (à préciser)'
+    '\uD83C\uDD95 Autre équipement (à préciser)'
   ],
 
   // ✅ CERTIFICATIONS & AGRÉMENTS (12+)
@@ -18142,34 +18142,34 @@ export const CRECHE_GARDERIE_MODALITIES: ModalityCategory = {
     '✅ Hygiène certifiée',
     '✅ Registre officiel tenu à jour',
     '✅ Inspections régulières',
-    '🆕 Autre certification (à préciser)'
+    '\uD83C\uDD95 Autre certification (à préciser)'
   ],
 
   // ✅ TARIFICATION (10+) - Contexte économique africain
   modelesTarification: [
-    '💰 Tarif mensuel (forfait)',
-    '💰 Tarif hebdomadaire',
-    '💰 Tarif journalier',
-    '💰 Tarif demi-journée',
-    '💰 Tarif horaire (garde occasionnelle)',
-    '💰 Forfait 2-3 jours/semaine',
-    '💰 Frais d\'inscription (une fois)',
-    '💰 Réduction 2ème enfant (-10%)',
-    '💰 Réduction 3ème enfant (-15%)',
-    '💰 Tarifs dégressifs (fratrie)',
-    '💰 Facilités de paiement',
-    '🆕 Autre tarification (à préciser)'
+    '\uD83D\uDCB0 Tarif mensuel (forfait)',
+    '\uD83D\uDCB0 Tarif hebdomadaire',
+    '\uD83D\uDCB0 Tarif journalier',
+    '\uD83D\uDCB0 Tarif demi-journée',
+    '\uD83D\uDCB0 Tarif horaire (garde occasionnelle)',
+    '\uD83D\uDCB0 Forfait 2-3 jours/semaine',
+    '\uD83D\uDCB0 Frais d\'inscription (une fois)',
+    '\uD83D\uDCB0 Réduction 2ème enfant (-10%)',
+    '\uD83D\uDCB0 Réduction 3ème enfant (-15%)',
+    '\uD83D\uDCB0 Tarifs dégressifs (fratrie)',
+    '\uD83D\uDCB0 Facilités de paiement',
+    '\uD83C\uDD95 Autre tarification (à préciser)'
   ],
 
   // ✅ GAMME DE PRIX (Cameroun/Afrique francophone)
   gammePrix: [
-    '💵 Économique (15 000 - 35 000 FCFA/mois)',
-    '💵 Accessible (35 000 - 60 000 FCFA/mois)',
-    '💵 Standard (60 000 - 100 000 FCFA/mois)',
-    '💵 Confort (100 000 - 150 000 FCFA/mois)',
-    '💵 Premium (150 000 - 250 000 FCFA/mois)',
-    '💵 Haut de gamme (250 000+ FCFA/mois)',
-    '🆕 Autre gamme (à préciser)'
+    '\uD83D\uDCB5 Économique (15 000 - 35 000 FCFA/mois)',
+    '\uD83D\uDCB5 Accessible (35 000 - 60 000 FCFA/mois)',
+    '\uD83D\uDCB5 Standard (60 000 - 100 000 FCFA/mois)',
+    '\uD83D\uDCB5 Confort (100 000 - 150 000 FCFA/mois)',
+    '\uD83D\uDCB5 Premium (150 000 - 250 000 FCFA/mois)',
+    '\uD83D\uDCB5 Haut de gamme (250 000+ FCFA/mois)',
+    '\uD83C\uDD95 Autre gamme (à préciser)'
   ],
 
   // ✅ AVANTAGES & POINTS FORTS (15+)
@@ -18189,31 +18189,31 @@ export const CRECHE_GARDERIE_MODALITIES: ModalityCategory = {
     '⭐ Groupe électrogène 24h/24',
     '⭐ Espace extérieur spacieux',
     '⭐ Tarifs compétitifs',
-    '🆕 Autre avantage (à préciser)'
+    '\uD83C\uDD95 Autre avantage (à préciser)'
   ],
 
   // ✅ PÉRIODES D'INSCRIPTION (8+)
   periodesInscription: [
-    '📝 Inscriptions ouvertes toute l\'année',
-    '📝 Rentrée septembre (année scolaire)',
-    '📝 Rentrée janvier (2ème trimestre)',
-    '📝 Places disponibles immédiatement',
-    '📝 Liste d\'attente (6-12 mois)',
-    '📝 Visite & test d\'adaptation proposés',
-    '📝 Inscription en ligne possible',
-    '🆕 Autre période (à préciser)'
+    '\uD83D\uDCDD Inscriptions ouvertes toute l\'année',
+    '\uD83D\uDCDD Rentrée septembre (année scolaire)',
+    '\uD83D\uDCDD Rentrée janvier (2ème trimestre)',
+    '\uD83D\uDCDD Places disponibles immédiatement',
+    '\uD83D\uDCDD Liste d\'attente (6-12 mois)',
+    '\uD83D\uDCDD Visite & test d\'adaptation proposés',
+    '\uD83D\uDCDD Inscription en ligne possible',
+    '\uD83C\uDD95 Autre période (à préciser)'
   ],
 
   // ✅ TYPES DE CONTRAT (8+)
   typesContrat: [
-    '📄 Contrat annuel (année scolaire)',
-    '📄 Contrat mensuel renouvelable',
-    '📄 Contrat à la carte (jours choisis)',
-    '📄 Contrat occasionnel (sans engagement)',
-    '📄 Période d\'essai (1 mois)',
-    '📄 Préavis 1 mois',
-    '📄 Résiliation possible tout moment',
-    '🆕 Autre contrat (à préciser)'
+    '\uD83D\uDCC4 Contrat annuel (année scolaire)',
+    '\uD83D\uDCC4 Contrat mensuel renouvelable',
+    '\uD83D\uDCC4 Contrat à la carte (jours choisis)',
+    '\uD83D\uDCC4 Contrat occasionnel (sans engagement)',
+    '\uD83D\uDCC4 Période d\'essai (1 mois)',
+    '\uD83D\uDCC4 Préavis 1 mois',
+    '\uD83D\uDCC4 Résiliation possible tout moment',
+    '\uD83C\uDD95 Autre contrat (à préciser)'
   ],
 
   // ✅ ZONES D'INTERVENTION - S'adapte automatiquement au pays de l'utilisateur
@@ -18371,14 +18371,14 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           'Mokolo', 'Kousséri', 'Yagoua', 'Guidiguis',
           'Meiganga', 'Tibati', 'Banyo',
           'Mbanga', 'Loum', 'Penja', 'Manjo',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         quartiers_douala: [
           // Douala
           'Akwa', 'Bonanjo', 'Bali', 'Bonabéri', 'Deido', 'New Bell', 'Bépanda',
           'Makepe', 'Logpom', 'Ndogpassi', 'Kotto', 'Pk10', 'Pk14', 'Pk17',
           'Village', 'Japoma', 'Yassa', 'Ndogsimbi', 'Cité des Palmiers',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         quartiers_yaounde: [
           // Yaoundé
@@ -18386,35 +18386,35 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           'Essos', 'Ngousso', 'Emana', 'Ekounou', 'Odza', 'Elig-Essono',
           'Nkol-Eton', 'Nkol-Bisson', 'Nkol-Messeng', 'Mimboman', 'Nkolndongo',
           'Tsinga', 'Damas', 'Briqueterie', 'Kondengui', 'Mfandena',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         points_depart: [
           // Points de départ génériques
           'Gare routière', 'Gare ferroviaire', 'Agence de voyage', 'Station Total',
           'Station Oando', 'Carrefour principal', 'Rond-point', 'Marché central',
           'Centre commercial', 'Aéroport', 'Port', 'Hôtel', 'Domicile',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         types_vehicule: [
           'Berline (4 places)', 'SUV (6-7 places)', 'Break (5-6 places)',
           'Minibus (9-15 places)', 'Camionnette', 'Voiture de luxe',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         preferences: [
           'Musique autorisée', 'Silence apprécié', 'Discussion agréable',
           'Non-fumeur', 'Fumeur autorisé', 'Animaux autorisés',
           'Bagages volumineux acceptés', 'Climatisation', 'Arrêts flexibles',
           'Trajet direct', 'Femmes seulement', 'Hommes seulement',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         frequences: [
           'Trajet unique', 'Quotidien', 'Hebdomadaire', 'Week-end',
           'Occasionnel', 'Sur demande',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ]
       };
 
-    // 🚕 TRANSPORT URBAIN VTC (Taxi/Uber local)
+    // \uD83D\uDE95 TRANSPORT URBAIN VTC (Taxi/Uber local)
     case 'transport_urbain':
     case 'vtc':
     case 'taxi_urbain':
@@ -18427,7 +18427,7 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           'Minibus (9-15 places)',
           'Voiture climatisée premium',
           'Moto-taxi (1-2 places)',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         options_confort: [
           'Climatisation',
@@ -18439,7 +18439,7 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           'Bagages volumineux',
           'Siège bébé',
           'Accès handicapé',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         preferences_chauffeur: [
           'Non-fumeur uniquement',
@@ -18449,7 +18449,7 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           'Paiement mobile (OM/Momo)',
           'Paiement espèces uniquement',
           'Reçu disponible',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         statut_disponibilite: [
           'Disponible immédiatement',
@@ -18464,7 +18464,7 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           'Périphérie incluse',
           'Aéroport inclus',
           'Trajets inter-villes acceptés',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         types_tarification: [
           'Prix au kilomètre',
@@ -18472,7 +18472,7 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           'Prix négociable',
           'Prix selon traffic',
           'Prix selon heure (jour/nuit)',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         jours_disponibilite: [
           'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'
@@ -18499,7 +18499,7 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
     case 'textile':
       return VETEMENTS_MODALITIES;
 
-    // 🏥 ÉTABLISSEMENTS DE SANTÉ (Hôpitaux, Cliniques)
+    // \uD83C\uDFE5 ÉTABLISSEMENTS DE SANTÉ (Hôpitaux, Cliniques)
     case 'hopital_clinique':
     case 'hopital':
     case 'clinique':
@@ -18512,13 +18512,13 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           'Hôpital public', 'Hôpital universitaire (CHU)', 'Hôpital régional',
           'Clinique privée', 'Polyclinique', 'Centre médical',
           'Dispensaire', 'Centre de santé intégré', 'Maternité',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         prestations_generales: [
           'Consultation générale', 'Urgences 24h/24', 'Hospitalisation',
           'Soins ambulatoires', 'Soins intensifs', 'Réanimation',
           'Chirurgie', 'Maternité', 'Pédiatrie',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         consultations_specialisees: [
           // Médecine interne
@@ -18537,24 +18537,24 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           'Dermatologie', 'Urologie', 'Oncologie', 'Hématologie',
           'Psychiatrie', 'Médecine physique et réadaptation', 'Anesthésie',
           'Odontologie (Dentaire)', 'Médecine du travail',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         services_annexes: [
           'Laboratoire d\'analyses', 'Pharmacie interne', 'Ambulance',
           'Banque de sang', 'Dialyse', 'Kinésithérapie',
           'Nutrition/Diététique', 'Bloc opératoire', 'Service mortuaire',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         equipements: [
           'Scanner', 'IRM', 'Échographie', 'Radiologie numérique',
           'Mammographe', 'Endoscopie', 'ECG/EEG', 'Respirateur',
           'Couveuse', 'Défibrillateur', 'Unité de dialyse',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         jours_semaine: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
       };
 
-    // 💊 PHARMACIES - SYSTÈME INTELLIGENT AVEC PHARMACIES RÉELLES
+    // \uD83D\uDC8A PHARMACIES - SYSTÈME INTELLIGENT AVEC PHARMACIES RÉELLES
     case 'pharmacie':
     case 'pharmacies':
       return {
@@ -18576,58 +18576,58 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           'Pharmacie hospitalière',
           'Pharmacie d\'officine',
           'Parapharmacie',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         services_pharmacie: [
-          // 💊 Services de base
+          // \uD83D\uDC8A Services de base
           'Vente de médicaments sur ordonnance',
           'Vente libre (sans ordonnance)',
           'Conseil pharmaceutique gratuit',
           'Délivrance urgente',
 
-          // 🌙 Services garde
+          // \uD83C\uDF19 Services garde
           'Garde de nuit (20h-8h)',
           'Garde weekend (Sam-Dim)',
           'Garde jours fériés',
           'Permanence 24h/24',
 
-          // 🧪 Tests et analyses
+          // \uD83E\uDDEA Tests et analyses
           'Test de glycémie rapide',
           'Prise de tension artérielle',
           'Test de grossesse',
           'Test paludisme (goutte épaisse)',
           'Test COVID-19',
 
-          // 💉 Soins et injections
+          // \uD83D\uDC89 Soins et injections
           'Injections/Vaccinations',
           'Pansements',
           'Premiers secours',
 
-          // 🚚 Services pratiques
+          // \uD83D\uDE9A Services pratiques
           'Livraison à domicile',
           'Livraison Express (<2h)',
           'Commande téléphonique',
           'WhatsApp Business',
 
-          // 🧴 Parapharmacie
+          // \uD83E\uDDF4 Parapharmacie
           'Parapharmacie (cosmétiques)',
           'Produits bébé (lait, couches)',
           'Compléments alimentaires',
           'Matériel médical',
           'Orthopédie',
 
-          // 💳 Paiement
+          // \uD83D\uDCB3 Paiement
           'Paiement Mobile Money',
           'Paiement Orange Money',
           'Paiement MTN Mobile Money',
           'Paiement carte bancaire',
 
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         jours_semaine: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
       };
 
-    // 🧪 LABORATOIRES D'ANALYSES & IMAGERIE MÉDICALE
+    // \uD83E\uDDEA LABORATOIRES D'ANALYSES & IMAGERIE MÉDICALE
     case 'laboratoire':
     case 'laboratoires':
     case 'labo':
@@ -18653,7 +18653,7 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           'Laboratoire d\'anatomie pathologique',
           'Laboratoire de microbiologie',
           'Laboratoire & Imagerie (Mixte)',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         analyses_proposees: [
           // ========== ANALYSES BIOLOGIQUES ==========
@@ -18728,12 +18728,12 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           'Fibroscopie digestive', 'Coloscopie',
           'Coronarographie', 'Angiographie',
 
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         jours_semaine: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
       };
 
-    // 🎨 ARTICLES DE DÉCORATION
+    // \uD83C\uDFA8 ARTICLES DE DÉCORATION
     case 'decoration':
     case 'déco':
     case 'objet_deco':
@@ -18764,7 +18764,7 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           // Saisonniers
           'Couronne de Noël', 'Guirlande de Noël', 'Déco Halloween',
           'Déco Pâques', 'Centre de table festif',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         categories: [
           'Décoration murale', 'Tableaux & Affiches', 'Miroirs', 'Horloges',
@@ -18773,47 +18773,47 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           'Sculptures & Statues', 'Plantes artificielles', 'Cadres photo',
           'Accessoires de table', 'Centre de table', 'Objets ethniques',
           'Objets vintage', 'Déco de Noël', 'Déco de fête',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         styles: [
           'Moderne', 'Contemporain', 'Classique', 'Scandinave', 'Industriel',
           'Bohème', 'Ethnique', 'Vintage', 'Rustique', 'Minimaliste',
           'Luxe', 'Tropical', 'Art déco', 'Shabby chic', 'Écléctique',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         pieces: [
           'Salon', 'Chambre', 'Cuisine', 'Salle à manger', 'Bureau',
           'Salle de bain', 'Entrée', 'Couloir', 'Terrasse', 'Jardin',
           'Chambre enfant', 'Chambre bébé', 'Toutes pièces',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         matieres: [
           'Bois', 'Métal', 'Verre', 'Céramique', 'Porcelaine', 'Terre cuite',
           'Plastique', 'Tissu', 'Coton', 'Lin', 'Velours', 'Rotin', 'Osier',
           'Marbre', 'Pierre', 'Résine', 'Papier', 'Carton', 'Bambou',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         couleurs: [
           'Blanc', 'Noir', 'Gris', 'Beige', 'Marron', 'Bleu', 'Vert', 'Rouge',
           'Rose', 'Jaune', 'Orange', 'Violet', 'Doré', 'Argenté', 'Cuivré',
           'Multicolore', 'Transparent', 'Naturel',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         tailles: [
           'Très petit (< 20cm)', 'Petit (20-40cm)', 'Moyen (40-60cm)',
           'Grand (60-100cm)', 'Très grand (> 100cm)', 'Set/Lot',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         etat: [
           'Neuf avec emballage', 'Neuf sans emballage', 'Excellent état',
           'Bon état', 'Occasion', 'Artisanal fait main', 'Vintage authentique',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         marques: [
           'Ikea', 'Maisons du Monde', 'Zara Home', 'H&M Home', 'Habitat',
           'Conforama', 'But', 'La Redoute', 'Alinéa', 'Casa',
           'Artisan local', 'Fait main', 'Sans marque',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ]
       };
 
@@ -18830,19 +18830,19 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           'Derby', 'Richelieu', 'Oxford', 'Bottine', 'Botte', 'Sandale', 'Tong',
           'Claquette', 'Chaussure de sport', 'Chaussure de ville', 'Chaussure de randonnée',
           'Chaussure de sécurité', 'Chaussure enfant', 'Chausson',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         types: [
           'Basket / Sneakers', 'Escarpin', 'Sandale', 'Botte', 'Bottine', 'Mocassin',
           'Ballerine', 'Tong', 'Chaussure de sport', 'Chaussure de ville', 'Chaussure enfant',
-          'Chaussure de sécurité', 'Chausson', '🆕 Autre (ajouter)'
+          'Chaussure de sécurité', 'Chausson', '\uD83C\uDD95 Autre (ajouter)'
         ],
         marques: [
           'Nike', 'Adidas', 'Puma', 'Reebok', 'New Balance', 'Converse', 'Vans',
           'Asics', 'Skechers', 'Fila', 'Under Armour', 'Jordan', 'Lacoste',
           'Timberland', 'Clarks', 'Geox', 'Crocs', 'Dr. Martens', 'Birkenstock',
           'Zara', 'H&M', 'Bata', 'Aldo', 'Steve Madden', 'Local',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         pointures: [
           // Pointures femmes
@@ -18853,26 +18853,26 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
           // Pointures enfants
           '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
           '31', '32', '33', '34',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         couleurs: [
           'Noir', 'Blanc', 'Marron', 'Beige', 'Gris', 'Bleu', 'Rouge', 'Vert',
           'Jaune', 'Orange', 'Rose', 'Violet', 'Doré', 'Argenté', 'Multicolore',
           'Nude', 'Camel', 'Bordeaux', 'Marine', 'Kaki', 'Léopard', 'Imprimé',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
         matieres: [
           'Cuir', 'Cuir véritable', 'Cuir synthétique', 'Daim', 'Nubuck',
           'Toile', 'Canvas', 'Textile', 'Mesh', 'Synthétique', 'Caoutchouc',
           'Plastique', 'Velours', 'Satin',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ],
-        genres: ['Femme', 'Homme', 'Enfant', 'Bébé', 'Unisexe', '🆕 Autre (ajouter)'],
-        etat: ['Neuf avec étiquette', 'Neuf sans étiquette', 'Excellent état', 'Bon état', 'Occasion', '🆕 Autre (ajouter)'],
+        genres: ['Femme', 'Homme', 'Enfant', 'Bébé', 'Unisexe', '\uD83C\uDD95 Autre (ajouter)'],
+        etat: ['Neuf avec étiquette', 'Neuf sans étiquette', 'Excellent état', 'Bon état', 'Occasion', '\uD83C\uDD95 Autre (ajouter)'],
         styles: [
           'Casual', 'Sport', 'Élégant', 'Classique', 'Mode', 'Vintage', 'Streetwear',
           'Confort', 'Running', 'Basketball', 'Football', 'Tennis',
-          '🆕 Autre (ajouter)'
+          '\uD83C\uDD95 Autre (ajouter)'
         ]
       };
 
@@ -19580,9 +19580,9 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
       console.log('[productModalities] Utilisation des modalités génériques par défaut');
       // Retourner des modalités de base pour toute catégorie non reconnue
       return {
-        types: ['Standard', 'Premium', 'Professionnel', '🆕 Autre (ajouter)'],
-        etats: ['Neuf', 'Occasion - Bon état', 'Occasion - Moyen', '🆕 Autre (ajouter)'],
-        services: ['Installation', 'Réparation', 'Maintenance', 'Consultation', '🆕 Autre (ajouter)']
+        types: ['Standard', 'Premium', 'Professionnel', '\uD83C\uDD95 Autre (ajouter)'],
+        etats: ['Neuf', 'Occasion - Bon état', 'Occasion - Moyen', '\uD83C\uDD95 Autre (ajouter)'],
+        services: ['Installation', 'Réparation', 'Maintenance', 'Consultation', '\uD83C\uDD95 Autre (ajouter)']
       };
   }
 };
@@ -19595,8 +19595,8 @@ export const addCustomModality = (
 ): void => {
   const modalities = getModalitiesByProductType(productType);
   if (modalities[fieldName]) {
-    // Ajouter la nouvelle modalité avant "🆕 Autre (ajouter)"
-    const index = modalities[fieldName].findIndex(item => item.includes('🆕 Autre'));
+    // Ajouter la nouvelle modalité avant "\uD83C\uDD95 Autre (ajouter)"
+    const index = modalities[fieldName].findIndex(item => item.includes('\uD83C\uDD95 Autre'));
     if (index > -1) {
       modalities[fieldName].splice(index, 0, newModality);
     } else {
@@ -19618,7 +19618,7 @@ export const getModalitiesWithUserContext = (
   const contextualized = { ...baseModalities };
 
   // ════════════════════════════════════════════════════════════
-  // 📍 CHAMPS GÉOGRAPHIQUES (villes, quartiers, zones)
+  // \uD83D\uDCCD CHAMPS GÉOGRAPHIQUES (villes, quartiers, zones)
   // ════════════════════════════════════════════════════════════
 
   // Si le type utilise des villes, régénérer avec priorité pays utilisateur
@@ -19637,7 +19637,7 @@ export const getModalitiesWithUserContext = (
   }
 
   // ════════════════════════════════════════════════════════════
-  // 🎓 CHAMPS ÉDUCATIFS (matières, niveaux scolaires)
+  // \uD83C\uDF93 CHAMPS ÉDUCATIFS (matières, niveaux scolaires)
   // S'adapte au système éducatif du pays (Cameroun, RDC, CI, SN, ML...)
   // ════════════════════════════════════════════════════════════
 
@@ -19654,7 +19654,7 @@ export const getModalitiesWithUserContext = (
   }
 
   // ════════════════════════════════════════════════════════════
-  // 🏆 CHAMPS PRÉPARATION CONCOURS GRANDES ÉCOLES
+  // \uD83C\uDFC6 CHAMPS PRÉPARATION CONCOURS GRANDES ÉCOLES
   // S'adapte aux concours nationaux du pays en priorité
   // ════════════════════════════════════════════════════════════
 
@@ -19683,8 +19683,8 @@ export const getFieldOptions = (productType: string, fieldName: string): string[
 
   // ✅ CORRECTION: Toujours ajouter l'option pour créer une nouvelle modalité
   // si elle n'existe pas déjà
-  if (!options.some(opt => opt.includes('🆕'))) {
-    return [...options, '🆕 Autre (ajouter)'];
+  if (!options.some(opt => opt.includes('\uD83C\uDD95'))) {
+    return [...options, '\uD83C\uDD95 Autre (ajouter)'];
   }
 
   return options;

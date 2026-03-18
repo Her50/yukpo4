@@ -56,7 +56,7 @@ const [messages, setMessages] = useState<Message[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
 
   // Émojis populaires
-  const popularEmojis = ['😊', '😂', '❤️', '👍', '👎', '😍', '🤔', '😢', '😮', '🔥', '💯', '🎉', '👏', '🙏', '💪'];
+  const popularEmojis = ['\uD83D\uDE0A', '\uD83D\uDE02', '❤️', '\uD83D\uDC4D', '\uD83D\uDC4E', '\uD83D\uDE0D', '\uD83E\uDD14', '\uD83D\uDE22', '\uD83D\uDE2E', '\uD83D\uDD25', '\uD83D\uDCAF', '\uD83C\uDF89', '\uD83D\uDC4F', '\uD83D\uDE4F', '\uD83D\uDCAA'];
 
   // Fonction utilitaire pour extraire la valeur d'un champ
   const getServiceFieldValue = (field: any): string => {
@@ -93,7 +93,7 @@ const [messages, setMessages] = useState<Message[]>([]);
       const welcomeMessage: Message = {
         id: Date.now().toString(),
         from: 'prestataire',
-        content: `Bonjour 👋, je suis ${prestataire.name || `Prestataire #${service.user_id}`} pour le service "${getServiceFieldValue(service.data?.titre_service) || 'Service'}". Que puis-je faire pour vous ?`,
+        content: `Bonjour \uD83D\uDC4B, je suis ${prestataire.name || `Prestataire #${service.user_id}`} pour le service "${getServiceFieldValue(service.data?.titre_service) || 'Service'}". Que puis-je faire pour vous ?`,
         timestamp: new Date(),
         status: 'read',
         type: 'text',
@@ -354,7 +354,7 @@ const [messages, setMessages] = useState<Message[]>([]);
 
           <View style={styles.headerActions}>
             <TouchableOpacity style={styles.headerButton}>
-              <Text style={styles.headerButtonText}>📞</Text>
+              <Text style={styles.headerButtonText}>\uD83D\uDCDE</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerButton} onPress={onClose}>
               <Text style={styles.headerButtonText}>✕</Text>
@@ -390,7 +390,7 @@ const [messages, setMessages] = useState<Message[]>([]);
               style={styles.inputButton}
               onPress={() => setShowEmojiPicker(!showEmojiPicker)}
             >
-              <Text style={styles.inputButtonText}>😊</Text>
+              <Text style={styles.inputButtonText}>\uD83D\uDE0A</Text>
             </TouchableOpacity>
 
             <TextInput
@@ -407,7 +407,7 @@ const [messages, setMessages] = useState<Message[]>([]);
               onPress={isRecording ? stopRecording : startRecording}
             >
               <Text style={styles.inputButtonText}>
-                {isRecording ? '⏹️' : '🎤'}
+                {isRecording ? '⏹️' : '\uD83C\uDFA4'}
               </Text>
             </TouchableOpacity>
 
@@ -416,7 +416,7 @@ const [messages, setMessages] = useState<Message[]>([]);
               onPress={sendMessage}
               disabled={!newMessage.trim()}
             >
-              <Text style={styles.sendButtonText}>📤</Text>
+              <Text style={styles.sendButtonText}>\uD83D\uDCE4</Text>
             </TouchableOpacity>
           </View>
 

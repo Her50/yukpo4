@@ -79,7 +79,7 @@ const FALLBACK_STORY_TEMPLATES: StoryTemplateSpec[] = [
         description: t('videoCreationWizard.recitEditorialIdealPourActus'),
         recommendedCategories: [],
         tones: ['inspirational'],
-        ctas: [t('videoCreationWizardScreen.decouvrir')],
+        ctas: ['Découvrir'],
         defaultDurationSeconds: 30,
         suggestedScenes: 3,
     },
@@ -99,7 +99,7 @@ const FALLBACK_STORY_TEMPLATES: StoryTemplateSpec[] = [
         description: 'Renforce la preuve sociale en quelques secondes.',
         recommendedCategories: [],
         tones: ['trust'],
-        ctas: [t('videoCreationWizardScreen.reserver')],
+        ctas: ['Réserver'],
         defaultDurationSeconds: 28,
         suggestedScenes: 3,
     },
@@ -565,11 +565,11 @@ const VideoCreationWizardScreen: React.FC = () => {
             setMediaLoading(true);
             const allMediaItems: ServiceMediaItem[] = [];
 
-            console.log('[VideoCreationWizard] 🎬 Début chargement médias pour serviceId:', serviceId, 'productIndex:', productIndex);
+            console.log('[VideoCreationWizard] \uD83C\uDFAC Début chargement médias pour serviceId:', serviceId, 'productIndex:', productIndex);
 
             // ✅ CORRECTION: Charger les médias du produit spécifique
             const productResponse = await apiCallWithRetry(() => mediaApi.getProductMedia(serviceId, productIndex));
-            console.log('[VideoCreationWizard] 🔍 Réponse getProductMedia:', {
+            console.log('[VideoCreationWizard] \uD83D\uDD0D Réponse getProductMedia:', {
                 success: productResponse.success,
                 hasData: !!productResponse.data,
                 isArray: Array.isArray(productResponse.data),
@@ -602,9 +602,9 @@ const VideoCreationWizardScreen: React.FC = () => {
             // ✅ AMÉLIORATION: Si peu de médias trouvés pour ce produit, charger aussi les médias du service entier
             // (utile pour les vidéos avec plusieurs produits ou si le produit n'a pas assez de médias)
             if (allMediaItems.length < 3) {
-                console.log('[VideoCreationWizard] 📦 Peu de médias pour le produit (' + allMediaItems.length + '), chargement des médias du service...');
+                console.log('[VideoCreationWizard] \uD83D\uDCE6 Peu de médias pour le produit (' + allMediaItems.length + '), chargement des médias du service...');
                 const serviceResponse = await apiCallWithRetry(() => mediaApi.getServiceMediaDetailed(serviceId));
-                console.log('[VideoCreationWizard] 🔍 Réponse getServiceMediaDetailed:', {
+                console.log('[VideoCreationWizard] \uD83D\uDD0D Réponse getServiceMediaDetailed:', {
                     success: serviceResponse.success,
                     hasData: !!serviceResponse.data,
                     isArray: Array.isArray(serviceResponse.data),
@@ -1514,7 +1514,7 @@ const VideoCreationWizardScreen: React.FC = () => {
             const alertButtons: any[] = [{ text: 'OK' }];
             if (isBalanceError) {
                 alertButtons.push({
-                    text: `💳 ${t('videoWizardExtra.recharge')}`,
+                    text: `\uD83D\uDCB3 ${t('videoWizardExtra.recharge')}`,
                     onPress: () => (navigation as any).navigate('RechargeTokens'),
                 });
             } else {
@@ -1576,7 +1576,8 @@ const VideoCreationWizardScreen: React.FC = () => {
             if (!response.preview_url) {
                 Alert.alert(
                     t('videoWizard.alert.previewShortNoUrlTitle') ?? t('videoCreationWizard.previsualisationRapide'),
-                    t('videoWizard.alert.previewShortNoUrlMessaget('videoCreationWizardScreen.impossibleDeRecupererL')URL de la prévisualisation.",
+                    t('videoWizard.alert.previewShortNoUrlMessage') ??
+                    "Impossible de récupérer l'URL de la prévisualisation.",
                 );
                 const durationMs = Date.now() - startedAt;
                 trackUxEvent('preview_short_failed', {
@@ -1661,10 +1662,10 @@ const VideoCreationWizardScreen: React.FC = () => {
                     )}
                     <View style={styles.mediaInfoRow}>
                         <Text style={styles.mediaTitle} numberOfLines={1}>
-                            {item.ai_description || t('videoCreationWizardScreen.media', { item_id: item.id })}
+                            {item.ai_description || `Média #${item.id}`}
                         </Text>
                         <Text style={styles.mediaSubTitle}>
-                            {isVideo ? t('videoCreationWizardScreen.video') : '📸 Image'}
+                            {isVideo ? t('videoCreationWizardScreen.video') : '\uD83D\uDCF8 Image'}
                         </Text>
                     </View>
                 </NativeCard>
@@ -2067,7 +2068,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                                 <View style={styles.inlineRow}>
                                                     <Text style={styles.inlineLabel}>
                                                         {t('videoWizard.summary.sceneLabel', {
-                                                            defaultValue: t('videoCreationWizardScreen.scene', { currentSceneIndex___1: currentSceneIndex + 1 }),
+                                                            defaultValue: `Scène ${currentSceneIndex + 1}`,
                                                             index: currentSceneIndex + 1,
                                                         })}
                                                     </Text>
@@ -2166,7 +2167,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                                                         numberOfLines={1}
                                                                     >
                                                                         {item.ai_description ||
-                                                                            t('videoCreationWizardScreen.media', { item_id: item.id })}
+                                                                            `Média #${item.id}`}
                                                                     </Text>
                                                                     <Text
                                                                         style={

@@ -62,7 +62,7 @@ const [address, setAddress] = useState<string>('');
         return (
             <View style={styles.container}>
                 <TouchableOpacity style={styles.noLocationContainer} onPress={handlePress}>
-                    <Text style={styles.noLocationIcon}>📍</Text>
+                    <Text style={styles.noLocationIcon}>\uD83D\uDCCD</Text>
                     <View style={styles.noLocationInfo}>
                         <Text style={styles.noLocationText}>{t('gPSDisplay.gpsNonActive')}</Text>
                         <Text style={styles.noLocationSubtext}>{t('gPSDisplay.appuyezPourActiver')}</Text>
@@ -76,7 +76,7 @@ const [address, setAddress] = useState<string>('');
         <View style={styles.container}>
             <TouchableOpacity style={styles.gpsCard} onPress={handlePress}>
                 <View style={styles.gpsHeader}>
-                    <Text style={styles.gpsIcon}>📍</Text>
+                    <Text style={styles.gpsIcon}>\uD83D\uDCCD</Text>
                     <View style={styles.gpsInfo}>
                         <Text style={styles.gpsStatus}>{t('gPSDisplay.gpsActive')}</Text>
                         <Text style={styles.gpsAddress} numberOfLines={1}>

@@ -15,7 +15,6 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
 import { offreEmploiService, SearchOffresFilters } from '../../services/offreEmploiService';
 import { modernColors } from '../../theme/modernTheme';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface OffreEmploi {
     id: number;
@@ -34,7 +33,6 @@ interface OffreEmploi {
 
 const OffreListScreen: React.FC = () => {
     const navigation = useNavigation();
-    const { t } = useLanguageSafe();
     const route = useRoute();
     const params = route.params as any;
 
@@ -96,10 +94,10 @@ const OffreListScreen: React.FC = () => {
     };
 
     const formatSalaire = (min?: number, max?: number) => {
-        if (!min && !max) return t('offreListScreen.salaireNonRenseigne');
+        if (!min && !max) return 'Salaire non renseigné';
         if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()} XAF`;
-        if (min) return t('offreListScreen.aPartirDeXaf', { min_toLocaleString__: min.toLocaleString() });
-        return t('offreListScreen.jusquaXaf', { max?_toLocaleString(): max?.toLocaleString() });
+        if (min) return `À partir de ${min.toLocaleString()} XAF`;
+        return `Jusqu'à ${max?.toLocaleString()} XAF`;
     };
 
     const renderOffre = ({ item }: { item: OffreEmploi }) => (
@@ -145,7 +143,7 @@ const OffreListScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>{t('offreList.chargementDesOffres')}</Text>
+                <Text style={styles.loadingText}>Chargement des offres...</Text>
             </View>
         );
     }
@@ -157,20 +155,20 @@ const OffreListScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <Text style={styles.title}>
-                    {total} offre{total > 1 ? 's' : 't('offreListScreen.trouveetotal1')s' : ''}
+                    {total} offre{total > 1 ? 's' : ''} trouvée{total > 1 ? 's' : ''}
                 </Text>
             </View>
 
             {offres.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="briefcase" size={64} color={modernColors.textSecondary} type="lucide" />
-                    <Text style={styles.emptyTitle}>{t('offreList.aucuneOffreTrouvee')}</Text>
-                    <Text style={styles.emptyText}>{t('offreList.essayezDeModifierVosCriteres')}</Text>
+                    <Text style={styles.emptyTitle}>Aucune offre trouvée</Text>
+                    <Text style={styles.emptyText}>Essayez de modifier vos critères de recherche</Text>
                     <TouchableOpacity
                         style={styles.emptyButton}
                         onPress={() => (navigation as any).navigate('OffreSearch')}
                     >
-                        <Text style={styles.emptyButtonText}>{t('offreList.nouvelleRecherche')}</Text>
+                        <Text style={styles.emptyButtonText}>Nouvelle recherche</Text>
                     </TouchableOpacity>
                 </View>
             ) : (

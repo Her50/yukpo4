@@ -185,7 +185,7 @@ const ensureValidToken = async (): Promise<string | null> => {
     // Token va expirer bientôt → refresh proactif
     if (timeLeft < TOKEN_REFRESH_MARGIN_MS && !isRefreshing) {
       isRefreshing = true;
-      console.log('[API] 🔄 Refresh proactif du token (expire dans', Math.round(timeLeft / 1000), 's)');
+      console.log('[API] \uD83D\uDD04 Refresh proactif du token (expire dans', Math.round(timeLeft / 1000), 's)');
       try {
         const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
           method: 'POST',
@@ -1441,6 +1441,13 @@ export const deliveryApi = {
       body: JSON.stringify({ zone_ids: zoneIds }),
     });
   },
+  getCourierHistory: async (params?: { page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.page) query.append('page', params.page.toString());
+    if (params?.limit) query.append('limit', params.limit.toString());
+    const qs = query.toString();
+    return apiCall(`/api/delivery/courier/history${qs ? `?${qs}` : ''}`);
+  },
 };
 
 export const shoppingApi = {
@@ -1544,6 +1551,18 @@ export const walletApi = {
         reason,
       }),
     });
+  },
+  getFinancialSummary: async () => {
+    return apiCall('/api/wallet/financial');
+  },
+  withdraw: async (payload: { amount: number; payment_method: string; phone_number: string }) => {
+    return apiCall('/api/wallet/withdraw', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  getWithdrawalHistory: async () => {
+    return apiCall('/api/wallet/withdrawals');
   },
 };
 

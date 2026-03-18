@@ -58,10 +58,6 @@ interface PharmacyAnalytics {
     avg_order_value: string | null;
 }
 
-const SERVICES_OPTIONS = ['Garde', t('pharmacieFormScreen.delivrance'), 'Conseil', 'Vaccination', 'Pansements', t('pharmacieFormScreen.livraisonADomicile'), t('pharmacieFormScreen.preparationDeMedicaments')];
-const UNITE_OPTIONS = [t('pharmacieFormScreen.unite'), t('pharmacieFormScreen.boite'), 'flacon', 'plaquette', 'tube', 'sachet', 'ampoule', t('pharmacieFormScreen.comprime')];
-const CATEGORIE_OPTIONS = [t('pharmacieFormScreen.medicament'), 'Parapharmacie', t('pharmacieFormScreen.accessoireMedical'), t('pharmacieFormScreen.hygiene'), 'Nutrition', 'Autre'];
-
 const PharmacieFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
@@ -72,6 +68,34 @@ const PharmacieFormScreen: React.FC = () => {
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
     const mode = (route.params as any)?.mode as string | undefined;
     const devise = getCurrencyIntelligently() || 'FCFA';
+
+    const SERVICES_OPTIONS = [
+        'Garde',
+        t('pharmacieFormScreen.delivrance') || 'Délivrance',
+        'Conseil',
+        'Vaccination',
+        'Pansements',
+        t('pharmacieFormScreen.livraisonADomicile') || 'Livraison à domicile',
+        t('pharmacieFormScreen.preparationDeMedicaments') || 'Préparation de médicaments',
+    ];
+    const UNITE_OPTIONS = [
+        t('pharmacieFormScreen.unite') || 'Unité',
+        t('pharmacieFormScreen.boite') || 'Boîte',
+        'flacon',
+        'plaquette',
+        'tube',
+        'sachet',
+        'ampoule',
+        t('pharmacieFormScreen.comprime') || 'Comprimé',
+    ];
+    const CATEGORIE_OPTIONS = [
+        t('pharmacieFormScreen.medicament') || 'Médicament',
+        'Parapharmacie',
+        t('pharmacieFormScreen.accessoireMedical') || 'Accessoire médical',
+        t('pharmacieFormScreen.hygiene') || 'Hygiène',
+        'Nutrition',
+        'Autre',
+    ];
 
     // Dashboard state
     const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -792,7 +816,7 @@ const PharmacieFormScreen: React.FC = () => {
                         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
                         <View style={{ flex: 1 }}>
                             <Text style={s.dashTitle}>{pharmacyData?.nom || formData.nom || t('pharmacieForm.maPharmacie')}</Text>
-                            <Text style={s.dashSub}>{stats.total} produit{stats.total !== 1 ? 's' : ''} · {isOnDuty ? '🟢 En garde' : '🔴 Hors garde'}</Text>
+                            <Text style={s.dashSub}>{stats.total} produit{stats.total !== 1 ? 's' : ''} · {isOnDuty ? '\uD83D\uDFE2 En garde' : '\uD83D\uDD34 Hors garde'}</Text>
                         </View>
                     </View>
                     <View style={s.tabsRow}>

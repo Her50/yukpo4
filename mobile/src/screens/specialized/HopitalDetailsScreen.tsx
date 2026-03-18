@@ -122,7 +122,7 @@ const HopitalDetailsScreen: React.FC = () => {
         if (!user) { Alert.alert(t('hopitalDetails.loginRequired'), t('hopitalDetails.pleaseLogin')); navigation.navigate('Login' as never); return; }
         try {
             setBooking(true);
-            const response = await apiPost(`/api/hopitaux/${params.hospitalId}/book`, { notes: t('hopitalDetailsScreen.reservationDepuisL')application mobile' });
+            const response = await apiPost(`/api/hopitaux/${params.hospitalId}/book`, { notes: 'Réservation depuis l\'application mobile' });
             if (response.success) Alert.alert(t('hopitalDetails.bookingCreated'), t('hopitalDetails.appointmentSent'), [{ text: 'OK', onPress: () => navigation.goBack() }]);
             else Alert.alert(t('message.error'), response.error || t('hopitalDetails.cannotBook'));
         } catch (error: any) { Alert.alert(t('message.error'), error.message || t('hopitalDetails.cannotBook')); }
@@ -179,7 +179,7 @@ const HopitalDetailsScreen: React.FC = () => {
     const prestations = hopital.prestations_medicales || [];
 
     const emergencyColor = emergencyStatus?.status === 'saturated' ? '#DC2626' : emergencyStatus?.status === 'busy' ? '#F59E0B' : '#059669';
-    const emergencyLabel = emergencyStatus?.status === 'available' ? 'Disponible' : emergencyStatus?.status === 'busy' ? t('hopitalDetailsScreen.occupe') : t('hopitalDetailsScreen.sature');
+    const emergencyLabel = emergencyStatus?.status === 'available' ? (t('hopitalDetails.disponible') || 'Disponible') : emergencyStatus?.status === 'busy' ? t('hopitalDetailsScreen.occupe') : t('hopitalDetailsScreen.sature');
 
     return (
         <View style={st.container}>
@@ -197,24 +197,24 @@ const HopitalDetailsScreen: React.FC = () => {
                     <View style={st.heroBadges}>
                         <View style={[st.badge, { backgroundColor: isOpen ? 'rgba(255,255,255,0.25)' : 'rgba(239,68,68,0.3)' }]}>
                             <View style={[st.badgeDot, { backgroundColor: isOpen ? '#fff' : '#FCA5A5' }]} />
-                            <Text style={st.badgeText}>{isOpen ? 'Ouvert' : t('hopitalDetailsScreen.ferme')}</Text>
+                            <Text style={st.badgeText}>{isOpen ? (t('hopitalDetails.ouvert') || 'Ouvert') : t('hopitalDetailsScreen.ferme')}</Text>
                         </View>
                         {hopital.urgences_disponible && (
                             <View style={[st.badge, { backgroundColor: 'rgba(239,68,68,0.3)' }]}>
                                 <SafeIcon name="alert-circle" size={12} color="#fff" />
-                                <Text style={st.badgeText}>Urgences</Text>
+                                <Text style={st.badgeText}>{t('hopitalDetails.urgences') || 'Urgences'}</Text>
                             </View>
                         )}
                         {hopital.banque_sang && (
                             <View style={[st.badge, { backgroundColor: 'rgba(219,39,119,0.3)' }]}>
                                 <SafeIcon name="heart" size={12} color="#fff" />
-                                <Text style={st.badgeText}>Banque sang</Text>
+                                <Text style={st.badgeText}>{t('hopitalDetails.banqueSang') || 'Banque sang'}</Text>
                             </View>
                         )}
                         {hopital.rdv_en_ligne && (
                             <View style={[st.badge, { backgroundColor: 'rgba(16,185,129,0.3)' }]}>
                                 <SafeIcon name="calendar" size={12} color="#fff" />
-                                <Text style={st.badgeText}>RDV en ligne</Text>
+                                <Text style={st.badgeText}>{t('hopitalDetails.rdvEnLigne') || 'RDV en ligne'}</Text>
                             </View>
                         )}
                         {hopital.is_verified && (
@@ -229,7 +229,7 @@ const HopitalDetailsScreen: React.FC = () => {
                         {[1, 2, 3, 4, 5].map(i => (
                             <SafeIcon key={i} name="star" size={16} color={i <= starsFull || (i === starsFull + 1 && starsHalf) ? '#FCD34D' : 'rgba(255,255,255,0.3)'} />
                         ))}
-                        <Text style={st.ratingText}>{rating > 0 ? rating.toFixed(1) : '--'} ({reviewCount} avis)</Text>
+                        <Text style={st.ratingText}>{rating > 0 ? rating.toFixed(1) : '--'} ({reviewCount} {t('hopitalDetails.avis') || 'avis'})</Text>
                     </View>
                     {(hopital.adresse || hopital.quartier || hopital.ville) && (
                         <View style={st.heroLoc}><SafeIcon name="map-pin" size={14} color="rgba(255,255,255,0.8)" /><Text style={st.heroLocText} numberOfLines={1}>{[hopital.adresse, hopital.quartier, hopital.ville].filter(Boolean).join(', ')}</Text></View>
@@ -243,12 +243,12 @@ const HopitalDetailsScreen: React.FC = () => {
                 {/* Quick Actions */}
                 <View style={st.quickRow}>
                     {[
-                        hopital.telephone && { icon: 'phone', label: 'Appeler', color: '#3B82F6', onPress: handleCall },
+                        hopital.telephone && { icon: 'phone', label: t('hopitalDetails.appeler') || 'Appeler', color: '#3B82F6', onPress: handleCall },
                         { icon: 'message-circle', label: 'WhatsApp', color: '#25D366', onPress: handleWhatsApp },
                         { icon: 'message-square', label: 'Chat', color: '#8B5CF6', onPress: handleOpenChat },
-                        hopital.rdv_en_ligne && { icon: 'calendar', label: 'RDV', color: '#10B981', onPress: handleBook },
+                        hopital.rdv_en_ligne && { icon: 'calendar', label: t('hopitalDetails.rdv') || 'RDV', color: '#10B981', onPress: handleBook },
                         hopital.email && { icon: 'mail', label: 'Email', color: '#F59E0B', onPress: handleEmail },
-                        hopital.site_web && { icon: 'globe', label: 'Site', color: '#6366F1', onPress: handleWebsite },
+                        hopital.site_web && { icon: 'globe', label: t('hopitalDetails.site') || 'Site', color: '#6366F1', onPress: handleWebsite },
                     ].filter(Boolean).map((a: any, i) => (
                         <TouchableOpacity key={i} style={st.quickAction} onPress={a.onPress}>
                             <View style={[st.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon} size={20} color={a.color} /></View>
@@ -263,14 +263,14 @@ const HopitalDetailsScreen: React.FC = () => {
                         {hopital.telephone_urgence && (
                             <TouchableOpacity style={[st.infoCard, { backgroundColor: '#FEF2F2', borderLeftColor: '#EF4444' }]} onPress={handleCallUrgence}>
                                 <SafeIcon name="phone" size={16} color="#EF4444" />
-                                <Text style={[st.infoCardText, { color: '#DC2626', fontWeight: '700' }]}>Urgences: {hopital.telephone_urgence}</Text>
+                                <Text style={[st.infoCardText, { color: '#DC2626', fontWeight: '700' }]}>{t('hopitalDetails.urgences') || 'Urgences'}: {hopital.telephone_urgence}</Text>
                                 <SafeIcon name="chevron-right" size={16} color="#EF4444" />
                             </TouchableOpacity>
                         )}
                         {emergencyStatus && (
                             <View style={[st.infoCard, { borderLeftColor: emergencyColor }]}>
                                 <SafeIcon name="alert-circle" size={16} color={emergencyColor} />
-                                <Text style={[st.infoCardText, { color: emergencyColor, fontWeight: '700' }]}>Urgences: {emergencyLabel}</Text>
+                                <Text style={[st.infoCardText, { color: emergencyColor, fontWeight: '700' }]}>{t('hopitalDetails.urgences') || 'Urgences'}: {emergencyLabel}</Text>
                             </View>
                         )}
                     </View>
@@ -279,11 +279,11 @@ const HopitalDetailsScreen: React.FC = () => {
                 {/* Emergency stats */}
                 {emergencyStatus && (
                     <View style={st.section}>
-                        <View style={st.sectionHeader}><SafeIcon name="activity" size={18} color="#EF4444" /><Text style={st.sectionTitle}>Statut urgences</Text></View>
+                        <View style={st.sectionHeader}><SafeIcon name="activity" size={18} color="#EF4444" /><Text style={st.sectionTitle}>{t('hopitalDetails.statutUrgences') || 'Statut urgences'}</Text></View>
                         <View style={st.statsRow}>
                             {[
-                                { label: 'Critiques', value: emergencyStatus.critical_count, color: '#EF4444' },
-                                { label: 'Temps moyen', value: emergencyStatus.avg_wait_time_minutes ? `${Math.round(emergencyStatus.avg_wait_time_minutes)}m` : 'N/A', color: '#F59E0B' },
+                                { label: t('hopitalDetails.critiques') || 'Critiques', value: emergencyStatus.critical_count, color: '#EF4444' },
+                                { label: t('hopitalDetails.tempsMoyen') || 'Temps moyen', value: emergencyStatus.avg_wait_time_minutes ? `${Math.round(emergencyStatus.avg_wait_time_minutes)}m` : 'N/A', color: '#F59E0B' },
                                 { label: t('hopitalDetails.totalPatients'), value: emergencyStatus.total_patients, color: '#3B82F6' },
                             ].map((s, i) => (
                                 <View key={i} style={st.statCard}>
@@ -298,12 +298,12 @@ const HopitalDetailsScreen: React.FC = () => {
                 {/* Wait times */}
                 {waitTimes && waitTimes.length > 0 && (
                     <View style={st.section}>
-                        <View style={st.sectionHeader}><SafeIcon name="clock" size={18} color="#3B82F6" /><Text style={st.sectionTitle}>Temps d'attente</Text></View>
+                        <View style={st.sectionHeader}><SafeIcon name="clock" size={18} color="#3B82F6" /><Text style={st.sectionTitle}>{t('hopitalDetails.tempsAttente') || 'Temps d\'attente'}</Text></View>
                         {waitTimes.map((wt, idx) => (
                             <View key={idx} style={st.waitRow}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={st.waitSpec}>{wt.specialty || t('hopitalDetails.general')}</Text>
-                                    <Text style={st.waitSub}>{wt.consultation_count} consultation(s)</Text>
+                                    <Text style={st.waitSub}>{wt.consultation_count} {t('hopitalDetails.consultationS') || 'consultation(s)'}</Text>
                                 </View>
                                 <View style={{ alignItems: 'flex-end' }}>
                                     <Text style={st.waitMin}>{wt.avg_wait_time_minutes ? `${Math.round(wt.avg_wait_time_minutes)} min` : 'N/A'}</Text>
@@ -331,7 +331,7 @@ const HopitalDetailsScreen: React.FC = () => {
                     <View style={st.sectionHeader}><SafeIcon name="brain" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>{t('hopitalDetails.rechercheIaParSymptomes')}</Text></View>
                     <TextInput style={st.searchInput} placeholder={t('hopitalDetails.decrivezVosSymptomesFievreToux')} placeholderTextColor="#9CA3AF" value={pathologyQuery} onChangeText={setPathologyQuery} multiline />
                     <TouchableOpacity style={[st.analyzeBtn, (!pathologyQuery.trim() || searchingPathology) && { opacity: 0.5 }]} disabled={!pathologyQuery.trim() || searchingPathology} onPress={handleSearchPathology}>
-                        {searchingPathology ? <ActivityIndicator size="small" color="#fff" /> : <><SafeIcon name="search" size={16} color="#fff" /><Text style={st.analyzeBtnText}>Analyser</Text></>}
+                        {searchingPathology ? <ActivityIndicator size="small" color="#fff" /> : <><SafeIcon name="search" size={16} color="#fff" /><Text style={st.analyzeBtnText}>{t('hopitalDetails.analyser') || 'Analyser'}</Text></>}
                     </TouchableOpacity>
 
                     {pathologyResult && (
@@ -341,7 +341,7 @@ const HopitalDetailsScreen: React.FC = () => {
                             {pathologyResult.urgency_level && (
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                                     <SafeIcon name="alert-circle" size={14} color={pathologyResult.urgency_level === 'critical' ? '#DC2626' : pathologyResult.urgency_level === 'high' ? '#F59E0B' : '#059669'} />
-                                    <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13 }}>Urgence: {pathologyResult.urgency_level}</Text>
+                                    <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13 }}>{t('hopitalDetails.urgenceNiveau') || 'Urgence'}: {pathologyResult.urgency_level}</Text>
                                 </View>
                             )}
                             {pathologyResult.recommended_services?.length > 0 && (
@@ -376,13 +376,13 @@ const HopitalDetailsScreen: React.FC = () => {
                     {hopital.rdv_en_ligne && (
                         <TouchableOpacity style={[st.fullBtn, { backgroundColor: '#EFF6FF', borderLeftColor: '#3B82F6', borderLeftWidth: 3 }]} onPress={handleBook} disabled={booking || !isOpen}>
                             <SafeIcon name="calendar" size={18} color="#3B82F6" />
-                            <Text style={[st.fullBtnText, { color: '#1E40AF' }]}>{booking ? t('hopitalDetailsScreen.reservation') : t('hopitalDetailsScreen.reserverUnRendezvous')}</Text>
+                            <Text style={[st.fullBtnText, { color: '#1E40AF' }]}>{booking ? (t('hopitalDetailsScreen.reservation') || 'Réservation...') : (t('hopitalDetailsScreen.reserverUnRendezvous') || 'Réserver un rendez-vous')}</Text>
                             <SafeIcon name="chevron-right" size={18} color="#93C5FD" />
                         </TouchableOpacity>
                     )}
                     <TouchableOpacity style={st.fullBtn} onPress={() => navigation.navigate('HospitalAIRecommendations' as never, { hospitalId: params.hospitalId } as never)}>
                         <SafeIcon name="sparkles" size={18} color="#7C3AED" />
-                        <Text style={st.fullBtnText}>Recommandations IA</Text>
+                        <Text style={st.fullBtnText}>{t('hopitalDetails.recommandationsIa') || 'Recommandations IA'}</Text>
                         <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                     </TouchableOpacity>
                     <TouchableOpacity style={st.fullBtn} onPress={() => {
@@ -396,7 +396,7 @@ const HopitalDetailsScreen: React.FC = () => {
                     {isOwner && (
                         <TouchableOpacity style={st.fullBtn} onPress={() => navigation.navigate('HospitalAnalytics' as never, { hospitalId: params.hospitalId } as never)}>
                             <SafeIcon name="bar-chart-2" size={18} color="#F59E0B" />
-                            <Text style={st.fullBtnText}>Analytics</Text>
+                            <Text style={st.fullBtnText}>{t('hopitalDetails.analytics') || 'Analytics'}</Text>
                             <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
                         </TouchableOpacity>
                     )}

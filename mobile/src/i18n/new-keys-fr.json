@@ -43,20 +43,20 @@
         "videoEnregistreeAvecSucces": "Vidéo enregistrée avec succès !",
         "pretPourLetapeSuivante": "Prêt pour l'étape suivante",
         "utiliserCetteVideo": "✅ Utiliser cette vidéo",
-        "reenregistrer": "🔄 Réenregistrer"
+        "reenregistrer": "\uD83D\uDD04 Réenregistrer"
     },
     "activeDeliveryCard": {
         "derniereMiseAJour": "Dernière mise à jour"
     },
     "adPreviewCard": {
-        "apercu": "👁️ Aperçu"
+        "apercu": "\uD83D\uDC41️ Aperçu"
     },
     "adTemplates": {
         "choisissezUnModelePourDemarrer": "Choisissez un modèle pour démarrer rapidement"
     },
     "advancedABTesting": {
-        "gagnantIdentifie": "🏆 Gagnant identifié",
-        "abTestingAvance": "🧪 A/B Testing Avancé",
+        "gagnantIdentifie": "\uD83C\uDFC6 Gagnant identifié",
+        "abTestingAvance": "\uD83E\uDDEA A/B Testing Avancé",
         "metriqueAComparer": "Métrique à comparer:",
         "aucuneStatistiqueDisponible": "Aucune statistique disponible"
     },
@@ -78,10 +78,10 @@
     },
     "advancedTargeting": {
         "ciblageAvanceOptionnel": "Ciblage avancé (optionnel)",
-        "ciblageAvance": "🎯 Ciblage avancé",
+        "ciblageAvance": "\uD83C\uDFAF Ciblage avancé",
         "age": "Âge",
         "interets": "Intérêts",
-        "zonesGeographiques": "📍 Zones géographiques",
+        "zonesGeographiques": "\uD83D\uDCCD Zones géographiques",
         "exDoualaYaoundeRestaurantLe": "Ex: Douala, Yaoundé, Restaurant Le Gourmet...",
         "rechercherUnLieu": "Rechercher un lieu"
     },
@@ -130,7 +130,7 @@
     "agenceVoyageSearch": {
         "villeDeDepart": "Ville de départ *",
         "lieuDeDepartVilleQuartier": "Lieu de départ (ville, quartier, gare...)",
-        "bonASavoir": "💡 Bon à savoir",
+        "bonASavoir": "\uD83D\uDCA1 Bon à savoir",
         "rechercherUneAgenceDeVoyage": "Rechercher une agence de voyage"
     },
     "agencyAnalyticsDashboard": {
@@ -200,7 +200,7 @@
         "rechercherUnFiltreArtisteOu": "Rechercher un filtre, artiste ou style..."
     },
     "assetLibrary": {
-        "bibliothequeDeMedias": "📚 Bibliothèque de Médias",
+        "bibliothequeDeMedias": "\uD83D\uDCDA Bibliothèque de Médias",
         "ajouterVideo": "Ajouter vidéo",
         "aucunMedia": "Aucun média",
         "rechercher": "Rechercher..."
@@ -285,7 +285,7 @@
         "chargement": "Chargement..."
     },
     "avatarMenu": {
-        "deconnexion": "🚪 Déconnexion"
+        "deconnexion": "\uD83D\uDEAA Déconnexion"
     },
     "banqueSangDetails": {
         "banqueDeSangNonTrouvee": "Banque de sang non trouvée",
@@ -309,7 +309,7 @@
         "nouvelleRecherche": "Nouvelle recherche"
     },
     "banqueSangSearch": {
-        "bonASavoir": "💡 Bon à savoir",
+        "bonASavoir": "\uD83D\uDCA1 Bon à savoir",
         "rechercherUneBanqueDeSang": "Rechercher une banque de sang"
     },
     "bayamSelamResults": {
@@ -329,10 +329,10 @@
         "trierPar": "Trier par:"
     },
     "behaviorScoreCard": {
-        "resultatDeLanalyseComportementale": "🧠 Résultat de l'analyse comportementale"
+        "resultatDeLanalyseComportementale": "\uD83E\uDDE0 Résultat de l'analyse comportementale"
     },
     "bidStrategySelector": {
-        "strategieDencheres": "💰 Stratégie d'enchères"
+        "strategieDencheres": "\uD83D\uDCB0 Stratégie d'enchères"
     },
     "bloodBankResultCard": {
         "stocksDetailles": "Stocks détaillés",
@@ -472,7 +472,7 @@
         "detailDuPaiement": "Détail du paiement",
         "fraisDeReservation": "Frais de réservation",
         "totalAPayer": "TOTAL À PAYER",
-        "selectionnezVotrePlace": "🚌 Sélectionnez votre place",
+        "selectionnezVotrePlace": "\uD83D\uDE8C Sélectionnez votre place",
         "arriere": "ARRIÈRE",
         "selectionnee": "Sélectionnée",
         "prereservee": "Pré-réservée",
@@ -482,7 +482,7 @@
         "disponible": "Disponible"
     },
     "busSeatSelectorMulti": {
-        "reserverVosPlaces": "🚌 Réserver vos places",
+        "reserverVosPlaces": "\uD83D\uDE8C Réserver vos places",
         "arriere": "ARRIÈRE",
         "selectionnee": "Sélectionnée",
         "occupee": "Occupée",
@@ -518,7 +518,7 @@
     },
     "busTicketSearch": {
         "exYaounde": "Ex: Yaoundé",
-        "bonASavoir": "💡 Bon à savoir",
+        "bonASavoir": "\uD83D\uDCA1 Bon à savoir",
         "rechercherUnTrajet": "Rechercher un trajet"
     },
     "campaignScheduler": {
@@ -578,7 +578,7 @@
         "avantApres": "Avant / Après"
     },
     "combinationProgressBar": {
-        "generationDesCombinaisons": "🚀 Génération des combinaisons"
+        "generationDesCombinaisons": "\uD83D\uDE80 Génération des combinaisons"
     },
     "companySelector": {
         "aucuneCompagnieAjoutee": "Aucune compagnie ajoutée",
@@ -609,7 +609,7 @@
         "decrivezVotreDemandeOuVotre": "Décrivez votre demande ou votre problème...",
         "telephone": "Téléphone",
         "tempsDeReponse": "Temps de réponse :",
-        "reseauxSociaux": "🌐 Réseaux sociaux",
+        "reseauxSociaux": "\uD83C\uDF10 Réseaux sociaux",
         "nomComplet": "Nom complet *",
         "votreNomComplet": "Votre nom complet"
     },
@@ -622,7 +622,7 @@
         "monCodeDeVerification": "Mon code de vérification",
         "chargement": "Chargement...",
         "aucuneLivraisonActive": "Aucune livraison active",
-        "monPortefeuille": "💰 Mon portefeuille"
+        "monPortefeuille": "\uD83D\uDCB0 Mon portefeuille"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler une difficulté",
@@ -695,9 +695,9 @@
         "recurrent": "Récurrent",
         "passe": "Passé",
         "itineraire": "Itinéraire",
-        "depart": "🟢 Départ *",
+        "depart": "\uD83D\uDFE2 Départ *",
         "lieuDeDepart": "Lieu de départ...",
-        "arrivee": "🔴 Arrivée *",
+        "arrivee": "\uD83D\uDD34 Arrivée *",
         "typeVehicule": "Type véhicule",
         "marquemodele": "Marque/Modèle",
         "photoDuVehicule": "Photo du véhicule",
@@ -758,7 +758,7 @@
         "trajetsRecurrents": "Trajets récurrents",
         "animauxAcceptes": "Animaux acceptés",
         "fumeurAutorise": "Fumeur autorisé",
-        "bonASavoir": "💡 Bon à savoir",
+        "bonASavoir": "\uD83D\uDCA1 Bon à savoir",
         "rechercherUnCovoiturage": "Rechercher un covoiturage"
     },
     "crashRecovery": {
@@ -800,12 +800,12 @@
     },
     "createNewKeyFlow": {
         "nouvelleCleDetectee": "✨ Nouvelle clé détectée",
-        "plusieursCategoriesPossibles": "🤔 Plusieurs catégories possibles",
+        "plusieursCategoriesPossibles": "\uD83E\uDD14 Plusieurs catégories possibles",
         "choisissezLaCategorieAppropriee": "Choisissez la catégorie appropriée",
         "recommande": "RECOMMANDÉ",
-        "autreCategorie": "📋 Autre catégorie",
+        "autreCategorie": "\uD83D\uDCCB Autre catégorie",
         "detectionEnCours": "Détection en cours...",
-        "choisirUneCategorie": "📋 Choisir une catégorie",
+        "choisirUneCategorie": "\uD83D\uDCCB Choisir une catégorie",
         "rechercherUneCategorie": "Rechercher une catégorie...",
         "choisirManuellement": "Choisir manuellement"
     },
@@ -828,7 +828,7 @@
         "lieuDeTravail": "Lieu de travail *"
     },
     "createPublicite": {
-        "informationsGenerales": "📝 Informations générales",
+        "informationsGenerales": "\uD83D\uDCDD Informations générales",
         "decrivezVotreOffrePromotionnelle": "Décrivez votre offre promotionnelle...",
         "optionnelSelectionnezLesProduitsA": "Optionnel — Sélectionnez les produits à promouvoir",
         "creezDabordUnServiceAvec": "Créez d'abord un service avec des produits",
@@ -900,7 +900,7 @@
         "editeurDeCourbeDeBezier": "Éditeur de Courbe de Bézier"
     },
     "customAudienceManager": {
-        "audiencesPersonnalisees": "👥 Audiences Personnalisées",
+        "audiencesPersonnalisees": "\uD83D\uDC65 Audiences Personnalisées",
         "creerUneAudience": "Créer une audience",
         "similarite110": "Similarité (1-10)",
         "creer": "Créer",
@@ -928,10 +928,10 @@
         "actualiserLesDonnees": "Actualiser les données",
         "creerUnNouveauService": "Créer un nouveau service",
         "voirLesStatistiquesDetaillees": "Voir les statistiques détaillées",
-        "demarrerUnLive": "🎥 Démarrer un Live",
+        "demarrerUnLive": "\uD83C\uDFA5 Démarrer un Live",
         "chargementDuDashboard": "Chargement du dashboard...",
         "aucuneDonneDisponible": "Aucune donn�e disponible",
-        "monPortefeuilleFinancier": "💰 Mon portefeuille financier"
+        "monPortefeuilleFinancier": "\uD83D\uDCB0 Mon portefeuille financier"
     },
     "debugOverlay": {
         "logsRecents": "Logs récents:"
@@ -1045,7 +1045,7 @@
     },
     "deliveryProof": {
         "video": "Vidéo",
-        "preuvesDeRecuperation": "📦 Preuves de récupération",
+        "preuvesDeRecuperation": "\uD83D\uDCE6 Preuves de récupération",
         "lectureVideo": "Lecture vidéo",
         "chargementDesPreuves": "Chargement des preuves..."
     },
@@ -1091,7 +1091,7 @@
     },
     "deliveryShoppingTracking": {
         "signalerUneDifficulte": "⚠️ Signaler une difficulté",
-        "verifierLidentiteDuCoursier": "🛡️ Vérifier l'identité du coursier",
+        "verifierLidentiteDuCoursier": "\uD83D\uDEE1️ Vérifier l'identité du coursier",
         "telephone": "Téléphone:",
         "aucunArticle": "Aucun article",
         "choisirUnLivreur": "Choisir un livreur"
@@ -1102,7 +1102,7 @@
         "creationDuDuetremix": "Création du duet/remix..."
     },
     "dynamicAutocompleteFilters": {
-        "caracteristiquesDisponibles": "🎯 Caractéristiques disponibles",
+        "caracteristiquesDisponibles": "\uD83C\uDFAF Caractéristiques disponibles",
         "reinitialiser": "Réinitialiser"
     },
     "effectLibrary": {
@@ -1176,15 +1176,15 @@
         "reessayer": "Réessayer"
     },
     "errorBoundaryWithRetry": {
-        "reessayerMaintenant": "🔄 Réessayer maintenant",
-        "retourAL": "🏠 Retour à l"
+        "reessayerMaintenant": "\uD83D\uDD04 Réessayer maintenant",
+        "retourAL": "\uD83C\uDFE0 Retour à l"
     },
     "etablissementDetails": {
         "etablissementNonTrouve": "Établissement non trouvé",
         "verifie": "✓ Vérifié",
         "filieres": "Filières",
         "experiences": "Expériences",
-        "contacterLetablissement": "💬 Contacter l'établissement",
+        "contacterLetablissement": "\uD83D\uDCAC Contacter l'établissement",
         "chargement": "Chargement..."
     },
     "etablissementSearch": {
@@ -1193,7 +1193,7 @@
         "region": "Région",
         "rechercherUneRegionOuUn": "Rechercher une région ou un lieu...",
         "exScientifiqueLitteraire": "Ex: Scientifique, Littéraire",
-        "aucunResultat": "💡 Aucun résultat",
+        "aucunResultat": "\uD83D\uDCA1 Aucun résultat",
         "rechercherUnLieuVilleQuartier": "Rechercher un lieu (ville, quartier, adresse...)",
         "chargement": "Chargement..."
     },
@@ -1229,9 +1229,9 @@
         "chargementDuService": "Chargement du service..."
     },
     "familyProfile": {
-        "preferencesAlimentaires": "🌱 Préférences alimentaires",
-        "restrictionsDietetiques": "🏥 Restrictions diététiques",
-        "stylesDeCuisinePreferes": "🍳 Styles de cuisine préférés",
+        "preferencesAlimentaires": "\uD83C\uDF31 Préférences alimentaires",
+        "restrictionsDietetiques": "\uD83C\uDFE5 Restrictions diététiques",
+        "stylesDeCuisinePreferes": "\uD83C\uDF73 Styles de cuisine préférés",
         "ouSaisissezUnMontantPersonnalise": "Ou saisissez un montant personnalisé"
     },
     "favoriteCollections": {
@@ -1245,16 +1245,16 @@
     },
     "filtersBottomSheet": {
         "reinitialiser": "Réinitialiser",
-        "categoriesRapides": "🎯 Catégories rapides",
-        "trierPar": "📊 Trier par",
-        "filtreDePrix": "💵 Filtre de prix"
+        "categoriesRapides": "\uD83C\uDFAF Catégories rapides",
+        "trierPar": "\uD83D\uDCCA Trier par",
+        "filtreDePrix": "\uD83D\uDCB5 Filtre de prix"
     },
     "filtersPanel": {
         "selectionnezUnOrdreDeTri": "Sélectionnez un ordre de tri pour affiner votre recherche.",
-        "categoriesRapides": "🎯 Catégories rapides",
+        "categoriesRapides": "\uD83C\uDFAF Catégories rapides",
         "reinitialiser": "Réinitialiser",
-        "trierPar": "📊 Trier par",
-        "filtreDePrix": "💵 Filtre de prix"
+        "trierPar": "\uD83D\uDCCA Trier par",
+        "filtreDePrix": "\uD83D\uDCB5 Filtre de prix"
     },
     "findCourier": {
         "pointDeRecuperation": "Point de récupération",
@@ -1273,16 +1273,16 @@
     "formulaireYukpoIntelligent": {
         "rechercheGeographiqueIntelligente": "Recherche géographique intelligente :",
         "donneesInvalides": "⚠️ Données invalides",
-        "nonAutorise": "🔐 Non autorisé",
-        "nonTrouve": "🔍 Non trouvé",
+        "nonAutorise": "\uD83D\uDD10 Non autorisé",
+        "nonTrouve": "\uD83D\uDD0D Non trouvé",
         "donneesAAnalyser": "Données à analyser",
         "aucuneDonneeAAnalyser": "Aucune donnée à analyser",
         "precedent": "Précédent",
         "nomDeVotreStructure": "Nom de votre structure",
-        "pasDeConnexion": "📡 Pas de connexion"
+        "pasDeConnexion": "\uD83D\uDCE1 Pas de connexion"
     },
     "fournituresScolaires": {
-        "telechargerPdf": "📥 Télécharger PDF",
+        "telechargerPdf": "\uD83D\uDCE5 Télécharger PDF",
         "voirLetablissement": "Voir l'établissement",
         "niveauEx6eme": "Niveau (ex: 6ème)",
         "anneeEx20242025": "Année (ex: 2024-2025)",
@@ -1400,12 +1400,12 @@
         "urgenceMedicale": "Urgence médicale ?",
         "trouvezLhopitalLePlusProche": "Trouvez l'hôpital le plus proche avec urgences ouvertes",
         "accesRapide": "Accès rapide",
-        "conseilsSante": "💡 Conseils santé",
+        "conseilsSante": "\uD83D\uDCA1 Conseils santé",
         "appelezLe119EnCas": "Appelez le 119 en cas d'urgence médicale",
         "verifiezLaDisponibiliteAvantDe": "Vérifiez la disponibilité avant de vous déplacer"
     },
     "healthStructureSelector": {
-        "rechercheParProximiteActivee": "📍 Recherche par proximité activée",
+        "rechercheParProximiteActivee": "\uD83D\uDCCD Recherche par proximité activée",
         "aucunResultatTrouve": "Aucun résultat trouvé",
         "rechercher": "Rechercher...",
         "ajouterUneStructure": "Ajouter une structure",
@@ -1470,8 +1470,8 @@
     },
     "hopitalSearch": {
         "rechercherUnHopital": "Rechercher un hôpital",
-        "rechercheDeServicesMedicaux": "🏥 Recherche de services médicaux",
-        "bonASavoir": "💡 Bon à savoir"
+        "rechercheDeServicesMedicaux": "\uD83C\uDFE5 Recherche de services médicaux",
+        "bonASavoir": "\uD83D\uDCA1 Bon à savoir"
     },
     "hospitalAIFeatures": {
         "fonctionnalitesIaHopital": "Fonctionnalités IA Hôpital",
@@ -1498,7 +1498,7 @@
         "recommandationsGenerees": "Recommandations générées",
         "specialitesRecommandees": "Spécialités recommandées:",
         "hopitauxSuggeres": "Hôpitaux suggérés:",
-        "nouvelleRecherche": "🔄 Nouvelle recherche"
+        "nouvelleRecherche": "\uD83D\uDD04 Nouvelle recherche"
     },
     "hospitalAnalytics": {
         "analyticsHopital": "Analytics Hôpital",
@@ -1524,12 +1524,12 @@
         "votreNom": "Votre nom"
     },
     "hotelBookingPayment": {
-        "reservation": "📋 Réservation",
-        "methodeDePaiement": "💳 Méthode de paiement",
+        "reservation": "\uD83D\uDCCB Réservation",
+        "methodeDePaiement": "\uD83D\uDCB3 Méthode de paiement",
         "resteAPayer": "Reste à payer",
         "aPayerMaintenant": "À payer maintenant",
         "votreSolde": "Votre solde",
-        "typeDePaiement": "💳 Type de paiement"
+        "typeDePaiement": "\uD83D\uDCB3 Type de paiement"
     },
     "hotelDashboard": {
         "proprietes": "Propriétés",
@@ -1572,7 +1572,7 @@
     },
     "hotelStructureSelector": {
         "rechercherUnHotel": "Rechercher un hôtel...",
-        "rechercheParProximiteActivee": "📍 Recherche par proximité activée",
+        "rechercheParProximiteActivee": "\uD83D\uDCCD Recherche par proximité activée",
         "aucunHotelTrouve": "Aucun hôtel trouvé",
         "ajouterUnHotel": "Ajouter un hôtel",
         "nomDeL": "Nom de l"
@@ -1653,24 +1653,24 @@
     "immobilierSearch": {
         "fonctionnalitesIa": "Fonctionnalités IA",
         "rechercherUnLieuPrecisQuartier": "Rechercher un lieu précis (quartier, rue, adresse...)",
-        "selectionnerDesQuartiers": "🏘️ Sélectionner des quartiers",
-        "caracteristiques": "🏡 Caractéristiques",
-        "bonASavoir": "💡 Bon à savoir",
+        "selectionnerDesQuartiers": "\uD83C\uDFD8️ Sélectionner des quartiers",
+        "caracteristiques": "\uD83C\uDFE1 Caractéristiques",
+        "bonASavoir": "\uD83D\uDCA1 Bon à savoir",
         "rechercherUnBienImmobilier": "Rechercher un bien immobilier",
         "rechercherUnLieuVilleQuartier": "Rechercher un lieu (ville, quartier, adresse...)",
-        "typeDeBien": "🏠 Type de bien",
+        "typeDeBien": "\uD83C\uDFE0 Type de bien",
         "nombreDeChambresMinimum": "Nombre de chambres minimum"
     },
     "insuranceQuoteRequest": {
         "scoreDadequation": "Score d'adéquation",
-        "primesEstimees": "💰 Primes estimées",
+        "primesEstimees": "\uD83D\uDCB0 Primes estimées",
         "notreIaGenereUnDevis": "Notre IA génère un devis personnalisé en quelques secondes",
         "age": "Âge",
         "vehicule": "Véhicule",
         "typeDeVehiculeBerlineSuv": "Type de véhicule (berline, SUV, moto...)",
         "valeurDuVehiculeFcfa": "Valeur du véhicule (FCFA)",
         "generationDuDevisEnCours": "Génération du devis en cours...",
-        "genererMonDevisIa": "🤖 Générer mon devis IA",
+        "genererMonDevisIa": "\uD83E\uDD16 Générer mon devis IA",
         "votreDevisIa": "Votre devis IA",
         "nouveauDevis": "Nouveau devis",
         "votreProfil": "Votre profil",
@@ -1683,7 +1683,7 @@
     },
     "insuranceServicesSearch": {
         "rechercherUnLieuPrecisQuartier": "Rechercher un lieu précis (quartier, rue, adresse...)",
-        "bonASavoir": "💡 Bon à savoir",
+        "bonASavoir": "\uD83D\uDCA1 Bon à savoir",
         "rechercherUneAssurance": "Rechercher une assurance",
         "rechercherUnLieuVilleQuartier": "Rechercher un lieu (ville, quartier, adresse...)"
     },
@@ -1696,10 +1696,10 @@
     },
     "intelligentProductField": {
         "legende": "Légende :",
-        "baseSurVosSaisies": "🎯 Basé sur vos saisies",
-        "suggereParIa": "🧠 Suggéré par IA",
+        "baseSurVosSaisies": "\uD83C\uDFAF Basé sur vos saisies",
+        "suggereParIa": "\uD83E\uDDE0 Suggéré par IA",
         "chargementDesSuggestions": "Chargement des suggestions...",
-        "votreHistorique": "📊 Votre historique"
+        "votreHistorique": "\uD83D\uDCCA Votre historique"
     },
     "intelligentSearchBar": {
         "caracteristiquesRecommandees": "Caractéristiques recommandées",
@@ -1711,9 +1711,9 @@
         "lieuDeRecherche": "Lieu de recherche"
     },
     "interactiveMap": {
-        "touchezPourSelectionner": "👆 Touchez pour sélectionner",
+        "touchezPourSelectionner": "\uD83D\uDC46 Touchez pour sélectionner",
         "batiments": "Bâtiments",
-        "positionSelectionnee": "📍 Position sélectionnée",
+        "positionSelectionnee": "\uD83D\uDCCD Position sélectionnée",
         "typeDeZone": "Type de zone :"
     },
     "interactiveMapView": {
@@ -1734,7 +1734,7 @@
     "labAnalytics": {
         "reessayer": "Réessayer",
         "completes": "Complétés",
-        "details": "📊 Détails",
+        "details": "\uD83D\uDCCA Détails",
         "tauxDeCompletion": "Taux de complétion:",
         "resumeDeLaPeriode": "Résumé de la période",
         "nombreDeTypesDexamens": "Nombre de types d'examens:"
@@ -1793,7 +1793,7 @@
     },
     "laboratoireSearch": {
         "exAnalyseDeSangRadiographie": "Ex: Analyse de sang, Radiographie, Échographie...",
-        "bonASavoir": "💡 Bon à savoir",
+        "bonASavoir": "\uD83D\uDCA1 Bon à savoir",
         "rechercherUnLaboratoire": "Rechercher un laboratoire",
         "mesExamens": "Mes examens"
     },
@@ -1871,7 +1871,7 @@
         "exMathematiquesFrancais": "Ex: Mathématiques, Français",
         "rechercherUnLieuPrecisQuartier": "Rechercher un lieu précis (quartier, rue, adresse...)",
         "rechercherDesEchanges": "Rechercher des échanges",
-        "bonASavoir": "💡 Bon à savoir",
+        "bonASavoir": "\uD83D\uDCA1 Bon à savoir",
         "rechercherUnLivreScolaire": "Rechercher un livre scolaire",
         "rechercherUnLieuVilleQuartier": "Rechercher un lieu (ville, quartier, adresse...)"
     },
@@ -1879,7 +1879,7 @@
         "createur": "Créateur:"
     },
     "locationProximityFilter": {
-        "localisationEtProximite": "📍 Localisation et proximité",
+        "localisationEtProximite": "\uD83D\uDCCD Localisation et proximité",
         "geolocalisation": "Géolocalisation...",
         "rechercherUnLieu": "Rechercher un lieu",
         "rechercherUnLieuVilleQuartier": "Rechercher un lieu (ville, quartier, adresse...)"
@@ -2010,7 +2010,7 @@
     },
     "mesServicesSpecialises": {
         "specialises": "Spécialisés",
-        "voirLeHubUnifie": "📊 Voir le Hub Unifié",
+        "voirLeHubUnifie": "\uD83D\uDCCA Voir le Hub Unifié",
         "sante": "Santé",
         "aucunServiceTrouve": "Aucun service trouvé",
         "rechercherUnService": "Rechercher un service..."
@@ -2119,12 +2119,12 @@
         "arreterLeSuivi": "Arrêter le suivi",
         "inviteTesAmisARejoindre": "Invite tes amis à rejoindre Yukpo !",
         "envoyerAUnAmi": "Envoyer à un ami",
-        "lieuxVisites": "📍 Lieux visités",
-        "activitesRecentes": "📋 Activités récentes",
-        "scoreSante": "🫀 Score Santé",
+        "lieuxVisites": "\uD83D\uDCCD Lieux visités",
+        "activitesRecentes": "\uD83D\uDCCB Activités récentes",
+        "scoreSante": "\uD83E\uDEC0 Score Santé",
         "kgEmis": "kg émis",
         "kgEco": "kg éco.",
-        "defis": "🎯 Défis",
+        "defis": "\uD83C\uDFAF Défis",
         "chargerMesDonnees": "Charger mes données",
         "ouAllezvous": "Où allez-vous ?",
         "trouverMonItineraire": "Trouver mon itinéraire",
@@ -2132,9 +2132,9 @@
         "suiviAutomatiqueActifVosDeplacements": "Suivi automatique actif — vos déplacements sont enregistrés",
         "desactiver": "Désactiver",
         "co2SanteDefis": "CO2, santé, défis",
-        "preferences": "🎚️ Préférences",
+        "preferences": "\uD83C\uDF9A️ Préférences",
         "recommande": "Recommandé",
-        "pointsDinteretAProximite": "🏪 Points d'intérêt à proximité",
+        "pointsDinteretAProximite": "\uD83C\uDFEA Points d'intérêt à proximité",
         "aucunPoiTrouve": "Aucun POI trouvé",
         "reduire": "Réduire",
         "partagerLitineraire": "Partager l'itinéraire",
@@ -2327,7 +2327,7 @@
     },
     "orientationScolaireHub": {
         "typesDetablissements": "Types d'établissements",
-        "creerVotreProfil": "📝 Créer votre profil",
+        "creerVotreProfil": "\uD83D\uDCDD Créer votre profil",
         "creerMonProfil": "Créer mon profil"
     },
     "otpVerification": {
@@ -2336,7 +2336,7 @@
         "passerCetteEtape": "Passer cette étape"
     },
     "paiementEnLigne": {
-        "montantAPayer": "💰 Montant à payer",
+        "montantAPayer": "\uD83D\uDCB0 Montant à payer",
         "votreNumeroDeTelephone": "Votre numéro de téléphone",
         "numeroDeCarte": "Numéro de carte",
         "beneficiaire": "Bénéficiaire :",
@@ -2442,7 +2442,7 @@
         "exParacetamolDolipraneAmoxicilline": "Ex: Paracétamol, Doliprane, Amoxicilline...",
         "exParacetamolAmoxicilline": "Ex: Paracétamol, Amoxicilline...",
         "livraisonADomicile": "Livraison à domicile",
-        "bonASavoir": "💡 Bon à savoir",
+        "bonASavoir": "\uD83D\uDCA1 Bon à savoir",
         "rechercherUnePharmacie": "Rechercher une pharmacie"
     },
     "pharmacyAIFeatures": {
@@ -2472,10 +2472,10 @@
         "ageOptionnel": "Âge (optionnel)",
         "conditionsMedicalesOptionnel": "Conditions médicales (optionnel)",
         "exDiabeteHypertension": "Ex: Diabète, Hypertension...",
-        "verifierLesInteractions": "🔍 Vérifier les interactions",
+        "verifierLesInteractions": "\uD83D\uDD0D Vérifier les interactions",
         "resultatDeLanalyse": "Résultat de l'analyse",
         "alternativesSuggerees": "Alternatives suggérées:",
-        "nouvelleVerification": "🔄 Nouvelle vérification"
+        "nouvelleVerification": "\uD83D\uDD04 Nouvelle vérification"
     },
     "pharmacyAnalytics": {
         "reessayer": "Réessayer",
@@ -2558,13 +2558,13 @@
         "selectionnerLeLieuDeRecuperation": "Sélectionner le lieu de récupération du produit",
         "selectionnerUnTypeDeVehicule": "Sélectionner un type de véhicule",
         "chargementDesProduits": "Chargement des produits...",
-        "lieuDeStockageGps": "📍 Lieu de stockage GPS",
+        "lieuDeStockageGps": "\uD83D\uDCCD Lieu de stockage GPS",
         "optionnel": "Optionnel"
     },
     "productDetail": {
-        "retourAL": "🏠 Retour à l",
+        "retourAL": "\uD83C\uDFE0 Retour à l",
         "detailDuProduit": "Détail du produit",
-        "creerUneVideoImmersive": "🎬 Créer une vidéo immersive",
+        "creerUneVideoImmersive": "\uD83C\uDFAC Créer une vidéo immersive",
         "chargementDuProduit": "Chargement du produit..."
     },
     "productDuplication": {
@@ -2687,7 +2687,7 @@
         "depannageD": "Dépannage d",
         "systemeIntelligent": "Système intelligent :",
         "exDoualaYaoundeToutLe": "Ex: Douala, Yaoundé, Tout le Cameroun...",
-        "tarifIndicatifPourDonnerUn": "💡 Tarif indicatif pour donner un ordre d'idée aux clients",
+        "tarifIndicatifPourDonnerUn": "\uD83D\uDCA1 Tarif indicatif pour donner un ordre d'idée aux clients",
         "garantieSurReparations": "Garantie sur réparations",
         "vehiculeDeCourtoisieDisponible": "Véhicule de courtoisie disponible",
         "enlevementVehiculeEnPanne": "Enlèvement véhicule en panne",
@@ -2700,11 +2700,11 @@
         "selectionnezLesOptionsDisponibles": "Sélectionnez les options disponibles",
         "selectionnezLesModesDePaiement": "Sélectionnez les modes de paiement acceptés",
         "zoneGeographiqueCouverte": "Zone géographique couverte",
-        "gpsPartageEnTempsReel": "📍 GPS partagé en temps réel",
-        "chatInstantaneWebsocket": "💬 Chat instantané (WebSocket)",
-        "appelVideoWebrtc": "📞 Appel vidéo (WebRTC)",
-        "estimationRoutesNonGoudronnees": "🛣️ Estimation routes non goudronnées",
-        "negociationPrixEnDirect": "💰 Négociation prix en direct",
+        "gpsPartageEnTempsReel": "\uD83D\uDCCD GPS partagé en temps réel",
+        "chatInstantaneWebsocket": "\uD83D\uDCAC Chat instantané (WebSocket)",
+        "appelVideoWebrtc": "\uD83D\uDCDE Appel vidéo (WebRTC)",
+        "estimationRoutesNonGoudronnees": "\uD83D\uDEE3️ Estimation routes non goudronnées",
+        "negociationPrixEnDirect": "\uD83D\uDCB0 Négociation prix en direct",
         "differenceAvecCovoiturage": "Différence avec Covoiturage :",
         "systemeProDeReservation": "Système Pro de Réservation:",
         "typeVehicule": "Type véhicule",
@@ -2712,7 +2712,7 @@
         "siegesrangee": "Sièges/rangée",
         "1ereRangeeChauffeurPassagers": "1ère rangée (Chauffeur + passagers)",
         "disponibiliteDesPlaces": "Disponibilité des places",
-        "apercuDuPlan": "📋 Aperçu du Plan",
+        "apercuDuPlan": "\uD83D\uDCCB Aperçu du Plan",
         "deviseAppliqueeATousLes": "Devise appliquée à tous les tarifs ci-dessous",
         "villeDeDepart": "Ville de départ",
         "exYaoundeBrazzavilleLome": "Ex: Yaoundé, Brazzaville, Lomé...",
@@ -2792,7 +2792,7 @@
         "fonctionnalitesSpeciales": "Fonctionnalités spéciales",
         "exTuyauxFiltresTelecommande": "Ex: Tuyaux, filtres, télécommande...",
         "exCanape3PlacesTable": "Ex: Canapé 3 places, Table à manger 6 places...",
-        "caracteristiquesPhysiques": "📏 Caractéristiques physiques",
+        "caracteristiquesPhysiques": "\uD83D\uDCCF Caractéristiques physiques",
         "materiauPrincipal": "Matériau principal",
         "140x190CmOuHX": "140x190 cm ou H x L x P personnalisé",
         "caracteristiquesSpeciales": "Caractéristiques spéciales",
@@ -2834,9 +2834,9 @@
         "uniteDeVente": "Unité de vente",
         "exPieceLotDe10": "Ex: Pièce, Lot de 10",
         "exQuincaillerieSpecialisee": "Ex: Quincaillerie spécialisée",
-        "categorisationDuService": "🎯 Catégorisation du Service",
+        "categorisationDuService": "\uD83C\uDFAF Catégorisation du Service",
         "categorieDePrestation": "Catégorie de prestation *",
-        "preparationConcoursGrandesEcoles": "🎓 Préparation Concours Grandes Écoles",
+        "preparationConcoursGrandesEcoles": "\uD83C\uDF93 Préparation Concours Grandes Écoles",
         "systemeUltraspecialise": "Système ultra-spécialisé :",
         "concoursSpecifiquesPrepares": "Concours spécifiques préparés *",
         "exPolytechniqueYaoundeEnsEnam": "Ex: Polytechnique Yaoundé, ENS, ENAM...",
@@ -2846,10 +2846,10 @@
         "supportsPedagogiquesFournis": "Supports pédagogiques fournis",
         "exAnnalesFichesVideos": "Ex: Annales, fiches, vidéos...",
         "tauxDeReussiteDeVos": "Taux de réussite de vos élèves",
-        "concoursBlancsProposes": "📝 Concours blancs proposés",
-        "preparateurAgree": "🏆 Préparateur agréé",
+        "concoursBlancsProposes": "\uD83D\uDCDD Concours blancs proposés",
+        "preparateurAgree": "\uD83C\uDFC6 Préparateur agréé",
         "valorisezVosResultats": "Valorisez vos résultats :",
-        "detailsEducation": "📚 Détails Éducation",
+        "detailsEducation": "\uD83D\uDCDA Détails Éducation",
         "matieresEnseignees": "Matières enseignées",
         "selectionnezLesMatieresQueVous": "Sélectionnez les matières que vous enseignez",
         "niveauxEnseignes": "Niveaux enseignés *",
@@ -2857,15 +2857,15 @@
         "selectionnezVosZonesOuChoisissez": "Sélectionnez vos zones (ou choisissez une zone large)",
         "modaliteDeDeplacement": "Modalité de déplacement",
         "rayonDeDeplacementKm": "Rayon de déplacement (km)",
-        "fraisDeDeplacementInclus": "💰 Frais de déplacement inclus",
+        "fraisDeDeplacementInclus": "\uD83D\uDCB0 Frais de déplacement inclus",
         "experienceQualifications": "Expérience & Qualifications",
         "certificationDiplomePrincipal": "Certification / Diplôme principal",
         "certificationsSupplementaires": "Certifications supplémentaires",
         "aucuneCertificationSelectionnee": "Aucune certification sélectionnée",
         "disponibilitesHoraires": "⏰ Disponibilités & Horaires",
-        "joursFeries": "🎉 Jours fériés",
-        "prixNegociable": "💬 Prix négociable",
-        "equipementsOutils": "🔧 Équipements & Outils",
+        "joursFeries": "\uD83C\uDF89 Jours fériés",
+        "prixNegociable": "\uD83D\uDCAC Prix négociable",
+        "equipementsOutils": "\uD83D\uDD27 Équipements & Outils",
         "selectionnezVosEquipements": "Sélectionnez vos équipements",
         "jeFournisLequipement": "✅ Je fournis l'équipement",
         "clientFournitMateriel": "⚠️ Client fournit matériel",
@@ -2875,8 +2875,8 @@
         "offresDeServiceProposees": "Offres de service proposées",
         "exInstallationElectriqueComplete": "Ex: Installation électrique complète",
         "exComprendInstallationCablage": "Ex: Comprend installation + câblage...",
-        "typeEtCategorie": "🍷 Type et Catégorie",
-        "caracteristiquesProduit": "📋 Caractéristiques Produit",
+        "typeEtCategorie": "\uD83C\uDF77 Type et Catégorie",
+        "caracteristiquesProduit": "\uD83D\uDCCB Caractéristiques Produit",
         "regionAppellation": "Région / Appellation",
         "cepage": "Cépage",
         "millesime": "Millésime",
@@ -2888,7 +2888,7 @@
         "anneeDedition": "Année d'édition",
         "prestationsMedicalesDisponibles": "Prestations médicales disponibles",
         "momentDeDisponibilite": "Moment de disponibilité :",
-        "prelevementADomicileDisponible": "🏠 Prélèvement à domicile disponible",
+        "prelevementADomicileDisponible": "\uD83C\uDFE0 Prélèvement à domicile disponible",
         "resultatsRapidesUrgentsDisponibles": "⚡ Résultats rapides / Urgents disponibles",
         "cochezLesAnalysesBiologiquesEtou": "Cochez les analyses biologiques et/ou examens d'imagerie proposés, puis configurez leur planning",
         "delaiMoyenPourLesResultats": "Délai moyen pour les résultats",
@@ -2932,7 +2932,7 @@
         "diametreBoitier": "Diamètre boîtier",
         "dureeDeVieJours": "Durée de vie (jours)",
         "exSpecialisteRobesDeMariee": "Ex: Spécialiste robes de mariée et tenues africaines sur mesure, 10 ans d",
-        "caracteristiquesDuVetement": "👗 Caractéristiques du Vêtement",
+        "caracteristiquesDuVetement": "\uD83D\uDC57 Caractéristiques du Vêtement",
         "categorieVetement": "Catégorie vêtement",
         "tissuUtilise": "Tissu utilisé",
         "mariageSoireeQuotidien": "Mariage, Soirée, Quotidien...",
@@ -2943,7 +2943,7 @@
         "debutantConfirme": "Débutant, Confirmé...",
         "hauteCoutureSoignee": "Haute couture, Soignée...",
         "exMachineABroderSurjeteuse": "Ex: Machine à broder, Surjeteuse...",
-        "tarificationDelais": "💰 Tarification & Délais",
+        "tarificationDelais": "\uD83D\uDCB0 Tarification & Délais",
         "aLaPieceForfaitAu": "À la pièce, Forfait, Au mètre...",
         "delaiDeConfection": "Délai de confection",
         "especesMobileMoneyCarte": "Espèces, Mobile Money, Carte...",
@@ -2957,24 +2957,24 @@
         "ex1830AnsTousAges": "Ex: 18-30 ans, Tous âges...",
         "etablissementSpecialisation": "Établissement & Spécialisation",
         "camerounaiseIvoirienneSenegalaise": "Camerounaise, Ivoirienne, Sénégalaise...",
-        "carteSpecialites": "🍽️ Carte & Spécialités",
+        "carteSpecialites": "\uD83C\uDF7D️ Carte & Spécialités",
         "ndoleEruPouletDgKoki": "Ndolé, Eru, Poulet DG, Koki...",
         "attiekeAlocoGarbaKedjenou": "Attiéké, Aloco, Garba, Kedjenou...",
-        "platsSenegalais": "🇸🇳 Plats sénégalais",
+        "platsSenegalais": "\uD83C\uDDF8\uD83C\uDDF3 Plats sénégalais",
         "thieboudienneYassaMafe": "Thiéboudienne, Yassa, Mafé...",
         "toMaafeFonio": "Tô, Maafé, Fonio...",
         "nyembweMoambe": "Nyembwé, Moambe...",
-        "platsBurkinabe": "🇧🇫 Plats burkinabè",
+        "platsBurkinabe": "\uD83C\uDDE7\uD83C\uDDEB Plats burkinabè",
         "rizGrasTo": "Riz gras, Tô...",
         "togoBeninNigerTchadMadagascar": "Togo, Bénin, Niger, Tchad, Madagascar...",
         "dessertsPatisseries": "Desserts & Pâtisseries",
         "petitdejeunerDejeunerDiner": "Petit-déjeuner, Déjeuner, Dîner...",
-        "ambianceEquipements": "🏪 Ambiance & Équipements",
+        "ambianceEquipements": "\uD83C\uDFEA Ambiance & Équipements",
         "capaciteD": "Capacité d",
         "economiqueMoyenPremium": "Économique, Moyen, Premium...",
         "regimesAlimentairesSpeciaux": "Régimes alimentaires spéciaux",
         "halalVegetarienVeganSansGluten": "Halal, Végétarien, Vegan, Sans gluten...",
-        "equipeClientele": "👨‍🍳 Équipe & Clientèle",
+        "equipeClientele": "\uD83D\uDC68‍\uD83C\uDF73 Équipe & Clientèle",
         "specialisationDuChef": "Spécialisation du chef",
         "chefCamerounaisChefFrancais": "Chef camerounais, Chef français...",
         "typeDeClientele": "Type de clientèle",
@@ -2985,9 +2985,9 @@
         "exConsoleDroneCamera": "Ex: Console, Drone, Caméra...",
         "connectivitesSpecifications": "Connectivités & Spécifications",
         "connectivites": "Connectivités",
-        "categorieType": "📍 Catégorie & Type",
+        "categorieType": "\uD83D\uDCCD Catégorie & Type",
         "categoriePrincipale": "Catégorie principale",
-        "marqueModele": "🏷️ Marque & Modèle",
+        "marqueModele": "\uD83C\uDFF7️ Marque & Modèle",
         "anneeDeFabrication": "Année de fabrication",
         "utilisationPrevue": "Utilisation prévue",
         "etatDocuments": "État & Documents",
@@ -2998,15 +2998,15 @@
         "exFormationCompleteAuDeveloppement": "Ex: Formation complète au développement web avec projets pratiques...",
         "debutantIntermediaireAvance": "Débutant, Intermédiaire, Avancé...",
         "presentielEnLigneHybride": "Présentiel, En ligne, Hybride...",
-        "matieresContenu": "📚 Matières & Contenu",
+        "matieresContenu": "\uD83D\uDCDA Matières & Contenu",
         "dureeCertification": "⏱️ Durée & Certification",
         "dureeDeLaFormation": "Durée de la formation",
         "attestationDiplome": "Attestation, Diplôme...",
-        "languePrerequis": "🌍 Langue & Prérequis",
+        "languePrerequis": "\uD83C\uDF0D Langue & Prérequis",
         "francaisAnglaisBilingue": "Français, Anglais, Bilingue...",
         "prerequis": "Prérequis",
         "exDevenirDeveloppeurFullStack": "Ex: Devenir développeur full stack, Maîtriser React et Node.js...",
-        "capacitePlaces": "👥 Capacité & Places",
+        "capacitePlaces": "\uD83D\uDC65 Capacité & Places",
         "adressePreciseDuCentre": "Adresse précise du centre",
         "informationsEvenement": "Informations Événement",
         "decrivezVotreEvenementOuService": "Décrivez votre événement ou service...",
@@ -3038,7 +3038,7 @@
         "dureeEstimeeHeures": "Durée estimée (heures)",
         "exEntretienJardinElagageCreation": "Ex: Entretien jardin, Élagage, Création espaces verts...",
         "plantesConcernees": "Plantes concernées",
-        "materielExpertise": "🛠️ Matériel & Expertise",
+        "materielExpertise": "\uD83D\uDEE0️ Matériel & Expertise",
         "materielDisponible": "Matériel disponible",
         "exTondeuseTaillehaieTronconneuse": "Ex: Tondeuse, Taille-haie, Tronçonneuse...",
         "niveauExperience": "Niveau expérience",
@@ -3049,7 +3049,7 @@
         "exReparationFuiteDebouchageInstallation": "Ex: Réparation fuite, Débouchage, Installation...",
         "equipementsDisponibilite": "Équipements & Disponibilité",
         "equipementsConcernes": "Équipements concernés",
-        "depannageDurgence24h24": "🚨 Dépannage d'urgence 24h/24",
+        "depannageDurgence24h24": "\uD83D\uDEA8 Dépannage d'urgence 24h/24",
         "materielPlomberieSanitaire": "Matériel Plomberie & Sanitaire",
         "categorieDeProduit": "Catégorie de produit *",
         "serviceDelectricite": "Service d'Électricité",
@@ -3065,7 +3065,7 @@
         "equipementsDeDiagnostic": "Équipements de Diagnostic",
         "exValiseObdMultimetreScanner": "Ex: Valise OBD, Multimètre, Scanner...",
         "disponibiliteGaranties": "Disponibilité & Garanties",
-        "deplacementADomicile": "🚗 Déplacement à domicile",
+        "deplacementADomicile": "\uD83D\uDE97 Déplacement à domicile",
         "garageSpecialiseMototricycle": "Garage Spécialisé Moto/Tricycle",
         "exGarageMotoExpressMeca": "Ex: Garage Moto Express, Méca Bike Pro...",
         "servicesSpecialisesMotos": "Services spécialisés motos",
@@ -3097,7 +3097,7 @@
         "equipementsProfessionnels": "Équipements Professionnels",
         "exBetonniereEchafaudageNiveauLaser": "Ex: Bétonnière, Échafaudage, Niveau laser...",
         "exAssuranceDecennaleQualibat": "Ex: Assurance décennale, Qualibat...",
-        "assuranceDecennale": "🛡️ Assurance décennale",
+        "assuranceDecennale": "\uD83D\uDEE1️ Assurance décennale",
         "exCarrelageSolInterieurFaience": "Ex: Carrelage sol intérieur, Faïence cuisine...",
         "specialitesTechniques": "Spécialités & Techniques",
         "exSolInterieurMurSalle": "Ex: Sol intérieur, Mur salle de bain, Terrasse...",
@@ -3168,7 +3168,7 @@
         "technologieEcran": "Technologie écran",
         "resolution": "Résolution",
         "anneeDeSortie": "Année de sortie",
-        "connectiviteFonctionnalites": "🔌 Connectivité & Fonctionnalités",
+        "connectiviteFonctionnalites": "\uD83D\uDD0C Connectivité & Fonctionnalités",
         "exNeufScelle": "Ex: Neuf scellé",
         "exTelecommandeCableHdmiSupport": "Ex: Télécommande, Câble HDMI, Support mural...",
         "identiteDeLaPiece": "Identité de la pièce",
@@ -3206,8 +3206,8 @@
         "exTvSamsungQled55": "Ex: TV Samsung QLED 55 pouces, état neuf, avec support mural et télécommande...",
         "exTelevisionHomeCinema": "Ex: Télévision, Home Cinéma...",
         "exEntreeDeGammeHaut": "Ex: Entrée de gamme, Haut de gamme...",
-        "caracteristiquesEcran": "🖥️ Caractéristiques Écran",
-        "caracteristiquesAudio": "🔊 Caractéristiques Audio",
+        "caracteristiquesEcran": "\uD83D\uDDA5️ Caractéristiques Écran",
+        "caracteristiquesAudio": "\uD83D\uDD0A Caractéristiques Audio",
         "exNeufScelleExcellentEtat": "Ex: Neuf scellé, Excellent état...",
         "anneeDeSortieDuModele": "Année de sortie du modèle",
         "exTelecommandeCablesHdmiSupport": "Ex: Télécommande, Câbles HDMI, Support mural, Notice...",
@@ -3247,7 +3247,7 @@
         "exCoursCollectifsEnPetit": "Ex: Cours collectifs en petit groupe, coach certifié, équipements modernes fournis, suivi personnalisé...",
         "preremplieAutomatiquement": "(pré-remplie automatiquement)",
         "decrivezCeProduit": "Décrivez ce produit...",
-        "videosDuProduit": "🎥 Vidéos du produit",
+        "videosDuProduit": "\uD83C\uDFA5 Vidéos du produit",
         "nombreDePlaces": "Nombre de places",
         "typeDeBail": "Type de bail",
         "typeDeLogement": "Type de logement",
@@ -3295,9 +3295,9 @@
         "nombreDeJoueurs": "Nombre de joueurs",
         "typeDeCarrelage": "Type de carrelage",
         "ajouterUnProduit": "Ajouter un produit",
-        "typeDePromotion": "🏷️ Type de promotion",
-        "dateDeFin": "📅 Date de fin",
-        "lieuDeStockageGps": "📍 Lieu de stockage GPS",
+        "typeDePromotion": "\uD83C\uDFF7️ Type de promotion",
+        "dateDeFin": "\uD83D\uDCC5 Date de fin",
+        "lieuDeStockageGps": "\uD83D\uDCCD Lieu de stockage GPS",
         "lieuDeStockage": "Lieu de stockage"
     },
     "productMediaCarousel": {
@@ -3313,10 +3313,10 @@
     "productStats": {
         "reactions": "Réactions",
         "medias": "Médias",
-        "evolutionTemporelle": "📈 Évolution temporelle",
+        "evolutionTemporelle": "\uD83D\uDCC8 Évolution temporelle",
         "aucuneDonneeDeLocalisation": "Aucune donnée de localisation",
         "aucuneInteractionEnregistree": "Aucune interaction enregistrée",
-        "visiteursRecents": "👥 Visiteurs récents",
+        "visiteursRecents": "\uD83D\uDC65 Visiteurs récents",
         "aucunVisiteurRecent": "Aucun visiteur récent",
         "chargementDesStatistiques": "Chargement des statistiques..."
     },
@@ -3330,22 +3330,22 @@
     "productVideoCreation": {
         "livraisonActivee": "Livraison activée",
         "retourAL": "← Retour à l",
-        "selectionDesMedias": "📸 Sélection des médias",
-        "creerVideoArImmersive": "🎬 Créer vidéo AR immersive",
+        "selectionDesMedias": "\uD83D\uDCF8 Sélection des médias",
+        "creerVideoArImmersive": "\uD83C\uDFAC Créer vidéo AR immersive",
         "mediathequeService": "Médiathèque service",
         "effetsRecommandes": "Effets recommandés",
         "ambianceMusicaleRecommandee": "Ambiance musicale recommandée",
-        "exPromotionSpecialeSurNos": "Ex: 🎯 Promotion spéciale sur nos mèches premium !",
+        "exPromotionSpecialeSurNos": "Ex: \uD83C\uDFAF Promotion spéciale sur nos mèches premium !",
         "exReservezEnLigneEt": "Ex: Réservez en ligne et profitez de la livraison express !",
         "exemplendecouvrezNotreNouveauProduitnqua": "Exemple:\\nDécouvrez notre nouveau produit\\nQualité premium garantie\\nPrix spécial limité\\nLivraison express disponible",
         "dureeCible": "Durée cible",
-        "generationEnCours": "🎬 Génération en cours",
-        "recapitulatif": "📋 Récapitulatif",
+        "generationEnCours": "\uD83C\uDFAC Génération en cours",
+        "recapitulatif": "\uD83D\uDCCB Récapitulatif",
         "duree": "Durée",
         "medias": "Médias",
-        "structureDeLaVideo": "🎬 Structure de la vidéo",
+        "structureDeLaVideo": "\uD83C\uDFAC Structure de la vidéo",
         "optionsAvancees": "⚙️ Options avancées",
-        "chainageDeVideos": "🔗 Chaînage de vidéos",
+        "chainageDeVideos": "\uD83D\uDD17 Chaînage de vidéos",
         "formatCarre1080x1080": "Format carré (1080x1080)",
         "coordonneesCta": "Coordonnées & CTA",
         "selectionnezLeProduitAMettre": "Sélectionnez le produit à mettre en avant",
@@ -3380,7 +3380,7 @@
         "chargement": "Chargement..."
     },
     "programmesScolaires": {
-        "telecharger": "📥 Télécharger",
+        "telecharger": "\uD83D\uDCE5 Télécharger",
         "voirLetablissement": "Voir l'établissement",
         "niveauEx6eme": "Niveau (ex: 6ème)",
         "anneeEx20242025": "Année (ex: 2024-2025)",
@@ -3390,7 +3390,7 @@
         "chargement": "Chargement..."
     },
     "proofMediaUpload": {
-        "comparaisonEtatInitialVsFinal": "🔍 Comparaison état initial vs final",
+        "comparaisonEtatInitialVsFinal": "\uD83D\uDD0D Comparaison état initial vs final",
         "etatInitialRecuperation": "État initial (récupération)",
         "etatFinalLivraison": "État final (livraison)",
         "chargement": "Chargement..."
@@ -3402,8 +3402,8 @@
     "providerCourierVerification": {
         "verificationReussie": "Vérification réussie",
         "coursierVerifie": "Coursier vérifié !",
-        "resumeDesCouts": "📋 Résumé des coûts",
-        "totalAPayer": "💰 Total à payer",
+        "resumeDesCouts": "\uD83D\uDCCB Résumé des coûts",
+        "totalAPayer": "\uD83D\uDCB0 Total à payer",
         "verifierLeCoursier": "Vérifier le coursier",
         "verifier": "Vérifier"
     },
@@ -3490,7 +3490,7 @@
         "coutEstime": "Coût estimé",
         "aucuneRecetteAAfficher": "Aucune recette à afficher",
         "laRecetteGenereeEstInvalide": "La recette générée est invalide ou incomplète",
-        "rechercherUneRecette": "🔍 Rechercher une recette",
+        "rechercherUneRecette": "\uD83D\uDD0D Rechercher une recette",
         "rechercher": "Rechercher",
         "aucuneInstructionDisponible": "Aucune instruction disponible"
     },
@@ -3555,8 +3555,8 @@
         "recherchesSauvegardees": "Recherches sauvegardées"
     },
     "schedulerStatusCard": {
-        "resumerMaintenant": "🧠 Résumer maintenant",
-        "plusDe48hDepuisLe": "🚨 Plus de 48h depuis le dernier résumé",
+        "resumerMaintenant": "\uD83E\uDDE0 Résumer maintenant",
+        "plusDe48hDepuisLe": "\uD83D\uDEA8 Plus de 48h depuis le dernier résumé",
         "chargement": "Chargement..."
     },
     "searchActionsBottomSheet": {
@@ -3606,7 +3606,7 @@
         "aucunResultat": "Aucun resultat"
     },
     "serviceManagementCard": {
-        "gererLaPromotion": "🎉 Gérer la promotion",
+        "gererLaPromotion": "\uD83C\uDF89 Gérer la promotion",
         "dureeJours": "Durée (jours)",
         "sauvegarder": "Sauvegarder"
     },
@@ -3677,14 +3677,14 @@
         "prenom": "Prénom",
         "votrePrenom": "Votre prénom",
         "telephone": "Téléphone",
-        "confidentialite": "🔒 Confidentialité",
+        "confidentialite": "\uD83D\uDD12 Confidentialité",
         "visibiliteDuProfil": "Visibilité du profil",
         "afficherQuandVousEtesEn": "Afficher quand vous êtes en ligne",
         "collecteDeDonnees": "Collecte de données",
         "autoriserLaCollecteDeDonnees": "Autoriser la collecte de données d'usage",
         "theme": "Thème",
         "choisirLeThemeDeLapplication": "Choisir le thème de l'application",
-        "securite": "🛡️ Sécurité",
+        "securite": "\uD83D\uDEE1️ Sécurité",
         "authentificationADeuxFacteurs": "Authentification à deux facteurs",
         "securiserVotreCompteAvec2fa": "Sécuriser votre compte avec 2FA",
         "delaiDeSession": "Délai de session",
@@ -3692,7 +3692,7 @@
         "etreNotifieDesNouvellesConnexions": "Être notifié des nouvelles connexions",
         "parametres": "⚙️ Paramètres",
         "personnalisezVotreExperience": "Personnalisez votre expérience",
-        "reinitialiser": "🔄 Réinitialiser",
+        "reinitialiser": "\uD83D\uDD04 Réinitialiser",
         "votreNom": "Votre nom",
         "motDePasseActuel": "Mot de passe actuel",
         "entrezVotreMotDePasse": "Entrez votre mot de passe actuel",
@@ -3973,7 +3973,7 @@
     "taxiSearch": {
         "fonctionnalitesIa": "Fonctionnalités IA",
         "rechercherUnLieuVilleQuartier": "Rechercher un lieu, ville, quartier, établissement...",
-        "bonASavoir": "💡 Bon à savoir",
+        "bonASavoir": "\uD83D\uDCA1 Bon à savoir",
         "rechercherUnTaxi": "Rechercher un taxi",
         "lieuDeRecherche": "Lieu de recherche *"
     },
@@ -4030,8 +4030,8 @@
     },
     "translateBox": {
         "texteATraduire": "Texte à traduire",
-        "francais": "🇫🇷 Français",
-        "portugues": "🇵🇹 Português"
+        "francais": "\uD83C\uDDEB\uD83C\uDDF7 Français",
+        "portugues": "\uD83C\uDDF5\uD83C\uDDF9 Português"
     },
     "trendingMusicLibrary": {
         "reessayer": "Réessayer",
@@ -4065,7 +4065,7 @@
     },
     "trocMatching": {
         "aucunMatchingTrouve": "Aucun matching trouvé",
-        "creerCetteChaine": "🔗 Créer cette chaîne"
+        "creerCetteChaine": "\uD83D\uDD17 Créer cette chaîne"
     },
     "ultraModernServiceCard": {
         "demarrerUneConversation": "Démarrer une conversation",
@@ -4184,7 +4184,7 @@
         "bientot": "Bientôt"
     },
     "connectionTest": {
-        "testDeConnexionBackend": "🔧 Test de Connexion Backend"
+        "testDeConnexionBackend": "\uD83D\uDD27 Test de Connexion Backend"
     },
     "monProfil": {
         "monProfil": "Mon Profil",
@@ -4359,8 +4359,8 @@
         "placeholder": "Posez votre question...",
         "quickActions": "Actions rapides",
         "error": "Désolé, je rencontre des difficultés. Veuillez réessayer.",
-        "welcomeScreen": "👋 Je suis votre assistant IA sur l'écran \"{{screen}}\". Comment puis-je vous aider ?",
-        "welcomeChat": "👋 Je suis votre assistant IA pour le chat avec \"{{name}}\". Je peux vous aider à comprendre les fonctionnalités, en savoir plus sur le service et ses produits, et naviguer dans les options disponibles. Que souhaitez-vous faire ?",
+        "welcomeScreen": "\uD83D\uDC4B Je suis votre assistant IA sur l'écran \"{{screen}}\". Comment puis-je vous aider ?",
+        "welcomeChat": "\uD83D\uDC4B Je suis votre assistant IA pour le chat avec \"{{name}}\". Je peux vous aider à comprendre les fonctionnalités, en savoir plus sur le service et ses produits, et naviguer dans les options disponibles. Que souhaitez-vous faire ?",
         "defaultScreenHelp": "Je suis ici pour vous aider sur \"{{screen}}\". Voici les actions disponibles :",
         "askMoreSpecific": "Posez une question plus précise",
         "tapActionAbove": "Cliquez sur une action ci-dessus",
@@ -4374,27 +4374,27 @@
         "priceShown": "Le prix affiché pour \"{{name}}\" est **{{price}}**.",
         "noPriceShown": "Aucun prix n'est affiché pour \"{{name}}\". Demandez au prestataire.",
         "canNegotiate": "Vous pouvez négocier le prix en cliquant sur le bouton de négociation ci-dessous :",
-        "negotiateSteps": "Pour négocier le prix de \"{{name}}\" :\n\n1. Appuyez sur le bouton 🏷️ **Négocier** dans la barre d'actions du chat\n2. Saisissez le prix que vous souhaitez proposer\n3. Le prestataire recevra votre offre et pourra accepter, refuser ou contre-proposer\n\nConseil : proposez un prix raisonnable pour augmenter vos chances !",
-        "callSteps": "Pour appeler le prestataire :\n\n📞 **Appel audio** — Bouton téléphone dans la barre d'actions\n📹 **Appel vidéo** — Maintenez le bouton téléphone pour choisir vidéo\n\nL'appel se fait directement dans l'application Yukpo, sans frais supplémentaires.",
-        "whatsappInfo": "Pour contacter via WhatsApp :\n\nSi le prestataire a partagé son numéro, vous verrez un bouton WhatsApp vert 💬 dans la barre d'actions.\n\nNote : le chat intégré Yukpo est recommandé car il conserve l'historique des échanges et protège vos informations.",
+        "negotiateSteps": "Pour négocier le prix de \"{{name}}\" :\n\n1. Appuyez sur le bouton \uD83C\uDFF7️ **Négocier** dans la barre d'actions du chat\n2. Saisissez le prix que vous souhaitez proposer\n3. Le prestataire recevra votre offre et pourra accepter, refuser ou contre-proposer\n\nConseil : proposez un prix raisonnable pour augmenter vos chances !",
+        "callSteps": "Pour appeler le prestataire :\n\n\uD83D\uDCDE **Appel audio** — Bouton téléphone dans la barre d'actions\n\uD83D\uDCF9 **Appel vidéo** — Maintenez le bouton téléphone pour choisir vidéo\n\nL'appel se fait directement dans l'application Yukpo, sans frais supplémentaires.",
+        "whatsappInfo": "Pour contacter via WhatsApp :\n\nSi le prestataire a partagé son numéro, vous verrez un bouton WhatsApp vert \uD83D\uDCAC dans la barre d'actions.\n\nNote : le chat intégré Yukpo est recommandé car il conserve l'historique des échanges et protège vos informations.",
         "mentionSteps": "Pour mentionner quelqu'un dans le chat :\n\n1. Tapez **@** dans le champ de message\n2. La liste des participants apparaît\n3. Sélectionnez la personne à mentionner\n\nLa personne mentionnée recevra une notification spéciale.",
-        "photoSteps": "Pour envoyer des photos :\n\n📷 **Bouton caméra** — Prendre une photo en direct\n🖼️ **Bouton galerie** — Choisir depuis votre galerie\n📁 **Bouton image produit** — Sélectionner une image du catalogue produit\n\nVous pouvez envoyer jusqu'à 5 images à la fois.",
-        "fileSteps": "Pour envoyer un fichier :\n\n📎 Appuyez sur le bouton **pièce jointe** (trombone) dans la barre d'outils\nFormats acceptés : PDF, Word, images, etc.\nTaille max : 10 Mo par fichier.",
-        "audioSteps": "Pour envoyer un message vocal :\n\n🎙️ Maintenez le bouton **micro** pour enregistrer\nRelâchez pour envoyer automatiquement\n\nVous pouvez aussi annuler en glissant vers la gauche pendant l'enregistrement.",
-        "deliverySteps": "Pour commander avec livraison :\n\n1. Consultez les produits du prestataire dans le chat\n2. Appuyez sur 🚚 **Commander** sur le produit souhaité\n3. Choisissez l'adresse de livraison\n4. Confirmez et payez\n\nVous pourrez suivre votre livraison en temps réel.",
+        "photoSteps": "Pour envoyer des photos :\n\n\uD83D\uDCF7 **Bouton caméra** — Prendre une photo en direct\n\uD83D\uDDBC️ **Bouton galerie** — Choisir depuis votre galerie\n\uD83D\uDCC1 **Bouton image produit** — Sélectionner une image du catalogue produit\n\nVous pouvez envoyer jusqu'à 5 images à la fois.",
+        "fileSteps": "Pour envoyer un fichier :\n\n\uD83D\uDCCE Appuyez sur le bouton **pièce jointe** (trombone) dans la barre d'outils\nFormats acceptés : PDF, Word, images, etc.\nTaille max : 10 Mo par fichier.",
+        "audioSteps": "Pour envoyer un message vocal :\n\n\uD83C\uDF99️ Maintenez le bouton **micro** pour enregistrer\nRelâchez pour envoyer automatiquement\n\nVous pouvez aussi annuler en glissant vers la gauche pendant l'enregistrement.",
+        "deliverySteps": "Pour commander avec livraison :\n\n1. Consultez les produits du prestataire dans le chat\n2. Appuyez sur \uD83D\uDE9A **Commander** sur le produit souhaité\n3. Choisissez l'adresse de livraison\n4. Confirmez et payez\n\nVous pourrez suivre votre livraison en temps réel.",
         "reviewSteps": "Pour laisser un avis :\n\n⭐ Appuyez sur le bouton **Avis/Commentaires** dans le chat\nVous pouvez noter de 1 à 5 étoiles et laisser un commentaire détaillé.\n\nVos avis aident les autres utilisateurs à choisir !",
-        "participantSteps": "Pour gérer les participants :\n\n👥 Appuyez sur le bouton **Participants** en haut du chat\n➕ Utilisez **Inviter** pour ajouter quelqu'un par email\n❌ Retirez un participant en appuyant sur son nom (si vous êtes admin)\n\nLes nouveaux participants voient l'historique du chat.",
-        "shareSteps": "Pour partager ce service :\n\n📤 **Partager** via le bouton dans la barre d'actions\n🔗 **Copier le lien** pour l'envoyer par SMS, email ou autre\n📱 **WhatsApp / Réseaux sociaux** — Partagez directement\n\nLe lien permet à la personne d'ouvrir le service directement dans Yukpo.",
-        "locationSteps": "Pour localiser le prestataire :\n\n📍 Appuyez sur le bouton **Itinéraire** dans la barre d'actions\nLa carte s'ouvrira avec l'itinéraire depuis votre position actuelle.\n\nVous pouvez choisir : voiture 🚗, marche 🚶, ou transport en commun 🚌.",
-        "paymentInfo": "Modes de paiement disponibles sur Yukpo :\n\n💳 **Mobile Money** (MTN MoMo, Orange Money)\n🏦 **Carte bancaire** (Visa, Mastercard)\n💰 **Paiement à la livraison** (selon le prestataire)\n\nTous les paiements sont sécurisés et traçables.",
+        "participantSteps": "Pour gérer les participants :\n\n\uD83D\uDC65 Appuyez sur le bouton **Participants** en haut du chat\n➕ Utilisez **Inviter** pour ajouter quelqu'un par email\n❌ Retirez un participant en appuyant sur son nom (si vous êtes admin)\n\nLes nouveaux participants voient l'historique du chat.",
+        "shareSteps": "Pour partager ce service :\n\n\uD83D\uDCE4 **Partager** via le bouton dans la barre d'actions\n\uD83D\uDD17 **Copier le lien** pour l'envoyer par SMS, email ou autre\n\uD83D\uDCF1 **WhatsApp / Réseaux sociaux** — Partagez directement\n\nLe lien permet à la personne d'ouvrir le service directement dans Yukpo.",
+        "locationSteps": "Pour localiser le prestataire :\n\n\uD83D\uDCCD Appuyez sur le bouton **Itinéraire** dans la barre d'actions\nLa carte s'ouvrira avec l'itinéraire depuis votre position actuelle.\n\nVous pouvez choisir : voiture \uD83D\uDE97, marche \uD83D\uDEB6, ou transport en commun \uD83D\uDE8C.",
+        "paymentInfo": "Modes de paiement disponibles sur Yukpo :\n\n\uD83D\uDCB3 **Mobile Money** (MTN MoMo, Orange Money)\n\uD83C\uDFE6 **Carte bancaire** (Visa, Mastercard)\n\uD83D\uDCB0 **Paiement à la livraison** (selon le prestataire)\n\nTous les paiements sont sécurisés et traçables.",
         "replySteps": "Pour répondre à un message spécifique :\n\n1. Appuyez longuement sur le message auquel vous voulez répondre\n2. Sélectionnez **Répondre**\n3. Le message cité apparaît au-dessus de votre zone de saisie\n4. Tapez votre réponse et envoyez\n\nCela crée un fil de discussion clair.",
-        "editDeleteSteps": "Pour modifier ou supprimer un message :\n\n✏️ **Modifier** — Appuyez longuement sur votre message → \"Modifier\"\n🗑️ **Supprimer** — Appuyez longuement → \"Supprimer\"\n\nNote : seuls vos propres messages peuvent être modifiés ou supprimés.",
-        "emojiSteps": "Pour ajouter des émojis :\n\n😊 Appuyez sur le bouton **smiley** à gauche du champ de texte\nLe clavier émoji de votre téléphone s'ouvrira.\n\nVous pouvez aussi taper directement des émojis depuis votre clavier.",
+        "editDeleteSteps": "Pour modifier ou supprimer un message :\n\n✏️ **Modifier** — Appuyez longuement sur votre message → \"Modifier\"\n\uD83D\uDDD1️ **Supprimer** — Appuyez longuement → \"Supprimer\"\n\nNote : seuls vos propres messages peuvent être modifiés ou supprimés.",
+        "emojiSteps": "Pour ajouter des émojis :\n\n\uD83D\uDE0A Appuyez sur le bouton **smiley** à gauche du champ de texte\nLe clavier émoji de votre téléphone s'ouvrira.\n\nVous pouvez aussi taper directement des émojis depuis votre clavier.",
         "serviceAbout": "À propos de \"{{name}}\" :",
         "whatWouldYouDo": "Que souhaitez-vous faire ?",
         "availabilityInfo": "Pour vérifier la disponibilité :\n\nLes horaires et la disponibilité dépendent du prestataire. Vous pouvez :\n• Consulter les informations du service\n• Demander directement au prestataire via ce chat\n• Vérifier les badges \"Disponible\" / \"Indisponible\" sur la fiche",
-        "securityInfo": "La sécurité sur Yukpo :\n\n🔒 **Chat sécurisé** — Messages chiffrés\n✅ **Prestataires vérifiés** — Profils validés\n⭐ **Système d'avis** — Consultez les évaluations\n🛡️ **Protection acheteur** — Paiements traçables\n\nEn cas de problème, utilisez le bouton \"Signaler\" dans le menu du chat.",
-        "allFeatures": "Voici tout ce que vous pouvez faire dans ce chat :\n\n💬 **Messagerie** — Texte, photos, fichiers, vocaux\n🏷️ **Négociation** — Proposer un prix\n📞 **Appels** — Audio et vidéo in-app\n🚚 **Commande** — Commander et suivre la livraison\n👥 **Participants** — Inviter d'autres personnes\n📍 **Localisation** — Itinéraire vers le prestataire\n⭐ **Avis** — Laisser une évaluation\n📤 **Partage** — Partager le service\n@ **Mentions** — Mentionner des participants\n↩️ **Citations** — Répondre à un message spécifique\n\nPosez-moi une question sur n'importe laquelle de ces fonctionnalités !",
+        "securityInfo": "La sécurité sur Yukpo :\n\n\uD83D\uDD12 **Chat sécurisé** — Messages chiffrés\n✅ **Prestataires vérifiés** — Profils validés\n⭐ **Système d'avis** — Consultez les évaluations\n\uD83D\uDEE1️ **Protection acheteur** — Paiements traçables\n\nEn cas de problème, utilisez le bouton \"Signaler\" dans le menu du chat.",
+        "allFeatures": "Voici tout ce que vous pouvez faire dans ce chat :\n\n\uD83D\uDCAC **Messagerie** — Texte, photos, fichiers, vocaux\n\uD83C\uDFF7️ **Négociation** — Proposer un prix\n\uD83D\uDCDE **Appels** — Audio et vidéo in-app\n\uD83D\uDE9A **Commande** — Commander et suivre la livraison\n\uD83D\uDC65 **Participants** — Inviter d'autres personnes\n\uD83D\uDCCD **Localisation** — Itinéraire vers le prestataire\n⭐ **Avis** — Laisser une évaluation\n\uD83D\uDCE4 **Partage** — Partager le service\n@ **Mentions** — Mentionner des participants\n↩️ **Citations** — Répondre à un message spécifique\n\nPosez-moi une question sur n'importe laquelle de ces fonctionnalités !",
         "defaultAssistant": "Je suis votre assistant pour {{name}}.",
         "howCanIHelp": "Comment puis-je vous aider ? Posez votre question ou choisissez une option ci-dessous.",
         "orderProduct": "Commander un produit",
@@ -4473,31 +4473,31 @@
         "noCatalog": "Aucun catalogue de produits disponible actuellement. Contactez le prestataire pour plus d'informations."
     },
     "screenChat": {
-        "searchHelp": "Pour rechercher un service, cliquez sur la barre de recherche 🔍 en haut de l'écran. Vous pouvez chercher par nom, catégorie ou mot-clé.",
+        "searchHelp": "Pour rechercher un service, cliquez sur la barre de recherche \uD83D\uDD0D en haut de l'écran. Vous pouvez chercher par nom, catégorie ou mot-clé.",
         "searchBar": "Barre de recherche",
         "typeWhatYouSearch": "Tapez ce que vous cherchez",
         "quickSearch": "Recherche Rapide",
-        "pharmacyHelp": "Pour accéder aux services de santé et pharmacies 💊, utilisez le menu \"Pharmacie\" ou recherchez directement.",
+        "pharmacyHelp": "Pour accéder aux services de santé et pharmacies \uD83D\uDC8A, utilisez le menu \"Pharmacie\" ou recherchez directement.",
         "createServiceHelp": "Pour créer un service ou ajouter un produit :\n\n1. Allez dans \"Mon Espace\"\n2. Cliquez sur le bouton ➕ \"Ajouter\"\n3. Suivez le formulaire intelligent IA",
-        "profileHelp": "Pour accéder à votre profil, cliquez sur l'icône 👤 en haut à droite ou dans l'onglet \"Profil\" en bas.",
+        "profileHelp": "Pour accéder à votre profil, cliquez sur l'icône \uD83D\uDC64 en haut à droite ou dans l'onglet \"Profil\" en bas.",
         "myProfile": "Mon Profil",
         "hotelHelp": "Pour les hôtels et réservations, accédez à la section \"Hôtel\" depuis l'accueil ou recherchez un hébergement.",
         "taxiHelp": "Pour les transports, cliquez sur la section \"Taxi\" ou \"Covoiturage\" depuis l'accueil.",
-        "yukpoPresentation": "Yukpo est une plateforme tout-en-un :\n\n🛒 **Commerce** — Acheter/Vendre des produits et services\n💊 **Santé** — Pharmacies, hôpitaux, IA médicale\n🏨 **Hôtellerie** — Réservation de chambres\n🚕 **Transport** — Taxi, covoiturage, bus\n📦 **Livraison** — Suivi en temps réel\n🤖 **IA** — Assistant intelligent sur chaque écran\n💬 **Chat** — Messagerie sécurisée avec négociation\n📍 **GPS** — Navigation et alertes de sécurité\n\nQue souhaitez-vous explorer ?",
-        "negotiateHelp": "Pour négocier le prix :\n\n1. Ouvrez le chat du service\n2. Cliquez sur 🏷️ \"Négocier\"\n3. Proposez votre prix",
+        "yukpoPresentation": "Yukpo est une plateforme tout-en-un :\n\n\uD83D\uDED2 **Commerce** — Acheter/Vendre des produits et services\n\uD83D\uDC8A **Santé** — Pharmacies, hôpitaux, IA médicale\n\uD83C\uDFE8 **Hôtellerie** — Réservation de chambres\n\uD83D\uDE95 **Transport** — Taxi, covoiturage, bus\n\uD83D\uDCE6 **Livraison** — Suivi en temps réel\n\uD83E\uDD16 **IA** — Assistant intelligent sur chaque écran\n\uD83D\uDCAC **Chat** — Messagerie sécurisée avec négociation\n\uD83D\uDCCD **GPS** — Navigation et alertes de sécurité\n\nQue souhaitez-vous explorer ?",
+        "negotiateHelp": "Pour négocier le prix :\n\n1. Ouvrez le chat du service\n2. Cliquez sur \uD83C\uDFF7️ \"Négocier\"\n3. Proposez votre prix",
         "filterHelp": "Utilisez les filtres en haut de la liste : catégorie, prix, distance, évaluations.",
-        "contactHelp": "Pour contacter un prestataire, cliquez sur le service puis le bouton 💬 \"Contacter\".",
+        "contactHelp": "Pour contacter un prestataire, cliquez sur le service puis le bouton \uD83D\uDCAC \"Contacter\".",
         "serviceDetailActions": "Actions disponibles : Contacter, Appeler, Itinéraire, Partager, Négocier",
-        "navigationHelp": "L'itinéraire est calculé automatiquement. Changez le mode (🚗 voiture, 🚶 marche, 🚌 bus), consultez les alertes de sécurité et les POI à proximité.",
+        "navigationHelp": "L'itinéraire est calculé automatiquement. Changez le mode (\uD83D\uDE97 voiture, \uD83D\uDEB6 marche, \uD83D\uDE8C bus), consultez les alertes de sécurité et les POI à proximité.",
         "taxiBookHelp": "Pour réserver :\n1. Entrez votre destination\n2. Choisissez le véhicule\n3. Confirmez la course\n\nLe chauffeur le plus proche sera notifié.",
-        "hotelManageHelp": "Gérez vos réservations :\n• ➕ Ajoutez des chambres\n• 📋 Consultez les réservations\n• 💰 Modifiez les tarifs",
-        "deliveryTrackHelp": "Suivez votre livraison en temps réel 📦. Contactez le livreur via 📞 si besoin.",
+        "hotelManageHelp": "Gérez vos réservations :\n• ➕ Ajoutez des chambres\n• \uD83D\uDCCB Consultez les réservations\n• \uD83D\uDCB0 Modifiez les tarifs",
+        "deliveryTrackHelp": "Suivez votre livraison en temps réel \uD83D\uDCE6. Contactez le livreur via \uD83D\uDCDE si besoin.",
         "formPhotoHelp": "Pour ajouter des photos :\n1. Faites défiler jusqu'à \"Photos\"\n2. ➕ Ajoutez depuis galerie/caméra\n3. Max 10 photos",
         "formAIHelp": "Le formulaire IA vous guide étape par étape et adapte les questions selon vos réponses.",
         "profileActions": "Depuis votre profil :\n• Modifier vos informations\n• Voir vos services/produits\n• Gérer les notifications\n• Consulter l'historique",
-        "pharmacyAIHelp": "Services pharmacie IA :\n• 💊 Ajouter/gérer le stock\n• 📷 Scanner une ordonnance\n• ⚠️ Vérifier les interactions médicamenteuses\n• 🤖 Analyse IA de posologie",
-        "hospitalAIHelp": "Services hospitaliers IA :\n• 🏥 Triage intelligent\n• 🔍 Recherche de pathologies\n• 📋 Historique médical\n• 🆘 Urgences à proximité",
+        "pharmacyAIHelp": "Services pharmacie IA :\n• \uD83D\uDC8A Ajouter/gérer le stock\n• \uD83D\uDCF7 Scanner une ordonnance\n• ⚠️ Vérifier les interactions médicamenteuses\n• \uD83E\uDD16 Analyse IA de posologie",
+        "hospitalAIHelp": "Services hospitaliers IA :\n• \uD83C\uDFE5 Triage intelligent\n• \uD83D\uDD0D Recherche de pathologies\n• \uD83D\uDCCB Historique médical\n• \uD83C\uDD98 Urgences à proximité",
         "screenActions": "Sur l'écran \"{{screen}}\", voici les actions disponibles :",
-        "greeting": "Bonjour ! 👋 Je suis votre assistant sur \"{{screen}}\". Comment puis-je vous aider ?"
+        "greeting": "Bonjour ! \uD83D\uDC4B Je suis votre assistant sur \"{{screen}}\". Comment puis-je vous aider ?"
     }
 }

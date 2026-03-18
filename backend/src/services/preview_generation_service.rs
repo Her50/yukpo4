@@ -8,6 +8,7 @@ use crate::services::immersive_timeline::ImmersiveTimeline;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use sqlx::Row;
 use std::env;
 use tokio::process::Command;
 

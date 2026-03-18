@@ -89,7 +89,7 @@ const MyFavoritesScreen: React.FC = () => {
                 <SafeIcon name="heart" size={24} color={modernColors.primary} />
                 <Text style={styles.headerTitle}>{t('myFavorites.mesFavoris')}</Text>
                 <Text style={styles.headerSubtitle}>
-                    {favorites.length} bien{favorites.length > 1 ? 's' : 't('myFavoritesScreen.sauvegardefavoriteslength1')s' : ''}
+                    {favorites.length} bien{favorites.length > 1 ? 's' : ''} sauvegardé{favorites.length > 1 ? 's' : ''}
                 </Text>
             </View>
 

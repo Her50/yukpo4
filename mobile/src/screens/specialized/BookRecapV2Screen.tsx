@@ -164,11 +164,11 @@ const BookRecapV2Screen: React.FC = () => {
             await bourseLivreV2Api.finalizeSession(sessionId, livresModes);
 
             toaster.show(
-                t('bookRecapV2Screen.livreMisEnLigneAvecSucces', { validBooks_length: validBooks.length, validBooks_length > 1 ? 's' : '': validBooks.length > 1 ? 's' : '' }),
+                `${validBooks.length} livre${validBooks.length > 1 ? 's' : ''} mis en ligne avec succès`,
                 'success'
             );
 
-            navigation.navigate('LivreScolaireSearch');
+            navigation.navigate('LivreScolaireHome');
         } catch (error: any) {
             console.error('[BookRecapV2] Erreur finalisation:', error);
             Alert.alert('Erreur', t('bookRecapV2Screen.impossibleDeFinaliserLaSessionReessayez'));

@@ -88,7 +88,7 @@ const CreateEtablissementScreen: React.FC = () => {
         { value: 'primaire', label: 'Primaire' },
         { value: 'secondaire', label: 'Secondaire' },
         { value: 'superieur', label: 'Universitaire' },
-        { value: 'formation', label: t('createEtablissement.ecoleDeFormation') },
+        { value: 'formation', label: 'École de Formation' },
     ];
 
     useEffect(() => {
@@ -248,7 +248,7 @@ const CreateEtablissementScreen: React.FC = () => {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>{t('createEtablissement.chargement')}</Text>
+                <Text style={styles.loadingText}>Chargement...</Text>
             </View>
         );
     }
@@ -260,12 +260,14 @@ const CreateEtablissementScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
                 <Text style={styles.title}>
-                    {etablissementId ? 'Modifier l\t('createEtablissementScreen.etablissement') : t('createEtablissementScreen.creerUnEtablissement')}
+                    {etablissementId ? 'Modifier l\'établissement' : 'Créer un établissement'}
                 </Text>
             </View>
 
             <NativeCard style={styles.card}>
-                {/* Type dt('createEtablissementScreen.etablissementViewStylestylesfieldTextStylestylesla')createEtablissement.typeDetablissement')}</Text>
+                {/* Type d'établissement */}
+                <View style={styles.field}>
+                    <Text style={styles.label}>Type d'établissement *</Text>
                     <View style={styles.chipContainer}>
                         {typesEtablissement.map((type) => (
                             <TouchableOpacity
@@ -291,11 +293,11 @@ const CreateEtablissementScreen: React.FC = () => {
 
                 {/* Nom */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>{t('createEtablissement.nomDeLetablissement')}</Text>
+                    <Text style={styles.label}>Nom de l'établissement *</Text>
                     <NativeInput
                         value={formData.nom_etablissement}
                         onChangeText={(text) => setFormData({ ...formData, nom_etablissement: text })}
-                        placeholder={t('createEtablissement.exLyceeBilingueDeDouala')}
+                        placeholder="Ex: Lycée Bilingue de Douala"
                     />
                 </View>
 
@@ -306,7 +308,7 @@ const CreateEtablissementScreen: React.FC = () => {
                         style={styles.textArea}
                         value={formData.description}
                         onChangeText={(text) => setFormData({ ...formData, description: text })}
-                        placeholder={t('createEtablissement.decrivezVotreEtablissement')}
+                        placeholder="Décrivez votre établissement..."
                         multiline
                         numberOfLines={4}
                     />
@@ -314,11 +316,11 @@ const CreateEtablissementScreen: React.FC = () => {
 
                 {/* Localisation */}
                 <View style={styles.sectionTitle}>
-                    <Text style={styles.sectionTitleText}>{t('createEtablissement.localisation')}</Text>
+                    <Text style={styles.sectionTitleText}>Localisation</Text>
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.label}>{t('createEtablissement.ville')}</Text>
+                    <Text style={styles.label}>Ville *</Text>
                     <NativeInput
                         value={formData.ville}
                         onChangeText={(text) => setFormData({ ...formData, ville: text })}
@@ -327,7 +329,7 @@ const CreateEtablissementScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.label}>{t('createEtablissement.region')}</Text>
+                    <Text style={styles.label}>Région</Text>
                     <NativeInput
                         value={formData.region}
                         onChangeText={(text) => setFormData({ ...formData, region: text })}
@@ -345,17 +347,17 @@ const CreateEtablissementScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.label}>{t('createEtablissement.adresseComplete')}</Text>
+                    <Text style={styles.label}>Adresse complète</Text>
                     <NativeInput
                         value={formData.adresse}
                         onChangeText={(text) => setFormData({ ...formData, adresse: text })}
-                        placeholder={t('createEtablissement.adresseComplete')}
+                        placeholder="Adresse complète"
                     />
                 </View>
 
                 {/* GPS */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>{t('createEtablissement.coordonneesGps')}</Text>
+                    <Text style={styles.label}>Coordonnées GPS</Text>
                     <View style={styles.gpsRow}>
                         <NativeInput
                             value={formData.gps_lat}
@@ -386,7 +388,7 @@ const CreateEtablissementScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.label}>{t('createEtablissement.telephone')}</Text>
+                    <Text style={styles.label}>Téléphone</Text>
                     <NativeInput
                         value={formData.telephone}
                         onChangeText={(text) => setFormData({ ...formData, telephone: text })}
@@ -418,7 +420,7 @@ const CreateEtablissementScreen: React.FC = () => {
 
                 {/* Informations complémentaires */}
                 <View style={styles.sectionTitle}>
-                    <Text style={styles.sectionTitleText}>{t('createEtablissement.informationsComplementaires')}</Text>
+                    <Text style={styles.sectionTitleText}>Informations complémentaires</Text>
                 </View>
 
                 <View style={styles.field}>
@@ -426,13 +428,13 @@ const CreateEtablissementScreen: React.FC = () => {
                     <NativeInput
                         value={formData.directeur}
                         onChangeText={(text) => setFormData({ ...formData, directeur: text })}
-                        placeholder={t('createEtablissement.nomDuDirecteur')}
+                        placeholder="Nom du directeur"
                     />
                 </View>
 
                 <View style={styles.row}>
                     <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
-                        <Text style={styles.label}>{t('createEtablissement.nombreDeleves')}</Text>
+                        <Text style={styles.label}>Nombre d'élèves</Text>
                         <NativeInput
                             value={formData.nombre_eleves}
                             onChangeText={(text) => setFormData({ ...formData, nombre_eleves: text })}
@@ -441,7 +443,7 @@ const CreateEtablissementScreen: React.FC = () => {
                         />
                     </View>
                     <View style={[styles.field, { flex: 1, marginLeft: 8 }]}>
-                        <Text style={styles.label}>{t('createEtablissement.nombreDeProfesseurs')}</Text>
+                        <Text style={styles.label}>Nombre de professeurs</Text>
                         <NativeInput
                             value={formData.nombre_professeurs}
                             onChangeText={(text) => setFormData({ ...formData, nombre_professeurs: text })}
@@ -452,7 +454,7 @@ const CreateEtablissementScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.label}>{t('createEtablissement.anneeDeCreation')}</Text>
+                    <Text style={styles.label}>Année de création</Text>
                     <NativeInput
                         value={formData.annee_creation}
                         onChangeText={(text) => setFormData({ ...formData, annee_creation: text })}
@@ -463,12 +465,12 @@ const CreateEtablissementScreen: React.FC = () => {
 
                 {/* Filières */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>{t('createEtablissement.filieres')}</Text>
+                    <Text style={styles.label}>Filières</Text>
                     <View style={styles.addRow}>
                         <NativeInput
                             value={filiereInput}
                             onChangeText={setFiliereInput}
-                            placeholder={t('createEtablissement.ajouterUneFiliere')}
+                            placeholder="Ajouter une filière"
                             style={styles.addInput}
                         />
                         <TouchableOpacity style={styles.addButton} onPress={handleAddFiliere}>
@@ -489,7 +491,7 @@ const CreateEtablissementScreen: React.FC = () => {
 
                 {/* Public/Privé */}
                 <View style={styles.switchRow}>
-                    <Text style={styles.label}>{t('createEtablissement.etablissementPublic')}</Text>
+                    <Text style={styles.label}>Établissement public</Text>
                     <Switch
                         value={formData.is_public}
                         onValueChange={(value) => setFormData({ ...formData, is_public: value })}
@@ -501,11 +503,11 @@ const CreateEtablissementScreen: React.FC = () => {
                 {etablissementId && (
                     <>
                         <View style={styles.sectionTitle}>
-                            <Text style={styles.sectionTitleText}>{t('createEtablissement.statistiquesEtPerformances')}</Text>
+                            <Text style={styles.sectionTitleText}>Statistiques et Performances</Text>
                         </View>
 
                         <View style={styles.field}>
-                            <Text style={styles.label}>{t('createEtablissement.tauxDeReussiteAuBac')}</Text>
+                            <Text style={styles.label}>Taux de réussite au Bac (%)</Text>
                             <NativeInput
                                 value={formData.taux_reussite_bac || ''}
                                 onChangeText={(text) => setFormData({ ...formData, taux_reussite_bac: text })}
@@ -515,7 +517,7 @@ const CreateEtablissementScreen: React.FC = () => {
                         </View>
 
                         <View style={styles.field}>
-                            <Text style={styles.label}>{t('createEtablissement.tauxDeReussiteAuxExamens')}</Text>
+                            <Text style={styles.label}>Taux de réussite aux examens (%)</Text>
                             <NativeInput
                                 value={formData.taux_reussite_examens || ''}
                                 onChangeText={(text) => setFormData({ ...formData, taux_reussite_examens: text })}
@@ -535,7 +537,7 @@ const CreateEtablissementScreen: React.FC = () => {
                         </View>
 
                         <NativeButton
-                            title={t('createEtablissement.mettreAJourLesStatistiques')}
+                            title="Mettre à jour les statistiques"
                             onPress={handleUpdateStats}
                             disabled={loading}
                             style={styles.statsButton}
@@ -545,7 +547,7 @@ const CreateEtablissementScreen: React.FC = () => {
 
                 {/* Bouton submit */}
                 <NativeButton
-                    title={loading ? 'Enregistrement...' : etablissementId ? t('createEtablissementScreen.mettreAJour') : t('createEtablissementScreen.creerLetablissement')}
+                    title={loading ? 'Enregistrement...' : etablissementId ? 'Mettre à jour' : 'Créer l\'établissement'}
                     onPress={handleSubmit}
                     disabled={loading}
                     style={styles.submitButton}

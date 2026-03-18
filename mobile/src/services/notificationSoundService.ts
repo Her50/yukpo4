@@ -139,7 +139,7 @@ class NotificationSoundService {
             // Jouer le son
             await sound.playAsync();
 
-            console.log(`[NotificationSoundService] 🔊 Son ${type} joué`);
+            console.log(`[NotificationSoundService] \uD83D\uDD0A Son ${type} joué`);
         } catch (error) {
             console.error(`[NotificationSoundService] ❌ Erreur lecture son ${type}:`, error);
         }
@@ -176,7 +176,7 @@ class NotificationSoundService {
                 }
             }
             this.sounds.clear();
-            console.log('[NotificationSoundService] 🧹 Sons nettoyés');
+            console.log('[NotificationSoundService] \uD83E\uDDF9 Sons nettoyés');
         } catch (error) {
             console.error('[NotificationSoundService] ❌ Erreur nettoyage:', error);
         }
@@ -273,7 +273,7 @@ class NotificationSoundService {
         try {
             await this.initialize();
 
-            console.log('[NotificationSoundService] 🎉 Lecture message de bienvenue');
+            console.log('[NotificationSoundService] \uD83C\uDF89 Lecture message de bienvenue');
 
             // 1. Jouer un son de bienvenue (réutilise le son 'ready' comme chime)
             await this.playSound('ready').catch(() => { });
@@ -383,7 +383,7 @@ class NotificationSoundService {
         const opts = { playSound: true, speak: true, pushNotification: true, ...options };
         const message = this.getDeliveryContextualMessage(eventType, details);
 
-        console.log(`[NotificationSoundService] 🔔 Événement livraison: ${eventType} → "${message}"`);
+        console.log(`[NotificationSoundService] \uD83D\uDD14 Événement livraison: ${eventType} → "${message}"`);
 
         // 1. Vibration
         try {

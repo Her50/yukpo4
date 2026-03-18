@@ -34,14 +34,23 @@ import { hapticPress } from '../../utils/hapticFeedback';
 
 const STORAGE_KEY = '@livre_scolaire_form';
 
-const niveaux = ['Primaire', t('livreScolaireFormScreen.college'), t('livreScolaireFormScreen.lycee')];
-const etats = ['Neuf', t('livreScolaireFormScreen.tresBon'), 'Bon', 'Acceptable'];
-
 const LivreScolaireFormScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
     const { t } = useLanguageSafe();
+
+    const niveaux = [
+        t('livreScolaireForm.primaire', 'Primaire'),
+        t('livreScolaireForm.college', 'Collège'),
+        t('livreScolaireForm.lycee', 'Lycée'),
+    ];
+    const etats = [
+        t('livreScolaireForm.neuf', 'Neuf'),
+        t('livreScolaireForm.tresBon', 'Très bon'),
+        t('livreScolaireForm.bon', 'Bon'),
+        t('livreScolaireForm.acceptable', 'Acceptable'),
+    ];
     const { location } = useLocation();
     const toaster = useToaster();
     const { callWithFallback } = useAIWithFallback();
@@ -144,39 +153,39 @@ const LivreScolaireFormScreen: React.FC = () => {
 
     const confirmationSections: ConfirmationSection[] = [
         {
-            title: 'Livre',
+            title: t('livreScolaireForm.livre', 'Livre'),
             icon: 'book',
             fields: [
-                { label: 'Titre', value: formData.titre },
-                { label: 'Auteur', value: formData.auteur },
-                { label: t('livreScolaireForm.editeur'), value: formData.editeur },
+                { label: t('livreScolaireForm.titre', 'Titre'), value: formData.titre },
+                { label: t('livreScolaireForm.auteur', 'Auteur'), value: formData.auteur },
+                { label: t('livreScolaireForm.editeur', 'Éditeur'), value: formData.editeur },
                 { label: 'ISBN', value: formData.isbn },
             ],
         },
         {
-            title: 'Classe',
+            title: t('livreScolaireForm.classe', 'Classe'),
             icon: 'book-open',
             fields: [
-                { label: 'Classe actuelle', value: formData.classe_actuelle },
-                { label: t('livreScolaireForm.classeSouhaitee'), value: formData.classe_souhaitee },
-                { label: t('livreScolaireForm.matiere'), value: formData.matiere },
-                { label: 'Niveau', value: formData.niveau },
+                { label: t('livreScolaireForm.classeActuelle', 'Classe actuelle'), value: formData.classe_actuelle },
+                { label: t('livreScolaireForm.classeSouhaitee', 'Classe souhaitée'), value: formData.classe_souhaitee },
+                { label: t('livreScolaireForm.matiere', 'Matière'), value: formData.matiere },
+                { label: t('livreScolaireForm.niveau', 'Niveau'), value: formData.niveau },
             ],
         },
         {
-            title: t('livreScolaireForm.etat'),
+            title: t('livreScolaireForm.etat', 'État'),
             icon: 'info',
             fields: [
-                { label: t('livreScolaireForm.etat'), value: formData.etat_livre },
-                { label: t('livreScolaireFormScreen.description'), value: formData.description_etat },
+                { label: t('livreScolaireForm.etat', 'État'), value: formData.etat_livre },
+                { label: t('livreScolaireForm.description', 'Description'), value: formData.description_etat },
             ],
         },
         {
-            title: t('livreScolaireForm.localisation'),
+            title: t('livreScolaireForm.localisation', 'Localisation'),
             icon: 'map-pin',
             fields: [
-                { label: t('livreScolaireForm.ville'), value: formData.ville },
-                { label: t('livreScolaireForm.quartier'), value: typeof formData.quartier === 'string' ? formData.quartier : formData.quartier?.place_name },
+                { label: t('livreScolaireForm.ville', 'Ville'), value: formData.ville },
+                { label: t('livreScolaireForm.quartier', 'Quartier'), value: typeof formData.quartier === 'string' ? formData.quartier : formData.quartier?.place_name },
             ],
         },
     ];
@@ -293,7 +302,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                 return null;
             },
             'livre_analyse_image',
-            t('livreScolaireFormScreen.analyserImageDeLivreScolairePour'),
+            'Analyser image de livre scolaire pour extraire titre, auteur, matière, classe',
             () => ({
                 titre: '',
                 auteur: '',
@@ -304,7 +313,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                 matiere: '',
                 niveau: '',
                 etat_livre: 'Bon',
-                description_etat: t('livreScolaireFormScreen.etatNonDetermineParLiaVeuillezVerifier'),
+                description_etat: 'État non déterminé par l\'IA — veuillez vérifier manuellement.',
                 confidence: 0.1,
             } as BookImageAnalysis)
         );
@@ -328,15 +337,15 @@ const LivreScolaireFormScreen: React.FC = () => {
             });
 
             if (result.source === 'local') {
-                toaster.warning('Analyse IA indisponible — veuillez remplir le formulaire manuellement.');
+                toaster.warning(t('livreScolaireForm.iaUnavailable', 'Analyse IA indisponible — veuillez remplir le formulaire manuellement.'));
             } else {
                 toaster.success(
-                    t('livreScolaireFormScreen.analyseTermineeDeConfianceVerifiezLes', { ((bookInfo_confidence || 0) * 100)_toFixed(0): ((bookInfo.confidence || 0) * 100).toFixed(0) })
+                    `Analyse terminée ! ${((bookInfo.confidence || 0) * 100).toFixed(0)}% de confiance. Vérifiez les informations.`
                 );
                 setShowIAAnalysisModal(true);
             }
         } else {
-            toaster.error('Impossible d\'analyser l\'image. Veuillez remplir le formulaire manuellement.');
+            toaster.error(t('livreScolaireForm.analysisFailed', "Impossible d'analyser l'image. Veuillez remplir le formulaire manuellement."));
         }
 
         setAnalyzingImage(false);
@@ -359,7 +368,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                 description_etat: iaAnalysisResult.description_etat || formData.description_etat,
             });
             setShowIAAnalysisModal(false);
-            toaster.success(t('livreScolaireFormScreen.informationsAppliqueesAuFormulaire'));
+            toaster.success(t('livreScolaireForm.infoApplied', 'Informations appliquées au formulaire'));
         }
     };
 
@@ -487,7 +496,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
                     <Text style={styles.title}>
-                        {mode === 'edit' ? 'Modifier le livre' : t('livreScolaireFormScreen.creerUnLivre')}
+                        {mode === 'edit' ? t('livreScolaireForm.editBook', 'Modifier le livre') : t('livreScolaireForm.createBook', 'Créer un livre')}
                     </Text>
                 </View>
 
@@ -498,7 +507,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                         <NativeInput
                             value={formData.titre}
                             onChangeText={(text) => setFormData({ ...formData, titre: text })}
-                            placeholder={t('livreScolaireForm.exMathematiques6eme')}
+                            placeholder="Ex: Mathématiques 6ème"
                         />
                     </View>
 
@@ -508,13 +517,13 @@ const LivreScolaireFormScreen: React.FC = () => {
                         <NativeInput
                             value={formData.auteur}
                             onChangeText={(text) => setFormData({ ...formData, auteur: text })}
-                            placeholder={t('livreScolaireForm.nomDeL')}auteur"
+                            placeholder="Nom de l'auteur"
                         />
                     </View>
 
                     {/* Éditeur */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('livreScolaireForm.editeur')}</Text>
+                        <Text style={styles.label}>Éditeur</Text>
                         <NativeInput
                             value={formData.editeur}
                             onChangeText={(text) => setFormData({ ...formData, editeur: text })}
@@ -528,7 +537,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                         <NativeInput
                             value={formData.isbn}
                             onChangeText={(text) => setFormData({ ...formData, isbn: text })}
-                            placeholder={t('livreScolaireForm.numeroIsbnOptionnel')}
+                            placeholder="Numéro ISBN (optionnel)"
                             keyboardType="numeric"
                         />
                     </View>
@@ -539,27 +548,27 @@ const LivreScolaireFormScreen: React.FC = () => {
                         <NativeInput
                             value={formData.classe_actuelle}
                             onChangeText={(text) => setFormData({ ...formData, classe_actuelle: text })}
-                            placeholder={t('livreScolaireForm.ex6eme5emeTerminale')}
+                            placeholder="Ex: 6ème, 5ème, Terminale"
                         />
                     </View>
 
                     {/* Classe souhaitée */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('livreScolaireForm.classeSouhaitee')}</Text>
+                        <Text style={styles.label}>Classe souhaitée *</Text>
                         <NativeInput
                             value={formData.classe_souhaitee}
                             onChangeText={(text) => setFormData({ ...formData, classe_souhaitee: text })}
-                            placeholder={t('livreScolaireForm.ex5eme4eme1ere')}
+                            placeholder="Ex: 5ème, 4ème, 1ère"
                         />
                     </View>
 
                     {/* Matière */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('livreScolaireForm.matiere')}</Text>
+                        <Text style={styles.label}>Matière *</Text>
                         <NativeInput
                             value={formData.matiere}
                             onChangeText={(text) => setFormData({ ...formData, matiere: text })}
-                            placeholder={t('livreScolaireForm.exMathematiquesFrancais')}
+                            placeholder="Ex: Mathématiques, Français"
                         />
                     </View>
 
@@ -592,7 +601,7 @@ const LivreScolaireFormScreen: React.FC = () => {
 
                     {/* État du livre */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('livreScolaireForm.etatDuLivre')}</Text>
+                        <Text style={styles.label}>État du livre *</Text>
                         <View style={styles.chipContainer}>
                             {etats.map((etat) => (
                                 <TouchableOpacity
@@ -617,11 +626,13 @@ const LivreScolaireFormScreen: React.FC = () => {
                         </View>
                     </View>
 
-                    {/* Description de lt('livreScolaireFormScreen.etatViewStylestylesinputgroupTextStylestyleslabelt')livreScolaireForm.descriptionDeLetat')}</Text>
+                    {/* Description de l'état */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Description de l'état</Text>
                         <NativeInput
                             value={formData.description_etat}
                             onChangeText={(text) => setFormData({ ...formData, description_etat: text })}
-                            placeholder={t('livreScolaireForm.decrivezL')}état du livre en détail..."
+                            placeholder="Décrivez l'état du livre en détail..."
                             multiline
                             numberOfLines={4}
                         />
@@ -629,7 +640,7 @@ const LivreScolaireFormScreen: React.FC = () => {
 
                     {/* ✅ NOUVEAU: Section Upload d'images */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('livreScolaireForm.photosDuLivre')}</Text>
+                        <Text style={styles.label}>Photos du livre</Text>
                         <Text style={styles.labelSubtext}>
                             Prenez une photo ou sélectionnez depuis la galerie. L'IA analysera automatiquement la première image.
                         </Text>
@@ -685,7 +696,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                     {/* Localisation */}
                     <View style={styles.inputGroup}>
                         <LocationSelector
-                            label={t('livreScolaireForm.quartier')}
+                            label="Quartier"
                             value={formData.quartier ? (typeof formData.quartier === 'string' ? { raw: formData.quartier, place_name: formData.quartier } : formData.quartier) : ''}
                             onSelect={(location: LocationObject) => {
                                 // ✅ CORRECTION: Stocker le LocationObject directement
@@ -696,7 +707,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                                     ville: location.components?.ville || formData.ville,
                                 });
                             }}
-                            placeholder={t('livreScolaireForm.rechercherUnLieuVilleQuartier')}
+                            placeholder="Rechercher un lieu (ville, quartier, adresse...)"
                             scope="all"
                         />
                     </View>
@@ -711,19 +722,19 @@ const LivreScolaireFormScreen: React.FC = () => {
                             <View style={styles.statsContainer}>
                                 <View style={styles.statItem}>
                                     <Text style={styles.statValue}>{formData.niveau || 'N/A'}</Text>
-                                    <Text style={styles.statLabel}>Niveau</Text>
+                                    <Text style={styles.statLabel}>{t('livreScolaireForm.niveau', 'Niveau')}</Text>
                                 </View>
                                 <View style={styles.statDivider} />
                                 <View style={styles.statItem}>
                                     <Text style={styles.statValue}>{formData.etat_livre || 'N/A'}</Text>
-                                    <Text style={styles.statLabel}>{t('livreScolaireForm.etat')}</Text>
+                                    <Text style={styles.statLabel}>{t('livreScolaireForm.etat', 'État')}</Text>
                                 </View>
                                 <View style={styles.statDivider} />
                                 <View style={styles.statItem}>
                                     <Text style={styles.statValue}>
-                                        {formData.classe_actuelle ? 'Oui' : 'Non'}
+                                        {formData.classe_actuelle ? t('common.yes', 'Oui') : t('common.no', 'Non')}
                                     </Text>
-                                    <Text style={styles.statLabel}>{t('livreScolaireForm.echange')}</Text>
+                                    <Text style={styles.statLabel}>{t('livreScolaireForm.echange', 'Échange')}</Text>
                                 </View>
                             </View>
                             {formData.classe_actuelle && formData.classe_souhaitee && (
@@ -739,14 +750,14 @@ const LivreScolaireFormScreen: React.FC = () => {
 
                     {/* GPS */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>{t('livreScolaireForm.positionGps')}</Text>
+                        <Text style={styles.label}>{t('livreScolaireForm.gpsPosition', 'Position GPS')}</Text>
                         <TouchableOpacity
                             style={styles.gpsButton}
                             onPress={() => setShowGPSModal(true)}
                         >
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
                             <Text style={styles.gpsButtonText}>
-                                {selectedGPS ? t('livreScolaireFormScreen.localisationSelectionnee') : t('livreScolaireFormScreen.selectionnerSurLaCarte')}
+                                {selectedGPS ? t('livreScolaireForm.locationSelected', 'Localisation sélectionnée') : t('livreScolaireForm.selectOnMap', 'Sélectionner sur la carte')}
                             </Text>
                             <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
                         </TouchableOpacity>
@@ -757,7 +768,7 @@ const LivreScolaireFormScreen: React.FC = () => {
 
                     {/* Bouton de soumission */}
                     <NativeButton
-                        title={mode === 'edit' ? '💾 Enregistrer les modifications' : t('livreScolaireFormScreen.creerLeLivre')}
+                        title={mode === 'edit' ? '\uD83D\uDCBE Enregistrer les modifications' : '✅ Créer le livre'}
                         variant="primary"
                         onPress={handleSubmit}
                         style={styles.submitButton}
@@ -773,7 +784,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                 currentLocation={selectedGPS as any}
             />
 
-            {/* ✅ NOUVEAU: Modal dt('livreScolaireFormScreen.affichageDesResultatsDeL')analyse IA */}
+            {/* ✅ NOUVEAU: Modal d'affichage des résultats de l'analyse IA */}
             <Modal
                 visible={showIAAnalysisModal}
                 transparent
@@ -785,7 +796,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                         <View style={styles.modalHeader}>
                             <View style={styles.modalHeaderLeft}>
                                 <SafeIcon name="sparkles" size={24} color={modernColors.primary} type="lucide" />
-                                <Text style={styles.modalTitle}>{t('livreScolaireForm.analyseIaTerminee')}</Text>
+                                <Text style={styles.modalTitle}>Analyse IA terminée</Text>
                             </View>
                             <TouchableOpacity
                                 onPress={() => setShowIAAnalysisModal(false)}
@@ -805,7 +816,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                                 </View>
 
                                 <View style={styles.analysisResults}>
-                                    <Text style={styles.analysisSectionTitle}>{t('livreScolaireForm.informationsExtraites')}</Text>
+                                    <Text style={styles.analysisSectionTitle}>Informations extraites :</Text>
 
                                     {iaAnalysisResult.titre && (
                                         <View style={styles.analysisItem}>
@@ -823,7 +834,7 @@ const LivreScolaireFormScreen: React.FC = () => {
 
                                     {iaAnalysisResult.editeur && (
                                         <View style={styles.analysisItem}>
-                                            <Text style={styles.analysisLabel}>{t('livreScolaireForm.editeur')}</Text>
+                                            <Text style={styles.analysisLabel}>Éditeur :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.editeur}</Text>
                                         </View>
                                     )}
@@ -837,7 +848,7 @@ const LivreScolaireFormScreen: React.FC = () => {
 
                                     {iaAnalysisResult.matiere && (
                                         <View style={styles.analysisItem}>
-                                            <Text style={styles.analysisLabel}>{t('livreScolaireForm.matiere')}</Text>
+                                            <Text style={styles.analysisLabel}>Matière :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.matiere}</Text>
                                         </View>
                                     )}
@@ -858,14 +869,14 @@ const LivreScolaireFormScreen: React.FC = () => {
 
                                     {iaAnalysisResult.classe_souhaitee && (
                                         <View style={styles.analysisItem}>
-                                            <Text style={styles.analysisLabel}>{t('livreScolaireForm.classeSouhaitee')}</Text>
+                                            <Text style={styles.analysisLabel}>Classe souhaitée :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.classe_souhaitee}</Text>
                                         </View>
                                     )}
 
                                     {iaAnalysisResult.etat_livre && (
                                         <View style={styles.analysisItem}>
-                                            <Text style={styles.analysisLabel}>{t('livreScolaireForm.etat')}</Text>
+                                            <Text style={styles.analysisLabel}>État :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.etat_livre}</Text>
                                         </View>
                                     )}
@@ -879,7 +890,7 @@ const LivreScolaireFormScreen: React.FC = () => {
 
                                     {iaAnalysisResult.notes && (
                                         <View style={styles.analysisItem}>
-                                            <Text style={styles.analysisLabel}>{t('livreScolaireForm.notes')}</Text>
+                                            <Text style={styles.analysisLabel}>Notes :</Text>
                                             <Text style={styles.analysisValue}>{iaAnalysisResult.notes}</Text>
                                         </View>
                                     )}
@@ -890,7 +901,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                                         style={styles.modalButtonSecondary}
                                         onPress={() => setShowIAAnalysisModal(false)}
                                     >
-                                        <Text style={styles.modalButtonTextSecondary}>{t('livreScolaireFormScreen.fermer')}</Text>
+                                        <Text style={styles.modalButtonTextSecondary}>Fermer</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={styles.modalButtonPrimary}

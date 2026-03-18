@@ -1,4 +1,4 @@
-// 🖼️ Modal pour sélectionner des images/vidéos de la galerie produit et les envoyer dans le chat
+// \uD83D\uDDBC️ Modal pour sélectionner des images/vidéos de la galerie produit et les envoyer dans le chat
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -17,7 +17,6 @@ import {
 import { config } from '../config/environment';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_GAP = 3;
@@ -49,8 +48,7 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
     service,
     onSelectMedia
 }) => {
-        const { t } = useLanguageSafe();
-const [media, setMedia] = useState<any[]>([]);
+    const [media, setMedia] = useState<any[]>([]);
     const [selectedMedia, setSelectedMedia] = useState<Set<string>>(new Set());
     const [filter, setFilter] = useState<'all' | 'images' | 'videos' | 'products'>('all');
     const [loading, setLoading] = useState(false);
@@ -93,7 +91,7 @@ const [media, setMedia] = useState<any[]>([]);
                 type: 'image',
                 url: buildMediaUrl(service.data.banner.valeur),
                 category: 'branding',
-                description: t('productGalleryPicker.banniere')
+                description: 'Bannière'
             });
         }
 
@@ -118,7 +116,7 @@ const [media, setMedia] = useState<any[]>([]);
                                 category: 'products',
                                 description: m.product_index !== null && m.product_index !== undefined
                                     ? `Produit ${m.product_index + 1}`
-                                    : (m.type === 'video' ? t('productGalleryPickerModal.video') : 'Image'),
+                                    : (m.type === 'video' ? 'Vidéo' : 'Image'),
                                 source: 'media_table'
                             });
                         }
@@ -176,7 +174,7 @@ const [media, setMedia] = useState<any[]>([]);
                             type: 'video',
                             url: vidUrl,
                             category: 'products',
-                            description: t('productGalleryPickerModal.video', { productName: productName, vidIdx + 1: vidIdx + 1 }),
+                            description: `${productName} - Vidéo ${vidIdx + 1}`,
                             productName: productName,
                             productIndex: idx
                         });
@@ -221,7 +219,7 @@ const [media, setMedia] = useState<any[]>([]);
                                             type: 'video',
                                             url: buildMediaUrl(vid),
                                             category: 'products',
-                                            description: t('productGalleryPickerModal.video', { productName: productName, vidIdx + 1: vidIdx + 1 }),
+                                            description: `${productName} - Vidéo ${vidIdx + 1}`,
                                             productName: productName,
                                             productIndex: idx
                                         });
@@ -245,7 +243,7 @@ const [media, setMedia] = useState<any[]>([]);
                                 type: 'image',
                                 url: imgUrl,
                                 category: 'realisations',
-                                description: t('productGalleryPickerModal.realisation', { productName: productName, imgIdx + 1: imgIdx + 1 }),
+                                description: `${productName} - Réalisation ${imgIdx + 1}`,
                                 productName: productName,
                                 productIndex: idx
                             });
@@ -277,7 +275,7 @@ const [media, setMedia] = useState<any[]>([]);
         } else {
             // Limiter à 5 sélections max
             if (newSelection.size >= 5) {
-                Alert.alert('Limite atteinte', t('productGalleryPickerModal.vousNePouvezSelectionnerQue5'));
+                Alert.alert('Limite atteinte', 'Vous ne pouvez sélectionner que 5 médias maximum');
                 return;
             }
             newSelection.add(url);
@@ -340,7 +338,7 @@ const [media, setMedia] = useState<any[]>([]);
                 ) : (
                     <View style={styles.failedPlaceholder}>
                         <SafeIcon name={item.type === 'video' ? 'video-off' : 'image'} size={24} color="#9CA3AF" />
-                        <Text style={styles.failedText}>{t('productGalleryPicker.indisponible')}</Text>
+                        <Text style={styles.failedText}>Indisponible</Text>
                     </View>
                 )}
 
@@ -392,7 +390,7 @@ const [media, setMedia] = useState<any[]>([]);
                     <View style={styles.headerCenter}>
                         <Text style={styles.title}>Galerie du service</Text>
                         <Text style={styles.subtitle}>
-                            {selectedMedia.size > 0 ? t('productGalleryPickerModal.selectionnes', { selectedMedia_size: selectedMedia.size }) : t('productGalleryPickerModal.media', { media_length: media.length, media_length___1____s____: media.length > 1 ? 's' : '' })}
+                            {selectedMedia.size > 0 ? `${selectedMedia.size} sélectionné(s)` : `${media.length} média${media.length > 1 ? 's' : ''}`}
                         </Text>
                     </View>
 
@@ -413,7 +411,7 @@ const [media, setMedia] = useState<any[]>([]);
                     {[
                         { key: 'all' as const, label: 'Tous', count: media.length, icon: 'grid' },
                         { key: 'images' as const, label: 'Photos', count: imageCount, icon: 'image' },
-                        { key: 'videos' as const, label: t('productGalleryPicker.videos'), count: videoCount, icon: 'video' },
+                        { key: 'videos' as const, label: 'Vidéos', count: videoCount, icon: 'video' },
                         { key: 'products' as const, label: 'Produits', count: productCount, icon: 'package' },
                     ].map(f => (
                         <TouchableOpacity
@@ -438,7 +436,7 @@ const [media, setMedia] = useState<any[]>([]);
                 {loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>{t('productGalleryPicker.chargementDesMedias')}</Text>
+                        <Text style={styles.loadingText}>Chargement des médias...</Text>
                     </View>
                 ) : filteredMedia.length === 0 ? (
                     <View style={styles.emptyState}>
@@ -446,16 +444,16 @@ const [media, setMedia] = useState<any[]>([]);
                             <SafeIcon name={filter === 'videos' ? 'video-off' : 'image'} size={36} color="#9CA3AF" />
                         </View>
                         <Text style={styles.emptyTitle}>
-                            {media.length === 0 ? t('productGalleryPickerModal.aucunMedia') : `Aucun résultat`}
+                            {media.length === 0 ? 'Aucun média' : `Aucun résultat`}
                         </Text>
                         <Text style={styles.emptyText}>
                             {media.length === 0
-                                ? t('productGalleryPickerModal.aucunMediaTrouveDansCeService')
-                                : t('productGalleryPickerModal.aucunMediaDeType', { filter: filter })}
+                                ? 'Aucun média trouvé dans ce service'
+                                : `Aucun média de type "${filter}"`}
                         </Text>
                         {filter !== 'all' && (
                             <TouchableOpacity style={styles.emptyButton} onPress={() => setFilter('all')}>
-                                <Text style={styles.emptyButtonText}>{t('productGalleryPicker.voirTousLesMedias')}</Text>
+                                <Text style={styles.emptyButtonText}>Voir tous les médias</Text>
                             </TouchableOpacity>
                         )}
                     </View>

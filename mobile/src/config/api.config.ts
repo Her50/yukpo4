@@ -29,9 +29,9 @@ export const WS_BASE_URL = EXPO_WS_URL || `wss://yukpo-backend-376093909298.euro
 
 // Log pour vérifier la configuration chargée (seulement en développement)
 if (__DEV__) {
-    console.log('📡 [API Config] API_BASE_URL:', API_BASE_URL);
-    console.log('📡 [API Config] WS_BASE_URL:', WS_BASE_URL);
-    console.log('📡 [API Config] Environment:', EXPO_ENV);
+    console.log('\uD83D\uDCE1 [API Config] API_BASE_URL:', API_BASE_URL);
+    console.log('\uD83D\uDCE1 [API Config] WS_BASE_URL:', WS_BASE_URL);
+    console.log('\uD83D\uDCE1 [API Config] Environment:', EXPO_ENV);
 }
 
 // URLs API spécifiques

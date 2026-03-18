@@ -71,7 +71,7 @@ class SyncService {
                 };
             }
 
-            console.log(`[SyncService] 🚀 Début synchronisation de ${queue.length} éléments`);
+            console.log(`[SyncService] \uD83D\uDE80 Début synchronisation de ${queue.length} éléments`);
 
             let processed = 0;
             let failed = 0;

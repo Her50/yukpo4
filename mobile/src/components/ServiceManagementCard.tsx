@@ -43,11 +43,11 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
 
     // Extraire les données du service
     const getServiceFieldValue = (field: any) => {
-        if (!field) return t('serviceManagementCard.nonSpecifie');
+        if (!field) return 'Non spécifié';
         if (typeof field === 'string') return field;
         if (field.valeur) return field.valeur;
         if (field.value) return field.value;
-        return t('serviceManagementCard.nonSpecifie');
+        return 'Non spécifié';
     };
 
     const serviceTitle = getServiceFieldValue(service.data?.titre || service.data?.titre_service || service.nom);
@@ -76,7 +76,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
     };
 
     const getStatusIcon = (active: boolean) => {
-        return active ? '🟢' : '🔴';
+        return active ? '\uD83D\uDFE2' : '\uD83D\uDD34';
     };
 
     // Fonction pour activer/désactiver un service (avec gestion du coût comme le frontend)
@@ -94,15 +94,15 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                     if (currentBalance < activationCost) {
                         Alert.alert(
                             'Solde insuffisant',
-                            t('serviceManagementCard.soldeInsuffisantPourReactiverLeServicennsolde', { currentBalance: currentBalance, activationCost: activationCost })
+                            `Solde insuffisant pour réactiver le service.\n\nSolde actuel: ${currentBalance} FCFA\nCoût de réactivation: ${activationCost} FCFA`
                         );
                         return;
                     }
 
                     // Confirmer la réactivation avec coût
                     Alert.alert(
-                        t('serviceManagementCard.confirmerLaReactivation'),
-                        t('serviceManagementCard.cetteActionCouteraFcfannvotreSoldeActuel', { activationCost: activationCost, currentBalance: currentBalance, currentBalance - activationCost: currentBalance - activationCost }),
+                        'Confirmer la réactivation',
+                        `Cette action coûtera ${activationCost} FCFA.\n\nVotre solde actuel: ${currentBalance} FCFA\nNouveau solde: ${currentBalance - activationCost} FCFA`,
                         [
                             { text: t('common.cancel'), style: 'cancel' },
                             {
@@ -117,23 +117,23 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
 
                                         if (response.success) {
                                             Alert.alert(
-                                                t('serviceManagementCard.succes'),
-                                                t('serviceManagementCard.serviceReactiveAvecSuccesnnFcfaOnt', { activationCost: activationCost }),
+                                                'Succès',
+                                                `Service réactivé avec succès.\n\n${activationCost} FCFA ont été déduits de votre solde.`,
                                                 [{ text: 'OK', onPress: onServiceUpdated }]
                                             );
                                         } else {
-                                            Alert.alert('Erreur', t('serviceManagementCard.impossibleDeReactiverLeService'));
+                                            Alert.alert('Erreur', 'Impossible de réactiver le service');
                                         }
                                     } catch (error) {
                                         console.error('Erreur lors de la réactivation:', error);
-                                        Alert.alert('Erreur', t('serviceManagementCard.erreurLorsDeLaReactivationDu'));
+                                        Alert.alert('Erreur', 'Erreur lors de la réactivation du service');
                                     }
                                 }
                             }
                         ]
                     );
                 } else {
-                    Alert.alert('Erreur', t('serviceManagementCard.impossibleDeRecupererVotreSolde'));
+                    Alert.alert('Erreur', 'Impossible de récupérer votre solde');
                 }
             } else {
                 // Désactivation (gratuite)
@@ -141,12 +141,12 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
 
                 if (response.success) {
                     Alert.alert(
-                        t('serviceManagementCard.succes'),
-                        t('serviceManagementCard.serviceDesactiveAvecSucces'),
+                        'Succès',
+                        'Service désactivé avec succès',
                         [{ text: 'OK', onPress: onServiceUpdated }]
                     );
                 } else {
-                    Alert.alert('Erreur', t('serviceManagementCard.impossibleDeDesactiverLeService'));
+                    Alert.alert('Erreur', 'Impossible de désactiver le service');
                 }
             }
         } catch (error) {
@@ -159,7 +159,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
     const deleteService = () => {
         Alert.alert(
             'Confirmer la suppression',
-            t('serviceManagementCard.etesvousSurDeVouloirSupprimerDefinitivement', { serviceTitle: serviceTitle }),
+            `Êtes-vous sûr de vouloir supprimer définitivement le service "${serviceTitle}" ?\n\nCette action est irréversible.`,
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 {
@@ -170,7 +170,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                             const response = await servicesApi.deleteService(service.id);
 
                             if (response.success) {
-                                Alert.alert(t('serviceManagementCard.succes'), t('serviceManagementCard.serviceSupprimeAvecSucces'));
+                                Alert.alert('Succès', 'Service supprimé avec succès');
                                 onServiceDeleted?.();
                             } else {
                                 Alert.alert('Erreur', 'Impossible de supprimer le service');
@@ -195,10 +195,10 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
             const prix = service.prix || service.data?.prix?.valeur;
             const devise = service.devise || service.data?.devise?.valeur || 'XAF';
 
-            let shareText = `🛍️ ${serviceTitle}`;
+            let shareText = `\uD83D\uDECD️ ${serviceTitle}`;
             if (description) shareText += `\n\n${description}`;
-            if (prix) shareText += `\n💰 Prix: ${prix} ${devise}`;
-            shareText += `\n\n🔗 Voir sur Yukpo:\n${serviceUrl}`;
+            if (prix) shareText += `\n\uD83D\uDCB0 Prix: ${prix} ${devise}`;
+            shareText += `\n\n\uD83D\uDD17 Voir sur Yukpo:\n${serviceUrl}`;
 
             const result = await Share.share({
                 message: shareText,
@@ -255,15 +255,15 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
             const response = await (servicesApi as any).updateServicePromotion(service.id, promotionData);
 
             if (response.success) {
-                Alert.alert(t('serviceManagementCard.succes'), t('serviceManagementCard.promotionMiseAJourAvecSucces'));
+                Alert.alert('Succès', 'Promotion mise à jour avec succès');
                 setShowPromotionModal(false);
                 onServiceUpdated?.();
             } else {
-                Alert.alert('Erreur', t('serviceManagementCard.impossibleDeMettreAJourLa'));
+                Alert.alert('Erreur', 'Impossible de mettre à jour la promotion');
             }
         } catch (error) {
             console.error('Erreur lors de la mise à jour de la promotion:', error);
-            Alert.alert('Erreur', t('serviceManagementCard.erreurLorsDeLaMiseA'));
+            Alert.alert('Erreur', 'Erreur lors de la mise à jour de la promotion');
         }
     };
 
@@ -277,7 +277,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                         {getStatusText(isActive)}
                     </Text>
                 </View>
-                <Text style={styles.dateText}>🗓 Créé le {formatDate(service.created_at)}</Text>
+                <Text style={styles.dateText}>\uD83D\uDDD3 Créé le {formatDate(service.created_at)}</Text>
             </View>
 
             {/* Contenu principal */}
@@ -287,21 +287,21 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
 
                 {/* Informations du service */}
                 <View style={styles.infoContainer}>
-                    {servicePrice !== t('serviceManagementCard.nonSpecifie') && (
+                    {servicePrice !== 'Non spécifié' && (
                         <View style={styles.infoItem}>
-                            <Text style={styles.infoIcon}>💰</Text>
+                            <Text style={styles.infoIcon}>\uD83D\uDCB0</Text>
                             <Text style={styles.infoText}>{servicePrice} FCFA</Text>
                         </View>
                     )}
-                    {serviceCategory !== t('serviceManagementCard.nonSpecifie') && (
+                    {serviceCategory !== 'Non spécifié' && (
                         <View style={styles.infoItem}>
-                            <Text style={styles.infoIcon}>📂</Text>
+                            <Text style={styles.infoIcon}>\uD83D\uDCC2</Text>
                             <Text style={styles.infoText}>{serviceCategory}</Text>
                         </View>
                     )}
-                    {serviceLocation !== t('serviceManagementCard.nonSpecifie') && (
+                    {serviceLocation !== 'Non spécifié' && (
                         <View style={styles.infoItem}>
-                            <Text style={styles.infoIcon}>📍</Text>
+                            <Text style={styles.infoIcon}>\uD83D\uDCCD</Text>
                             <Text style={styles.infoText}>{serviceLocation}</Text>
                         </View>
                     )}
@@ -310,8 +310,8 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                 {/* Promotion active */}
                 {service.promotion?.active && (
                     <View style={styles.promotionBanner}>
-                        <Text style={styles.promotionIcon}>🎉</Text>
-                        <Text style={styles.promotionText}>{t('serviceManagementCard.promotionActive')}</Text>
+                        <Text style={styles.promotionIcon}>\uD83C\uDF89</Text>
+                        <Text style={styles.promotionText}>Promotion active</Text>
                     </View>
                 )}
             </View>
@@ -321,17 +321,17 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                 <View style={styles.actionsRow}>
                     <TouchableOpacity style={[styles.actionButton, styles.editButton]} onPress={editService}>
                         <Text style={styles.actionIcon}>✏️</Text>
-                        <Text style={styles.actionText}>{t('serviceManagementCard.modifier')}</Text>
+                        <Text style={styles.actionText}>Modifier</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={[styles.actionButton, styles.viewButton]} onPress={viewService}>
-                        <Text style={styles.actionIcon}>👁️</Text>
-                        <Text style={styles.actionText}>{t('serviceManagementCard.voir')}</Text>
+                        <Text style={styles.actionIcon}>\uD83D\uDC41️</Text>
+                        <Text style={styles.actionText}>Voir</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={[styles.actionButton, styles.shareButton]} onPress={shareService}>
-                        <Text style={styles.actionIcon}>📤</Text>
-                        <Text style={styles.actionText}>{t('serviceManagementCard.partager')}</Text>
+                        <Text style={styles.actionIcon}>\uD83D\uDCE4</Text>
+                        <Text style={styles.actionText}>Partager</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -343,7 +343,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                         ]}
                         onPress={handlePromotion}
                     >
-                        <Text style={styles.actionIcon}>🎉</Text>
+                        <Text style={styles.actionIcon}>\uD83C\uDF89</Text>
                         <Text style={styles.actionText}>Promotion</Text>
                     </TouchableOpacity>
 
@@ -355,12 +355,12 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                         onPress={toggleServiceStatus}
                     >
                         <Text style={styles.actionIcon}>{isActive ? '⏸️' : '▶️'}</Text>
-                        <Text style={styles.actionText}>{isActive ? t('serviceManagementCard.desactiver') : 'Activer'}</Text>
+                        <Text style={styles.actionText}>{isActive ? 'Désactiver' : 'Activer'}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={deleteService}>
-                        <Text style={styles.actionIcon}>🗑️</Text>
-                        <Text style={styles.actionText}>{t('serviceManagementCard.supprimer')}</Text>
+                        <Text style={styles.actionIcon}>\uD83D\uDDD1️</Text>
+                        <Text style={styles.actionText}>Supprimer</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -374,18 +374,18 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>{t('serviceManagementCard.gererLaPromotion')}</Text>
+                        <Text style={styles.modalTitle}>\uD83C\uDF89 Gérer la promotion</Text>
 
                         <TextInput
                             style={styles.modalInput}
-                            placeholder={t('serviceManagementCard.titreDeLaPromotion')}
+                            placeholder="Titre de la promotion"
                             value={promotionData.title}
                             onChangeText={(text) => setPromotionData(prev => ({ ...prev, title: text }))}
                         />
 
                         <TextInput
                             style={styles.modalInput}
-                            placeholder={t('serviceManagementCard.description')}
+                            placeholder="Description"
                             value={promotionData.description}
                             onChangeText={(text) => setPromotionData(prev => ({ ...prev, description: text }))}
                             multiline
@@ -400,7 +400,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
 
                         <TextInput
                             style={styles.modalInput}
-                            placeholder={t('serviceManagementCard.dureeJours')}
+                            placeholder="Durée (jours)"
                             value={promotionData.duration}
                             onChangeText={(text) => setPromotionData(prev => ({ ...prev, duration: text }))}
                             keyboardType="numeric"
@@ -411,14 +411,14 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                                 style={[styles.modalButton, styles.modalCancelButton]}
                                 onPress={() => setShowPromotionModal(false)}
                             >
-                                <Text style={styles.modalCancelText}>{t('serviceManagementCard.annuler')}</Text>
+                                <Text style={styles.modalCancelText}>Annuler</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
                                 style={[styles.modalButton, styles.modalSaveButton]}
                                 onPress={savePromotion}
                             >
-                                <Text style={styles.modalSaveText}>{t('serviceManagementCard.sauvegarder')}</Text>
+                                <Text style={styles.modalSaveText}>Sauvegarder</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

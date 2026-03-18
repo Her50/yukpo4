@@ -80,7 +80,14 @@ interface ProductCommentsSectionProps {
     displayLimit?: number; // ✅ FIX 2026-03-03: Limite d'affichage initiale des commentaires
 }
 
-// REACTION_OPTIONS moved inside component — see below
+const REACTION_OPTIONS = [
+    { type: 'like', label: 'J\'aime', emoji: '\uD83D\uDC4D' },
+    { type: 'love', label: 'J\'adore', emoji: '❤️' },
+    { type: 'insightful', label: 'Pertinent', emoji: '\uD83D\uDCA1' },
+    { type: 'support', label: 'Soutien', emoji: '\uD83E\uDD1D' },
+    { type: 'funny', label: 'Drôle', emoji: '\uD83D\uDE04' },
+    { type: 'angry', label: 'Pas d\'accord', emoji: '\uD83D\uDE20' },
+];
 
 const formatDate = (iso: string): string => {
     try {
@@ -204,18 +211,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
     const [comments, setComments] = useState<ProductComment[]>([]);
 
-    const { t } = useLanguageSafe();
-
-    const REACTION_OPTIONS = [
-        { type: 'like', label: t('productCommentsSection.jaime'), emoji: '👍' },
-        { type: 'love', label: t('productCommentsSection.jadore'), emoji: '❤️' },
-        { type: 'insightful', label: t('productCommentsSection.pertinent'), emoji: '💡' },
-        { type: 'support', label: t('productCommentsSection.soutien'), emoji: '🤝' },
-        { type: 'funny', label: t('productCommentsSection.drole'), emoji: '😄' },
-        { type: 'angry', label: t('productCommentsSection.pasAccord'), emoji: '😠' },
-    ];
-
-    const [stats, setStats] = useState<CommentStats>({
+    const { t } = useLanguageSafe();    const [stats, setStats] = useState<CommentStats>({
         total_comments: 0,
         rating_count: 0,
         average_rating: 0,
@@ -265,7 +261,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             }
         } catch (err) {
             console.error('[ProductCommentsSection] loadComments error', err);
-            setError(t('productCommentsSection.erreurLorsDuChargementDesCommentaires'));
+            setError('Erreur lors du chargement des commentaires');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -299,7 +295,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         try {
             const permission = await Audio.requestPermissionsAsync();
             if (permission.status !== 'granted') {
-                Alert.alert('Permission requise', t('productCommentsSection.permissionMicrophoneNecessaire'));
+                Alert.alert('Permission requise', 'Permission microphone nécessaire');
                 return;
             }
 
@@ -343,7 +339,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             }, 1000);
         } catch (error) {
             console.error('[ProductCommentsSection] Erreur enregistrement audio:', error);
-            Alert.alert('Erreur', t('productCommentsSection.impossibleDeDemarrerEnregistrement'));
+            Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement audio');
             setIsRecording(false);
         }
     }, []);
@@ -403,7 +399,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         setShowEmojiPicker(false);
     }, []);
 
-    const popularEmojis = ['😀', '😂', '❤️', '👍', '👎', '😊', '😍', '🤔', '😮', '😢', '😡', '🎉', '🔥', '💯', '✨', '🙏', '👏', '🎯', '💪', '🚀'];
+    const popularEmojis = ['\uD83D\uDE00', '\uD83D\uDE02', '❤️', '\uD83D\uDC4D', '\uD83D\uDC4E', '\uD83D\uDE0A', '\uD83D\uDE0D', '\uD83E\uDD14', '\uD83D\uDE2E', '\uD83D\uDE22', '\uD83D\uDE21', '\uD83C\uDF89', '\uD83D\uDD25', '\uD83D\uDCAF', '✨', '\uD83D\uDE4F', '\uD83D\uDC4F', '\uD83C\uDFAF', '\uD83D\uDCAA', '\uD83D\uDE80'];
 
     const resetComposer = useCallback(() => {
         setComposerContent('');
@@ -437,7 +433,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         const hasAudio = !!composerAudio;
 
         if (!trimmed && !hasAudio && !replyTarget && (composerRating === null || composerRating === undefined)) {
-            Alert.alert('Champ requis', t('productCommentsSection.veuillezSaisirUnCommentaireEnregistrerUn'));
+            Alert.alert('Champ requis', 'Veuillez saisir un commentaire, enregistrer un audio ou sélectionner une note');
             return;
         }
 
@@ -470,7 +466,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     parent_comment_id: replyTarget?.id,
                     product_index: productIndex ?? null,
                 };
-                console.log('[ProductCommentsSection] 📤 Envoi commentaire:', {
+                console.log('[ProductCommentsSection] \uD83D\uDCE4 Envoi commentaire:', {
                     serviceId,
                     productIndex,
                     contentLength: payload.content.length,
@@ -491,13 +487,13 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     });
                     let userMessage = 'Impossible de publier le commentaire';
                     if (status === 422) {
-                        userMessage = t('productCommentsSection.leFormatDuCommentaireEstInvalide');
+                        userMessage = 'Le format du commentaire est invalide. Vérifiez que vous avez saisi un texte ou une note.';
                     } else if (status === 401) {
-                        userMessage = t('productCommentsSection.vousDevezEtreConnectePourCommenter');
+                        userMessage = 'Vous devez être connecté pour commenter.';
                     } else if (status === 400) {
-                        userMessage = t('productCommentsSection.veuillezSaisirUnCommentaireOuSelectionner');
+                        userMessage = 'Veuillez saisir un commentaire ou sélectionner une note.';
                     } else if (status >= 500) {
-                        userMessage = t('productCommentsSection.erreurServeurReessayezDansQuelquesInstants');
+                        userMessage = 'Erreur serveur. Réessayez dans quelques instants.';
                     } else if (errorDetail && errorDetail !== 'Erreur inconnue') {
                         userMessage = errorDetail;
                     }
@@ -509,7 +505,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             }
         } catch (err: any) {
             console.error('[ProductCommentsSection] handleSubmitComment error:', err?.message || err);
-            Alert.alert('Erreur', t('productCommentsSection.uneErreurEstSurvenueLorsDe', { err__message_____Err: err?.message || 'Erreur inconnue' }));
+            Alert.alert('Erreur', `Une erreur est survenue lors de l'envoi du commentaire.\n\nDétail : ${err?.message || 'Erreur inconnue'}`);
         } finally {
             setSubmitting(false);
         }
@@ -536,7 +532,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
             Alert.alert(
                 'Supprimer le commentaire',
-                t('productCommentsSection.etesvousSurDeVouloirSupprimerCe'),
+                'Êtes-vous sûr de vouloir supprimer ce commentaire ?',
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
@@ -568,19 +564,19 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     const handleToggleReaction = useCallback(
         async (comment: ProductComment, reactionType: string) => {
             if (!user?.token) {
-                Alert.alert('Connexion requise', t('productCommentsSection.veuillezVousConnecterPourReagirA'));
+                Alert.alert('Connexion requise', 'Veuillez vous connecter pour réagir à un commentaire');
                 return;
             }
             try {
                 const response = await commentsApi.toggleCommentReaction(comment.id, reactionType);
                 if (!response.success) {
-                    Alert.alert('Erreur', response.error || t('productCommentsSection.impossibleEnregistrerReaction'));
+                    Alert.alert('Erreur', response.error || 'Impossible d\'enregistrer la réaction');
                 } else {
                     await loadComments();
                 }
             } catch (err) {
                 console.error('[ProductCommentsSection] handleToggleReaction error', err);
-                Alert.alert('Erreur', t('productCommentsSection.uneErreurEstSurvenueLorsDe'));
+                Alert.alert('Erreur', 'Une erreur est survenue lors de la réaction');
             }
         },
         [loadComments, user?.token],
@@ -648,12 +644,12 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
     const handleEdit = useCallback((comment: ProductComment) => {
         if (comment.is_deleted) {
-            Alert.alert('Impossible', t('productCommentsSection.vousNePouvezPasModifierUn'));
+            Alert.alert('Impossible', 'Vous ne pouvez pas modifier un commentaire supprimé');
             return;
         }
         setEditingTarget(comment);
         setReplyTarget(null);
-        setComposerContent(comment.content.replace(t('productCommentsSection.commentaireSupprime'), ''));
+        setComposerContent(comment.content.replace('[Commentaire supprimé]', ''));
         setComposerRating(comment.parent_comment_id ? null : (comment.rating ?? null));
         setSelectedMentions(
             comment.mention_users.map((mention) => ({
@@ -692,7 +688,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     >
                         <View style={styles.avatarBubble}>
                             <Text style={styles.avatarInitials}>
-                                {item.user_name ? item.user_name.charAt(0).toUpperCase() : '👤'}
+                                {item.user_name ? item.user_name.charAt(0).toUpperCase() : '\uD83D\uDC64'}
                             </Text>
                         </View>
                         <View style={styles.authorInfo}>
@@ -729,7 +725,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
                 <View style={styles.commentBody}>
                     {item.is_deleted ? (
-                        <Text style={styles.deletedText}>{t('productCommentsSection.ceCommentaireAEteSupprime')}</Text>
+                        <Text style={styles.deletedText}>Ce commentaire a été supprimé</Text>
                     ) : (
                         <Text style={styles.commentContent}>
                             {parseMentions(cleanCommentContent(item.content, item.user_name))}
@@ -776,7 +772,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             onPress={() => handleReply(item)}
                         >
                             <SafeIcon name="corner-up-right" size={16} color={modernColors.primary} />
-                            <Text style={styles.footerActionText}>{t('productCommentsSection.repondre')}</Text>
+                            <Text style={styles.footerActionText}>Répondre</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.footerAction}
@@ -816,7 +812,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         <Text style={styles.composerContextLabel}>
                             {editingTarget
                                 ? 'Modification du commentaire'
-                                : t('productCommentsSection.reponseA', { replyTarget?_user_name: replyTarget?.user_name })}
+                                : `Réponse à ${replyTarget?.user_name}`}
                         </Text>
                     </View>
                     <TouchableOpacity onPress={handleCancelComposer}>
@@ -871,7 +867,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         style={styles.stopRecordingButton}
                         onPress={stopAudioRecording}
                     >
-                        <Text style={styles.stopRecordingText}>{t('productCommentsSection.arreter')}</Text>
+                        <Text style={styles.stopRecordingText}>Arrêter</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.cancelRecordingButton}
@@ -889,8 +885,8 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     multiline
                     placeholder={
                         replyTarget
-                            ? t('productCommentsSection.tapezVotreReponse')
-                            : t('productCommentsSection.partagezVotreExperience')
+                            ? 'Tapez votre réponse...'
+                            : 'Partagez votre expérience...'
                     }
                     placeholderTextColor={modernColors.textSecondary}
                     style={styles.composerInput}
@@ -911,7 +907,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         style={styles.composerActionButton}
                         onPress={() => setShowEmojiPicker(!showEmojiPicker)}
                     >
-                        <Text style={styles.emojiButtonText}>😀</Text>
+                        <Text style={styles.emojiButtonText}>\uD83D\uDE00</Text>
                     </TouchableOpacity>
                     <View style={{ flex: 1 }} />
                     <TouchableOpacity
@@ -1026,7 +1022,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         !loading && (
                             <View style={styles.emptyState}>
                                 <SafeIcon name="message-circle" size={48} color={modernColors.textSecondary} />
-                                <Text style={styles.emptyTitle}>{t('productCommentsSection.aucunCommentairePourLinstant')}</Text>
+                                <Text style={styles.emptyTitle}>Aucun commentaire pour l'instant</Text>
                                 <Text style={styles.emptySubtitle}>
                                     Soyez le premier à partager votre expérience !
                                 </Text>
