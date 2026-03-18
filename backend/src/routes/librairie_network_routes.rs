@@ -21,11 +21,11 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         // QR codes partageables (public pour scan)
         .route(
-            "/api/librairie-network/qrcode/:qr_id/scan",
+            "/api/librairie-network/qrcode/{qr_id}/scan",
             post(crate::controllers::librairie_network_controller::scan_shareable_qrcode),
         )
         .route(
-            "/api/librairie-network/qrcode/:qr_id/status",
+            "/api/librairie-network/qrcode/{qr_id}/status",
             get(crate::controllers::librairie_network_controller::get_qrcode_status),
         )
         // Catalogue livres neufs (déjà dans bourse_livre_routes)
@@ -54,23 +54,23 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(crate::controllers::librairie_network_controller::create_commande_mixte),
         )
         .route(
-            "/api/librairie-network/commandes/:commande_id",
+            "/api/librairie-network/commandes/{commande_id}",
             patch(crate::controllers::librairie_network_controller::update_commande_mixte),
         )
         .route(
-            "/api/librairie-network/commandes/:commande_id/valider-budget",
+            "/api/librairie-network/commandes/{commande_id}/valider-budget",
             post(crate::controllers::librairie_network_controller::valider_budget_commande),
         )
         .route(
-            "/api/librairie-network/commandes/:commande_id/details",
+            "/api/librairie-network/commandes/{commande_id}/details",
             get(crate::controllers::librairie_network_controller::get_commande_details),
         )
         .route(
-            "/api/librairie-network/commandes/:commande_id/broadcast",
+            "/api/librairie-network/commandes/{commande_id}/broadcast",
             post(crate::controllers::librairie_network_controller::broadcast_commande_librairies),
         )
         .route(
-            "/api/librairie-network/commandes/:commande_id/finaliser",
+            "/api/librairie-network/commandes/{commande_id}/finaliser",
             post(crate::controllers::librairie_network_controller::finaliser_commande),
         )
         .route(
@@ -117,11 +117,11 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(crate::controllers::paiement_agrege_controller::creer_demande_paiement),
         )
         .route(
-            "/api/librairie-network/paiements/:transaction_id",
+            "/api/librairie-network/paiements/{transaction_id}",
             get(crate::controllers::paiement_agrege_controller::get_transaction_details),
         )
         .route(
-            "/api/librairie-network/paiements/user/:user_id",
+            "/api/librairie-network/paiements/user/{user_id}",
             get(crate::controllers::paiement_agrege_controller::get_user_transactions),
         )
         .route(
@@ -144,7 +144,7 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(crate::controllers::librairie_admin_controller::get_librairies_admin),
         )
         .route(
-            "/api/librairie-network/admin/librairies/:librairie_id",
+            "/api/librairie-network/admin/librairies/{librairie_id}",
             patch(crate::controllers::librairie_admin_controller::update_librairie_partner),
         )
         .route(

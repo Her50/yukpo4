@@ -480,7 +480,7 @@ pub fn phone_verification_routes(state: Arc<AppState>) -> Router<Arc<AppState>> 
         )
         // ✅ NOUVEAUX: Endpoints pour statut téléphone et partage intelligent
         .route(
-            "/api/users/:user_id/phone-status",
+            "/api/users/{user_id}/phone-status",
             axum::routing::get(crate::controllers::phone_verification_controller::get_phone_status)
                 .layer(middleware::from_fn(jwt_auth)),
         )

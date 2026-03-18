@@ -6,7 +6,6 @@
 import { BlurView } from 'expo-blur';
 import React from 'react';
 import { ActivityIndicator, Image, ImageProps, StyleSheet, View } from 'react-native';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // Essayer d'importer expo-image si disponible
 let ExpoImage: any = null;
@@ -47,7 +46,6 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     // ✅ CORRIGÉ 2026-02-27: Ne PAS ajouter ?format=webp aux URLs CDN complètes
     // (GCP Storage, S3, etc. ne supportent pas ces query params et retournent des erreurs)
     const optimizedUri = React.useMemo(() => {
-    const { t } = useLanguageSafe();
         if (!uri) return uri;
         // Si on a déjà échoué avec l'URI optimisée, utiliser l'originale
         if (useOriginalUri) return uri;

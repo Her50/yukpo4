@@ -28,7 +28,7 @@ pub fn paiement_agrege_routes(_state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(paiement_agrege_controller::creer_demande_paiement),
         )
         .route(
-            "/paiement/transaction/:transaction_id",
+            "/paiement/transaction/{transaction_id}",
             get(paiement_agrege_controller::get_transaction_details),
         )
         .route(

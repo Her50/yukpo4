@@ -403,7 +403,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
     const handleDeleteMessage = async (messageId: string) => {
         Alert.alert(
-            'Supprimer le message',
+            t('chatModalMobile.deleteMessage') || 'Supprimer le message',
             t('chatModalMobile.etesvousSurDeVouloirSupprimerCe'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
@@ -604,7 +604,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             }
         } catch (error) {
             console.error('Erreur sélection images:', error);
-            Alert.alert('Erreur', 'Impossible de charger les images');
+            Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.loadImagesError') || 'Impossible de charger les images');
         }
     };
 
@@ -629,7 +629,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
                 // Vérifier la taille du fichier (max 10MB)
                 if (file.size && file.size > 10 * 1024 * 1024) {
-                    Alert.alert('Fichier trop volumineux', 'La taille maximale est de 10MB');
+                    Alert.alert(t('chatModalMobile.fileTooLarge') || 'Fichier trop volumineux', t('chatModalMobile.maxFileSize') || 'La taille maximale est de 10MB');
                     return;
                 }
 
@@ -639,7 +639,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             }
         } catch (error) {
             console.error('Erreur sélection fichier:', error);
-            Alert.alert('Erreur', 'Impossible de charger le fichier');
+            Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.loadFileError') || 'Impossible de charger le fichier');
         }
     };
 
@@ -648,7 +648,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         try {
             const permission = await Audio.requestPermissionsAsync();
             if (permission.status !== 'granted') {
-                Alert.alert('Permission requise', t('chatModalMobile.permissionMicrophoneNecessaire'));
+                Alert.alert(t('chatModalMobile.permissionRequired') || 'Permission requise', t('chatModalMobile.permissionMicrophoneNecessaire'));
                 return;
             }
 
@@ -691,7 +691,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             setRecordingDuration(0);
         } catch (error) {
             console.error('Erreur enregistrement audio:', error);
-            Alert.alert('Erreur', t('chatModalMobile.impossibleDeDemarrerL'));
+            Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.impossibleDeDemarrerL'));
             setIsRecording(false);
         }
     };
@@ -749,7 +749,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             }
         } catch (error) {
             console.error('Erreur lecture audio:', error);
-            Alert.alert('Erreur', 'Impossible de lire l\'audio');
+            Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.playAudioError') || 'Impossible de lire l\'audio');
             setIsPlayingAudio(false);
         }
     };
@@ -768,7 +768,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     // Envoyer message avec médias
     const handleSendWithMedia = async () => {
         if (!newMessage.trim() && selectedImages.length === 0 && !selectedAudio && selectedDocuments.length === 0) {
-            Alert.alert('Message vide', t('chatModalMobile.ecrivezUnMessageOuAjoutezUn'));
+            Alert.alert(t('chatModalMobile.emptyMessage') || 'Message vide', t('chatModalMobile.ecrivezUnMessageOuAjoutezUn'));
             return;
         }
 
@@ -919,6 +919,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
                                         if (!whatsappNumber) {
                                             Alert.alert('WhatsApp', t('chatModalMobile.numeroWhatsappNonDisponible'));
+                                            // title 'WhatsApp' is a brand name, no translation needed
                                             return;
                                         }
 
@@ -1339,13 +1340,13 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 ]}
                                 onPress={async () => {
                                     if (!service?.id) {
-                                        Alert.alert('Erreur', 'Service non disponible');
+                                        Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.serviceUnavailable') || 'Service non disponible');
                                         return;
                                     }
 
                                     if (!deliveryEnabled) {
                                         Alert.alert(
-                                            'Livraison non disponible',
+                                            t('chatModalMobile.deliveryUnavailable') || 'Livraison non disponible',
                                             t('chatModalMobile.laLivraisonNestPasActiveePourCeService')
                                         );
                                         return;
@@ -1359,7 +1360,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             const products = response.data;
 
                                             if (products.length === 0) {
-                                                Alert.alert('Aucun produit', 'Ce service n\'a pas de produits disponibles pour la livraison');
+                                                Alert.alert(t('chatModalMobile.noProduct') || 'Aucun produit', t('chatModalMobile.noProductForDelivery') || 'Ce service n\'a pas de produits disponibles pour la livraison');
                                                 return;
                                             }
 
@@ -1388,11 +1389,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                 Alert.alert(t('chatModalMobile.selectionnerUnProduit'), t('chatModalMobile.choisissezLeProduitALivrer'), buttons);
                                             }
                                         } else {
-                                            Alert.alert('Erreur', 'Impossible de charger les produits');
+                                            Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.loadProductsError') || 'Impossible de charger les produits');
                                         }
                                     } catch (error) {
                                         console.error('[ChatModalMobile] Erreur chargement produits:', error);
-                                        Alert.alert('Erreur', 'Impossible de charger les produits');
+                                        Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.loadProductsError') || 'Impossible de charger les produits');
                                     }
                                 }}
                                 disabled={!deliveryEnabled}
@@ -1407,7 +1408,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     styles.deliveryButtonText,
                                     !deliveryEnabled ? styles.deliveryButtonTextDisabled : undefined
                                 ]}>
-                                    Commander
+                                    {t('chatModalMobile.orderDelivery') || 'Commander'}
                                 </Text>
                             </TouchableOpacity>
                         ) : null}
@@ -1426,7 +1427,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     style={styles.mediaButton}
                                     onPress={async () => {
                                         if (!service?.id) {
-                                            Alert.alert('Erreur', 'Service non disponible');
+                                            Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.serviceUnavailable') || 'Service non disponible');
                                             return;
                                         }
 
@@ -1460,7 +1461,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 // Charger les produits du service pour permettre la sélection
                                 try {
                                     if (!service?.id) {
-                                        Alert.alert('Erreur', 'Service non disponible');
+                                        Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.serviceUnavailable') || 'Service non disponible');
                                         return;
                                     }
 
@@ -1479,7 +1480,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         console.log('[ChatModalMobile] Produits trouvés:', products.length, 'serviceData keys:', Object.keys(serviceData || {}));
 
                                         if (products.length === 0) {
-                                            Alert.alert('Aucun produit', 'Ce service n\'a pas de produits disponibles');
+                                            Alert.alert(t('chatModalMobile.noProduct') || 'Aucun produit', t('chatModalMobile.noProductAvailable') || 'Ce service n\'a pas de produits disponibles');
                                             return;
                                         }
 
@@ -1514,7 +1515,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         console.log('[ChatModalMobile] Produits avec prix:', productsWithPrice.length, '/', products.length);
 
                                         if (productsWithPrice.length === 0) {
-                                            Alert.alert('Aucun prix', t('chatModalMobile.aDePrixDefiniPourLa'));
+                                            Alert.alert(t('chatModalMobile.noPrice') || 'Aucun prix', t('chatModalMobile.aDePrixDefiniPourLa'));
                                             return;
                                         }
 
@@ -1552,11 +1553,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             );
                                         }
                                     } else {
-                                        Alert.alert('Erreur', 'Impossible de charger les produits');
+                                        Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.loadProductsError') || 'Impossible de charger les produits');
                                     }
                                 } catch (error) {
                                     console.error('[ChatModalMobile] Erreur chargement produits:', error);
-                                    Alert.alert('Erreur', 'Impossible de charger les produits');
+                                    Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.loadProductsError') || 'Impossible de charger les produits');
                                 }
                             }}
                         >
@@ -1571,7 +1572,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 <View style={styles.replyHeader}>
                                     <SafeIcon name="corner-down-right" size={16} color={modernColors.primary} />
                                     <Text style={styles.replyLabel}>
-                                        Réponse à {replyingTo.sender_name || 'Message'}
+                                        {t('chatModalMobile.replyTo') || 'Réponse à'} {replyingTo.sender_name || 'Message'}
                                     </Text>
                                 </View>
                                 <Text style={styles.replyText} numberOfLines={2}>
@@ -1614,7 +1615,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             onSelectionChange={(event) => {
                                 setCursorPosition(event.nativeEvent.selection.start);
                             }}
-                            placeholder={replyingTo ? t('chatModalMobile.tapezVotreReponse') : "Tapez votre message... (@ pour mentionner, \uD83E\uDD16 pour l'aide)"}
+                            placeholder={replyingTo ? t('chatModalMobile.tapezVotreReponse') : (t('chatModalMobile.typePlaceholder') || "Tapez votre message... (@ pour mentionner, \uD83E\uDD16 pour l'aide)")}
                             placeholderTextColor={modernColors.textSecondary}
                             multiline
                             maxLength={500}
@@ -1639,7 +1640,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 { backgroundColor: isConnected ? modernColors.success : modernColors.textSecondary }
                             ]} />
                             <Text style={styles.connectionText}>
-                                {isConnected ? t('chatModalMobile.connexionSecurisee') : 'Mode hors ligne'}
+                                {isConnected ? t('chatModalMobile.connexionSecurisee') : (t('chatModalMobile.offlineMode') || 'Mode hors ligne')}
                             </Text>
                         </View>
                     </View>
@@ -1734,7 +1735,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             >
                                 <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
                             </TouchableOpacity>
-                            <Text style={styles.commentsModalTitle}>Avis et commentaires</Text>
+                            <Text style={styles.commentsModalTitle}>{t('chatModalMobile.reviewsTitle') || 'Avis et commentaires'}</Text>
                             <View style={{ width: 40 }} />
                         </View>
                         <ProductCommentsSection
@@ -1829,7 +1830,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         <Text style={styles.addMemberPlusText}>+</Text>
                                     </View>
                                 </View>
-                                <Text style={styles.addParticipantText}>Inviter quelqu'un</Text>
+                                <Text style={styles.addParticipantText}>{t('chatModalMobile.inviteSomeone') || 'Inviter quelqu\'un'}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

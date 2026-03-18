@@ -17,10 +17,10 @@ import {
     View
 } from 'react-native';
 import { config } from '../config/environment';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, mediaApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const GRID_GAP = 3;
@@ -94,8 +94,8 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
     service,
     prestataireInfo
 }) => {
-        const { t } = useLanguageSafe();
-const [media, setMedia] = useState<MediaItem[]>([]);
+    const { t } = useLanguageSafe();
+    const [media, setMedia] = useState<MediaItem[]>([]);
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState<'all' | 'images' | 'videos'>('all');
@@ -390,7 +390,7 @@ const [media, setMedia] = useState<MediaItem[]>([]);
                             {filter === 'all' ? t('serviceMediaGallery.aucunMedia') : filter === 'images' ? 'Aucune photo' : t('serviceMediaGallery.aucuneVideo')}
                         </Text>
                         <Text style={styles.emptyText}>
-                            Ce prestataire nt('serviceMediaGallery.aPasEncoreAjouteDeFilter')all' ? t('serviceMediaGallery.media') : filter === 'images' ? 'photo' : t('serviceMediaGallery.video')}
+                            {t('serviceMediaGallery.aPasEncoreAjouteDeFilter', { type: filter === 'all' ? t('serviceMediaGallery.media') : filter === 'images' ? 'photo' : t('serviceMediaGallery.video') })}
                         </Text>
                         {filter !== 'all' && (
                             <TouchableOpacity style={styles.emptyButton} onPress={() => setFilter('all')}>

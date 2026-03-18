@@ -55,45 +55,10 @@ class NotificationSoundService {
             // pour tous les types de notifications, avec fallback en ligne
             let soundSource: any;
 
-            try {
-                // ✅ AMÉLIORATION: Utiliser des fichiers audio distincts pour chaque type
-                switch (type) {
-                    case 'order':
-                        soundSource = require('../../assets/sounds/order_notification.mp3');
-                        break;
-                    case 'delivery_request':
-                        soundSource = require('../../assets/sounds/delivery_request.mp3');
-                        break;
-                    case 'courier':
-                        soundSource = require('../../assets/sounds/courier_alert.mp3');
-                        break;
-                    case 'ready':
-                        soundSource = require('../../assets/sounds/ready_notification.mp3');
-                        break;
-                    default:
-                        soundSource = require('../../assets/sounds/delivery_alert.mp3');
-                        break;
-                }
-            } catch {
-                // Fallback en ligne si les fichiers locaux ne sont pas trouvés
-                switch (type) {
-                    case 'order':
-                        soundSource = { uri: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg' };
-                        break;
-                    case 'delivery_request':
-                        soundSource = { uri: 'https://actions.google.com/sounds/v1/notifications/ting.ogg' };
-                        break;
-                    case 'courier':
-                        soundSource = { uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' };
-                        break;
-                    case 'ready':
-                        soundSource = { uri: 'https://actions.google.com/sounds/v1/notifications/notification.ogg' };
-                        break;
-                    default:
-                        soundSource = { uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' };
-                        break;
-                }
-            }
+            // ✅ FIX CRASH 2026-03-18: Utiliser delivery_alert.mp3 (seul fichier existant) pour tous les types
+            // Les require() pour assets sont résolus STATIQUEMENT par Metro au build.
+            // Un require() vers un fichier inexistant crash l'app au runtime même dans un try/catch.
+            soundSource = require('../../assets/sounds/delivery_alert.mp3');
 
             // Créer le son
             const { sound } = await Audio.Sound.createAsync(
