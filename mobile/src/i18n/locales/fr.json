@@ -14669,6 +14669,20 @@
             "finance": "💰 Finance & Paiement",
             "financeDesc": "Wallet · Recharge · 14 paiements · Historique"
         },
+        "solo": {
+            "gps": "🗺️ Navigation Intelligente Yukpo",
+            "gpsDesc": "Guidage vocal · Radars · Alertes · POI · Santé · Marche · CO2 · Performances · Coach IA",
+            "books": "📚 Bourse du Livre Yukpo / Troc",
+            "booksDesc": "Troc intelligent · Achat/Vente · Chaînes DAG · Dons",
+            "bus": "🎫 Tickets de Bus Yukpo",
+            "busDesc": "Réservation · Sélection siège · QR boarding · Agences",
+            "carpooling": "🚗 Covoiturage Yukpo",
+            "carpoolingDesc": "Trajets partagés · Matching IA · Récurrent · QR ticket",
+            "hotel": "🏨 Hôtel / Meublé Yukpo",
+            "hotelDesc": "Réservation · Tarification IA · QR check-in · 360°",
+            "supermarket": "🛒 Supermarché Yukpo",
+            "supermarketDesc": "Magasins · Produits · Comparaison IA · Livraison"
+        },
         "homeAction": {
             "education": "🎓 Éducation",
             "educationDesc": "Orientation + livres",
@@ -14790,7 +14804,9 @@
             "detailCreative": "Comment créer un service ou une vidéo IA ?",
             "detailCareer": "Emploi IA, Orientation scolaire, Bourse du Livre ?",
             "detailRealestate": "Hôtels, Immobilier, Assurance — comment ça marche ?",
-            "detailDelivery": "Comment fonctionne la livraison de colis et courses ?"
+            "detailDelivery": "Comment fonctionne la livraison de colis et courses ?",
+            "detailGps": "Parle-moi de la Navigation GPS intelligente",
+            "detailBooks": "Comment fonctionne la Bourse du Livre et le Troc ?"
         },
         "screenDesc": {
             "home": "Page d'accueil — accédez à tous les services révolutionnaires de Yukpo.",

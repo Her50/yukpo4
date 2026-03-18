@@ -615,9 +615,14 @@ RESPONSE FORMAT (JSON):
     );
 
     if (matchedElement) {
+      // Filter UIElement.type to match VisualElement.type union
+      const validType = ['button', 'icon', 'input', 'card'].includes(matchedElement.type)
+        ? matchedElement.type as 'button' | 'icon' | 'input' | 'card'
+        : 'card'; // fallback to 'card' for unsupported types like 'tab', 'modal', 'fab'
+
       return {
         id: matchedElement.id,
-        type: matchedElement.type,
+        type: validType,
         label: matchedElement.label,
         icon: matchedElement.icon,
         description: aiElement.description || matchedElement.label,
@@ -774,21 +779,31 @@ Yukpo n'est pas une application comme les autres. C'est la **PREMIÈRE SUPER-APP
 Explorez l'avenir dès maintenant ! 👇`,
         type: 'text',
         suggestedActions: [
-          { id: 'pack-health', label: t('intelligentChat.pack.health') || '🏥 Santé & Bien-être', icon: 'heart', route: 'PharmacieHome', category: 'navigation', description: t('intelligentChat.pack.healthDesc') || 'Pharmacies · Hôpitaux · Labo · Don de sang · Triage IA' },
-          { id: 'pack-mobility', label: t('intelligentChat.pack.mobility') || '🚗 Mobilité & Transport', icon: 'car', route: 'TaxiHome', category: 'navigation', description: t('intelligentChat.pack.mobilityDesc') || 'Taxi IA · Covoiturage · Bus/Tickets · GPS Navigation' },
-          { id: 'pack-delivery', label: t('intelligentChat.pack.delivery') || '📦 Livraison & Courses', icon: 'truck', route: 'DeliveryHome', category: 'navigation', description: t('intelligentChat.pack.deliveryDesc') || 'Colis · Courses · Suivi temps réel · Coursiers' },
-          { id: 'pack-commerce', label: t('intelligentChat.pack.commerce') || '� Commerce & Services', icon: 'shopping-cart', route: 'RechercheBesoin', category: 'search', description: t('intelligentChat.pack.commerceDesc') || 'E-commerce · BayamSelam · Supermarché · Restaurant' },
-          { id: 'pack-career', label: t('intelligentChat.pack.career') || '💼 Carrière & Éducation', icon: 'briefcase', route: 'OffresEmploiHome', category: 'navigation', description: t('intelligentChat.pack.careerDesc') || 'Emploi · CV IA · Orientation scolaire · Livres/Troc' },
-          { id: 'pack-realestate', label: t('intelligentChat.pack.realestate') || '🏨 Immobilier & Séjour', icon: 'building', route: 'HotelMeubleHome', category: 'navigation', description: t('intelligentChat.pack.realestateDesc') || 'Hôtels · Meublés · Immobilier · Assurance' },
-          { id: 'pack-creative', label: t('intelligentChat.pack.creative') || '🎬 Créativité & IA', icon: 'video', route: 'Home', category: 'creation', description: t('intelligentChat.pack.creativeDesc') || 'Vidéo IA · Création en 1 photo · Menu IA · Recettes' },
-          { id: 'pack-finance', label: t('intelligentChat.pack.finance') || '💰 Finance & Paiement', icon: 'wallet', route: 'WalletFinancial', category: 'navigation', description: t('intelligentChat.pack.financeDesc') || 'Wallet · Recharge · 14 paiements · Historique' },
+          // === 8 PACKS THÉMATIQUES ===
+          { id: 'pack-health', label: t('intelligentChat.pack.health') || '\uD83C\uDFE5 Sant\u00e9 & Bien-\u00eatre', icon: 'heart', route: 'PharmacieHome', category: 'navigation', description: t('intelligentChat.pack.healthDesc') || 'Pharmacies \u00b7 H\u00f4pitaux \u00b7 Labo \u00b7 Don de sang \u00b7 Triage IA' },
+          { id: 'pack-mobility', label: t('intelligentChat.pack.mobility') || '\uD83D\uDE97 Mobilit\u00e9 & Transport', icon: 'car', route: 'TaxiHome', category: 'navigation', description: t('intelligentChat.pack.mobilityDesc') || 'Taxi IA \u00b7 Covoiturage \u00b7 Bus/Tickets \u00b7 GPS Navigation' },
+          { id: 'pack-delivery', label: t('intelligentChat.pack.delivery') || '\uD83D\uDCE6 Livraison & Courses', icon: 'truck', route: 'DeliveryHome', category: 'navigation', description: t('intelligentChat.pack.deliveryDesc') || 'Colis \u00b7 Courses \u00b7 Suivi temps r\u00e9el \u00b7 Coursiers' },
+          { id: 'pack-commerce', label: t('intelligentChat.pack.commerce') || '\uD83D\uDED2 Commerce & Services', icon: 'shopping-cart', route: 'RechercheBesoin', category: 'search', description: t('intelligentChat.pack.commerceDesc') || 'E-commerce \u00b7 BayamSelam \u00b7 Supermarch\u00e9 \u00b7 Restaurant' },
+          { id: 'pack-career', label: t('intelligentChat.pack.career') || '\uD83D\uDCBC Carri\u00e8re & \u00c9ducation', icon: 'briefcase', route: 'OffresEmploiHome', category: 'navigation', description: t('intelligentChat.pack.careerDesc') || 'Emploi \u00b7 CV IA \u00b7 Orientation scolaire \u00b7 Livres/Troc' },
+          { id: 'pack-realestate', label: t('intelligentChat.pack.realestate') || '\uD83C\uDFE8 Immobilier & S\u00e9jour', icon: 'building', route: 'HotelMeubleHome', category: 'navigation', description: t('intelligentChat.pack.realestateDesc') || 'H\u00f4tels \u00b7 Meubl\u00e9s \u00b7 Immobilier \u00b7 Assurance' },
+          { id: 'pack-creative', label: t('intelligentChat.pack.creative') || '\uD83C\uDFAC Cr\u00e9ativit\u00e9 & IA', icon: 'video', route: 'Home', category: 'creation', description: t('intelligentChat.pack.creativeDesc') || 'Vid\u00e9o IA \u00b7 Cr\u00e9ation en 1 photo \u00b7 Menu IA \u00b7 Recettes' },
+          { id: 'pack-finance', label: t('intelligentChat.pack.finance') || '\uD83D\uDCB0 Finance & Paiement', icon: 'wallet', route: 'WalletFinancial', category: 'navigation', description: t('intelligentChat.pack.financeDesc') || 'Wallet \u00b7 Recharge \u00b7 14 paiements \u00b7 Historique' },
+          // === 6 MODULES ISOLÉS (accès direct) ===
+          { id: 'solo-gps', label: t('intelligentChat.solo.gps') || '\ud83d\uddfa\ufe0f Navigation Intelligente Yukpo', icon: 'map', route: 'Navigation', category: 'navigation', description: t('intelligentChat.solo.gpsDesc') || 'Guidage vocal \u00b7 Radars \u00b7 Alertes \u00b7 POI \u00b7 Sant\u00e9 \u00b7 Marche \u00b7 CO2 \u00b7 Performances \u00b7 Coach IA' },
+          { id: 'solo-books', label: t('intelligentChat.solo.books') || '\ud83d\udcda Bourse du Livre Yukpo / Troc', icon: 'book-open', route: 'BourseLivre', category: 'navigation', description: t('intelligentChat.solo.booksDesc') || 'Troc intelligent \u00b7 Achat/Vente \u00b7 Cha\u00eenes DAG \u00b7 Dons' },
+          { id: 'solo-bus', label: t('intelligentChat.solo.bus') || '\ud83c\udfab Tickets de Bus Yukpo', icon: 'bus', route: 'TicketVoyageHome', category: 'navigation', description: t('intelligentChat.solo.busDesc') || 'R\u00e9servation \u00b7 S\u00e9lection si\u00e8ge \u00b7 QR boarding \u00b7 Agences' },
+          { id: 'solo-carpooling', label: t('intelligentChat.solo.carpooling') || '\ud83d\ude97 Covoiturage Yukpo', icon: 'users', route: 'CovoiturageHome', category: 'navigation', description: t('intelligentChat.solo.carpoolingDesc') || 'Trajets partag\u00e9s \u00b7 Matching IA \u00b7 R\u00e9current \u00b7 QR ticket' },
+          { id: 'solo-hotel', label: t('intelligentChat.solo.hotel') || '\ud83c\udfe8 H\u00f4tel / Meubl\u00e9 Yukpo', icon: 'building', route: 'HotelMeubleHome', category: 'navigation', description: t('intelligentChat.solo.hotelDesc') || 'R\u00e9servation \u00b7 Tarification IA \u00b7 QR check-in \u00b7 360\u00b0' },
+          { id: 'solo-supermarket', label: t('intelligentChat.solo.supermarket') || '\ud83d\uded2 Supermarch\u00e9 Yukpo', icon: 'shopping-cart', route: 'SupermarketHome', category: 'navigation', description: t('intelligentChat.solo.supermarketDesc') || 'Magasins \u00b7 Produits \u00b7 Comparaison IA \u00b7 Livraison' },
         ],
         nextSteps: [
-          t('intelligentChat.followUp.detailHealth') || 'Détaille-moi le pack Santé (Pharmacie, Hôpital, Labo...)',
+          t('intelligentChat.followUp.detailHealth') || 'D\u00e9taille-moi le pack Sant\u00e9 (Pharmacie, H\u00f4pital, Labo...)',
           t('intelligentChat.followUp.detailMobility') || 'Comment fonctionne Taxi IA + Covoiturage + Bus ?',
-          t('intelligentChat.followUp.detailCommerce') || 'Qu\'est-ce que BayamSelam, Supermarché, Restaurant ?',
+          t('intelligentChat.followUp.detailGps') || 'Parle-moi de la Navigation GPS intelligente',
+          t('intelligentChat.followUp.detailBooks') || 'Comment fonctionne la Bourse du Livre et le Troc ?',
+          t('intelligentChat.followUp.detailCommerce') || 'Qu\'est-ce que BayamSelam, Supermarch\u00e9, Restaurant ?',
           t('intelligentChat.followUp.detailFinance') || 'Quels sont les 14 modes de paiement ?',
-          t('intelligentChat.followUp.detailCreative') || 'Comment créer un service ou une vidéo IA ?',
+          t('intelligentChat.followUp.detailCreative') || 'Comment cr\u00e9er un service ou une vid\u00e9o IA ?',
           t('intelligentChat.followUp.whyUnique') || 'Pourquoi Yukpo est unique au monde ?',
         ],
       };
@@ -821,19 +836,28 @@ Commencez votre expérience dès maintenant ! 👇`
         message: welcomeMessage,
         type: 'text',
         suggestedActions: isHomeScreen ? [
+          // === 8 PACKS THÉMATIQUES ===
           { id: 'pack-health', label: t('intelligentChat.pack.health') || '🏥 Santé & Bien-être', icon: 'heart', route: 'PharmacieHome', category: 'navigation', description: t('intelligentChat.pack.healthDesc') || 'Pharmacies · Hôpitaux · Labo · Don de sang · Triage IA' },
           { id: 'pack-mobility', label: t('intelligentChat.pack.mobility') || '🚗 Mobilité & Transport', icon: 'car', route: 'TaxiHome', category: 'navigation', description: t('intelligentChat.pack.mobilityDesc') || 'Taxi IA · Covoiturage · Bus/Tickets · GPS Navigation' },
           { id: 'pack-delivery', label: t('intelligentChat.pack.delivery') || '📦 Livraison & Courses', icon: 'truck', route: 'DeliveryHome', category: 'navigation', description: t('intelligentChat.pack.deliveryDesc') || 'Colis · Courses · Suivi temps réel · Coursiers' },
-          { id: 'pack-commerce', label: t('intelligentChat.pack.commerce') || '� Commerce & Services', icon: 'shopping-cart', route: 'RechercheBesoin', category: 'search', description: t('intelligentChat.pack.commerceDesc') || 'E-commerce · BayamSelam · Supermarché · Restaurant' },
+          { id: 'pack-commerce', label: t('intelligentChat.pack.commerce') || '🛒 Commerce & Services', icon: 'shopping-cart', route: 'RechercheBesoin', category: 'search', description: t('intelligentChat.pack.commerceDesc') || 'E-commerce · BayamSelam · Supermarché · Restaurant' },
           { id: 'pack-career', label: t('intelligentChat.pack.career') || '💼 Carrière & Éducation', icon: 'briefcase', route: 'OffresEmploiHome', category: 'navigation', description: t('intelligentChat.pack.careerDesc') || 'Emploi · CV IA · Orientation scolaire · Livres/Troc' },
           { id: 'pack-realestate', label: t('intelligentChat.pack.realestate') || '🏨 Immobilier & Séjour', icon: 'building', route: 'HotelMeubleHome', category: 'navigation', description: t('intelligentChat.pack.realestateDesc') || 'Hôtels · Meublés · Immobilier · Assurance' },
-          { id: 'pack-creative', label: t('intelligentChat.pack.creative') || '� Créativité & IA', icon: 'video', route: 'Home', category: 'creation', description: t('intelligentChat.pack.creativeDesc') || 'Vidéo IA · Création en 1 photo · Menu IA · Recettes' },
+          { id: 'pack-creative', label: t('intelligentChat.pack.creative') || '🎬 Créativité & IA', icon: 'video', route: 'Home', category: 'creation', description: t('intelligentChat.pack.creativeDesc') || 'Vidéo IA · Création en 1 photo · Menu IA · Recettes' },
           { id: 'pack-finance', label: t('intelligentChat.pack.finance') || '💰 Finance & Paiement', icon: 'wallet', route: 'WalletFinancial', category: 'navigation', description: t('intelligentChat.pack.financeDesc') || 'Wallet · Recharge · 14 paiements · Historique' },
+          // === 6 MODULES ISOLÉS (accès direct) ===
+          { id: 'solo-gps', label: t('intelligentChat.solo.gps') || '🗺️ Navigation Intelligente Yukpo', icon: 'map', route: 'Navigation', category: 'navigation', description: t('intelligentChat.solo.gpsDesc') || 'Guidage vocal · Radars · Alertes · POI · Santé · Marche · CO2 · Performances · Coach IA' },
+          { id: 'solo-books', label: t('intelligentChat.solo.books') || '📚 Bourse du Livre Yukpo / Troc', icon: 'book-open', route: 'BourseLivre', category: 'navigation', description: t('intelligentChat.solo.booksDesc') || 'Troc intelligent · Achat/Vente · Chaînes DAG · Dons' },
+          { id: 'solo-bus', label: t('intelligentChat.solo.bus') || '🎫 Tickets de Bus Yukpo', icon: 'bus', route: 'TicketVoyageHome', category: 'navigation', description: t('intelligentChat.solo.busDesc') || 'Réservation · Sélection siège · QR boarding · Agences' },
+          { id: 'solo-carpooling', label: t('intelligentChat.solo.carpooling') || '🚗 Covoiturage Yukpo', icon: 'users', route: 'CovoiturageHome', category: 'navigation', description: t('intelligentChat.solo.carpoolingDesc') || 'Trajets partagés · Matching IA · Récurrent · QR ticket' },
+          { id: 'solo-hotel', label: t('intelligentChat.solo.hotel') || '🏨 Hôtel / Meublé Yukpo', icon: 'building', route: 'HotelMeubleHome', category: 'navigation', description: t('intelligentChat.solo.hotelDesc') || 'Réservation · Tarification IA · QR check-in · 360°' },
+          { id: 'solo-supermarket', label: t('intelligentChat.solo.supermarket') || '🛒 Supermarché Yukpo', icon: 'shopping-cart', route: 'SupermarketHome', category: 'navigation', description: t('intelligentChat.solo.supermarketDesc') || 'Magasins · Produits · Comparaison IA · Livraison' },
         ] : topActions(4),
         nextSteps: [
           t('intelligentChat.followUp.whatIsYukpo') || 'Qu\'est-ce qui rend Yukpo unique ?',
+          t('intelligentChat.followUp.detailGps') || 'Parle-moi de la Navigation GPS intelligente',
+          t('intelligentChat.followUp.detailBooks') || 'Comment fonctionne la Bourse du Livre et le Troc ?',
           t('intelligentChat.followUp.detailHealth') || 'Détaille-moi le pack Santé',
-          t('intelligentChat.followUp.detailMobility') || 'Comment fonctionne Taxi IA + Covoiturage + Bus ?',
           t('intelligentChat.followUp.detailFinance') || 'Quels sont les 14 modes de paiement ?',
         ],
       };

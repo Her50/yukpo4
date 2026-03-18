@@ -14541,6 +14541,20 @@
             "finance": "💰 Finance & Payment",
             "financeDesc": "Wallet · Top Up · 14 payment methods · History"
         },
+        "solo": {
+            "gps": "🗺️ Yukpo Smart Navigation",
+            "gpsDesc": "Voice guidance · Speed cameras · Alerts · POI · Health · Walking · CO2 · Performance · AI Coach",
+            "books": "📚 Yukpo Book Exchange / Swap",
+            "booksDesc": "Smart swap · Buy/Sell · DAG chains · Donations",
+            "bus": "🎫 Yukpo Bus Tickets",
+            "busDesc": "Booking · Seat selection · QR boarding · Agencies",
+            "carpooling": "🚗 Yukpo Carpooling",
+            "carpoolingDesc": "Shared rides · AI matching · Recurring · QR ticket",
+            "hotel": "🏨 Yukpo Hotel / Furnished",
+            "hotelDesc": "Booking · AI pricing · QR check-in · 360°",
+            "supermarket": "🛒 Yukpo Supermarket",
+            "supermarketDesc": "Stores · Products · AI comparison · Delivery"
+        },
         "homeAction": {
             "education": "🎓 Education",
             "educationDesc": "Guidance + books",
@@ -14662,7 +14676,9 @@
             "detailCreative": "How to create a service or AI video?",
             "detailCareer": "AI Jobs, School Guidance, Book Exchange?",
             "detailRealestate": "Hotels, Real Estate, Insurance — how does it work?",
-            "detailDelivery": "How does parcel and shopping delivery work?"
+            "detailDelivery": "How does parcel and shopping delivery work?",
+            "detailGps": "Tell me about smart GPS Navigation",
+            "detailBooks": "How does the Book Exchange and Swap work?"
         }
     },
     "chatbot": {
