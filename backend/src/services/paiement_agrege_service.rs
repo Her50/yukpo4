@@ -405,7 +405,7 @@ impl PaiementAgregeService {
         .map_err(|e| AppError::Internal(format!("Erreur update transaction: {}", e)))?;
 
         // Distribuer les fonds aux bénéficiaires
-        self.distribuer_fonds(&mut *tx, transaction.id).await?;
+        self.distribuer_fonds(&mut tx, transaction.id).await?;
 
         tx.commit()
             .await

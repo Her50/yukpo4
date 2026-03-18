@@ -11,22 +11,25 @@ pub async fn create_alert(
     client_id: i32,
     alert_type: &str,
 ) -> Result<Alert, sqlx::Error> {
-    let rec = sqlx::query_as!(Alert,
+    let rec = sqlx::query_as::<_, Alert>(
         r#"INSERT INTO alerts (user_id, service_id, client_id, alert_type, is_read, created_at)
            VALUES ($1, $2, $3, $4, FALSE, DEFAULT)
-           RETURNING id, user_id, service_id, client_id, alert_type, is_read, created_at as "created_at: chrono::NaiveDateTime""#,
-        user_id, service_id, client_id, alert_type
+           RETURNING id, user_id, service_id, client_id, alert_type, is_read, created_at"#,
     )
+    .bind(user_id)
+    .bind(service_id)
+    .bind(client_id)
+    .bind(alert_type)
     .fetch_one(pool)
     .await?;
     Ok(rec)
 }
 
 pub async fn get_alerts(pool: &PgPool, user_id: i32) -> Result<Vec<Alert>, sqlx::Error> {
-    let recs = sqlx::query_as!(Alert,
-        r#"SELECT id, user_id, service_id, client_id, alert_type, is_read, created_at as "created_at: chrono::NaiveDateTime" FROM alerts WHERE user_id = $1 ORDER BY created_at DESC"#,
-        user_id
+    let recs = sqlx::query_as::<_, Alert>(
+        r#"SELECT id, user_id, service_id, client_id, alert_type, is_read, created_at FROM alerts WHERE user_id = $1 ORDER BY created_at DESC"#,
     )
+    .bind(user_id)
     .fetch_all(pool)
     .await?;
     Ok(recs)

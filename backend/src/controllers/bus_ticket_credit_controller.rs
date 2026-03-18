@@ -531,7 +531,7 @@ pub async fn get_wallet_transactions(
     let limit = payload.limit.unwrap_or(50).min(100); // Max 100
     let offset = payload.offset.unwrap_or(0);
 
-    let rows = sqlx::query!(
+    let rows = sqlx::query(
         r#"
         SELECT 
             id,
@@ -552,9 +552,9 @@ pub async fn get_wallet_transactions(
     .bind(user_id)
     .bind(limit)
     .bind(offset)
-    .bind(payload.transaction_type)
-    .bind(payload.date_from)
-    .bind(payload.date_to)
+    .bind(&payload.transaction_type)
+    .bind(&payload.date_from)
+    .bind(&payload.date_to)
     .fetch_all(&state.pg)
     .await
     .map_err(|e| {
@@ -564,25 +564,26 @@ pub async fn get_wallet_transactions(
 
     let mut transactions = Vec::new();
 
-    for row in rows {
+    for row in &rows {
+        use sqlx::Row;
         transactions.push(json!({
-            "id": row.id,
-            "transaction_type": row.transaction_type,
-            "amount": row.amount,
-            "currency": row.currency,
-            "reference_type": row.reference_type,
-            "reference_id": row.reference_id,
-            "description": row.description,
-            "balance_before": row.balance_before,
-            "balance_after": row.balance_after,
-            "metadata": row.metadata,
-            "created_at": row.created_at,
-            "processed_at": row.processed_at
+            "id": row.try_get::<Uuid, _>("id").ok(),
+            "transaction_type": row.try_get::<Option<String>, _>("transaction_type").unwrap_or(None),
+            "amount": row.try_get::<Option<f64>, _>("amount").unwrap_or(None),
+            "currency": row.try_get::<Option<String>, _>("currency").unwrap_or(None),
+            "reference_type": row.try_get::<Option<String>, _>("reference_type").unwrap_or(None),
+            "reference_id": row.try_get::<Option<Uuid>, _>("reference_id").unwrap_or(None),
+            "description": row.try_get::<Option<String>, _>("description").unwrap_or(None),
+            "balance_before": row.try_get::<Option<f64>, _>("balance_before").unwrap_or(None),
+            "balance_after": row.try_get::<Option<f64>, _>("balance_after").unwrap_or(None),
+            "metadata": row.try_get::<Option<serde_json::Value>, _>("metadata").unwrap_or(None),
+            "created_at": row.try_get::<Option<chrono::NaiveDateTime>, _>("created_at").unwrap_or(None),
+            "processed_at": row.try_get::<Option<chrono::NaiveDateTime>, _>("processed_at").unwrap_or(None)
         }));
     }
 
     // Récupérer les statistiques résumées
-    let summary_rows = sqlx::query!(
+    let summary_rows = sqlx::query(
         r#"
         SELECT 
             transaction_type,
@@ -605,13 +606,14 @@ pub async fn get_wallet_transactions(
     })?;
 
     let mut summary = Vec::new();
-    for row in summary_rows {
+    for row in &summary_rows {
+        use sqlx::Row;
         summary.push(json!({
-            "transaction_type": row.transaction_type,
-            "transaction_count": row.transaction_count,
-            "total_credits": row.total_credits,
-            "total_debits": row.total_debits,
-            "net_amount": row.net_amount
+            "transaction_type": row.try_get::<Option<String>, _>("transaction_type").unwrap_or(None),
+            "transaction_count": row.try_get::<Option<i64>, _>("transaction_count").unwrap_or(None),
+            "total_credits": row.try_get::<Option<f64>, _>("total_credits").unwrap_or(None),
+            "total_debits": row.try_get::<Option<f64>, _>("total_debits").unwrap_or(None),
+            "net_amount": row.try_get::<Option<f64>, _>("net_amount").unwrap_or(None)
         }));
     }
 

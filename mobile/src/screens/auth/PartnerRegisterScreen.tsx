@@ -379,7 +379,7 @@ const PartnerRegisterScreen: React.FC = () => {
             )}
 
             <TextInput
-              label={t('partnerRegister.nomDeL')}établissement *"
+              label={`${t('partnerRegister.nomDeLEtablissement')} *`}
               value={form.partner_name}
               onChangeText={(text) => setForm({ ...form, partner_name: text })}
               disabled={loading}
@@ -388,7 +388,7 @@ const PartnerRegisterScreen: React.FC = () => {
             />
 
             <TextInput
-              label={t('partnerRegister.telephoneDeL')}établissement"
+              label={t('partnerRegister.telephoneDeLEtablissement')}
               value={form.partner_phone}
               onChangeText={(text) => setForm({ ...form, partner_phone: text })}
               keyboardType="phone-pad"
@@ -601,18 +601,18 @@ const PartnerRegisterScreen: React.FC = () => {
                   label={t('partnerRegister.numeroDePermisDeConduire')}
                   value={form.driver_license_number}
                   onChangeText={(text) => setForm({ ...form, driver_license_number: text })}
-                  placeholder="Ex: AB123456789"
-                  disabled={loading}
-                  style={styles.input}
+                  placeholder="Ex:AB123456789"
+                disabled={loading}
+                style={styles.input}
                 />
 
                 <TextInput
-                  label={t('partnerRegisterScreen.dateD')}expiration du permis (YYYY-MM-DD) *"
-                  value={form.driver_license_expiry}
-                  onChangeText={(text) => setForm({ ...form, driver_license_expiry: text })}
-                  placeholder="Ex: 2025-12-31"
-                  disabled={loading}
-                  style={styles.input}
+                  label={t('partnerRegisterScreen.dateD')} expiration du permis (YYYY-MM-DD) *"
+                value={form.driver_license_expiry}
+                onChangeText={(text) => setForm({ ...form, driver_license_expiry: text })}
+                placeholder="Ex: 2025-12-31"
+                disabled={loading}
+                style={styles.input}
                 />
 
                 <Text style={styles.label}>{t('partnerRegister.photoDuPermisDeConduire')}</Text>
@@ -728,13 +728,13 @@ const PartnerRegisterScreen: React.FC = () => {
                 </View>
 
                 <TextInput
-                  label={t('partnerRegister.anneesD')}expérience"
-                  value={form.driver_experience_years}
-                  onChangeText={(text) => setForm({ ...form, driver_experience_years: text })}
-                  placeholder="Ex: 5"
-                  keyboardType="numeric"
-                  disabled={loading}
-                  style={styles.input}
+                  label={t('partnerRegister.anneesD')} expérience"
+                value={form.driver_experience_years}
+                onChangeText={(text) => setForm({ ...form, driver_experience_years: text })}
+                placeholder="Ex: 5"
+                keyboardType="numeric"
+                disabled={loading}
+                style={styles.input}
                 />
               </>
             )}
@@ -872,8 +872,8 @@ const PartnerRegisterScreen: React.FC = () => {
           }
         }}
         currentLocation={form.partner_gps}
-        title={t('partnerRegister.selectionnerL')}adresse de l'établissement"
-        allowZoneSelection={false}
+        title={t('partnerRegister.selectionnerL')} adresse de l'établissement"
+      allowZoneSelection={false}
       />
     </>
   );

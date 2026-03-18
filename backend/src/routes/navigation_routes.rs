@@ -4710,12 +4710,21 @@ async fn update_geo_regional_config(
 
 pub fn navigation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
-        .route("/api/navigation/geocode", get(geocode_address))
-        .route("/api/navigation/place-details", get(get_place_details))
-        .route("/api/navigation/routes", post(get_routes))
+        .route(
+            "/api/navigation/geocode",
+            get(geocode_address).layer(middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/navigation/place-details",
+            get(get_place_details).layer(middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/navigation/routes",
+            post(get_routes).layer(middleware::from_fn(jwt_auth)),
+        )
         .route(
             "/api/navigation/points-of-interest",
-            get(get_points_of_interest),
+            get(get_points_of_interest).layer(middleware::from_fn(jwt_auth)),
         )
         .route(
             "/api/navigation/trips",
@@ -4770,7 +4779,7 @@ pub fn navigation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         .route(
             "/api/navigation/checkpoints/along-route",
-            get(get_checkpoints_along_route),
+            get(get_checkpoints_along_route).layer(middleware::from_fn(jwt_auth)),
         )
         // ✅ NOUVEAU: Analyse IA contextuelle des checkpoints
         .route(
@@ -4797,7 +4806,7 @@ pub fn navigation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ✅ NOUVEAU 2026-03-14: Commentaires sur les checkpoints/alertes
         .route(
             "/api/navigation/checkpoints/{id}/comments",
-            get(get_checkpoint_comments),
+            get(get_checkpoint_comments).layer(middleware::from_fn(jwt_auth)),
         )
         .route(
             "/api/navigation/checkpoints/{id}/comments",

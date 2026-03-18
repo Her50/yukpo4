@@ -1,2 +1,0 @@
-// Navigation optimisée avec imports différés par rôle
-export { default } from './AppNavigator.optimized';

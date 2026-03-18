@@ -17207,7 +17207,7 @@ pub async fn ensure_bourse_livre_advanced_tables(pool: &PgPool) -> Result<(), sq
 
     // Lire le contenu de la migration SQL
     let migration_sql =
-        include_str!("../../migrations/00000131_create_bourse_livre_advanced_tables.sql");
+        include_str!("../../migrations/00001018_create_bourse_livre_advanced_tables.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -19066,7 +19066,7 @@ pub async fn run_individual_migrations(pool: &PgPool) -> Result<(), sqlx::Error>
             "00000036_create_hospital_advanced_tables.sql" => include_str!("../../migrations/00000036_create_hospital_advanced_tables.sql"),
             "00000037_create_lab_advanced_tables.sql" => include_str!("../../migrations/00000037_create_lab_advanced_tables.sql"),
             "00000038_create_offres_emploi_advanced_tables.sql" => include_str!("../../migrations/00000038_create_offres_emploi_advanced_tables.sql"),
-            "00000040_create_bourse_livre_advanced_tables.sql" => include_str!("../../migrations/00000131_create_bourse_livre_advanced_tables.sql"),
+            "00000040_create_bourse_livre_advanced_tables.sql" => include_str!("../../migrations/00001018_create_bourse_livre_advanced_tables.sql"),
             "00000041_create_bus_ratings_return_trips_and_additional_tables.sql" => include_str!("../../migrations/00000041_create_bus_ratings_return_trips_and_additional_tables.sql"),
             "00001040_create_navigation_trips_table.sql" => include_str!("../../migrations/00001040_create_navigation_trips_table.sql"),
             _ => {

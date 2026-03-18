@@ -183,11 +183,11 @@ impl MultilingueService {
         }
 
         // Rechercher en base
-        let traduction = sqlx::query_scalar!(
+        let traduction: Option<String> = sqlx::query_scalar(
             "SELECT traduction FROM traductions_systeme WHERE cle_traduction = $1 AND langue = $2",
-            cle,
-            langue
         )
+        .bind(cle)
+        .bind(langue)
         .fetch_optional(pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur traduction: {}", e)))?;
@@ -239,15 +239,15 @@ impl MultilingueService {
             )
             .await?;
 
-        let sujet = if let Ok(Some(sujet)) = sqlx::query_scalar!(
+        let sujet: Option<String> = if let Ok(Some(sujet)) = sqlx::query_scalar::<_, String>(
             "SELECT traduction FROM traductions_systeme WHERE cle_traduction = $1 AND langue = $2",
-            format!("{}.sujet", template.cle),
-            template.langue
         )
+        .bind(format!("{}.sujet", template.cle))
+        .bind(&template.langue)
         .fetch_optional(pg)
         .await
         {
-            sujet
+            Some(sujet)
         } else {
             None
         };
@@ -273,7 +273,7 @@ impl MultilingueService {
 
         for (langue, traductions) in traductions_defaut {
             for (cle, traduction) in traductions {
-                sqlx::query!(
+                sqlx::query(
                     r#"
                     INSERT INTO traductions_systeme (cle_traduction, langue, traduction, contexte)
                     VALUES ($1, $2, $3, $4)
@@ -281,11 +281,11 @@ impl MultilingueService {
                         traduction = EXCLUDED.traduction,
                         updated_at = NOW()
                     "#,
-                    cle,
-                    langue,
-                    traduction.texte,
-                    traduction.contexte
                 )
+                .bind(&cle)
+                .bind(&langue)
+                .bind(&traduction.texte)
+                .bind(&traduction.contexte)
                 .execute(pg)
                 .await
                 .map_err(|e| AppError::Internal(format!("Erreur insertion traduction: {}", e)))?;

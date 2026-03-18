@@ -177,8 +177,7 @@ impl DbOptimizer {
         }
 
         // Requ?te optimis?e avec jointures (sans service_reviews, maintenant g?r? par MongoDB)
-        let stats = sqlx::query_as!(
-            UserStats,
+        let stats = sqlx::query_as::<_, UserStats>(
             r#"
             SELECT 
                 u.id,
@@ -192,8 +191,8 @@ impl DbOptimizer {
             WHERE u.id = $1
             GROUP BY u.id, u.tokens_balance
             "#,
-            user_id
         )
+        .bind(user_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -292,8 +291,7 @@ impl DbOptimizer {
         }
 
         // Requ?te optimis?e avec index sur statut et created_at
-        let candidates = sqlx::query_as!(
-            MatchingCandidate,
+        let candidates = sqlx::query_as::<_, MatchingCandidate>(
             r#"
             SELECT id, user_id, offre, besoin, quantite_offerte, quantite_requise, 
                    gps_fixe_lat, gps_fixe_lon, don, created_at
@@ -304,9 +302,9 @@ impl DbOptimizer {
             ORDER BY created_at DESC 
             LIMIT $2
             "#,
-            echange_id,
-            limit
         )
+        .bind(echange_id)
+        .bind(limit)
         .fetch_all(&self.pool)
         .await?;
 

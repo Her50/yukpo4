@@ -65,8 +65,8 @@ pub async fn search_livres_scolaires(
         rayon_km: params.rayon_km,
         limit: params.limit,
         offset: params.offset,
-        mode_listing: None,
-        etat_classification: None,
+        mode_listing: params.mode_listing,
+        etat_classification: params.etat_classification,
     };
 
     let service = Service::new(Arc::new(state.pg.clone()));
@@ -89,6 +89,8 @@ pub struct SearchLivresQuery {
     pub rayon_km: Option<f64>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
+    pub mode_listing: Option<String>,
+    pub etat_classification: Option<String>,
 }
 
 /// GET /api/livres-scolaires/:id
@@ -281,7 +283,7 @@ pub async fn price_suggestions(
 }
 
 /// GET /api/bourse-livre/my-exchanges
-/// Mes échanges (JWT)
+/// Mes échanges (JWT) — unifié: trocs + achats directs
 pub async fn get_my_exchanges(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
@@ -292,11 +294,11 @@ pub async fn get_my_exchanges(
         user_id, params.statut
     );
 
-    let statut_filter = params.statut.as_deref();
-    let exchanges = if let Some(statut) = statut_filter {
-        sqlx::query_as::<_, crate::models::book_exchange::BookExchange>(
+    // Récupérer les trocs (table réelle: troc_livres_scolaires)
+    let trocs = if let Some(ref statut) = params.statut {
+        sqlx::query_as::<_, crate::models::troc_livre::TrocLivre>(
             r#"
-            SELECT * FROM book_exchanges
+            SELECT * FROM troc_livres_scolaires
             WHERE (initiateur_id = $1 OR participant_id = $1)
             AND statut = $2
             ORDER BY created_at DESC
@@ -308,9 +310,9 @@ pub async fn get_my_exchanges(
         .fetch_all(&state.pg)
         .await
     } else {
-        sqlx::query_as::<_, crate::models::book_exchange::BookExchange>(
+        sqlx::query_as::<_, crate::models::troc_livre::TrocLivre>(
             r#"
-            SELECT * FROM book_exchanges
+            SELECT * FROM troc_livres_scolaires
             WHERE (initiateur_id = $1 OR participant_id = $1)
             ORDER BY created_at DESC
             LIMIT 50
@@ -320,9 +322,44 @@ pub async fn get_my_exchanges(
         .fetch_all(&state.pg)
         .await
     }
-    .map_err(|e| AppError::Internal(format!("Erreur récupération échanges: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Erreur récupération trocs: {}", e)))?;
 
-    Ok(Json(json!({ "success": true, "exchanges": exchanges })))
+    // Récupérer les achats directs (table réelle: book_purchases)
+    let purchases = if let Some(ref statut) = params.statut {
+        sqlx::query_as::<_, crate::models::livre_scolaire::BookPurchase>(
+            r#"
+            SELECT * FROM book_purchases
+            WHERE (acheteur_id = $1 OR vendeur_id = $1)
+            AND statut = $2
+            ORDER BY created_at DESC
+            LIMIT 50
+            "#,
+        )
+        .bind(user_id)
+        .bind(statut)
+        .fetch_all(&state.pg)
+        .await
+    } else {
+        sqlx::query_as::<_, crate::models::livre_scolaire::BookPurchase>(
+            r#"
+            SELECT * FROM book_purchases
+            WHERE (acheteur_id = $1 OR vendeur_id = $1)
+            ORDER BY created_at DESC
+            LIMIT 50
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(&state.pg)
+        .await
+    }
+    .unwrap_or_default();
+
+    Ok(Json(json!({
+        "success": true,
+        "trocs": trocs,
+        "purchases": purchases,
+        "total": trocs.len() + purchases.len()
+    })))
 }
 
 #[derive(Debug, Deserialize)]
@@ -331,49 +368,92 @@ pub struct MyExchangesQuery {
 }
 
 /// GET /api/bourse-livre/analytics
-/// Analytics prestataire (JWT)
+/// Analytics prestataire (JWT) — calculé en temps réel depuis les tables existantes
 pub async fn get_analytics(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
-    Query(params): Query<AnalyticsQuery>,
+    Query(_params): Query<AnalyticsQuery>,
 ) -> AppResult<impl IntoResponse> {
-    info!(
-        "[get_analytics] User ID: {}, Livre ID: {:?}",
-        user_id, params.livre_id
-    );
+    info!("[get_analytics] User ID: {}", user_id);
 
-    let livre_id_filter = params.livre_id;
-    let analytics: Option<crate::models::book_exchange::BookAnalytics> =
-        if let Some(livre_id) = livre_id_filter {
-            sqlx::query_as::<_, crate::models::book_exchange::BookAnalytics>(
-                r#"
-            SELECT * FROM book_analytics
-            WHERE user_id = $1 AND livre_id = $2
-            ORDER BY periode_debut DESC
-            LIMIT 1
-            "#,
-            )
-            .bind(user_id)
-            .bind(livre_id)
-            .fetch_optional(&state.pg)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?
-        } else {
-            sqlx::query_as::<_, crate::models::book_exchange::BookAnalytics>(
-                r#"
-            SELECT * FROM book_analytics
-            WHERE user_id = $1
-            ORDER BY periode_debut DESC
-            LIMIT 1
-            "#,
-            )
-            .bind(user_id)
-            .fetch_optional(&state.pg)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?
-        };
+    // Nombre total de livres de l'utilisateur
+    let total_livres: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM livres_scolaires WHERE user_id = $1 AND is_active = true",
+    )
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
 
-    Ok(Json(json!({ "success": true, "analytics": analytics })))
+    // Nombre de livres disponibles
+    let livres_disponibles: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM livres_scolaires WHERE user_id = $1 AND is_active = true AND is_available = true",
+    )
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    // Nombre de trocs complétés
+    let trocs_completes: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM troc_livres_scolaires WHERE (initiateur_id = $1 OR participant_id = $1) AND statut = 'complete'",
+    )
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    // Nombre de trocs en attente
+    let trocs_en_attente: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM troc_livres_scolaires WHERE (initiateur_id = $1 OR participant_id = $1) AND statut = 'en_attente'",
+    )
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    // Achats (en tant qu'acheteur et vendeur)
+    let achats: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM book_purchases WHERE acheteur_id = $1")
+            .bind(user_id)
+            .fetch_one(&state.pg)
+            .await
+            .unwrap_or(0);
+
+    let ventes: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM book_purchases WHERE vendeur_id = $1 AND statut = 'livre'",
+    )
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    // Répartition par classe
+    let repartition_classes: Vec<(String, i64)> = sqlx::query_as(
+        "SELECT classe_actuelle, COUNT(*) FROM livres_scolaires WHERE user_id = $1 AND is_active = true GROUP BY classe_actuelle ORDER BY classe_actuelle",
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let classes_json: serde_json::Value = repartition_classes
+        .iter()
+        .map(|(classe, count)| json!({ "classe": classe, "count": count }))
+        .collect();
+
+    Ok(Json(json!({
+        "success": true,
+        "analytics": {
+            "total_livres": total_livres,
+            "livres_disponibles": livres_disponibles,
+            "trocs_completes": trocs_completes,
+            "trocs_en_attente": trocs_en_attente,
+            "achats": achats,
+            "ventes": ventes,
+            "repartition_classes": classes_json
+        }
+    })))
 }
 
 #[derive(Debug, Deserialize)]
@@ -533,12 +613,13 @@ RÉPONSE ATTENDUE (JSON strict) :
             let computed = crate::services::book_exchange_ai_service::compute_classe_superieure(
                 &classe_act_owned,
             );
-            if book_info
-                .get("classe_souhaitee")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .is_empty()
-                || book_info.get("classe_souhaitee").and_then(|v| v.as_str()) == Some("null")
+            // Toujours écraser avec la valeur calculée déterministe si:
+            // - classe_souhaitee est vide, "null", ou identique à classe_actuelle (boucle IA)
+            let current_souhaitee =
+                book_info.get("classe_souhaitee").and_then(|v| v.as_str()).unwrap_or("");
+            if current_souhaitee.is_empty()
+                || current_souhaitee == "null"
+                || current_souhaitee.to_lowercase() == classe_act_owned.to_lowercase()
             {
                 book_info["classe_souhaitee"] = json!(computed);
             }

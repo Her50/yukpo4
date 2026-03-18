@@ -239,28 +239,29 @@ pub async fn cleanup_temp_files(pool: &PgPool, older_than_hours: i32) -> AppResu
     }
 
     // Supprimer les fichiers en DB qui sont orphelins (pas de service_id)
-    let deleted_count = sqlx::query!(
+    let deleted_rows = sqlx::query(
         r#"
         DELETE FROM media
         WHERE service_id IS NULL
         AND uploaded_at < NOW() - ($1 || ' hours')::interval
         RETURNING id, path
         "#,
-        older_than_hours.to_string()
     )
+    .bind(older_than_hours.to_string())
     .fetch_all(pool)
     .await?;
 
     // Supprimer les fichiers physiques
     let mut deleted_files = 0;
-    for row in deleted_count {
-        if let Ok(path) = storage_root.join(&row.path).canonicalize() {
+    for row in &deleted_rows {
+        let row_path: String = row.try_get("path").unwrap_or_default();
+        if let Ok(path) = storage_root.join(&row_path).canonicalize() {
             if path.starts_with(&storage_root) {
                 // Sécurité: s'assurer qu'on supprime seulement dans uploads/
                 if let Err(e) = fs::remove_file(&path).await {
                     warn!(
                         "[upload_service] Impossible de supprimer {}: {}",
-                        row.path, e
+                        row_path, e
                     );
                 } else {
                     deleted_files += 1;

@@ -173,6 +173,9 @@ pub async fn finalize_upload_session(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur finalisation session: {}", e)))?;
 
+    // Invalider le cache après finalisation (livres rendus disponibles)
+    invalidate_bourse_livre_cache(&state).await;
+
     Ok(Json(
         json!({ "success": true, "message": "Session finalisée avec succès" }),
     ))
@@ -470,6 +473,9 @@ pub async fn analyze_recto_verso(
     .execute(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur MAJ session: {}", e)))?;
+
+    // Invalider le cache après ajout d'un livre
+    invalidate_bourse_livre_cache(&state).await;
 
     Ok((
         StatusCode::CREATED,
@@ -1281,6 +1287,36 @@ pub async fn admin_approve_donation(
         .execute(&state.pg)
         .await;
 
+    // Notifier le demandeur (don approuvé)
+    let _ = sqlx::query(
+        r#"INSERT INTO notifications (user_id, type, title, body, data, created_at)
+        VALUES ($1, 'donation_approved', 'Don approuvé !', 'Votre demande de don de livre a été approuvée. Le livre vous sera bientôt livré.', $2, NOW())"#,
+    )
+    .bind(updated.demandeur_id)
+    .bind(json!({"donation_id": updated.id, "livre_id": updated.livre_id, "i18n_key": "donation_approved"}).to_string())
+    .execute(&state.pg)
+    .await;
+
+    // Notifier le donneur (propriétaire du livre) que son livre a été attribué
+    let donneur_id: Option<i32> =
+        sqlx::query_scalar("SELECT user_id FROM livres_scolaires WHERE id = $1")
+            .bind(updated.livre_id)
+            .fetch_optional(&state.pg)
+            .await
+            .ok()
+            .flatten();
+
+    if let Some(donneur_id) = donneur_id {
+        let _ = sqlx::query(
+            r#"INSERT INTO notifications (user_id, type, title, body, data, created_at)
+            VALUES ($1, 'donation_attributed', 'Livre attribué', 'Votre livre en don a été attribué à un demandeur. Merci pour votre générosité !', $2, NOW())"#,
+        )
+        .bind(donneur_id)
+        .bind(json!({"donation_id": updated.id, "livre_id": updated.livre_id, "i18n_key": "donation_attributed"}).to_string())
+        .execute(&state.pg)
+        .await;
+    }
+
     Ok(Json(json!({
         "success": true,
         "message": "Don approuvé avec succès",
@@ -1315,6 +1351,16 @@ pub async fn admin_reject_donation(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur rejet don: {}", e)))?
     .ok_or_else(|| AppError::NotFound("Demande non trouvée ou déjà traitée".to_string()))?;
+
+    // Notifier le demandeur (don refusé)
+    let _ = sqlx::query(
+        r#"INSERT INTO notifications (user_id, type, title, body, data, created_at)
+        VALUES ($1, 'donation_rejected', 'Demande de don refusée', 'Votre demande de don de livre n''a pas été retenue. Vous pouvez consulter d''autres livres disponibles.', $2, NOW())"#,
+    )
+    .bind(updated.demandeur_id)
+    .bind(json!({"donation_id": updated.id, "livre_id": updated.livre_id, "i18n_key": "donation_rejected"}).to_string())
+    .execute(&state.pg)
+    .await;
 
     Ok(Json(json!({
         "success": true,
@@ -1948,6 +1994,9 @@ pub async fn create_book_purchase(
         );
     }
 
+    // Invalider le cache après achat (livre potentiellement indisponible)
+    invalidate_bourse_livre_cache(&state).await;
+
     Ok((
         StatusCode::CREATED,
         Json(json!({
@@ -2117,26 +2166,28 @@ pub async fn create_depot_only_package(
 
     let reference = generer_reference_paquet();
 
+    // Récupérer le vendeur_id (peut être NULL dans book_purchases)
+    let vendeur_id = purchase.vendeur_id.unwrap_or(user_id);
+
     let package = sqlx::query_as::<_, BookDeliveryPackage>(
         r#"
         INSERT INTO book_delivery_packages (
             reference, expediteur_id, destinataire_id,
-            livre_ids, gps_recuperation, gps_livraison,
-            adresse_livraison, statut, nombre_livres,
-            type_livraison, purchase_id, notes_coursier
+            livres, expediteur_gps, destinataire_gps,
+            destinataire_adresse, statut, nombre_livres,
+            expediteur_instructions
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, 'a_constituer', 1, 'depot_seulement', $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 'a_constituer', 1, $8)
         RETURNING *
         "#,
     )
     .bind(&reference)
-    .bind(purchase.vendeur_id) // L'expéditeur est le vendeur
+    .bind(vendeur_id) // L'expéditeur est le vendeur
     .bind(purchase.acheteur_id) // Le destinataire est l'acheteur
-    .bind(serde_json::json!([purchase.livre_id]))
+    .bind(json!([{"livre_id": purchase.livre_id, "titre": "Livre acheté", "valeur": 0, "mode": "vente"}]))
     .bind(&payload.gps_depot)
     .bind(&purchase.gps_livraison)
     .bind(&payload.adresse_depot)
-    .bind(payload.purchase_id)
     .bind(&payload.notes_coursier)
     .fetch_one(&state.pg)
     .await
@@ -2444,37 +2495,52 @@ pub async fn browse_books_by_class(
     .await
     .unwrap_or_default();
 
-    // Formater les résultats avec images
-    let livres: Vec<serde_json::Value> = rows
-        .iter()
-        .map(|row| {
-            use sqlx::Row;
-            json!({
-                "id": row.get::<i32, _>("id"),
-                "titre": row.get::<String, _>("titre"),
-                "auteur": row.try_get::<String, _>("auteur").ok(),
-                "editeur": row.try_get::<String, _>("editeur").ok(),
-                "isbn": row.try_get::<String, _>("isbn").ok(),
-                "classe_actuelle": row.get::<String, _>("classe_actuelle"),
-                "classe_souhaitee": row.get::<String, _>("classe_souhaitee"),
-                "matiere": row.get::<String, _>("matiere"),
-                "niveau": row.try_get::<String, _>("niveau").ok(),
-                "etat_livre": row.get::<String, _>("etat_livre"),
-                "etat_classification": row.try_get::<String, _>("etat_classification").ok(),
-                "description_etat": row.try_get::<String, _>("description_etat").ok(),
-                "image_recto": row.try_get::<String, _>("image_recto").ok(),
-                "image_verso": row.try_get::<String, _>("image_verso").ok(),
-                "mode_listing": row.try_get::<String, _>("mode_listing").ok(),
-                "valeur_calculee": row.try_get::<rust_decimal::Decimal, _>("valeur_calculee").ok(),
-                "prix_detecte": row.try_get::<rust_decimal::Decimal, _>("prix_detecte").ok(),
-                "devise": row.try_get::<String, _>("devise_detectee").ok().unwrap_or_else(|| "XAF".to_string()),
-                "est_au_programme": row.try_get::<bool, _>("est_au_programme").ok(),
-                "programme_scolaire_id": row.try_get::<i32, _>("programme_scolaire_id").ok(),
-                "ville": row.try_get::<String, _>("ville").ok(),
-                "user_id": row.get::<i32, _>("user_id"),
-            })
-        })
-        .collect();
+    // Formater les résultats avec images (presigned URLs si nécessaire)
+    let mut livres: Vec<serde_json::Value> = Vec::with_capacity(rows.len());
+    for row in &rows {
+        use sqlx::Row;
+        let image_recto_raw: Option<String> = row.try_get::<String, _>("image_recto").ok();
+        let image_verso_raw: Option<String> = row.try_get::<String, _>("image_verso").ok();
+
+        // Générer des presigned URLs pour les images GCS (chemins relatifs)
+        let image_recto_url = match &image_recto_raw {
+            Some(path) if !path.is_empty() && !path.starts_with("http") => {
+                state.media_storage.generate_presigned_url(path, 86400).await.ok()
+            }
+            other => other.clone(),
+        };
+        let image_verso_url = match &image_verso_raw {
+            Some(path) if !path.is_empty() && !path.starts_with("http") => {
+                state.media_storage.generate_presigned_url(path, 86400).await.ok()
+            }
+            other => other.clone(),
+        };
+
+        livres.push(json!({
+            "id": row.get::<i32, _>("id"),
+            "titre": row.get::<String, _>("titre"),
+            "auteur": row.try_get::<String, _>("auteur").ok(),
+            "editeur": row.try_get::<String, _>("editeur").ok(),
+            "isbn": row.try_get::<String, _>("isbn").ok(),
+            "classe_actuelle": row.get::<String, _>("classe_actuelle"),
+            "classe_souhaitee": row.get::<String, _>("classe_souhaitee"),
+            "matiere": row.get::<String, _>("matiere"),
+            "niveau": row.try_get::<String, _>("niveau").ok(),
+            "etat_livre": row.get::<String, _>("etat_livre"),
+            "etat_classification": row.try_get::<String, _>("etat_classification").ok(),
+            "description_etat": row.try_get::<String, _>("description_etat").ok(),
+            "image_recto": image_recto_url,
+            "image_verso": image_verso_url,
+            "mode_listing": row.try_get::<String, _>("mode_listing").ok(),
+            "valeur_calculee": row.try_get::<rust_decimal::Decimal, _>("valeur_calculee").ok(),
+            "prix_detecte": row.try_get::<rust_decimal::Decimal, _>("prix_detecte").ok(),
+            "devise": row.try_get::<String, _>("devise_detectee").ok().unwrap_or_else(|| "XAF".to_string()),
+            "est_au_programme": row.try_get::<bool, _>("est_au_programme").ok(),
+            "programme_scolaire_id": row.try_get::<i32, _>("programme_scolaire_id").ok(),
+            "ville": row.try_get::<String, _>("ville").ok(),
+            "user_id": row.get::<i32, _>("user_id"),
+        }));
+    }
 
     let response = json!({
         "success": true,
@@ -2715,6 +2781,10 @@ pub async fn dispatch_book_package(
     });
 
     // Insérer dans la table deliveries du système intelligent
+    // Essayer avec PostGIS d'abord, fallback sans geography si PostGIS n'est pas installé
+    let pickup_addr = package.expediteur_adresse.as_deref().unwrap_or("Expéditeur livres");
+    let dropoff_addr = package.destinataire_adresse.as_deref().unwrap_or("Destinataire livres");
+
     let delivery_insert = sqlx::query_scalar::<_, Uuid>(
         r#"
         INSERT INTO deliveries (
@@ -2734,16 +2804,46 @@ pub async fn dispatch_book_package(
     )
     .bind(delivery_uuid)
     .bind(user_id)
-    .bind(package.expediteur_adresse.as_deref().unwrap_or("Expéditeur livres"))
+    .bind(pickup_addr)
     .bind(exp_lng)
     .bind(exp_lat)
-    .bind(package.destinataire_adresse.as_deref().unwrap_or("Destinataire livres"))
+    .bind(dropoff_addr)
     .bind(dest_lng)
     .bind(dest_lat)
     .bind(distance_m as i32)
     .bind(&metadata)
     .fetch_one(&state.pg)
     .await;
+
+    // Fallback sans PostGIS si l'extension n'est pas installée
+    let delivery_insert = match delivery_insert {
+        ok @ Ok(_) => ok,
+        Err(e) => {
+            warn!(
+                "[dispatch_book_package] PostGIS INSERT échoué ({}), tentative sans geography...",
+                e
+            );
+            sqlx::query_scalar::<_, Uuid>(
+                r#"
+                INSERT INTO deliveries (
+                    id, creator_id, status,
+                    pickup_address, dropoff_address,
+                    distance_meters, metadata, created_at, updated_at
+                )
+                VALUES ($1, $2, 'pending'::delivery_status, $3, $4, $5, $6, NOW(), NOW())
+                RETURNING id
+                "#,
+            )
+            .bind(delivery_uuid)
+            .bind(user_id)
+            .bind(pickup_addr)
+            .bind(dropoff_addr)
+            .bind(distance_m as i32)
+            .bind(&metadata)
+            .fetch_one(&state.pg)
+            .await
+        }
+    };
 
     match delivery_insert {
         Ok(did) => {
@@ -4134,4 +4234,138 @@ pub async fn validate_package_qr(
 #[derive(Debug, Deserialize)]
 pub struct ValidateQRRequest {
     pub qr_code: String,
+}
+
+// ============================================================================
+// WEBHOOK PAIEMENT ACHAT LIVRE (CinetPay / NotchPay callback)
+// ============================================================================
+
+/// POST /api/webhooks/book-purchase/:id
+/// Callback de paiement pour les achats directs de livres
+/// Route PUBLIQUE (pas de JWT — appelée par le prestataire de paiement)
+#[derive(Debug, Deserialize)]
+pub struct BookPurchaseWebhookPayload {
+    pub status: Option<String>, // "ACCEPTED", "REFUSED", etc.
+    pub transaction_id: Option<String>,
+    pub amount: Option<i64>,
+    pub currency: Option<String>,
+    pub payment_method: Option<String>,
+    // CinetPay-specific
+    pub cpm_trans_status: Option<String>,
+    pub cpm_trans_id: Option<String>,
+    // NotchPay-specific
+    pub reference: Option<String>,
+}
+
+pub async fn book_purchase_webhook(
+    State(state): State<Arc<AppState>>,
+    Path(purchase_id): Path<i32>,
+    Json(payload): Json<BookPurchaseWebhookPayload>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[book_purchase_webhook] Purchase: {}, Status: {:?}, TransID: {:?}",
+        purchase_id, payload.status, payload.transaction_id
+    );
+
+    // Déterminer si le paiement est accepté
+    let is_accepted = payload
+        .status
+        .as_deref()
+        .map(|s| s == "ACCEPTED" || s == "completed" || s == "successful")
+        .unwrap_or(false)
+        || payload
+            .cpm_trans_status
+            .as_deref()
+            .map(|s| s == "ACCEPTED" || s == "00")
+            .unwrap_or(false);
+
+    let ref_id = payload
+        .transaction_id
+        .or(payload.cpm_trans_id)
+        .or(payload.reference)
+        .unwrap_or_default();
+
+    if is_accepted {
+        // Mettre à jour le statut du paiement
+        let updated = sqlx::query_as::<_, crate::models::livre_scolaire::BookPurchase>(
+            r#"
+            UPDATE book_purchases
+            SET paiement_statut = 'paye',
+                paiement_reference = COALESCE($1, paiement_reference),
+                statut = 'confirme',
+                updated_at = NOW()
+            WHERE id = $2 AND paiement_statut IN ('en_attente_paiement', 'en_attente')
+            RETURNING *
+            "#,
+        )
+        .bind(&ref_id)
+        .bind(purchase_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur webhook MAJ: {}", e)))?;
+
+        if let Some(purchase) = updated {
+            info!(
+                "[book_purchase_webhook] ✅ Paiement confirmé pour achat #{}, montant: {:?} XAF",
+                purchase_id, purchase.montant_total
+            );
+
+            // Marquer le livre comme indisponible
+            let _ = sqlx::query("UPDATE livres_scolaires SET is_available = false WHERE id = $1")
+                .bind(purchase.livre_id)
+                .execute(&state.pg)
+                .await;
+
+            // Notifier le vendeur
+            if let Some(vendeur_id) = purchase.vendeur_id {
+                let _ = sqlx::query(
+                    r#"INSERT INTO notifications (user_id, type, title, body, data, created_at)
+                    VALUES ($1, 'book_sold', 'Livre vendu !', 'Votre livre a été acheté. Préparez-le pour la livraison.', $2, NOW())"#,
+                )
+                .bind(vendeur_id)
+                .bind(json!({"purchase_id": purchase_id, "livre_id": purchase.livre_id, "i18n_key": "book_sold"}).to_string())
+                .execute(&state.pg)
+                .await;
+            }
+
+            // Notifier l'acheteur
+            let _ = sqlx::query(
+                r#"INSERT INTO notifications (user_id, type, title, body, data, created_at)
+                VALUES ($1, 'book_payment_confirmed', 'Paiement confirmé', 'Votre paiement a été confirmé. Le livre sera bientôt expédié.', $2, NOW())"#,
+            )
+            .bind(purchase.acheteur_id)
+            .bind(json!({"purchase_id": purchase_id, "livre_id": purchase.livre_id, "i18n_key": "book_payment_confirmed"}).to_string())
+            .execute(&state.pg)
+            .await;
+        }
+    } else {
+        // Paiement échoué
+        let _ = sqlx::query(
+            "UPDATE book_purchases SET paiement_statut = 'echoue', paiement_reference = $1 WHERE id = $2",
+        )
+        .bind(&ref_id)
+        .bind(purchase_id)
+        .execute(&state.pg)
+        .await;
+
+        warn!(
+            "[book_purchase_webhook] ❌ Paiement échoué pour achat #{}: {:?}",
+            purchase_id, payload.status
+        );
+    }
+
+    Ok(Json(json!({ "success": true })))
+}
+
+// ============================================================================
+// HELPER: INVALIDATION CACHE BOURSE DU LIVRE
+// ============================================================================
+
+/// Invalider les caches Redis liés à la bourse du livre
+/// À appeler après toute modification de livres (création, update, suppression, achat, troc)
+pub async fn invalidate_bourse_livre_cache(state: &AppState) {
+    // Invalider le cache browse-by-class (pattern bourse_livre:browse:*)
+    let _ = state.cache_service.delete_pattern("bourse_livre:browse:*").await;
+    // Invalider le cache classes-programmes
+    let _ = state.cache_service.delete("bourse_livre:classes_programmes").await;
 }

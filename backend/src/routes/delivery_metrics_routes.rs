@@ -23,12 +23,12 @@ async fn delivery_metrics_handler(State(state): State<Arc<AppState>>) -> Respons
     let ws_metrics = get_delivery_ws_metrics_snapshot();
 
     // Profondeur de la file de matching (queued + searching).
-    let queue_depth: i64 = match sqlx::query_scalar!(
+    let queue_depth: i64 = match sqlx::query_scalar::<_, Option<i64>>(
         r#"
         SELECT COUNT(*)::bigint
         FROM delivery_matching_queue
         WHERE status IN ('queued', 'searching')
-        "#
+        "#,
     )
     .fetch_one(&state.pg)
     .await

@@ -110,13 +110,12 @@ pub async fn create_fournisseur_paiement(
     // TODO: Vérifier que c'est un admin
 
     // Vérifier que le code n'existe pas déjà
-    let existing = sqlx::query_scalar!(
-        "SELECT id FROM fournisseurs_paiement WHERE code = $1",
-        payload.code
-    )
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur vérification code: {}", e)))?;
+    let existing =
+        sqlx::query_scalar::<_, Uuid>("SELECT id FROM fournisseurs_paiement WHERE code = $1")
+            .bind(&payload.code)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification code: {}", e)))?;
 
     if existing.is_some() {
         return Err(AppError::BadRequest(
@@ -132,8 +131,7 @@ pub async fn create_fournisseur_paiement(
     }
 
     // Créer le fournisseur
-    let fournisseur = sqlx::query_as!(
-        FournisseurPaiement,
+    let fournisseur = sqlx::query_as::<_, FournisseurPaiement>(
         r#"
         INSERT INTO fournisseurs_paiement (
             nom, code, type_fournisseur, pays, devise,
@@ -142,14 +140,14 @@ pub async fn create_fournisseur_paiement(
         VALUES ($1, $2, $3, $4, $5, $6, $7, true)
         RETURNING *
         "#,
-        payload.nom,
-        payload.code,
-        payload.type_fournisseur as TypeFournisseur,
-        payload.pays,
-        payload.devise,
-        payload.commission_fournisseur,
-        payload.configuration
     )
+    .bind(&payload.nom)
+    .bind(&payload.code)
+    .bind(&payload.type_fournisseur)
+    .bind(&payload.pays)
+    .bind(&payload.devise)
+    .bind(payload.commission_fournisseur)
+    .bind(&payload.configuration)
     .fetch_one(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur création fournisseur: {}", e)))?;
@@ -192,7 +190,7 @@ pub async fn get_fournisseurs_paiement(
 
     query.push_str(" ORDER BY created_at DESC");
 
-    let fournisseurs = sqlx::query_as!(FournisseurPaiement, &query)
+    let fournisseurs = sqlx::query_as::<_, FournisseurPaiement>(&query)
         .fetch_all(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
@@ -227,11 +225,10 @@ pub async fn update_fournisseur_paiement(
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Vérifier que le fournisseur existe
-    let fournisseur = sqlx::query_as!(
-        FournisseurPaiement,
+    let _fournisseur = sqlx::query_as::<_, FournisseurPaiement>(
         "SELECT * FROM fournisseurs_paiement WHERE id = $1",
-        fournisseur_id
     )
+    .bind(fournisseur_id)
     .fetch_optional(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
@@ -239,68 +236,57 @@ pub async fn update_fournisseur_paiement(
 
     // Mettre à jour les champs
     if let Some(nom) = payload.nom {
-        sqlx::query!(
-            "UPDATE fournisseurs_paiement SET nom = $1 WHERE id = $2",
-            nom,
-            fournisseur_id
-        )
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur update nom: {}", e)))?;
+        sqlx::query("UPDATE fournisseurs_paiement SET nom = $1 WHERE id = $2")
+            .bind(&nom)
+            .bind(fournisseur_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur update nom: {}", e)))?;
     }
 
     if let Some(commission) = payload.commission_fournisseur {
-        sqlx::query!(
-            "UPDATE fournisseurs_paiement SET commission_fournisseur = $1 WHERE id = $2",
-            commission,
-            fournisseur_id
-        )
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur update commission: {}", e)))?;
+        sqlx::query("UPDATE fournisseurs_paiement SET commission_fournisseur = $1 WHERE id = $2")
+            .bind(commission)
+            .bind(fournisseur_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur update commission: {}", e)))?;
     }
 
     if let Some(configuration) = payload.configuration {
-        sqlx::query!(
-            "UPDATE fournisseurs_paiement SET configuration = $1 WHERE id = $2",
-            configuration,
-            fournisseur_id
-        )
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur update configuration: {}", e)))?;
+        sqlx::query("UPDATE fournisseurs_paiement SET configuration = $1 WHERE id = $2")
+            .bind(&configuration)
+            .bind(fournisseur_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur update configuration: {}", e)))?;
     }
 
     if let Some(est_actif) = payload.est_actif {
-        sqlx::query!(
-            "UPDATE fournisseurs_paiement SET est_actif = $1 WHERE id = $2",
-            est_actif,
-            fournisseur_id
-        )
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur update actif: {}", e)))?;
+        sqlx::query("UPDATE fournisseurs_paiement SET est_actif = $1 WHERE id = $2")
+            .bind(est_actif)
+            .bind(fournisseur_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur update actif: {}", e)))?;
     }
 
     // Mettre à jour le timestamp
-    sqlx::query!(
-        "UPDATE fournisseurs_paiement SET updated_at = NOW() WHERE id = $1",
-        fournisseur_id
-    )
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur update timestamp: {}", e)))?;
+    sqlx::query("UPDATE fournisseurs_paiement SET updated_at = NOW() WHERE id = $1")
+        .bind(fournisseur_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur update timestamp: {}", e)))?;
 
     tx.commit()
         .await
         .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
     // Récupérer le fournisseur mis à jour
-    let fournisseur_update = sqlx::query_as!(
-        FournisseurPaiement,
+    let fournisseur_update = sqlx::query_as::<_, FournisseurPaiement>(
         "SELECT * FROM fournisseurs_paiement WHERE id = $1",
-        fournisseur_id
     )
+    .bind(fournisseur_id)
     .fetch_one(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération: {}", e)))?;
@@ -371,15 +357,33 @@ pub async fn get_all_transactions(
 
     query.push_str(" ORDER BY ta.created_at DESC");
 
-    let transactions = sqlx::query(&query)
+    let transactions_rows = sqlx::query(&query)
         .bind(limit)
         .bind(offset)
         .fetch_all(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
+    let transactions: Vec<serde_json::Value> = transactions_rows.iter().map(|row| {
+        use sqlx::Row;
+        serde_json::json!({
+            "id": row.try_get::<Uuid, _>("id").ok(),
+            "user_id": row.try_get::<Uuid, _>("user_id").ok(),
+            "montant_total": row.try_get::<f64, _>("montant_total").ok(),
+            "devise": row.try_get::<String, _>("devise").ok(),
+            "statut": row.try_get::<String, _>("statut").ok(),
+            "methode_paiement": row.try_get::<String, _>("methode_paiement").ok(),
+            "reference_paiement": row.try_get::<String, _>("reference_paiement").ok(),
+            "user_nom": row.try_get::<Option<String>, _>("user_nom").unwrap_or(None),
+            "user_prenom": row.try_get::<Option<String>, _>("user_prenom").unwrap_or(None),
+            "user_email": row.try_get::<Option<String>, _>("user_email").unwrap_or(None),
+            "reference_commande": row.try_get::<Option<String>, _>("reference_commande").unwrap_or(None),
+            "created_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("created_at").unwrap_or(None),
+        })
+    }).collect();
+
     // Calculer les totaux
-    let totaux = sqlx::query!(
+    let totaux_row = sqlx::query(
         r#"
         SELECT 
             COUNT(*) as total_transactions,
@@ -389,11 +393,22 @@ pub async fn get_all_transactions(
             SUM(commission_app) as commission_totale,
             AVG(montant_total) as montant_moyen
         FROM transactions_agregees
-        "#
+        "#,
     )
     .fetch_one(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur totaux: {}", e)))?;
+    let totaux = {
+        use sqlx::Row;
+        serde_json::json!({
+            "total_transactions": totaux_row.try_get::<Option<i64>, _>("total_transactions").unwrap_or(None),
+            "transactions_succes": totaux_row.try_get::<Option<i64>, _>("transactions_succes").unwrap_or(None),
+            "transactions_echec": totaux_row.try_get::<Option<i64>, _>("transactions_echec").unwrap_or(None),
+            "volume_total": totaux_row.try_get::<Option<f64>, _>("volume_total").unwrap_or(None),
+            "commission_totale": totaux_row.try_get::<Option<f64>, _>("commission_totale").unwrap_or(None),
+            "montant_moyen": totaux_row.try_get::<Option<f64>, _>("montant_moyen").unwrap_or(None),
+        })
+    };
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -424,21 +439,38 @@ pub async fn traiter_remboursement(
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Récupérer la demande de remboursement
-    let remboursement = sqlx::query!(
+    let remboursement_row = sqlx::query(
         r#"
         SELECT dr.*, ta.montant_total, ta.user_id, ta.reference_paiement
         FROM demandes_remboursement dr
         JOIN transactions_agregees ta ON dr.transaction_id = ta.id
         WHERE dr.id = $1
         "#,
-        payload.remboursement_id
     )
+    .bind(payload.remboursement_id)
     .fetch_optional(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
     .ok_or_else(|| AppError::NotFound("Demande de remboursement non trouvée".to_string()))?;
 
-    if remboursement.statut != "en_attente" {
+    let remboursement_statut: String = {
+        use sqlx::Row;
+        remboursement_row.try_get("statut").unwrap_or_default()
+    };
+    let remboursement_montant_total: f64 = {
+        use sqlx::Row;
+        remboursement_row.try_get("montant_total").unwrap_or(0.0)
+    };
+    let remboursement_user_id: Uuid = {
+        use sqlx::Row;
+        remboursement_row.try_get("user_id").unwrap_or_default()
+    };
+    let remboursement_reference_paiement: String = {
+        use sqlx::Row;
+        remboursement_row.try_get("reference_paiement").unwrap_or_default()
+    };
+
+    if remboursement_statut != "en_attente" {
         return Err(AppError::BadRequest(
             "Cette demande a déjà été traitée".to_string(),
         ));
@@ -447,16 +479,16 @@ pub async fn traiter_remboursement(
     match payload.action.as_str() {
         "approuver" => {
             let montant_rembourse =
-                payload.montant_rembourse.unwrap_or(remboursement.montant_total);
+                payload.montant_rembourse.unwrap_or(remboursement_montant_total);
 
-            if montant_rembourse > remboursement.montant_total {
+            if montant_rembourse > remboursement_montant_total {
                 return Err(AppError::BadRequest(
                     "Le montant remboursé ne peut pas dépasser le montant total".to_string(),
                 ));
             }
 
             // Mettre à jour le statut de la demande
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 UPDATE demandes_remboursement 
                 SET statut = 'approuve', 
@@ -466,16 +498,16 @@ pub async fn traiter_remboursement(
                     updated_at = NOW()
                 WHERE id = $3
                 "#,
-                montant_rembourse,
-                admin_id,
-                payload.remboursement_id
             )
+            .bind(montant_rembourse)
+            .bind(admin_id)
+            .bind(payload.remboursement_id)
             .execute(&mut *tx)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur update demande: {}", e)))?;
 
             // Rembourser le wallet de l'utilisateur
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 INSERT INTO user_wallets (user_id, solde, updated_at)
                 VALUES ($1, $2, NOW())
@@ -483,24 +515,24 @@ pub async fn traiter_remboursement(
                     solde = user_wallets.solde + $2,
                     updated_at = NOW()
                 "#,
-                remboursement.user_id,
-                montant_rembourse
             )
+            .bind(remboursement_user_id)
+            .bind(montant_rembourse)
             .execute(&mut *tx)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur crédit wallet: {}", e)))?;
 
             // Historique du remboursement
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 INSERT INTO wallet_transactions (user_id, montant, type_transaction, motif, reference_paiement, created_at)
                 VALUES ($1, $2, 'credit', $3, $4, NOW())
                 "#,
-                remboursement.user_id,
-                montant_rembourse,
-                format!("Remboursement {}", remboursement.reference_paiement),
-                remboursement.reference_paiement
             )
+            .bind(remboursement_user_id)
+            .bind(montant_rembourse)
+            .bind(format!("Remboursement {}", remboursement_reference_paiement))
+            .bind(&remboursement_reference_paiement)
             .execute(&mut *tx)
             .await
                 .map_err(|e| AppError::Internal(format!("Erreur historique: {}", e)))?;
@@ -510,12 +542,12 @@ pub async fn traiter_remboursement(
             variables.insert("montant".to_string(), montant_rembourse.to_string());
             variables.insert(
                 "reference_paiement".to_string(),
-                remboursement.reference_paiement.clone(),
+                remboursement_reference_paiement.clone(),
             );
 
             if let Err(e) = crate::services::multilingue_service::envoyer_notification_multilingue(
                 &state,
-                remboursement.user_id,
+                remboursement_user_id,
                 "remboursement.approuve",
                 variables,
                 Some(serde_json::json!({
@@ -536,7 +568,7 @@ pub async fn traiter_remboursement(
         }
         "rejeter" => {
             // Mettre à jour le statut de la demande
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 UPDATE demandes_remboursement 
                 SET statut = 'rejete', 
@@ -546,10 +578,10 @@ pub async fn traiter_remboursement(
                     updated_at = NOW()
                 WHERE id = $3
                 "#,
-                admin_id,
-                payload.motif,
-                payload.remboursement_id
             )
+            .bind(admin_id)
+            .bind(&payload.motif)
+            .bind(payload.remboursement_id)
             .execute(&mut *tx)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur update demande: {}", e)))?;
@@ -563,7 +595,7 @@ pub async fn traiter_remboursement(
 
             if let Err(e) = crate::services::multilingue_service::envoyer_notification_multilingue(
                 &state,
-                remboursement.user_id,
+                remboursement_user_id,
                 "remboursement.rejete",
                 variables,
                 Some(serde_json::json!({
@@ -644,15 +676,33 @@ pub async fn get_remboursements(
 
     query.push_str(" ORDER BY dr.created_at DESC");
 
-    let remboursements = sqlx::query(&query)
+    let remboursements_rows = sqlx::query(&query)
         .bind(limit)
         .bind(offset)
         .fetch_all(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
+    let remboursements: Vec<serde_json::Value> = remboursements_rows.iter().map(|row| {
+        use sqlx::Row;
+        serde_json::json!({
+            "id": row.try_get::<Uuid, _>("id").ok(),
+            "transaction_id": row.try_get::<Option<Uuid>, _>("transaction_id").unwrap_or(None),
+            "user_id": row.try_get::<Option<Uuid>, _>("user_id").unwrap_or(None),
+            "statut": row.try_get::<Option<String>, _>("statut").unwrap_or(None),
+            "montant_total": row.try_get::<Option<f64>, _>("montant_total").unwrap_or(None),
+            "reference_paiement": row.try_get::<Option<String>, _>("reference_paiement").unwrap_or(None),
+            "user_nom": row.try_get::<Option<String>, _>("user_nom").unwrap_or(None),
+            "user_prenom": row.try_get::<Option<String>, _>("user_prenom").unwrap_or(None),
+            "user_email": row.try_get::<Option<String>, _>("user_email").unwrap_or(None),
+            "admin_nom": row.try_get::<Option<String>, _>("admin_nom").unwrap_or(None),
+            "admin_prenom": row.try_get::<Option<String>, _>("admin_prenom").unwrap_or(None),
+            "created_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("created_at").unwrap_or(None),
+        })
+    }).collect();
+
     // Calculer les totaux
-    let totaux = sqlx::query!(
+    let totaux_row = sqlx::query(
         r#"
         SELECT 
             COUNT(*) as total_remboursements,
@@ -661,11 +711,21 @@ pub async fn get_remboursements(
             COUNT(CASE WHEN statut = 'en_attente' THEN 1 END) as remboursements_en_attente,
             SUM(montant_rembourse) FILTER (WHERE statut = 'approuve') as total_rembourse
         FROM demandes_remboursement
-        "#
+        "#,
     )
     .fetch_one(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur totaux: {}", e)))?;
+    let totaux = {
+        use sqlx::Row;
+        serde_json::json!({
+            "total_remboursements": totaux_row.try_get::<Option<i64>, _>("total_remboursements").unwrap_or(None),
+            "remboursements_approuves": totaux_row.try_get::<Option<i64>, _>("remboursements_approuves").unwrap_or(None),
+            "remboursements_rejetes": totaux_row.try_get::<Option<i64>, _>("remboursements_rejetes").unwrap_or(None),
+            "remboursements_en_attente": totaux_row.try_get::<Option<i64>, _>("remboursements_en_attente").unwrap_or(None),
+            "total_rembourse": totaux_row.try_get::<Option<f64>, _>("total_rembourse").unwrap_or(None),
+        })
+    };
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -687,7 +747,7 @@ pub async fn get_statistiques_paiements(
     // TODO: Vérifier que c'est un admin
 
     // Statistiques par méthode de paiement
-    let stats_methodes = sqlx::query!(
+    let stats_methodes_rows = sqlx::query(
         r#"
         SELECT 
             methode_paiement,
@@ -699,14 +759,25 @@ pub async fn get_statistiques_paiements(
         FROM transactions_agregees
         GROUP BY methode_paiement
         ORDER BY volume_total DESC
-        "#
+        "#,
     )
     .fetch_all(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur stats méthodes: {}", e)))?;
+    let stats_methodes: Vec<serde_json::Value> = stats_methodes_rows.iter().map(|row| {
+        use sqlx::Row;
+        serde_json::json!({
+            "methode_paiement": row.try_get::<String, _>("methode_paiement").ok(),
+            "nb_transactions": row.try_get::<Option<i64>, _>("nb_transactions").unwrap_or(None),
+            "nb_succes": row.try_get::<Option<i64>, _>("nb_succes").unwrap_or(None),
+            "volume_total": row.try_get::<Option<f64>, _>("volume_total").unwrap_or(None),
+            "commission_totale": row.try_get::<Option<f64>, _>("commission_totale").unwrap_or(None),
+            "montant_moyen": row.try_get::<Option<f64>, _>("montant_moyen").unwrap_or(None),
+        })
+    }).collect();
 
     // Évolution des transactions (30 derniers jours)
-    let evolution = sqlx::query!(
+    let evolution_rows = sqlx::query(
         r#"
         SELECT 
             DATE(created_at) as date,
@@ -718,14 +789,24 @@ pub async fn get_statistiques_paiements(
         WHERE created_at >= NOW() - INTERVAL '30 days'
         GROUP BY DATE(created_at)
         ORDER BY date DESC
-        "#
+        "#,
     )
     .fetch_all(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur évolution: {}", e)))?;
+    let evolution: Vec<serde_json::Value> = evolution_rows.iter().map(|row| {
+        use sqlx::Row;
+        serde_json::json!({
+            "date": row.try_get::<Option<chrono::NaiveDate>, _>("date").unwrap_or(None).map(|d| d.to_string()),
+            "nb_transactions": row.try_get::<Option<i64>, _>("nb_transactions").unwrap_or(None),
+            "volume_jour": row.try_get::<Option<f64>, _>("volume_jour").unwrap_or(None),
+            "commission_jour": row.try_get::<Option<f64>, _>("commission_jour").unwrap_or(None),
+            "nb_succes": row.try_get::<Option<i64>, _>("nb_succes").unwrap_or(None),
+        })
+    }).collect();
 
     // Top utilisateurs par volume
-    let top_utilisateurs = sqlx::query!(
+    let top_utilisateurs_rows = sqlx::query(
         r#"
         SELECT 
             u.id, u.nom, u.prenom, u.email,
@@ -737,11 +818,25 @@ pub async fn get_statistiques_paiements(
         GROUP BY u.id, u.nom, u.prenom, u.email
         ORDER BY volume_total DESC
         LIMIT 10
-        "#
+        "#,
     )
     .fetch_all(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur top utilisateurs: {}", e)))?;
+    let top_utilisateurs: Vec<serde_json::Value> = top_utilisateurs_rows
+        .iter()
+        .map(|row| {
+            use sqlx::Row;
+            serde_json::json!({
+                "id": row.try_get::<Uuid, _>("id").ok(),
+                "nom": row.try_get::<Option<String>, _>("nom").unwrap_or(None),
+                "prenom": row.try_get::<Option<String>, _>("prenom").unwrap_or(None),
+                "email": row.try_get::<Option<String>, _>("email").unwrap_or(None),
+                "nb_transactions": row.try_get::<Option<i64>, _>("nb_transactions").unwrap_or(None),
+                "volume_total": row.try_get::<Option<f64>, _>("volume_total").unwrap_or(None),
+            })
+        })
+        .collect();
 
     Ok(Json(serde_json::json!({
         "success": true,

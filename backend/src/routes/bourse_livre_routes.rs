@@ -297,10 +297,17 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
+    // Webhook routes (PUBLIQUES, sans JWT — appelées par les prestataires de paiement)
+    let webhook_routes = Router::new().route(
+        "/api/webhooks/book-purchase/{id}",
+        post(bourse_livre_v2_controller::book_purchase_webhook),
+    );
+
     Router::new()
         .merge(public_routes)
         .merge(protected_routes)
         .merge(v2_public_routes)
         .merge(v2_protected_routes)
+        .merge(webhook_routes)
         .with_state(state)
 }

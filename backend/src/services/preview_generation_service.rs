@@ -111,7 +111,8 @@ pub fn convert_immersive_to_video_timeline(immersive: &ImmersiveTimeline) -> Vid
 
 /// ✅ NOUVEAU: Résout un media_id en media_url depuis la base de données
 async fn resolve_media_url(pool: &PgPool, media_id: i32) -> AppResult<Option<String>> {
-    let row = sqlx::query!("SELECT path FROM media WHERE id = $1", media_id)
+    let row = sqlx::query("SELECT path FROM media WHERE id = $1")
+        .bind(media_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| {
@@ -120,7 +121,9 @@ async fn resolve_media_url(pool: &PgPool, media_id: i32) -> AppResult<Option<Str
         })?;
 
     if let Some(row) = row {
-        let path = row.path;
+        let path: String = row
+            .try_get("path")
+            .map_err(|e| AppError::Internal(format!("Erreur extraction path: {}", e)))?;
         // Construire l'URL complète
         let api_base_url = env::var("API_BASE_URL").unwrap_or_else(|_| {
             env::var("UPLOAD_BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string())

@@ -97,10 +97,10 @@ impl AlertesEmploiService {
             match self.send_alerte(&alerte).await {
                 Ok(_) => {
                     // Mettre à jour dernier_envoi
-                    let _ = sqlx::query!(
+                    let _ = sqlx::query(
                         "UPDATE alertes_emploi SET dernier_envoi = CURRENT_TIMESTAMP WHERE id = $1",
-                        alerte.id
                     )
+                    .bind(alerte.id)
                     .execute(&self.pool)
                     .await;
 

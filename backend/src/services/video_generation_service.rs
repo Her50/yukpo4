@@ -3776,16 +3776,16 @@ async fn append_video_to_service_data(
 
             Box::pin(async move {
                 // Récupérer le product_data actuel
-                let product_row = sqlx::query!(
+                let product_row = sqlx::query(
                     "SELECT product_data FROM service_products WHERE service_id = $1 AND product_index = $2",
-                    service_id_clone,
-                    product_index_clone
                 )
+                .bind(service_id_clone)
+                .bind(product_index_clone)
                 .fetch_optional(&pool_clone)
                 .await?;
 
                 if let Some(row) = product_row {
-                    let mut product_data = row.product_data;
+                    let mut product_data: serde_json::Value = row.try_get("product_data").unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
 
                     // Ajouter la vidéo au tableau videos
                     if let Some(obj) = product_data.as_object_mut() {
@@ -3902,17 +3902,19 @@ async fn append_video_variants_to_service_data(
     variant_urls: &[(String, String)],
 ) -> AppResult<()> {
     // ✅ CORRIGÉ 2026-01-23: Mettre à jour UNIQUEMENT service_products.product_data au lieu de JSONB
-    let product_row = sqlx::query!(
+    let product_row = sqlx::query(
         "SELECT product_data FROM service_products WHERE service_id = $1 AND product_index = $2",
-        service_id,
-        product_index
     )
+    .bind(service_id)
+    .bind(product_index)
     .fetch_optional(&state.pg)
     .await
     .map_err(AppError::from)?;
 
     if let Some(row) = product_row {
-        let mut product_data = row.product_data;
+        let mut product_data: serde_json::Value = row
+            .try_get("product_data")
+            .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
 
         if let Some(obj) = product_data.as_object_mut() {
             let mut current_variants = match obj.get_mut("videos_variants") {

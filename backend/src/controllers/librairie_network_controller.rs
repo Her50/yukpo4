@@ -191,19 +191,20 @@ pub async fn create_commande_mixte(
     // Récupérer prix livres occasion
     let mut total_occasion = 0.0;
     for livre_req in &payload.livres_occasion {
-        let livre = sqlx::query!(
+        let livre_row = sqlx::query(
             "SELECT prix_detecte, valeur_calculee FROM livres_scolaires WHERE id = $1 AND is_active = true",
-            livre_req.livre_scolaire_id
         )
+        .bind(livre_req.livre_scolaire_id)
         .fetch_optional(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
         .ok_or_else(|| AppError::NotFound("Livre d'occasion non trouvé".to_string()))?;
 
-        let prix = livre
-            .valeur_calculee
+        let valeur_calculee: Option<String> = livre_row.try_get("valeur_calculee").unwrap_or(None);
+        let prix_detecte: Option<String> = livre_row.try_get("prix_detecte").unwrap_or(None);
+        let prix = valeur_calculee
             .and_then(|v| v.parse::<f64>().ok())
-            .or_else(|| livre.prix_detecte.and_then(|p| p.parse::<f64>().ok()))
+            .or_else(|| prix_detecte.and_then(|p| p.parse::<f64>().ok()))
             .unwrap_or(0.0);
 
         total_occasion += prix * livre_req.quantite as f64;
@@ -228,8 +229,9 @@ pub async fn create_commande_mixte(
         .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
-    let commande = sqlx::query_as!(
-        CommandeMixte,
+    let devise = payload.devise.unwrap_or_else(|| "XAF".to_string());
+    let mode_livraison = payload.mode_livraison.unwrap_or_else(|| "coursier".to_string());
+    let commande = sqlx::query_as::<_, CommandeMixte>(
         r#"
         INSERT INTO commandes_mixtes (
             user_id, budget_total, devise, statut, mode_livraison,
@@ -239,23 +241,23 @@ pub async fn create_commande_mixte(
         VALUES ($1, $2, $3, 'edition', $4, $5, $6, $7, $8, $9)
         RETURNING *
         "#,
-        user_id,
-        payload.budget_total,
-        payload.devise.unwrap_or_else(|| "XAF".to_string()),
-        payload.mode_livraison.unwrap_or_else(|| "coursier".to_string()),
-        payload.adresse_livraison,
-        payload.gps_livraison,
-        payload.notes_client,
-        commission_app,
-        montant_net_libraires
     )
+    .bind(user_id)
+    .bind(payload.budget_total)
+    .bind(&devise)
+    .bind(&mode_livraison)
+    .bind(&payload.adresse_livraison)
+    .bind(&payload.gps_livraison)
+    .bind(&payload.notes_client)
+    .bind(commission_app)
+    .bind(montant_net_libraires)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur création commande: {}", e)))?;
 
     // Insérer livres neufs
     for livre_req in payload.livres_neufs {
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO commande_livres_neufs (
                 commande_id, programme_scolaire_id, titre, auteur, editeur, isbn,
@@ -263,20 +265,20 @@ pub async fn create_commande_mixte(
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             "#,
-            commande.id,
-            livre_req.programme_scolaire_id,
-            livre_req.titre,
-            livre_req.auteur,
-            livre_req.editeur,
-            livre_req.isbn,
-            livre_req.classe,
-            livre_req.matiere,
-            livre_req.niveau,
-            livre_req.prix_officiel,
-            livre_req.prix_officiel, // Prix final = prix officiel (ne change pas)
-            livre_req.quantite,
-            livre_req.est_au_programme
         )
+        .bind(commande.id)
+        .bind(livre_req.programme_scolaire_id)
+        .bind(&livre_req.titre)
+        .bind(&livre_req.auteur)
+        .bind(&livre_req.editeur)
+        .bind(&livre_req.isbn)
+        .bind(&livre_req.classe)
+        .bind(&livre_req.matiere)
+        .bind(&livre_req.niveau)
+        .bind(livre_req.prix_officiel)
+        .bind(livre_req.prix_officiel)
+        .bind(livre_req.quantite)
+        .bind(livre_req.est_au_programme)
         .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur insertion livre neuf: {}", e)))?;
@@ -285,21 +287,30 @@ pub async fn create_commande_mixte(
     // Insérer livres occasion
     for livre_req in payload.livres_occasion {
         // Récupérer infos livre
-        let livre = sqlx::query!(
+        let livre_row = sqlx::query(
             "SELECT titre, auteur, classe, matiere, etat_livre, prix_detecte, valeur_calculee, user_id FROM livres_scolaires WHERE id = $1",
-            livre_req.livre_scolaire_id
         )
+        .bind(livre_req.livre_scolaire_id)
         .fetch_one(&mut *tx)
         .await
             .map_err(|e| AppError::Internal(format!("Erreur récupération livre: {}", e)))?;
 
-        let prix = livre
-            .valeur_calculee
+        let l_valeur_calculee: Option<String> =
+            livre_row.try_get("valeur_calculee").unwrap_or(None);
+        let l_prix_detecte: Option<String> = livre_row.try_get("prix_detecte").unwrap_or(None);
+        let l_titre: Option<String> = livre_row.try_get("titre").unwrap_or(None);
+        let l_auteur: Option<String> = livre_row.try_get("auteur").unwrap_or(None);
+        let l_classe: Option<String> = livre_row.try_get("classe").unwrap_or(None);
+        let l_matiere: Option<String> = livre_row.try_get("matiere").unwrap_or(None);
+        let l_etat_livre: Option<String> = livre_row.try_get("etat_livre").unwrap_or(None);
+        let l_user_id: Option<Uuid> = livre_row.try_get("user_id").unwrap_or(None);
+
+        let prix = l_valeur_calculee
             .and_then(|v| v.parse::<f64>().ok())
-            .or_else(|| livre.prix_detecte.and_then(|p| p.parse::<f64>().ok()))
+            .or_else(|| l_prix_detecte.and_then(|p| p.parse::<f64>().ok()))
             .unwrap_or(0.0);
 
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO commande_livres_occasion (
                 commande_id, livre_scolaire_id, titre, auteur, classe, matiere,
@@ -307,17 +318,17 @@ pub async fn create_commande_mixte(
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             "#,
-            commande.id,
-            livre_req.livre_scolaire_id,
-            livre.titre,
-            livre.auteur,
-            livre.classe,
-            livre.matiere,
-            livre.etat_livre,
-            prix,
-            livre.user_id,
-            livre_req.quantite
         )
+        .bind(commande.id)
+        .bind(livre_req.livre_scolaire_id)
+        .bind(&l_titre)
+        .bind(&l_auteur)
+        .bind(&l_classe)
+        .bind(&l_matiere)
+        .bind(&l_etat_livre)
+        .bind(prix)
+        .bind(l_user_id)
+        .bind(livre_req.quantite)
         .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur insertion livre occasion: {}", e)))?;
@@ -356,12 +367,11 @@ pub async fn update_commande_mixte(
     );
 
     // Vérifier que la commande appartient à l'utilisateur et est en édition
-    let commande = sqlx::query_as!(
-        CommandeMixte,
+    let _commande = sqlx::query_as::<_, CommandeMixte>(
         "SELECT * FROM commandes_mixtes WHERE id = $1 AND user_id = $2 AND statut = 'edition'",
-        commande_id,
-        user_id
     )
+    .bind(commande_id)
+    .bind(user_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
@@ -375,31 +385,27 @@ pub async fn update_commande_mixte(
 
     // Mettre à jour les champs de la commande
     if let Some(budget) = payload.budget_total {
-        sqlx::query!(
-            "UPDATE commandes_mixtes SET budget_total = $1 WHERE id = $2",
-            budget,
-            commande_id
-        )
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur update budget: {}", e)))?;
+        sqlx::query("UPDATE commandes_mixtes SET budget_total = $1 WHERE id = $2")
+            .bind(budget)
+            .bind(commande_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur update budget: {}", e)))?;
     }
 
     if let Some(mode) = payload.mode_livraison {
-        sqlx::query!(
-            "UPDATE commandes_mixtes SET mode_livraison = $1 WHERE id = $2",
-            mode,
-            commande_id
-        )
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur update livraison: {}", e)))?;
+        sqlx::query("UPDATE commandes_mixtes SET mode_livraison = $1 WHERE id = $2")
+            .bind(&mode)
+            .bind(commande_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur update livraison: {}", e)))?;
     }
 
     // Ajouter livres neufs
     if let Some(livres) = payload.ajouter_livres_neufs {
         for livre_req in livres {
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 INSERT INTO commande_livres_neufs (
                     commande_id, programme_scolaire_id, titre, auteur, editeur, isbn,
@@ -407,20 +413,20 @@ pub async fn update_commande_mixte(
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                 "#,
-                commande_id,
-                livre_req.programme_scolaire_id,
-                livre_req.titre,
-                livre_req.auteur,
-                livre_req.editeur,
-                livre_req.isbn,
-                livre_req.classe,
-                livre_req.matiere,
-                livre_req.niveau,
-                livre_req.prix_officiel,
-                livre_req.prix_officiel,
-                livre_req.quantite,
-                livre_req.est_au_programme
             )
+            .bind(commande_id)
+            .bind(livre_req.programme_scolaire_id)
+            .bind(&livre_req.titre)
+            .bind(&livre_req.auteur)
+            .bind(&livre_req.editeur)
+            .bind(&livre_req.isbn)
+            .bind(&livre_req.classe)
+            .bind(&livre_req.matiere)
+            .bind(&livre_req.niveau)
+            .bind(livre_req.prix_officiel)
+            .bind(livre_req.prix_officiel)
+            .bind(livre_req.quantite)
+            .bind(livre_req.est_au_programme)
             .execute(&mut *tx)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur ajout livre neuf: {}", e)))?;
@@ -430,35 +436,34 @@ pub async fn update_commande_mixte(
     // Supprimer livres neufs
     if let Some(livre_ids) = payload.supprimer_livres_neufs {
         for livre_id in livre_ids {
-            sqlx::query!(
-                "DELETE FROM commande_livres_neufs WHERE id = $1 AND commande_id = $2",
-                livre_id,
-                commande_id
-            )
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur suppression livre neuf: {}", e)))?;
+            sqlx::query("DELETE FROM commande_livres_neufs WHERE id = $1 AND commande_id = $2")
+                .bind(livre_id)
+                .bind(commande_id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur suppression livre neuf: {}", e)))?;
         }
     }
 
     // Ajouter livres occasion (même logique)
     if let Some(livres) = payload.ajouter_livres_occasion {
         for livre_req in livres {
-            let livre = sqlx::query!(
+            let lr = sqlx::query(
                 "SELECT titre, auteur, classe, matiere, etat_livre, prix_detecte, valeur_calculee, user_id FROM livres_scolaires WHERE id = $1",
-                livre_req.livre_scolaire_id
             )
+            .bind(livre_req.livre_scolaire_id)
             .fetch_one(&mut *tx)
             .await
                 .map_err(|e| AppError::Internal(format!("Erreur récupération livre: {}", e)))?;
 
-            let prix = livre
-                .valeur_calculee
+            let lr_vc: Option<String> = lr.try_get("valeur_calculee").unwrap_or(None);
+            let lr_pd: Option<String> = lr.try_get("prix_detecte").unwrap_or(None);
+            let prix = lr_vc
                 .and_then(|v| v.parse::<f64>().ok())
-                .or_else(|| livre.prix_detecte.and_then(|p| p.parse::<f64>().ok()))
+                .or_else(|| lr_pd.and_then(|p| p.parse::<f64>().ok()))
                 .unwrap_or(0.0);
 
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 INSERT INTO commande_livres_occasion (
                     commande_id, livre_scolaire_id, titre, auteur, classe, matiere,
@@ -466,17 +471,17 @@ pub async fn update_commande_mixte(
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 "#,
-                commande_id,
-                livre_req.livre_scolaire_id,
-                livre.titre,
-                livre.auteur,
-                livre.classe,
-                livre.matiere,
-                livre.etat_livre,
-                prix,
-                livre.user_id,
-                livre_req.quantite
             )
+            .bind(commande_id)
+            .bind(livre_req.livre_scolaire_id)
+            .bind(lr.try_get::<Option<String>, _>("titre").unwrap_or(None))
+            .bind(lr.try_get::<Option<String>, _>("auteur").unwrap_or(None))
+            .bind(lr.try_get::<Option<String>, _>("classe").unwrap_or(None))
+            .bind(lr.try_get::<Option<String>, _>("matiere").unwrap_or(None))
+            .bind(lr.try_get::<Option<String>, _>("etat_livre").unwrap_or(None))
+            .bind(prix)
+            .bind(lr.try_get::<Option<Uuid>, _>("user_id").unwrap_or(None))
+            .bind(livre_req.quantite)
             .execute(&mut *tx)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur ajout livre occasion: {}", e)))?;
@@ -486,14 +491,14 @@ pub async fn update_commande_mixte(
     // Supprimer livres occasion
     if let Some(livre_ids) = payload.supprimer_livres_occasion {
         for livre_id in livre_ids {
-            sqlx::query!(
-                "DELETE FROM commande_livres_occasion WHERE id = $1 AND commande_id = $2",
-                livre_id,
-                commande_id
-            )
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur suppression livre occasion: {}", e)))?;
+            sqlx::query("DELETE FROM commande_livres_occasion WHERE id = $1 AND commande_id = $2")
+                .bind(livre_id)
+                .bind(commande_id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| {
+                    AppError::Internal(format!("Erreur suppression livre occasion: {}", e))
+                })?;
         }
     }
 
@@ -528,12 +533,11 @@ pub async fn valider_budget_commande(
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Vérifier commande et calculer totaux
-    let commande = sqlx::query_as!(
-        CommandeMixte,
+    let commande = sqlx::query_as::<_, CommandeMixte>(
         "SELECT * FROM commandes_mixtes WHERE id = $1 AND user_id = $2 AND statut = 'edition'",
-        payload.commande_id,
-        user_id
     )
+    .bind(payload.commande_id)
+    .bind(user_id)
     .fetch_optional(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
@@ -553,7 +557,7 @@ pub async fn valider_budget_commande(
     let commission_app = totaux.total_commande * ConfigurationSysteme::COMMISSION_APP;
     let montant_net_libraires = totaux.total_commande - commission_app;
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE commandes_mixtes 
         SET statut = 'validation_budget',
@@ -562,18 +566,17 @@ pub async fn valider_budget_commande(
             updated_at = NOW()
         WHERE id = $3
         "#,
-        commission_app,
-        montant_net_libraires,
-        payload.commande_id
     )
+    .bind(commission_app)
+    .bind(montant_net_libraires)
+    .bind(payload.commande_id)
     .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur update statut: {}", e)))?;
 
     // Créer transaction agrégée
     let reference_paiement = generate_reference("PAY");
-    sqlx::query_as!(
-        TransactionAgregee,
+    sqlx::query_as::<_, TransactionAgregee>(
         r#"
         INSERT INTO transactions_agregees (
             commande_id, user_id, montant_total, devise, methode_paiement,
@@ -582,14 +585,14 @@ pub async fn valider_budget_commande(
         VALUES ($1, $2, $3, 'XAF', $4, 'en_attente', $5, $6, $7)
         RETURNING *
         "#,
-        payload.commande_id,
-        user_id,
-        totaux.total_commande,
-        payload.methode_paiement as MethodePaiement,
-        reference_paiement,
-        commission_app,
-        montant_net_libraires
     )
+    .bind(payload.commande_id)
+    .bind(user_id)
+    .bind(totaux.total_commande)
+    .bind(&payload.methode_paiement)
+    .bind(&reference_paiement)
+    .bind(commission_app)
+    .bind(montant_net_libraires)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur création transaction: {}", e)))?;
@@ -624,7 +627,7 @@ pub async fn broadcast_commande_librairies(
     );
 
     // Récupérer commande avec GPS
-    let commande = sqlx::query!(
+    let commande_row = sqlx::query(
         r#"
         SELECT cm.*, 
                STRING_AGG(DISTINCT cln.classe, ', ') as classes_neuf,
@@ -635,15 +638,22 @@ pub async fn broadcast_commande_librairies(
         WHERE cm.id = $1 AND cm.user_id = $2 AND cm.statut = 'validation_budget'
         GROUP BY cm.id
         "#,
-        payload.commande_id,
-        user_id
     )
+    .bind(payload.commande_id)
+    .bind(user_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
     .ok_or_else(|| AppError::NotFound("Commande non trouvée ou non prête".to_string()))?;
 
-    let gps_livraison = commande.gps_livraison.as_deref().unwrap_or("");
+    let cmd_gps_livraison: Option<String> = commande_row.try_get("gps_livraison").unwrap_or(None);
+    let cmd_reference_commande: Option<String> =
+        commande_row.try_get("reference_commande").unwrap_or(None);
+    let cmd_classes_neuf: Option<String> = commande_row.try_get("classes_neuf").unwrap_or(None);
+    let cmd_classes_occasion: Option<String> =
+        commande_row.try_get("classes_occasion").unwrap_or(None);
+
+    let gps_livraison = cmd_gps_livraison.as_deref().unwrap_or("");
     if gps_livraison.is_empty() {
         return Err(AppError::BadRequest(
             "GPS de livraison requis pour diffusion".to_string(),
@@ -655,11 +665,10 @@ pub async fn broadcast_commande_librairies(
 
     let rayon = payload
         .rayon_recherche_km
-        .unwrap_or(ConfigurationSysteme::RAYON_RECHERCHE_LIBRAIRIE);
+        .unwrap_or(ConfigurationSysteme::RAYON_RECHERCHE_LIBRAIRIE as i32);
 
     // Récupérer librairies proches
-    let librairies = sqlx::query_as!(
-        LibrairiePartner,
+    let librairies = sqlx::query_as::<_, LibrairiePartner>(
         r#"
         SELECT * FROM librairie_partners lp
         WHERE lp.est_actif = true 
@@ -672,10 +681,10 @@ pub async fn broadcast_commande_librairies(
                              SPLIT_PART(lp.gps, ',', 2)::FLOAT)
         LIMIT 20
         "#,
-        lat,
-        lng,
-        rayon as f64
     )
+    .bind(lat)
+    .bind(lng)
+    .bind(rayon as f64)
     .fetch_all(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur recherche librairies: {}", e)))?;
@@ -693,10 +702,10 @@ pub async fn broadcast_commande_librairies(
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Mettre à jour statut commande
-    sqlx::query!(
+    sqlx::query(
         "UPDATE commandes_mixtes SET statut = 'envoyee_librairies', updated_at = NOW() WHERE id = $1",
-        payload.commande_id
     )
+    .bind(payload.commande_id)
     .execute(&mut *tx)
     .await
         .map_err(|e| AppError::Internal(format!("Erreur update statut: {}", e)))?;
@@ -705,16 +714,15 @@ pub async fn broadcast_commande_librairies(
     let mut notifications_created = Vec::new();
     for librairie in &librairies {
         // Créer entrée validation
-        let validation = sqlx::query_as!(
-            CommandeValidation,
+        let validation = sqlx::query_as::<_, CommandeValidation>(
             r#"
             INSERT INTO commande_validations (commande_id, librairie_id, statut, verrou_exclusif)
             VALUES ($1, $2, 'en_cours', false)
             RETURNING *
             "#,
-            payload.commande_id,
-            librairie.id
         )
+        .bind(payload.commande_id)
+        .bind(librairie.id)
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur création validation: {}", e)))?;
@@ -722,13 +730,12 @@ pub async fn broadcast_commande_librairies(
         // Créer notification
         let message = format!(
             "Nouvelle commande {} à valider ({} livres neufs, {} livres occasion)",
-            commande.reference_commande,
-            commande.classes_neuf.as_deref().unwrap_or("0"),
-            commande.classes_occasion.as_deref().unwrap_or("0")
+            cmd_reference_commande.as_deref().unwrap_or("?"),
+            cmd_classes_neuf.as_deref().unwrap_or("0"),
+            cmd_classes_occasion.as_deref().unwrap_or("0")
         );
 
-        let notification = sqlx::query_as!(
-            NotificationLibrairie,
+        let notification = sqlx::query_as::<_, NotificationLibrairie>(
             r#"
             INSERT INTO notifications_librairie (
                 librairie_id, commande_id, type_notification, message, statut
@@ -736,10 +743,10 @@ pub async fn broadcast_commande_librairies(
             VALUES ($1, $2, 'nouvelle_commande', $3, 'envoyee')
             RETURNING *
             "#,
-            librairie.id,
-            payload.commande_id,
-            message
         )
+        .bind(librairie.id)
+        .bind(payload.commande_id)
+        .bind(&message)
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur création notification: {}", e)))?;
@@ -802,11 +809,10 @@ pub async fn valider_livres_commande(
     );
 
     // Vérifier que c'est un librairie
-    let librairie = sqlx::query_as!(
-        LibrairiePartner,
+    let librairie = sqlx::query_as::<_, LibrairiePartner>(
         "SELECT * FROM librairie_partners WHERE user_id = $1 AND est_actif = true AND statut = 'actif'",
-        librairie_user_id
     )
+    .bind(librairie_user_id)
     .fetch_optional(&state.pg)
     .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
@@ -819,16 +825,15 @@ pub async fn valider_livres_commande(
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Vérifier validation existante
-    let mut validation = sqlx::query_as!(
-        CommandeValidation,
+    let validation = sqlx::query_as::<_, CommandeValidation>(
         r#"
         SELECT * FROM commande_validations 
         WHERE commande_id = $1 AND librairie_id = $2 
         FOR UPDATE
         "#,
-        payload.commande_id,
-        librairie.id
     )
+    .bind(payload.commande_id)
+    .bind(librairie.id)
     .fetch_optional(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
@@ -842,7 +847,7 @@ pub async fn valider_livres_commande(
     }
 
     // Prendre le verrou exclusif
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE commande_validations 
         SET verrou_exclusif = true, 
@@ -850,9 +855,9 @@ pub async fn valider_livres_commande(
             notes_validation = $1
         WHERE id = $2
         "#,
-        payload.notes_validation,
-        validation.id
     )
+    .bind(&payload.notes_validation)
+    .bind(validation.id)
     .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur prise verrou: {}", e)))?;
@@ -860,7 +865,7 @@ pub async fn valider_livres_commande(
     // Marquer les livres comme validés
     let mut livres_valides_count = 0;
     for livre_id in &payload.livres_valides {
-        let result = sqlx::query!(
+        let result = sqlx::query(
             r#"
             UPDATE commande_livres_neufs 
             SET statut_validation = 'valide', 
@@ -868,10 +873,10 @@ pub async fn valider_livres_commande(
             WHERE id = $2 AND commande_id = $3 AND statut_validation = 'en_attente'
             RETURNING id
             "#,
-            librairie.id,
-            livre_id,
-            payload.commande_id
         )
+        .bind(librairie.id)
+        .bind(livre_id)
+        .bind(payload.commande_id)
         .fetch_optional(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur validation livre: {}", e)))?;
@@ -882,7 +887,7 @@ pub async fn valider_livres_commande(
     }
 
     // Marquer les livres non validés comme indisponibles
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE commande_livres_neufs 
         SET statut_validation = 'indisponible'
@@ -890,33 +895,33 @@ pub async fn valider_livres_commande(
           AND statut_validation = 'en_attente'
           AND id != ALL($2)
         "#,
-        payload.commande_id,
-        &payload.livres_valides
     )
+    .bind(payload.commande_id)
+    .bind(&payload.livres_valides)
     .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur marquage indisponibles: {}", e)))?;
 
     // Déterminer le statut de validation
-    let total_livres_neufs: i64 = sqlx::query_scalar!(
+    let total_livres_neufs: i64 = sqlx::query_scalar::<_, Option<i64>>(
         "SELECT COUNT(*) FROM commande_livres_neufs WHERE commande_id = $1",
-        payload.commande_id
     )
+    .bind(payload.commande_id)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur comptage: {}", e)))?
     .unwrap_or(0);
 
-    let livres_valides_total: i64 = sqlx::query_scalar!(
+    let livres_valides_total: i64 = sqlx::query_scalar::<_, Option<i64>>(
         "SELECT COUNT(*) FROM commande_livres_neufs WHERE commande_id = $1 AND statut_validation = 'valide'",
-        payload.commande_id
     )
+    .bind(payload.commande_id)
     .fetch_one(&mut *tx)
     .await
         .map_err(|e| AppError::Internal(format!("Erreur comptage validés: {}", e)))?
         .unwrap_or(0);
 
-    let statut_validation = if livres_valides_total as i64 == total_livres_neufs {
+    let statut_validation = if livres_valides_total == total_livres_neufs {
         ValidationStatut::ValideComplet
     } else if livres_valides_total > 0 {
         ValidationStatut::ValidePartiel
@@ -925,7 +930,7 @@ pub async fn valider_livres_commande(
     };
 
     // Mettre à jour la validation
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE commande_validations 
         SET statut = $1, 
@@ -934,10 +939,10 @@ pub async fn valider_livres_commande(
             verrou_exclusif = false
         WHERE id = $3
         "#,
-        statut_validation as ValidationStatut,
-        serde_json::to_value(&payload.livres_valides).unwrap_or(serde_json::Value::Array(vec![])),
-        validation.id
     )
+    .bind(&statut_validation)
+    .bind(serde_json::to_value(&payload.livres_valides).unwrap_or(serde_json::Value::Array(vec![])))
+    .bind(validation.id)
     .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur update validation: {}", e)))?;
@@ -945,42 +950,42 @@ pub async fn valider_livres_commande(
     // Mettre à jour le statut de la commande
     match statut_validation {
         ValidationStatut::ValideComplet => {
-            sqlx::query!(
+            sqlx::query(
                 "UPDATE commandes_mixtes SET statut = 'validee_complete', updated_at = NOW() WHERE id = $1",
-                payload.commande_id
             )
+            .bind(payload.commande_id)
             .execute(&mut *tx)
             .await
                 .map_err(|e| AppError::Internal(format!("Erreur update commande: {}", e)))?;
         }
         ValidationStatut::ValidePartiel => {
-            sqlx::query!(
+            sqlx::query(
                 "UPDATE commandes_mixtes SET statut = 'validee_partielle', updated_at = NOW() WHERE id = $1",
-                payload.commande_id
             )
+            .bind(payload.commande_id)
             .execute(&mut *tx)
             .await
                 .map_err(|e| AppError::Internal(format!("Erreur update commande: {}", e)))?;
 
             // Libérer les autres librairies pour les livres restants
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 UPDATE commande_validations 
                 SET statut = 'abandonne', verrou_exclusif = false
                 WHERE commande_id = $1 AND librairie_id != $2 AND statut = 'en_cours'
                 "#,
-                payload.commande_id,
-                librairie.id
             )
+            .bind(payload.commande_id)
+            .bind(librairie.id)
             .execute(&mut *tx)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur libération autres: {}", e)))?;
         }
         _ => {
-            sqlx::query!(
+            sqlx::query(
                 "UPDATE commandes_mixtes SET statut = 'en_validation', updated_at = NOW() WHERE id = $1",
-                payload.commande_id
             )
+            .bind(payload.commande_id)
             .execute(&mut *tx)
             .await
                 .map_err(|e| AppError::Internal(format!("Erreur update commande: {}", e)))?;
@@ -1026,12 +1031,11 @@ pub async fn finaliser_commande(
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Vérifier commande
-    let commande = sqlx::query_as!(
-        CommandeMixte,
+    let _commande = sqlx::query_as::<_, CommandeMixte>(
         "SELECT * FROM commandes_mixtes WHERE id = $1 AND user_id = $2 AND statut IN ('validee_complete', 'validee_partielle')",
-        payload.commande_id,
-        user_id
     )
+    .bind(payload.commande_id)
+    .bind(user_id)
     .fetch_optional(&mut *tx)
     .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
@@ -1046,7 +1050,7 @@ pub async fn finaliser_commande(
     // TODO: Intégration avec système de paiement agrégé
     // Pour l'instant, on simule un paiement réussi
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE transactions_agregees 
         SET statut = 'succes', 
@@ -1054,19 +1058,19 @@ pub async fn finaliser_commande(
             updated_at = NOW()
         WHERE commande_id = $2 AND user_id = $3
         "#,
-        reference_paiement,
-        payload.commande_id,
-        user_id
     )
+    .bind(&reference_paiement)
+    .bind(payload.commande_id)
+    .bind(user_id)
     .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur update transaction: {}", e)))?;
 
     // Mettre à jour statut commande
-    sqlx::query!(
+    sqlx::query(
         "UPDATE commandes_mixtes SET statut = 'en_preparation', updated_at = NOW() WHERE id = $1",
-        payload.commande_id
     )
+    .bind(payload.commande_id)
     .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur update commande: {}", e)))?;
@@ -1100,16 +1104,20 @@ pub async fn generer_qr_code_coursier(
     }): Extension<AuthenticatedUser>,
     Json(payload): Json<GenerateQRCodeRequest>,
 ) -> AppResult<impl IntoResponse> {
+    let paquet_id = payload
+        .commande_id
+        .ok_or_else(|| AppError::BadRequest("commande_id (paquet) requis".to_string()))?;
+
     info!(
         "[generer_qr_code_coursier] Coursier: {}, Paquet: {}",
-        coursier_id, payload.paquet_id
+        coursier_id, paquet_id
     );
 
     // Vérifier que c'est un coursier actif
     // TODO: Vérifier rôle coursier dans la table users
 
     // Récupérer détails du paquet
-    let paquet = sqlx::query!(
+    let paquet_row = sqlx::query(
         r#"
         SELECT dp.*, 
                cm.reference_commande,
@@ -1119,32 +1127,33 @@ pub async fn generer_qr_code_coursier(
         JOIN commandes_mixtes cm ON clu.commande_id = cm.id
         WHERE dp.id = $1
         "#,
-        payload.paquet_id
     )
+    .bind(paquet_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
     .ok_or_else(|| AppError::NotFound("Paquet non trouvé".to_string()))?;
+
+    let paquet_reference: Option<String> = paquet_row.try_get("reference_commande").unwrap_or(None);
 
     // Générer code secret
     let code_secret = format!("QR-{}", generate_reference(""));
 
     // Préparer données QR
     let qr_data = serde_json::json!({
-        "paquet_id": payload.paquet_id,
+        "paquet_id": paquet_id,
         "coursier_id": coursier_id,
         "code_secret": code_secret,
         "timestamp": Utc::now().to_rfc3339(),
-        "reference_commande": paquet.reference_commande
+        "reference_commande": paquet_reference
     });
 
     let qr_code_data = generate_qr_code(&qr_data.to_string())?;
 
     // Récupérer livres attendus et destinations
-    let (livres_attendus, destinations) = preparer_donnees_qr(&state.pg, payload.paquet_id).await?;
+    let (livres_attendus, destinations) = preparer_donnees_qr(&state.pg, paquet_id).await?;
 
-    let qr_code = sqlx::query_as!(
-        QRCodeCoursier,
+    let qr_code = sqlx::query_as::<_, QRCodeCoursier>(
         r#"
         INSERT INTO qr_codes_coursier (
             paquet_id, coursier_id, code_secret, qr_code_data,
@@ -1153,20 +1162,20 @@ pub async fn generer_qr_code_coursier(
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
         "#,
-        payload.paquet_id,
-        coursier_id,
-        code_secret,
-        qr_code_data,
-        serde_json::to_value(&livres_attendus).unwrap_or(serde_json::Value::Array(vec![])),
-        serde_json::to_value(&destinations).unwrap_or(serde_json::Value::Array(vec![]))
     )
+    .bind(paquet_id)
+    .bind(coursier_id)
+    .bind(&code_secret)
+    .bind(&qr_code_data)
+    .bind(serde_json::to_value(&livres_attendus).unwrap_or(serde_json::Value::Array(vec![])))
+    .bind(serde_json::to_value(&destinations).unwrap_or(serde_json::Value::Array(vec![])))
     .fetch_one(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur création QR code: {}", e)))?;
 
     info!(
         "[generer_qr_code_coursier] QR code {} généré pour paquet {}",
-        qr_code.id, payload.paquet_id
+        qr_code.id, paquet_id
     );
 
     Ok(Json(serde_json::json!({
@@ -1198,16 +1207,15 @@ pub async fn valider_qr_code_coursier(
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Récupérer QR code
-    let mut qr_code = sqlx::query_as!(
-        QRCodeCoursier,
+    let qr_code = sqlx::query_as::<_, QRCodeCoursier>(
         r#"
         SELECT * FROM qr_codes_coursier 
         WHERE code_secret = $1 AND coursier_id = $2 AND statut = 'genere'
         FOR UPDATE
         "#,
-        payload.code_secret,
-        coursier_id
     )
+    .bind(&payload.code_secret)
+    .bind(coursier_id)
     .fetch_optional(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
@@ -1217,27 +1225,25 @@ pub async fn valider_qr_code_coursier(
     let expiration_time = qr_code.timestamp_generation
         + chrono::Duration::seconds(ConfigurationSysteme::DELAI_EXPIRATION_QR as i64);
     if Utc::now() > expiration_time {
-        sqlx::query!(
-            "UPDATE qr_codes_coursier SET statut = 'expire' WHERE id = $1",
-            qr_code.id
-        )
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur update statut: {}", e)))?;
+        sqlx::query("UPDATE qr_codes_coursier SET statut = 'expire' WHERE id = $1")
+            .bind(qr_code.id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur update statut: {}", e)))?;
 
         return Err(AppError::BadRequest("QR code expiré".to_string()));
     }
 
     // Marquer comme scanné
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE qr_codes_coursier 
         SET statut = 'scanne', 
             timestamp_scan = NOW()
         WHERE id = $1
         "#,
-        qr_code.id
     )
+    .bind(qr_code.id)
     .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur update scan: {}", e)))?;
@@ -1245,15 +1251,15 @@ pub async fn valider_qr_code_coursier(
     // TODO: Intégrer validation biométrique ou code PIN coursier
 
     // Marquer comme validé
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE qr_codes_coursier 
         SET statut = 'valide', 
             timestamp_validation = NOW()
         WHERE id = $1
         "#,
-        qr_code.id
     )
+    .bind(qr_code.id)
     .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur update validation: {}", e)))?;
@@ -1293,11 +1299,10 @@ pub async fn optimiser_chaine_livraison(
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Récupérer chaîne existante
-    let mut chaine = sqlx::query_as!(
-        ChaineLivraisonUnifiee,
+    let chaine = sqlx::query_as::<_, ChaineLivraisonUnifiee>(
         "SELECT * FROM chaines_livraison_unifiees WHERE commande_id = $1",
-        payload.commande_id
     )
+    .bind(payload.commande_id)
     .fetch_optional(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
@@ -1310,7 +1315,7 @@ pub async fn optimiser_chaine_livraison(
     let (distance_totale, duree_estimee) = calculer_metrics_itineraire(&points_optimises);
 
     // Mettre à jour la chaîne
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE chaines_livraison_unifiees 
         SET points_passage = $1,
@@ -1321,12 +1326,12 @@ pub async fn optimiser_chaine_livraison(
             updated_at = NOW()
         WHERE id = $5
         "#,
-        serde_json::to_value(&points_optimises).unwrap_or(serde_json::Value::Array(vec![])),
-        distance_totale,
-        duree_estimee,
-        payload.coursier_id,
-        chaine.id
     )
+    .bind(serde_json::to_value(&points_optimises).unwrap_or(serde_json::Value::Array(vec![])))
+    .bind(distance_totale)
+    .bind(duree_estimee)
+    .bind(payload.coursier_id)
+    .bind(chaine.id)
     .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur update chaîne: {}", e)))?;
@@ -1380,13 +1385,26 @@ pub async fn get_mes_commandes(
 
     query.push_str(" GROUP BY cm.id ORDER BY cm.created_at DESC LIMIT $2 OFFSET $3");
 
-    let commandes = sqlx::query(&query)
+    let commandes_rows = sqlx::query(&query)
         .bind(user_id)
         .bind(limit)
         .bind(offset)
         .fetch_all(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+
+    let commandes: Vec<serde_json::Value> = commandes_rows.iter().map(|row| {
+        serde_json::json!({
+            "id": row.try_get::<Uuid, _>("id").ok(),
+            "user_id": row.try_get::<i32, _>("user_id").ok(),
+            "budget_total": row.try_get::<f64, _>("budget_total").ok(),
+            "statut": row.try_get::<String, _>("statut").ok(),
+            "mode_livraison": row.try_get::<Option<String>, _>("mode_livraison").unwrap_or(None),
+            "nb_livres_neufs": row.try_get::<Option<i64>, _>("nb_livres_neufs").unwrap_or(None),
+            "nb_livres_occasion": row.try_get::<Option<i64>, _>("nb_livres_occasion").unwrap_or(None),
+            "created_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("created_at").unwrap_or(None),
+        })
+    }).collect();
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -1444,11 +1462,26 @@ pub async fn get_librairies_proches(
         query_builder = query_builder.bind(ville);
     }
 
-    let librairies = query_builder
+    let librairies_rows = query_builder
         .bind(limit)
         .fetch_all(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+
+    let librairies: Vec<serde_json::Value> = librairies_rows
+        .iter()
+        .map(|row| {
+            serde_json::json!({
+                "id": row.try_get::<i32, _>("id").ok(),
+                "nom": row.try_get::<String, _>("nom").ok(),
+                "ville": row.try_get::<Option<String>, _>("ville").unwrap_or(None),
+                "gps": row.try_get::<Option<String>, _>("gps").unwrap_or(None),
+                "rating": row.try_get::<Option<f64>, _>("rating").unwrap_or(None),
+                "distance_km": row.try_get::<Option<f64>, _>("distance_km").unwrap_or(None),
+                "est_actif": row.try_get::<Option<bool>, _>("est_actif").unwrap_or(None),
+            })
+        })
+        .collect();
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -1489,29 +1522,25 @@ async fn fetch_commande_details(
     pg: &sqlx::PgPool,
     commande_id: Uuid,
 ) -> Result<CommandeDetail, AppError> {
-    let commande = sqlx::query_as!(
-        CommandeMixte,
-        "SELECT * FROM commandes_mixtes WHERE id = $1",
-        commande_id
-    )
-    .fetch_one(pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+    let commande =
+        sqlx::query_as::<_, CommandeMixte>("SELECT * FROM commandes_mixtes WHERE id = $1")
+            .bind(commande_id)
+            .fetch_one(pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
-    let livres_neufs = sqlx::query_as!(
-        CommandeLivreNeuf,
+    let livres_neufs = sqlx::query_as::<_, CommandeLivreNeuf>(
         "SELECT * FROM commande_livres_neufs WHERE commande_id = $1",
-        commande_id
     )
+    .bind(commande_id)
     .fetch_all(pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
-    let livres_occasion = sqlx::query_as!(
-        CommandeLivreOccasion,
+    let livres_occasion = sqlx::query_as::<_, CommandeLivreOccasion>(
         "SELECT * FROM commande_livres_occasion WHERE commande_id = $1",
-        commande_id
     )
+    .bind(commande_id)
     .fetch_all(pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
@@ -1527,19 +1556,19 @@ async fn calculer_totaux_commande(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     commande_id: Uuid,
 ) -> Result<TotauxCommande, AppError> {
-    let total_neufs: f64 = sqlx::query_scalar!(
+    let total_neufs: f64 = sqlx::query_scalar::<_, Option<f64>>(
         "SELECT COALESCE(SUM(prix_final * quantite), 0) FROM commande_livres_neufs WHERE commande_id = $1",
-        commande_id
     )
+    .bind(commande_id)
     .fetch_one(&mut **tx)
     .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
         .unwrap_or(0.0);
 
-    let total_occasion: f64 = sqlx::query_scalar!(
+    let total_occasion: f64 = sqlx::query_scalar::<_, Option<f64>>(
         "SELECT COALESCE(SUM(prix * quantite), 0) FROM commande_livres_occasion WHERE commande_id = $1",
-        commande_id
     )
+    .bind(commande_id)
     .fetch_one(&mut **tx)
     .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
@@ -1585,8 +1614,7 @@ async fn creer_chaine_livraison(
         // TODO: Construire les points (librairies, vendeurs, acheteurs)
     ];
 
-    let chaine = sqlx::query_as!(
-        ChaineLivraisonUnifiee,
+    let chaine = sqlx::query_as::<_, ChaineLivraisonUnifiee>(
         r#"
         INSERT INTO chaines_livraison_unifiees (
             commande_id, points_passage, distance_totale_km, duree_estimee_minutes
@@ -1594,9 +1622,9 @@ async fn creer_chaine_livraison(
         VALUES ($1, $2, 0, 0)
         RETURNING *
         "#,
-        commande_id,
-        serde_json::to_value(&points_passage).unwrap_or(serde_json::Value::Array(vec![]))
     )
+    .bind(commande_id)
+    .bind(serde_json::to_value(&points_passage).unwrap_or(serde_json::Value::Array(vec![])))
     .fetch_one(&mut **tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur création chaîne: {}", e)))?;
@@ -1806,7 +1834,7 @@ pub async fn generate_shareable_qrcode(
     .bind(now)
     .bind(&qr_code_image)
     .bind(true) // partageable
-    .bind(user_id as i32)
+    .bind(user_id)
     .bind(payload.valide_jusqua.unwrap_or_else(|| now + chrono::Duration::hours(24)))
     .execute(pool)
     .await
@@ -1865,15 +1893,15 @@ pub async fn scan_shareable_qrcode(
     let pool = &state.pg;
 
     // Récupérer le QR code
-    let qr_row = sqlx::query!(
+    let qr_row = sqlx::query(
         r#"
         SELECT id, commande_id, delivery_id, qr_code_data, statut, 
                date_generation, date_scan, partageable, valide_jusqua
         FROM qr_code_coursier 
         WHERE id = $1 AND partageable = true
         "#,
-        qr_id
     )
+    .bind(qr_id)
     .fetch_optional(pool)
     .await
     .map_err(|e| {
@@ -1883,28 +1911,36 @@ pub async fn scan_shareable_qrcode(
 
     let qr = qr_row.ok_or_else(|| AppError::NotFound("QR code non trouvé".to_string()))?;
 
+    let qr_statut: Option<String> = qr.try_get("statut").unwrap_or(None);
+    let qr_valide_jusqua: Option<chrono::DateTime<chrono::Utc>> =
+        qr.try_get("valide_jusqua").unwrap_or(None);
+    let qr_date_scan: Option<chrono::DateTime<chrono::Utc>> =
+        qr.try_get("date_scan").unwrap_or(None);
+    let qr_commande_id: Option<Uuid> = qr.try_get("commande_id").unwrap_or(None);
+    let qr_delivery_id: Option<Uuid> = qr.try_get("delivery_id").unwrap_or(None);
+
     // Vérifier la validité
     let now = Utc::now();
-    if qr.valide_jusqua.is_some() && qr.valide_jusqua < Some(now) {
+    if qr_valide_jusqua.is_some() && qr_valide_jusqua < Some(now) {
         return Err(AppError::BadRequest("QR code expiré".to_string()));
     }
 
-    if qr.statut == "scanne" || qr.date_scan.is_some() {
+    if qr_statut.as_deref() == Some("scanne") || qr_date_scan.is_some() {
         return Err(AppError::BadRequest("QR code déjà scanné".to_string()));
     }
 
     // Mettre à jour le statut
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE qr_code_coursier 
         SET statut = 'scanne', date_scan = $1, location_scan = $2, scan_par = $3
         WHERE id = $4
         "#,
-        now,
-        payload.location_scan,
-        payload.scan_par,
-        qr_id
     )
+    .bind(now)
+    .bind(&payload.location_scan)
+    .bind(&payload.scan_par)
+    .bind(qr_id)
     .execute(pool)
     .await
     .map_err(|e| {
@@ -1913,17 +1949,17 @@ pub async fn scan_shareable_qrcode(
     })?;
 
     // Traiter selon le type de QR code
-    let result = if let Some(commande_id) = qr.commande_id {
+    let result = if let Some(commande_id) = qr_commande_id {
         // QR pour commande librairie
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE commandes_mixtes 
             SET statut = 'livraison_en_cours', date_scan_qr = $1
             WHERE id = $2
             "#,
-            now,
-            commande_id
         )
+        .bind(now)
+        .bind(commande_id)
         .execute(pool)
         .await
         .map_err(|e| {
@@ -1936,17 +1972,17 @@ pub async fn scan_shareable_qrcode(
             "commande_id": commande_id,
             "action": "livraison_en_cours"
         })
-    } else if let Some(delivery_id) = qr.delivery_id {
+    } else if let Some(delivery_id) = qr_delivery_id {
         // QR pour livraison standard
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE deliveries 
             SET status = 'delivered', delivered_at = $1, delivery_proof_type = 'qr_code_scan'
             WHERE id = $2
             "#,
-            now,
-            delivery_id
         )
+        .bind(now)
+        .bind(delivery_id)
         .execute(pool)
         .await
         .map_err(|e| {
@@ -1965,17 +2001,17 @@ pub async fn scan_shareable_qrcode(
 
     // Envoyer la preuve de livraison
     if let Some(proof_url) = payload.proof_photo_url {
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO delivery_proof_media (
                 delivery_id, media_type, media_url, proof_type, uploaded_by, metadata
             ) VALUES ($1, 'image', $2, 'delivery', $3, $4)
             "#,
-            qr.delivery_id,
-            proof_url,
-            payload.scan_par,
-            serde_json::json!({"qr_scan": true, "qr_id": qr_id})
         )
+        .bind(qr_delivery_id)
+        .bind(&proof_url)
+        .bind(&payload.scan_par)
+        .bind(serde_json::json!({"qr_scan": true, "qr_id": qr_id}))
         .execute(pool)
         .await
         .map_err(|e| {
@@ -2006,15 +2042,15 @@ pub async fn get_qrcode_status(
 ) -> Result<impl IntoResponse, AppError> {
     let pool = &state.pg;
 
-    let qr = sqlx::query!(
+    let qr_row = sqlx::query(
         r#"
         SELECT id, commande_id, delivery_id, statut, date_generation, 
                date_scan, partageable, valide_jusqua, location_scan
         FROM qr_code_coursier 
         WHERE id = $1 AND partageable = true
         "#,
-        qr_id
     )
+    .bind(qr_id)
     .fetch_optional(pool)
     .await
     .map_err(|e| {
@@ -2022,21 +2058,32 @@ pub async fn get_qrcode_status(
         AppError::Internal("Erreur récupération QR code".to_string())
     })?;
 
-    let qr = qr.ok_or_else(|| AppError::NotFound("QR code non trouvé".to_string()))?;
+    let qr = qr_row.ok_or_else(|| AppError::NotFound("QR code non trouvé".to_string()))?;
+
+    let qr_id_val: Option<Uuid> = qr.try_get("id").unwrap_or(None);
+    let qr_statut: Option<String> = qr.try_get("statut").unwrap_or(None);
+    let qr_date_generation: Option<chrono::DateTime<chrono::Utc>> =
+        qr.try_get("date_generation").unwrap_or(None);
+    let qr_date_scan: Option<chrono::DateTime<chrono::Utc>> =
+        qr.try_get("date_scan").unwrap_or(None);
+    let qr_valide_jusqua: Option<chrono::DateTime<chrono::Utc>> =
+        qr.try_get("valide_jusqua").unwrap_or(None);
+    let qr_location_scan: Option<String> = qr.try_get("location_scan").unwrap_or(None);
+    let qr_partageable: Option<bool> = qr.try_get("partageable").unwrap_or(None);
 
     let now = Utc::now();
-    let is_expired = qr.valide_jusqua.is_some() && qr.valide_jusqua < Some(now);
+    let is_expired = qr_valide_jusqua.is_some() && qr_valide_jusqua < Some(now);
 
     Ok(Json(serde_json::json!({
         "success": true,
-        "qr_id": qr.id,
-        "statut": qr.statut,
-        "date_generation": qr.date_generation,
-        "date_scan": qr.date_scan,
-        "valide_jusqua": qr.valide_jusqua,
+        "qr_id": qr_id_val,
+        "statut": qr_statut,
+        "date_generation": qr_date_generation,
+        "date_scan": qr_date_scan,
+        "valide_jusqua": qr_valide_jusqua,
         "is_expired": is_expired,
-        "location_scan": qr.location_scan,
-        "partageable": qr.partageable
+        "location_scan": qr_location_scan,
+        "partageable": qr_partageable
     })))
 }
 

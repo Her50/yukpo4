@@ -5,13 +5,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { offlineService } from '../../services/offlineService';
 import { SafeIcon } from '../SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export const OfflineIndicator: React.FC = React.memo(() => {
-        const { t } = useLanguageSafe();
-const [isOnline, setIsOnline] = useState(true);
+    const { t } = useLanguageSafe();
+    const [isOnline, setIsOnline] = useState(true);
     const slideAnim = React.useRef(new Animated.Value(-100)).current;
 
     useEffect(() => {

@@ -317,8 +317,8 @@ impl TrocIntelligentService {
             user_id: i32,
         }
 
-        impl Bundle<'_> {
-            fn new(livres: Vec<&LivreScolaire>) -> Option<Self> {
+        impl<'a> Bundle<'a> {
+            fn new(livres: Vec<&'a LivreScolaire>) -> Option<Self> {
                 if livres.is_empty() {
                     return None;
                 }
@@ -980,20 +980,18 @@ impl TrocIntelligentService {
         Ok(chaine)
     }
 
-    /// Valider une chaîne de troc
+    /// Valider une chaîne de troc (V3 DAG-compatible)
+    /// Les participants sont ordonnés: chaque participant[i] envoie à participant[i+1] (pas de cycle).
+    /// Le dernier participant n'a PAS de suivant — c'est un DAG, pas un anneau.
     pub async fn validate_chaine_troc(&self, participants: &[ParticipantChaine]) -> AppResult<()> {
-        if participants.len() < 3 {
+        if participants.len() < 2 {
             return Err(AppError::BadRequest(
-                "Une chaîne de troc doit avoir au moins 3 participants".to_string(),
+                "Une chaîne de troc doit avoir au moins 2 participants".to_string(),
             ));
         }
 
-        // Vérifier que chaque participant a un livre valide et que les correspondances sont correctes
-        for i in 0..participants.len() {
-            let participant = &participants[i];
-            let participant_suivant = &participants[(i + 1) % participants.len()];
-
-            // Récupérer les livres
+        // Vérifier que chaque participant a un livre offert valide
+        for participant in participants {
             let livre_offert = sqlx::query_as::<_, LivreScolaire>(
                 "SELECT * FROM livres_scolaires WHERE id = $1 AND is_active = true AND is_available = true"
             )
@@ -1001,49 +999,69 @@ impl TrocIntelligentService {
             .fetch_optional(&*self.pool)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur validation chaîne: {}", e)))?
-            .ok_or_else(|| AppError::BadRequest(format!("Livre offert {} non trouvé", participant.livre_offert_id)))?;
+            .ok_or_else(|| AppError::BadRequest(format!("Livre offert {} non trouvé ou indisponible", participant.livre_offert_id)))?;
 
-            let livre_souhaite = sqlx::query_as::<_, LivreScolaire>(
-                "SELECT * FROM livres_scolaires WHERE id = $1 AND is_active = true AND is_available = true"
-            )
-            .bind(participant.livre_souhaite_id)
-            .fetch_optional(&*self.pool)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur validation chaîne: {}", e)))?
-            .ok_or_else(|| AppError::BadRequest(format!("Livre souhaité {} non trouvé", participant.livre_souhaite_id)))?;
-
-            // Vérifier la correspondance
-            if livre_offert.classe_souhaitee != livre_souhaite.classe_actuelle
-                || livre_offert.classe_actuelle != livre_souhaite.classe_souhaitee
-                || livre_offert.matiere != livre_souhaite.matiere
-            {
+            // Vérifier que le livre appartient bien à ce participant
+            if livre_offert.user_id != participant.user_id {
                 return Err(AppError::BadRequest(format!(
-                    "Correspondance incorrecte entre livre offert {} et livre souhaité {}",
-                    participant.livre_offert_id, participant.livre_souhaite_id
+                    "Le livre {} n'appartient pas à l'utilisateur {}",
+                    participant.livre_offert_id, participant.user_id
                 )));
             }
+        }
 
-            // Vérifier que le livre souhaité correspond au livre offert du participant suivant
-            let livre_offert_suivant =
+        // Pour chaque arête DAG (i → i+1), vérifier la correspondance classe/matière
+        for i in 0..participants.len().saturating_sub(1) {
+            let sender = &participants[i];
+            let receiver = &participants[i + 1];
+
+            let livre_envoye =
                 sqlx::query_as::<_, LivreScolaire>("SELECT * FROM livres_scolaires WHERE id = $1")
-                    .bind(participant_suivant.livre_offert_id)
+                    .bind(sender.livre_offert_id)
+                    .fetch_optional(&*self.pool)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Erreur validation chaîne: {}", e)))?
+                    .ok_or_else(|| {
+                        AppError::BadRequest(format!("Livre {} non trouvé", sender.livre_offert_id))
+                    })?;
+
+            // Le livre envoyé par sender doit correspondre au besoin du receiver
+            // (sender.classe_actuelle == receiver.classe_souhaitee du livre qu'il veut)
+            let livre_receiver =
+                sqlx::query_as::<_, LivreScolaire>("SELECT * FROM livres_scolaires WHERE id = $1")
+                    .bind(receiver.livre_offert_id)
                     .fetch_optional(&*self.pool)
                     .await
                     .map_err(|e| AppError::Internal(format!("Erreur validation chaîne: {}", e)))?
                     .ok_or_else(|| {
                         AppError::BadRequest(format!(
-                            "Livre suivant {} non trouvé",
-                            participant_suivant.livre_offert_id
+                            "Livre {} non trouvé",
+                            receiver.livre_offert_id
                         ))
                     })?;
 
-            if livre_souhaite.id != livre_offert_suivant.id {
-                return Err(AppError::BadRequest(
-                    format!(
-                        "Le livre souhaité {} doit correspondre au livre offert du participant suivant {}",
-                        participant.livre_souhaite_id, participant_suivant.livre_offert_id
-                    )
-                ));
+            // Le matching DAG: le livre envoyé a la classe que le receiver cherche
+            if livre_envoye.classe_actuelle != livre_receiver.classe_souhaitee
+                || livre_envoye.matiere != livre_receiver.matiere
+            {
+                return Err(AppError::BadRequest(format!(
+                    "Correspondance DAG incorrecte: livre {} (classe={}, matière={}) ne correspond pas au besoin du participant {} (classe_souhaitee={}, matière={})",
+                    sender.livre_offert_id, livre_envoye.classe_actuelle, livre_envoye.matiere,
+                    receiver.user_id, livre_receiver.classe_souhaitee, livre_receiver.matiere
+                )));
+            }
+
+            // Anti-réciprocité: vérifier que receiver → sender n'existe PAS dans la même chaîne
+            let reverse_exists = participants.iter().enumerate().any(|(j, p)| {
+                j > i
+                    && p.user_id == receiver.user_id
+                    && participants.get(j + 1).map(|next| next.user_id) == Some(sender.user_id)
+            });
+            if reverse_exists {
+                return Err(AppError::BadRequest(format!(
+                    "Anti-réciprocité violée: transferts {} → {} et {} → {} dans la même chaîne",
+                    sender.user_id, receiver.user_id, receiver.user_id, sender.user_id
+                )));
             }
         }
 

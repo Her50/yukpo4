@@ -61,8 +61,7 @@ pub async fn get_prestataires_info_batch(
     }
 
     // ✅ CORRIGÉ 2026-02-16: Utiliser nom_complet stocké au lieu de le reconstruire
-    let result = sqlx::query_as!(
-        PrestataireInfo,
+    let result = sqlx::query_as::<_, PrestataireInfo>(
         r#"
         SELECT 
             id,
@@ -79,13 +78,13 @@ pub async fn get_prestataires_info_batch(
             gps,
             photo_profil,
             avatar_url,
-            created_at AS "created_at: chrono::DateTime<chrono::Utc>"
+            created_at
         FROM users 
         WHERE id = ANY($1)
         ORDER BY id
         "#,
-        user_ids
     )
+    .bind(user_ids)
     .fetch_all(pool)
     .await?;
 
@@ -95,8 +94,7 @@ pub async fn get_prestataires_info_batch(
 /// Récupère tous les prestataires avec leurs informations
 pub async fn get_all_prestataires(pool: &PgPool) -> AppResult<Vec<PrestataireInfo>> {
     // ✅ CORRIGÉ 2026-02-16: Utiliser nom_complet stocké au lieu de le reconstruire
-    let result = sqlx::query_as!(
-        PrestataireInfo,
+    let result = sqlx::query_as::<_, PrestataireInfo>(
         r#"
         SELECT 
             id,
@@ -113,7 +111,7 @@ pub async fn get_all_prestataires(pool: &PgPool) -> AppResult<Vec<PrestataireInf
             gps,
             photo_profil,
             avatar_url,
-            created_at AS "created_at: chrono::DateTime<chrono::Utc>"
+            created_at
         FROM users 
         WHERE is_provider = true
         ORDER BY COALESCE(
@@ -124,7 +122,7 @@ pub async fn get_all_prestataires(pool: &PgPool) -> AppResult<Vec<PrestataireInf
                     ELSE split_part(email, '@', 1)
                 END
             ), created_at
-        "#
+        "#,
     )
     .fetch_all(pool)
     .await?;

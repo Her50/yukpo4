@@ -447,6 +447,9 @@ impl AppState {
         // ✅ NOUVEAU 2026-02-15: Cloner pg avant de le déplacer dans AppState (pour redis_scaling_service)
         let pg_for_redis_scaling = pg.clone();
 
+        // ✅ Clone pour paiement_service (pg sera déplacé dans AppState)
+        let pg_for_paiement = pg.clone();
+
         AppState {
             pg,
             pg_read, // ✅ NOUVEAU 2025-12-02: Read replica pour scaling horizontal
@@ -588,7 +591,7 @@ impl AppState {
             // ✅ NOUVEAU 2026-03-16: Initialiser le service de paiements agrégés
             paiement_service: Arc::new(
                 crate::services::paiement_agrege_service::PaiementAgregeService::new(Arc::new(
-                    pg.clone(),
+                    pg_for_paiement,
                 )),
             ),
         }

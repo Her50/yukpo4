@@ -34,12 +34,12 @@ pub async fn prometheus_metrics_handler(
     let ws_metrics = get_delivery_ws_metrics_snapshot();
 
     // Profondeur de la file de matching
-    let queue_depth: i64 = match sqlx::query_scalar!(
+    let queue_depth: i64 = match sqlx::query_scalar::<_, Option<i64>>(
         r#"
         SELECT COUNT(*)::bigint
         FROM delivery_matching_queue
         WHERE status IN ('queued', 'searching')
-        "#
+        "#,
     )
     .fetch_one(&state.pg)
     .await
@@ -143,12 +143,12 @@ pub async fn prometheus_metrics_handler(
     metrics.push_str(&format!("delivery_db_pool_active {}\n", pool_active));
 
     // 4. ✅ Phase 3: Métriques Partitionnement
-    let partition_count: i64 = match sqlx::query_scalar!(
+    let partition_count: i64 = match sqlx::query_scalar::<_, Option<i64>>(
         r#"
         SELECT COUNT(*)::bigint
         FROM pg_tables
         WHERE tablename LIKE 'deliveries_%' AND tablename != 'deliveries_archive'
-        "#
+        "#,
     )
     .fetch_one(&state.pg)
     .await
@@ -158,10 +158,10 @@ pub async fn prometheus_metrics_handler(
         Err(_) => 0,
     };
 
-    let archive_size: i64 = match sqlx::query_scalar!(
+    let archive_size: i64 = match sqlx::query_scalar::<_, Option<i64>>(
         r#"
         SELECT COUNT(*)::bigint FROM deliveries_archive
-        "#
+        "#,
     )
     .fetch_one(&state.pg)
     .await

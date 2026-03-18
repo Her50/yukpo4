@@ -69,8 +69,7 @@ impl InventoryService {
         note: Option<String>,
         expires_at: Option<DateTime<Utc>>,
     ) -> AppResult<StockSignal> {
-        let record = sqlx::query_as!(
-            StockSignalRow,
+        let record = sqlx::query_as::<_, StockSignalRow>(
             r#"
             INSERT INTO service_inventory_overrides (
                 service_id,
@@ -91,13 +90,13 @@ impl InventoryService {
                 last_synced_at = NOW()
             RETURNING service_id, product_index, stock_level, source, note, last_synced_at, expires_at
             "#,
-            service_id,
-            product_index,
-            stock_level,
-            source,
-            note,
-            expires_at
         )
+        .bind(service_id)
+        .bind(product_index)
+        .bind(stock_level)
+        .bind(&source)
+        .bind(&note)
+        .bind(expires_at)
         .fetch_one(&self.pool)
         .await
         .map_err(AppError::from)?;
@@ -110,8 +109,7 @@ impl InventoryService {
         service_id: i32,
         product_index: i32,
     ) -> AppResult<Option<StockSignal>> {
-        let record = sqlx::query_as!(
-            StockSignalRow,
+        let record = sqlx::query_as::<_, StockSignalRow>(
             r#"
             SELECT
                 service_id,
@@ -125,9 +123,9 @@ impl InventoryService {
             WHERE service_id = $1
               AND product_index = $2
             "#,
-            service_id,
-            product_index
         )
+        .bind(service_id)
+        .bind(product_index)
         .fetch_optional(&self.pool)
         .await
         .map_err(AppError::from)?;

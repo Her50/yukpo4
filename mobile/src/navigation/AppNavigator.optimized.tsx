@@ -7,8 +7,8 @@
 // ============================================================================
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createStackNavigator } from '@react-navigation/stack';
 import { useNavigationState } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Platform, StyleSheet, Text, View } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
@@ -431,13 +431,15 @@ reg('LivreScolaireHome', () => import('../screens/specialized/LivreScolaireHomeS
 reg('LivreScolaireList', () => import('../screens/specialized/LivreScolaireListScreen'));
 reg('LivreScolaireSearch', () => import('../screens/specialized/LivreScolaireSearchScreen'));
 reg('MesLivres', () => import('../screens/specialized/MesLivresScreen'));
-// ✅ V2 Bourse du Livre (5)
+// ✅ V2 Bourse du Livre (8)
 reg('BookUploadV2', () => import('../screens/specialized/BookUploadV2Screen'));
 reg('BookRecapV2', () => import('../screens/specialized/BookRecapV2Screen'));
 reg('BookPackages', () => import('../screens/specialized/BookPackagesScreen'));
 reg('BookBuyDirect', () => import('../screens/bourse-livre/BookBuyDirectScreen'));
 reg('AdminProgrammeUpload', () => import('../screens/bourse-livre/AdminProgrammeUploadScreen'));
 reg('NewBooks', () => import('../screens/specialized/NewBooksScreen'));
+reg('MesBesoinsLivres', () => import('../screens/specialized/MesBesoinsLivresScreen'));
+reg('AdminDonations', () => import('../screens/specialized/AdminDonationsScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Menu / Recettes (4)
@@ -531,6 +533,7 @@ S['Payment'] = S['PaiementPlan'];
 S['HotelSearch'] = S['HotelMeubleHome'];
 S['MeubleSearch'] = S['HotelMeubleHome'];
 S['NavigationScreen'] = S['Navigation'];
+S['LivreScolaireSearchAdvanced'] = S['LivreScolaireSearch'];
 
 // ============================================================================
 // TAB NAVIGATOR - 5 onglets principaux (restauré depuis version originale)

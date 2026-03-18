@@ -412,16 +412,14 @@ impl OffresEmploiService {
 
     /// Incrémente le compteur de vues
     pub async fn increment_vues(&self, offre_id: i32) -> AppResult<()> {
-        sqlx::query!(
-            "UPDATE offres_emploi SET nombre_vues = nombre_vues + 1 WHERE id = $1",
-            offre_id
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| {
-            error!("[increment_vues] Erreur: {}", e);
-            AppError::Internal(format!("Erreur incrément vues: {}", e))
-        })?;
+        sqlx::query("UPDATE offres_emploi SET nombre_vues = nombre_vues + 1 WHERE id = $1")
+            .bind(offre_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| {
+                error!("[increment_vues] Erreur: {}", e);
+                AppError::Internal(format!("Erreur incrément vues: {}", e))
+            })?;
 
         // Invalider le cache des détails
         if let Some(redis) = &self.redis_client {
@@ -558,11 +556,11 @@ impl OffresEmploiService {
             ));
         }
 
-        sqlx::query!(
+        sqlx::query(
             "UPDATE offres_emploi SET statut = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
-            statut,
-            offre_id
         )
+        .bind(statut)
+        .bind(offre_id)
         .execute(&self.pool)
         .await
         .map_err(|e| {

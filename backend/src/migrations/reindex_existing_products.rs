@@ -14,7 +14,7 @@ pub async fn reindex_existing_products(pool: &PgPool) -> Result<usize, AppError>
     log_info("[REINDEX_PRODUITS] Début réindexation des produits existants...");
     
     // Trouver tous les services avec produits mais non indexés
-    let services_with_products = sqlx::query!(
+    let services_with_products = sqlx::query(
         r#"
         SELECT DISTINCT s.id, s.data
         FROM services s
@@ -43,9 +43,9 @@ pub async fn reindex_existing_products(pool: &PgPool) -> Result<usize, AppError>
     let mut success_count = 0;
     let mut error_count = 0;
     
-    for row in services_with_products {
-        let service_id = row.id;
-        let data: Value = row.data;
+    for row in &services_with_products {
+        let service_id: i32 = row.try_get("id").unwrap_or(0);
+        let data: Value = row.try_get("data").unwrap_or(Value::Null);
         
         match save_autocomplete_combination(pool, service_id, &data).await {
             Ok(_) => {
