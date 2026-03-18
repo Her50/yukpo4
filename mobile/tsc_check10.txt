@@ -1,0 +1,87 @@
+﻿src/components/ChatModalMobile.tsx(1305,84): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(...items: ConcatArray<{ text: any; onPress: () => void; }>[]): { text: any; onPress: () => void; }[]', gave the following error.
+    Object literal may only specify known properties, and 'style' does not exist in type '{ text: any; onPress: () => void; }'.
+  Overload 2 of 2, '(...items: ({ text: any; onPress: () => void; } | ConcatArray<{ text: any; onPress: () => void; }>)[]): { text: any; onPress: () => void; }[]', gave the following error.
+    Object literal may only specify known properties, and 'style' does not exist in type '{ text: any; onPress: () => void; }'.
+src/components/CrashRecoveryScreen.tsx(15,10): error TS2724: '"../utils/DebugLogger"' has no exported member named 'useDebugLogger'. Did you mean 'debugLogger'?
+src/components/DebugOverlay.tsx(16,10): error TS2724: '"../utils/DebugLogger"' has no exported member named 'useDebugLogger'. Did you mean 'debugLogger'?
+src/components/delivery/CourierSelectionModal.tsx(63,48): error TS2554: Expected 1 arguments, but got 0.
+src/components/delivery/DeliveryShoppingFlowSteps.tsx(114,42): error TS2552: Cannot find name 'navigation'. Did you mean 'navigator'?
+src/components/ExpressVideoGenerator.tsx(85,17): error TS2561: Object literal may only specify known properties, but 'productId' does not exist in type 'Omit<UxEvent, "ts" | "event">'. Did you mean to write 'productIndex'?
+src/components/ExpressVideoGenerator.tsx(120,21): error TS2561: Object literal may only specify known properties, but 'productId' does not exist in type 'Omit<UxEvent, "ts" | "event">'. Did you mean to write 'productIndex'?
+src/components/ExpressVideoGenerator.tsx(141,17): error TS2561: Object literal may only specify known properties, but 'productId' does not exist in type 'Omit<UxEvent, "ts" | "event">'. Did you mean to write 'productIndex'?
+src/components/FloatingHelpButton.tsx(7,5): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/InfractionChart.tsx(4,54): error TS2307: Cannot find module 'recharts' or its corresponding type declarations.
+src/components/LoyaltyPointsBadge.tsx(34,64): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/components/ProductVideoCreationModal.tsx(814,74): error TS2448: Block-scoped variable 'refreshMedia' used before its declaration.
+src/components/ProductVideoCreationModal.tsx(2679,27): error TS2345: Argument of type '(prev: Set<ModalStep>) => Set<number>' is not assignable to parameter of type 'SetStateAction<Set<ModalStep>>'.
+  Type '(prev: Set<ModalStep>) => Set<number>' is not assignable to type '(prevState: Set<ModalStep>) => Set<ModalStep>'.
+    Type 'Set<number>' is not assignable to type 'Set<ModalStep>'.
+      Type 'number' is not assignable to type 'ModalStep'.
+src/components/ProductVideoCreationModal.tsx(3802,29): error TS2739: Type 'VideoTimeline' is missing the following properties from type 'ImmersiveTimeline': fps, width, height
+src/components/ServiceStats.tsx(3,8): error TS2613: Module '"C:/Users/23767/yukpomnang2/mobile/src/hooks/useServiceStats"' has no default export. Did you mean to use 'import { useServiceStats } from "C:/Users/23767/yukpomnang2/mobile/src/hooks/useServiceStats"' instead?
+src/components/specialized/BloodBankResultCard.tsx(721,5): error TS1117: An object literal cannot have multiple properties with the same name.
+src/components/SpecializedServicesButton.tsx(44,21): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+src/components/video/DuetRemixModal.tsx(87,75): error TS2554: Expected 2 arguments, but got 3.
+src/components/video/VideoGestureHandler.tsx(146,9): error TS2322: Type '({ translateY: number; translateX?: undefined; } | { translateX: number; translateY?: undefined; })[]' is not assignable to type 'string | readonly (({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; ... 4 more ...; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; }))[]'.
+  Type '({ translateY: number; translateX?: undefined; } | { translateX: number; translateY?: undefined; })[]' is not assignable to type 'readonly (({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; }))[]'.
+    Type '{ translateY: number; translateX?: undefined; } | { translateX: number; translateY?: undefined; }' is not assignable to type '({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; })'.
+      Type '{ translateY: number; translateX?: undefined; }' is not assignable to type '({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; })'.
+        Type '{ translateY: number; translateX?: undefined; }' is not assignable to type '{ matrix: AnimatableNumericValue[]; } & { scaleX?: never; scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; }'.
+          Property 'matrix' is missing in type '{ translateY: number; translateX?: undefined; }' but required in type '{ matrix: AnimatableNumericValue[]; }'.
+src/config/linking.ts(1,10): error TS2305: Module '"@react-navigation/native"' has no exported member 'LinkingOptions'.
+src/hooks/useCostCalculation.ts(46,25): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/hooks/useSmartSuggestions.ts(68,21): error TS2554: Expected 3 arguments, but got 4.
+src/hooks/useSmartSuggestions.ts(206,17): error TS2554: Expected 3 arguments, but got 4.
+src/hooks/useTripReminders.ts(53,23): error TS2554: Expected 2 arguments, but got 1.
+src/screens/BourseLivreScreen.tsx(173,19): error TS2739: Type '{ recommendations: { titre: string; raison: string; score: number; }[]; conseil: string; }' is missing the following properties from type 'BookRecommendationResponse': livre_ids, score_recommendation, reasoning, alternative_books, matieres_suggestees
+src/screens/delivery/DeliveryParcelFlowNew.tsx(237,18): error TS2448: Block-scoped variable 'estimatedDistance' used before its declaration.
+src/screens/delivery/DeliveryProofScreen.tsx(73,29): error TS2367: This comparison appears to be unintentional because the types 'DeliveryStatus' and '"EnRoutePickup"' have no overlap.
+src/screens/delivery/DeliveryProofScreen.tsx(73,69): error TS2367: This comparison appears to be unintentional because the types 'DeliveryStatus' and '"ShoppingCompleted"' have no overlap.
+src/screens/delivery/DeliveryProofScreen.tsx(138,31): error TS2367: This comparison appears to be unintentional because the types 'DeliveryStatus' and '"EnRoutePickup"' have no overlap.
+src/screens/delivery/DeliveryProofScreen.tsx(138,71): error TS2367: This comparison appears to be unintentional because the types 'DeliveryStatus' and '"ShoppingCompleted"' have no overlap.
+src/screens/delivery/DeliveryProofScreen.tsx(139,33): error TS2367: This comparison appears to be unintentional because the types 'DeliveryStatus' and '"EnRouteDelivery"' have no overlap.
+src/screens/delivery/DeliveryProofScreen.tsx(139,75): error TS2367: This comparison appears to be unintentional because the types 'DeliveryStatus' and '"Delivered"' have no overlap.
+src/screens/HomeScreen.working.tsx(216,42): error TS2339: Property 'count' does not exist on type 'unknown'.
+src/screens/offres-emploi/AnalyseCVScreen.tsx(41,55): error TS2554: Expected 2-3 arguments, but got 1.
+src/screens/OrderStatusScreen.tsx(264,48): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/screens/specialized/AssuranceDashboardScreen.tsx(199,13): error TS1345: An expression of type 'void' cannot be tested for truthiness.
+src/screens/specialized/BloodDonationRequestScreen.tsx(355,52): error TS2349: This expression is not callable.
+  Type '{ borderColor: string; backgroundColor: string; }' has no call signatures.
+src/screens/specialized/BusTicketQRScannerScreen.tsx(49,25): error TS2345: Argument of type 'string' is not assignable to parameter of type 'boolean'.
+src/screens/specialized/CovoiturageBookingScreen.tsx(166,27): error TS2554: Expected 2 arguments, but got 1.
+src/screens/specialized/CovoiturageBookingScreen.tsx(196,27): error TS2554: Expected 2 arguments, but got 1.
+src/screens/specialized/CovoiturageDetailsScreen.tsx(223,26): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/screens/specialized/ImmobilierDetailsScreen.tsx(62,121): error TS2352: Conversion of type '{ success: boolean; data: RealEstateProperty[]; }' to type 'any[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ success: boolean; data: RealEstateProperty[]; }' is missing the following properties from type 'any[]': length, pop, push, concat, and 35 more.
+src/screens/specialized/LivreScolaireDetailsScreen.tsx(101,21): error TS2367: This comparison appears to be unintentional because the types 'string' and 'number' have no overlap.
+src/screens/specialized/MenuPlanningHubScreen.tsx(737,149): error TS18047: 'ingredient.quantity' is possibly 'null'.
+src/screens/specialized/MenuPlanningHubScreen.tsx(857,38): error TS2304: Cannot find name 'InternalShareButton'.
+src/screens/specialized/MenuPlanningHubScreen.tsx(861,77): error TS2339: Property 'total_cost' does not exist on type 'GeneratedRecipe'.
+src/screens/specialized/MenuPlanningHubScreen.tsx(861,106): error TS2339: Property 'total_cost' does not exist on type 'GeneratedRecipe'.
+src/screens/specialized/MenuPlanningHubScreen.tsx(865,77): error TS2339: Property 'total_cost' does not exist on type 'GeneratedRecipe'.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(252,9): error TS2448: Block-scoped variable 'editableShoppingList' used before its declaration.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(1383,77): error TS2339: Property 'total_cost' does not exist on type 'GeneratedRecipe'.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(1383,106): error TS2339: Property 'total_cost' does not exist on type 'GeneratedRecipe'.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(1387,77): error TS2339: Property 'total_cost' does not exist on type 'GeneratedRecipe'.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(3228,5): error TS1117: An object literal cannot have multiple properties with the same name.
+src/screens/specialized/MesTrocsScreen.tsx(139,30): error TS2367: This comparison appears to be unintentional because the types 'string' and 'number' have no overlap.
+src/screens/specialized/TaxiBookingScreen.tsx(268,27): error TS2554: Expected 2 arguments, but got 1.
+src/screens/specialized/TaxiDetailsScreen.tsx(129,29): error TS2554: Expected 2 arguments, but got 1.
+src/screens/specialized/TaxiDetailsScreen.tsx(290,34): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/screens/specialized/TicketVoyageHomeScreen.tsx(230,13): error TS2552: Cannot find name 'Alert'. Did you mean 'alert'?
+src/screens/specialized/TrocDetailsScreen.tsx(122,26): error TS2367: This comparison appears to be unintentional because the types 'string' and 'number' have no overlap.
+src/screens/video/VideoCreationWizardScreen.tsx(1455,33): error TS2367: This comparison appears to be unintentional because the types '"media"' and '"ai_virtual"' have no overlap.
+src/screens/video/VideoCreationWizardScreen.tsx(1461,30): error TS2367: This comparison appears to be unintentional because the types '"media"' and '"ai_virtual"' have no overlap.
+src/screens/video/VideoCreationWizardScreen.tsx(1469,36): error TS2367: This comparison appears to be unintentional because the types '"media"' and '"ai_virtual"' have no overlap.
+src/services/advancedTimelineService.ts(78,9): error TS2739: Type 'ApiResponse<TimelineListResponse>' is missing the following properties from type 'TimelineListResponse': timelines, total, limit, offset
+src/services/arRenderService.ts(72,9): error TS2739: Type 'ApiResponse<ARPreviewResponse>' is missing the following properties from type 'ARPreviewResponse': preview_url, thumbnail_url, scene_data
+src/services/effectLibraryService.ts(62,9): error TS2739: Type 'ApiResponse<EffectListResponse>' is missing the following properties from type 'EffectListResponse': effects, total, limit, offset
+src/services/effectLibraryService.ts(71,13): error TS2740: Type 'ApiResponse<Effect>' is missing the following properties from type 'Effect': id, name, category, description, and 7 more.
+src/services/exportService.ts(36,9): error TS2739: Type 'ApiResponse<ExportJob>' is missing the following properties from type 'ExportJob': jobId, settings, progress, createdAt
+src/services/extendedAudioLibraryService.ts(60,9): error TS2739: Type 'ApiResponse<AudioSearchResponse>' is missing the following properties from type 'AudioSearchResponse': tracks, total, limit, offset
+src/services/generativeVideoService.ts(84,9): error TS2741: Property 'job_id' is missing in type 'ApiResponse<GenerateVideoResponse>' but required in type 'GenerateVideoResponse'.
+src/services/generativeVideoService.ts(94,9): error TS2740: Type 'ApiResponse<GenerativeJob>' is missing the following properties from type 'GenerativeJob': job_id, user_id, request, progress, and 3 more.
+src/services/liveKitService.ts(52,19): error TS2749: 'Room' refers to a value, but is being used as a type here. Did you mean 'typeof Room'?
+src/services/templateService.ts(68,9): error TS2739: Type 'ApiResponse<TemplateListResponse>' is missing the following properties from type 'TemplateListResponse': templates, total, limit, offset
+src/utils/formConfigExtractor.ts(57,23): error TS2554: Expected 6 arguments, but got 5.

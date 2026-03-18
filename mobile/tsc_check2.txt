@@ -1,0 +1,1080 @@
+﻿App.test-providers.tsx(35,10): error TS2305: Module '"@react-navigation/native"' has no exported member 'NavigationContainer'.
+App.test-providers.tsx(43,8): error TS2613: Module '"C:/Users/23767/yukpomnang2/mobile/src/components/AsyncStorageGate"' has no default export. Did you mean to use 'import { AsyncStorageGate } from "C:/Users/23767/yukpomnang2/mobile/src/components/AsyncStorageGate"' instead?
+App.test-providers.tsx(56,35): error TS2307: Cannot find module './src/services/observability' or its corresponding type declarations.
+App.test-providers.tsx(57,38): error TS2307: Cannot find module './src/services/remoteLoggingInitializer' or its corresponding type declarations.
+App.test-providers.tsx(62,10): error TS2614: Module '"./src/theme/modernTheme"' has no exported member 'theme'. Did you mean to use 'import theme from "./src/theme/modernTheme"' instead?
+App.test-providers.tsx(66,19): error TS2339: Property 'init' does not exist on type 'ComponentDebugger'.
+e2e/videoWizard.storyboard.preview.e2e.ts(3,1): error TS2582: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+e2e/videoWizard.storyboard.preview.e2e.ts(4,5): error TS2304: Cannot find name 'beforeAll'.
+e2e/videoWizard.storyboard.preview.e2e.ts(8,5): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/components/ArtisticFilterSelector.tsx(3,24): error TS2307: Cannot find module '@react-native-community/slider' or its corresponding type declarations.
+src/components/ArtisticFilterSelector.tsx(17,64): error TS2307: Cannot find module '../types/ArtisticFilter' or its corresponding type declarations.
+src/components/BadgePlan.tsx(22,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '`text-xs px-3 py-1 rounded-full font-semibold ${any}`' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '`text-xs px-3 py-1 rounded-full font-semibold ${any}`' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/bus/EnhancedBusSeatSelector.tsx(219,44): error TS2345: Argument of type '() => { transform: ({ scale: number; translateX?: undefined; translateY?: undefined; } | { translateX: number; scale?: undefined; translateY?: undefined; } | { translateY: number; scale?: undefined; translateX?: undefined; })[]; }' is not assignable to parameter of type '() => DefaultStyle'.
+  Type '{ transform: ({ scale: number; translateX?: undefined; translateY?: undefined; } | { translateX: number; scale?: undefined; translateY?: undefined; } | { translateY: number; scale?: undefined; translateX?: undefined; })[]; }' is not assignable to type 'DefaultStyle'.
+    Type '{ transform: ({ scale: number; translateX?: undefined; translateY?: undefined; } | { translateX: number; scale?: undefined; translateY?: undefined; } | { translateY: number; scale?: undefined; translateX?: undefined; })[]; }' is not assignable to type 'ImageStyle'.
+      Types of property 'transform' are incompatible.
+        Type '({ scale: number; translateX?: undefined; translateY?: undefined; } | { translateX: number; scale?: undefined; translateY?: undefined; } | { translateY: number; scale?: undefined; translateX?: undefined; })[]' is not assignable to type 'string | readonly (({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; ... 4 more ...; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; }))[]'.
+          Type '({ scale: number; translateX?: undefined; translateY?: undefined; } | { translateX: number; scale?: undefined; translateY?: undefined; } | { translateY: number; scale?: undefined; translateX?: undefined; })[]' is not assignable to type 'readonly (({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; }))[]'.
+            Type '{ scale: number; translateX?: undefined; translateY?: undefined; } | { translateX: number; scale?: undefined; translateY?: undefined; } | { translateY: number; scale?: undefined; translateX?: undefined; }' is not assignable to type '({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; })'.
+              Type '{ scale: number; translateX?: undefined; translateY?: undefined; }' is not assignable to type '({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; })'.
+                Type '{ scale: number; translateX?: undefined; translateY?: undefined; }' is not assignable to type '{ matrix: AnimatableNumericValue[]; } & { scaleX?: never; scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; }'.
+                  Property 'matrix' is missing in type '{ scale: number; translateX?: undefined; translateY?: undefined; }' but required in type '{ matrix: AnimatableNumericValue[]; }'.
+src/components/CardService.tsx(14,9): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '"bg-white shadow-md rounded-lg p-5 text-center w-full max-w-xs"' is not assignable to type 'StyleProp<ViewStyle>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '"bg-white shadow-md rounded-lg p-5 text-center w-full max-w-xs"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/CardService.tsx(15,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '"text-3xl mb-2"' is not assignable to type 'StyleProp<ViewStyle>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '"text-3xl mb-2"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/CardService.tsx(16,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"text-lg font-bold text-gray-800 mb-1"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"text-lg font-bold text-gray-800 mb-1"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/CardService.tsx(17,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"text-sm text-gray-600"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"text-sm text-gray-600"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/CardService.tsx(20,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '"mt-6 flex flex-wrap gap-4 justify-center"' is not assignable to type 'StyleProp<ViewStyle>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '"mt-6 flex flex-wrap gap-4 justify-center"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/CardService.tsx(23,9): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/CardService.tsx(28,22): error TS2339: Property 'PLANS' does not exist on type '{ readonly LOGIN: "/login"; readonly REGISTER: "/register"; readonly FORGOT_PASSWORD: "/forgot-password"; readonly HOME: "/"; readonly DASHBOARD: "/dashboard"; readonly PROFILE: "/profile"; ... 12 more ...; readonly TEST: "/test"; }'.
+src/components/CardService.tsx(29,9): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/CardService.tsx(35,9): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/ChatModalMobile.tsx(1304,84): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(...items: ConcatArray<{ text: any; onPress: () => void; }>[]): { text: any; onPress: () => void; }[]', gave the following error.
+    Object literal may only specify known properties, and 'style' does not exist in type '{ text: any; onPress: () => void; }'.
+  Overload 2 of 2, '(...items: ({ text: any; onPress: () => void; } | ConcatArray<{ text: any; onPress: () => void; }>)[]): { text: any; onPress: () => void; }[]', gave the following error.
+    Object literal may only specify known properties, and 'style' does not exist in type '{ text: any; onPress: () => void; }'.
+src/components/covoiturage/CovoituragePaymentFlow.tsx(114,25): error TS2353: Object literal may only specify known properties, and 'reservationId' does not exist in type '{ paymentId: string; method: string; }'.
+src/components/covoiturage/QRCodeDisplay.tsx(40,27): error TS2345: Argument of type 'ApiResponse<unknown>' is not assignable to parameter of type 'SetStateAction<{ qr_code: string; qr_code_url: string; status: string; expires_at: string; }>'.
+  Type 'ApiResponse<unknown>' is missing the following properties from type '{ qr_code: string; qr_code_url: string; status: string; expires_at: string; }': qr_code, qr_code_url, expires_at
+src/components/covoiturage/QRCodeDisplay.tsx(45,31): error TS2345: Argument of type 'ApiResponse<unknown>' is not assignable to parameter of type 'SetStateAction<{ qr_code: string; qr_code_url: string; status: string; expires_at: string; }>'.
+src/components/CrashRecoveryScreen.tsx(15,10): error TS2724: '"../utils/DebugLogger"' has no exported member named 'useDebugLogger'. Did you mean 'debugLogger'?
+src/components/CreateNewKeyFlow.tsx(16,36): error TS2307: Cannot find module './forms/FormAutoAutomobile' or its corresponding type declarations.
+src/components/CreateNewKeyFlow.tsx(17,35): error TS2307: Cannot find module './forms/FormAutoTelephone' or its corresponding type declarations.
+src/components/CreateNewKeyFlow.tsx(18,37): error TS2307: Cannot find module './forms/FormAutoAgriculture' or its corresponding type declarations.
+src/components/CreateNewKeyFlow.tsx(19,36): error TS2307: Cannot find module './forms/FormAutoImmobilier' or its corresponding type declarations.
+src/components/CreationSection.tsx(4,20): error TS2307: Cannot find module './services.module.css' or its corresponding type declarations.
+src/components/CreationSection.tsx(9,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"text-2xl font-bold mb-4"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"text-2xl font-bold mb-4"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/CreationSection.tsx(10,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"text-gray-700 text-sm"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"text-gray-700 text-sm"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/DebugOverlay.tsx(16,10): error TS2724: '"../utils/DebugLogger"' has no exported member named 'useDebugLogger'. Did you mean 'debugLogger'?
+src/components/DeferredProviders.tsx(6,39): error TS2307: Cannot find module './intelligence/GlobalIAStats' or its corresponding type declarations.
+src/components/delivery/CourierSelectionModal.tsx(63,48): error TS2554: Expected 1 arguments, but got 0.
+src/components/delivery/DeliveryProofVideoRecorder.tsx(39,30): error TS2749: 'Camera' refers to a value, but is being used as a type here. Did you mean 'typeof Camera'?
+src/components/delivery/DeliveryProofVideoRecorder.tsx(182,14): error TS2604: JSX element type 'Camera' does not have any construct or call signatures.
+src/components/delivery/DeliveryProofVideoRecorder.tsx(182,14): error TS2786: 'Camera' cannot be used as a JSX component.
+  Its type '{ getCameraPermissionsAsync: () => Promise<PermissionResponse>; requestCameraPermissionsAsync: () => Promise<PermissionResponse>; getMicrophonePermissionsAsync: () => Promise<...>; requestMicrophonePermissionsAsync: () => Promise<...>; scanFromURLAsync: (url: string, barcodeTypes?: BarcodeType[]) => Promise<...>; }' is not a valid JSX element type.
+src/components/delivery/DeliveryShoppingFlowSteps.tsx(114,42): error TS2552: Cannot find name 'navigation'. Did you mean 'navigator'?
+src/components/delivery/SkeletonDeliveryCard.tsx(75,12): error TS2304: Cannot find name 'modernStyles'.
+src/components/DesktopMenu.tsx(2,10): error TS2305: Module '"@react-navigation/native"' has no exported member 'Link'.
+src/components/DesktopMenu.tsx(2,16): error TS2305: Module '"@react-navigation/native"' has no exported member 'useLocation'.
+src/components/DesktopMenu.tsx(7,24): error TS2307: Cannot find module 'classnames' or its corresponding type declarations.
+src/components/DesktopMenu.tsx(18,20): error TS2339: Property 'CATALOGUE' does not exist on type '{ readonly LOGIN: "/login"; readonly REGISTER: "/register"; readonly FORGOT_PASSWORD: "/forgot-password"; readonly HOME: "/"; readonly DASHBOARD: "/dashboard"; readonly PROFILE: "/profile"; ... 12 more ...; readonly TEST: "/test"; }'.
+src/components/DesktopMenu.tsx(20,20): error TS2339: Property 'ABOUT' does not exist on type '{ readonly LOGIN: "/login"; readonly REGISTER: "/register"; readonly FORGOT_PASSWORD: "/forgot-password"; readonly HOME: "/"; readonly DASHBOARD: "/dashboard"; readonly PROFILE: "/profile"; ... 12 more ...; readonly TEST: "/test"; }'.
+src/components/DesktopMenu.tsx(26,36): error TS2339: Property 'ESPACE' does not exist on type '{ readonly LOGIN: "/login"; readonly REGISTER: "/register"; readonly FORGOT_PASSWORD: "/forgot-password"; readonly HOME: "/"; readonly DASHBOARD: "/dashboard"; readonly PROFILE: "/profile"; ... 12 more ...; readonly TEST: "/test"; }'.
+src/components/DesktopMenu.tsx(30,38): error TS2339: Property 'DASHBOARD_ADMIN_AUDIT' does not exist on type '{ readonly LOGIN: "/login"; readonly REGISTER: "/register"; readonly FORGOT_PASSWORD: "/forgot-password"; readonly HOME: "/"; readonly DASHBOARD: "/dashboard"; readonly PROFILE: "/profile"; ... 12 more ...; readonly TEST: "/test"; }'.
+src/components/DesktopMenu.tsx(47,10): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/DynamicField.tsx(118,25): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextInputProps): TextInput', gave the following error.
+    Type '{ label: string; value: any; onChangeText: (newValue: any) => void; mode: string; placeholder: string; disabled: boolean; error: boolean; keyboardType: "default" | "email-address" | "phone-pad"; style: { ...; }; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+      Property 'label' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+  Overload 2 of 2, '(props: TextInputProps, context: any): TextInput', gave the following error.
+    Type '{ label: string; value: any; onChangeText: (newValue: any) => void; mode: string; placeholder: string; disabled: boolean; error: boolean; keyboardType: "default" | "email-address" | "phone-pad"; style: { ...; }; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+      Property 'label' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+src/components/DynamicField.tsx(137,25): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextInputProps): TextInput', gave the following error.
+    Type '{ label: string; value: any; onChangeText: (newValue: any) => void; mode: string; multiline: true; numberOfLines: number; placeholder: string; disabled: boolean; error: boolean; style: { backgroundColor: string; minHeight: number; }; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+      Property 'label' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+  Overload 2 of 2, '(props: TextInputProps, context: any): TextInput', gave the following error.
+    Type '{ label: string; value: any; onChangeText: (newValue: any) => void; mode: string; multiline: true; numberOfLines: number; placeholder: string; disabled: boolean; error: boolean; style: { backgroundColor: string; minHeight: number; }; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+      Property 'label' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+src/components/DynamicField.tsx(154,25): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextInputProps): TextInput', gave the following error.
+    Type '{ label: string; value: any; onChangeText: (text: string) => void; mode: string; placeholder: string; disabled: boolean; error: boolean; keyboardType: "numeric"; style: { backgroundColor: string; }; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+      Property 'label' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+  Overload 2 of 2, '(props: TextInputProps, context: any): TextInput', gave the following error.
+    Type '{ label: string; value: any; onChangeText: (text: string) => void; mode: string; placeholder: string; disabled: boolean; error: boolean; keyboardType: "numeric"; style: { backgroundColor: string; }; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+      Property 'label' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+src/components/DynamicField.tsx(348,25): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextInputProps): TextInput', gave the following error.
+    Type '{ label: string; value: any; onChangeText: (newValue: any) => void; mode: string; placeholder: string; disabled: boolean; error: boolean; style: { backgroundColor: string; }; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+      Property 'label' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+  Overload 2 of 2, '(props: TextInputProps, context: any): TextInput', gave the following error.
+    Type '{ label: string; value: any; onChangeText: (newValue: any) => void; mode: string; placeholder: string; disabled: boolean; error: boolean; style: { backgroundColor: string; }; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+      Property 'label' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<TextInput> & Readonly<TextInputProps>'.
+src/components/DynamicMenu.tsx(20,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '"space-y-6"' is not assignable to type 'StyleProp<ViewStyle>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '"space-y-6"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/DynamicMenu.tsx(22,20): error TS2345: Argument of type 'Role' is not assignable to parameter of type 'string'.
+src/components/DynamicMenu.tsx(24,17): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"font-bold text-sm text-gray-500 mb-1"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"font-bold text-sm text-gray-500 mb-1"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/DynamicMenu.tsx(29,15): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/DynamicMenu.tsx(37,8): error TS2367: This comparison appears to be unintentional because the types 'Role' and 'string' have no overlap.
+src/components/DynamicMenu.tsx(39,17): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"font-bold text-sm text-gray-500 mb-1"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"font-bold text-sm text-gray-500 mb-1"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/DynamicMenu.tsx(44,15): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/DynamicMenu.tsx(53,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"font-bold text-sm text-gray-500 mb-1"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"font-bold text-sm text-gray-500 mb-1"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/DynamicMenu.tsx(58,13): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/ExportShareCard.tsx(19,24): error TS2339: Property 'url' does not exist on type 'unknown'.
+src/components/ExportShareCard.tsx(20,26): error TS2339: Property 'message' does not exist on type 'unknown'.
+src/components/ExportShareCard.tsx(28,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '"p-4 border rounded mt-4 bg-white shadow"' is not assignable to type 'StyleProp<ViewStyle>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '"p-4 border rounded mt-4 bg-white shadow"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/ExportShareCard.tsx(29,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"text-md font-bold mb-2"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"text-md font-bold mb-2"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/ExportShareCard.tsx(34,9): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/ExportShareCard.tsx(44,48): error TS2339: Property 'value' does not exist on type 'Component<unknown, {}, any> & Readonly<NativeMethods>'.
+src/components/ExportShareCard.tsx(45,9): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextInputProps): TextInput', gave the following error.
+    Type '"block w-full p-2 mb-2 border rounded"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextInputProps, context: any): TextInput', gave the following error.
+    Type '"block w-full p-2 mb-2 border rounded"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/ExportShareCard.tsx(50,9): error TS2322: Type '"bg-green-600 text-white px-3 py-1 rounded"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/ExportShareCard.tsx(55,24): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"mt-2 text-sm"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"mt-2 text-sm"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/ExportShareCard.tsx(58,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '"mt-2"' is not assignable to type 'StyleProp<ViewStyle>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '"mt-2"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/ExportShareCard.tsx(59,68): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/ExpressVideoGenerator.tsx(85,26): error TS2345: Argument of type '"express_video_generate_started"' is not assignable to parameter of type 'UxEventName'.
+src/components/ExpressVideoGenerator.tsx(100,17): error TS2353: Object literal may only specify known properties, and 'enable_watermark' does not exist in type 'VideoGenerationPayload'.
+src/components/ExpressVideoGenerator.tsx(120,30): error TS2345: Argument of type '"express_video_generate_success"' is not assignable to parameter of type 'UxEventName'.
+src/components/ExpressVideoGenerator.tsx(141,26): error TS2345: Argument of type '"express_video_generate_error"' is not assignable to parameter of type 'UxEventName'.
+src/components/FavoriteCollections.tsx(55,32): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<Collection[]>'.
+src/components/FloatingHelpButton.tsx(7,5): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/GlassmorphismCard.tsx(41,21): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinearGradientProps): LinearGradient', gave the following error.
+    Type 'string[]' is not assignable to type 'readonly [string, string, ...string[]]'.
+  Overload 2 of 2, '(props: LinearGradientProps, context: any): LinearGradient', gave the following error.
+    Type 'string[]' is not assignable to type 'readonly [string, string, ...string[]]'.
+src/components/GPSAutoTracker.tsx(4,32): error TS2307: Cannot find module '../context/UserContext' or its corresponding type declarations.
+src/components/GPSAutoTracker.tsx(5,36): error TS2307: Cannot find module '../services/gpsTrackingService' or its corresponding type declarations.
+src/components/GPSManager.tsx(4,32): error TS2307: Cannot find module '../context/UserContext' or its corresponding type declarations.
+src/components/GPSManager.tsx(5,36): error TS2307: Cannot find module '../hooks/useAutoGPSTracking' or its corresponding type declarations.
+src/components/HospitalAIFeatures.tsx(105,33): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<TriageResult>'.
+src/components/HospitalAIFeatures.tsx(131,41): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<RecommendationResult>'.
+src/components/HospitalAIFeatures.tsx(155,35): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<WaitTimeResult>'.
+src/components/InfractionChart.tsx(3,54): error TS2307: Cannot find module 'recharts' or its corresponding type declarations.
+src/components/Loader.tsx(7,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '"flex items-center justify-center min-h-screen bg-black text-white"' is not assignable to type 'StyleProp<ViewStyle>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '"flex items-center justify-center min-h-screen bg-black text-white"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/Loader.tsx(8,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '"animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 border-solid"' is not assignable to type 'StyleProp<ViewStyle>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '"animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 border-solid"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/LoyaltyPointsBadge.tsx(34,64): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/components/MainMenu.tsx(2,22): error TS2307: Cannot find module 'react-router-dom' or its corresponding type declarations.
+src/components/MainMenu.tsx(3,28): error TS2307: Cannot find module '@/config/MenuConfig' or its corresponding type declarations.
+src/components/MainMenu.tsx(12,10): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/MatchSection.tsx(4,20): error TS2307: Cannot find module './services.module.css' or its corresponding type declarations.
+src/components/MatchSection.tsx(9,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"text-2xl font-bold mb-4"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"text-2xl font-bold mb-4"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/MatchSection.tsx(10,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"text-gray-700 text-sm"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"text-gray-700 text-sm"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/MediaManager.tsx(100,57): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<"branding" | "general">'.
+src/components/MenuAuto.tsx(4,10): error TS2614: Module '"@/routes/routes"' has no exported member 'ROUTES'. Did you mean to use 'import ROUTES from "@/routes/routes"' instead?
+src/components/MenuAuto.tsx(21,10): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/MenuAuto.tsx(23,45): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/ModernBackground.tsx(111,25): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinearGradientProps): LinearGradient', gave the following error.
+    Type 'string[]' is not assignable to type 'readonly [string, string, ...string[]]'.
+  Overload 2 of 2, '(props: LinearGradientProps, context: any): LinearGradient', gave the following error.
+    Type 'string[]' is not assignable to type 'readonly [string, string, ...string[]]'.
+src/components/ModernCard.tsx(50,9): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinearGradientProps): LinearGradient', gave the following error.
+    Type 'string[] | readonly ["#667eea", "#764ba2"]' is not assignable to type 'readonly [string, string, ...string[]]'.
+      Type 'string[]' is not assignable to type 'readonly [string, string, ...string[]]'.
+  Overload 2 of 2, '(props: LinearGradientProps, context: any): LinearGradient', gave the following error.
+    Type 'string[] | readonly ["#667eea", "#764ba2"]' is not assignable to type 'readonly [string, string, ...string[]]'.
+      Type 'string[]' is not assignable to type 'readonly [string, string, ...string[]]'.
+src/components/ModernGPSSelector.tsx(92,74): error TS2345: Argument of type '{ lat: number; lng: number; }' is not assignable to parameter of type 'Pick<LocationGeocodedLocation, "latitude" | "longitude">'.
+  Type '{ lat: number; lng: number; }' is missing the following properties from type 'Pick<LocationGeocodedLocation, "latitude" | "longitude">': latitude, longitude
+src/components/OutilsSection.tsx(4,20): error TS2307: Cannot find module './services.module.css' or its corresponding type declarations.
+src/components/OutilsSection.tsx(9,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"text-2xl font-bold mb-4"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"text-2xl font-bold mb-4"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/OutilsSection.tsx(12,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"text-gray-700 text-sm"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"text-gray-700 text-sm"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/PharmacyAIFeatures.tsx(139,38): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<InteractionResult>'.
+src/components/PharmacyAIFeatures.tsx(168,33): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<DosageSuggestion>'.
+src/components/PharmacyAIFeatures.tsx(201,33): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<BudgetResult>'.
+src/components/ProductBadges.tsx(123,25): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinearGradientProps): LinearGradient', gave the following error.
+    Type 'string[]' is not assignable to type 'readonly [string, string, ...string[]]'.
+  Overload 2 of 2, '(props: LinearGradientProps, context: any): LinearGradient', gave the following error.
+    Type 'string[]' is not assignable to type 'readonly [string, string, ...string[]]'.
+src/components/ProductCardSkeleton.tsx(53,18): error TS2741: Property 'style' is missing in type '{}' but required in type '{ style: any; }'.
+src/components/ProductCardSkeleton.tsx(60,22): error TS2741: Property 'style' is missing in type '{}' but required in type '{ style: any; }'.
+src/components/ProductCardSkeleton.tsx(65,22): error TS2741: Property 'style' is missing in type '{}' but required in type '{ style: any; }'.
+src/components/ProductCardSkeleton.tsx(68,22): error TS2741: Property 'style' is missing in type '{}' but required in type '{ style: any; }'.
+src/components/ProductCardSkeleton.tsx(74,26): error TS2741: Property 'style' is missing in type '{}' but required in type '{ style: any; }'.
+src/components/ProductCardSkeleton.tsx(77,26): error TS2741: Property 'style' is missing in type '{}' but required in type '{ style: any; }'.
+src/components/ProductDuplicationModal.tsx(4,25): error TS2307: Cannot find module '../types/Product' or its corresponding type declarations.
+src/components/ProductVideoCreationModal.tsx(814,74): error TS2448: Block-scoped variable 'refreshMedia' used before its declaration.
+src/components/ProductVideoCreationModal.tsx(2679,27): error TS2345: Argument of type '(prev: Set<ModalStep>) => Set<number>' is not assignable to parameter of type 'SetStateAction<Set<ModalStep>>'.
+  Type '(prev: Set<ModalStep>) => Set<number>' is not assignable to type '(prevState: Set<ModalStep>) => Set<ModalStep>'.
+    Type 'Set<number>' is not assignable to type 'Set<ModalStep>'.
+      Type 'number' is not assignable to type 'ModalStep'.
+src/components/ProductVideoCreationModal.tsx(3782,50): error TS2345: Argument of type 'ImmersiveTimeline' is not assignable to parameter of type 'SetStateAction<VideoTimeline>'.
+  Type 'ImmersiveTimeline' is not assignable to type 'VideoTimeline'.
+    Property 'total_duration' is optional in type 'ImmersiveTimeline' but required in type 'VideoTimeline'.
+src/components/ProductVideoCreationModal.tsx(3802,29): error TS2739: Type 'VideoTimeline' is missing the following properties from type 'ImmersiveTimeline': fps, width, height
+src/components/RealEstateAIFeatures.tsx(120,41): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<RecommendationResult>'.
+src/components/RealEstateAIFeatures.tsx(149,35): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<PriceEstimateResult>'.
+src/components/RealEstateAIFeatures.tsx(176,37): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<ComparisonResult>'.
+src/components/RealEstateAIFeatures.tsx(221,32): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<any[]>'.
+src/components/RealTimeVideoPreview.tsx(86,43): error TS2339: Property 'duration' does not exist on type 'unknown'.
+src/components/RealTimeVideoPreview.tsx(89,59): error TS2339: Property 'duration' does not exist on type 'unknown'.
+src/components/RealTimeVideoPreview.tsx(113,52): error TS2339: Property 'frames' does not exist on type 'unknown'.
+src/components/RealTimeVideoPreview.tsx(114,48): error TS2339: Property 'frames' does not exist on type 'unknown'.
+src/components/RealTimeVideoPreview.tsx(128,52): error TS2339: Property 'markers' does not exist on type 'unknown'.
+src/components/RealTimeVideoPreview.tsx(129,50): error TS2339: Property 'markers' does not exist on type 'unknown'.
+src/components/RealTimeVideoPreview.tsx(190,30): error TS2554: Expected 2-3 arguments, but got 1.
+src/components/RealTimeVideoPreview.tsx(337,26): error TS2304: Cannot find name 'ScrollView'.
+src/components/RealTimeVideoPreview.tsx(358,27): error TS2304: Cannot find name 'ScrollView'.
+src/components/RolePlanNotice.tsx(7,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '"p-4"' is not assignable to type 'StyleProp<ViewStyle>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '"p-4"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/SchedulerStatusCard.tsx(24,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '"p-4"' is not assignable to type 'StyleProp<ViewStyle>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '"p-4"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/SchedulerStatusCard.tsx(46,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '"p-4 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 border rounded shadow"' is not assignable to type 'StyleProp<ViewStyle>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '"p-4 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 border rounded shadow"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/SchedulerStatusCard.tsx(47,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"text-lg font-semibold mb-2"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"text-lg font-semibold mb-2"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/SchedulerStatusCard.tsx(51,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"text-green-600" | "text-red-500"' is not assignable to type 'StyleProp<TextStyle>'.
+      Type '"text-green-600"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"text-green-600" | "text-red-500"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/SchedulerStatusCard.tsx(58,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"" | "text-red-500 font-bold"' is not assignable to type 'StyleProp<TextStyle>'.
+      Type '"text-red-500 font-bold"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"" | "text-red-500 font-bold"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/SchedulerStatusCard.tsx(66,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"text-red-500 mt-2"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"text-red-500 mt-2"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/ServiceCard.tsx(99,29): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinearGradientProps): LinearGradient', gave the following error.
+    Type 'string[]' is not assignable to type 'readonly [string, string, ...string[]]'.
+  Overload 2 of 2, '(props: LinearGradientProps, context: any): LinearGradient', gave the following error.
+    Type 'string[]' is not assignable to type 'readonly [string, string, ...string[]]'.
+src/components/ServiceStats.tsx(3,8): error TS2613: Module '"C:/Users/23767/yukpomnang2/mobile/src/hooks/useServiceStats"' has no default export. Did you mean to use 'import { useServiceStats } from "C:/Users/23767/yukpomnang2/mobile/src/hooks/useServiceStats"' instead?
+src/components/ServiceTeamManager.tsx(404,129): error TS2352: Conversion of type 'readonly ["#667eea", "#764ba2"] & any[]' to type '[string, string, ...string[]]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+src/components/ServiceTeamManager.tsx(474,129): error TS2352: Conversion of type 'readonly ["#667eea", "#764ba2"] & any[]' to type '[string, string, ...string[]]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+src/components/ServiceTeamManager.tsx(565,129): error TS2352: Conversion of type 'readonly ["#667eea", "#764ba2"] & any[]' to type '[string, string, ...string[]]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+src/components/Sidebar.tsx(3,10): error TS2305: Module '"@react-navigation/native"' has no exported member 'Link'.
+src/components/Sidebar.tsx(3,16): error TS2305: Module '"@react-navigation/native"' has no exported member 'useLocation'.
+src/components/Sidebar.tsx(4,25): error TS2307: Cannot find module '@/components/security/RequirePlan' or its corresponding type declarations.
+src/components/Sidebar.tsx(12,12): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/specialized/BloodBankResultCard.tsx(721,5): error TS1117: An object literal cannot have multiple properties with the same name.
+src/components/SpecializedServicesButton.tsx(44,21): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+src/components/StatsCard.tsx(39,21): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinearGradientProps): LinearGradient', gave the following error.
+    Type 'string[]' is not assignable to type 'readonly [string, string, ...string[]]'.
+      Source provides no match for required element at position 0 in target.
+  Overload 2 of 2, '(props: LinearGradientProps, context: any): LinearGradient', gave the following error.
+    Type 'string[]' is not assignable to type 'readonly [string, string, ...string[]]'.
+src/components/TestimonialsAndPartners.tsx(7,12): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/TestimonialsAndPartners.tsx(8,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"text-3xl font-bold text-gray-800 mb-10"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"text-3xl font-bold text-gray-800 mb-10"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/TestimonialsAndPartners.tsx(10,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '"grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto mb-16"' is not assignable to type 'StyleProp<ViewStyle>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '"grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto mb-16"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/TestimonialsAndPartners.tsx(25,25): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '"bg-white p-6 rounded-xl shadow-md"' is not assignable to type 'StyleProp<ViewStyle>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '"bg-white p-6 rounded-xl shadow-md"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/TestimonialsAndPartners.tsx(26,17): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"italic text-gray-600"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"italic text-gray-600"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/TestimonialsAndPartners.tsx(27,17): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"mt-4 font-semibold"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"mt-4 font-semibold"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/TestimonialsAndPartners.tsx(32,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '"text-3xl font-bold text-gray-800 mb-6"' is not assignable to type 'StyleProp<TextStyle>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '"text-3xl font-bold text-gray-800 mb-6"' is not assignable to type 'StyleProp<TextStyle>'.
+src/components/TestimonialsAndPartners.tsx(33,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '"flex justify-center items-center gap-10 flex-wrap max-w-4xl mx-auto opacity-80"' is not assignable to type 'StyleProp<ViewStyle>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '"flex justify-center items-center gap-10 flex-wrap max-w-4xl mx-auto opacity-80"' is not assignable to type 'StyleProp<ViewStyle>'.
+src/components/TestimonialsAndPartners.tsx(34,51): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/TestimonialsAndPartners.tsx(35,51): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/TestimonialsAndPartners.tsx(36,51): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/TestimonialsAndPartners.tsx(37,51): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/TrendingMusicLibrary.tsx(16,50): error TS2307: Cannot find module '../types/Music' or its corresponding type declarations.
+src/components/troc/LivreScolaireValidationVideoRecorder.tsx(41,30): error TS2749: 'Camera' refers to a value, but is being used as a type here. Did you mean 'typeof Camera'?
+src/components/troc/LivreScolaireValidationVideoRecorder.tsx(173,14): error TS2604: JSX element type 'Camera' does not have any construct or call signatures.
+src/components/troc/LivreScolaireValidationVideoRecorder.tsx(173,14): error TS2786: 'Camera' cannot be used as a JSX component.
+  Its type '{ getCameraPermissionsAsync: () => Promise<PermissionResponse>; requestCameraPermissionsAsync: () => Promise<PermissionResponse>; getMicrophonePermissionsAsync: () => Promise<...>; requestMicrophonePermissionsAsync: () => Promise<...>; scanFromURLAsync: (url: string, barcodeTypes?: BarcodeType[]) => Promise<...>; }' is not a valid JSX element type.
+src/components/video/DoubleTapLike.tsx(46,52): error TS2353: Object literal may only specify known properties, and 'delay' does not exist in type 'TimingConfig'.
+src/components/video/DoubleTapLike.tsx(71,44): error TS2345: Argument of type '() => { transform: ({ scale: number; rotate?: undefined; } | { rotate: string; scale?: undefined; })[]; opacity: number; }' is not assignable to parameter of type '() => DefaultStyle'.
+  Type '{ transform: ({ scale: number; rotate?: undefined; } | { rotate: string; scale?: undefined; })[]; opacity: number; }' is not assignable to type 'DefaultStyle'.
+    Type '{ transform: ({ scale: number; rotate?: undefined; } | { rotate: string; scale?: undefined; })[]; opacity: number; }' is not assignable to type 'ImageStyle'.
+      Types of property 'transform' are incompatible.
+        Type '({ scale: number; rotate?: undefined; } | { rotate: string; scale?: undefined; })[]' is not assignable to type 'string | readonly (({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; ... 4 more ...; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; }))[]'.
+          Type '({ scale: number; rotate?: undefined; } | { rotate: string; scale?: undefined; })[]' is not assignable to type 'readonly (({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; }))[]'.
+            Type '{ scale: number; rotate?: undefined; } | { rotate: string; scale?: undefined; }' is not assignable to type '({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; })'.
+              Type '{ scale: number; rotate?: undefined; }' is not assignable to type '({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; })'.
+                Type '{ scale: number; rotate?: undefined; }' is not assignable to type '{ matrix: AnimatableNumericValue[]; } & { scaleX?: never; scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; }'.
+                  Property 'matrix' is missing in type '{ scale: number; rotate?: undefined; }' but required in type '{ matrix: AnimatableNumericValue[]; }'.
+src/components/video/DuetRemixModal.tsx(87,75): error TS2554: Expected 2 arguments, but got 3.
+src/components/video/VideoGestureHandler.tsx(145,44): error TS2345: Argument of type '() => { transform: ({ translateY: number; translateX?: undefined; } | { translateX: number; translateY?: undefined; })[]; }' is not assignable to parameter of type '() => DefaultStyle'.
+  Type '{ transform: ({ translateY: number; translateX?: undefined; } | { translateX: number; translateY?: undefined; })[]; }' is not assignable to type 'DefaultStyle'.
+    Type '{ transform: ({ translateY: number; translateX?: undefined; } | { translateX: number; translateY?: undefined; })[]; }' is not assignable to type 'ImageStyle'.
+      Types of property 'transform' are incompatible.
+        Type '({ translateY: number; translateX?: undefined; } | { translateX: number; translateY?: undefined; })[]' is not assignable to type 'string | readonly (({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; ... 4 more ...; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; }))[]'.
+          Type '({ translateY: number; translateX?: undefined; } | { translateX: number; translateY?: undefined; })[]' is not assignable to type 'readonly (({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; }))[]'.
+            Type '{ translateY: number; translateX?: undefined; } | { translateX: number; translateY?: undefined; }' is not assignable to type '({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; })'.
+              Type '{ translateY: number; translateX?: undefined; }' is not assignable to type '({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; })'.
+                Type '{ translateY: number; translateX?: undefined; }' is not assignable to type '{ matrix: AnimatableNumericValue[]; } & { scaleX?: never; scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; }'.
+                  Property 'matrix' is missing in type '{ translateY: number; translateX?: undefined; }' but required in type '{ matrix: AnimatableNumericValue[]; }'.
+src/components/video/VideoRecorder.tsx(38,30): error TS2749: 'Camera' refers to a value, but is being used as a type here. Did you mean 'typeof Camera'?
+src/components/video/VideoRecorder.tsx(150,14): error TS2604: JSX element type 'Camera' does not have any construct or call signatures.
+src/components/video/VideoRecorder.tsx(150,14): error TS2786: 'Camera' cannot be used as a JSX component.
+  Its type '{ getCameraPermissionsAsync: () => Promise<PermissionResponse>; requestCameraPermissionsAsync: () => Promise<PermissionResponse>; getMicrophonePermissionsAsync: () => Promise<...>; requestMicrophonePermissionsAsync: () => Promise<...>; scanFromURLAsync: (url: string, barcodeTypes?: BarcodeType[]) => Promise<...>; }' is not a valid JSX element type.
+src/config/linking.ts(1,10): error TS2305: Module '"@react-navigation/native"' has no exported member 'LinkingOptions'.
+src/contexts/DeliveryContext.tsx(470,9): error TS2448: Block-scoped variable 'flushPendingMutations' used before its declaration.
+src/contexts/DeliveryContext.tsx(499,9): error TS2448: Block-scoped variable 'flushPendingMutations' used before its declaration.
+src/contexts/DeliveryContext.tsx(543,10): error TS2448: Block-scoped variable 'executeMutation' used before its declaration.
+src/contexts/DeliveryContext.tsx(550,10): error TS2448: Block-scoped variable 'executeMutation' used before its declaration.
+src/contexts/DeliveryContext.tsx(559,10): error TS2448: Block-scoped variable 'executeMutation' used before its declaration.
+src/contexts/DeliveryContext.tsx(568,10): error TS2448: Block-scoped variable 'executeMutation' used before its declaration.
+src/contexts/DeliveryContext.tsx(575,10): error TS2448: Block-scoped variable 'executeMutation' used before its declaration.
+src/contexts/DeliveryContext.tsx(582,10): error TS2448: Block-scoped variable 'executeMutation' used before its declaration.
+src/data/externalDatabases/cameroonProducts.ts(23,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/cameroonProducts.ts(58,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/cameroonProducts.ts(91,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/cameroonProducts.ts(129,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/cameroonProducts.ts(164,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/cameroonProducts.ts(195,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/cameroonProducts.ts(230,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/cameroonProducts.ts(268,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/cameroonProducts.ts(305,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/cameroonProducts.ts(338,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/cameroonProducts.ts(376,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(25,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(61,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(88,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(115,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(141,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(173,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(207,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(234,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(260,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(294,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(327,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(354,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(380,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(407,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(433,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(465,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(491,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(517,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(551,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/data/externalDatabases/productsByCountry.ts(577,13): error TS2353: Object literal may only specify known properties, and 'origine' does not exist in type 'ProductCharacteristics'.
+src/hooks/useCostCalculation.ts(46,25): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/hooks/useServiceReviews.ts(75,25): error TS2353: Object literal may only specify known properties, and 'service_ids' does not exist in type '{ params?: Record<string, any>; }'.
+src/hooks/useServicesBatchData.ts(99,21): error TS2353: Object literal may only specify known properties, and 'service_ids' does not exist in type '{ params?: Record<string, any>; }'.
+src/hooks/useServicesBatchData.ts(102,21): error TS2353: Object literal may only specify known properties, and 'service_ids' does not exist in type '{ params?: Record<string, any>; }'.
+src/hooks/useServiceStats.ts(74,25): error TS2353: Object literal may only specify known properties, and 'service_ids' does not exist in type '{ params?: Record<string, any>; }'.
+src/hooks/useSmartSuggestions.ts(68,21): error TS2554: Expected 3 arguments, but got 4.
+src/hooks/useSmartSuggestions.ts(206,17): error TS2554: Expected 3 arguments, but got 4.
+src/hooks/useTripReminders.ts(53,23): error TS2554: Expected 2 arguments, but got 1.
+src/navigation/AppNavigator.conditional.tsx(268,64): error TS2304: Cannot find name 'AgencyAnalyticsDashboard'.
+src/navigation/AppNavigator.full.tsx(117,10): error TS2614: Module '"../screens/specialized/TaxiIntelligentSearchScreen"' has no exported member 'TaxiIntelligentSearchScreen'. Did you mean to use 'import TaxiIntelligentSearchScreen from "../screens/specialized/TaxiIntelligentSearchScreen"' instead?
+src/navigation/AppNavigator.full.tsx(122,10): error TS2614: Module '"../screens/specialized/CovoiturageIntelligentSearchScreen"' has no exported member 'CovoiturageIntelligentSearchScreen'. Did you mean to use 'import CovoiturageIntelligentSearchScreen from "../screens/specialized/CovoiturageIntelligentSearchScreen"' instead?
+src/navigation/AppNavigator.original-complete.tsx(19,35): error TS2307: Cannot find module '../screens/RechercheBesoinScreen' or its corresponding type declarations.
+src/navigation/AppNavigator.original.tsx(5,10): error TS2528: A module cannot have multiple default exports.
+src/navigation/AppNavigator.original.tsx(106,10): error TS2614: Module '"../screens/specialized/TaxiIntelligentSearchScreen"' has no exported member 'TaxiIntelligentSearchScreen'. Did you mean to use 'import TaxiIntelligentSearchScreen from "../screens/specialized/TaxiIntelligentSearchScreen"' instead?
+src/navigation/AppNavigator.original.tsx(111,10): error TS2614: Module '"../screens/specialized/CovoiturageIntelligentSearchScreen"' has no exported member 'CovoiturageIntelligentSearchScreen'. Did you mean to use 'import CovoiturageIntelligentSearchScreen from "../screens/specialized/CovoiturageIntelligentSearchScreen"' instead?
+src/navigation/AppNavigator.original.tsx(259,1): error TS2304: Cannot find name 'markNavigatorSafeAreaHandled'.
+src/navigation/AppNavigator.original.tsx(260,1): error TS2304: Cannot find name 'markNavigatorSafeAreaHandled'.
+src/navigation/AppNavigator.original.tsx(260,30): error TS2304: Cannot find name 'ContactScreen'.
+src/navigation/AppNavigator.original.tsx(261,1): error TS2304: Cannot find name 'markNavigatorSafeAreaHandled'.
+src/navigation/AppNavigator.original.tsx(263,33): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(264,36): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(265,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(266,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(267,32): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(268,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(269,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(270,35): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(271,54): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(272,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(273,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(274,37): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(275,35): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(275,57): error TS2304: Cannot find name 'ContactScreen'.
+src/navigation/AppNavigator.original.tsx(276,38): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(277,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(278,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(279,48): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(280,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(280,64): error TS2304: Cannot find name 'AjouterProduitSimpleScreen'.
+src/navigation/AppNavigator.original.tsx(281,41): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(282,47): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(283,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(284,47): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(285,55): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(286,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(287,51): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(288,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(288,65): error TS2304: Cannot find name 'CreatePubliciteScreen'.
+src/navigation/AppNavigator.original.tsx(289,46): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(290,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(291,46): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(291,68): error TS2304: Cannot find name 'GlobalPromoCatalogScreen'.
+src/navigation/AppNavigator.original.tsx(292,51): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(293,50): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(294,41): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(295,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(296,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(297,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(298,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(299,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(300,36): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(301,38): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(302,36): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(303,49): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(304,36): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(305,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(306,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(307,40): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(308,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(309,36): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(310,35): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(312,41): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(313,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(314,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(315,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(316,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(317,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(318,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(319,46): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(321,53): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(322,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(323,41): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(324,40): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(325,50): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(326,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(327,56): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(328,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(329,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(330,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(332,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(333,41): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(334,41): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(335,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(337,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(338,41): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(339,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(340,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(341,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(343,46): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(344,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(345,47): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(346,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(347,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(348,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(349,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(350,46): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(351,46): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(352,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(353,50): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(355,47): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(356,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(357,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(358,48): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(359,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(361,51): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(362,50): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(363,47): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(364,47): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(365,48): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(366,47): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(367,48): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(368,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(369,48): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(370,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(372,37): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(373,36): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(374,38): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(375,37): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(376,37): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(377,40): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(378,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(379,46): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(380,36): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(382,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(383,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(384,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(385,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(386,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(387,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(388,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(389,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(390,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(391,49): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(393,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(394,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(395,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(396,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(397,37): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(398,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(400,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(402,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(403,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(404,45): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(405,46): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(406,51): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(407,52): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(408,49): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(409,47): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(410,39): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(411,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(412,51): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(413,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(414,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(415,41): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(421,10): error TS2304: Cannot find name 'View'.
+src/navigation/AppNavigator.original.tsx(422,11): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+src/navigation/AppNavigator.original.tsx(422,12): error TS2786: 'Text' cannot be used as a JSX component.
+  Its type '{ new (data?: string): Text; prototype: Text; }' is not a valid JSX element type.
+src/navigation/AppNavigator.original.tsx(425,11): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+src/navigation/AppNavigator.original.tsx(425,12): error TS2786: 'Text' cannot be used as a JSX component.
+  Its type '{ new (data?: string): Text; prototype: Text; }' is not a valid JSX element type.
+src/navigation/AppNavigator.original.tsx(428,12): error TS2304: Cannot find name 'TouchableOpacity'.
+src/navigation/AppNavigator.original.tsx(429,39): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(432,13): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+src/navigation/AppNavigator.original.tsx(432,14): error TS2786: 'Text' cannot be used as a JSX component.
+  Its type '{ new (data?: string): Text; prototype: Text; }' is not a valid JSX element type.
+src/navigation/AppNavigator.original.tsx(433,13): error TS2304: Cannot find name 'TouchableOpacity'.
+src/navigation/AppNavigator.original.tsx(434,11): error TS2304: Cannot find name 'View'.
+src/navigation/AppNavigator.original.tsx(444,46): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(445,47): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(446,47): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(447,41): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(448,55): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(449,55): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(455,8): error TS2304: Cannot find name 'View'.
+src/navigation/AppNavigator.original.tsx(456,9): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+src/navigation/AppNavigator.original.tsx(456,10): error TS2786: 'Text' cannot be used as a JSX component.
+  Its type '{ new (data?: string): Text; prototype: Text; }' is not a valid JSX element type.
+src/navigation/AppNavigator.original.tsx(459,10): error TS2304: Cannot find name 'TouchableOpacity'.
+src/navigation/AppNavigator.original.tsx(460,37): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(466,11): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+src/navigation/AppNavigator.original.tsx(466,12): error TS2786: 'Text' cannot be used as a JSX component.
+  Its type '{ new (data?: string): Text; prototype: Text; }' is not a valid JSX element type.
+src/navigation/AppNavigator.original.tsx(467,11): error TS2304: Cannot find name 'TouchableOpacity'.
+src/navigation/AppNavigator.original.tsx(468,9): error TS2304: Cannot find name 'View'.
+src/navigation/AppNavigator.original.tsx(475,37): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(476,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(477,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(477,66): error TS2304: Cannot find name 'CreatorAnalyticsScreen'.
+src/navigation/AppNavigator.original.tsx(478,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(479,46): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(480,47): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(481,49): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(482,49): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(483,46): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(484,40): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(485,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(486,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(487,46): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(488,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(489,52): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(490,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(491,37): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(492,48): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(493,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(495,43): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(496,41): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(497,40): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(498,44): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(499,40): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(500,41): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(502,47): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(503,40): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(504,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(505,42): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(507,15): error TS2304: Cannot find name 'createStackNavigator'.
+src/navigation/AppNavigator.original.tsx(508,13): error TS2304: Cannot find name 'createBottomTabNavigator'.
+src/navigation/AppNavigator.original.tsx(509,31): error TS2304: Cannot find name 'createStackNavigator'.
+src/navigation/AppNavigator.original.tsx(513,4): error TS2304: Cannot find name 'SafeNativeView'.
+src/navigation/AppNavigator.original.tsx(514,6): error TS2304: Cannot find name 'ActivityIndicator'.
+src/navigation/AppNavigator.original.tsx(514,44): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(515,5): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+src/navigation/AppNavigator.original.tsx(515,6): error TS2786: 'Text' cannot be used as a JSX component.
+  Its type '{ new (data?: string): Text; prototype: Text; }' is not a valid JSX element type.
+    Type '{ new (data?: string): Text; prototype: Text; }' is not assignable to type 'new (props: any, deprecatedLegacyContext?: any) => Component<any, any, any>'.
+      Type 'Text' is missing the following properties from type 'Component<any, any, any>': context, setState, forceUpdate, render, and 3 more.
+src/navigation/AppNavigator.original.tsx(516,5): error TS2304: Cannot find name 'SafeNativeView'.
+src/navigation/AppNavigator.original.tsx(521,84): error TS2686: 'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/navigation/AppNavigator.original.tsx(523,17): error TS2304: Cannot find name 'useSharedValue'.
+src/navigation/AppNavigator.original.tsx(524,19): error TS2304: Cannot find name 'useSharedValue'.
+src/navigation/AppNavigator.original.tsx(527,3): error TS2304: Cannot find name 'useEffect'.
+src/navigation/AppNavigator.original.tsx(529,21): error TS2304: Cannot find name 'withSpring'.
+src/navigation/AppNavigator.original.tsx(530,23): error TS2304: Cannot find name 'withTiming'.
+src/navigation/AppNavigator.original.tsx(537,25): error TS2304: Cannot find name 'useAnimatedStyle'.
+src/navigation/AppNavigator.original.tsx(562,6): error TS2304: Cannot find name 'View'.
+src/navigation/AppNavigator.original.tsx(563,8): error TS2304: Cannot find name 'Animated'.
+src/navigation/AppNavigator.original.tsx(564,9): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+src/navigation/AppNavigator.original.tsx(564,10): error TS2786: 'Text' cannot be used as a JSX component.
+  Its type '{ new (data?: string): Text; prototype: Text; }' is not a valid JSX element type.
+src/navigation/AppNavigator.original.tsx(564,58): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(564,81): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(567,9): error TS2304: Cannot find name 'Animated'.
+src/navigation/AppNavigator.original.tsx(570,10): error TS2304: Cannot find name 'View'.
+src/navigation/AppNavigator.original.tsx(582,24): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(584,11): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+src/navigation/AppNavigator.original.tsx(584,12): error TS2786: 'Text' cannot be used as a JSX component.
+  Its type '{ new (data?: string): Text; prototype: Text; }' is not a valid JSX element type.
+src/navigation/AppNavigator.original.tsx(587,11): error TS2304: Cannot find name 'View'.
+src/navigation/AppNavigator.original.tsx(589,7): error TS2304: Cannot find name 'View'.
+src/navigation/AppNavigator.original.tsx(610,20): error TS2304: Cannot find name 'useAuth'.
+src/navigation/AppNavigator.original.tsx(611,37): error TS2304: Cannot find name 'useState'.
+src/navigation/AppNavigator.original.tsx(612,63): error TS2304: Cannot find name 'useState'.
+src/navigation/AppNavigator.original.tsx(615,3): error TS2304: Cannot find name 'useEffect'.
+src/navigation/AppNavigator.original.tsx(625,30): error TS2304: Cannot find name 'SafeStorage'.
+src/navigation/AppNavigator.original.tsx(671,19): error TS2304: Cannot find name 'SafeStorage'.
+src/navigation/AppNavigator.original.tsx(696,61): error TS2686: 'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/navigation/AppNavigator.original.tsx(704,3): error TS2304: Cannot find name 'useEffect'.
+src/navigation/AppNavigator.original.tsx(722,30): error TS2304: Cannot find name 'SafeStorage'.
+src/navigation/AppNavigator.original.tsx(796,19): error TS2304: Cannot find name 'SafeStorage'.
+src/navigation/AppNavigator.original.tsx(823,55): error TS2686: 'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/navigation/AppNavigator.original.tsx(847,32): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(848,34): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(850,28): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(851,27): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(891,14): error TS2304: Cannot find name 'TouchableOpacity'.
+src/navigation/AppNavigator.original.tsx(908,14): error TS2304: Cannot find name 'SafeIcon'.
+src/navigation/AppNavigator.original.tsx(911,32): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(927,16): error TS2304: Cannot find name 'SafeIcon'.
+src/navigation/AppNavigator.original.tsx(930,34): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(945,16): error TS2304: Cannot find name 'SafeIcon'.
+src/navigation/AppNavigator.original.tsx(948,34): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(964,16): error TS2304: Cannot find name 'SafeIcon'.
+src/navigation/AppNavigator.original.tsx(964,66): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(1020,20): error TS2304: Cannot find name 'useAuth'.
+src/navigation/AppNavigator.original.tsx(1023,63): error TS2686: 'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/navigation/AppNavigator.original.tsx(1025,3): error TS2304: Cannot find name 'useDeepLinkRedirect'.
+src/navigation/AppNavigator.original.tsx(1028,3): error TS2686: 'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/navigation/AppNavigator.original.tsx(1043,8): error TS2304: Cannot find name 'View'.
+src/navigation/AppNavigator.original.tsx(1044,10): error TS2304: Cannot find name 'ActivityIndicator'.
+src/navigation/AppNavigator.original.tsx(1044,48): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(1045,9): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+src/navigation/AppNavigator.original.tsx(1045,10): error TS2786: 'Text' cannot be used as a JSX component.
+  Its type '{ new (data?: string): Text; prototype: Text; }' is not a valid JSX element type.
+src/navigation/AppNavigator.original.tsx(1045,60): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(1048,9): error TS2304: Cannot find name 'View'.
+src/navigation/AppNavigator.original.tsx(1058,20): error TS2304: Cannot find name 'useAuth'.
+src/navigation/AppNavigator.original.tsx(1067,3): error TS2686: 'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/navigation/AppNavigator.original.tsx(1076,22): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1083,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1084,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1091,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1093,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1100,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1101,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1130,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1209,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1227,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1235,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1243,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1251,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1259,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1267,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1275,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1283,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1291,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1314,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1322,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1330,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1338,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1346,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1354,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1362,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1370,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1379,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1388,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1396,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1404,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1412,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1420,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1428,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1435,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1437,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1443,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1445,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1451,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1453,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1459,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1461,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1468,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1470,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1476,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1478,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1484,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1486,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1509,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1515,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1517,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1523,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1525,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1533,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1541,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1547,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1549,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1557,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1563,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1572,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1580,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1586,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1588,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1596,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1604,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1612,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1620,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1621,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1625,52): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1626,60): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1626,82): error TS2304: Cannot find name 'BloodGroupManagementScreen'.
+src/navigation/AppNavigator.original.tsx(1627,62): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1627,84): error TS2304: Cannot find name 'AgencyTicketManagementScreen'.
+src/navigation/AppNavigator.original.tsx(1628,61): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1628,83): error TS2304: Cannot find name 'BusBoardingManagementScreen'.
+src/navigation/AppNavigator.original.tsx(1629,54): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1630,61): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1634,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1639,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1644,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1655,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1729,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1734,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1739,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1744,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1749,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1755,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1760,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1767,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1768,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1775,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1776,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1788,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1789,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1797,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1798,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1806,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1807,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1824,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1826,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1833,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1834,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1842,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1843,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1850,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1851,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1866,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1866,42): error TS2304: Cannot find name 'FlashSaleScreen'.
+src/navigation/AppNavigator.original.tsx(1868,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1874,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1874,42): error TS2304: Cannot find name 'FlashPromosActiveScreen'.
+src/navigation/AppNavigator.original.tsx(1876,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1885,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1893,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1902,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1911,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1917,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1917,42): error TS2304: Cannot find name 'CreateFlashPromoScreen'.
+src/navigation/AppNavigator.original.tsx(1919,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1927,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1936,63): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1937,58): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1938,61): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1951,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1952,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1960,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1961,14): error TS2304: Cannot find name 'transitionConfig'.
+src/navigation/AppNavigator.original.tsx(1967,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1979,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1981,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1988,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(1990,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(1996,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(2000,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(2004,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(2009,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(2014,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(2016,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(2022,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(2024,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(2030,20): error TS2304: Cannot find name 'withNavigatorSafeArea'.
+src/navigation/AppNavigator.original.tsx(2030,42): error TS2304: Cannot find name 'UserRoleManagementScreen'.
+src/navigation/AppNavigator.original.tsx(2032,14): error TS2304: Cannot find name 'defaultScreenOptions'.
+src/navigation/AppNavigator.original.tsx(2042,47): error TS2686: 'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/navigation/AppNavigator.original.tsx(2044,3): error TS2686: 'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/navigation/AppNavigator.original.tsx(2061,6): error TS2304: Cannot find name 'LanguageProvider'.
+src/navigation/AppNavigator.original.tsx(2062,8): error TS2304: Cannot find name 'LocationProvider'.
+src/navigation/AppNavigator.original.tsx(2064,9): error TS2304: Cannot find name 'LocationProvider'.
+src/navigation/AppNavigator.original.tsx(2065,7): error TS2304: Cannot find name 'LanguageProvider'.
+src/navigation/AppNavigator.original.tsx(2071,29): error TS2304: Cannot find name 'useAuth'.
+src/navigation/AppNavigator.original.tsx(2092,27): error TS2339: Property 'create' does not exist on type '{ new (): StyleSheet; prototype: StyleSheet; }'.
+src/navigation/AppNavigator.original.tsx(2097,22): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(2102,12): error TS2304: Cannot find name 'modernColors'.
+src/navigation/AppNavigator.original.tsx(2111,16): error TS2528: A module cannot have multiple default exports.
+src/navigation/AppNavigator.production-ready.tsx(25,35): error TS2307: Cannot find module '../screens/RechercheBesoinScreen' or its corresponding type declarations.
+src/navigation/AppNavigator.progressive.tsx(129,20): error TS2304: Cannot find name 'LaboratoireFormScreen'.
+src/navigation/AppNavigator.progressive.tsx(134,20): error TS2304: Cannot find name 'AgenceVoyageFormScreen'.
+src/navigation/AppNavigator.progressive.tsx(139,20): error TS2304: Cannot find name 'BanqueSangFormScreen'.
+src/navigation/AppNavigator.progressive.tsx(144,20): error TS2304: Cannot find name 'CovoiturageFormScreen'.
+src/navigation/AppNavigator.progressive.tsx(149,20): error TS2304: Cannot find name 'SpecializedServicesHubScreen'.
+src/navigation/transitions.ts(6,15): error TS2305: Module '"@react-navigation/stack"' has no exported member 'StackCardStyleInterpolator'.
+src/navigation/transitions.ts(6,43): error TS2305: Module '"@react-navigation/stack"' has no exported member 'TransitionSpec'.
+src/observability/index.ts(105,23): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'Timer' is not assignable to parameter of type 'number'.
+src/observability/index.ts(144,23): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'Timer' is not assignable to parameter of type 'number'.
+src/screens/AgencyAnalyticsDashboard.tsx(56,25): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<AnalyticsData>'.
+src/screens/AgencyAnalyticsDashboard.tsx(206,26): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: AbstractChartProps & BarChartProps): BarChart', gave the following error.
+    Type '{ data: { labels: string[]; datasets: { data: number[]; }[]; }; width: number; height: number; chartConfig: { backgroundColor: string; backgroundGradientFrom: string; backgroundGradientTo: string; decimalPlaces: number; color: (opacity?: number) => string; labelColor: (opacity?: number) => string; style: { ...; }; p...' is missing the following properties from type 'Readonly<AbstractChartProps & BarChartProps>': yAxisLabel, yAxisSuffix
+  Overload 2 of 2, '(props: AbstractChartProps & BarChartProps, context: any): BarChart', gave the following error.
+    Type '{ data: { labels: string[]; datasets: { data: number[]; }[]; }; width: number; height: number; chartConfig: { backgroundColor: string; backgroundGradientFrom: string; backgroundGradientTo: string; decimalPlaces: number; color: (opacity?: number) => string; labelColor: (opacity?: number) => string; style: { ...; }; p...' is missing the following properties from type 'Readonly<AbstractChartProps & BarChartProps>': yAxisLabel, yAxisSuffix
+src/screens/BourseLivreScreen.tsx(173,19): error TS2739: Type '{ recommendations: { titre: string; raison: string; score: number; }[]; conseil: string; }' is missing the following properties from type 'BookRecommendationResponse': livre_ids, score_recommendation, reasoning, alternative_books, matieres_suggestees
+src/screens/BourseLivreScreen.tsx(211,13): error TS2345: Argument of type '() => { prix_suggere: number; prix_min: number; prix_max: number; devise: string; conseil: string; }' is not assignable to parameter of type '() => PriceSuggestionResponse'.
+  Type '{ prix_suggere: number; prix_min: number; prix_max: number; devise: string; conseil: string; }' is missing the following properties from type 'PriceSuggestionResponse': livre_id, prix_suggere_min, prix_suggere_max, prix_suggere_median, and 3 more.
+src/screens/CreateFlashPromoScreen.tsx(102,67): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/screens/dashboard/AnalyticsDashboardScreen.tsx(98,22): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<ProviderAnalytics>'.
+src/screens/delivery/DeliveryParcelFlowNew.tsx(237,18): error TS2448: Block-scoped variable 'estimatedDistance' used before its declaration.
+src/screens/delivery/DeliveryProofScreen.tsx(58,32): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<ProofMedia[]>'.
+src/screens/delivery/DeliveryProofScreen.tsx(73,29): error TS2367: This comparison appears to be unintentional because the types 'DeliveryStatus' and '"EnRoutePickup"' have no overlap.
+src/screens/delivery/DeliveryProofScreen.tsx(73,69): error TS2367: This comparison appears to be unintentional because the types 'DeliveryStatus' and '"ShoppingCompleted"' have no overlap.
+src/screens/delivery/DeliveryProofScreen.tsx(138,31): error TS2367: This comparison appears to be unintentional because the types 'DeliveryStatus' and '"EnRoutePickup"' have no overlap.
+src/screens/delivery/DeliveryProofScreen.tsx(138,71): error TS2367: This comparison appears to be unintentional because the types 'DeliveryStatus' and '"ShoppingCompleted"' have no overlap.
+src/screens/delivery/DeliveryProofScreen.tsx(139,33): error TS2367: This comparison appears to be unintentional because the types 'DeliveryStatus' and '"EnRouteDelivery"' have no overlap.
+src/screens/delivery/DeliveryProofScreen.tsx(139,75): error TS2367: This comparison appears to be unintentional because the types 'DeliveryStatus' and '"Delivered"' have no overlap.
+src/screens/delivery/DeliveryShoppingFlow.tsx(94,9): error TS2448: Block-scoped variable 'pickupLocation' used before its declaration.
+src/screens/delivery/DeliveryShoppingFlow.tsx(94,25): error TS2448: Block-scoped variable 'dropoffLocation' used before its declaration.
+src/screens/delivery/DeliveryShoppingFlowNew.tsx(68,9): error TS2448: Block-scoped variable 'dropoffLocation' used before its declaration.
+src/screens/delivery/DeliveryShoppingFlowNew.tsx(69,23): error TS2448: Block-scoped variable 'dropoffLocation' used before its declaration.
+src/screens/delivery/DeliveryShoppingFlowNew.tsx(70,24): error TS2448: Block-scoped variable 'dropoffLocation' used before its declaration.
+src/screens/GlobalPromoCatalogScreen.tsx(249,45): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type 'unknown' is not assignable to type 'ReactNode'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type 'unknown' is not assignable to type 'ReactNode'.
+src/screens/GlobalPromoCatalogScreen.tsx(252,45): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type 'unknown' is not assignable to type 'ReactNode'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type 'unknown' is not assignable to type 'ReactNode'.
+src/screens/HomeScreen.working.tsx(216,42): error TS2339: Property 'count' does not exist on type 'unknown'.
+src/screens/ManageAgencySchedulesScreen.tsx(65,30): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<Schedule[]>'.
+src/screens/NavigationScreen.tsx(1178,54): error TS2304: Cannot find name 'CheckpointCommentsSection'.
+src/screens/offres-emploi/AICVAnalysisScreen.tsx(81,65): error TS2345: Argument of type 'string | 0' is not assignable to parameter of type 'number'.
+  Type 'string' is not assignable to type 'number'.
+src/screens/offres-emploi/AISuggestFormationsScreen.tsx(76,17): error TS2345: Argument of type 'string | 0' is not assignable to parameter of type 'number'.
+  Type 'string' is not assignable to type 'number'.
+src/screens/offres-emploi/AnalyseCVScreen.tsx(41,55): error TS2554: Expected 2-3 arguments, but got 1.
+src/screens/offres-emploi/ProfilCandidatScreen.tsx(468,53): error TS2345: Argument of type '{ cv_url: any; append(name: string, value: string | Blob): void; append(name: string, value: string): void; append(name: string, blobValue: Blob, filename?: string): void; delete(name: string): void; ... 4 more ...; forEach(callbackfn: (value: FormDataEntryValue, key: string, parent: FormData) => void, thisArg?: any...' is not assignable to parameter of type 'SetStateAction<{ nom: string; prenom: string; date_naissance: string; telephone: string; email: string; adresse: string; ville: string; gps: string; niveau_etude: string; experience_annees: string; competences: string[]; ... 9 more ...; remote_souhaite: boolean; }>'.
+  Type '{ cv_url: any; append(name: string, value: string | Blob): void; append(name: string, value: string): void; append(name: string, blobValue: Blob, filename?: string): void; delete(name: string): void; ... 4 more ...; forEach(callbackfn: (value: FormDataEntryValue, key: string, parent: FormData) => void, thisArg?: any...' is missing the following properties from type '{ nom: string; prenom: string; date_naissance: string; telephone: string; email: string; adresse: string; ville: string; gps: string; niveau_etude: string; experience_annees: string; competences: string[]; ... 9 more ...; remote_souhaite: boolean; }': nom, prenom, date_naissance, telephone, and 16 more.
+src/screens/offres-emploi/ProfilCandidatScreen.tsx(526,53): error TS2345: Argument of type '{ lettre_motivation_url: any; append(name: string, value: string | Blob): void; append(name: string, value: string): void; append(name: string, blobValue: Blob, filename?: string): void; ... 5 more ...; forEach(callbackfn: (value: FormDataEntryValue, key: string, parent: FormData) => void, thisArg?: any): void; }' is not assignable to parameter of type 'SetStateAction<{ nom: string; prenom: string; date_naissance: string; telephone: string; email: string; adresse: string; ville: string; gps: string; niveau_etude: string; experience_annees: string; competences: string[]; ... 9 more ...; remote_souhaite: boolean; }>'.
+  Type '{ lettre_motivation_url: any; append(name: string, value: string | Blob): void; append(name: string, value: string): void; append(name: string, blobValue: Blob, filename?: string): void; ... 5 more ...; forEach(callbackfn: (value: FormDataEntryValue, key: string, parent: FormData) => void, thisArg?: any): void; }' is missing the following properties from type '{ nom: string; prenom: string; date_naissance: string; telephone: string; email: string; adresse: string; ville: string; gps: string; niveau_etude: string; experience_annees: string; competences: string[]; ... 9 more ...; remote_souhaite: boolean; }': nom, prenom, date_naissance, telephone, and 16 more.
+src/screens/OrderStatusScreen.tsx(264,48): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/screens/specialized/AssuranceDashboardScreen.tsx(199,13): error TS1345: An expression of type 'void' cannot be tested for truthiness.
+src/screens/specialized/BloodDonationRequestScreen.tsx(355,52): error TS2349: This expression is not callable.
+  Type '{ borderColor: string; backgroundColor: string; }' has no call signatures.
+src/screens/specialized/BusTicketQRScannerScreen.tsx(49,25): error TS2345: Argument of type 'string' is not assignable to parameter of type 'boolean'.
+src/screens/specialized/CovoiturageBookingScreen.tsx(83,32): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<CovoiturageBookingDetails>'.
+src/screens/specialized/CovoiturageBookingScreen.tsx(166,27): error TS2554: Expected 2 arguments, but got 1.
+src/screens/specialized/CovoiturageBookingScreen.tsx(196,27): error TS2554: Expected 2 arguments, but got 1.
+src/screens/specialized/CovoiturageDetailsScreen.tsx(223,26): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/screens/specialized/GestionServicesSpecialisesScreen.tsx(99,90): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/screens/specialized/HealthServicesHubScreen.tsx(271,33): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinearGradientProps): LinearGradient', gave the following error.
+    Type 'string[]' is not assignable to type 'readonly [string, string, ...string[]]'.
+  Overload 2 of 2, '(props: LinearGradientProps, context: any): LinearGradient', gave the following error.
+    Type 'string[]' is not assignable to type 'readonly [string, string, ...string[]]'.
+src/screens/specialized/ImmobilierDetailsScreen.tsx(61,29): error TS2345: Argument of type '{ success: boolean; data: RealEstateProperty; }' is not assignable to parameter of type 'SetStateAction<RealEstateProperty>'.
+src/screens/specialized/ImmobilierDetailsScreen.tsx(62,121): error TS2352: Conversion of type '{ success: boolean; data: RealEstateProperty[]; }' to type 'any[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ success: boolean; data: RealEstateProperty[]; }' is missing the following properties from type 'any[]': length, pop, push, concat, and 35 more.
+src/screens/specialized/ImmobilierListScreen.tsx(39,31): error TS2345: Argument of type '{ success: boolean; data: RealEstateProperty[]; }' is not assignable to parameter of type 'SetStateAction<RealEstateProperty[]>'.
+src/screens/specialized/ImmobilierPriceAlertsScreen.tsx(42,27): error TS2345: Argument of type '{ success: boolean; data: any[]; }' is not assignable to parameter of type 'SetStateAction<PriceAlert[]>'.
+src/screens/specialized/LabAIAnalysisScreen.tsx(48,39): error TS2345: Argument of type 'LabExamination' is not assignable to parameter of type 'SetStateAction<LabAnalysisResult>'.
+  Type 'LabExamination' is missing the following properties from type 'LabAnalysisResult': interpretation, anomalies_detected, is_normal, confidence, and 2 more.
+src/screens/specialized/LivreScolaireDetailsScreen.tsx(101,21): error TS2367: This comparison appears to be unintentional because the types 'string' and 'number' have no overlap.
+src/screens/specialized/MenuPlanningHubScreen.tsx(737,149): error TS18047: 'ingredient.quantity' is possibly 'null'.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(251,9): error TS2448: Block-scoped variable 'editableShoppingList' used before its declaration.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(483,24): error TS2345: Argument of type '"dejeuner"' is not assignable to parameter of type 'SetStateAction<"petit_dejeuner" | "repas_du_jour">'.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(1449,55): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(1472,55): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(1594,55): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(1617,55): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(1711,59): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(1723,59): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(1737,59): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(1754,59): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '{ fontSize: number; color: string; textAlign: "center"; }' is not assignable to type 'Falsy | ViewStyle | RegisteredStyle<ViewStyle> | RecursiveArray<Falsy | ViewStyle | RegisteredStyle<ViewStyle>> | readonly (Falsy | ... 1 more ... | RegisteredStyle<...>)[]'.
+src/screens/specialized/MenuWeekCalendarScreen.tsx(3204,5): error TS1117: An object literal cannot have multiple properties with the same name.
+src/screens/specialized/MesTrocsScreen.tsx(139,30): error TS2367: This comparison appears to be unintentional because the types 'string' and 'number' have no overlap.
+src/screens/specialized/MyConsultationsScreen.tsx(332,45): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: FlatListProps<HospitalConsultation>): FlatList<HospitalConsultation>', gave the following error.
+    Type 'number' is not assignable to type 'string'.
+  Overload 2 of 2, '(props: FlatListProps<HospitalConsultation>, context: any): FlatList<HospitalConsultation>', gave the following error.
+    Type 'number' is not assignable to type 'string'.
+src/screens/specialized/MyFavoritesScreen.tsx(30,30): error TS2345: Argument of type '{ success: boolean; data: RealEstateProperty[]; }' is not assignable to parameter of type 'SetStateAction<RealEstateProperty[]>'.
+src/screens/specialized/PharmacieHomeScreen.tsx(208,17): error TS2353: Object literal may only specify known properties, and 'offset' does not exist in type 'ProductSearchFilters'.
+src/screens/specialized/PharmacieHomeScreen.tsx(1203,69): error TS2345: Argument of type 'boolean' is not assignable to parameter of type 'SetStateAction<true>'.
+src/screens/specialized/TaxiBookingScreen.tsx(268,27): error TS2554: Expected 2 arguments, but got 1.
+src/screens/specialized/TaxiDetailsScreen.tsx(129,29): error TS2554: Expected 2 arguments, but got 1.
+src/screens/specialized/TaxiDetailsScreen.tsx(290,34): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/screens/specialized/TaxiHomeScreen.tsx(160,33): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type '{ coordinates?: number[]; }'.
+src/screens/specialized/TaxiHomeScreen.tsx(172,33): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type '{ coordinates?: number[]; }'.
+src/screens/specialized/TaxiHomeScreen.tsx(596,65): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type '{ coordinates?: number[]; }'.
+src/screens/specialized/TaxiHomeScreen.tsx(607,65): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type '{ coordinates?: number[]; }'.
+src/screens/specialized/TicketVoyageHomeScreen.tsx(230,13): error TS2552: Cannot find name 'Alert'. Did you mean 'alert'?
+src/screens/specialized/TrocDetailsScreen.tsx(122,26): error TS2367: This comparison appears to be unintentional because the types 'string' and 'number' have no overlap.
+src/screens/SpecializedSearchScreen.tsx(64,63): error TS2345: Argument of type '{}' is not assignable to parameter of type 'SearchFilters | (() => SearchFilters)'.
+src/screens/video/VideoCreationWizardScreen.tsx(1455,33): error TS2367: This comparison appears to be unintentional because the types '"media"' and '"ai_virtual"' have no overlap.
+src/screens/video/VideoCreationWizardScreen.tsx(1461,30): error TS2367: This comparison appears to be unintentional because the types '"media"' and '"ai_virtual"' have no overlap.
+src/screens/video/VideoCreationWizardScreen.tsx(1469,36): error TS2367: This comparison appears to be unintentional because the types '"media"' and '"ai_virtual"' have no overlap.
+src/services/advancedTimelineService.ts(78,9): error TS2739: Type 'ApiResponse<TimelineListResponse>' is missing the following properties from type 'TimelineListResponse': timelines, total, limit, offset
+src/services/arRenderService.ts(72,9): error TS2739: Type 'ApiResponse<ARPreviewResponse>' is missing the following properties from type 'ARPreviewResponse': preview_url, thumbnail_url, scene_data
+src/services/effectLibraryService.ts(62,9): error TS2739: Type 'ApiResponse<EffectListResponse>' is missing the following properties from type 'EffectListResponse': effects, total, limit, offset
+src/services/effectLibraryService.ts(71,13): error TS2740: Type 'ApiResponse<Effect>' is missing the following properties from type 'Effect': id, name, category, description, and 7 more.
+src/services/exportService.ts(36,9): error TS2739: Type 'ApiResponse<ExportJob>' is missing the following properties from type 'ExportJob': jobId, settings, progress, createdAt
+src/services/extendedAudioLibraryService.ts(60,9): error TS2739: Type 'ApiResponse<AudioSearchResponse>' is missing the following properties from type 'AudioSearchResponse': tracks, total, limit, offset
+src/services/generativeVideoService.ts(84,9): error TS2741: Property 'job_id' is missing in type 'ApiResponse<GenerateVideoResponse>' but required in type 'GenerateVideoResponse'.
+src/services/generativeVideoService.ts(94,9): error TS2740: Type 'ApiResponse<GenerativeJob>' is missing the following properties from type 'GenerativeJob': job_id, user_id, request, progress, and 3 more.
+src/services/liveKitService.ts(52,19): error TS2749: 'Room' refers to a value, but is being used as a type here. Did you mean 'typeof Room'?
+src/services/offlineService.ts(29,13): error TS2300: Duplicate identifier 'syncQueue'.
+src/services/offlineService.ts(56,22): error TS2349: This expression is not callable.
+  Type 'OfflineAction[]' has no call signatures.
+src/services/offlineService.ts(213,18): error TS2349: This expression is not callable.
+  Type 'OfflineAction[]' has no call signatures.
+src/services/offlineService.ts(222,19): error TS2300: Duplicate identifier 'syncQueue'.
+src/services/socialFeaturesService.ts(157,13): error TS2353: Object literal may only specify known properties, and 'original_video_id' does not exist in type '{ params?: Record<string, any>; }'.
+src/services/socialFeaturesService.ts(172,13): error TS2353: Object literal may only specify known properties, and 'original_video_id' does not exist in type '{ params?: Record<string, any>; }'.
+src/services/templateService.ts(68,9): error TS2739: Type 'ApiResponse<TemplateListResponse>' is missing the following properties from type 'TemplateListResponse': templates, total, limit, offset
+src/services/videoRecommendationService.ts(96,17): error TS2353: Object literal may only specify known properties, and 'user_id' does not exist in type '{ params?: Record<string, any>; }'.
+src/services/videoRecommendationService.ts(121,17): error TS2353: Object literal may only specify known properties, and 'user_id' does not exist in type '{ params?: Record<string, any>; }'.
+src/utils/formConfigExtractor.ts(57,23): error TS2554: Expected 6 arguments, but got 5.

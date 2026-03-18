@@ -1,0 +1,5 @@
+﻿src/components/ChatModalMobile.tsx(1306,84): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(...items: ConcatArray<{ text: any; onPress: () => void; }>[]): { text: any; onPress: () => void; }[]', gave the following error.
+    Object literal may only specify known properties, and 'style' does not exist in type '{ text: any; onPress: () => void; }'.
+  Overload 2 of 2, '(...items: ({ text: any; onPress: () => void; } | ConcatArray<{ text: any; onPress: () => void; }>)[]): { text: any; onPress: () => void; }[]', gave the following error.
+    Object literal may only specify known properties, and 'style' does not exist in type '{ text: any; onPress: () => void; }'.

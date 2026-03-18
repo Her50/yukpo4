@@ -1,0 +1,15 @@
+﻿cargo :     Checking yukpomnang_backend v0.1.0 (C:\Users\23767\yukpomnang2\backend)
+Au caractère Ligne:1 : 27
++ $env:SQLX_OFFLINE="true"; cargo check 2>&1 | Out-File -FilePath "comp ...
++                           ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Checking yu...mnang2\backend):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: unused import: `warn`
+  --> src\controllers\bourse_livre_v2_controller.rs:19:24
+   |
+19 | use log::{error, info, warn};
+   |                        ^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+

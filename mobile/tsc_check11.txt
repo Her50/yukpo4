@@ -1,0 +1,34 @@
+﻿src/components/ChatModalMobile.tsx(1305,84): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(...items: ConcatArray<{ text: any; onPress: () => void; }>[]): { text: any; onPress: () => void; }[]', gave the following error.
+    Object literal may only specify known properties, and 'style' does not exist in type '{ text: any; onPress: () => void; }'.
+  Overload 2 of 2, '(...items: ({ text: any; onPress: () => void; } | ConcatArray<{ text: any; onPress: () => void; }>)[]): { text: any; onPress: () => void; }[]', gave the following error.
+    Object literal may only specify known properties, and 'style' does not exist in type '{ text: any; onPress: () => void; }'.
+src/components/CrashRecoveryScreen.tsx(15,10): error TS2724: '"../utils/DebugLogger"' has no exported member named 'useDebugLogger'. Did you mean 'debugLogger'?
+src/components/DebugOverlay.tsx(16,10): error TS2724: '"../utils/DebugLogger"' has no exported member named 'useDebugLogger'. Did you mean 'debugLogger'?
+src/components/delivery/CourierSelectionModal.tsx(63,48): error TS2554: Expected 1 arguments, but got 0.
+src/components/delivery/DeliveryShoppingFlowSteps.tsx(114,42): error TS2552: Cannot find name 'navigation'. Did you mean 'navigator'?
+src/components/FloatingHelpButton.tsx(7,5): error TS2559: Type 'string' has no properties in common with type 'Properties<string | number, string & {}>'.
+src/components/InfractionChart.tsx(4,54): error TS2307: Cannot find module 'recharts' or its corresponding type declarations.
+src/components/LoyaltyPointsBadge.tsx(34,64): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/components/ServiceStats.tsx(3,8): error TS2613: Module '"C:/Users/23767/yukpomnang2/mobile/src/hooks/useServiceStats"' has no default export. Did you mean to use 'import { useServiceStats } from "C:/Users/23767/yukpomnang2/mobile/src/hooks/useServiceStats"' instead?
+src/components/specialized/BloodBankResultCard.tsx(721,5): error TS1117: An object literal cannot have multiple properties with the same name.
+src/components/SpecializedServicesButton.tsx(44,21): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+src/components/video/DuetRemixModal.tsx(87,75): error TS2554: Expected 2 arguments, but got 3.
+src/components/video/VideoGestureHandler.tsx(146,9): error TS2322: Type '({ translateY: number; translateX?: undefined; } | { translateX: number; translateY?: undefined; })[]' is not assignable to type 'string | readonly (({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; ... 4 more ...; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; }))[]'.
+  Type '({ translateY: number; translateX?: undefined; } | { translateX: number; translateY?: undefined; })[]' is not assignable to type 'readonly (({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; }))[]'.
+    Type '{ translateY: number; translateX?: undefined; } | { translateX: number; translateY?: undefined; }' is not assignable to type '({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; })'.
+      Type '{ translateY: number; translateX?: undefined; }' is not assignable to type '({ scaleX: AnimatableNumericValue; } & { scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; matrix?: never; }) | ... 11 more ... | ({ ...; } & { ...; })'.
+        Type '{ translateY: number; translateX?: undefined; }' is not assignable to type '{ matrix: AnimatableNumericValue[]; } & { scaleX?: never; scaleY?: never; translateX?: never; translateY?: never; perspective?: never; rotate?: never; rotateX?: never; rotateY?: never; rotateZ?: never; scale?: never; skewX?: never; skewY?: never; }'.
+          Property 'matrix' is missing in type '{ translateY: number; translateX?: undefined; }' but required in type '{ matrix: AnimatableNumericValue[]; }'.
+src/config/linking.ts(1,10): error TS2305: Module '"@react-navigation/native"' has no exported member 'LinkingOptions'.
+src/hooks/useCostCalculation.ts(46,25): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/hooks/useTripReminders.ts(53,23): error TS2554: Expected 2 arguments, but got 1.
+src/screens/BourseLivreScreen.tsx(173,19): error TS2739: Type '{ recommendations: { titre: string; raison: string; score: number; }[]; conseil: string; }' is missing the following properties from type 'BookRecommendationResponse': livre_ids, score_recommendation, reasoning, alternative_books, matieres_suggestees
+src/screens/delivery/DeliveryParcelFlowNew.tsx(237,18): error TS2448: Block-scoped variable 'estimatedDistance' used before its declaration.
+src/screens/HomeScreen.working.tsx(216,42): error TS2339: Property 'count' does not exist on type 'unknown'.
+src/screens/offres-emploi/AnalyseCVScreen.tsx(41,55): error TS2554: Expected 2-3 arguments, but got 1.
+src/screens/OrderStatusScreen.tsx(264,48): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/screens/specialized/AssuranceDashboardScreen.tsx(199,13): error TS1345: An expression of type 'void' cannot be tested for truthiness.
+src/screens/specialized/BloodDonationRequestScreen.tsx(355,52): error TS2349: This expression is not callable.
+  Type '{ borderColor: string; backgroundColor: string; }' has no call signatures.
+src/screens/specialized/BusTicketQRScannerScreen.tsx(49,25): error TS2345: Argument of type 'string' is not assignable to parameter of type 'boolean'.
