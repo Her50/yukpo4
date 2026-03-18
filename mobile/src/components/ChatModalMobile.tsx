@@ -253,7 +253,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             }
         } catch (error) {
             console.error('[ChatModalMobile] Erreur invitation:', error);
-            Alert.alert('Erreur', 'Impossible d\'inviter cet utilisateur');
+            Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.inviteError') || 'Impossible d\'inviter cet utilisateur');
         }
     };
 
@@ -262,7 +262,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         if (!service?.id) return;
 
         Alert.alert(
-            'Retirer le participant',
+            t('chatModalMobile.removeParticipantTitle') || 'Retirer le participant',
             t('chatModalMobile.etesvousSurDeVouloirRetirerCette'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
@@ -276,7 +276,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             Alert.alert(t('chatModalMobile.succes'), t('chatModalMobile.participantRetireDeLaConversation'));
                         } catch (error) {
                             console.error('[ChatModalMobile] Erreur retrait participant:', error);
-                            Alert.alert('Erreur', 'Impossible de retirer ce participant');
+                            Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.removeParticipantError') || 'Impossible de retirer ce participant');
                         }
                     }
                 }
@@ -433,21 +433,21 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         if (phoneNumber && phoneNumber !== t('chatModalMobile.nonSpecifie')) {
             const cleanPhone = phoneNumber.replace(/[^\d+]/g, '');
             Alert.alert(
-                'Appeler le prestataire',
-                `Voulez-vous appeler ${nomPrestataire} au ${phoneNumber} ?`,
+                t('chatModalMobile.callProvider') || 'Appeler le prestataire',
+                t('chatModalMobile.callConfirm', { name: nomPrestataire, phone: phoneNumber }) || `Voulez-vous appeler ${nomPrestataire} au ${phoneNumber} ?`,
                 [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
                         text: t('common.call'),
                         onPress: () => {
                             // Ici vous pouvez implémenter l'appel téléphonique
-                            Alert.alert('Appel', `Appel vers ${cleanPhone}`);
+                            Linking.openURL(`tel:${cleanPhone}`);
                         }
                     }
                 ]
             );
         } else {
-            Alert.alert('Contact', t('chatModalMobile.aucunNumeroDeTelephoneDisponiblePour'));
+            Alert.alert(t('chatModalMobile.contactTitle') || 'Contact', t('chatModalMobile.aucunNumeroDeTelephoneDisponiblePour'));
         }
     };
 
@@ -900,7 +900,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         styles.statusText,
                                         { color: isConnected ? modernColors.success : modernColors.textSecondary }
                                     ]}>
-                                        {isConnected ? 'En ligne' : 'Hors ligne'}
+                                        {isConnected ? t('chatModalMobile.online') || 'En ligne' : t('chatModalMobile.offline') || 'Hors ligne'}
                                     </Text>
                                 </View>
                             </View>
@@ -945,10 +945,10 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             let messageText: string;
                                             if (nameInService) {
                                                 // Le nom est déjà dans le service, ne pas le répéter
-                                                messageText = `Bonjour, je souhaite discuter de ${serviceName}.`;
+                                                messageText = t('chatModalMobile.whatsappMsgNoName', { service: serviceName }) || `Bonjour, je souhaite discuter de ${serviceName}.`;
                                             } else {
                                                 // Le nom n'est pas dans le service, l'inclure
-                                                messageText = `Bonjour ${nomPrestataire}, je souhaite discuter de ${serviceName}.`;
+                                                messageText = t('chatModalMobile.whatsappMsgWithName', { name: nomPrestataire, service: serviceName }) || `Bonjour ${nomPrestataire}, je souhaite discuter de ${serviceName}.`;
                                             }
 
                                             // ✅ DEBUG: Logger pour diagnostiquer
@@ -972,7 +972,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             }
                                         } catch (error) {
                                             console.error('Erreur ouverture WhatsApp:', error);
-                                            Alert.alert('Erreur', 'Impossible d\'ouvrir WhatsApp');
+                                            Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.whatsappOpenError') || 'Impossible d\'ouvrir WhatsApp');
                                         }
                                     }}
                                 >
@@ -1087,7 +1087,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                     styles.audioText,
                                                     message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
                                                 ]}>
-                                                    Message vocal
+                                                    {t('chatModalMobile.voiceMessage') || 'Message vocal'}
                                                 </Text>
                                             </View>
                                         )}
@@ -1100,7 +1100,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                     styles.fileText,
                                                     message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
                                                 ]}>
-                                                    Document
+                                                    {t('chatModalMobile.document') || 'Document'}
                                                 </Text>
                                             </View>
                                         )}
@@ -1269,7 +1269,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         <View style={styles.audioInfo}>
                                             <SafeIcon name="mic" size={16} color="#FFFFFF" />
                                             <Text style={styles.audioPreviewText}>
-                                                {isPlayingAudio ? 'En lecture...' : t('chatModalMobile.audioEnregistre')}
+                                                {isPlayingAudio ? (t('chatModalMobile.playing') || 'En lecture...') : t('chatModalMobile.audioEnregistre')}
                                             </Text>
                                         </View>
                                     </View>
@@ -1899,6 +1899,46 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                 </TouchableOpacity>
                                             ))}
                                         </ScrollView>
+                                    )}
+
+                                    {/* Navigation action buttons */}
+                                    {!msg.isUser && msg.response?.suggestedActions && msg.response.suggestedActions.length > 0 && (
+                                        <View style={styles.chatbotActionsRow}>
+                                            {msg.response.suggestedActions.map((action: any, idx: number) => (
+                                                <TouchableOpacity
+                                                    key={idx}
+                                                    style={styles.chatbotActionBtn}
+                                                    onPress={() => {
+                                                        if (action.route) {
+                                                            try {
+                                                                (navigation as any).navigate(action.route, action.params);
+                                                            } catch { /* ignore */ }
+                                                        } else {
+                                                            handleChatbotQuery(action.label);
+                                                        }
+                                                    }}
+                                                >
+                                                    <SafeIcon name={action.icon || 'arrow-right'} size={14} color="#6366f1" />
+                                                    <Text style={styles.chatbotActionText}>{action.label}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    )}
+
+                                    {/* Anticipated next questions */}
+                                    {!msg.isUser && msg.response?.nextSteps && msg.response.nextSteps.length > 0 && (
+                                        <View style={styles.chatbotNextSteps}>
+                                            {msg.response.nextSteps.map((step: string, idx: number) => (
+                                                <TouchableOpacity
+                                                    key={idx}
+                                                    style={styles.chatbotNextStepBtn}
+                                                    onPress={() => handleChatbotQuery(step)}
+                                                >
+                                                    <SafeIcon name="message-circle" size={12} color="#8b5cf6" />
+                                                    <Text style={styles.chatbotNextStepText}>{step}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
                                     )}
                                 </View>
                             ))}
@@ -2827,6 +2867,46 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '500',
         color: '#6366F1',
+    },
+    chatbotActionsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: 6,
+        paddingLeft: 4,
+    },
+    chatbotActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#eef2ff',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 12,
+        gap: 4,
+    },
+    chatbotActionText: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#6366f1',
+    },
+    chatbotNextSteps: {
+        marginTop: 8,
+        paddingLeft: 4,
+        gap: 4,
+    },
+    chatbotNextStepBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        borderRadius: 8,
+        backgroundColor: '#f5f3ff',
+        gap: 6,
+    },
+    chatbotNextStepText: {
+        fontSize: 12,
+        color: '#8b5cf6',
+        flex: 1,
     },
     chatbotInputRow: {
         flexDirection: 'row',

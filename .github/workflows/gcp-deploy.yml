@@ -171,11 +171,6 @@ jobs:
                 "FRONTEND_URL": "https://yukpo.com",
                 "PAYMENT_PRIMARY_PROVIDER": "cinetpay",
 
-                "STRIPE_WEBHOOK_SECRET": "",
-                "PAYPAL_WEBHOOK_ID": "",
-                "ORANGE_MONEY_WEBHOOK_SECRET": "",
-                "MTN_MONEY_WEBHOOK_SECRET": "",
-
                 "EMAIL_ENABLED": "true",
                 "EMAIL_PROVIDER": "sendgrid",
                 "SENDGRID_FROM_EMAIL": "noreply@yukpo.com",
@@ -308,7 +303,7 @@ jobs:
           # ✅ CRITIQUE: Nettoyer env-vars.json pour retirer TOUS les secrets (au cas où ils seraient présents)
           echo "Nettoyage final de env-vars.json (retrait des secrets)..."
           if command -v jq &> /dev/null; then
-            jq 'del(.DATABASE_URL, .REDIS_URL, .JWT_SECRET, .OPENAI_API_KEY, .SORA_API_KEY, .S3_ACCESS_KEY, .S3_SECRET_KEY, .LIVEKIT_API_KEY, .LIVEKIT_API_SECRET, .GOOGLE_MAPS_API_KEY, .OPENWEATHERMAP_API_KEY, .CINETPAY_API_KEY, .CINETPAY_SITE_ID, .CINETPAY_SECRET_KEY, .NOTCHPAY_PUBLIC_KEY, .NOTCHPAY_SECRET_KEY)' env-vars.json > env-vars-clean.json && mv env-vars-clean.json env-vars.json
+            jq 'del(.DATABASE_URL, .REDIS_URL, .JWT_SECRET, .OPENAI_API_KEY, .SORA_API_KEY, .S3_ACCESS_KEY, .S3_SECRET_KEY, .LIVEKIT_API_KEY, .LIVEKIT_API_SECRET, .GOOGLE_MAPS_API_KEY, .OPENWEATHERMAP_API_KEY, .CINETPAY_API_KEY, .CINETPAY_SITE_ID, .CINETPAY_SECRET_KEY, .NOTCHPAY_PUBLIC_KEY, .NOTCHPAY_SECRET_KEY, .FLUTTERWAVE_SECRET_KEY, .FLUTTERWAVE_PUBLIC_KEY, .STRIPE_SECRET_KEY, .STRIPE_PUBLISHABLE_KEY, .STRIPE_WEBHOOK_SECRET, .PAYPAL_CLIENT_ID, .PAYPAL_CLIENT_SECRET, .PAYPAL_WEBHOOK_ID, .ORANGE_MONEY_WEBHOOK_SECRET, .MTN_MONEY_WEBHOOK_SECRET)' env-vars.json > env-vars-clean.json && mv env-vars-clean.json env-vars.json
             echo "✅ Fichier env-vars.json nettoyé"
           else
             echo "⚠️ jq non disponible, nettoyage manuel impossible"
@@ -378,13 +373,13 @@ jobs:
           if command -v jq &> /dev/null; then
             # Extraire toutes les clés sauf les secrets - CRITIQUE: Exclure explicitement tous les secrets
             # ✅ AJOUTÉ 2026-03-17: Variables IA optimisées incluses
-            ENV_VARS=$(jq -r 'to_entries | map(select(.key != "DATABASE_URL" and .key != "REDIS_URL" and .key != "JWT_SECRET" and .key != "OPENAI_API_KEY" and .key != "SORA_API_KEY" and .key != "S3_ACCESS_KEY" and .key != "S3_SECRET_KEY" and .key != "LIVEKIT_API_KEY" and .key != "LIVEKIT_API_SECRET" and .key != "GOOGLE_MAPS_API_KEY" and .key != "OPENWEATHERMAP_API_KEY" and .key != "CINETPAY_API_KEY" and .key != "CINETPAY_SITE_ID" and .key != "CINETPAY_SECRET_KEY" and .key != "NOTCHPAY_PUBLIC_KEY" and .key != "NOTCHPAY_SECRET_KEY")) | map("\(.key)=\(.value)") | join(";")' ${{ steps.prepare-env.outputs.env_file }})
+            ENV_VARS=$(jq -r 'to_entries | map(select(.key != "DATABASE_URL" and .key != "REDIS_URL" and .key != "JWT_SECRET" and .key != "OPENAI_API_KEY" and .key != "SORA_API_KEY" and .key != "S3_ACCESS_KEY" and .key != "S3_SECRET_KEY" and .key != "LIVEKIT_API_KEY" and .key != "LIVEKIT_API_SECRET" and .key != "GOOGLE_MAPS_API_KEY" and .key != "OPENWEATHERMAP_API_KEY" and .key != "CINETPAY_API_KEY" and .key != "CINETPAY_SITE_ID" and .key != "CINETPAY_SECRET_KEY" and .key != "NOTCHPAY_PUBLIC_KEY" and .key != "NOTCHPAY_SECRET_KEY" and .key != "FLUTTERWAVE_SECRET_KEY" and .key != "FLUTTERWAVE_PUBLIC_KEY" and .key != "STRIPE_SECRET_KEY" and .key != "STRIPE_PUBLISHABLE_KEY" and .key != "STRIPE_WEBHOOK_SECRET" and .key != "PAYPAL_CLIENT_ID" and .key != "PAYPAL_CLIENT_SECRET" and .key != "PAYPAL_WEBHOOK_ID" and .key != "ORANGE_MONEY_WEBHOOK_SECRET" and .key != "MTN_MONEY_WEBHOOK_SECRET")) | map("\(.key)=\(.value)") | join(";")' ${{ steps.prepare-env.outputs.env_file }})
             echo "Variables d'environnement à définir: $ENV_VARS"
             
             # Vérifier que les secrets ne sont pas dans ENV_VARS
-            if echo "$ENV_VARS" | grep -qE "(DATABASE_URL|REDIS_URL|JWT_SECRET|OPENAI_API_KEY|CINETPAY_API_KEY|CINETPAY_SECRET_KEY|NOTCHPAY_SECRET_KEY|GOOGLE_MAPS_API_KEY)"; then
+            if echo "$ENV_VARS" | grep -qE "(DATABASE_URL|REDIS_URL|JWT_SECRET|OPENAI_API_KEY|CINETPAY_API_KEY|CINETPAY_SECRET_KEY|NOTCHPAY_SECRET_KEY|GOOGLE_MAPS_API_KEY|STRIPE_WEBHOOK_SECRET|PAYPAL_WEBHOOK_ID|ORANGE_MONEY_WEBHOOK_SECRET|MTN_MONEY_WEBHOOK_SECRET)"; then
               echo "❌ ERREUR: Des secrets sont présents dans ENV_VARS!"
-              echo "$ENV_VARS" | grep -E "(DATABASE_URL|REDIS_URL|JWT_SECRET|OPENAI_API_KEY|CINETPAY_API_KEY|CINETPAY_SECRET_KEY|NOTCHPAY_SECRET_KEY|GOOGLE_MAPS_API_KEY)" || true
+              echo "$ENV_VARS" | grep -E "(DATABASE_URL|REDIS_URL|JWT_SECRET|OPENAI_API_KEY|CINETPAY_API_KEY|CINETPAY_SECRET_KEY|NOTCHPAY_SECRET_KEY|GOOGLE_MAPS_API_KEY|STRIPE_WEBHOOK_SECRET|PAYPAL_WEBHOOK_ID|ORANGE_MONEY_WEBHOOK_SECRET|MTN_MONEY_WEBHOOK_SECRET|FLUTTERWAVE_SECRET_KEY|FLUTTERWAVE_PUBLIC_KEY|STRIPE_SECRET_KEY|STRIPE_PUBLISHABLE_KEY|PAYPAL_CLIENT_ID|PAYPAL_CLIENT_SECRET)" || true
               exit 1
             fi
             
@@ -401,7 +396,7 @@ jobs:
                 --port 8080 \
                 --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
                 --update-env-vars="^;^$ENV_VARS" \
-                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest" \
+                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \
                 --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER,MONGODB_URL" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
@@ -423,7 +418,7 @@ jobs:
                 --allow-unauthenticated \
                 --port 8080 \
                 --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
-                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest" \
+                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \
                 --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 2Gi \
@@ -451,7 +446,7 @@ jobs:
               --port 8080 \
               --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
               --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
-              --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest" \
+              --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \
               --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
               --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
               --memory 2Gi \

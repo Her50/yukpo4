@@ -707,46 +707,134 @@ RESPONSE FORMAT (JSON):
     if (matchGroup('yukpo')) {
       return {
         message: t('intelligentChat.fallback.yukpoDiscovery') ||
-          '🚀 Yukpo is the digital revolution — the first African super-app that puts everything at your fingertips!\n\n'
-          + '🏥 Health: Find pharmacies, book hospital appointments with AI triage\n'
-          + '🚗 Transport: Taxi, carpooling, bus tickets with seat selection\n'
-          + '📦 Smart Delivery: Parcels & groceries with real-time tracking\n'
-          + '💼 Jobs: AI-powered CV analysis & salary prediction\n'
-          + '🎓 Education: School orientation AI & book exchange\n'
-          + '🗺️ Smart GPS Navigation with community alerts\n'
-          + '🏨 Hotels & Real Estate with AI pricing\n'
-          + '🛒 E-commerce with price negotiation\n\n'
-          + 'Tap below to explore! 👇',
+          `🌟 **YUKPO — LA RÉVOLUTION DIGITALE AFRICAINE** 🌟
+          
+Yukpo n'est pas une application comme les autres. C'est la **PREMIÈRE SUPER-APP AFRICAINE** qui transforme radicalement votre quotidien avec l'intelligence artificielle !
+
+🚀 **L'INNOVATION EXCLUSIVE YUKPO :**
+
+🏥 **SANTÉ RÉVOLUTIONNAIRE**
+• Pharmacies avec stock en temps réel
+• Hôpitaux avec triage IA intelligent  
+• Laboratoires et banques de sang intégrés
+• Prise de RDV en 1 clic
+
+🚗 **MOBILITÉ 2.0 SMART**
+• Taxi avec tarification dynamique IA
+• Covoiturage intelligent avec matching
+• Billets bus avec sélection de siège
+• Navigation GPS avec alertes communautaires
+
+📦 **LIVRAISON MAGIQUE**
+• Colis et courses en temps réel
+• Tracking GPS précis au mètre
+• Multi-coursiers optimisés
+• Payment à la livraison sécurisé
+
+💼 **CARRIÈRE FUTURE**
+• Analyse CV IA avec score /100
+• Prédiction salaire par IA
+• Matching intelligent candidats-offres
+• Formations personnalisées IA
+
+🎓 **ÉDUCATION INNOVANTE**
+• Orientation scolaire IA personnalisée
+• Bourse du livre avec troc intelligent
+• Chaînes d'échange DAG algorithmiques
+• Programme scolaire officiel intégré
+
+🏨 **IMMOBILIER PREMIUM**
+• Hôtels avec tarification IA
+• Meublés et résidences de luxe
+• Visites virtuelles 360°
+• Gestion complète pour propriétaires
+
+� **E-COMMERCE SMART**
+• Création de service en 1 photo
+• Négociation de prix en temps réel
+• Galerie médias avancée
+• Commentaires et notation
+
+💰 **FINANCE INCLUSIVE**
+• 14 méthodes de paiement (MTN, Orange, Wave, Visa...)
+• Wallet multi-devises
+• Recharges avec bonus jusqu'à +20%
+• Transactions sécurisées instantanées
+
+🔥 **CE QUI REND YUKPO UNIQUE AU MONDE :**
+✅ Première super-app 100% africaine
+✅ IA intégrée dans TOUS les services
+✅ 62 langues africaines supportées
+✅ Offline-first pour zones mal connectées
+✅ Multi-paiements adaptés à l'Afrique
+✅ Écosystème complet en 1 seule app
+
+🌍 **L'AFRIQUE ENTRE DANS L'ÈRE DIGITALE AVEC YUKPO !** 🌍
+
+Explorez l'avenir dès maintenant ! 👇`,
         type: 'text',
         suggestedActions: [
-          { id: 'health', label: t('intelligentChat.nav.health') || '🏥 Health', icon: 'heart', route: 'PharmacieHome', category: 'navigation', description: '' },
-          { id: 'transport', label: t('intelligentChat.nav.transport') || '🚗 Transport', icon: 'car', route: 'TaxiHome', category: 'navigation', description: '' },
-          { id: 'delivery', label: t('intelligentChat.nav.delivery') || '📦 Delivery', icon: 'truck', route: 'DeliveryHome', category: 'navigation', description: '' },
-          { id: 'emploi', label: t('intelligentChat.nav.jobs') || '💼 Jobs', icon: 'briefcase', route: 'OffresEmploiHome', category: 'navigation', description: '' },
-          { id: 'navigation', label: t('intelligentChat.nav.gps') || '🗺️ GPS Navigation', icon: 'map', route: 'Navigation', category: 'navigation', description: '' },
-          { id: 'books', label: t('intelligentChat.nav.books') || '📚 Books', icon: 'book-open', route: 'LivreScolaireHome', category: 'navigation', description: '' },
-          { id: 'hotel', label: t('intelligentChat.nav.hotel') || '🏨 Hotels', icon: 'building', route: 'HotelMeubleHome', category: 'navigation', description: '' },
-          { id: 'bus', label: t('intelligentChat.nav.bus') || '🎫 Bus Tickets', icon: 'bus', route: 'BusTicketSearch', category: 'navigation', description: '' },
+          { id: 'health', label: '🏥 Santé IA', icon: 'heart', route: 'PharmacieHome', category: 'navigation', description: 'Pharmacies + triage IA' },
+          { id: 'transport', label: '🚗 Mobilité Smart', icon: 'car', route: 'TaxiHome', category: 'navigation', description: 'Taxi IA + covoiturage' },
+          { id: 'delivery', label: '📦 Livraison Magic', icon: 'truck', route: 'DeliveryHome', category: 'navigation', description: 'Colis + courses temps réel' },
+          { id: 'jobs', label: '💼 Carrière Future', icon: 'briefcase', route: 'OffresEmploiHome', category: 'navigation', description: 'Emploi + CV IA' },
+          { id: 'education', label: '🎓 Éducation Innov', icon: 'graduation-cap', route: 'OrientationScolaireHome', category: 'navigation', description: 'Orientation + livres IA' },
+          { id: 'navigation', label: '�️ GPS Révolution', icon: 'map', route: 'Navigation', category: 'navigation', description: 'Navigation + alertes' },
+          { id: 'hotel', label: '🏨 Immobilier Premium', icon: 'building', route: 'HotelMeubleHome', category: 'navigation', description: 'Hôtels avec IA' },
+          { id: 'create', label: '✨ Créer Service', icon: 'plus', route: 'Home', category: 'creation', description: 'Votre business en 1 photo' },
         ],
         nextSteps: [
-          t('intelligentChat.followUp.howCreateProduct') || 'How do I create a product/service?',
-          t('intelligentChat.followUp.howDeliveryWorks') || 'How does delivery work?',
-          t('intelligentChat.followUp.howNavigationWorks') || 'Tell me about GPS navigation',
-          t('intelligentChat.followUp.howPayment') || 'What payment methods are available?',
+          t('intelligentChat.followUp.howCreateProduct') || 'Comment créer mon service en 1 photo ?',
+          t('intelligentChat.followUp.howDeliveryWorks') || 'Comment fonctionne la livraison magique ?',
+          t('intelligentChat.followUp.howNavigationWorks') || 'Qu\'est-ce que la navigation révolutionnaire ?',
+          t('intelligentChat.followUp.howPayment') || 'Quels paiements sont disponibles ?',
+          t('intelligentChat.followUp.howAIWorks') || 'Comment l\'IA transforme chaque service ?',
+          t('intelligentChat.followUp.whyUnique') || 'Pourquoi Yukpo est unique au monde ?',
         ],
       };
     }
 
     if (match(['bonjour', 'salut', 'hello', 'hi ', 'hey', 'bonsoir', 'good', 'hola', 'jambo', 'habari', 'sannu'])) {
+      const isHomeScreen = screenName === 'Home' || screenName === 'HomeScreen';
+      const welcomeMessage = isHomeScreen
+        ? `🌟 **Bienvenue dans l'avenir digital de l'Afrique !** 🌟
+        
+Yukpo n'est pas juste une application — c'est la **première super-app africaine** qui révolutionne votre quotidien !
+
+✨ **Ce qui rend Yukpo UNIQUE :**
+🏥 **Santé IA** : Pharmacies + triage hospitalier intelligent
+🚗 **Mobilité Smart** : Taxi avec prix dynamique IA + covoiturage 
+📦 **Livraison Magique** : Colis et courses en temps réel
+💼 **Carrière 2.0** : Analyse CV IA + prédiction salaire
+🎓 **Éducation Futur** : Orientation scolaire IA + troc livres intelligent
+🗺️ **GPS Révolutionnaire** : Navigation avec alertes communautaires
+🏨 **Immobilier Premium** : Hôtels avec tarification IA
+💰 **Finance Inclus** : Multi-paiements (MTN, Orange, Wave, Visa...)
+
+🔥 **L'INNOVATION AFRICAINE EST ICI !** 🔥
+
+Commencez votre expérience dès maintenant ! 👇`
+        : t('intelligentChat.fallback.greeting', { screen: screenName, guide: guideText || '' }) ||
+        `Welcome to Yukpo! You're on "${screenName}". Here's what you can do:`;
+
       return {
-        message: t('intelligentChat.fallback.greeting', { screen: screenName, guide: guideText || '' }) ||
-          `Welcome to Yukpo! You're on "${screenName}". Here's what you can do:`,
+        message: welcomeMessage,
         type: 'text',
-        suggestedActions: topActions(4),
+        suggestedActions: isHomeScreen ? [
+          { id: 'health', label: '🏥 Santé IA', icon: 'heart', route: 'PharmacieHome', category: 'navigation', description: 'Pharmacies + triage IA' },
+          { id: 'transport', label: '🚗 Mobilité', icon: 'car', route: 'TaxiHome', category: 'navigation', description: 'Taxi + covoiturage' },
+          { id: 'delivery', label: '📦 Livraison', icon: 'truck', route: 'DeliveryHome', category: 'navigation', description: 'Colis et courses' },
+          { id: 'jobs', label: '💼 Carrière', icon: 'briefcase', route: 'OffresEmploiHome', category: 'navigation', description: 'Emploi + CV IA' },
+          { id: 'education', label: '🎓 Éducation', icon: 'graduation-cap', route: 'OrientationScolaireHome', category: 'navigation', description: 'Orientation + livres' },
+          { id: 'navigation', label: '🗺️ GPS', icon: 'map', route: 'Navigation', category: 'navigation', description: 'Navigation intelligente' },
+          { id: 'hotel', label: '🏨 Hôtels', icon: 'building', route: 'HotelMeubleHome', category: 'navigation', description: 'Hébergement premium' },
+          { id: 'create', label: '✨ Créer', icon: 'plus', route: 'Home', category: 'creation', description: 'Votre service ici' },
+        ] : topActions(4),
         nextSteps: [
-          t('intelligentChat.followUp.whatIsYukpo') || 'What is Yukpo?',
-          t('intelligentChat.followUp.howCreateProduct') || 'How do I create a product?',
-          t('intelligentChat.followUp.exploreServices') || 'Show me available services',
+          t('intelligentChat.followUp.whatIsYukpo') || 'Qu\'est-ce qui rend Yukpo unique ?',
+          t('intelligentChat.followUp.howCreateProduct') || 'Comment créer mon service en 1 photo ?',
+          t('intelligentChat.followUp.exploreServices') || 'Explorer tous les services innovants',
+          t('intelligentChat.followUp.howAIWorks') || 'Comment l\'IA transforme mon expérience ?',
         ],
       };
     }

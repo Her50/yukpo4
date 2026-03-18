@@ -1,6 +1,7 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { API_ENDPOINTS, WS_ENDPOINTS } from '../config/api.config';
+import i18n from '../i18n';
 import { apiDelete, apiPost, apiPut } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
 
@@ -71,7 +72,7 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
             const welcomeMessage: ChatMessage = {
                 id: Date.now().toString(),
                 from: 'prestataire',
-                content: `Bonjour \uD83D\uDC4B, je suis là pour vous aider avec votre demande. Que puis-je faire pour vous ?`,
+                content: (i18n.t('chatModalMobile.wsWelcome') as string) || `Bonjour \uD83D\uDC4B, je suis là pour vous aider avec votre demande. Que puis-je faire pour vous ?`,
                 timestamp: new Date(),
                 status: 'read',
                 type: 'text',

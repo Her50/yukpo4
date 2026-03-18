@@ -893,12 +893,27 @@ pub async fn contextual_chat(
 
     let model = std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".to_string());
 
+    let mut messages_vec = vec![serde_json::json!({"role": "system", "content": system_prompt})];
+
+    if let Some(ctx) = &payload.context {
+        if let Some(history) = ctx.get("conversation_history").or(ctx.get("recent_messages")) {
+            if let Some(arr) = history.as_array() {
+                for msg in arr.iter().rev().take(6).collect::<Vec<_>>().into_iter().rev() {
+                    let role = msg.get("role").and_then(|v| v.as_str()).unwrap_or("user");
+                    let content = msg.get("content").and_then(|v| v.as_str()).unwrap_or("");
+                    if !content.is_empty() {
+                        messages_vec.push(serde_json::json!({"role": role, "content": content}));
+                    }
+                }
+            }
+        }
+    }
+
+    messages_vec.push(serde_json::json!({"role": "user", "content": sanitized_message}));
+
     let request_body = serde_json::json!({
         "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": sanitized_message}
-        ],
+        "messages": messages_vec,
         "max_tokens": 800,
         "temperature": 0.7
     });

@@ -103,38 +103,38 @@ const LUCIDE_ICONS: Record<string, string> = {
   'award': 'award',
 };
 
-const GLOBAL_ACTIONS: ActionDescriptor[] = [
+const getGlobalActions = (t: (key: string) => string): ActionDescriptor[] => [
   {
     id: 'home',
-    label: 'Accueil',
+    label: t('useScreenContext.home') || 'Accueil',
     icon: LUCIDE_ICONS.home,
     route: 'Home',
     category: 'navigation',
-    description: 'Retourner à la page d\'accueil',
+    description: t('useScreenContext.homeDesc') || 'Retourner à la page d\'accueil',
   },
   {
     id: 'search',
-    label: 'Recherche',
+    label: t('useScreenContext.search') || 'Recherche',
     icon: LUCIDE_ICONS.search,
     route: 'RechercheBesoin',
     category: 'search',
-    description: 'Rechercher des services ou produits',
+    description: t('useScreenContext.searchDesc') || 'Rechercher des services ou produits',
   },
   {
     id: 'profile',
-    label: 'Mon Profil',
+    label: t('useScreenContext.profile') || 'Mon Profil',
     icon: LUCIDE_ICONS.profile,
     route: 'Profile',
     category: 'navigation',
-    description: 'Voir et modifier mon profil',
+    description: t('useScreenContext.profileDesc') || 'Voir et modifier mon profil',
   },
   {
     id: 'services',
-    label: 'Mes Services',
+    label: t('useScreenContext.services') || 'Mes Services',
     icon: LUCIDE_ICONS.menu,
     route: 'MesServices',
     category: 'navigation',
-    description: 'Accéder à tous les services',
+    description: t('useScreenContext.servicesDesc') || 'Accéder à tous les services',
   },
 ];
 
@@ -1632,7 +1632,7 @@ export const useScreenContext = (currentRouteName?: string, routeParams?: any): 
   const context: ScreenContext = useMemo(() => ({
     screenName,
     screenType,
-    availableActions: [...GLOBAL_ACTIONS, ...specificActions],
+    availableActions: [...getGlobalActions(t), ...specificActions],
     visibleElements,
     userData: user,
     serviceData: routeParams,

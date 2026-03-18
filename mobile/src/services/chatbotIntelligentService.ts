@@ -11,6 +11,8 @@ export interface ChatbotResponse {
   message: string;
   icons?: IconReference[];
   quickReplies?: string[];
+  suggestedActions?: Array<{ id: string; label: string; icon: string; route?: string; category: string }>;
+  nextSteps?: string[];
 }
 
 const t = (key: string, params?: Record<string, any>): string => i18n.t(key, params) as string;
@@ -98,6 +100,8 @@ RULES:
           message: data.message,
           icons: data.icons || [],
           quickReplies: data.quick_replies || data.suggestions || [],
+          suggestedActions: data.suggested_actions || [],
+          nextSteps: data.next_steps || data.nextSteps || [],
         };
       }
       return this.localFallback(query, service);
@@ -150,7 +154,7 @@ RULES:
     const productsSummary = this.getProductsSummary(service);
     const match = (kws: string[]) => kws.some(k => q.includes(k));
 
-    if (match(['produit', 'product', 'article', 'item', 'catalogue', 'stock', 'producto', 'produkt', 'bidhaa', 'kayan'])) {
+    if (match(['produit', 'product', 'article', 'item', 'catalogue', 'stock', 'producto', 'produkt', 'bidhaa', 'kayan', 'mazao', 'kayayyaki', 'oja', 'umkhiqizo', 'prodotto', 'produto', 'produk', 'товар'])) {
       if (productsSummary) {
         return {
           message: t('chatbot.productsAvailable', { name, list: productsSummary }),
@@ -159,16 +163,18 @@ RULES:
             { icon: 'truck', label: t('chatbot.delivery') || 'Delivery', color: '#10b981' },
           ],
           quickReplies: [t('chatbot.orderProduct') || 'Order', t('chatbot.seePrices') || 'Prices', t('chatbot.availability') || 'Availability'],
+          nextSteps: [t('chatbot.askDeliveryFees') || 'What are the delivery fees?', t('chatbot.askNegotiation') || 'Can I negotiate the price?'],
         };
       }
       return {
         message: t('chatbot.noProductCatalog', { name }),
         icons: [{ icon: 'message-circle', label: t('chatbot.contact') || 'Contact', color: '#6366f1' }],
         quickReplies: [t('chatbot.contactProvider') || 'Contact provider'],
+        nextSteps: [t('chatbot.askAboutService') || 'Tell me about this service', t('chatbot.askHowToCall') || 'How do I call the provider?'],
       };
     }
 
-    if (match(['prix', 'price', 'tarif', 'cout', 'cost', 'combien', 'how much', 'precio', 'preis', 'bei', 'farashi', 'kudi'])) {
+    if (match(['prix', 'price', 'tarif', 'cout', 'cost', 'combien', 'how much', 'precio', 'preis', 'bei', 'farashi', 'kudi', 'nawa', 'nkap', 'ntalu', 'arama', 'wari', 'sika', 'valor', 'prezzo', 'harga', 'цена'])) {
       const priceInfo = price
         ? t('chatbot.priceShown', { name, price })
         : t('chatbot.noPriceShown', { name });
@@ -179,6 +185,7 @@ RULES:
           { icon: 'credit-card', label: t('chatbot.payment') || 'Payment', color: '#6366f1' },
         ],
         quickReplies: [t('chatbot.negotiatePrice') || 'Negotiate', t('chatbot.paymentMethods') || 'Payment methods', productsSummary ? (t('chatbot.seeProducts') || 'Products') : ''].filter(Boolean),
+        nextSteps: [t('chatbot.askHowToOrder') || 'How do I order?', t('chatbot.askDeliveryTime') || 'How long for delivery?'],
       };
     }
 
@@ -190,7 +197,7 @@ RULES:
       };
     }
 
-    if (match(['appel', 'call', 'telephone', 'phone', 'llamar', 'anrufen', 'piga simu', 'kira'])) {
+    if (match(['appel', 'call', 'telephone', 'phone', 'llamar', 'anrufen', 'piga simu', 'kira', 'telefonar', 'chiamare', 'bellen', 'simu', 'waya', 'fonou', 'rele', 'звонить'])) {
       return {
         message: t('chatbot.callSteps'),
         icons: [
@@ -201,7 +208,7 @@ RULES:
       };
     }
 
-    if (match(['livr', 'deliver', 'command', 'order', 'ship', 'suivi', 'tracking', 'pedido', 'lieferung', 'oda'])) {
+    if (match(['livr', 'deliver', 'command', 'order', 'ship', 'suivi', 'tracking', 'pedido', 'lieferung', 'oda', 'entrega', 'consegna', 'bezorging', 'peleka', 'aika', 'jigilar', 'firansu', 'доставка'])) {
       return {
         message: t('chatbot.deliverySteps'),
         icons: [
@@ -209,6 +216,10 @@ RULES:
           { icon: 'map-pin', label: t('chatbot.tracking') || 'Tracking', color: '#3b82f6' },
         ],
         quickReplies: [t('chatbot.seeProducts') || 'Products', t('chatbot.deliveryFees') || 'Delivery fees', t('chatbot.deliveryTime') || 'Delivery time'],
+        suggestedActions: [
+          { id: 'delivery-home', label: t('chatbot.goDelivery') || '🚚 Delivery', icon: 'truck', route: 'DeliveryHome', category: 'navigation' },
+        ],
+        nextSteps: [t('chatbot.askPaymentMethods') || 'What payment methods?', t('chatbot.askInsurance') || 'Is there delivery insurance?'],
       };
     }
 
@@ -227,7 +238,7 @@ RULES:
       };
     }
 
-    if (match(['paiement', 'payment', 'payer', 'pay', 'momo', 'orange money', 'carte', 'credit card', 'pago', 'zahlung', 'malipo'])) {
+    if (match(['paiement', 'payment', 'payer', 'pay', 'momo', 'orange money', 'carte', 'credit card', 'pago', 'zahlung', 'malipo', 'biya', 'sisan', 'sara', 'kufuta', 'pagamento', 'betaling', 'bayar', 'оплата'])) {
       return {
         message: t('chatbot.paymentInfo'),
         icons: [
@@ -238,7 +249,7 @@ RULES:
       };
     }
 
-    if (match(['localis', 'locat', 'itineraire', 'direction', 'adresse', 'address', 'where is', 'gps', 'carte', 'map', 'donde', 'mahali', 'ina wapi'])) {
+    if (match(['localis', 'locat', 'itineraire', 'direction', 'adresse', 'address', 'where is', 'gps', 'carte', 'map', 'donde', 'mahali', 'ina wapi', 'ramani', 'taswirar', 'mapa', 'kaart', 'peta', 'карта'])) {
       return {
         message: t('chatbot.locationSteps'),
         icons: [
@@ -249,7 +260,7 @@ RULES:
       };
     }
 
-    if (match(['bonjour', 'hello', 'hi ', 'salut', 'bonsoir', 'hey', 'hola', 'hallo', 'jambo', 'habari', 'sannu', 'bawo', 'sawubona'])) {
+    if (match(['bonjour', 'hello', 'hi ', 'salut', 'bonsoir', 'hey', 'hola', 'hallo', 'jambo', 'habari', 'sannu', 'bawo', 'sawubona', 'ola', 'ciao', 'hoi', 'mbote', 'nnoo', 'barka', 'salaam', 'salam', 'привет', 'merhaba', 'namaste'])) {
       return {
         message: t('intelligentChat.welcomeChat', { name: name || 'Yukpo' }),
         icons: [],
@@ -292,6 +303,12 @@ RULES:
         { icon: 'message-circle', label: t('chatbot.contact') || 'Contact', color: '#10b981' },
       ] : [],
       quickReplies: [t('chatbot.describeService') || 'About service', t('chatbot.negotiatePrice') || 'Negotiate', t('chatbot.seeProducts') || 'Products', t('chatbot.chatFeatures') || 'Features'],
+      nextSteps: [
+        t('chatbot.askAboutProducts') || 'What products are available?',
+        t('chatbot.askAboutPrice') || 'What is the price?',
+        t('chatbot.askHowToOrder') || 'How do I order?',
+        t('chatbot.askAboutDelivery') || 'Do you deliver?',
+      ],
     };
   }
 
