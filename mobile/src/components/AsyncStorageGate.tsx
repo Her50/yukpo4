@@ -7,15 +7,15 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { ensureAsyncStorageReady } from '../utils/asyncStorageInit';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+// import { useLanguageSafe } from '../contexts/LanguageContext'; // ✅ FIX: Supprimé pour éviter dépendance circulaire
 
 interface AsyncStorageGateProps {
     children: React.ReactNode;
 }
 
 export const AsyncStorageGate: React.FC<AsyncStorageGateProps> = ({ children }) => {
-        const { t } = useLanguageSafe();
-const [isReady, setIsReady] = useState(false);
+    // const { t } = useLanguageSafe(); // ✅ FIX: Supprimé pour éviter dépendance circulaire
+    const [isReady, setIsReady] = useState(false);
     const [hasError, setHasError] = useState(false);
 
     useEffect(() => {
@@ -36,16 +36,16 @@ const [isReady, setIsReady] = useState(false);
                 // ✅ CRITIQUE: Attendre que AsyncStorage soit vraiment prêt
                 // Cette fonction attend jusqu'à ce que le module natif soit initialisé
                 const readyPromise = ensureAsyncStorageReady();
-                
+
                 // Race entre l'initialisation et le timeout
                 const ready = await Promise.race([readyPromise, timeoutPromise]);
-                
+
                 // Annuler le timeout si l'initialisation a réussi
                 if (timeoutId) {
                     clearTimeout(timeoutId);
                     timeoutId = null;
                 }
-                
+
                 if (isMounted) {
                     if (ready) {
                         console.log('[AsyncStorageGate] ✅ AsyncStorage prêt, rendu des providers');
@@ -83,13 +83,13 @@ const [isReady, setIsReady] = useState(false);
         };
     }, []);
 
-    // ✅ CRITIQUE: Ne pas rendre les providers tant qu'AsyncStorage n'est pas prêt
+    // CRITIQUE: Ne pas rendre les providers tant qu'AsyncStorage n'est pas prêt
     // MAIS avec timeout pour éviter le blocage indéfini
     if (!isReady) {
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color="#6366F1" />
-                <Text style={styles.text}>Initialisation...</Text>
+                <Text style={styles.text}>Initialisation...</Text> // FIX: Texte statique pour éviter dépendance circulaire
                 {hasError && (
                     <Text style={[styles.text, { color: '#EF4444', marginTop: 8 }]}>
                         Mode sans persistance locale

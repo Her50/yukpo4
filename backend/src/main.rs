@@ -596,7 +596,7 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         let mut connected = false;
         let mut pool_opt = None;
 
-        let max_retries = 3;
+        let max_retries = if is_cloud_run { 5 } else { 3 };
         for attempt in 1..=max_retries {
             match PgPoolOptions::new()
                 .max_connections(max_connections)
@@ -756,11 +756,10 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
                 Ok(())
             })
         })
-        .connect(&long_ops_url)
-        .await
+        .connect_lazy(&long_ops_url)
     {
         Ok(pool) => {
-            log::info!("✅ Pool PostgreSQL longues opérations créé (max=10, min=2)");
+            log::info!("✅ Pool PostgreSQL longues opérations créé (lazy, max=5, min=2)");
             Some(pool)
         }
         Err(e) => {
@@ -2758,6 +2757,65 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
                 log::warn!("⚠️ Erreur création geo_regional_config: {}", e);
             }
             log::info!("✅ Tables navigation (checkpoints + activity_log + achievements + push_tokens + geo_regional_config) créées/vérifiées");
+
+            // ✅ CORRIGÉ 2026-03-19: Ces tables manquaient dans le bloc Cloud Run
+            if let Err(e) =
+                yukpomnang_backend::migrations::auto_migrate::ensure_video_transcoding_table(
+                    &pg_for_checkpoints,
+                )
+                .await
+            {
+                log::warn!("⚠️ Erreur création video_transcoding: {}", e);
+            }
+            if let Err(e) =
+                yukpomnang_backend::migrations::auto_migrate::ensure_video_analytics_tables(
+                    &pg_for_checkpoints,
+                )
+                .await
+            {
+                log::warn!("⚠️ Erreur création video_analytics: {}", e);
+            }
+            if let Err(e) =
+                yukpomnang_backend::migrations::auto_migrate::ensure_internal_shares_table(
+                    &pg_for_checkpoints,
+                )
+                .await
+            {
+                log::warn!("⚠️ Erreur création internal_shares: {}", e);
+            }
+            if let Err(e) =
+                yukpomnang_backend::migrations::auto_migrate::ensure_service_team_management_table(
+                    &pg_for_checkpoints,
+                )
+                .await
+            {
+                log::warn!("⚠️ Erreur création service_team_management: {}", e);
+            }
+            if let Err(e) =
+                yukpomnang_backend::migrations::auto_migrate::ensure_exchange_rate_cache_table(
+                    &pg_for_checkpoints,
+                )
+                .await
+            {
+                log::warn!("⚠️ Erreur création exchange_rate_cache: {}", e);
+            }
+            // ✅ CORRIGÉ 2026-03-19: Tables critiques manquantes (history_events, wallets)
+            if let Err(e) =
+                yukpomnang_backend::migrations::auto_migrate::ensure_history_events_table(
+                    &pg_for_checkpoints,
+                )
+                .await
+            {
+                log::warn!("⚠️ Erreur création history_events: {}", e);
+            }
+            if let Err(e) = yukpomnang_backend::migrations::auto_migrate::ensure_wallet_tables(
+                &pg_for_checkpoints,
+            )
+            .await
+            {
+                log::warn!("⚠️ Erreur création wallet_tables: {}", e);
+            }
+            log::info!("✅ Tables supplémentaires (video, shares, team, exchange_rate, history, wallets) créées/vérifiées");
         });
     } else {
         let _ = yukpomnang_backend::migrations::auto_migrate::ensure_navigation_checkpoints_table(
@@ -2812,6 +2870,14 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             &app_state.pg,
         )
         .await;
+
+        // ✅ CORRIGÉ 2026-03-19: Tables critiques manquantes
+        let _ = yukpomnang_backend::migrations::auto_migrate::ensure_history_events_table(
+            &app_state.pg,
+        )
+        .await;
+        let _ =
+            yukpomnang_backend::migrations::auto_migrate::ensure_wallet_tables(&app_state.pg).await;
     }
 
     // ✅ 2026-03-16: Index MongoDB supprimés - index PostgreSQL créés via ensure_history_events_table
@@ -3313,16 +3379,18 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
-    // ✅ CRITIQUE Cloud Run 2026-02-16: Si serveur minimal est en cours, l'arrêter
+    // ✅ CORRIGÉ 2026-03-19: Arrêt serveur minimal + rebind avec retry loop
+    // Le problème: 500ms n'est pas toujours suffisant pour libérer le port TCP
+    // Solution: Retry loop avec backoff au lieu d'un seul sleep
     if let Some(handle) = health_server_handle {
         eprintln!("[MAIN] 🛑 Arrêt du serveur HTTP minimal avant démarrage serveur complet...");
         log::info!("🛑 Arrêt du serveur HTTP minimal avant démarrage serveur complet...");
         handle.abort();
-        // Attendre un peu pour que le port soit libéré
-        eprintln!("[MAIN] ⏳ Attente libération du port...");
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        eprintln!("[MAIN] ✅ Port libéré, démarrage serveur complet...");
-        log::info!("✅ Port libéré, démarrage serveur complet...");
+        // Attendre un peu que le task soit bien arrêté
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        // Drop explicite du handle pour libérer les ressources
+        drop(handle);
+        eprintln!("[MAIN] ⏳ Attente libération du port (retry loop)...");
     }
 
     // ✅ Diagnostic des services externes au démarrage
@@ -3389,14 +3457,52 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("✅ Serveur lance sur http://{}:{}", host, port);
     println!("✅ Serveur lance sur http://{}:{}", host, port);
 
-    eprintln!("[MAIN] 🔌 Début du bind sur {}:{}...", host, port);
-    let listener = tokio::net::TcpListener::bind(addr).await.map_err(|e| {
-        eprintln!(
-            "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind sur {}:{} - {}",
-            host, port, e
-        );
-        e
-    })?;
+    // ✅ CORRIGÉ 2026-03-19: Retry loop pour le bind du port (race condition avec serveur minimal)
+    eprintln!(
+        "[MAIN] 🔌 Début du bind sur {}:{} (retry loop)...",
+        host, port
+    );
+    let mut listener_opt = None;
+    for attempt in 1..=15u32 {
+        match tokio::net::TcpListener::bind(addr).await {
+            Ok(l) => {
+                eprintln!(
+                    "[MAIN] ✅ Bind réussi sur {}:{} (tentative {})",
+                    host, port, attempt
+                );
+                log::info!(
+                    "✅ Bind réussi sur {}:{} (tentative {})",
+                    host,
+                    port,
+                    attempt
+                );
+                listener_opt = Some(l);
+                break;
+            }
+            Err(e) => {
+                if attempt < 15 {
+                    eprintln!(
+                        "[MAIN] ⏳ Port {} occupé (tentative {}/15), attente 500ms... ({})",
+                        port, attempt, e
+                    );
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                } else {
+                    eprintln!(
+                        "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind sur {}:{} après 15 tentatives - {}",
+                        host, port, e
+                    );
+                    log::error!(
+                        "❌ Impossible de bind sur {}:{} après 15 tentatives - {}",
+                        host,
+                        port,
+                        e
+                    );
+                    return Err(format!("Impossible de bind sur {}:{} - {}", host, port, e).into());
+                }
+            }
+        }
+    }
+    let listener = listener_opt.expect("listener should be set after retry loop");
     eprintln!("[MAIN] ✅ Bind réussi, démarrage du serveur HTTP complet...");
     eprintln!(
         "[MAIN] 🚀 Serveur HTTP complet démarre sur http://{}:{}",

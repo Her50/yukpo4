@@ -493,6 +493,16 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                             keyboardType="email-address"
                             autoCapitalize="none"
                         />
+                        {inviteEmail.trim().length >= 2 && (
+                            <InlineMentionSuggestions
+                                query={inviteEmail}
+                                visible={inviteEmail.trim().length >= 2}
+                                onSelect={(user: MentionSuggestion) => {
+                                    setInviteEmail(user.email || user.nom_complet || '');
+                                }}
+                                maxHeight={160}
+                            />
+                        )}
                         <TouchableOpacity
                             style={styles.userPickerButton}
                             onPress={() => setShowUserPicker(true)}

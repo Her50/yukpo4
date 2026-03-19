@@ -95,7 +95,7 @@ pub async fn get_team_members(
                 stm.id,
                 stm.service_id,
                 stm.user_id,
-                u.username,
+                COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as username,
                 u.email,
                 u.avatar_url,
                 stm.role_id,
@@ -105,7 +105,7 @@ pub async fn get_team_members(
                 str.color as role_color,
                 str.icon as role_icon,
                 stm.added_by,
-                added_by_user.username as added_by_username,
+                COALESCE(added_by_user.nom_complet, CONCAT(added_by_user.prenom, ' ', added_by_user.nom), added_by_user.email) as added_by_username,
                 stm.added_at,
                 stm.is_active
             FROM service_team_members stm
@@ -127,7 +127,7 @@ pub async fn get_team_members(
                 stm.id,
                 stm.service_id,
                 stm.user_id,
-                u.username,
+                COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as username,
                 u.email,
                 u.avatar_url,
                 stm.role_id,
@@ -137,7 +137,7 @@ pub async fn get_team_members(
                 str.color as role_color,
                 str.icon as role_icon,
                 stm.added_by,
-                added_by_user.username as added_by_username,
+                COALESCE(added_by_user.nom_complet, CONCAT(added_by_user.prenom, ' ', added_by_user.nom), added_by_user.email) as added_by_username,
                 stm.added_at,
                 stm.is_active
             FROM service_team_members stm
@@ -211,7 +211,7 @@ pub async fn get_team_members(
                 str.color as role_color,
                 str.icon as role_icon,
                 sti.invited_by,
-                u.username as invited_by_username,
+                COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as invited_by_username,
                 sti.invited_at,
                 sti.expires_at,
                 sti.status,
@@ -242,7 +242,7 @@ pub async fn get_team_members(
                 str.color as role_color,
                 str.icon as role_icon,
                 sti.invited_by,
-                u.username as invited_by_username,
+                COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as invited_by_username,
                 sti.invited_at,
                 sti.expires_at,
                 sti.status,

@@ -21,12 +21,12 @@ import {
     View
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { commentsApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { NativeCard } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface MentionCandidate {
     id: number;
@@ -211,7 +211,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
     const [comments, setComments] = useState<ProductComment[]>([]);
 
-    const { t } = useLanguageSafe();    const [stats, setStats] = useState<CommentStats>({
+    const { t } = useLanguageSafe(); const [stats, setStats] = useState<CommentStats>({
         total_comments: 0,
         rating_count: 0,
         average_rating: 0,
@@ -599,8 +599,8 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         }
     }, []);
 
-    const insertMention = useCallback(
-        (userMention: MentionCandidate) => {
+    const doInsertMention = useCallback(
+        (userId: number, userName: string, userEmail: string, userAvatar?: string) => {
             const lastAtIndex = composerContent.lastIndexOf('@');
             if (lastAtIndex < 0) return;
 
@@ -609,20 +609,34 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             const spaceIndex = afterAt.indexOf(' ');
             const trailing = spaceIndex >= 0 ? afterAt.substring(spaceIndex) : ' ';
 
-            const newContent = `${beforeAt}@${userMention.nom_complet}${trailing.startsWith(' ') ? trailing : ` ${trailing}`}`.trimEnd() + ' ';
+            const newContent = `${beforeAt}@${userName}${trailing.startsWith(' ') ? trailing : ` ${trailing}`}`.trimEnd() + ' ';
             setComposerContent(newContent);
 
             setSelectedMentions((prev) => {
-                if (prev.some((candidate) => candidate.id === userMention.id)) {
+                if (prev.some((candidate) => candidate.id === userId)) {
                     return prev;
                 }
-                return [...prev, userMention];
+                return [...prev, { id: userId, nom_complet: userName, email: userEmail, avatar_url: userAvatar }];
             });
 
             setMentionQuery('');
             setShowMentionPicker(false);
         },
         [composerContent],
+    );
+
+    const insertMention = useCallback(
+        (userMention: MentionCandidate) => {
+            doInsertMention(userMention.id, userMention.nom_complet, userMention.email, userMention.avatar_url);
+        },
+        [doInsertMention],
+    );
+
+    const insertMentionFromInline = useCallback(
+        (user: MentionSuggestion) => {
+            doInsertMention(user.id, user.nom_complet, user.email, user.avatar_url);
+        },
+        [doInsertMention],
     );
 
     const handleReply = useCallback(
@@ -876,6 +890,15 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         <SafeIcon name="x" size={18} color={modernColors.error} />
                     </TouchableOpacity>
                 </View>
+            )}
+
+            {showMentionPicker && mentionQuery.length >= 1 && (
+                <InlineMentionSuggestions
+                    query={mentionQuery}
+                    visible={showMentionPicker}
+                    onSelect={insertMentionFromInline}
+                    maxHeight={180}
+                />
             )}
 
             <View style={styles.composerInputContainer}>

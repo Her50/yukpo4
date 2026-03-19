@@ -250,6 +250,14 @@ const NavigationScreen: React.FC = () => {
     const { user } = useAuth();
     const { t } = useLanguageSafe();
     const { location: currentLocation } = useLocationSafe();
+    const {
+        payForPoi, payMicroFeature, payForAlerts,
+        isSuspended, unpaidCount, unpaidDebt, maxUnpaidUses,
+        currentBalance, formatPriceInCurrency: fmtPrice, userCurrency,
+        isCoachingActive, isCoachingTrial, coachingExpiresAt,
+        activateCoachingSubscription, checkCoachingExpiry,
+        isAlertsSuspended, redirectToRecharge,
+    } = useNavigationPayment();
     const [destination, setDestination] = useState('');
     const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [selectedLocation, setSelectedLocation] = useState<LocationObject | null>(null);
@@ -454,6 +462,12 @@ const NavigationScreen: React.FC = () => {
         let destCoords = destinationCoords;
         if (!destCoords && (selectedLocation as any)?.latitude && (selectedLocation as any)?.longitude) { destCoords = { lat: (selectedLocation as any).latitude, lng: (selectedLocation as any).longitude }; setDestinationCoords(destCoords); }
         if (!destCoords && !destination.trim()) { Alert.alert(t('navigation.destinationRequired'), t('navigation.selectDestination')); return; }
+
+        // ✅ PAIEMENT: Gate recherche itinéraire via payMicroFeature('route_search')
+        let paymentOk = false;
+        await payMicroFeature('route_search', () => { paymentOk = true; });
+        if (!paymentOk) { return; }
+
         setLoading(true);
         console.log('[Navigation] \uD83D\uDD0D searchRoutes START — dest:', destination, 'coords:', destCoords, 'mode:', travelMode);
         const modeLabel = travelMode === 'walking' ? t('navigation.walking') : travelMode === 'bicycling' ? t('navigation.bicycling') : travelMode === 'transit' ? t('navigation.transit') : t('navigation.car');
@@ -517,10 +531,11 @@ const NavigationScreen: React.FC = () => {
                 ]);
             } else { Alert.alert(t('message.error'), errMsg || t('navigation.networkError')); }
         } finally { setLoading(false); }
-    }, [destination, destinationCoords, selectedLocation, getCurrentPosition, geocodeDestination, avoidTolls, avoidHighways, avoidFerries, waypoints, travelMode]);
+    }, [destination, destinationCoords, selectedLocation, getCurrentPosition, geocodeDestination, avoidTolls, avoidHighways, avoidFerries, waypoints, travelMode, payMicroFeature]);
     useEffect(() => { searchRoutesRef.current = searchRoutes; }, [searchRoutes]);
 
-    const loadPointsOfInterestSafely = useCallback(async (route: RouteOption) => {
+    // ── POI interne (sans gate de paiement) ──
+    const _loadPOIInternal = useCallback(async (route: RouteOption) => {
         if (!route || !destinationCoords) { setPointsOfInterest([]); return; }
         setLoadingPOI(true); setPointsOfInterest([]);
         try {
@@ -556,6 +571,25 @@ const NavigationScreen: React.FC = () => {
             }
         } catch { setPointsOfInterest([]); } finally { setLoadingPOI(false); }
     }, [destinationCoords, getCurrentPosition]);
+
+    // ✅ POI avec gate de paiement — toutes les catégories facturées ensemble
+    const loadPointsOfInterestSafely = useCallback(async (route: RouteOption) => {
+        if (!route || !destinationCoords) { setPointsOfInterest([]); return; }
+        // Construire les labels des catégories pour l'écran de confirmation
+        const allCats = Object.keys(POI_CATEGORIES);
+        const catLabels: Record<string, string> = {};
+        allCats.forEach(k => {
+            const cat = POI_CATEGORIES[k];
+            catLabels[k] = cat.label?.labelKey ? (t(cat.label.labelKey) || cat.label.fallback) : (cat.label?.fallback || k);
+        });
+        // Gate via payForPoi — confirmation + débit automatique
+        await payForPoi(
+            allCats,
+            catLabels,
+            () => { _loadPOIInternal(route); },
+            () => { console.log('[Navigation] POI payment cancelled'); }
+        );
+    }, [destinationCoords, _loadPOIInternal, payForPoi, t]);
 
     const loadCheckpointsSafely = useCallback(async () => {
         if (!selectedRoute || !destinationCoords) return;
@@ -667,15 +701,14 @@ const NavigationScreen: React.FC = () => {
         setLoadingActivity(true);
         try {
             console.log('[Navigation] Loading activity stats for period:', period);
-            const [sr, hr, ar] = await Promise.all([
+            // ✅ Summary + History = GRATUIT
+            const [sr, hr] = await Promise.all([
                 apiGet(`/api/navigation/activity/summary?period=${period}`),
                 apiGet(`/api/navigation/activity/history?limit=10`),
-                apiGet(`/api/navigation/activity/ai-insights?period=${period}`)
             ]) as any[];
 
             console.log('[Navigation] Activity summary response:', sr?.data);
             console.log('[Navigation] Activity history response:', hr?.data);
-            console.log('[Navigation] AI insights response:', ar?.data);
 
             if (sr?.data) {
                 console.log('[Navigation] Setting activity summary:', sr.data);
@@ -693,18 +726,28 @@ const NavigationScreen: React.FC = () => {
                 console.log('[Navigation] Setting activity history:', hr.data.activities);
                 setActivityHistory(hr.data.activities);
             }
-            if (ar?.data?.success) {
-                console.log('[Navigation] Setting AI insights:', ar.data);
-                setAiInsights(ar.data);
-            } else {
-                console.log('[Navigation] AI insights not successful or missing');
-            }
+
+            // ✅ PAIEMENT: AI Coach Insights = payMicroFeature('ai_coach')
+            await payMicroFeature('ai_coach', async () => {
+                try {
+                    const ar = await apiGet(`/api/navigation/activity/ai-insights?period=${period}`) as any;
+                    console.log('[Navigation] AI insights response:', ar?.data);
+                    if (ar?.data?.success) {
+                        console.log('[Navigation] Setting AI insights:', ar.data);
+                        setAiInsights(ar.data);
+                    } else {
+                        console.log('[Navigation] AI insights not successful or missing');
+                    }
+                } catch (e) {
+                    console.error('[Navigation] Error loading AI insights:', e);
+                }
+            });
         } catch (e) {
             console.error('[Navigation] Error loading activity stats:', e);
         } finally {
             setLoadingActivity(false);
         }
-    }, []);
+    }, [payMicroFeature]);
     const estimateCalories = useCallback((dKm: number, dMin: number, mode: string, spd: number) => {
         let met = mode === 'walking' ? (spd < 4 ? 2.5 : spd < 5.5 ? 3.5 : spd < 7 ? 4.5 : 6.0) : mode === 'bicycling' ? (spd < 16 ? 4.0 : spd < 20 ? 6.8 : spd < 25 ? 8.0 : 10.0) : mode === 'transit' ? 1.3 : 1.5;
         return (met * 70 * dMin) / 60;
@@ -940,6 +983,7 @@ const NavigationScreen: React.FC = () => {
                 if (cd < alertDist && (!near || cd < near.distance)) near = { id: cl.id, checkpoint_type: cl.checkpoint_type, distance: Math.round(cd), speed_limit: cl.speed_limit };
             }
             // 3. Alertes progressives par seuils — re-alerte quand on franchit un seuil plus proche
+            // ✅ PAIEMENT: Facturation par checkpoint UNIQUE rencontré (1ère détection = payMicroFeature)
             if (near) {
                 const thresholds = CHECKPOINT_ALERT_THRESHOLDS[near.checkpoint_type] || [2000, 500];
                 const lastIdx = encounteredCheckpointIdsRef.current.get(near.id) ?? -1;
@@ -947,14 +991,22 @@ const NavigationScreen: React.FC = () => {
                 for (let t = 0; t < thresholds.length; t++) { if (near.distance < thresholds[t]) newIdx = t; }
                 if (newIdx > lastIdx) {
                     encounteredCheckpointIdsRef.current.set(near.id, newIdx);
-                    if (lastIdx === -1) checkpointsEncounteredRef.current += 1;
-                    playContextualAlert(near.checkpoint_type, near.distance, near.speed_limit, { alertMode, lang: activeLang, t });
+                    if (lastIdx === -1) {
+                        // Première détection de ce checkpoint → facturer
+                        checkpointsEncounteredRef.current += 1;
+                        payMicroFeature('community_alerts',
+                            () => playContextualAlert(near!.checkpoint_type, near!.distance, near!.speed_limit, { alertMode, lang: activeLang, t }),
+                        );
+                    } else {
+                        // Re-alerte progressive (seuil plus proche) → gratuit
+                        playContextualAlert(near.checkpoint_type, near.distance, near.speed_limit, { alertMode, lang: activeLang, t });
+                    }
                 }
             }
             setNearbyCheckpoint(near);
         });
         locationSubscriptionRef.current = sub;
-    }, [selectedRoute, isTracking, haversineDistance, loadCheckpointsSafely, getCurrentPosition, destinationCoords, alertMode, activeLang]);
+    }, [selectedRoute, isTracking, haversineDistance, loadCheckpointsSafely, getCurrentPosition, destinationCoords, alertMode, activeLang, payMicroFeature]);
 
     // ── MARCHE LIBRE : tracker l'activité SANS itinéraire prédéfini ──
     const startFreeWalking = useCallback(async () => {
@@ -1008,6 +1060,7 @@ const NavigationScreen: React.FC = () => {
                     const alertDist = CHECKPOINT_ALERT_DISTANCE[cl.checkpoint_type] || 2000;
                     if (cd < alertDist && (!near || cd < near.distance)) near = { id: cl.id, checkpoint_type: cl.checkpoint_type, distance: Math.round(cd), speed_limit: cl.speed_limit };
                 }
+                // ✅ PAIEMENT: Facturation par checkpoint UNIQUE rencontré (marche libre)
                 if (near) {
                     const thresholds = CHECKPOINT_ALERT_THRESHOLDS[near.checkpoint_type] || [2000, 500];
                     const lastIdx = encounteredCheckpointIdsRef.current.get(near.id) ?? -1;
@@ -1015,15 +1068,21 @@ const NavigationScreen: React.FC = () => {
                     for (let t = 0; t < thresholds.length; t++) { if (near.distance < thresholds[t]) newIdx = t; }
                     if (newIdx > lastIdx) {
                         encounteredCheckpointIdsRef.current.set(near.id, newIdx);
-                        if (lastIdx === -1) checkpointsEncounteredRef.current += 1;
-                        playContextualAlert(near.checkpoint_type, near.distance, near.speed_limit, { alertMode, lang: activeLang, t });
+                        if (lastIdx === -1) {
+                            checkpointsEncounteredRef.current += 1;
+                            payMicroFeature('community_alerts',
+                                () => playContextualAlert(near!.checkpoint_type, near!.distance, near!.speed_limit, { alertMode, lang: activeLang, t }),
+                            );
+                        } else {
+                            playContextualAlert(near.checkpoint_type, near.distance, near.speed_limit, { alertMode, lang: activeLang, t });
+                        }
                     }
                 }
                 setNearbyCheckpoint(near);
             }
         );
         locationSubscriptionRef.current = sub;
-    }, [isTracking, isFreeWalking, haversineDistance, loadCheckpointsSafely, alertMode, activeLang]);
+    }, [isTracking, isFreeWalking, haversineDistance, loadCheckpointsSafely, alertMode, activeLang, payMicroFeature]);
 
     const stopFreeWalking = useCallback(async () => {
         if (locationSubscriptionRef.current) { locationSubscriptionRef.current.remove(); locationSubscriptionRef.current = null; }

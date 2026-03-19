@@ -11,10 +11,10 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface User {
     id: number;
@@ -47,8 +47,8 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
     onSelectUser,
     currentQuery = ''
 }) => {
-        const { t } = useLanguageSafe();
-const [searchQuery, setSearchQuery] = useState(currentQuery);
+    const { t } = useLanguageSafe();
+    const [searchQuery, setSearchQuery] = useState(currentQuery);
     const [searchResults, setSearchResults] = useState<User[]>([]);
     const [tagHistory, setTagHistory] = useState<TagHistoryItem[]>([]);
     const [loading, setLoading] = useState(false);
@@ -60,7 +60,8 @@ const [searchQuery, setSearchQuery] = useState(currentQuery);
             loadTagHistory();
             if (currentQuery) {
                 setSearchQuery(currentQuery);
-                searchUsers(currentQuery);
+                setActiveTab('search');
+                // searchUsers sera appelé par le second useEffect (debounced) via setSearchQuery
             }
         }
     }, [visible, currentQuery]);

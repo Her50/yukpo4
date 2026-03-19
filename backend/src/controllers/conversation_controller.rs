@@ -369,7 +369,6 @@ pub async fn search_users_for_invitation(
             FROM users
             WHERE (nom_complet ILIKE $1 OR email ILIKE $1)
               AND id != $2
-              AND is_active = TRUE
             ORDER BY is_provider DESC, nom_complet ASC
             LIMIT $3
             "#,
@@ -397,7 +396,6 @@ pub async fn search_users_for_invitation(
               AND (s.data->>'category' ILIKE $1 
                    OR s.data->>'titre_service' ILIKE $1)
               AND u.id != $2
-              AND u.is_active = TRUE
             ORDER BY u.is_provider DESC
             LIMIT $3
             "#,
@@ -460,7 +458,6 @@ pub async fn get_tag_history(
         FROM conversation_tag_history th
         JOIN users u ON th.tagged_user_id = u.id
         WHERE th.user_id = $1
-          AND u.is_active = TRUE
         GROUP BY th.tagged_user_id, u.nom_complet, u.avatar_url, th.context
         ORDER BY MAX(th.tagged_at) DESC
         LIMIT $2
