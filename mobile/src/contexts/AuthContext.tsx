@@ -377,6 +377,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Garantir l'enregistrement push même sur session restaurée au démarrage
+  useEffect(() => {
+    if (!user?.token) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const pushModule = await import('../services/pushNotifications');
+        if (!cancelled && pushModule?.registerForPushNotificationsAsync) {
+          await pushModule.registerForPushNotificationsAsync(user.token);
+        }
+      } catch (error) {
+        console.warn('[AuthContext] ⚠️ Enregistrement push au démarrage échoué:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, user?.token]);
+
   const value: AuthContextType = {
     user,
     loading,

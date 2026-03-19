@@ -16,44 +16,45 @@ interface AdTemplatesProps {
     onSelectTemplate: (template: Template) => void;
 }
 
-const TEMPLATES: Template[] = [
-    {
-        id: 'promo',
-        name: 'Promotion Flash',
-        description: t('adTemplates.idealPourLesOffresLimitees'),
-        icon: 'zap',
-        category: 'promotion',
-    },
-    {
-        id: 'new_product',
-        name: t('adTemplates.nouveauProduit'),
-        description: t('adTemplates.mettezEnAvantVosNouveautes'),
-        icon: 'sparkles',
-        category: 'product',
-    },
-    {
-        id: 'seasonal',
-        name: t('adTemplates.saisonniere'),
-        description: t('adTemplates.adapteAuxEvenementsEtSaisons'),
-        icon: 'calendar',
-        category: 'seasonal',
-    },
-    {
-        id: 'testimonial',
-        name: t('adTemplates.temoignage'),
-        description: 'Mettez en avant les avis clients',
-        icon: 'star',
-        category: 'social',
-    },
-];
-
 export const AdTemplates: React.FC<AdTemplatesProps> = ({ onSelectTemplate }) => {
+    const { t } = useLanguageSafe();
+    const templates: Template[] = [
+        {
+            id: 'promo',
+            name: 'Promotion Flash',
+            description: t('adTemplates.idealPourLesOffresLimitees'),
+            icon: 'zap',
+            category: 'promotion',
+        },
+        {
+            id: 'new_product',
+            name: t('adTemplates.nouveauProduit'),
+            description: t('adTemplates.mettezEnAvantVosNouveautes'),
+            icon: 'sparkles',
+            category: 'product',
+        },
+        {
+            id: 'seasonal',
+            name: t('adTemplates.saisonniere'),
+            description: t('adTemplates.adapteAuxEvenementsEtSaisons'),
+            icon: 'calendar',
+            category: 'seasonal',
+        },
+        {
+            id: 'testimonial',
+            name: t('adTemplates.temoignage'),
+            description: 'Mettez en avant les avis clients',
+            icon: 'star',
+            category: 'social',
+        },
+    ];
+
     return (
         <View style={styles.container}>
             <Text style={styles.title}>📋 Templates</Text>
             <Text style={styles.subtitle}>{t('adTemplates.choisissezUnModelePourDemarrer')}</Text>
             <View style={styles.grid}>
-                {TEMPLATES.map((template) => (
+                {templates.map((template) => (
                     <TouchableOpacity
                         key={template.id}
                         style={styles.templateCard}

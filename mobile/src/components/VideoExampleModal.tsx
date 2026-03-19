@@ -40,7 +40,7 @@ interface VideoExample {
 // ✅ NOUVEAU: Collection d'exemples avec les 4 styles
 // Les exemples réels seront chargés depuis l'API et remplaceront ces valeurs par défaut
 // ✅ CORRECTION: Utiliser des vidéos démonstratives différentes pour chaque style
-const VIDEO_EXAMPLES: VideoExample[] = [
+const buildVideoExamples = (t: (key: string) => string): VideoExample[] => [
     {
         id: 'tiktok',
         style: 'tiktok',
@@ -108,13 +108,14 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
     onClose,
     onStartCreation,
 }) => {
-        const { t } = useLanguageSafe();
-const [examples, setExamples] = useState<VideoExample[]>(VIDEO_EXAMPLES);
+    const { t } = useLanguageSafe();
+    const defaultExamples = React.useMemo(() => buildVideoExamples(t as any), [t]);
+    const [examples, setExamples] = useState<VideoExample[]>(defaultExamples);
     const [loadingExamples, setLoadingExamples] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [videoErrors, setVideoErrors] = useState<Record<string, boolean>>({});
     const [videoLoading, setVideoLoading] = useState<Record<string, boolean>>(
-        VIDEO_EXAMPLES.reduce((acc, example) => {
+        defaultExamples.reduce((acc, example) => {
             acc[example.id] = true;
             return acc;
         }, {} as Record<string, boolean>)

@@ -6702,6 +6702,9 @@ pub async fn ensure_delivery_round_trip_columns(pool: &PgPool) -> Result<(), sql
         r#"
         ALTER TABLE deliveries 
         ADD COLUMN IF NOT EXISTS is_round_trip BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS return_trip_status VARCHAR(30),
+        ADD COLUMN IF NOT EXISTS return_trip_match_id UUID,
+        ADD COLUMN IF NOT EXISTS return_trip_compatible_couriers JSONB,
         ADD COLUMN IF NOT EXISTS return_delivery_id UUID REFERENCES deliveries(id) ON DELETE SET NULL,
         ADD COLUMN IF NOT EXISTS return_pickup_location GEOGRAPHY(Point, 4326),
         ADD COLUMN IF NOT EXISTS return_dropoff_location GEOGRAPHY(Point, 4326),
@@ -12351,6 +12354,36 @@ pub async fn ensure_merchant_storage_locations_table(pool: &PgPool) -> Result<()
     )
     .execute(pool)
     .await?;
+
+    // Table déjà existante sur certains environnements: compléter le schéma même si CREATE IF NOT EXISTS n'ajoute rien
+    sqlx::query(
+        r#"
+        ALTER TABLE merchant_storage_locations
+        ADD COLUMN IF NOT EXISTS merchant_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        ADD COLUMN IF NOT EXISTS zone_id UUID REFERENCES delivery_zones(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Compatibilité ancien schéma: merchant_id -> merchant_user_id
+    sqlx::query(
+        r#"
+        UPDATE merchant_storage_locations
+        SET merchant_user_id = merchant_id
+        WHERE merchant_user_id IS NULL
+          AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_name = 'merchant_storage_locations'
+              AND column_name = 'merchant_id'
+          )
+        "#,
+    )
+    .execute(pool)
+    .await
+    .ok();
 
     sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_merchant_storage_locations_merchant ON merchant_storage_locations(merchant_user_id, is_active) WHERE is_active = TRUE",
@@ -20634,6 +20667,16 @@ pub async fn ensure_disbursement_requests_table(pool: &PgPool) -> Result<(), sql
 pub async fn ensure_librairie_network_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🏪 Création des tables réseau de librairies...");
 
+    let already_applied = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'librairie_partners')",
+    )
+    .fetch_one(pool)
+    .await?;
+    if already_applied {
+        info!("✅ Réseau de librairies déjà présent (skip)");
+        return Ok(());
+    }
+
     // ✅ CORRIGÉ 2026-03-19: Utiliser execute_migration_sql_safe pour multi-statement SQL
     let migration_sql = include_str!("create_librairie_network_tables.sql");
     execute_migration_sql_safe(pool, migration_sql).await?;
@@ -20709,6 +20752,16 @@ pub async fn ensure_exchange_rate_cache_table(pool: &PgPool) -> Result<(), sqlx:
 /// ✅ NOUVEAU 2026-03-16: Système escrow, commission app, crédits tickets bus
 pub async fn ensure_bus_ticket_escrow_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🎫 Application du système escrow/crédit pour tickets bus...");
+
+    let already_applied = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'bus_ticket_payments' AND column_name = 'escrow_status')",
+    )
+    .fetch_one(pool)
+    .await?;
+    if already_applied {
+        info!("✅ Système escrow déjà présent (skip)");
+        return Ok(());
+    }
 
     // ✅ CORRIGÉ 2026-03-19: Utiliser execute_migration_sql_safe pour multi-statement SQL
     let migration_sql =

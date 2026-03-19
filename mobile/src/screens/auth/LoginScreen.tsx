@@ -26,7 +26,11 @@ import { useLanguageSafe } from '../../contexts/LanguageContext';
 import SmartLanguageSelector from '../../components/SmartLanguageSelector';
 
 // Configuration WebBrowser pour OAuth
-WebBrowser.maybeCompleteAuthSession();
+try {
+  WebBrowser.maybeCompleteAuthSession();
+} catch (error) {
+  console.warn('[LoginScreen] maybeCompleteAuthSession indisponible:', error);
+}
 
 const { width, height } = Dimensions.get('window');
 

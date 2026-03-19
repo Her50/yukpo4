@@ -16,8 +16,6 @@ const { NavigationContainer } = require('@react-navigation/native');
 // ✅ Composants essentiels
 import { AsyncStorageGate } from './src/components/AsyncStorageGate';
 import ErrorBoundary from './src/components/ErrorBoundary';
-import GPSTrackingManager from './src/components/GPSTrackingManager';
-import RemoteLoggingInitializer from './src/components/RemoteLoggingInitializer';
 import { ToasterProvider } from './src/components/ToasterProvider';
 import { linking } from './src/config/linking';
 import { AuthProvider } from './src/contexts/AuthContext';
@@ -57,6 +55,33 @@ function WelcomeNotifier() {
  * - Chargement progressif des providers
  */
 export default function App() {
+  const RemoteLoggingInitializer = React.useMemo(() => {
+    try {
+      return require('./src/components/RemoteLoggingInitializer').default;
+    } catch (error) {
+      console.warn('[App] ⚠️ RemoteLoggingInitializer indisponible:', error);
+      return () => null;
+    }
+  }, []);
+
+  const GPSTrackingManager = React.useMemo(() => {
+    try {
+      return require('./src/components/GPSTrackingManager').default;
+    } catch (error) {
+      console.warn('[App] ⚠️ GPSTrackingManager indisponible:', error);
+      return () => null;
+    }
+  }, []);
+
+  const PushNotificationManager = React.useMemo(() => {
+    try {
+      return require('./src/components/PushNotificationManager').default;
+    } catch (error) {
+      console.warn('[App] ⚠️ PushNotificationManager indisponible:', error);
+      return () => null;
+    }
+  }, []);
+
   // ✅ SÉCURITÉ: Envelopper dans try-catch pour éviter crash au démarrage
   try {
     console.log('[App] 🚀 Yukpomnang - Démarrage avec Deep Linking');
@@ -143,6 +168,7 @@ export default function App() {
                               <ShoppingProvider>
                                 <StatusBar style="auto" />
                                 <GPSTrackingManager />
+                                <PushNotificationManager />
                                 <NavigationContainer
                                   linking={linking}
                                   fallback={null}

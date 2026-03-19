@@ -7,7 +7,6 @@
 // ============================================================================
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useNavigationState } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Platform, StyleSheet, Text, View } from 'react-native';
@@ -17,7 +16,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useDeepLinkRedirect } from '../hooks/useDeepLinkRedirect';
 import { apiGet } from '../services/api';
-import { PassiveActivityTracker } from '../services/PassiveActivityTracker';
 import { modernColors } from '../theme/modernTheme';
 
 // ============================================================================
@@ -26,26 +24,6 @@ import { modernColors } from '../theme/modernTheme';
 
 // Auth
 import LoginScreen from '../screens/auth/LoginScreen';
-import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen';
-import PartnerRegisterScreen from '../screens/auth/PartnerRegisterScreen';
-import RegisterScreen from '../screens/auth/RegisterScreen';
-
-// Onglets principaux
-import HomeScreen from '../screens/HomeScreen';
-import MesInteractionsScreen from '../screens/MesInteractionsScreen';
-import MesServicesScreen from '../screens/MesServicesScreen';
-import ProfileScreen from '../screens/ProfileScreen';
-
-// Navigation de base
-import ContactScreen from '../screens/ContactScreen';
-
-// Services spécialisés (core)
-import GestionServicesSpecialisesScreen from '../screens/specialized/GestionServicesSpecialisesScreen';
-import ServicesDashboard from '../screens/specialized/ServicesDashboard';
-
-// Chat IA intelligent
-import IntelligentChat from '../components/IntelligentChat';
-import IntelligentChatFab from '../components/IntelligentChatFab';
 
 // ============================================================================
 // NAVIGATEURS
@@ -130,6 +108,15 @@ const S: Record<string, React.ComponentType<any>> = {};
 function reg(name: string, imp: () => Promise<any>) {
   S[name] = createLazy(imp, name);
 }
+
+const loadScreen = (path: string, name?: string): React.ComponentType<any> => {
+  try {
+    return require(path).default;
+  } catch (error) {
+    console.error(`[AppNav] ❌ Impossible de charger le module ${name || path}:`, error);
+    return () => <ScreenError name={name || path} />;
+  }
+};
 
 // ---------------------------------------------------------------------------
 // Écrans racine (69)
@@ -642,7 +629,11 @@ const PartnerDashboardTab: React.FC<any> = (props) => {
   }
 
   // Fallback: generic GestionServicesSpecialisesScreen for unmapped or generic partner types
-  return <GestionServicesSpecialisesScreen {...props} />;
+  const GenericPartnerScreen = loadScreen(
+    '../screens/specialized/GestionServicesSpecialisesScreen',
+    'GestionServicesSpecialises'
+  );
+  return <GenericPartnerScreen {...props} />;
 };
 
 function MainTabNavigator() {
@@ -715,7 +706,7 @@ function MainTabNavigator() {
       {!hasSpecializedServices && (
         <Tab.Screen
           name="Home"
-          component={HomeScreen}
+          getComponent={() => loadScreen('../screens/HomeScreen', 'Home')}
           options={{
             tabBarLabel: t('tabs.home'),
             tabBarIcon: ({ focused, color, size }) => (
@@ -741,7 +732,7 @@ function MainTabNavigator() {
       ) : (
         <Tab.Screen
           name="Services"
-          component={S['MesProduits'] || MesServicesScreen}
+          component={S['MesProduits'] || loadScreen('../screens/MesServicesScreen', 'MesServices')}
           options={{
             tabBarLabel: t('tabs.services'),
             tabBarIcon: ({ focused, color, size }) => (
@@ -755,7 +746,7 @@ function MainTabNavigator() {
       {!isCourier && (
         <Tab.Screen
           name="VideoCreationIntro"
-          component={S['VideoCreationIntro'] || MesServicesScreen}
+          component={S['VideoCreationIntro'] || loadScreen('../screens/video/VideoCreationIntroScreen', 'VideoCreationIntro')}
           options={{
             tabBarLabel: t('tabs.create') || 'Créer',
             tabBarIcon: ({ focused, color, size }) => (
@@ -768,7 +759,7 @@ function MainTabNavigator() {
       {/* Onglet 4: Vidéos (feed) */}
       <Tab.Screen
         name="Videos"
-        component={S['VideoFeed'] || MesInteractionsScreen}
+        component={S['VideoFeed'] || loadScreen('../screens/MesInteractionsScreen', 'MesInteractions')}
         options={{
           tabBarLabel: t('tabs.videos') || 'Vidéos',
           tabBarIcon: ({ focused, color, size }) => (
@@ -781,7 +772,7 @@ function MainTabNavigator() {
       {isCourier && (
         <Tab.Screen
           name="CourierDashboard"
-          component={S['CourierDashboard'] || MesInteractionsScreen}
+          component={S['CourierDashboard'] || loadScreen('../screens/delivery/CourierDashboardScreen', 'CourierDashboard')}
           options={{
             tabBarLabel: t('tabs.myCourses') || 'Mes Courses',
             tabBarIcon: ({ focused, color, size }) => (
@@ -794,7 +785,7 @@ function MainTabNavigator() {
       {/* Onglet 5: Mon Compte */}
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        getComponent={() => loadScreen('../screens/ProfileScreen', 'Profile')}
         options={{
           tabBarLabel: t('tabs.account'),
           tabBarIcon: ({ focused, color, size }) => (
@@ -814,9 +805,18 @@ function AuthStackNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="PartnerRegister" component={PartnerRegisterScreen} />
-      <Stack.Screen name="OtpVerification" component={OtpVerificationScreen} />
+      <Stack.Screen
+        name="Register"
+        getComponent={() => require('../screens/auth/RegisterScreen').default}
+      />
+      <Stack.Screen
+        name="PartnerRegister"
+        getComponent={() => require('../screens/auth/PartnerRegisterScreen').default}
+      />
+      <Stack.Screen
+        name="OtpVerification"
+        getComponent={() => require('../screens/auth/OtpVerificationScreen').default}
+      />
     </Stack.Navigator>
   );
 }
@@ -834,18 +834,31 @@ function MainStackNavigator() {
   const appStateRef = useRef(AppState.currentState);
   useEffect(() => {
     // Démarrage initial
-    PassiveActivityTracker.resumeIfEnabled().then(() => {
-      PassiveActivityTracker.start().then(ok => {
-        if (ok) console.log('[AppNav] ✅ Tracking passif activé');
+    const getTracker = () => {
+      try {
+        const module = require('../services/PassiveActivityTracker');
+        return module?.PassiveActivityTracker || module?.default;
+      } catch (error) {
+        console.warn('[AppNav] ⚠️ PassiveActivityTracker indisponible:', error);
+        return null;
+      }
+    };
+    const tracker = getTracker();
+    if (tracker?.resumeIfEnabled && tracker?.start) {
+      tracker.resumeIfEnabled().then(() => {
+        tracker.start().then((ok: boolean) => {
+          if (ok) console.log('[AppNav] ✅ Tracking passif activé');
+        });
       });
-    });
+    }
 
     // ✅ Listener AppState: redémarrer le tracking quand l'app revient au foreground
     // Android peut tuer la tâche background — ce listener la relance automatiquement
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
         console.log('[AppNav] 📱 App revenue au premier plan, vérification tracking...');
-        PassiveActivityTracker.resumeIfEnabled().catch(() => { });
+        const tracker = getTracker();
+        tracker?.resumeIfEnabled?.().catch(() => { });
       }
       appStateRef.current = nextAppState;
     });
@@ -859,10 +872,24 @@ function MainStackNavigator() {
       <Stack.Screen name="MainTabs" component={MainTabNavigator} />
 
       {/* === Écrans statiques (toujours disponibles) === */}
-      <Stack.Screen name="Contact" component={ContactScreen} />
-      <Stack.Screen name="Navigation" component={S['Navigation'] || ContactScreen} />
-      <Stack.Screen name="GestionServicesSpecialises" component={GestionServicesSpecialisesScreen} />
-      <Stack.Screen name="ServicesDashboard" component={ServicesDashboard} />
+      <Stack.Screen
+        name="Contact"
+        getComponent={() => loadScreen('../screens/ContactScreen', 'Contact')}
+      />
+      <Stack.Screen
+        name="Navigation"
+        component={S['Navigation'] || loadScreen('../screens/NavigationScreen', 'Navigation')}
+      />
+      <Stack.Screen
+        name="GestionServicesSpecialises"
+        getComponent={() =>
+          loadScreen('../screens/specialized/GestionServicesSpecialisesScreen', 'GestionServicesSpecialises')
+        }
+      />
+      <Stack.Screen
+        name="ServicesDashboard"
+        getComponent={() => loadScreen('../screens/specialized/ServicesDashboard', 'ServicesDashboard')}
+      />
 
       {/* === Tous les écrans lazy (chargés à la demande) === */}
       {Object.entries(S).map(([name, component]) => {
@@ -887,9 +914,9 @@ function MainStackWithDeepLinks() {
   const { user } = useAuth();
   const [chatVisible, setChatVisible] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
-
-  const navState = useNavigationState((state) => state);
-  const currentScreen = navState ? getActiveRouteName(navState) : 'Home';
+  // Keep startup stable: this component is mounted before any parent navigator
+  // provides state context, so avoid useNavigationState here.
+  const currentScreen = 'Home';
 
   const showIntelligentChat = useCallback((message?: string) => {
     setChatMessage(message || '');
@@ -903,6 +930,8 @@ function MainStackWithDeepLinks() {
   }, [showIntelligentChat]);
 
   const fabVisible = !chatVisible && !SCREENS_HIDE_FAB.includes(currentScreen);
+  const IntelligentChatFab = loadScreen('../components/IntelligentChatFab');
+  const IntelligentChat = loadScreen('../components/IntelligentChat');
 
   return (
     <View style={{ flex: 1 }}>

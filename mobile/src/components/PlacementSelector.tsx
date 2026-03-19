@@ -22,52 +22,51 @@ interface PlacementSelectorProps {
     totalBudget: number;
 }
 
-const PLACEMENT_OPTIONS: Omit<Placement, 'enabled' | 'budget'>[] = [
-    {
-        type: 'feed',
-        label: 'Feed Principal',
-        icon: 'grid',
-        description: t('placementSelector.apparaitDansLeFilDactualite'),
-    },
-    {
-        type: 'stories',
-        label: 'Stories',
-        icon: 'circle',
-        description: t('placementSelector.formatVerticalPleinEcran'),
-    },
-    {
-        type: 'carousel',
-        label: 'Carousel',
-        icon: 'layers',
-        description: t('placementSelector.plusieursImagesvideosDefilantes'),
-    },
-    {
-        type: 'search',
-        label: t('placementSelector.resultatsDeRecherche'),
-        icon: 'search',
-        description: t('placementSelector.affichageDansLesResultats'),
-    },
-    {
-        type: 'reels',
-        label: 'Reels',
-        icon: 'video',
-        description: t('placementSelector.formatVideoCourtVertical'),
-    },
-    {
-        type: 'sidebar',
-        label: t('placementSelector.barreLaterale'),
-        icon: 'sidebar',
-        description: t('placementSelector.espacePublicitaireLateral'),
-    },
-];
-
 export const PlacementSelector: React.FC<PlacementSelectorProps> = ({
     placements,
     onPlacementsChange,
     totalBudget,
 }) => {
-        const { t } = useLanguageSafe();
-const [expanded, setExpanded] = useState(false);
+    const { t } = useLanguageSafe();
+    const [expanded, setExpanded] = useState(false);
+    const placementOptions: Omit<Placement, 'enabled' | 'budget'>[] = [
+        {
+            type: 'feed',
+            label: 'Feed Principal',
+            icon: 'grid',
+            description: t('placementSelector.apparaitDansLeFilDactualite'),
+        },
+        {
+            type: 'stories',
+            label: 'Stories',
+            icon: 'circle',
+            description: t('placementSelector.formatVerticalPleinEcran'),
+        },
+        {
+            type: 'carousel',
+            label: 'Carousel',
+            icon: 'layers',
+            description: t('placementSelector.plusieursImagesvideosDefilantes'),
+        },
+        {
+            type: 'search',
+            label: t('placementSelector.resultatsDeRecherche'),
+            icon: 'search',
+            description: t('placementSelector.affichageDansLesResultats'),
+        },
+        {
+            type: 'reels',
+            label: 'Reels',
+            icon: 'video',
+            description: t('placementSelector.formatVideoCourtVertical'),
+        },
+        {
+            type: 'sidebar',
+            label: t('placementSelector.barreLaterale'),
+            icon: 'sidebar',
+            description: t('placementSelector.espacePublicitaireLateral'),
+        },
+    ];
 
     const togglePlacement = (type: PlacementType) => {
         const updated = placements.map(p =>
@@ -118,7 +117,7 @@ const [expanded, setExpanded] = useState(false);
             </View>
 
             <View style={styles.placementsList}>
-                {PLACEMENT_OPTIONS.map((option) => {
+                {placementOptions.map((option) => {
                     const placement = placements.find(p => p.type === option.type);
                     const isEnabled = placement?.enabled || false;
 

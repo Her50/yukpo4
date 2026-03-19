@@ -81,6 +81,7 @@ module.exports = {
                 "android.permission.CAMERA",
                 "android.permission.RECORD_AUDIO",
                 "android.permission.MODIFY_AUDIO_SETTINGS",
+                "android.permission.POST_NOTIFICATIONS",
                 "android.permission.WRITE_EXTERNAL_STORAGE",
                 "android.permission.READ_EXTERNAL_STORAGE",
                 "android.permission.INTERNET"

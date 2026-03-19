@@ -175,7 +175,17 @@ const retryPendingSessions = async (): Promise<void> => {
 };
 
 // ── Définition de la tâche en arrière-plan ──
-TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) => {
+const registerBackgroundTask = () => {
+  try {
+    if (TaskManager.isTaskDefined(BACKGROUND_LOCATION_TASK)) {
+      return;
+    }
+  } catch {
+    // Continue et tente l'enregistrement ci-dessous.
+  }
+
+  try {
+    TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) => {
     if (error) {
         console.warn('[PassiveTracker] Erreur tâche background:', error.message);
         return;
@@ -249,7 +259,13 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) =>
     } catch (e) {
         console.warn('[PassiveTracker] Erreur traitement position:', e);
     }
-});
+    });
+  } catch (e) {
+    console.warn('[PassiveTracker] ❌ Impossible de définir la tâche background:', e);
+  }
+};
+
+registerBackgroundTask();
 
 // ── API publique du service ──
 

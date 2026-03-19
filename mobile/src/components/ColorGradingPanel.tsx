@@ -23,25 +23,24 @@ interface ColorGradingPanelProps {
     onGradingComplete: (gradedUrl: string) => void;
 }
 
-const GRADING_PRESETS = [
-    { key: 'cinematic', label: 'Cinematic', icon: '🎬', description: t('colorGradingPanel.styleCinemaProfessionnel') },
-    { key: 'vibrant', label: 'Vibrant', icon: '🌈', description: t('colorGradingPanel.couleursVivesEtEnergiques') },
-    { key: 'moody', label: 'Moody', icon: '🌙', description: 'Ambiance sombre et dramatique' },
-    { key: 'warm', label: 'Warm', icon: '☀️', description: 'Tons chauds et accueillants' },
-    { key: 'cool', label: 'Cool', icon: '❄️', description: 'Tons froids et modernes' },
-];
-
 export const ColorGradingPanel: React.FC<ColorGradingPanelProps> = ({
     mediaUrl,
     mediaId,
     stylePreset,
     onGradingComplete,
 }) => {
-        const { t } = useLanguageSafe();
-const [loading, setLoading] = useState(false);
+    const { t } = useLanguageSafe();
+    const [loading, setLoading] = useState(false);
     const [selectedPreset, setSelectedPreset] = useState(stylePreset || 'cinematic');
     const [intensity, setIntensity] = useState(0.7);
     const [result, setResult] = useState<ColorGradingResponse | null>(null);
+    const gradingPresets = [
+        { key: 'cinematic', label: 'Cinematic', icon: '🎬', description: t('colorGradingPanel.styleCinemaProfessionnel') },
+        { key: 'vibrant', label: 'Vibrant', icon: '🌈', description: t('colorGradingPanel.couleursVivesEtEnergiques') },
+        { key: 'moody', label: 'Moody', icon: '🌙', description: 'Ambiance sombre et dramatique' },
+        { key: 'warm', label: 'Warm', icon: '☀️', description: 'Tons chauds et accueillants' },
+        { key: 'cool', label: 'Cool', icon: '❄️', description: 'Tons froids et modernes' },
+    ];
 
     const handleApplyGrading = async (preset: string) => {
         setLoading(true);
@@ -74,7 +73,7 @@ const [loading, setLoading] = useState(false);
                 style={styles.presetsList}
                 contentContainerStyle={styles.presetsContent}
             >
-                {GRADING_PRESETS.map((preset) => (
+                {gradingPresets.map((preset) => (
                     <TouchableOpacity
                         key={preset.key}
                         style={[

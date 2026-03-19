@@ -300,6 +300,41 @@ const PushNotificationManager: React.FC = () => {
             }
         });
 
+        // Gérer le cas "app fermée puis ouverte via tap notification"
+        Notifications.getLastNotificationResponseAsync()
+            .then((lastResponse) => {
+                if (!lastResponse) return;
+                const data = lastResponse.notification.request.content.data as any;
+                if (!data) return;
+                console.log('[PushNotificationManager] 📬 Dernière notification au lancement:', data);
+
+                if (data.type === 'new_message' && data.service_id) {
+                    (navigation as any).navigate('ServiceDetail', {
+                        serviceId: data.service_id,
+                        openChat: true,
+                    });
+                } else if (data.type === 'delivery_available' && data.delivery_id) {
+                    (navigation as any).navigate('DeliveryShoppingTracking', {
+                        deliveryId: data.delivery_id,
+                        showAcceptButton: true,
+                    });
+                } else if (
+                    data.event === 'live_scheduled' ||
+                    data.event === 'live_live_now' ||
+                    data.event === 'live_replay_ready'
+                ) {
+                    if (data.live_session_id) {
+                        (navigation as any).navigate('LiveViewerScreen', {
+                            sessionId: data.live_session_id,
+                            serviceId: data.primary_service_id,
+                        });
+                    }
+                }
+            })
+            .catch((error) => {
+                console.warn('[PushNotificationManager] ⚠️ Erreur getLastNotificationResponseAsync:', error);
+            });
+
         // Cleanup
         return () => {
             if (notificationListener.current) {

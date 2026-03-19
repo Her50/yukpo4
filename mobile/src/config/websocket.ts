@@ -1,5 +1,10 @@
 // Configuration WebSocket pour l'application mobile
 // TODO: Fix TypeScript type issue
+const ENV =
+  typeof process !== 'undefined' && process?.env
+    ? process.env
+    : {};
+
 export const WEBSOCKET_CONFIG = {
   // WebSockets activés
   enabled: true,
@@ -9,7 +14,7 @@ export const WEBSOCKET_CONFIG = {
     // WebSocket pour les notifications
     notifications: (userId: string | number) => {
       // ✅ GCP Cloud Run (nouveau backend)
-      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpo-backend-yukpo-project.a.run.app';
+      const baseUrl = ENV.EXPO_PUBLIC_WS_URL || 'wss://yukpo-backend-yukpo-project.a.run.app';
       // ⚠️ AWS (ancien backend, commenté pour utilisation future)
       // const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://api.yukpomnang.com';
       return `${baseUrl}/ws/notifications/${userId}`;
@@ -18,7 +23,7 @@ export const WEBSOCKET_CONFIG = {
     // WebSocket pour le chat
     chat: (clientId: string | number) => {
       // ✅ GCP Cloud Run (nouveau backend)
-      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpo-backend-yukpo-project.a.run.app';
+      const baseUrl = ENV.EXPO_PUBLIC_WS_URL || 'wss://yukpo-backend-yukpo-project.a.run.app';
       // ⚠️ AWS (ancien backend, commenté pour utilisation future)
       // const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://api.yukpomnang.com';
       return `${baseUrl}/ws/chat/${clientId}`;
@@ -27,7 +32,7 @@ export const WEBSOCKET_CONFIG = {
     // WebSocket pour le statut des prestataires
     status: (userId: string | number) => {
       // ✅ GCP Cloud Run (nouveau backend)
-      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpo-backend-yukpo-project.a.run.app';
+      const baseUrl = ENV.EXPO_PUBLIC_WS_URL || 'wss://yukpo-backend-yukpo-project.a.run.app';
       // ⚠️ AWS (ancien backend, commenté pour utilisation future)
       // const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://api.yukpomnang.com';
       return `${baseUrl}/ws/status/${userId}`;
@@ -36,7 +41,7 @@ export const WEBSOCKET_CONFIG = {
     // WebSocket pour les paiements
     payments: (userId: string | number) => {
       // ✅ GCP Cloud Run (nouveau backend)
-      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpo-backend-yukpo-project.a.run.app';
+      const baseUrl = ENV.EXPO_PUBLIC_WS_URL || 'wss://yukpo-backend-yukpo-project.a.run.app';
       // ⚠️ AWS (ancien backend, commenté pour utilisation future)
       // const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://api.yukpomnang.com';
       return `${baseUrl}/ws/payments/${userId}`;

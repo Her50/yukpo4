@@ -3,7 +3,15 @@ import { Buffer } from 'buffer';
 
 // Global Buffer polyfill
 global.Buffer = Buffer;
-global.process = require('process');
+try {
+  global.process = require('process');
+} catch (error) {
+  // Keep startup resilient if process polyfill is unavailable.
+  if (!global.process) {
+    global.process = { env: {} };
+  }
+  console.warn('[Polyfills] ⚠️ process polyfill indisponible:', error);
+}
 
 // Crypto polyfill basique pour axios
 if (!global.crypto) {

@@ -25,7 +25,11 @@ import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { theme } from '../../theme/theme';
 
 // Configuration WebBrowser pour OAuth
-WebBrowser.maybeCompleteAuthSession();
+try {
+  WebBrowser.maybeCompleteAuthSession();
+} catch (error) {
+  console.warn('[RegisterScreen] maybeCompleteAuthSession indisponible:', error);
+}
 
 interface RegisterForm {
   nom: string;

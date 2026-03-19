@@ -1,9 +1,14 @@
 import { Platform } from 'react-native';
 
+const ENV =
+    typeof process !== 'undefined' && process?.env
+        ? process.env
+        : {};
+
 // Configuration de l'environnement pour l'application mobile
 export const ENVIRONMENT = {
     // Clé API Google Translate
-    GOOGLE_TRANSLATE_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY || '',
+    GOOGLE_TRANSLATE_API_KEY: ENV.EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY || '',
 
     // Clés API Google Maps (Places, Geocoding, etc.)
     // ✅ 2026-02-25: Clés séparées Android/iOS (restreintes par package/bundle ID)
@@ -15,8 +20,8 @@ export const ENVIRONMENT = {
         const IOS_KEY = 'AIzaSyBHGQavkIvn0pgj52WuTEapSkdKUmljqs8';
         const fallbackKey = Platform.OS === 'ios' ? IOS_KEY : ANDROID_KEY;
         const envKey = Platform.OS === 'ios'
-            ? process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY
-            : process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+            ? ENV.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY
+            : ENV.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
         // Si la clé env est absente, vide, ou un placeholder → utiliser le fallback
         if (!envKey || envKey === 'SET_VIA_EAS_SECRET_OR_ENV' || !envKey.startsWith('AIza')) {
             return fallbackKey;
@@ -32,13 +37,13 @@ export const ENVIRONMENT = {
     // - https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com (AWS ALB direct)
     // Pour développement local: http://localhost:3000
     // Pour autre serveur: définir EXPO_PUBLIC_API_BASE_URL dans .env
-    API_URL: process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app',
+    API_URL: ENV.EXPO_PUBLIC_API_URL || ENV.EXPO_PUBLIC_API_BASE_URL || 'https://yukpo-backend-376093909298.europe-west1.run.app',
     // API_URL: process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.yukpomnang.com',  // ⚠️ AWS (ancien)
-    UPLOAD_BASE_URL: process.env.EXPO_PUBLIC_UPLOAD_BASE_URL || 'https://storage.googleapis.com/yukpo-project-yukpo-backend-media',  // GCP Cloud Storage HTTPS
+    UPLOAD_BASE_URL: ENV.EXPO_PUBLIC_UPLOAD_BASE_URL || 'https://storage.googleapis.com/yukpo-project-yukpo-backend-media',  // GCP Cloud Storage HTTPS
     // UPLOAD_BASE_URL: process.env.EXPO_PUBLIC_UPLOAD_BASE_URL || 'https://cdn.yukpomnang.com',  // ⚠️ AWS CDN (ancien)
 
     // Environnement (development, production, staging)
-    ENVIRONMENT: process.env.EXPO_PUBLIC_ENVIRONMENT || 'production',
+    ENVIRONMENT: ENV.EXPO_PUBLIC_ENVIRONMENT || 'production',
 
     // CDN Configuration
     // ✅ 2026-02-14: Migration vers GCP Cloud CDN
@@ -47,9 +52,9 @@ export const ENVIRONMENT = {
     // - Cloudflare CDN: https://cdn.yukpomnang.com (Cloudflare → Wasabi)
     // - Wasabi Direct: https://yukpo-video-prod.s3.eu-central-1.wasabisys.com
     // - AWS S3 Direct: https://yukpo-backend-media.s3.eu-west-1.amazonaws.com
-    CDN_GCP_URL: process.env.EXPO_PUBLIC_CDN_GCP_URL || 'https://storage.googleapis.com/yukpo-project-yukpo-backend-media',
+    CDN_GCP_URL: ENV.EXPO_PUBLIC_CDN_GCP_URL || 'https://storage.googleapis.com/yukpo-project-yukpo-backend-media',
     // ✅ GCP Cloud Storage Direct (remplace WASABI_DIRECT_URL)
-    GCP_STORAGE_DIRECT_URL: process.env.EXPO_PUBLIC_GCP_STORAGE_DIRECT_URL || process.env.EXPO_PUBLIC_WASABI_DIRECT_URL || 'https://storage.googleapis.com/yukpo-project-yukpo-backend-media',
+    GCP_STORAGE_DIRECT_URL: ENV.EXPO_PUBLIC_GCP_STORAGE_DIRECT_URL || ENV.EXPO_PUBLIC_WASABI_DIRECT_URL || 'https://storage.googleapis.com/yukpo-project-yukpo-backend-media',
     // ⚠️ AWS/Wasabi (ancien, commenté pour utilisation future)
     // CDN_CLOUDFLARE_URL: process.env.EXPO_PUBLIC_CDN_CLOUDFLARE_URL || 'https://cdn.yukpomnang.com',
     // WASABI_DIRECT_URL: process.env.EXPO_PUBLIC_WASABI_DIRECT_URL || 'https://yukpo-video-prod.s3.eu-central-1.wasabisys.com',
@@ -97,13 +102,13 @@ export const ENVIRONMENT = {
     // Configuration Sagaci Research (Base de données produits africains)
     SAGACI: {
         // Clé API Sagaci (à obtenir via contact commercial)
-        API_KEY: process.env.EXPO_PUBLIC_SAGACI_API_KEY || '',
+        API_KEY: ENV.EXPO_PUBLIC_SAGACI_API_KEY || '',
 
         // URL API Sagaci (à confirmer avec Sagaci)
-        API_URL: process.env.EXPO_PUBLIC_SAGACI_API_URL || 'https://api.sagaciresearch.com/v1',
+        API_URL: ENV.EXPO_PUBLIC_SAGACI_API_URL || 'https://api.sagaciresearch.com/v1',
 
         // Activer/désactiver Sagaci
-        ENABLED: process.env.EXPO_PUBLIC_SAGACI_ENABLED === 'true',
+        ENABLED: ENV.EXPO_PUBLIC_SAGACI_ENABLED === 'true',
 
         // Pays par défaut
         DEFAULT_COUNTRY: 'CM', // Cameroun

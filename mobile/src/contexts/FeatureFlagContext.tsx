@@ -19,13 +19,17 @@ type FeatureFlagProviderProps = {
 
 const buildInitialFlagsFromEnv = (): FeatureFlags => {
     const flags: FeatureFlags = {};
+    const env =
+        typeof process !== 'undefined' && process?.env
+            ? process.env
+            : {};
 
-    Object.keys(process.env).forEach((key) => {
+    Object.keys(env).forEach((key) => {
         if (key.startsWith('EXPO_PUBLIC_FEATURE_FLAG_')) {
             const normalized = key
                 .replace('EXPO_PUBLIC_FEATURE_FLAG_', '')
                 .toLowerCase();
-            const value = String(process.env[key]).toLowerCase();
+            const value = String((env as Record<string, any>)[key]).toLowerCase();
             flags[normalized] = value === 'true' || value === '1';
         }
     });

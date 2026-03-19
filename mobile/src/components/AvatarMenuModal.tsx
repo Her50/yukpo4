@@ -23,6 +23,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
   onNavigate
 }) => {
   const { user, logout } = useAuth();
+  const { t } = useLanguageSafe();
 
   const handleLogout = async () => {
     Alert.alert(

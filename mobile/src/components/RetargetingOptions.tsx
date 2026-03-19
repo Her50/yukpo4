@@ -23,22 +23,22 @@ const DEFAULT_RULES: Omit<RetargetingRule, 'id' | 'enabled'>[] = [
     {
         type: 'viewed_product',
         label: 'A vu un produit',
-        description: t('retargetingOptions.ciblerLesUtilisateursQuiOnt'),
+        description: 'Cibler les utilisateurs ayant vu un produit',
     },
     {
         type: 'abandoned_cart',
-        label: t('retargetingOptions.panierAbandonne'),
-        description: t('retargetingOptions.ciblerLesUtilisateursQuiOnt'),
+        label: 'Panier abandonne',
+        description: 'Cibler les utilisateurs ayant ajoute puis abandonne',
     },
     {
         type: 'visited_service',
-        label: t('retargetingOptions.aVisiteUnService'),
-        description: t('retargetingOptions.ciblerLesUtilisateursQuiOnt'),
+        label: 'A visite un service',
+        description: 'Cibler les utilisateurs ayant visite un service',
     },
     {
         type: 'searched',
-        label: t('retargetingOptions.aRecherche'),
-        description: t('retargetingOptions.ciblerLesUtilisateursQuiOnt'),
+        label: 'A recherche',
+        description: 'Cibler les utilisateurs ayant effectue une recherche',
     },
 ];
 

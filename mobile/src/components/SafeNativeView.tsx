@@ -7,7 +7,6 @@
 
 import React from 'react';
 import { Dimensions, KeyboardAvoidingView, Platform, StatusBar as RNStatusBar, StyleSheet, View } from 'react-native';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const { height, width } = Dimensions.get('window');
 
@@ -35,7 +34,6 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
     keyboardVerticalOffset, // ✅ NOUVEAU: Calculé automatiquement si non fourni
 }) => {
     const getStatusBarHeight = () => {
-    const { t } = useLanguageSafe();
         if (Platform.OS === 'android') {
             // ✅ AMÉLIORÉ: Utiliser la hauteur réelle de la StatusBar
             return RNStatusBar.currentHeight || 24;

@@ -107,32 +107,32 @@ interface YukpoServicesQuickAccessProps {
 const SERVICES_DATA: Service[] = [
     // Santé
     { id: 'pharmacie', title: 'Pharmacie', icon: 'pill', gradient: ['#10B981', '#34D399'], description: 'Pharmacies de garde', comingSoon: false },
-    { id: 'hopital', title: t('yukpoServicesQuickAccess.hopital'), icon: 'hospital', gradient: ['#EF4444', '#F87171'], description: t('yukpoServicesQuickAccess.hopitauxCliniques'), comingSoon: false },
-    { id: 'laboratoire', title: 'Laboratoire', icon: 'microscope', gradient: ['#3B82F6', '#60A5FA'], description: t('yukpoServicesQuickAccess.analysesMedicales'), comingSoon: false },
+    { id: 'hopital', title: 'Hopital', icon: 'hospital', gradient: ['#EF4444', '#F87171'], description: 'Hopitaux, cliniques', comingSoon: false },
+    { id: 'laboratoire', title: 'Laboratoire', icon: 'microscope', gradient: ['#3B82F6', '#60A5FA'], description: 'Analyses medicales', comingSoon: false },
     { id: 'banque_sang', title: 'Transfusion', icon: 'droplet', gradient: ['#DC2626', '#F87171'], description: 'Don de sang', comingSoon: false },
     // Transport
-    { id: 'agence_voyage', title: t('yukpoServicesQuickAccess.ticketVoyage'), icon: 'bus', gradient: ['#F59E0B', '#FBBF24'], description: t('yukpoServicesQuickAccess.billetsReservations'), comingSoon: false },
-    { id: 'covoiturage', title: 'Covoiturage', icon: 'users', gradient: ['#8B5CF6', '#A78BFA'], description: t('yukpoServicesQuickAccess.partageDeTrajet'), comingSoon: false },
-    { id: 'taxi', title: 'Taxi', icon: 'car', gradient: ['#F97316', '#FB923C'], description: t('yukpoServicesQuickAccess.transportRapide'), comingSoon: false },
-    { id: 'automobile', title: 'Automobile', icon: 'car', gradient: ['#DC2626', '#F87171'], description: t('yukpoServicesQuickAccess.vehiculesOccasions'), comingSoon: false },
+    { id: 'agence_voyage', title: 'Ticket voyage', icon: 'bus', gradient: ['#F59E0B', '#FBBF24'], description: 'Billets, reservations', comingSoon: false },
+    { id: 'covoiturage', title: 'Covoiturage', icon: 'users', gradient: ['#8B5CF6', '#A78BFA'], description: 'Partage de trajet', comingSoon: false },
+    { id: 'taxi', title: 'Taxi', icon: 'car', gradient: ['#F97316', '#FB923C'], description: 'Transport rapide', comingSoon: false },
+    { id: 'automobile', title: 'Automobile', icon: 'car', gradient: ['#DC2626', '#F87171'], description: 'Vehicules occasions', comingSoon: false },
     // Vie pratique (Éducation + Quotidien)
     { id: 'orientation_scolaire', title: 'Orientation', icon: 'book-open', gradient: ['#10B981', '#34D399'], description: 'Orientation scolaire', comingSoon: false },
-    { id: 'bourse_livre', title: 'Troc livre', icon: 'book-open', gradient: ['#8B5CF6', '#A78BFA'], description: t('yukpoServicesQuickAccess.livresScolaires'), comingSoon: false },
-    { id: 'menu_planning', title: t('yukpoServicesQuickAccess.monMenu'), icon: 'utensils-crossed', gradient: ['#F59E0B', '#FBBF24'], description: 'Menus, repas', comingSoon: false },
+    { id: 'bourse_livre', title: 'Troc livre', icon: 'book-open', gradient: ['#8B5CF6', '#A78BFA'], description: 'Livres scolaires', comingSoon: false },
+    { id: 'menu_planning', title: 'Mon menu', icon: 'utensils-crossed', gradient: ['#F59E0B', '#FBBF24'], description: 'Menus, repas', comingSoon: false },
     { id: 'bayamselam', title: 'BayamSelam', icon: 'trending-down', gradient: ['#10B981', '#34D399'], description: 'Comparatif prix', comingSoon: false },
     // Emploi
-    { id: 'offres_emploi', title: t('yukpoServicesQuickAccess.offresDemploi'), icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], description: 'Recrutement', comingSoon: false },
+    { id: 'offres_emploi', title: 'Offres emploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], description: 'Recrutement', comingSoon: false },
     // Assurance
     { id: 'assurance', title: 'Assurance', icon: 'shield', gradient: ['#0EA5E9', '#38BDF8'], description: 'Assurances, mutuelles', comingSoon: false },
     // Immobilier
     { id: 'immo', title: 'Immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], description: 'Biens immobiliers', comingSoon: false },
-    { id: 'hotel', title: t('yukpoServicesQuickAccess.hotel'), icon: 'building', gradient: ['#F59E0B', '#FBBF24'], description: t('yukpoServicesQuickAccess.hotelsEtHebergements'), comingSoon: false },
-    { id: 'meuble', title: t('yukpoServicesQuickAccess.meuble'), icon: 'key', gradient: ['#8B5CF6', '#A78BFA'], description: t('yukpoServicesQuickAccess.locationMeublee'), comingSoon: false },
+    { id: 'hotel', title: 'Hotel', icon: 'building', gradient: ['#F59E0B', '#FBBF24'], description: 'Hotels et hebergements', comingSoon: false },
+    { id: 'meuble', title: 'Meuble', icon: 'key', gradient: ['#8B5CF6', '#A78BFA'], description: 'Location meublee', comingSoon: false },
 ];
 
 // Données des catégories (6 catégories)
 const CATEGORIES_DATA: Category[] = [
-    { id: 'sante', title: t('yukpoServicesQuickAccess.sante'), icon: 'heart', gradient: ['#EC4899', '#F472B6'], serviceIds: ['pharmacie', 'hopital', 'laboratoire', 'banque_sang'] },
+    { id: 'sante', title: 'Sante', icon: 'heart', gradient: ['#EC4899', '#F472B6'], serviceIds: ['pharmacie', 'hopital', 'laboratoire', 'banque_sang'] },
     { id: 'transport', title: 'Transport', icon: 'car', gradient: ['#F59E0B', '#FBBF24'], serviceIds: ['agence_voyage', 'covoiturage', 'taxi', 'automobile'] },
     { id: 'vie_pratique', title: 'Vie pratique', icon: 'book-open', gradient: ['#3B82F6', '#60A5FA'], serviceIds: ['orientation_scolaire', 'bourse_livre', 'menu_planning', 'bayamselam'] },
     { id: 'emploi', title: 'Emploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], serviceIds: ['offres_emploi'] },

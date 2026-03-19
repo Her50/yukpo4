@@ -2,6 +2,7 @@
 
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 // ✅ CORRIGÉ: Utiliser SafeStorage au lieu d'AsyncStorage directement
 import SafeStorage from '../utils/safeStorage';
 
@@ -64,9 +65,17 @@ export class PushNotificationService {
                 return null;
             }
 
-            // Obtenir le token Expo
+            // Obtenir le token Expo avec projectId EAS
+            const projectId =
+                Constants.expoConfig?.extra?.eas?.projectId ||
+                (Constants as any).manifest2?.extra?.eas?.projectId ||
+                (Constants as any).manifest?.extra?.eas?.projectId;
+            if (!projectId) {
+                console.warn('[PushNotificationService] ⚠️ projectId Expo/EAS introuvable');
+                return null;
+            }
             const tokenData = await Notifications.getExpoPushTokenAsync({
-                projectId: 'your-project-id', // TODO: Remplacer par votre project ID
+                projectId,
             });
             this.expoPushToken = tokenData.data;
             console.log('[PushNotificationService] Token obtenu:', this.expoPushToken);

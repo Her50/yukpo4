@@ -3,6 +3,7 @@
 
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 // Configuration des notifications
 Notifications.setNotificationHandler({
@@ -54,9 +55,15 @@ class PushNotificationService {
                 return null;
             }
 
-            // Obtenir token Expo
-            // Note: projectId est optionnel, Expo le détecte automatiquement
-            const tokenData = await Notifications.getExpoPushTokenAsync();
+            const projectId =
+                Constants.expoConfig?.extra?.eas?.projectId ||
+                (Constants as any).manifest2?.extra?.eas?.projectId ||
+                (Constants as any).manifest?.extra?.eas?.projectId;
+            if (!projectId) {
+                console.warn('[PushNotificationService] ⚠️ projectId Expo/EAS introuvable');
+                return null;
+            }
+            const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
 
             this.expoPushToken = tokenData.data;
             console.log('[PushNotificationService] Token obtenu:', this.expoPushToken);
