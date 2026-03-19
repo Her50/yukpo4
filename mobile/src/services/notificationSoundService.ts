@@ -206,7 +206,7 @@ class NotificationSoundService {
         const key = fallbackAlias[normalized] || normalized;
 
         const messages: Record<string, string> = {
-            fr: 'Bienvenue sur Yukpo, la super-app intelligente qui vous simplifie la vie. Commerce, transport, santé, livraison et services essentiels sont réunis en un seul lieu. Créez votre compte, et je serai toujours là pour vous guider pas à pas dans l’application.',
+            fr: 'Bienvenue sur Yukpo, la super-app intelligente qui vous simplifie la vie. Commerce, transport, santé, livraison, navigation intelligente et services essentiels sont réunis en un seul endroit. En cas de question ou de difficulté, ouvrez le chat intelligent via l’icône en bas à droite de l’écran. Je serai toujours là pour vous guider pas à pas dans l’application.',
             en: 'Welcome to Yukpo, your intelligent super-app. First, create your account, then tap the chat icon at the bottom right: your intelligent guide helps you quickly access your essential services.',
             de: 'Willkommen bei Yukpo. Sobald Ihr Konto erstellt ist, bleibt Ihr intelligenter Assistent immer verfügbar, um Sie zu begleiten. Bei Fragen zu Funktionen öffnen Sie den intelligenten Chat und stellen Sie einfach Ihre Frage.',
             es: 'Bienvenido a Yukpo. Una vez creada su cuenta, su asistente inteligente estará siempre disponible para guiarle. Para cualquier duda sobre funciones, abra el chat inteligente y haga su pregunta.',

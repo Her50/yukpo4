@@ -2,6 +2,7 @@ import * as React from 'react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { Text } from 'react-native';
 import { authApi } from '../services/api';
+import { notificationSoundService } from '../services/notificationSoundService';
 import { PassiveActivityTracker } from '../services/PassiveActivityTracker';
 import { jwtDecode } from '../utils/jwtDecode';
 import SafeStorage from '../utils/safeStorage';
@@ -46,6 +47,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const WELCOME_AUDIO_PREFIX = 'yukpo_welcome_audio_played_user_';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -55,6 +57,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [forceRender, setForceRender] = useState(0);
+
+  const playWelcomeAudioOnceForUser = async (userId?: string) => {
+    if (!userId) return;
+    const key = `${WELCOME_AUDIO_PREFIX}${userId}`;
+
+    try {
+      const alreadyPlayed = await SafeStorage.getItem(key);
+      if (alreadyPlayed === 'true') {
+        return;
+      }
+
+      // On marque avant la lecture pour éviter les doublons en cas de remount/re-render.
+      await SafeStorage.setItem(key, 'true');
+
+      // Petit délai pour laisser la navigation et le rendu initial se stabiliser.
+      setTimeout(() => {
+        notificationSoundService.playWelcomeMessage().catch((error) => {
+          console.warn('[AuthContext] ⚠️ Lecture audio bienvenue échouée:', error);
+        });
+      }, 1200);
+    } catch (error) {
+      console.warn('[AuthContext] ⚠️ Impossible de gérer le flag audio bienvenue:', error);
+    }
+  };
 
   // ✅ CORRECTION: Debug désactivé pour éviter les re-renders
   // Debug minimal - COMPLÈTEMENT DÉSACTIVÉ
@@ -145,6 +171,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           };
 
           setUser(userData);
+          playWelcomeAudioOnceForUser(userData.id).catch(() => { });
 
           // ✅ Auto-reprendre le tracking passif si activé précédemment
           PassiveActivityTracker.resumeIfEnabled().catch(() => { });
@@ -293,6 +320,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             };
 
             setUser(newUserData);
+            playWelcomeAudioOnceForUser(newUserData.id).catch(() => { });
 
             // ✅ Auto-démarrer le tracking passif après inscription
             PassiveActivityTracker.start().then((ok) => {
@@ -343,7 +371,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const updateUser = (userData: Partial<User>) => {
-    setUser(prev => prev ? { ...prev, ...userData } : null);
+    setUser(prev => {
+      const nextUser = prev ? { ...prev, ...userData } : null;
+      if (nextUser?.id) {
+        playWelcomeAudioOnceForUser(nextUser.id).catch(() => { });
+      }
+      return nextUser;
+    });
   };
 
   const refreshUser = async () => {
