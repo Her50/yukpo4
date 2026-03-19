@@ -7,6 +7,8 @@ import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
+    Animated,
+    Easing,
     Image,
     KeyboardAvoidingView,
     Linking,

@@ -22,6 +22,7 @@ import ServiceSkeleton from '../../components/ServiceSkeleton';
 import ServiceSortSearchBar, { SortConfig } from '../../components/ServiceSortSearchBar';
 import SyncStatusIndicator, { SyncStatus } from '../../components/SyncStatusIndicator';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useOfflineMode } from '../../hooks/useOfflineMode';
 import { apiDelete, apiGet, apiPatch } from '../../services/api';
 import { offlineStorage } from '../../services/offline_storage';

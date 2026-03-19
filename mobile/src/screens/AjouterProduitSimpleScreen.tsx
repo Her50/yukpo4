@@ -30,6 +30,7 @@ import SafeIcon from '../components/SafeIcon';
 import { NativeButton, NativeCard, NativeInput } from '../components/SafeNativeDesign';
 import { useToaster } from '../components/ToasterProvider'; // ✅ NOUVEAU: Pour les toasts de confirmation
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, apiPatch, apiPost, deliveryApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';

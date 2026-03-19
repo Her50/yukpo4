@@ -2,7 +2,7 @@
 // Shows: balance, detailed transaction history, periodic summaries, full traceability
 // Supports: regular users, partners, couriers, providers
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,

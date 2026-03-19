@@ -29,25 +29,23 @@ interface DashboardStats {
     profils_consultes?: number;
 }
 
-// ✅ FIX 2026-03-14: Actions rapides EMPLOYEUR (partenaire recruteur)
-const EMPLOYER_QUICK_ACTIONS = [
+const buildEmployerQuickActions = (t: (key: string) => string) => ([
     { id: 'create', label: t('offresEmploiHub.nouvelleOffre'), icon: 'plus-circle', color: '#7C3AED', screen: 'OffresEmploiForm' },
     { id: 'mesoffres', label: t('offresEmploiHub.mesOffres'), icon: 'briefcase', color: '#6366F1', screen: 'MesOffres' },
     { id: 'candidatures', label: 'Candidatures', icon: 'users', color: '#10B981', screen: 'MesOffres' },
     { id: 'matching', label: 'Matching IA', icon: 'target', color: '#8B5CF6', screen: 'MesOffres' },
     { id: 'salary', label: 'Salaire IA', icon: 'trending-up', color: '#F59E0B', screen: 'AISalaryPrediction' },
     { id: 'search', label: 'Explorer', icon: 'search', color: '#EC4899', screen: 'OffresEmploiHome' },
-];
+]);
 
-// Grille d'actions rapides CANDIDAT
-const CANDIDATE_QUICK_ACTIONS = [
+const buildCandidateQuickActions = (t: (key: string) => string) => ([
     { id: 'search', label: t('offresEmploiHub.rechercher'), icon: 'search', color: '#6366F1', screen: 'OffresEmploiHome' },
     { id: 'matching', label: 'Pour moi', icon: 'target', color: '#8B5CF6', screen: 'OffresEmploiHome' },
     { id: 'candidatures', label: 'Candidatures', icon: 'file-text', color: '#10B981', screen: 'OffreCandidatures' },
     { id: 'profil', label: t('offresEmploiHub.monProfil'), icon: 'user', color: '#F59E0B', screen: 'ProfilCandidat' },
     { id: 'alertes', label: 'Alertes', icon: 'bell', color: '#EF4444', screen: 'AlertesEmploi' },
     { id: 'mesoffres', label: t('offresEmploiHub.mesOffres'), icon: 'briefcase', color: '#EC4899', screen: 'MesOffres' },
-];
+]);
 
 // Outils IA compacts
 const AI_TOOLS = [
@@ -78,7 +76,10 @@ const OffresEmploiHubScreen: React.FC = () => {
 
     // ✅ Un employeur = partenaire recruteur OU utilisateur ayant déjà publié des offres
     const isEmployer = isPartnerEmployer || hasPublishedOffers;
-    const quickActions = isEmployer ? EMPLOYER_QUICK_ACTIONS : CANDIDATE_QUICK_ACTIONS;
+    const quickActions = useMemo(
+        () => (isEmployer ? buildEmployerQuickActions(t) : buildCandidateQuickActions(t)),
+        [isEmployer, t]
+    );
 
     useFocusEffect(
         useCallback(() => {

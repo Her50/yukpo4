@@ -19,6 +19,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import PaymentMethodPrompt from '../../components/PaymentMethodPrompt';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLanguageSafe } from '../../contexts/LanguageContext';

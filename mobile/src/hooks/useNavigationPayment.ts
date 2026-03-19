@@ -27,6 +27,9 @@ interface DebitResult {
 }
 
 const { MAX_UNPAID_USES, SUSPENSION_ALERT_THRESHOLD, SUSPENSION_STORAGE_KEY, DEBT_STORAGE_KEY, DEBT_AUTO_RECOVER } = MICRO_PAYMENT_POLICY;
+const NAVIGATION_FREE_UNTIL = new Date('2026-03-31T23:59:59.999Z').getTime();
+const NAVIGATION_FREE_UNTIL_LABEL = '31/03/2026';
+const INDEPENDENT_NAV_FEATURES = new Set(['ai_coach']);
 
 export function useNavigationPayment() {
     const { user, refreshUser } = useAuth();
@@ -36,6 +39,7 @@ export function useNavigationPayment() {
     const userCurrency = useCurrencyDetection();
 
     const currentBalance = user?.credits ?? 0;
+    const isNavigationFreePeriod = Date.now() <= NAVIGATION_FREE_UNTIL;
 
     // ── Charger les tarifs dynamiques au montage ──
     useEffect(() => {
@@ -234,6 +238,14 @@ export function useNavigationPayment() {
             return { success: true, newBalance: currentBalance };
         }
 
+        // Gratuité exceptionnelle Navigation jusqu'au 31/03/2026
+        if (isNavigationFreePeriod) {
+            const freeMsg = (t('navPayment.freeUntilDate') || 'Services navigation gratuits jusqu’au {{date}}.')
+                .replace('{{date}}', NAVIGATION_FREE_UNTIL_LABEL);
+            toaster.info(freeMsg);
+            return { success: true, newBalance: currentBalance };
+        }
+
         if (!hasEnoughBalance(amount)) {
             return { success: false, error: 'insufficient_balance' };
         }
@@ -265,7 +277,7 @@ export function useNavigationPayment() {
             console.error('[NavigationPayment] Erreur débit:', e);
             return { success: false, error: e?.message || 'debit_error' };
         }
-    }, [currentBalance, hasEnoughBalance, refreshUser]);
+    }, [currentBalance, hasEnoughBalance, refreshUser, isNavigationFreePeriod, t]);
 
     // ── Rediriger vers la recharge avec retour automatique + dette si applicable ──
     const redirectToRecharge = useCallback((returnScreen: string = 'Navigation', returnParams?: any) => {
@@ -340,6 +352,11 @@ export function useNavigationPayment() {
         onSuccess: () => void,
         onCancel?: () => void,
     ): Promise<void> => {
+        if (isNavigationFreePeriod) {
+            onSuccess();
+            return;
+        }
+
         const totalCost = estimatePoiCost(selectedCategories);
 
         // Gratuit → exécuter directement
@@ -398,7 +415,7 @@ export function useNavigationPayment() {
                 },
             ]
         );
-    }, [currentBalance, hasEnoughBalance, debitAccount, redirectToRecharge, t, userCurrency]);
+    }, [currentBalance, hasEnoughBalance, debitAccount, redirectToRecharge, t, userCurrency, isNavigationFreePeriod]);
 
     // ── Micro-paiement avec alerte progressive et dette cumulée ──
     const payMicroFeature = useCallback(async (
@@ -406,7 +423,13 @@ export function useNavigationPayment() {
         onSuccess: () => void,
         onInsufficientBalance?: () => void,
     ): Promise<boolean> => {
+        if (isNavigationFreePeriod) {
+            onSuccess();
+            return true;
+        }
+
         const cost = getMicroFeaturePrice(feature);
+        const isIndependentFeature = INDEPENDENT_NAV_FEATURES.has(feature);
 
         // Gratuit → exécuter directement
         if (cost <= 0) {
@@ -415,7 +438,7 @@ export function useNavigationPayment() {
         }
 
         // ⛔ Si déjà suspendu → bloquer l'accès
-        if (isSuspended) {
+        if (isSuspended && !isIndependentFeature) {
             console.log(`[NavigationPayment] ⛔ Feature ${feature} bloquée — suspension active (${unpaidCount} échecs, dette: ${unpaidDebt} XAF)`);
             showSuspensionAlert(feature, cost, unpaidCount, unpaidDebt);
             return false;
@@ -423,6 +446,10 @@ export function useNavigationPayment() {
 
         // Vérifier solde
         if (!hasEnoughBalance(cost)) {
+            if (isIndependentFeature) {
+                if (onInsufficientBalance) onInsufficientBalance();
+                return false;
+            }
             console.log(`[NavigationPayment] ⚠️ Solde insuffisant pour ${feature} (${cost} XAF, solde: ${currentBalance} XAF, dette actuelle: ${unpaidDebt} XAF)`);
             const { newCount, newDebt } = await incrementUnpaidCount(cost);
 
@@ -454,13 +481,17 @@ export function useNavigationPayment() {
         }
         // Échec du débit (erreur API, race condition) → traiter comme impayé
         console.warn(`[NavigationPayment] ⚠️ Échec débit ${feature}: ${result.error}`);
+        if (isIndependentFeature) {
+            if (onInsufficientBalance) onInsufficientBalance();
+            return false;
+        }
         const { newCount, newDebt } = await incrementUnpaidCount(cost);
         if (newCount >= SUSPENSION_ALERT_THRESHOLD) {
             showSuspensionAlert(feature, cost, newCount, newDebt);
         }
         onSuccess(); // Période de grâce
         return true;
-    }, [hasEnoughBalance, debitAccount, currentBalance, isSuspended, unpaidCount, unpaidDebt, incrementUnpaidCount, showSuspensionAlert]);
+    }, [hasEnoughBalance, debitAccount, currentBalance, isSuspended, unpaidCount, unpaidDebt, incrementUnpaidCount, showSuspensionAlert, isNavigationFreePeriod]);
 
     // ── Abonnement coaching mensuel: activer/vérifier/rappeler ──
     // ✅ REFONTE: Gère le trial gratuit (7j) + passage trial→payant + renouvellement
@@ -581,6 +612,14 @@ export function useNavigationPayment() {
         onSuccess: () => void,
         onSuspended?: () => void,
     ): Promise<boolean> => {
+        if (isNavigationFreePeriod) {
+            if (isAlertsSuspended) {
+                await restoreAlerts();
+            }
+            onSuccess();
+            return true;
+        }
+
         // Si suspendu globalement, bloquer
         if (isSuspended) {
             showSuspensionAlert('community_alerts', getMicroFeaturePrice('community_alerts'), unpaidCount, unpaidDebt);
@@ -611,7 +650,7 @@ export function useNavigationPayment() {
                 await suspendAlerts();
             }
         });
-    }, [isSuspended, isAlertsSuspended, unpaidCount, unpaidDebt, payMicroFeature, showSuspensionAlert, suspendAlerts, redirectToRecharge, t, userCurrency]);
+    }, [isSuspended, isAlertsSuspended, unpaidCount, unpaidDebt, payMicroFeature, showSuspensionAlert, suspendAlerts, redirectToRecharge, t, userCurrency, isNavigationFreePeriod, restoreAlerts]);
 
     return {
         currentBalance,
@@ -640,6 +679,9 @@ export function useNavigationPayment() {
         restoreAlerts,
         // ── Devise détectée ──
         userCurrency,
+        // ── Gratuité exceptionnelle ──
+        isNavigationFreePeriod,
+        navigationFreeUntilLabel: NAVIGATION_FREE_UNTIL_LABEL,
     };
 }
 

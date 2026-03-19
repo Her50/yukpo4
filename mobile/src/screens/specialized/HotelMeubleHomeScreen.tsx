@@ -301,7 +301,7 @@ const HotelMeubleHomeScreen: React.FC = () => {
                         />
                     </View>
                     <View style={s.quickFilterItem}>
-                        <SafeIcon name="bed-double" size={14} color="#FFFFFFCC" type="lucide" />
+                        <SafeIcon name="bed" size={14} color="#FFFFFFCC" type="lucide" />
                         <TextInput
                             style={s.quickFilterInput}
                             placeholder={t('hotelDashboard.chambres')}
@@ -313,7 +313,7 @@ const HotelMeubleHomeScreen: React.FC = () => {
                         />
                     </View>
                     <View style={s.quickFilterItem}>
-                        <SafeIcon name="banknote" size={14} color="#FFFFFFCC" type="lucide" />
+                        <SafeIcon name="wallet" size={14} color="#FFFFFFCC" type="lucide" />
                         <TextInput
                             style={s.quickFilterInput}
                             placeholder={t('hotelMeubleHome.budgetMax')}

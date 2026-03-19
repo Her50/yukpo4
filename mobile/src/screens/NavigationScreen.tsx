@@ -1,4 +1,4 @@
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
@@ -259,7 +259,37 @@ const NavigationScreen: React.FC = () => {
         isCoachingActive, isCoachingTrial, coachingExpiresAt,
         activateCoachingSubscription, checkCoachingExpiry,
         isAlertsSuspended, redirectToRecharge,
+        isNavigationFreePeriod, navigationFreeUntilLabel,
     } = useNavigationPayment();
+
+    // Toasts discrets pour infos paiement (au lieu de bannières permanentes)
+    useFocusEffect(
+        useCallback(() => {
+            paymentToastShownRef.current = false;
+            return () => { paymentToastShownRef.current = true; };
+        }, [])
+    );
+    useEffect(() => {
+        if (!user || paymentToastShownRef.current) return;
+        const timer = setTimeout(() => {
+            if (paymentToastShownRef.current) return;
+            if (isNavigationFreePeriod) {
+                showToast(`🎉 ${t('navPayment.freeUntilDate').replace('{{date}}', navigationFreeUntilLabel)}`);
+                paymentToastShownRef.current = true;
+            } else if (isSuspended) {
+                showToast(`⛔ ${t('navPayment.suspended')} · ${t('navPayment.recharge')}`);
+                paymentToastShownRef.current = true;
+            } else if (unpaidDebt > 0) {
+                showToast(`⚠️ ${t('navPayment.debtAmount')}: ${fmtPrice(unpaidDebt, userCurrency)} · ${t('navPayment.recharge')}`);
+                paymentToastShownRef.current = true;
+            } else if (isCoachingTrial) {
+                showToast(`🎁 ${t('navPayment.trialActive')}`);
+                paymentToastShownRef.current = true;
+            }
+        }, 800);
+        return () => clearTimeout(timer);
+    }, [user, isNavigationFreePeriod, navigationFreeUntilLabel, isSuspended, unpaidDebt, isCoachingTrial, fmtPrice, userCurrency, t]);
+
     const [destination, setDestination] = useState('');
     const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [selectedLocation, setSelectedLocation] = useState<LocationObject | null>(null);
@@ -335,6 +365,7 @@ const NavigationScreen: React.FC = () => {
     const [loadingAlertHistory, setLoadingAlertHistory] = useState(false);
     const [alertToast, setAlertToast] = useState<{ visible: boolean; message: string; icon: string; color: string }>({ visible: false, message: '', icon: '', color: '' });
     const alertToastAnim = useRef(new Animated.Value(0)).current;
+    const paymentToastShownRef = useRef(false);
     const routeCardWidth = width * 0.72 + 10;
     const mapRef = useRef<MapView>(null);
     const scrollViewRef = useRef<ScrollView>(null);
@@ -781,12 +812,15 @@ const NavigationScreen: React.FC = () => {
     }, [alertToastAnim]);
 
     const reportCheckpoint = useCallback(async (type: string) => {
-        const typeLabel = CHECKPOINT_LABELS[type]?.label || type;
+        const labelOrObj = CHECKPOINT_LABELS[type]?.label || type;
+        const typeLabelStr = typeof labelOrObj === 'object' && labelOrObj !== null && 'labelKey' in labelOrObj
+            ? (t((labelOrObj as I18nLabel).labelKey) || (labelOrObj as I18nLabel).fallback)
+            : String(labelOrObj);
         const typeIcon = CHECKPOINT_LABELS[type]?.icon || '⚠️';
         // Demander confirmation AVANT d'envoyer le signalement
         Alert.alert(
             `${typeIcon} ${t('message.confirm')}`,
-            `${typeLabel} ?`,
+            `${typeLabelStr} ?`,
             [
                 { text: t('message.cancel'), style: 'cancel' },
                 {
@@ -1237,16 +1271,17 @@ const NavigationScreen: React.FC = () => {
                             </View>
                         </View>
                         <View style={st.headerRight}>
-                            {/* ✅ 2026-03-18: Toggle son/vibration */}
+                            {/* Toggle alertes sonores / visuelles (icône miniaturisée) */}
                             <TouchableOpacity
-                                style={[st.headerBtn, alertMode === 'visual' && { backgroundColor: '#F59E0B', borderColor: '#F59E0B' }]}
+                                style={[st.headerBtnSmall, alertMode === 'visual' && { backgroundColor: '#F59E0B', borderColor: '#F59E0B' }]}
                                 onPress={toggleAlertMode}
+                                accessibilityLabel={alertMode === 'sound' ? t('navigation.alertModeSound') : t('navigation.alertModeVisual')}
                             >
-                                <SafeIcon name={alertMode === 'sound' ? 'Volume2' : 'VolumeX'} size={18} color={alertMode === 'visual' ? '#fff' : modernColors.text} />
+                                <SafeIcon name={alertMode === 'sound' ? 'Volume2' : 'VolumeX'} size={14} color={alertMode === 'visual' ? '#fff' : modernColors.text} />
                             </TouchableOpacity>
-                            {/* Bouton Alertes Communautaires — ✅ PAIEMENT via payForAlerts */}
+                            {/* Bouton Alertes Communautaires */}
                             <TouchableOpacity
-                                style={[st.headerBtn, showAlertHistory && st.headerBtnAlertActive]}
+                                style={[st.headerBtnSmall, showAlertHistory && st.headerBtnAlertActive]}
                                 onPress={() => {
                                     if (showAlertHistory) {
                                         setShowAlertHistory(false);
@@ -1263,72 +1298,39 @@ const NavigationScreen: React.FC = () => {
                                     );
                                 }}
                             >
-                                <SafeIcon name="AlertTriangle" size={18} color={showAlertHistory ? '#fff' : modernColors.text} />
+                                <SafeIcon name="AlertTriangle" size={14} color={showAlertHistory ? '#fff' : modernColors.text} />
                                 {checkpoints.length > 0 && (
-                                    <View style={st.alertBadge}>
+                                    <View style={st.alertBadgeSmall}>
                                         <Text style={st.alertBadgeText}>{checkpoints.length}</Text>
                                     </View>
                                 )}
                             </TouchableOpacity>
                             {/* Bouton Statistiques */}
                             <TouchableOpacity
-                                style={[st.headerBtn, showActivityStats && st.headerBtnActive]}
+                                style={[st.headerBtnSmall, showActivityStats && st.headerBtnActive]}
                                 onPress={() => {
                                     const n = !showActivityStats;
                                     setShowActivityStats(n);
-                                    setShowAlertHistory(false); // Fermer les alertes si ouvertes
+                                    setShowAlertHistory(false);
                                     if (n) loadActivityStats(activityPeriod);
                                 }}
                             >
-                                <SafeIcon name={showActivityStats ? 'Compass' : 'BarChart3'} size={18} color={showActivityStats ? '#fff' : modernColors.text} />
+                                <SafeIcon name={showActivityStats ? 'Compass' : 'BarChart3'} size={14} color={showActivityStats ? '#fff' : modernColors.text} />
                             </TouchableOpacity>
                         </View>
                     </View>
 
-                    {/* ━━ SOLDE & DETTE BANNER ━━ */}
+                    {/* Solde minimal (une seule pastille, le reste en toasts) */}
                     {user && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, paddingHorizontal: 4 }}>
-                            {/* Solde actuel */}
-                            <TouchableOpacity
-                                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: currentBalance > 0 ? '#DCFCE7' : '#FEF3C7', borderWidth: 1, borderColor: currentBalance > 0 ? '#BBF7D0' : '#FDE68A' }}
-                                onPress={() => redirectToRecharge('Navigation')}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={{ fontSize: 12 }}>{currentBalance > 0 ? '💰' : '⚠️'}</Text>
-                                <Text style={{ fontSize: 11, fontWeight: '700', color: currentBalance > 0 ? '#16A34A' : '#92400E' }}>
-                                    {fmtPrice(currentBalance, userCurrency)}
-                                </Text>
-                            </TouchableOpacity>
-                            {/* Coaching status */}
-                            {isCoachingActive && (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: isCoachingTrial ? '#EEF2FF' : '#F0FDF4' }}>
-                                    <Text style={{ fontSize: 10 }}>{isCoachingTrial ? '🎁' : '🤖'}</Text>
-                                    <Text style={{ fontSize: 10, fontWeight: '600', color: isCoachingTrial ? '#6366F1' : '#16A34A' }}>
-                                        {isCoachingTrial ? (t('navPayment.trialActive') || 'Essai') : 'Coach IA'}
-                                    </Text>
-                                </View>
-                            )}
-                        </View>
-                    )}
-                    {/* Bannière de suspension / dette */}
-                    {(isSuspended || unpaidDebt > 0) && (
                         <TouchableOpacity
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, marginBottom: 8, borderRadius: 12, backgroundColor: isSuspended ? '#FEE2E2' : '#FEF3C7', borderWidth: 1, borderColor: isSuspended ? '#FECACA' : '#FDE68A' }}
+                            style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 6, borderRadius: 8, backgroundColor: currentBalance > 0 ? '#DCFCE7' : '#FEF3C7', borderWidth: 1, borderColor: currentBalance > 0 ? '#BBF7D0' : '#FDE68A' }}
                             onPress={() => redirectToRecharge('Navigation')}
                             activeOpacity={0.7}
                         >
-                            <Text style={{ fontSize: 20 }}>{isSuspended ? '⛔' : '⚠️'}</Text>
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '800', color: isSuspended ? '#DC2626' : '#92400E' }}>
-                                    {isSuspended ? (t('navPayment.suspended') || 'Service suspendu') : (t('navPayment.debtWarning') || 'Dette en cours')}
-                                </Text>
-                                <Text style={{ fontSize: 11, color: isSuspended ? '#991B1B' : '#78350F', marginTop: 2 }}>
-                                    {t('navPayment.debtAmount') || 'Dette'}: {fmtPrice(unpaidDebt, userCurrency)} · {unpaidCount}/{maxUnpaidUses} {t('navPayment.unpaidUses') || 'impayés'}
-                                </Text>
-                            </View>
-                            <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: isSuspended ? '#DC2626' : '#F59E0B' }}>
-                                <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>{t('navPayment.recharge') || 'Recharger'}</Text>
-                            </View>
+                            <Text style={{ fontSize: 10 }}>{currentBalance > 0 ? '💰' : '⚠️'}</Text>
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: currentBalance > 0 ? '#16A34A' : '#92400E' }}>
+                                {fmtPrice(currentBalance, userCurrency)}
+                            </Text>
                         </TouchableOpacity>
                     )}
 
@@ -2324,7 +2326,7 @@ const NavigationScreen: React.FC = () => {
                                 </TouchableOpacity>
                             </View>
 
-                            {/* Travel modes */}
+                            {/* Travel modes + Covoiturage */}
                             <View style={st.modeSelector}>
                                 {TRAVEL_MODES.map(m => (
                                     <TouchableOpacity key={m.key} style={[st.modeBtn, travelMode === m.key && { backgroundColor: m.color + '15', borderColor: m.color }]}
@@ -2335,6 +2337,15 @@ const NavigationScreen: React.FC = () => {
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
+                                <TouchableOpacity
+                                    style={st.modeBtn}
+                                    onPress={() => (navigation as any).navigate('CovoiturageHome')}
+                                >
+                                    <Text style={{ fontSize: 20 }}>🚗👥</Text>
+                                    <Text style={st.modeBtnLbl} numberOfLines={1}>
+                                        {t('navigation.covoiturage') || 'Covoiturage'}
+                                    </Text>
+                                </TouchableOpacity>
                             </View>
 
                             {/* Favorites */}
@@ -2612,16 +2623,18 @@ const st = StyleSheet.create({
     // Header
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, marginBottom: 4 },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     backBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border, alignItems: 'center', justifyContent: 'center' },
     headerIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: modernColors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: modernColors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
     headerTitle: { fontSize: 22, fontWeight: '800', color: modernColors.text },
     headerSub: { fontSize: 13, color: modernColors.textSecondary, marginTop: 1 },
     headerBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+    headerBtnSmall: { width: 32, height: 32, borderRadius: 10, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border, alignItems: 'center', justifyContent: 'center', position: 'relative' },
     headerBtnActive: { backgroundColor: modernColors.primary, borderColor: modernColors.primary },
     headerBtnAlertActive: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
     alertBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: '#EF4444', borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
-    alertBadgeText: { fontSize: 10, fontWeight: '700', color: '#FFF', lineHeight: 10 },
+    alertBadgeSmall: { position: 'absolute', top: -2, right: -2, backgroundColor: '#EF4444', borderRadius: 8, minWidth: 14, height: 14, alignItems: 'center', justifyContent: 'center' },
+    alertBadgeText: { fontSize: 9, fontWeight: '700', color: '#FFF', lineHeight: 10 },
 
     // Barre d'alertes compacte (toggle + chips labellés)
     alertToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 4, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1, borderColor: modernColors.border },

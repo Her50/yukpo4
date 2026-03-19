@@ -219,10 +219,14 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
             crate::services::global_metrics_service::GlobalMetricsService::new(),
         ),
         scalability: Arc::new(
-            crate::services::scalability_service::ScalabilityService::new(Some(cache_service.clone())),
+            crate::services::scalability_service::ScalabilityService::new(Some(
+                cache_service.clone(),
+            )),
         ),
         search_cache: Arc::new(
-            crate::services::search_cache_service::SearchCacheService::new(Some(cache_service.clone())),
+            crate::services::search_cache_service::SearchCacheService::new(Some(
+                cache_service.clone(),
+            )),
         ),
         global_rate_limiter: Arc::new(crate::middlewares::rate_limit::GlobalRateLimiter::new(100)),
         user_rate_limiter: Arc::new(crate::middlewares::rate_limit::UserRateLimiter::new(60)),
@@ -243,10 +247,12 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
         video_transcoding: None,
         trending_music: None,
         generative_video: None,
-        multilingue_service: Arc::new(crate::services::multilingue_service::MultilingueService::new()),
-        paiement_service: Arc::new(crate::services::paiement_agrege_service::PaiementAgregeService::new(
-            products_pool,
-        )),
+        multilingue_service: Arc::new(
+            crate::services::multilingue_service::MultilingueService::new(),
+        ),
+        paiement_service: Arc::new(
+            crate::services::paiement_agrege_service::PaiementAgregeService::new(products_pool),
+        ),
     });
 
     Some(BackendTestContext {

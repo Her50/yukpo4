@@ -38,6 +38,7 @@ import PriceVariantSelector from '../components/PriceVariantSelector';
 import ProductFieldSelector from '../components/ProductFieldSelector';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 // TODO: Fix TypeScript type issue
 // Code corrigé (remplace @ts-ignore)
 import DeliveryAutoConfigPromptModal from '../components/delivery/DeliveryAutoConfigPromptModal';

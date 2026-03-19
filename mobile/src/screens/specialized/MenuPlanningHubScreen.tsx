@@ -325,7 +325,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                         onPress={() => navigation.navigate('FamilyProfile' as never)}
                         style={styles.headerProfileButton}
                     >
-                        <SafeIcon name="UserPlus" size={20} color="#fff" type="lucide" />
+                        <SafeIcon name="User" size={20} color="#fff" type="lucide" />
                         {hasProfile && profile && typeof profile.total_members === 'number' && profile.total_members > 0 && (
                             <View style={styles.profileBadge}>
                                 <Text style={styles.profileBadgeText}>{profile.total_members}</Text>

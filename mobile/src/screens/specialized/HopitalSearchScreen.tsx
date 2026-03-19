@@ -16,6 +16,7 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';

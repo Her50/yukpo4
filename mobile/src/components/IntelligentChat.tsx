@@ -30,6 +30,59 @@ interface IntelligentChatProps {
   screenContext?: any;
 }
 
+const FRIENDLY_SCREEN_NAMES: Record<string, string> = {
+  MainTabs: 'Accueil',
+  MainStack: 'Accueil',
+  Home: 'Accueil',
+  HomeScreen: 'Accueil',
+  Profile: 'Compte',
+  RechercheBesoin: 'Recherche',
+  Navigation: 'Navigation GPS',
+  ServicesDashboard: 'Tableau de bord services',
+  GestionServicesSpecialises: 'Mes services',
+  OffresEmploiHome: 'Offres d’emploi',
+  HotelMeubleHome: 'Hôtels & meublés',
+  TaxiHome: 'Taxi',
+  DeliveryHome: 'Livraison',
+  LivreScolaireHome: 'Bourse du livre',
+  WalletFinancial: 'Portefeuille',
+};
+
+const humanizeScreenName = (rawName?: string): string => {
+  if (!rawName) return 'Yukpo';
+  if (FRIENDLY_SCREEN_NAMES[rawName]) return FRIENDLY_SCREEN_NAMES[rawName];
+
+  // Convert technical route names into readable labels.
+  const cleaned = rawName
+    .replace(/Screen$/i, '')
+    .replace(/Navigator$/i, '')
+    .replace(/Stack$/i, '')
+    .replace(/Tabs$/i, '')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .trim();
+  return cleaned || 'Yukpo';
+};
+
+const dedupeActions = (actions: any[]): any[] => {
+  const seen = new Set<string>();
+  const deduped: any[] = [];
+
+  for (const action of actions || []) {
+    if (!action) continue;
+    const key = [
+      String(action.id || '').toLowerCase().trim(),
+      String(action.route || '').toLowerCase().trim(),
+      String(action.label || '').toLowerCase().trim(),
+      String(action.icon || '').toLowerCase().trim(),
+    ].join('|');
+
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(action);
+  }
+  return deduped;
+};
+
 const TypingIndicator: React.FC = () => {
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
@@ -98,9 +151,9 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
 
   useEffect(() => {
     if (visible) {
-      const screenLabel = screenContext.screenName || 'Yukpo';
+      const screenLabel = humanizeScreenName(screenContext.screenName);
       const userName = screenContext.userData?.name || screenContext.userData?.email?.split('@')[0] || '';
-      const isHomeScreen = screenLabel === 'Home' || screenLabel === 'HomeScreen';
+      const isHomeScreen = screenLabel === 'Accueil';
 
       let greeting: string;
       if (isHomeScreen) {
@@ -153,7 +206,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         : screenContext.availableActions
           .filter((a: any) => a.id !== 'home' && a.id !== 'profile' && a.id !== 'services')
           .slice(0, 6);
-      setSuggestedActions(contextActions);
+      setSuggestedActions(dedupeActions(contextActions));
 
       Animated.timing(slideAnim, {
         toValue: 0,
@@ -222,7 +275,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
       setMessages(prev => [...prev, aiMessage]);
 
       if (response.suggestedActions && response.suggestedActions.length > 0) {
-        setSuggestedActions(response.suggestedActions);
+        setSuggestedActions(dedupeActions(response.suggestedActions));
       }
 
       setTimeout(() => {
@@ -384,7 +437,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
               </View>
               <View style={styles.headerStatusRow}>
                 <View style={styles.onlineDot} />
-                <Text style={styles.headerSubtitle}>{screenContext.screenName}</Text>
+                <Text style={styles.headerSubtitle}>{humanizeScreenName(screenContext.screenName)}</Text>
               </View>
             </View>
             <View style={styles.headerPlaceholder} />

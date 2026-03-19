@@ -33,6 +33,7 @@ import ServiceMediaGallery from '../components/ServiceMediaGallery';
 import ServiceTeamManager from '../components/ServiceTeamManager';
 import config from '../config/environment';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiDelete, apiGet, apiPatch, apiPost, mediaApi } from '../services/api';
 import { productsService } from '../services/productsService';
 import { genererSuggestionsService } from '../services/yukpoclient';

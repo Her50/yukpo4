@@ -21,6 +21,7 @@ import LocationSelector, { LocationObject } from '../../components/LocationSelec
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useShoppingContext } from '../../contexts/ShoppingContext';
 import { deliveryApi, userApi } from '../../services/api';

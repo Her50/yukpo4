@@ -20,6 +20,7 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet, apiPost } from '../../services/api';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 

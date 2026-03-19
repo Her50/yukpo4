@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import CityAutocomplete from '../../components/CityAutocomplete';
 import SafeIcon from '../../components/SafeIcon';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
+import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import SearchFiltersComponent, { SearchFilters } from '../../components/SearchFilters';
 import SkeletonCard from '../../components/SkeletonCard';
@@ -429,10 +429,14 @@ const BusTicketSearchScreen: React.FC = () => {
                                 </View>
                             )}
                         </TouchableOpacity>
-                        <NativeButton
+                        <TouchableOpacity
                             onPress={handleSearch}
                             disabled={loading || !departureCity.trim() || !arrivalCity.trim()}
-                            style={styles.searchButton}
+                            style={[
+                                styles.searchButton,
+                                (loading || !departureCity.trim() || !arrivalCity.trim()) && styles.searchButtonDisabled
+                            ]}
+                            activeOpacity={0.8}
                         >
                             <View style={styles.searchButtonContent}>
                                 <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
@@ -440,7 +444,7 @@ const BusTicketSearchScreen: React.FC = () => {
                                     {loading ? 'Recherche...' : 'Rechercher'}
                                 </Text>
                             </View>
-                        </NativeButton>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -781,8 +785,15 @@ const styles = StyleSheet.create({
     },
     searchButton: {
         flex: 1,
+        minHeight: 52,
         borderRadius: 12,
         overflow: 'hidden',
+        backgroundColor: modernColors.primary,
+        justifyContent: 'center',
+    },
+    searchButtonDisabled: {
+        backgroundColor: '#A5B4FC',
+        opacity: 0.9,
     },
     searchButtonContent: {
         flexDirection: 'row',

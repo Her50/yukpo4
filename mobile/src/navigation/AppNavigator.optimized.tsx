@@ -111,29 +111,7 @@ function reg(name: string, imp: () => Promise<any>) {
 
 const loadScreen = (path: string, name?: string): React.ComponentType<any> => {
   try {
-    switch (path) {
-      case '../screens/HomeScreen':
-        return require('../screens/HomeScreen').default;
-      case '../screens/MesServicesScreen':
-        return require('../screens/MesServicesScreen').default;
-      case '../screens/MesInteractionsScreen':
-        return require('../screens/MesInteractionsScreen').default;
-      case '../screens/ProfileScreen':
-        return require('../screens/ProfileScreen').default;
-      case '../screens/ContactScreen':
-        return require('../screens/ContactScreen').default;
-      case '../screens/specialized/GestionServicesSpecialisesScreen':
-        return require('../screens/specialized/GestionServicesSpecialisesScreen').default;
-      case '../screens/specialized/ServicesDashboard':
-        return require('../screens/specialized/ServicesDashboard').default;
-      case '../components/IntelligentChatFab':
-        return require('../components/IntelligentChatFab').default;
-      case '../components/IntelligentChat':
-        return require('../components/IntelligentChat').default;
-      default:
-        console.error(`[AppNav] ❌ Module non mappé dans loadScreen: ${name || path}`);
-        return () => <ScreenError name={name || path} />;
-    }
+    return require(path).default;
   } catch (error) {
     console.error(`[AppNav] ❌ Impossible de charger le module ${name || path}:`, error);
     return () => <ScreenError name={name || path} />;
@@ -754,7 +732,7 @@ function MainTabNavigator() {
       ) : (
         <Tab.Screen
           name="Services"
-          component={S['MesProduits'] || loadScreen('../screens/MesServicesScreen', 'MesServices')}
+          component={S['MesServices'] || loadScreen('../screens/MesServicesScreen', 'MesServices')}
           options={{
             tabBarLabel: t('tabs.services'),
             tabBarIcon: ({ focused, color, size }) => (

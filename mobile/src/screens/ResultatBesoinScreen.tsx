@@ -27,6 +27,7 @@ import { SafeNativeView } from '../components/SafeNativeView';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useLocation } from '../contexts/LocationContext';
 import { useServicesBatchData } from '../hooks/useServicesBatchData';
 import { apiGet, apiPost } from '../services/api';
