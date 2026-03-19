@@ -2,7 +2,7 @@
 // Utilise le système de paiement existant mais avec contexte spécialisé
 
 use crate::core::types::{AppError, AppResult};
-use crate::services::payment_service::{PaymentMethod, PaymentRequest, PaymentService};
+use crate::services::payment_service::{PaymentMethod, PaymentService};
 use sqlx::PgPool;
 use std::sync::Arc;
 

@@ -943,6 +943,7 @@ mod tests {
             site_web: None,
             gps_mobile: None,
             specialized_type: None,
+            language: None,
         };
 
         // Note: Ce test n?cessite une instance du service

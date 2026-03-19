@@ -168,7 +168,6 @@ export default function App() {
                               <ShoppingProvider>
                                 <StatusBar style="auto" />
                                 <GPSTrackingManager />
-                                <PushNotificationManager />
                                 <NavigationContainer
                                   linking={linking}
                                   fallback={null}
@@ -183,6 +182,7 @@ export default function App() {
                                   }}
                                 >
                                   <AppNavigator />
+                                <PushNotificationManager />
                                 </NavigationContainer>
                               </ShoppingProvider>
                             </DeliveryProvider>

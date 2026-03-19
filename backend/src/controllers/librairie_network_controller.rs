@@ -1436,7 +1436,7 @@ pub async fn get_librairies_proches(
     "
     .to_string();
 
-    let mut bind_count = 4;
+    let bind_count = 4;
 
     if let Some(ville) = &params.ville {
         query.push_str(&format!(" AND lp.ville ILIKE '%{}%'", ville));

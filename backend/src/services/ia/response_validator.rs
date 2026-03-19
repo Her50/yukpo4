@@ -131,7 +131,7 @@ pub fn validate_string_enum(json: &Value, field: &str, allowed: &[&str]) -> AppR
 mod tests {
     use super::*;
     use serde::Deserialize;
-    use serde_json::{json, Value};
+    use serde_json::Value;
 
     #[derive(Deserialize)]
     struct TestResponse {

@@ -108,7 +108,7 @@ mod tests {
     #[tokio::test]
     async fn test_retry_non_transient() {
         let mut attempts = 0;
-        let result = retry::<(), TestError>(|| {
+        let result: Result<(), TestError> = retry(|| {
             attempts += 1;
             Box::pin(async move { Err(TestError { transient: false }) })
         })

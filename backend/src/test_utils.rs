@@ -173,6 +173,11 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
         None,
     ));
 
+    let cache_service = Arc::new(crate::services::cache_service::CacheService::new(Some(
+        redis_client.clone(),
+    )));
+    let products_pool = Arc::new(pool.clone());
+
     let state = Arc::new(AppState {
         pg: pool.clone(),
         pg_read: None,
@@ -202,34 +207,25 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
         studio_service,
         inventory,
         feature_flags: Arc::new(crate::config::feature_flags::FeatureFlagService::from_env()),
-        cache_service: Arc::new(crate::services::cache_service::CacheService::new(
-            redis_client.clone(),
-        )),
+        cache_service: cache_service.clone(),
         geographic_matching: None,
-        search_metrics: Arc::new(crate::services::search_metrics::SearchMetricsService::new(
-            pool.clone(),
-        )),
+        search_metrics: Arc::new(crate::services::search_metrics::SearchMetricsService::new()),
         global_cache: Arc::new(
-            crate::services::global_cache_service::GlobalCacheService::new(redis_client.clone()),
+            crate::services::global_cache_service::GlobalCacheService::new(Some(
+                cache_service.clone(),
+            )),
         ),
         global_metrics: Arc::new(
-            crate::services::global_metrics_service::GlobalMetricsService::new(pool.clone()),
+            crate::services::global_metrics_service::GlobalMetricsService::new(),
         ),
         scalability: Arc::new(
-            crate::services::scalability_service::ScalabilityService::new(
-                pool.clone(),
-                redis_client.clone(),
-            ),
+            crate::services::scalability_service::ScalabilityService::new(Some(cache_service.clone())),
         ),
         search_cache: Arc::new(
-            crate::services::search_cache_service::SearchCacheService::new(redis_client.clone()),
+            crate::services::search_cache_service::SearchCacheService::new(Some(cache_service.clone())),
         ),
-        global_rate_limiter: Arc::new(crate::middlewares::rate_limit::GlobalRateLimiter::new(
-            redis_client.clone(),
-        )),
-        user_rate_limiter: Arc::new(crate::middlewares::rate_limit::UserRateLimiter::new(
-            redis_client.clone(),
-        )),
+        global_rate_limiter: Arc::new(crate::middlewares::rate_limit::GlobalRateLimiter::new(100)),
+        user_rate_limiter: Arc::new(crate::middlewares::rate_limit::UserRateLimiter::new(60)),
         delivery_state_sharing: None,
         chat_ws_manager: None,
         delivery_chat_ws_manager: None,
@@ -240,7 +236,16 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
         spotify_service: None,
         youtube_audio_service: None,
         products_service: Arc::new(crate::services::products_service::ProductsService::new(
-            pool.clone(),
+            products_pool.clone(),
+        )),
+        gpu_service: None,
+        redis_scaling_service: None,
+        video_transcoding: None,
+        trending_music: None,
+        generative_video: None,
+        multilingue_service: Arc::new(crate::services::multilingue_service::MultilingueService::new()),
+        paiement_service: Arc::new(crate::services::paiement_agrege_service::PaiementAgregeService::new(
+            products_pool,
         )),
     });
 
