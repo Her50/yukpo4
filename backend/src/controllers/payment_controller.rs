@@ -2,6 +2,10 @@ use crate::state::AppState;
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
+    services::mobile_money_service::{
+        MobileMoneyPaymentRequest, MobileMoneyProvider, MobileMoneyService,
+        PaymentStatus as MobileMoneyStatus,
+    },
     services::phone_validation_service::{PhoneValidationRequest, PhoneValidationService},
 };
 use axum::{
@@ -55,6 +59,7 @@ pub struct InitiatePaymentResponse {
     pub payment_url: Option<String>,
     pub instructions: String,
     pub status: String,
+    pub provider_used: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -189,10 +194,122 @@ pub async fn initiate_payment(
     }
 
     // Logique selon le moyen de paiement — via agrégateur (CinetPay/NotchPay/Flutterwave)
-    let (payment_url, instructions) = match req.payment_method.as_str() {
-        "orange_money" | "mtn_momo" | "visa" | "mastercard" | "mobile_money"
-        | "wave" | "moov_money" | "airtel_money" | "mpesa" | "vodafone_cash"
-        | "free_money" | "tigo_pesa" | "ecocash" => {
+    let (payment_url, instructions, provider_used) = match req.payment_method.as_str() {
+        "orange_money" | "mtn_momo" => {
+            let phone = req.phone_number.clone().unwrap_or_default();
+            if phone.is_empty() {
+                return Err(AppError::BadRequest(
+                    "Numéro requis pour Orange Money / MTN MoMo".to_string(),
+                ));
+            }
+
+            let mobile_service = MobileMoneyService::new();
+            let direct_provider = if req.payment_method == "mtn_momo" {
+                MobileMoneyProvider::MTN
+            } else {
+                MobileMoneyProvider::Orange
+            };
+
+            let direct_available = mobile_service.is_provider_available(&direct_provider);
+
+            if direct_available {
+                let callback_base = std::env::var("WEBHOOK_BASE_URL")
+                    .or_else(|_| std::env::var("BACKEND_URL"))
+                    .unwrap_or_else(|_| "https://yukpo-backend-376093909298.europe-west1.run.app".to_string());
+                let callback_url = if req.payment_method == "mtn_momo" {
+                    format!("{}/webhook/mtn", callback_base)
+                } else {
+                    format!("{}/webhook/orange", callback_base)
+                };
+
+                let direct_request = MobileMoneyPaymentRequest {
+                    provider: direct_provider.clone(),
+                    phone_number: phone.clone(),
+                    amount: req.amount_xaf as f64,
+                    currency: actual_currency.clone(),
+                    transaction_reference: payment_id.clone(),
+                    description: Some(format!("Recharge Yukpo {} {}", req.amount_xaf, actual_currency)),
+                    callback_url: Some(callback_url),
+                };
+
+                match mobile_service.initiate_payment(direct_request).await {
+                    Ok(direct_response) if direct_response.success => {
+                        let provider_label = match direct_provider {
+                            MobileMoneyProvider::MTN => "mtn_direct",
+                            MobileMoneyProvider::Orange => "orange_direct",
+                        };
+                        let direct_status = match direct_response.status {
+                            MobileMoneyStatus::Completed => "success",
+                            MobileMoneyStatus::Processing => "processing",
+                            MobileMoneyStatus::Cancelled => "cancelled",
+                            MobileMoneyStatus::Failed => "failed",
+                            MobileMoneyStatus::Pending => "pending",
+                        };
+
+                        let _ = sqlx::query(
+                            "UPDATE payment_attempts SET status = $1, transaction_id = $2, aggregator_provider = $3, aggregator_ref = $4, payment_url = $5 WHERE payment_id = $6"
+                        )
+                        .bind(direct_status)
+                        .bind(direct_response.provider_transaction_id.as_deref().unwrap_or(&payment_id))
+                        .bind(provider_label)
+                        .bind(direct_response.provider_transaction_id.as_deref().unwrap_or(&payment_id))
+                        .bind(Option::<String>::None)
+                        .bind(&payment_id)
+                        .execute(&state.pg)
+                        .await;
+
+                        let instr = direct_response.instructions.unwrap_or_else(|| {
+                            "Confirmez le paiement sur votre téléphone.".to_string()
+                        });
+                        (None, instr, Some(provider_label.to_string()))
+                    }
+                    Ok(direct_response) => {
+                        log::warn!(
+                            "[initiate_payment] API directe {} indisponible/échouée, fallback agrégateur: {:?}",
+                            req.payment_method,
+                            direct_response.error
+                        );
+                        initiate_via_aggregator(
+                            &state,
+                            &payment_id,
+                            user_id,
+                            &req,
+                            &actual_currency,
+                            "fallback_after_direct",
+                        )
+                        .await?
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "[initiate_payment] API directe {} erreur, fallback agrégateur: {}",
+                            req.payment_method,
+                            e
+                        );
+                        initiate_via_aggregator(
+                            &state,
+                            &payment_id,
+                            user_id,
+                            &req,
+                            &actual_currency,
+                            "fallback_after_direct_error",
+                        )
+                        .await?
+                    }
+                }
+            } else {
+                initiate_via_aggregator(
+                    &state,
+                    &payment_id,
+                    user_id,
+                    &req,
+                    &actual_currency,
+                    "aggregator_only",
+                )
+                .await?
+            }
+        }
+        "visa" | "mastercard" | "mobile_money" | "wave" | "moov_money" | "airtel_money"
+        | "mpesa" | "vodafone_cash" | "free_money" | "tigo_pesa" | "ecocash" => {
             use crate::services::payment_aggregator::*;
 
             let aggregator = PaymentAggregator::new();
@@ -245,7 +362,7 @@ pub async fn initiate_payment(
                             "Confirmez le paiement sur votre téléphone.".to_string()
                         }
                     });
-                    (response.payment_url, instr)
+                    (response.payment_url, instr, Some(response.provider.to_string()))
                 }
                 Err(e) => {
                     log::error!("[initiate_payment] Erreur agrégateur: {}", e);
@@ -304,6 +421,7 @@ pub async fn initiate_payment(
                             "Paiement sécurisé via Stripe. Publishable key: {}",
                             response.publishable_key
                         ),
+                        Some("stripe".to_string()),
                     )
                 }
                 Err(e) => {
@@ -349,6 +467,7 @@ pub async fn initiate_payment(
                     (
                         response.approval_url,
                         "Redirection vers PayPal pour finaliser le paiement.".to_string(),
+                        Some("paypal".to_string()),
                     )
                 }
                 Err(e) => {
@@ -358,7 +477,11 @@ pub async fn initiate_payment(
             }
         }
         "bank_transfer" => {
-            (None, "Effectuez un virement bancaire vers le compte Yukpo. Les tokens seront crédités après réception.".to_string())
+            (
+                None,
+                "Effectuez un virement bancaire vers le compte Yukpo. Les tokens seront crédités après réception.".to_string(),
+                Some("bank_transfer".to_string()),
+            )
         }
         _ => {
             return Err(AppError::BadRequest(
@@ -379,7 +502,84 @@ pub async fn initiate_payment(
         payment_url,
         instructions,
         status: "pending".to_string(),
+        provider_used,
     }))
+}
+
+async fn initiate_via_aggregator(
+    state: &Arc<AppState>,
+    payment_id: &str,
+    user_id: i32,
+    req: &InitiatePaymentRequest,
+    actual_currency: &str,
+    reason: &str,
+) -> AppResult<(Option<String>, String, Option<String>)> {
+    use crate::services::payment_aggregator::*;
+
+    let aggregator = PaymentAggregator::new();
+    let channel = match req.payment_method.as_str() {
+        "orange_money" => PayChannel::OrangeMoney,
+        "mtn_momo" => PayChannel::MtnMoney,
+        "wave" => PayChannel::Wave,
+        "moov_money" => PayChannel::MoovMoney,
+        "airtel_money" => PayChannel::AirtelMoney,
+        "mpesa" => PayChannel::Mpesa,
+        "vodafone_cash" => PayChannel::VodafoneCash,
+        "free_money" => PayChannel::FreeMoney,
+        "tigo_pesa" => PayChannel::TigoPesa,
+        "ecocash" => PayChannel::EcoCash,
+        "visa" | "mastercard" => PayChannel::Visa,
+        _ => PayChannel::AllMobileMoney,
+    };
+
+    let agg_request = InitPaymentRequest {
+        user_id,
+        amount: req.amount_xaf,
+        currency: actual_currency.to_string(),
+        channel,
+        phone_number: req.phone_number.clone(),
+        description: format!("Recharge Yukpo {} {}", req.amount_xaf, actual_currency),
+        customer_email: None,
+        customer_name: None,
+        metadata: Some(serde_json::json!({
+            "payment_id": payment_id,
+            "user_id": user_id,
+            "routing_reason": reason
+        })),
+    };
+
+    match aggregator.initiate_payment(agg_request).await {
+        Ok(response) => {
+            let _ = sqlx::query(
+                "UPDATE payment_attempts SET transaction_id = $1, aggregator_provider = $2, aggregator_ref = $3, payment_url = $4 WHERE payment_id = $5"
+            )
+            .bind(&response.provider_reference)
+            .bind(&response.provider.to_string())
+            .bind(&response.provider_reference)
+            .bind(&response.payment_url)
+            .bind(payment_id)
+            .execute(&state.pg)
+            .await;
+
+            let instr = response.instructions.unwrap_or_else(|| {
+                if response.payment_url.is_some() {
+                    "Validez le paiement via la page sécurisée.".to_string()
+                } else {
+                    "Confirmez le paiement sur votre téléphone.".to_string()
+                }
+            });
+
+            Ok((
+                response.payment_url,
+                instr,
+                Some(response.provider.to_string()),
+            ))
+        }
+        Err(e) => {
+            log::error!("[initiate_payment] Erreur agrégateur: {}", e);
+            Err(AppError::Internal(format!("Erreur paiement: {}", e)))
+        }
+    }
 }
 
 /// Confirmer un paiement (webhook ou manuel) / Vérifier le statut
