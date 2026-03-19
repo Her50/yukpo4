@@ -74,7 +74,8 @@ RULES:
       const productsSummary = products.slice(0, 5).map((p: any) => `${p.nom || p.name || '?'}${p.prix ? ` (${p.prix} FCFA)` : ''}`).join(', ');
       const activeLang = lang || i18n.language || 'fr';
 
-      const res = await apiPost<any>('/api/ai/chat', {
+      // Backend expose AI routes sans préfixe `/api` : POST /ai/chat
+      const res = await apiPost<any>('/ai/chat', {
         message: query,
         context: {
           category: service?.category || service?.categorie || 'general',

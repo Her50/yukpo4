@@ -48,6 +48,9 @@ const IntelligentChatFab: React.FC<IntelligentChatFabProps> = ({
 
   const needsHigherPosition = screenName && SCREENS_WITH_BOTTOM_ACTION.includes(screenName);
   const bottomOffset = needsHigherPosition ? FAB_BOTTOM_OFFSET + 56 : FAB_BOTTOM_OFFSET;
+  const tooltipLabel = (t('intelligentChat.tooltipHelp') || 'Besoin d\'aide ?')
+    .replace(/\s+/g, ' ')
+    .trim();
 
   useEffect(() => {
     const shouldHide = screenName && hideOnScreens.includes(screenName);
@@ -63,7 +66,7 @@ const IntelligentChatFab: React.FC<IntelligentChatFabProps> = ({
       const pulse = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
-            toValue: 1.08,
+            toValue: 1.03,
             duration: 1200,
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
@@ -131,7 +134,7 @@ const IntelligentChatFab: React.FC<IntelligentChatFabProps> = ({
     <Animated.View style={[styles.container, { bottom: bottomOffset, opacity: fadeAnim }]}>
       {showTooltip && (
         <Animated.View style={[styles.tooltip, { opacity: tooltipAnim, transform: [{ translateX: -8 }] }]}>
-          <Text style={styles.tooltipText}>{t('intelligentChat.tooltipHelp') || 'Besoin d\'aide ?'}</Text>
+          <Text style={styles.tooltipText} numberOfLines={1} ellipsizeMode="clip">{tooltipLabel}</Text>
           <View style={styles.tooltipArrow} />
         </Animated.View>
       )}
@@ -147,8 +150,8 @@ const IntelligentChatFab: React.FC<IntelligentChatFabProps> = ({
           accessibilityRole="button"
           accessibilityHint={t('intelligentChat.tooltipHelp') || 'Ouvrir l\'assistant intelligent'}
         >
-          <Animated.View style={[styles.fabInner, { transform: [{ scale: scaleAnim }] }]}>
-            <SafeIcon name="bot" size={22} color="#FFFFFF" />
+          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+            <SafeIcon name="bot" size={20} color="#FFFFFF" />
           </Animated.View>
         </TouchableOpacity>
       </Animated.View>
@@ -175,25 +178,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#6366f1',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  fabInner: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
+    shadowOpacity: 0.22,
+    shadowRadius: 6,
+    elevation: 6,
   },
   statusDot: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    top: 2,
+    right: 2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: '#22c55e',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#FFFFFF',
     zIndex: 2,
   },
@@ -205,12 +202,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    maxWidth: 160,
+    alignSelf: 'flex-end',
+    minWidth: 110,
   },
   tooltipText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '500',
+    includeFontPadding: false,
+    flexShrink: 0,
+    textAlign: 'center',
   },
   tooltipArrow: {
     position: 'absolute',

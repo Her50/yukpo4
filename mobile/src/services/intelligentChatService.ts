@@ -51,7 +51,8 @@ class IntelligentChatService {
       const contextPrompt = this.buildContextPrompt(screenContext, conversationHistory, lang);
 
       const requestType = this.detectRequestType(userMessage, screenContext);
-      let response = await apiPost<any>('/api/ai/chat', {
+      // Backend (Rust) exposes AI routes without the `/api` prefix: POST /ai/chat
+      let response = await apiPost<any>('/ai/chat', {
         message: userMessage,
         context: {
           screen: screenContext.screenName,
@@ -69,29 +70,6 @@ class IntelligentChatService {
         type: requestType,
         language: lang || i18n.language || 'fr',
       });
-
-      // Some backend deployments expose AI routes without `/api` prefix.
-      const status = (response as any)?.status;
-      if ((status === 404 || (response as any)?.error?.includes?.('404')) && !(response as any)?.data?.message) {
-        response = await apiPost<any>('/ai/chat', {
-          message: userMessage,
-          context: {
-            screen: screenContext.screenName,
-            screen_type: screenContext.screenType,
-            available_actions: screenContext.availableActions.map(a => a.label).slice(0, 10),
-            visible_elements: screenContext.visibleElements.map(e => e.label).slice(0, 8),
-            user_role: screenContext.userData?.role || 'guest',
-            service_data: screenContext.serviceData || null,
-            context_prompt: contextPrompt,
-            conversation_history: conversationHistory.slice(-5).map(m => ({
-              role: m.isUser ? 'user' : 'assistant',
-              content: m.text,
-            })),
-          },
-          type: requestType,
-          language: lang || i18n.language || 'fr',
-        });
-      }
 
       const data = response?.data || response;
       if (data?.message) {

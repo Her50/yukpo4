@@ -13,7 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { usePaymentMethodCheck } from '../hooks/usePaymentMethodCheck';
 import useUserCountry from '../hooks/useUserCountry';
-import { apiPost } from '../services/api';
+import { apiGet, apiPost } from '../services/api';
 import { theme } from '../theme/theme';
 
 // Mapping pays → devise (miroir du backend payment_aggregator.rs::currency_for_country)
@@ -61,7 +61,7 @@ const RechargeTokensScreen: React.FC = () => {
   const route = useRoute<any>();
   const { user, refreshUser } = useAuth();
   const { t } = useLanguageSafe();
-  const { countryCode } = useUserCountry();
+  const { countryCode, isLoading: isCountryLoading } = useUserCountry();
   const userCurrency = currencyForCountry(countryCode);
 
   const returnTo = route.params?.returnTo as string | undefined;
@@ -244,9 +244,11 @@ const RechargeTokensScreen: React.FC = () => {
     },
   ];
 
+  const MIN_RECHARGE_XAF = 1000;
+
   // ── Enforcement dette: montant minimum = dette cumulée ──
   const hasDebt = (debtAmount ?? 0) > 0;
-  const minimumRechargeAmount = hasDebt ? Math.max(debtAmount!, 1000) : 100;
+  const minimumRechargeAmount = hasDebt ? Math.max(debtAmount!, MIN_RECHARGE_XAF) : MIN_RECHARGE_XAF;
 
   // Pre-select the option that covers the debt
   React.useEffect(() => {
@@ -264,6 +266,9 @@ const RechargeTokensScreen: React.FC = () => {
   const [showPaymentPrompt, setShowPaymentPrompt] = useState(false);
   const paymentCheck = usePaymentMethodCheck();
 
+  // Filtrage des moyens de paiement mobiles selon le pays (GPS / profil)
+  const [mobilePaymentIdsForCountry, setMobilePaymentIdsForCountry] = useState<string[]>(['mtn_momo', 'orange_money']);
+
   // Charger les moyens de paiement sauvegardés au montage et pré-remplir le numéro
   React.useEffect(() => {
     paymentCheck.fetchPaymentMethods().then((info) => {
@@ -275,6 +280,64 @@ const RechargeTokensScreen: React.FC = () => {
     });
   }, []);
 
+  React.useEffect(() => {
+    if (isCountryLoading) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await apiGet<any>('/methods');
+        // NOTE: certains endpoints backend sont enveloppés (success + data), selon apiCall/apiGet.
+        const payload = response?.data ?? response;
+        const serverData = payload?.success === true && payload?.data ? payload.data : payload;
+
+        const c = String(countryCode ?? '').toUpperCase();
+        const mobile = serverData?.mobile_money ?? {};
+
+        const allowed: string[] = [];
+        if (Array.isArray(mobile?.orange_money?.countries) && mobile.orange_money.countries.includes(c)) {
+          allowed.push('orange_money');
+        }
+        if (Array.isArray(mobile?.mtn_money?.countries) && mobile.mtn_money.countries.includes(c)) {
+          allowed.push('mtn_momo');
+        }
+
+        if (!cancelled) {
+          setMobilePaymentIdsForCountry(allowed);
+        }
+      } catch (e) {
+        console.warn('[RechargeTokensScreen] Failed to fetch payment methods availability:', e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [countryCode, isCountryLoading]);
+
+  // Si l'utilisateur avait sélectionné un moyen mobile qui n'est plus autorise pour le pays,
+  // on le deselecctionne pour empecher un echec de paiement.
+  React.useEffect(() => {
+    if (!selectedPaymentMethod) return;
+    const selectedId = selectedPaymentMethod;
+    const isMobileSelected = [
+      'mtn_momo',
+      'orange_money',
+      'wave',
+      'moov_money',
+      'airtel_money',
+      'mpesa',
+      'vodafone_cash',
+      'free_money',
+      'tigo_pesa',
+      'ecocash',
+    ].includes(selectedId);
+
+    if (isMobileSelected && !mobilePaymentIdsForCountry.includes(selectedId)) {
+      setSelectedPaymentMethod(null);
+    }
+  }, [mobilePaymentIdsForCountry, selectedPaymentMethod]);
+
   const handleRecharge = async () => {
     if (!selectedOption && !customAmount) {
       Alert.alert(
@@ -284,18 +347,26 @@ const RechargeTokensScreen: React.FC = () => {
       return;
     }
 
-    // Enforce minimum amount when user has debt
+    // Enforce minimum amount (montant libre compris)
     const chosenAmount = selectedOption
       ? rechargeOptions.find(opt => opt.id === selectedOption)?.amount || 0
       : parseInt(customAmount) || 0;
 
-    if (hasDebt && chosenAmount < minimumRechargeAmount) {
-      Alert.alert(
-        t('rechargeScreen.debtMinimumTitle') || 'Montant insuffisant',
-        (t('rechargeScreen.debtMinimumMsg') || 'Vous avez une dette de {{debt}} XAF. Le montant minimum de recharge est de {{minimum}} XAF pour couvrir votre dette. Nous vous encourageons à recharger davantage pour une utilisation confortable.')
-          .replace('{{debt}}', String(debtAmount))
-          .replace('{{minimum}}', String(minimumRechargeAmount))
-      );
+    if (chosenAmount < minimumRechargeAmount) {
+      if (hasDebt) {
+        Alert.alert(
+          t('rechargeScreen.debtMinimumTitle') || 'Montant insuffisant',
+          (t('rechargeScreen.debtMinimumMsg') ||
+            'Vous avez une dette de {{debt}} XAF. Le montant minimum de recharge est de {{minimum}} XAF pour couvrir votre dette. Nous vous encourageons à recharger davantage pour une utilisation confortable.')
+            .replace('{{debt}}', String(debtAmount))
+            .replace('{{minimum}}', String(minimumRechargeAmount))
+        );
+      } else {
+        Alert.alert(
+          t('rechargeScreen.errorTitle') || 'Erreur',
+          `Le montant minimum de recharge est de ${minimumRechargeAmount} ${userCurrency.symbol}.`
+        );
+      }
       return;
     }
 
@@ -559,10 +630,10 @@ const RechargeTokensScreen: React.FC = () => {
 
       <TouchableOpacity
         onPress={() => setCurrentStep('payment')}
-        disabled={!selectedOption && !customAmount}
+        disabled={!selectedOption && !customAmount || getSelectedAmount() < minimumRechargeAmount}
         style={[
           styles.nextButton,
-          (!selectedOption && !customAmount) && styles.nextButtonDisabled
+          ((!selectedOption && !customAmount) || getSelectedAmount() < minimumRechargeAmount) && styles.nextButtonDisabled
         ]}
       >
         <Text style={styles.nextButtonText}>{t('rechargeScreen.continue') || 'Continuer →'}</Text>
@@ -575,7 +646,9 @@ const RechargeTokensScreen: React.FC = () => {
       <Title style={styles.stepTitle}>{t('payment.method') || t('rechargeTokens.methodeDePaiement')}</Title>
 
       <View style={styles.paymentMethodsContainer}>
-        {paymentMethods.map((method) => (
+        {paymentMethods
+          .filter((m) => m.type !== 'mobile' || mobilePaymentIdsForCountry.includes(m.id))
+          .map((method) => (
           <TouchableOpacity
             key={method.id}
             style={[
@@ -648,10 +721,17 @@ const RechargeTokensScreen: React.FC = () => {
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setCurrentStep('confirm')}
-          disabled={!selectedPaymentMethod || (['mtn_momo', 'orange_money', 'wave', 'moov_money', 'airtel_money', 'mpesa', 'vodafone_cash', 'free_money', 'tigo_pesa', 'ecocash'].includes(selectedPaymentMethod || '') && !phoneNumber)}
+          disabled={
+            !selectedPaymentMethod ||
+            getSelectedAmount() < minimumRechargeAmount ||
+            (['mtn_momo', 'orange_money', 'wave', 'moov_money', 'airtel_money', 'mpesa', 'vodafone_cash', 'free_money', 'tigo_pesa', 'ecocash'].includes(selectedPaymentMethod || '') && !phoneNumber)
+          }
           style={[
             styles.nextButton,
-            (!selectedPaymentMethod || (['mtn_momo', 'orange_money', 'wave', 'moov_money', 'airtel_money', 'mpesa', 'vodafone_cash', 'free_money', 'tigo_pesa', 'ecocash'].includes(selectedPaymentMethod || '') && !phoneNumber)) && styles.nextButtonDisabled
+            (!selectedPaymentMethod ||
+              getSelectedAmount() < minimumRechargeAmount ||
+              (['mtn_momo', 'orange_money', 'wave', 'moov_money', 'airtel_money', 'mpesa', 'vodafone_cash', 'free_money', 'tigo_pesa', 'ecocash'].includes(selectedPaymentMethod || '') && !phoneNumber)) &&
+              styles.nextButtonDisabled
           ]}
         >
           <Text style={styles.nextButtonText}>{t('rechargeScreen.continue') || 'Continuer →'}</Text>
@@ -703,7 +783,7 @@ const RechargeTokensScreen: React.FC = () => {
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleRecharge}
-          disabled={loading}
+          disabled={loading || getSelectedAmount() < minimumRechargeAmount}
           style={[
             styles.confirmButton,
             loading && styles.confirmButtonDisabled

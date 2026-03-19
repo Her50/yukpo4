@@ -1,5 +1,5 @@
 import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
-import { AVPlaybackStatus, ResizeMode, Video } from 'expo-av';
+import { Audio, AVPlaybackStatus, ResizeMode, Video } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -180,7 +180,7 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 item?.title ||
                 item?.data?.titre ||
                 item?.data?.title ||
-                `Vidéo ${index + 1}`;
+                '';
             const id =
                 item?.id ||
                 item?.content_id ||
@@ -307,6 +307,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const flatListRef = useRef<FlatList>(null);
     const lastTapRef = useRef<Record<string, number>>({});
     const heartAnim = useRef(new Animated.Value(0)).current;
+    const currentIndexRef = useRef(0);
 
     const fetchFeed = useCallback(async (isRefresh = false, pageNum = 1) => {
         if (!isRefresh && pageNum === 1) setLoading(true);
@@ -372,6 +373,20 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     useEffect(() => { fetchFeed(); }, [fetchFeed]);
 
+    useEffect(() => {
+        Audio.setAudioModeAsync({
+            staysActiveInBackground: false,
+            playsInSilentModeIOS: true,
+            shouldDuckAndroid: true,
+            interruptionModeIOS: 1,
+            interruptionModeAndroid: 1,
+        }).catch(() => undefined);
+    }, []);
+
+    useEffect(() => {
+        currentIndexRef.current = currentIndex;
+    }, [currentIndex]);
+
     // ✅ Filtrer le feed selon la recherche
     useEffect(() => {
         if (!searchQuery.trim()) {
@@ -416,8 +431,8 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const preloadNextVideos = useCallback(async (currentIdx: number) => {
         for (let i = 1; i <= 3; i++) {
             const nextIndex = currentIdx + i;
-            if (nextIndex < feed.length) {
-                const nextItem = feed[nextIndex];
+            if (nextIndex < filteredFeed.length) {
+                const nextItem = filteredFeed[nextIndex];
                 if (nextItem?.videoUrl) {
                     // Précharger en arrière-plan sans bloquer
                     try {
@@ -429,13 +444,13 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 }
             }
         }
-    }, [feed]);
+    }, [filteredFeed]);
 
     // ✅ Lancer préchargement quand currentIndex change
     useEffect(() => {
-        if (feed.length > 0 && currentIndex >= 0) {
+        if (filteredFeed.length > 0 && currentIndex >= 0) {
             // ✅ NOUVEAU: Réinitialiser le compteur de lectures pour la nouvelle vidéo
-            const currentItem = feed[currentIndex];
+            const currentItem = filteredFeed[currentIndex];
             const contentId = currentItem?.contentId || currentItem?.id;
             if (contentId && !playCountRef.current[contentId]) {
                 setPlayCount(prev => ({ ...prev, [contentId]: 0 }));
@@ -448,7 +463,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
             return () => clearTimeout(timeoutId);
         }
-    }, [currentIndex, feed.length, preloadNextVideos]);
+    }, [currentIndex, filteredFeed, preloadNextVideos]);
 
     // ✅ Vérifier le statut de suivi pour les vidéos visibles
     const checkedFollowRef = useRef<Set<string>>(new Set());
@@ -472,9 +487,9 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     // ✅ CORRIGÉ: Réinitialiser l'état au retour sur l'écran
     useEffect(() => {
-        if (isFocused && feed.length > 0) {
+        if (isFocused && filteredFeed.length > 0) {
             // Réinitialiser l'état de lecture pour la vidéo actuelle
-            const currentItem = feed[currentIndex];
+            const currentItem = filteredFeed[currentIndex];
             if (currentItem) {
                 const contentId = currentItem.contentId || currentItem.id;
                 if (contentId && !playCountRef.current[contentId]) {
@@ -482,7 +497,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 }
             }
         }
-    }, [isFocused, feed, currentIndex]);
+    }, [isFocused, filteredFeed, currentIndex]);
 
     const handleToggleFollow = useCallback(async (serviceId: string | number) => {
         if (!serviceId || !user?.id) {
@@ -535,7 +550,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     // ✅ View tracking: comptabiliser la vue quand vidéo active pendant >2s
     useEffect(() => {
-        const currentItem = feed[currentIndex];
+        const currentItem = filteredFeed[currentIndex];
         if (!currentItem || !isFocused) return;
         const contentId = currentItem.contentId || currentItem.id;
         if (viewedSet.current.has(contentId)) return;
@@ -545,7 +560,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
             apiPost(`/api/content/${contentId}/engagement`, { action: 'view' }).catch(() => undefined);
         }, 2000);
         return () => clearTimeout(timer);
-    }, [currentIndex, feed, isFocused]);
+    }, [currentIndex, filteredFeed, isFocused]);
 
     // ✅ Spinning disc animation (comme TikTok)
     useEffect(() => {
@@ -564,23 +579,31 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         videoRefs.current.set(index, ref);
     }, []);
 
+    const forceSingleActiveVideo = useCallback((activeIndex: number) => {
+        videoRefs.current.forEach((ref, idx) => {
+            if (!ref) return;
+            if (idx === activeIndex) {
+                ref.playAsync().catch(() => undefined);
+            } else {
+                ref.pauseAsync().catch(() => undefined);
+                ref.setStatusAsync({ shouldPlay: false }).catch(() => undefined);
+            }
+        });
+    }, []);
+
     const handleViewableItemsChanged = useCallback(
         ({ viewableItems }: { viewableItems: Array<ViewToken> }) => {
             if (!isFocused || viewableItems.length === 0) return;
-
-            const nextIndex = viewableItems[0]?.index ?? 0;
-            if (nextIndex === currentIndex || nextIndex < 0 || nextIndex >= filteredFeed.length) return;
-
-            // ✅ CORRIGÉ: Pause immédiate de TOUTES les vidéos non-courantes
-            videoRefs.current.forEach((ref, idx) => {
-                if (ref && idx !== nextIndex) {
-                    ref.pauseAsync().catch(() => undefined);
-                }
-            });
-
-            setCurrentIndex(nextIndex);
+            const firstVisible = viewableItems.find((v) => v.isViewable && typeof v.index === 'number');
+            const nextIndex = firstVisible?.index ?? 0;
+            if (nextIndex < 0 || nextIndex >= filteredFeed.length) return;
+            if (nextIndex !== currentIndexRef.current) {
+                setCurrentIndex(nextIndex);
+                currentIndexRef.current = nextIndex;
+                forceSingleActiveVideo(nextIndex);
+            }
         },
-        [currentIndex, filteredFeed.length, isFocused],
+        [filteredFeed.length, isFocused, forceSingleActiveVideo],
     );
 
     // ✅ CORRIGÉ: Pause/play basé sur currentIndex ET focus de l'écran
@@ -591,20 +614,33 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
             if (!ref) return;
             const item = filteredFeed[index];
             if (!item) return;
-
             const contentId = item.contentId || item.id;
             const isPaused = contentId ? (pausedMap[contentId] ?? false) : false;
             const isActive = index === currentIndex;
 
-            if (isActive && !isPaused && isFocused) {
-                // Jouer la vidéo active
+            if (isActive && !isPaused) {
                 ref.playAsync().catch(() => undefined);
             } else {
-                // Mettre en pause toutes les autres vidéos
                 ref.pauseAsync().catch(() => undefined);
+                ref.setStatusAsync({ shouldPlay: false }).catch(() => undefined);
             }
         });
     }, [currentIndex, pausedMap, filteredFeed, isFocused]);
+
+    useEffect(() => {
+        if (!isFocused) return;
+        if (filteredFeed.length === 0) {
+            setCurrentIndex(0);
+            currentIndexRef.current = 0;
+            return;
+        }
+        if (currentIndex >= filteredFeed.length) {
+            const clamped = Math.max(0, filteredFeed.length - 1);
+            setCurrentIndex(clamped);
+            currentIndexRef.current = clamped;
+            flatListRef.current?.scrollToOffset({ offset: clamped * SCREEN_HEIGHT, animated: false });
+        }
+    }, [filteredFeed.length, currentIndex, isFocused]);
 
     // ✅ CORRIGÉ: Arrêter toutes les vidéos et réinitialiser l'état quand on quitte l'écran
     useFocusEffect(
@@ -1112,15 +1148,6 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     )}
                 </View>
 
-                {/* ✅ FIX 2026-03-14: playIndicator sorti de bottomInfo → overlay indépendant (ne push plus le layout) */}
-                {isActive && (
-                    <View style={styles.playIndicator}>
-                        <Text style={styles.playIndicatorText}>
-                            {playCount[contentId] === 1 ? '🔄' : '▶️'} {playCount[contentId] || 1}/2
-                        </Text>
-                    </View>
-                )}
-
                 {/* ✅ CORRIGÉ 2026-03-18: Boutons CTA uniquement pour la vidéo active
                     Empêche le bouton "Voir produit" de rester visible sur une autre vidéo */}
                 {isActive && (
@@ -1367,6 +1394,18 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     if (ref) {
                         ref.pauseAsync().catch(() => undefined);
                     }
+                }}
+                onMomentumScrollEnd={(event) => {
+                    const offsetY = event.nativeEvent.contentOffset.y;
+                    const snappedIndex = Math.max(0, Math.min(
+                        filteredFeed.length - 1,
+                        Math.round(offsetY / SCREEN_HEIGHT)
+                    ));
+                    if (snappedIndex !== currentIndexRef.current) {
+                        setCurrentIndex(snappedIndex);
+                        currentIndexRef.current = snappedIndex;
+                    }
+                    forceSingleActiveVideo(snappedIndex);
                 }}
                 onEndReached={loadMore}
                 onEndReachedThreshold={0.5}
@@ -1871,23 +1910,6 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 15,
         fontWeight: '800',
-    },
-    // ✅ AJOUT: Indicateur de lecture style TikTok
-    playIndicator: {
-        position: 'absolute',
-        top: Platform.OS === 'ios' ? 130 : 110,
-        alignSelf: 'center',
-        left: SCREEN_WIDTH / 2 - 30,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 12,
-        zIndex: 30,
-    },
-    playIndicatorText: {
-        color: '#fff',
-        fontSize: 11,
-        fontWeight: '700',
     },
     replayButton: {
         position: 'absolute',

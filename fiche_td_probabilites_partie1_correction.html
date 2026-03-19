@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Correction Avancee - Probabilites (Partie 1)</title>
+  <style>
+    :root { --text:#1f2937; --muted:#4b5563; --line:#d1d5db; --accent:#0f766e; --soft:#f8fafc; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Segoe UI", Arial, sans-serif; color:var(--text); line-height:1.55; background:#fff; }
+    .page { max-width:1020px; margin:18px auto; padding:22px; border:1px solid var(--line); border-radius:10px; }
+    h1,h2 { margin-top:0; color:#0b3a37; }
+    h1 { margin-bottom:6px; font-size:1.75rem; }
+    .subtitle { margin:0 0 14px; color:var(--muted); }
+    .section { margin:12px 0; padding:10px; border:1px solid var(--line); border-radius:10px; }
+    .section h2 { color:var(--accent); font-size:1.08rem; margin-bottom:8px; }
+    .bloc { margin:8px 0; padding:9px 10px; border-left:4px solid #14b8a6; background:var(--soft); }
+    .m { display:block; margin:6px 0; background:#f9fafb; padding:6px 8px; border-radius:6px; overflow-x:auto; }
+    .footer { margin-top:18px; text-align:right; color:var(--muted); font-size:0.9rem; }
+    math { font-size:1.02rem; }
+    @media print {
+      .page { max-width:none; margin:0; border:none; border-radius:0; padding:10mm; }
+      .section, .bloc { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>Correction Avancee - Probabilites (Partie 1)</h1>
+    <p class="subtitle">Corrections synthetiques des exercices releves, organisees par chapitre.</p>
+
+    <section class="section">
+      <h2>Chapitre 1</h2>
+      <div class="bloc"><strong>Ex.1 :</strong> Poser B1=A1, Bn=An\A(n-1). Les Bn sont disjoints et union Bn = union An. Par sigma-additivite + passage a la limite: continuite croissante.</div>
+      <div class="bloc"><strong>Ex.2 :</strong> Appliquer Ex.1 a Ac_n croissante, puis complementation pour obtenir la continuite decroissante.</div>
+      <div class="bloc"><strong>Ex.3 :</strong> Decomposer en unions disjointes (A\B\C, etc.) puis sommer.</div>
+      <div class="bloc"><strong>Ex.4 :</strong> Sur {X>=a}, on a X/a>=1, donc 1_{X>=a} <= X/a. Esperance des deux cotes.</div>
+      <div class="bloc"><strong>Ex.5 :</strong> Appliquer Markov a Z=(X-E[X])^2.</div>
+      <div class="bloc"><strong>Ex.6 :</strong> Pour variables simples puis approximation monotone/dominee, obtenir E[XY]=E[X]E[Y], donc Cov=0.</div>
+    </section>
+
+    <section class="section">
+      <h2>Chapitre 2</h2>
+      <div class="bloc"><strong>Ex.7 :</strong> Binomiale: G(s)=(1-p+ps)^n. Derivees en 1: E[X]=G'(1)=np, Var(X)=G''(1)+G'(1)-G'(1)^2=np(1-p).</div>
+      <div class="bloc"><strong>Ex.8 :</strong> Poisson:
+        <div class="m"><math><mrow><msub><mi>G</mi><mi>N</mi></msub><mo>(</mo><mi>s</mi><mo>)</mo><mo>=</mo><munderover><mo>&#x2211;</mo><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow><mo>&#x221E;</mo></munderover><mfrac><msup><mi>&#x03BB;</mi><mi>k</mi></msup><mrow><mi>k</mi><mo>!</mo></mrow></mfrac><msup><mi>s</mi><mi>k</mi></msup><msup><mi>e</mi><mrow><mo>-</mo><mi>&#x03BB;</mi></mrow></msup><mo>=</mo><msup><mi>e</mi><mrow><mi>&#x03BB;</mi><mo>(</mo><mi>s</mi><mo>-</mo><mn>1</mn><mo>)</mo></mrow></msup></mrow></math></div>
+      </div>
+      <div class="bloc"><strong>Ex.9 :</strong> Sans memoire:
+        <div class="m"><math><mrow><mi>P</mi><mo>(</mo><mi>Y</mi><mo>&gt;</mo><mi>s</mi><mo>+</mo><mi>t</mi><mo>|</mo><mi>Y</mi><mo>&gt;</mo><mi>s</mi><mo>)</mo><mo>=</mo><mfrac><msup><mi>e</mi><mrow><mo>-</mo><mi>&#x03BB;</mi><mo>(</mo><mi>s</mi><mo>+</mo><mi>t</mi><mo>)</mo></mrow></msup><msup><mi>e</mi><mrow><mo>-</mo><mi>&#x03BB;</mi><mi>s</mi></mrow></msup></mfrac><mo>=</mo><msup><mi>e</mi><mrow><mo>-</mo><mi>&#x03BB;</mi><mi>t</mi></mrow></msup></mrow></math></div>
+      </div>
+      <div class="bloc"><strong>Ex.10 :</strong> Integration directe:
+        <div class="m"><math><mrow><msub><mi>&#x03C6;</mi><mi>Y</mi></msub><mo>(</mo><mi>u</mi><mo>)</mo><mo>=</mo><msubsup><mo>&#x222B;</mo><mn>0</mn><mo>&#x221E;</mo></msubsup><mi>&#x03BB;</mi><msup><mi>e</mi><mrow><mo>-</mo><mi>&#x03BB;</mi><mi>y</mi></mrow></msup><msup><mi>e</mi><mrow><mi>i</mi><mi>u</mi><mi>y</mi></mrow></msup><mi>d</mi><mi>y</mi><mo>=</mo><mfrac><mi>&#x03BB;</mi><mrow><mi>&#x03BB;</mi><mo>-</mo><mi>i</mi><mi>u</mi></mrow></mfrac></mrow></math></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Chapitre 3</h2>
+      <div class="bloc"><strong>Ex.11 :</strong> Domaine triangulaire. Verification: integral integral 2 dxdy sur 0&lt;x&lt;y&lt;1 vaut 1. Marginales: f_X(x)=2(1-x), f_Y(y)=2y. Non independance (produit marginales different de f(x,y)).</div>
+      <div class="bloc"><strong>Ex.12 :</strong> Ecrire A comme union disjointe des A cap B_i. Bayes suit en divisant par P(A).</div>
+      <div class="bloc"><strong>Ex.13 :</strong> Poser U=X-E[X], V=Y-E[Y], puis Cauchy-Schwarz sur E[UV].</div>
+    </section>
+
+    <section class="section">
+      <h2>Chapitre 4</h2>
+      <div class="bloc"><strong>Ex.14 :</strong> p.s.: w^n->0 pour w in [0,1), et point w=1 negligeable. Probabilite: suit de p.s. L1: int_0^1 w^n dw=1/(n+1)->0. Loi: convergence en probabilite implique convergence en loi.</div>
+      <div class="bloc"><strong>Ex.15 :</strong> Pour eps&gt;0:
+        <div class="m"><math><mrow><mi>P</mi><mo>(</mo><mo>|</mo><msub><mi>X</mi><mi>n</mi></msub><mo>-</mo><mi>X</mi><mo>|</mo><mo>&gt;</mo><mi>&#x03B5;</mi><mo>)</mo><mo>&#x2264;</mo><mfrac><mrow><mi>E</mi><mo>[</mo><mo>|</mo><msub><mi>X</mi><mi>n</mi></msub><mo>-</mo><mi>X</mi><mo>|</mo><mo>]</mo></mrow><mi>&#x03B5;</mi></mfrac><mo>&#x2192;</mo><mn>0</mn></mrow></math></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Chapitre 5</h2>
+      <div class="bloc"><strong>Ex.16 :</strong> LGN: Xbar_n->mu. TCL: (S_n-nmu)/(sigma sqrt(n)) => N(0,1). Bernoulli(0.4), n=100: Xbar_100 approx N(0.4,0.24/100), z1=(0.35-0.4)/0.049~-1.02, z2=(0.50-0.4)/0.049~2.04, proba ~ Phi(2.04)-Phi(-1.02) ~ 0.825.</div>
+    </section>
+
+    <p class="footer">Correction avancee - Probabilites Partie 1</p>
+  </main>
+</body>
+</html>

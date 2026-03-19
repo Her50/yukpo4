@@ -91,9 +91,9 @@ export const useAIWithFallback = () => {
             console.warn(`[useAIWithFallback] Niveau 1 échoué (${chatContext}):`, err?.message || err);
         }
 
-        // Niveau 2: Appel /api/ai/chat centralisé
+        // Niveau 2: Appel AI backend centralisé (sans préfixe `/api`)
         try {
-            const chatResult = await apiPost<any>('/api/ai/chat', {
+            const chatResult = await apiPost<any>('/ai/chat', {
                 message: chatPrompt,
                 context: chatContext,
                 fallback: true,
@@ -127,7 +127,7 @@ export const useAIWithFallback = () => {
     const askPharmacyQuestion = useCallback(async (question: string, medications?: string[]) => {
         return callWithFallback(
             async () => {
-                const response = await apiPost<any>('/api/ai/chat', {
+                const response = await apiPost<any>('/ai/chat', {
                     message: question,
                     context: { category: 'pharmacie', medications },
                     type: 'question',

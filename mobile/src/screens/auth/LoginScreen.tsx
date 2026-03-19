@@ -378,16 +378,25 @@ const LoginScreen: React.FC = () => {
         <View style={styles.partnerContainer}>
           <TouchableOpacity
             onPress={() => {
+              const normalizeAlertText = (value: string) =>
+                String(value || '')
+                  .replace(/\\\\n/g, '\n')
+                  .replace(/\\n/g, '\n')
+                  .replace(/\\\\'/g, '\'')
+                  .replace(/\\'/g, '\'')
+                  .trim();
+
               // ✅ NOUVEAU: Afficher un modal de confirmation avant de naviguer
               const partnerAlertMessage = [
-                t('loginScreen.ceBoutonEstUniquementDestineAuxPartenaires'),
+                normalizeAlertText(t('loginScreen.ceBoutonEstUniquementDestineAuxPartenaires')),
                 '',
                 '⚠️ Important :',
-                `• ${t('loginScreen.lesFonctionnalitesUtilisateursClassiquesNeSeront')}`,
-                `• ${t('loginScreen.votreCompteDevraEtreValideParUn')}`,
-                `• ${t('loginScreen.vousRecevrezUnEmailDeConfirmation')}`,
+                `• ${normalizeAlertText(t('loginScreen.lesFonctionnalitesUtilisateursClassiquesNeSeront'))}`,
+                `• ${normalizeAlertText(t('loginScreen.votreCompteDevraEtreValideParUn'))}`,
+                `• ${normalizeAlertText(t('loginScreen.vousRecevrezUnEmailDeConfirmation'))}`,
+                `• ${normalizeAlertText(t('loginScreen.pourLesPrestatairesUtilisezUnCompteNormal'))}`,
                 '',
-                t('loginScreen.etesvousSurDeVouloirContinuer'),
+                normalizeAlertText(t('loginScreen.etesvousSurDeVouloirContinuer')),
               ].join('\n');
 
               Alert.alert(

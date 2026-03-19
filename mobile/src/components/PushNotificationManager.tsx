@@ -8,6 +8,7 @@ import * as Notifications from 'expo-notifications';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, DeviceEventEmitter } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { coachingNotificationService } from '../services/coachingNotificationService';
 import { notificationSoundService } from '../services/notificationSoundService';
 import { setupForegroundNotificationHandler, setupNotificationResponseHandler } from '../services/pushNotifications';
 import InAppCallModal from './InAppCallModal';
@@ -213,6 +214,15 @@ const PushNotificationManager: React.FC = () => {
                         }
                     ]
                 );
+            }
+            // Notifications Coach IA — garder un historique visuel lisible
+            else if (data?.type === 'coaching') {
+                const title = String(notification.request.content.title || 'Coach IA');
+                const body = String(notification.request.content.body || '');
+                const subtype = String((data as any)?.subtype || 'midday_activity');
+                void coachingNotificationService
+                    .recordFromNotification(subtype as any, title, body, data as any)
+                    .catch(() => { });
             }
             else {
                 // Autres notifications - afficher une alerte

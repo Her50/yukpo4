@@ -115,7 +115,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const handleAISuggest = async () => {
         setLoadingAI(true);
         try {
-            const resp = await apiPost('/api/ai/chat', {
+            const resp = await apiPost('/ai/chat', {
                 message: `As a travel agency management expert, analyze my agency "${formData.nom_agence}" with ${selectedDestinations.length} destinations, ${schedules.length} schedules and ${selectedCompagnies.length} companies. Destinations: ${selectedDestinations.map((d: any) => d.place_name || d.raw || d).join(', ')}. Services: ${selectedServices.join(', ')}. Give me 3 concrete and short recommendations to improve revenue and customer satisfaction. Respond in the user's language.`,
                 context: 'travel_agency_partner_dashboard',
                 language: activeLang,

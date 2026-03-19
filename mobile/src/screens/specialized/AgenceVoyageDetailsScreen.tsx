@@ -163,7 +163,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
         if (!agence) return;
         setLoadingAI(true);
         try {
-            const resp = await apiPost('/api/ai/chat', {
+            const resp = await apiPost('/ai/chat', {
                 message: `As an expert travel assistant, recommend the best routes and tips for a traveler using the agency "${agence.nom_agence}" based in ${agence.ville || agence.quartier || 'Cameroon'}. Available destinations: ${(agence.destinations || []).join(', ')}. Services: ${(agence.services_voyage || []).join(', ')}. Give 3 short and practical suggestions. Respond in the user's language.`,
                 context: 'travel_agency_recommendation',
                 language: activeLang,

@@ -114,9 +114,9 @@ pub async fn initiate_payment(
         return Err(AppError::BadRequest("Montant invalide".to_string()));
     }
 
-    if req.amount_xaf < 100 {
+    if req.amount_xaf < 1000 {
         return Err(AppError::BadRequest(
-            "Montant minimum: 100 tokens".to_string(),
+            "Montant minimum: 1000 tokens".to_string(),
         ));
     }
 

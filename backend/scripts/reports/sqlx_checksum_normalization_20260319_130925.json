@@ -1,0 +1,110 @@
+﻿{
+    "generated_at":  "2026-03-19T13:09:31.4509580+01:00",
+    "host":  "34.79.199.41",
+    "port":  5432,
+    "database":  "yukpo_db",
+    "migration_source":  "C:\\Users\\23767\\yukpomnang2\\backend\\migrations",
+    "apply_requested":  false,
+    "applied_count":  362,
+    "local_unique_versions":  371,
+    "aligned_count":  362,
+    "update_count":  0,
+    "missing_local_count":  0,
+    "ambiguous_local_count":  0,
+    "updates":  [
+
+                ],
+    "resolved_ambiguous":  [
+                               {
+                                   "version":  20250101,
+                                   "db_description":  "001 create advanced features tables",
+                                   "selected_file":  "20250101_001_create_advanced_features_tables.sql"
+                               },
+                               {
+                                   "version":  20250127,
+                                   "db_description":  "000001 create user saved addresses",
+                                   "selected_file":  "20250127_000001_create_user_saved_addresses.sql"
+                               },
+                               {
+                                   "version":  20250128,
+                                   "db_description":  "001 add media urls to comments",
+                                   "selected_file":  "20250128_001_add_media_urls_to_comments.sql"
+                               },
+                               {
+                                   "version":  20250129,
+                                   "db_description":  "add insurance qr covoiturage",
+                                   "selected_file":  "20250129_add_insurance_qr_covoiturage.sql"
+                               },
+                               {
+                                   "version":  20251126,
+                                   "db_description":  "create specialized services tables",
+                                   "selected_file":  "20251126_create_specialized_services_tables.sql"
+                               },
+                               {
+                                   "version":  20251127,
+                                   "db_description":  "120000 create get product reactions count",
+                                   "selected_file":  "20251127_120000_create_get_product_reactions_count.sql"
+                               },
+                               {
+                                   "version":  20251201,
+                                   "db_description":  "add missing product descriptions",
+                                   "selected_file":  "20251201_add_missing_product_descriptions.sql"
+                               },
+                               {
+                                   "version":  20251203,
+                                   "db_description":  "create videos table with hashtags",
+                                   "selected_file":  "20251203_create_videos_table_with_hashtags.sql"
+                               },
+                               {
+                                   "version":  20251221,
+                                   "db_description":  "add fallback to hybrid image search",
+                                   "selected_file":  "20251221_add_fallback_to_hybrid_image_search.sql"
+                               },
+                               {
+                                   "version":  20251224,
+                                   "db_description":  "fix image search relevance and performance",
+                                   "selected_file":  "20251224_fix_image_search_relevance_and_performance.sql"
+                               },
+                               {
+                                   "version":  20251227,
+                                   "db_description":  "ensure search indexes exist",
+                                   "selected_file":  "20251227_ensure_search_indexes_exist.sql"
+                               },
+                               {
+                                   "version":  20251230,
+                                   "db_description":  "fix add product tls error",
+                                   "selected_file":  "20251230_fix_add_product_tls_error.sql"
+                               },
+                               {
+                                   "version":  20251231,
+                                   "db_description":  "fix audio cache cleanup null handling",
+                                   "selected_file":  "20251231_fix_audio_cache_cleanup_null_handling.sql"
+                               },
+                               {
+                                   "version":  20260114,
+                                   "db_description":  "create negotiated prices table",
+                                   "selected_file":  "20260114_create_negotiated_prices_table.sql"
+                               },
+                               {
+                                   "version":  20260115,
+                                   "db_description":  "fix image search empty results",
+                                   "selected_file":  "20260115_fix_image_search_empty_results.sql"
+                               },
+                               {
+                                   "version":  46,
+                                   "db_description":  "fix product lifecycle sync trigger",
+                                   "selected_file":  "00000046_fix_product_lifecycle_sync_trigger.sql"
+                               },
+                               {
+                                   "version":  5,
+                                   "db_description":  "002 add pharmacy products",
+                                   "selected_file":  "00000005_002_add_pharmacy_products.sql"
+                               }
+                           ],
+    "missing_local_versions":  [
+
+                               ],
+    "ambiguous_local_versions":  [
+
+                                 ]
+}

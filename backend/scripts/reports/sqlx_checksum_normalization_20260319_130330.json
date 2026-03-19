@@ -1,0 +1,129 @@
+﻿{
+    "generated_at":  "2026-03-19T13:03:35.3743191+01:00",
+    "host":  "34.79.199.41",
+    "port":  5432,
+    "database":  "yukpo_db",
+    "migration_source":  "C:\\Users\\23767\\yukpomnang2\\backend\\migrations",
+    "apply_requested":  false,
+    "applied_count":  362,
+    "local_unique_versions":  370,
+    "aligned_count":  344,
+    "update_count":  0,
+    "missing_local_count":  1,
+    "ambiguous_local_count":  17,
+    "updates":  [
+
+                ],
+    "missing_local_versions":  [
+                                   {
+                                       "version":  1025,
+                                       "description":  "create livres scolaires troc",
+                                       "checksum_hex":  "8f26a98a290a06f966a3350f59208c080b40db86599636ecc4ff2a6fa52544ca33e4455d060a4641c62c9cd65f0bf511",
+                                       "success":  false
+                                   }
+                               ],
+    "ambiguous_local_versions":  [
+                                     {
+                                         "version":  20250101,
+                                         "description":  "001 create advanced features tables",
+                                         "checksum_hex":  "8d07494ba55c5d270530d5c58267eb99867258f4b9c95e99f6dab62775c7a15fc28fb54bd87fad12630a6bafbe416376",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  20250127,
+                                         "description":  "000001 create user saved addresses",
+                                         "checksum_hex":  "495af33fc7c2e6f617ca5ad6c81118da79461bd40d66d063e1cbd7811896277ffd0e1b10bae46e79e436077813047093",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  20250128,
+                                         "description":  "001 add media urls to comments",
+                                         "checksum_hex":  "c04934ec7a2b77447240c3c466fb583290836a3d72f545e66b2bf7638c65609e8d729ef769c97033bcf2d0c66c8d7de9",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  20250129,
+                                         "description":  "add insurance qr covoiturage",
+                                         "checksum_hex":  "0af98573b02e4ee414602849130b65024c9469612a639e06e49c88647a9c0edeef3a347bf8d98d8ce4099ad1a4e53660",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  20251126,
+                                         "description":  "create specialized services tables",
+                                         "checksum_hex":  "3d87640f53d8f6af5667911b2ed6c15d61dfa785e6e6606a3f93818362eee5d0ef873f0ec4ee74fb7d8d746ef187c627",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  20251127,
+                                         "description":  "120000 create get product reactions count",
+                                         "checksum_hex":  "5856e9fbabadb5b896830157ada6bf3c3626bd60ab7d8bb152b25ff1721a6b9d0a0341d1e2fd0db148ea2a5e9e896f68",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  20251201,
+                                         "description":  "add missing product descriptions",
+                                         "checksum_hex":  "e6fc66d17676e1ab900b82550ff610a017c4456168b0a27aa4f634683d58ac36797ffad9e17a4e280a4f7804b22555ca",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  20251203,
+                                         "description":  "create videos table with hashtags",
+                                         "checksum_hex":  "d69f3f71748f1d093667b009c2ce5e1ac4a3cc17b0b6207b39712e2243e1db4c32d16386c3af82f0a6406fd7f9987fac",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  20251221,
+                                         "description":  "add fallback to hybrid image search",
+                                         "checksum_hex":  "cf682cecad38dae845ed569cb30264cc3290fc9a4a6ba6bf1ce2dde3ad77013bba5783f54eb337b014fff9c9a22a6ffa",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  20251224,
+                                         "description":  "fix image search relevance and performance",
+                                         "checksum_hex":  "d2083cb14c0370d4faddd574133154fbf44cb400a282f467ed3dedeb70657eb2178012047810906395eacca742f97843",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  20251227,
+                                         "description":  "ensure search indexes exist",
+                                         "checksum_hex":  "f8616426458db0a8fbacbac4566cd1a5582ae9b9fff481601af2b215dec9904664d560f108fb088840bc02ad8dcd56ff",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  20251230,
+                                         "description":  "fix add product tls error",
+                                         "checksum_hex":  "1fb2959783cd7f4a59321dcb278cbf2305198a4be4babdcd7bca25b6daf8d2fbcc25a5e53c3407fa697f5317cd86d3cf",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  20251231,
+                                         "description":  "fix audio cache cleanup null handling",
+                                         "checksum_hex":  "7a576a83ac0aaf213a99350f20d3d621ddb0c2efcc5b1133c541594b8cd360b287712cde51b61b0125d3d8c327233516",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  20260114,
+                                         "description":  "create negotiated prices table",
+                                         "checksum_hex":  "4b4676fa24a3da5382d6fdde6812a719145d60c2b083280ea4d50e59868089a06200d522c04f101596c5f68ac4f88430",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  20260115,
+                                         "description":  "fix image search empty results",
+                                         "checksum_hex":  "0a4fefbefb735bae377568c5203c2382fd2db9f10032e97887166e877bb00e25a13573f4a4c82b4e9a04b22ceec7ce6b",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  46,
+                                         "description":  "fix product lifecycle sync trigger",
+                                         "checksum_hex":  "7ebbe4b6ba5ac7c34b7a002e153bca22ad71c16e40f07eac87bbd7f42ff40eb86f3eba6dda6e320bded703364623a6a3",
+                                         "success":  false
+                                     },
+                                     {
+                                         "version":  5,
+                                         "description":  "002 add pharmacy products",
+                                         "checksum_hex":  "1a4d5324e6b932e2a0e5d9b6f3da0354640a9961d96e135f43cae544685ab6e1b91673e001aa0a6ab0fbda41590a5c46",
+                                         "success":  false
+                                     }
+                                 ]
+}

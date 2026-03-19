@@ -145,7 +145,7 @@ const PharmacieDetailsScreen: React.FC = () => {
         if (!pharmacie) return;
         setLoadingAI(true);
         try {
-            const resp = await apiPost('/api/ai/chat', {
+            const resp = await apiPost('/ai/chat', {
                 message: `En tant que pharmacien conseil, la pharmacie "${pharmacie.nom}" propose ces services: ${(pharmacie.services || []).join(', ')}. ${pharmacie.is_on_duty ? 'Elle est actuellement de garde.' : ''} Donne 3 conseils santé pratiques et courts pour les clients de cette pharmacie, en lien avec la saison et la région ${pharmacie.ville || 'Cameroun'}.`,
                 context: 'pharmacy_health_tips',
             });

@@ -83,6 +83,18 @@ const dedupeActions = (actions: any[]): any[] => {
   return deduped;
 };
 
+/** When `icon` is shown via SafeIcon, drop leading emoji from i18n labels ("🚗 Transport" → "Transport"). */
+const actionDisplayLabel = (action: { label?: string; icon?: string | null }): string => {
+  const label = String(action.label ?? '');
+  if (!action.icon) return label;
+  let s = label.trimStart();
+  const leadingEmoji = /^\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*\s*/u;
+  for (let i = 0; i < 6 && leadingEmoji.test(s); i++) {
+    s = s.replace(leadingEmoji, '');
+  }
+  return s.trimStart();
+};
+
 const TypingIndicator: React.FC = () => {
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
@@ -139,7 +151,31 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
   const navState = navigation.getState();
   const route = navState?.routes[navState?.index];
   const inferredContext = useScreenContext(route?.name, route?.params);
-  const screenContext = externalContext || inferredContext;
+  const screenContext = useMemo(() => {
+    if (!externalContext) return inferredContext;
+    return {
+      ...inferredContext,
+      ...externalContext,
+      userData: {
+        ...(inferredContext?.userData || {}),
+        ...(externalContext?.userData || {}),
+      },
+      serviceData: {
+        ...(inferredContext?.serviceData || {}),
+        ...(externalContext?.serviceData || {}),
+      },
+      availableActions: Array.isArray(externalContext?.availableActions) && externalContext.availableActions.length > 0
+        ? externalContext.availableActions
+        : inferredContext?.availableActions || [],
+      visibleElements: Array.isArray(externalContext?.visibleElements) && externalContext.visibleElements.length > 0
+        ? externalContext.visibleElements
+        : inferredContext?.visibleElements || [],
+      currentRoute: externalContext?.currentRoute || inferredContext?.currentRoute,
+      breadcrumbs: externalContext?.breadcrumbs || inferredContext?.breadcrumbs,
+      previousScreen: externalContext?.previousScreen || inferredContext?.previousScreen,
+      guideText: externalContext?.guideText || inferredContext?.guideText,
+    };
+  }, [externalContext, inferredContext]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
@@ -148,6 +184,19 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
   const [suggestedActions, setSuggestedActions] = useState<any[]>([]);
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    if (!visible || !__DEV__) return;
+    try {
+      console.log('[ChatContext] open', {
+        screenName: screenContext?.screenName,
+        currentRoute: screenContext?.currentRoute,
+        screenType: screenContext?.screenType,
+        availableActions: Array.isArray(screenContext?.availableActions) ? screenContext.availableActions.length : 0,
+        visibleElements: Array.isArray(screenContext?.visibleElements) ? screenContext.visibleElements.length : 0,
+      });
+    } catch { }
+  }, [visible, screenContext]);
 
   useEffect(() => {
     if (visible) {
@@ -365,7 +414,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
                     {action.icon && (
                       <SafeIcon name={action.icon} size={14} color="#6366f1" />
                     )}
-                    <Text style={styles.messageActionText}>{action.label}</Text>
+                    <Text style={styles.messageActionText}>{actionDisplayLabel(action)}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -410,7 +459,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
               onPress={() => handleActionPress(action)}
             >
               <SafeIcon name={action.icon || 'arrow-right'} size={16} color="#6366f1" />
-              <Text style={styles.suggestedActionText} numberOfLines={1}>{action.label}</Text>
+              <Text style={styles.suggestedActionText} numberOfLines={1}>{actionDisplayLabel(action)}</Text>
             </TouchableOpacity>
           ))}
         </View>

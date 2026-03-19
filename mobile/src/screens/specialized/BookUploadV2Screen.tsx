@@ -55,18 +55,17 @@ const ETAT_COLORS: Record<string, string> = {
     rejete: '#ef4444',
 };
 
-const ETAT_LABELS: Record<string, string> = {
-    bon: t('bookUploadV2Screen.bonEtat'),
-    acceptable: 'Acceptable',
-    rejete: t('bookUploadV2Screen.rejete'),
-};
-
 const BookUploadV2Screen: React.FC = () => {
     const navigation = useNavigation() as any;
     const { user } = useAuth();
     const { location } = useLocation();
     const toaster = useToaster();
     const { t } = useLanguageSafe();
+    const etatLabels: Record<string, string> = {
+        bon: t('bookUploadV2Screen.bonEtat'),
+        acceptable: 'Acceptable',
+        rejete: t('bookUploadV2Screen.rejete'),
+    };
 
     // States
     const [step, setStep] = useState<UploadStep>('gps');
@@ -225,7 +224,7 @@ const BookUploadV2Screen: React.FC = () => {
                 toaster.show(t('bookUploadV2Screen.ceLivreEstRejeteTropDegrade'), 'error');
             } else {
                 toaster.show(
-                    `${entry.titre} — ${ETAT_LABELS[result.etat_classification]} — ${Math.round(result.valeur_calculee)} XAF`,
+                    `${entry.titre} — ${etatLabels[result.etat_classification]} — ${Math.round(result.valeur_calculee)} XAF`,
                     'success'
                 );
             }
@@ -401,7 +400,7 @@ const BookUploadV2Screen: React.FC = () => {
                         color="#fff"
                     />
                     <Text style={styles.resultBadgeText}>
-                        {is_rejected ? t('bookUploadV2Screen.rejete') : ETAT_LABELS[etat_classification]?.toUpperCase()}
+                        {is_rejected ? t('bookUploadV2Screen.rejete') : etatLabels[etat_classification]?.toUpperCase()}
                     </Text>
                 </View>
 
@@ -486,7 +485,7 @@ const BookUploadV2Screen: React.FC = () => {
                             ) : null}
                             <View style={styles.bookValueRow}>
                                 <View style={[styles.etatDot, { backgroundColor: ETAT_COLORS[item.etat_classification] }]} />
-                                <Text style={styles.etatText}>{ETAT_LABELS[item.etat_classification]}</Text>
+                                <Text style={styles.etatText}>{etatLabels[item.etat_classification]}</Text>
                                 <Text style={styles.bookValue}>
                                     {item.is_rejected ? '0' : Math.round(item.valeur_calculee)} XAF
                                 </Text>

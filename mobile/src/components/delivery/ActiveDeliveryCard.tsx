@@ -12,26 +12,6 @@ interface ActiveDeliveryCardProps {
     onPress: (deliveryId: string) => void;
 }
 
-const statusLabelMap: Record<string, string> = {
-    pending: 'En attente',
-    requested: 'En attente',
-    awaiting_courier: 'Recherche coursier',
-    awaiting_courier_confirmation: 'Recherche coursier',
-    assigned: t('activeDeliveryCard.coursierAssigne'),
-    accepted: t('activeDeliveryCard.coursierAssigne'),
-    en_route_pickup: 'En route vers le retrait',
-    arrival_pickup: t('activeDeliveryCard.arriveAuPointDeRetrait'),
-    picked_up: t('activeDeliveryCard.colisRecupere'),
-    shopping_pending: t('activeDeliveryCard.arriveAuSupermarche'),
-    shopping_in_progress: 'Courses en cours',
-    shopping_completed: t('activeDeliveryCard.panierValide'),
-    en_route_delivery: 'En route client',
-    arrival_destination: t('activeDeliveryCard.arriveADestination'),
-    delivered: t('activeDeliveryCard.livre'),
-    completed: t('activeDeliveryCard.termine'),
-    cancelled: t('activeDeliveryCard.annule'),
-};
-
 const statusColorMap: Record<string, string> = {
     pending: modernColors.warning,
     requested: modernColors.warning,
@@ -73,6 +53,31 @@ const iconMap: Record<string, string> = {
 };
 
 const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPress }) => {
+    const { t } = useLanguageSafe();
+
+    const statusLabelMap = useMemo(
+        () => ({
+            pending: 'En attente',
+            requested: 'En attente',
+            awaiting_courier: 'Recherche coursier',
+            awaiting_courier_confirmation: 'Recherche coursier',
+            assigned: t('activeDeliveryCard.coursierAssigne'),
+            accepted: t('activeDeliveryCard.coursierAssigne'),
+            en_route_pickup: 'En route vers le retrait',
+            arrival_pickup: t('activeDeliveryCard.arriveAuPointDeRetrait'),
+            picked_up: t('activeDeliveryCard.colisRecupere'),
+            shopping_pending: t('activeDeliveryCard.arriveAuSupermarche'),
+            shopping_in_progress: 'Courses en cours',
+            shopping_completed: t('activeDeliveryCard.panierValide'),
+            en_route_delivery: 'En route client',
+            arrival_destination: t('activeDeliveryCard.arriveADestination'),
+            delivered: t('activeDeliveryCard.livre'),
+            completed: t('activeDeliveryCard.termine'),
+            cancelled: t('activeDeliveryCard.annule'),
+        }),
+        [t],
+    );
+
     const statusLabel = statusLabelMap[delivery.status] ?? delivery.status;
     const statusColor = statusColorMap[delivery.status] ?? modernColors.primary;
     const statusIcon = iconMap[delivery.status] ?? 'clock';

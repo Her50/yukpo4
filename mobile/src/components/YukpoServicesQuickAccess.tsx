@@ -85,15 +85,18 @@ const brightenColor = (hex: string, percent: number = 20): string => {
 interface Service {
     id: string;
     title: string;
+    titleKey?: string;
     icon: string;
     gradient: [string, string];
     description: string;
+    descriptionKey?: string;
     comingSoon?: boolean;
 }
 
 interface Category {
     id: string;
     title: string;
+    titleKey?: string;
     icon: string;
     gradient: [string, string];
     serviceIds: string[];
@@ -106,44 +109,49 @@ interface YukpoServicesQuickAccessProps {
 // Données des services (17 services)
 const SERVICES_DATA: Service[] = [
     // Santé
-    { id: 'pharmacie', title: 'Pharmacie', icon: 'pill', gradient: ['#10B981', '#34D399'], description: 'Pharmacies de garde', comingSoon: false },
-    { id: 'hopital', title: 'Hopital', icon: 'hospital', gradient: ['#EF4444', '#F87171'], description: 'Hopitaux, cliniques', comingSoon: false },
-    { id: 'laboratoire', title: 'Laboratoire', icon: 'microscope', gradient: ['#3B82F6', '#60A5FA'], description: 'Analyses medicales', comingSoon: false },
-    { id: 'banque_sang', title: 'Transfusion', icon: 'droplet', gradient: ['#DC2626', '#F87171'], description: 'Don de sang', comingSoon: false },
+    { id: 'pharmacie', title: 'Pharmacie', titleKey: 'yukpoServicesQuickAccess.pharmacie', icon: 'pill', gradient: ['#10B981', '#34D399'], description: 'Pharmacies de garde', descriptionKey: 'yukpoServicesQuickAccess.pharmaciesDeGarde', comingSoon: false },
+    { id: 'hopital', title: 'Hopital', titleKey: 'yukpoServicesQuickAccess.hopital', icon: 'hospital', gradient: ['#EF4444', '#F87171'], description: 'Hopitaux, cliniques', descriptionKey: 'yukpoServicesQuickAccess.hopitauxCliniques', comingSoon: false },
+    { id: 'laboratoire', title: 'Laboratoire', titleKey: 'yukpoServicesQuickAccess.laboratoire', icon: 'microscope', gradient: ['#3B82F6', '#60A5FA'], description: 'Analyses medicales', descriptionKey: 'yukpoServicesQuickAccess.analysesMedicales', comingSoon: false },
+    { id: 'banque_sang', title: 'Transfusion', titleKey: 'yukpoServicesQuickAccess.transfusion', icon: 'droplet', gradient: ['#DC2626', '#F87171'], description: 'Don de sang', descriptionKey: 'yukpoServicesQuickAccess.donDeSang', comingSoon: false },
     // Transport
-    { id: 'agence_voyage', title: 'Ticket voyage', icon: 'bus', gradient: ['#F59E0B', '#FBBF24'], description: 'Billets, reservations', comingSoon: false },
-    { id: 'covoiturage', title: 'Covoiturage', icon: 'users', gradient: ['#8B5CF6', '#A78BFA'], description: 'Partage de trajet', comingSoon: false },
-    { id: 'taxi', title: 'Taxi', icon: 'car', gradient: ['#F97316', '#FB923C'], description: 'Transport rapide', comingSoon: false },
-    { id: 'automobile', title: 'Automobile', icon: 'car', gradient: ['#DC2626', '#F87171'], description: 'Vehicules occasions', comingSoon: false },
+    { id: 'agence_voyage', title: 'Ticket voyage', titleKey: 'yukpoServicesQuickAccess.ticketVoyage', icon: 'bus', gradient: ['#F59E0B', '#FBBF24'], description: 'Billets, reservations', descriptionKey: 'yukpoServicesQuickAccess.billetsReservations', comingSoon: false },
+    { id: 'covoiturage', title: 'Covoiturage', titleKey: 'yukpoServicesQuickAccess.covoiturage', icon: 'users', gradient: ['#8B5CF6', '#A78BFA'], description: 'Partage de trajet', descriptionKey: 'yukpoServicesQuickAccess.partageDeTrajet', comingSoon: false },
+    { id: 'taxi', title: 'Taxi', titleKey: 'yukpoServicesQuickAccess.taxi', icon: 'car', gradient: ['#F97316', '#FB923C'], description: 'Transport rapide', descriptionKey: 'yukpoServicesQuickAccess.transportRapide', comingSoon: false },
+    { id: 'automobile', title: 'Automobile', titleKey: 'yukpoServicesQuickAccess.automobile', icon: 'car', gradient: ['#DC2626', '#F87171'], description: 'Vehicules occasions', descriptionKey: 'yukpoServicesQuickAccess.vehiculesOccasions', comingSoon: false },
     // Vie pratique (Éducation + Quotidien)
-    { id: 'orientation_scolaire', title: 'Orientation', icon: 'book-open', gradient: ['#10B981', '#34D399'], description: 'Orientation scolaire', comingSoon: false },
-    { id: 'bourse_livre', title: 'Troc livre', icon: 'book-open', gradient: ['#8B5CF6', '#A78BFA'], description: 'Livres scolaires', comingSoon: false },
-    { id: 'menu_planning', title: 'Mon menu', icon: 'utensils-crossed', gradient: ['#F59E0B', '#FBBF24'], description: 'Menus, repas', comingSoon: false },
-    { id: 'bayamselam', title: 'BayamSelam', icon: 'trending-down', gradient: ['#10B981', '#34D399'], description: 'Comparatif prix', comingSoon: false },
+    { id: 'orientation_scolaire', title: 'Orientation', titleKey: 'yukpoServicesQuickAccess.orientation', icon: 'book-open', gradient: ['#10B981', '#34D399'], description: 'Orientation scolaire', descriptionKey: 'yukpoServicesQuickAccess.orientationScolaire', comingSoon: false },
+    { id: 'bourse_livre', title: 'Troc livre', titleKey: 'yukpoServicesQuickAccess.trocLivre', icon: 'book-open', gradient: ['#8B5CF6', '#A78BFA'], description: 'Livres scolaires', descriptionKey: 'yukpoServicesQuickAccess.livresScolaires', comingSoon: false },
+    { id: 'menu_planning', title: 'Mon menu', titleKey: 'yukpoServicesQuickAccess.monMenu', icon: 'utensils-crossed', gradient: ['#F59E0B', '#FBBF24'], description: 'Menus, repas', descriptionKey: 'yukpoServicesQuickAccess.menusRepas', comingSoon: false },
+    { id: 'bayamselam', title: 'BayamSelam', titleKey: 'yukpoServicesQuickAccess.bayamSelam', icon: 'trending-down', gradient: ['#10B981', '#34D399'], description: 'Comparatif prix', descriptionKey: 'yukpoServicesQuickAccess.comparatifPrix', comingSoon: false },
     // Emploi
-    { id: 'offres_emploi', title: 'Offres emploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], description: 'Recrutement', comingSoon: false },
+    { id: 'offres_emploi', title: 'Offres emploi', titleKey: 'yukpoServicesQuickAccess.offresEmploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], description: 'Recrutement', descriptionKey: 'yukpoServicesQuickAccess.recrutement', comingSoon: false },
     // Assurance
-    { id: 'assurance', title: 'Assurance', icon: 'shield', gradient: ['#0EA5E9', '#38BDF8'], description: 'Assurances, mutuelles', comingSoon: false },
+    { id: 'assurance', title: 'Assurance', titleKey: 'yukpoServicesQuickAccess.assurance', icon: 'shield', gradient: ['#0EA5E9', '#38BDF8'], description: 'Assurances, mutuelles', descriptionKey: 'yukpoServicesQuickAccess.assurancesMutuelles', comingSoon: false },
     // Immobilier
-    { id: 'immo', title: 'Immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], description: 'Biens immobiliers', comingSoon: false },
-    { id: 'hotel', title: 'Hotel', icon: 'building', gradient: ['#F59E0B', '#FBBF24'], description: 'Hotels et hebergements', comingSoon: false },
-    { id: 'meuble', title: 'Meuble', icon: 'key', gradient: ['#8B5CF6', '#A78BFA'], description: 'Location meublee', comingSoon: false },
+    { id: 'immo', title: 'Immobilier', titleKey: 'yukpoServicesQuickAccess.immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], description: 'Biens immobiliers', descriptionKey: 'yukpoServicesQuickAccess.biensImmobiliers', comingSoon: false },
+    { id: 'hotel', title: 'Hotel', titleKey: 'yukpoServicesQuickAccess.hotel', icon: 'building', gradient: ['#F59E0B', '#FBBF24'], description: 'Hotels et hebergements', descriptionKey: 'yukpoServicesQuickAccess.hotelsEtHebergements', comingSoon: false },
+    { id: 'meuble', title: 'Meuble', titleKey: 'yukpoServicesQuickAccess.meuble', icon: 'key', gradient: ['#8B5CF6', '#A78BFA'], description: 'Location meublee', descriptionKey: 'yukpoServicesQuickAccess.locationMeublee', comingSoon: false },
 ];
 
 // Données des catégories (6 catégories)
 const CATEGORIES_DATA: Category[] = [
-    { id: 'sante', title: 'Sante', icon: 'heart', gradient: ['#EC4899', '#F472B6'], serviceIds: ['pharmacie', 'hopital', 'laboratoire', 'banque_sang'] },
-    { id: 'transport', title: 'Transport', icon: 'car', gradient: ['#F59E0B', '#FBBF24'], serviceIds: ['agence_voyage', 'covoiturage', 'taxi', 'automobile'] },
-    { id: 'vie_pratique', title: 'Vie pratique', icon: 'book-open', gradient: ['#3B82F6', '#60A5FA'], serviceIds: ['orientation_scolaire', 'bourse_livre', 'menu_planning', 'bayamselam'] },
-    { id: 'emploi', title: 'Emploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], serviceIds: ['offres_emploi'] },
-    { id: 'assurance', title: 'Assurance', icon: 'shield', gradient: ['#0EA5E9', '#38BDF8'], serviceIds: ['assurance'] },
-    { id: 'immobilier', title: 'Immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], serviceIds: ['immo', 'hotel', 'meuble'] },
+    { id: 'sante', title: 'Sante', titleKey: 'yukpoServicesQuickAccess.sante', icon: 'heart', gradient: ['#EC4899', '#F472B6'], serviceIds: ['pharmacie', 'hopital', 'laboratoire', 'banque_sang'] },
+    { id: 'transport', title: 'Transport', titleKey: 'yukpoServicesQuickAccess.transport', icon: 'car', gradient: ['#F59E0B', '#FBBF24'], serviceIds: ['agence_voyage', 'covoiturage', 'taxi', 'automobile'] },
+    { id: 'vie_pratique', title: 'Vie pratique', titleKey: 'yukpoServicesQuickAccess.viePratique', icon: 'book-open', gradient: ['#3B82F6', '#60A5FA'], serviceIds: ['orientation_scolaire', 'bourse_livre', 'menu_planning', 'bayamselam'] },
+    { id: 'emploi', title: 'Emploi', titleKey: 'yukpoServicesQuickAccess.emploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], serviceIds: ['offres_emploi'] },
+    { id: 'assurance', title: 'Assurance', titleKey: 'yukpoServicesQuickAccess.assurance', icon: 'shield', gradient: ['#0EA5E9', '#38BDF8'], serviceIds: ['assurance'] },
+    { id: 'immobilier', title: 'Immobilier', titleKey: 'yukpoServicesQuickAccess.immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], serviceIds: ['immo', 'hotel', 'meuble'] },
 ];
 
 const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
     onServicePress
 }) => {
-        const { t } = useLanguageSafe();
+    const { t } = useLanguageSafe();
+    const tr = (key: string | undefined, fallback: string) => {
+        if (!key) return fallback;
+        const translated = t(key);
+        return translated && translated !== key ? translated : fallback;
+    };
 const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
     const [modalCategoryId, setModalCategoryId] = useState<string | null>(null);
 
@@ -218,9 +226,9 @@ const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null
 
     // Obtenir le texte du nombre de services
     const getServiceCountText = (count: number): string => {
-        if (count === 0) return '0 service';
-        if (count === 1) return '1 service';
-        return `${count} services`;
+        if (count === 0) return tr('yukpoServicesQuickAccess.serviceCountZero', '0 service');
+        if (count === 1) return tr('yukpoServicesQuickAccess.serviceCountOne', '1 service');
+        return tr('yukpoServicesQuickAccess.serviceCountMany', `${count} services`).replace('{{count}}', String(count));
     };
 
     return (
@@ -250,7 +258,7 @@ const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null
                                     )}
                                 </View>
                                 <Text style={styles.serviceMiniTitle} numberOfLines={1}>
-                                    {service.title}
+                                    {tr(service.titleKey, service.title)}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -277,7 +285,7 @@ const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null
                                         <SafeIcon name={category.icon} size={30} color={brightenColor(category.gradient[0], 25)} />
                                     </View>
                                     <Text style={styles.categoryTitle} numberOfLines={2}>
-                                        {category.title}
+                                        {tr(category.titleKey, category.title)}
                                     </Text>
                                     <Text style={styles.categoryDescription} numberOfLines={1}>
                                         {category.id === 'immobilier'
@@ -312,7 +320,7 @@ const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null
                                     </View>
                                     <View style={styles.modalTitleContainer}>
                                         <Text style={styles.modalTitle}>
-                                            {modalCategory.title}
+                                            {tr(modalCategory.titleKey, modalCategory.title)}
                                         </Text>
                                         <Text style={styles.modalSubtitle}>
                                             {getServiceCountText(modalCategory.services.length)}
@@ -332,7 +340,7 @@ const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null
                                 {modalCategory.services.length === 0 ? (
                                     <View style={styles.emptyContainer}>
                                         <Text style={styles.emptyText}>
-                                            Aucun service disponible
+                                            {tr('yukpoServicesQuickAccess.noServiceAvailable', 'Aucun service disponible')}
                                         </Text>
                                     </View>
                                 ) : (
@@ -358,10 +366,10 @@ const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null
                                                 </View>
                                                 <View style={styles.serviceContent}>
                                                     <Text style={styles.serviceTitle}>
-                                                        {service.title}
+                                                        {tr(service.titleKey, service.title)}
                                                     </Text>
                                                     <Text style={styles.serviceDescription} numberOfLines={2}>
-                                                        {service.description}
+                                                        {tr(service.descriptionKey, service.description)}
                                                     </Text>
                                                 </View>
                                                 <View style={styles.serviceArrow}>

@@ -19,15 +19,14 @@ export const useAIServices = () => {
             setLoading(true);
             setError(null);
 
-            // ✅ API IA réelle - OpenAI ou équivalent
-            // L'endpoint est /api/ai/chat (le router ajoute /api)
+            // Backend expose les routes AI sans préfixe `/api` : POST /ai/chat
             const response = await apiPost<{
                 message?: string;
                 text?: string;
                 response?: string;
                 suggestions?: string[];
                 confidence?: number;
-            }>('/api/ai/chat', {
+            }>('/ai/chat', {
                 message: question,
                 context: context,
                 type: 'question'
@@ -68,10 +67,10 @@ export const useAIServices = () => {
             setLoading(true);
             setError(null);
 
-            // API IA pour les recommandations
+            // Backend expose les routes AI sans préfixe `/api` : POST /ai/recommendations
             const response = await apiPost<{
                 recommendations?: string[];
-            }>('/api/ai/recommendations', {
+            }>('/ai/recommendations', {
                 preferences: userPreferences,
                 type: 'recommendation'
             });
@@ -100,11 +99,11 @@ export const useAIServices = () => {
             setLoading(true);
             setError(null);
 
-            // API IA pour l'analyse de texte
+            // Backend expose les routes AI sans préfixe `/api` : POST /ai/analyze
             const response = await apiPost<{
                 sentiment?: string;
                 keywords?: string[];
-            }>('/api/ai/analyze', {
+            }>('/ai/analyze', {
                 text: text,
                 type: 'analysis'
             });

@@ -54,15 +54,6 @@ interface ProductCardProps {
   onVideoRelease?: () => void;
 }
 
-const REACTIONS = [
-  { type: 'love', emoji: '❤️', label: 'J\'adore' },
-  { type: 'like', emoji: '👍', label: 'J\'aime' },
-  { type: 'wow', emoji: '😮', label: 'Impressionnant' },
-  { type: 'interested', emoji: '🎯', label: t('productCard.interessant') },
-  { type: 'thinking', emoji: '🤔', label: t('productCard.aReflechir') },
-  { type: 'disappointed', emoji: '😕', label: t('productCard.decu') },
-];
-
 const formatCompactNumber = (value: number | undefined | null): string => {
   if (value === undefined || value === null) {
     return '0';
@@ -180,13 +171,13 @@ const getCountryFlag = (country?: string): string => {
   const countryLower = country.toLowerCase().trim();
 
   // Drapeaux des pays africains et internationaux (même mapping que useLocationDisplay)
-  if (countryLower.includes('cameroun') || countryLower.includes('cameroon') || countryLower.includes('douala') || countryLower.includes(t('productCard.yaounde')) || countryLower.includes('yaounde')) return '🇨🇲';
+  if (countryLower.includes('cameroun') || countryLower.includes('cameroon') || countryLower.includes('douala') || countryLower.includes('yaounde') || countryLower.includes('yaoundé')) return '🇨🇲';
   if (countryLower.includes('nigeria') || countryLower.includes('lagos') || countryLower.includes('abuja')) return '🇳🇬';
-  if (countryLower.includes(t('productCard.senegal')) || countryLower.includes('senegal') || countryLower.includes('dakar')) return '🇸🇳';
+  if (countryLower.includes('sénégal') || countryLower.includes('senegal') || countryLower.includes('dakar')) return '🇸🇳';
   if (countryLower.includes('côte') || countryLower.includes('ivoire') || countryLower.includes('ivory') || countryLower.includes('abidjan')) return '🇨🇮';
   if (countryLower.includes('ghana') || countryLower.includes('accra')) return '🇬🇭';
   if (countryLower.includes('france') || countryLower.includes('paris')) return '🇫🇷';
-  if (countryLower.includes('togo') || countryLower.includes(t('productCard.lome'))) return '🇹🇬';
+  if (countryLower.includes('togo') || countryLower.includes('lome') || countryLower.includes('lomé')) return '🇹🇬';
   if (countryLower.includes('bénin') || countryLower.includes('benin') || countryLower.includes('cotonou')) return '🇧🇯';
   if (countryLower.includes('mali')) return '🇲🇱';
   if (countryLower.includes('burkina')) return '🇧🇫';
@@ -195,7 +186,7 @@ const getCountryFlag = (country?: string): string => {
   if (countryLower.includes('gabon')) return '🇬🇦';
   if (countryLower.includes('congo')) return '🇨🇬';
   if (countryLower.includes('rdc')) return '🇨🇩';
-  if (countryLower.includes(t('productCard.guinee')) || countryLower.includes('guinea')) return '🇬🇳';
+  if (countryLower.includes('guinée') || countryLower.includes('guinea') || countryLower.includes('guinee')) return '🇬🇳';
   if (countryLower.includes('madagascar')) return '🇲🇬';
   if (countryLower.includes('usa') || countryLower.includes('united states')) return '🇺🇸';
 
@@ -208,13 +199,13 @@ const extractCountryFromLocation = (location: string): string | null => {
 
   const locationLower = location.toLowerCase();
 
-  if (locationLower.includes('cameroun') || locationLower.includes('cameroon') || locationLower.includes('douala') || locationLower.includes(t('productCard.yaounde')) || locationLower.includes('yaounde')) return 'Cameroun';
+  if (locationLower.includes('cameroun') || locationLower.includes('cameroon') || locationLower.includes('douala') || locationLower.includes('yaounde') || locationLower.includes('yaoundé')) return 'Cameroun';
   if (locationLower.includes('nigeria') || locationLower.includes('lagos') || locationLower.includes('abuja')) return 'Nigeria';
-  if (locationLower.includes(t('productCard.senegal')) || locationLower.includes('senegal') || locationLower.includes('dakar')) return 'Sénégal';
+  if (locationLower.includes('sénégal') || locationLower.includes('senegal') || locationLower.includes('dakar')) return 'Sénégal';
   if (locationLower.includes('côte') || locationLower.includes('ivoire') || locationLower.includes('ivory') || locationLower.includes('abidjan')) return 'Côte d\'Ivoire';
   if (locationLower.includes('ghana') || locationLower.includes('accra')) return 'Ghana';
   if (locationLower.includes('france') || locationLower.includes('paris')) return 'France';
-  if (locationLower.includes('togo') || locationLower.includes(t('productCard.lome'))) return 'Togo';
+  if (locationLower.includes('togo') || locationLower.includes('lome') || locationLower.includes('lomé')) return 'Togo';
   if (locationLower.includes('bénin') || locationLower.includes('benin') || locationLower.includes('cotonou')) return 'Bénin';
   if (locationLower.includes('mali')) return 'Mali';
   if (locationLower.includes('burkina')) return 'Burkina Faso';
@@ -278,6 +269,17 @@ const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const navigation = useNavigation();
   const { t } = useLanguageSafe();
+  const reactionItems = useMemo(
+    () => [
+      { type: 'love', emoji: '❤️', label: 'J\'adore' },
+      { type: 'like', emoji: '👍', label: 'J\'aime' },
+      { type: 'wow', emoji: '😮', label: 'Impressionnant' },
+      { type: 'interested', emoji: '🎯', label: t('productCard.interessant') },
+      { type: 'thinking', emoji: '🤔', label: t('productCard.aReflechir') },
+      { type: 'disappointed', emoji: '😕', label: t('productCard.decu') },
+    ],
+    [t],
+  );
   // ✅ NOUVEAU: Utiliser useLocation pour calculer la distance si nécessaire
   const { location: contextLocation, calculateDistance: locationCalculateDistance } = useLocation();
   const effectiveUserLocation = userLocation || (contextLocation?.coords ? {
@@ -1752,7 +1754,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       disabled={pendingReaction !== null}
                     >
                       {(() => {
-                        const userReaction = REACTIONS.find(r => reactions[r.type]?.hasReacted);
+                        const userReaction = reactionItems.find(r => reactions[r.type]?.hasReacted);
                         if (userReaction && userReaction.type !== 'love') {
                           return <Text style={{ fontSize: 14 }}>{userReaction.emoji}</Text>;
                         }
@@ -1767,7 +1769,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       {totalReactions > 0 && (
                         <Text style={[
                           styles.heartCountText,
-                          REACTIONS.some(r => reactions[r.type]?.hasReacted) && { color: '#EF4444' }
+                          reactionItems.some(r => reactions[r.type]?.hasReacted) && { color: '#EF4444' }
                         ]}>
                           {formatCompactNumber(totalReactions)}
                         </Text>
@@ -1775,7 +1777,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     </TouchableOpacity>
                     {showReactionPicker && (
                       <View style={styles.reactionPickerBubble}>
-                        {REACTIONS.map((reaction) => {
+                        {reactionItems.map((reaction) => {
                           const hasReacted = reactions[reaction.type]?.hasReacted || false;
                           const count = reactions[reaction.type]?.count || 0;
                           return (

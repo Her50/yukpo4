@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fiche TD Avancee - Probabilites (Partie 1)</title>
+  <style>
+    :root { --text:#1f2937; --muted:#4b5563; --line:#d1d5db; --accent:#0f766e; --soft:#f8fafc; --proof:#7c3aed; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: "Segoe UI", Arial, sans-serif; color:var(--text); background:#fff; line-height:1.52; }
+    .page { max-width:1020px; margin:18px auto; padding:22px; border:1px solid var(--line); border-radius:10px; }
+    h1,h2,h3 { margin-top:0; color:#0b3a37; }
+    h1 { margin-bottom:6px; font-size:1.75rem; }
+    .subtitle { margin:0 0 14px; color:var(--muted); }
+    .meta { display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:16px; }
+    .meta div { background:var(--soft); border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:0.95rem; }
+    .section { margin:14px 0; padding:12px; border:1px solid var(--line); border-radius:10px; }
+    .section h2 { color:var(--accent); font-size:1.14rem; margin-bottom:8px; }
+    .exercise { margin:10px 0; padding:10px; border:1px dashed #9ca3af; border-radius:8px; background:#fcfcfd; }
+    .exercise h3 { margin:0 0 6px; font-size:1rem; color:#111827; }
+    .proof { color:var(--proof); font-weight:700; }
+    .m { display:block; margin:8px 0; padding:6px 8px; background:#f9fafb; border-radius:6px; overflow-x:auto; }
+    .m-inline { display:inline-block; vertical-align:middle; }
+    math { font-size: 1.02rem; }
+    .note { margin-top:14px; padding:10px 12px; border-left:4px solid var(--accent); background:#f0fdfa; color:#134e4a; }
+    .footer { margin-top:18px; text-align:right; color:var(--muted); font-size:0.9rem; }
+    table { border-collapse: collapse; margin-top:8px; }
+    th, td { border:1px solid #9ca3af; padding:6px 10px; text-align:center; }
+    @media print {
+      .page { max-width:none; margin:0; border:none; border-radius:0; padding:10mm; }
+      .section, .exercise { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>Fiche TD Avancee - Probabilites (Partie 1)</h1>
+    <p class="subtitle">Niveau releve, exercices de demonstration, formules en MathML (rendu propre HTML/PDF).</p>
+    <section class="meta">
+      <div><strong>Niveau :</strong> L3 / M1</div>
+      <div><strong>Duree :</strong> 4h - 5h</div>
+      <div><strong>Format :</strong> Theorie + preuves</div>
+      <div><strong>Total :</strong> 16 exercices</div>
+    </section>
+
+    <section class="section">
+      <h2>Chapitre 1 - Espace probabilise, variable aleatoire, independance et moments</h2>
+      <article class="exercise">
+        <h3>Exercice 1</h3>
+        <p><span class="proof">Demonstration.</span> Montrer la continuite croissante d'une probabilite: si <span class="m-inline"><math><msub><mi>A</mi><mi>n</mi></msub></math></span> est croissante, alors</p>
+        <div class="m"><math><mrow><mi>P</mi><mo>(</mo><munder><mo>&#x222A;</mo><mrow><mi>n</mi><mo>&#x2265;</mo><mn>1</mn></mrow></munder><msub><mi>A</mi><mi>n</mi></msub><mo>)</mo><mo>=</mo><munder><mo>lim</mo><mrow><mi>n</mi><mo>&#x2192;</mo><mo>&#x221E;</mo></mrow></munder><mi>P</mi><mo>(</mo><msub><mi>A</mi><mi>n</mi></msub><mo>)</mo></mrow></math></div>
+      </article>
+      <article class="exercise">
+        <h3>Exercice 2</h3>
+        <p><span class="proof">Demonstration.</span> En deduire la continuite decroissante pour une suite decroissante d'evenements.</p>
+      </article>
+      <article class="exercise">
+        <h3>Exercice 3</h3>
+        <p><span class="proof">Demonstration.</span> Soient A, B, C. Montrer la formule d'inclusion-exclusion a trois ensembles.</p>
+      </article>
+      <article class="exercise">
+        <h3>Exercice 4</h3>
+        <p>Soit X integrable. Montrer l'inegalite de Markov:</p>
+        <div class="m"><math><mrow><mi>P</mi><mo>(</mo><mi>X</mi><mo>&#x2265;</mo><mi>a</mi><mo>)</mo><mo>&#x2264;</mo><mfrac><mrow><mi>E</mi><mo>[</mo><mi>X</mi><mo>]</mo></mrow><mi>a</mi></mfrac><mo>,</mo><mspace width="8px"/><mi>a</mi><mo>&gt;</mo><mn>0</mn></mrow></math></div>
+      </article>
+      <article class="exercise">
+        <h3>Exercice 5</h3>
+        <p><span class="proof">Demonstration.</span> En deduire Chebyshev:</p>
+        <div class="m"><math><mrow><mi>P</mi><mo>(</mo><mo>|</mo><mi>X</mi><mo>-</mo><mi>E</mi><mo>[</mo><mi>X</mi><mo>]</mo><mo>|</mo><mo>&#x2265;</mo><mi>t</mi><mo>)</mo><mo>&#x2264;</mo><mfrac><mrow><mi>Var</mi><mo>(</mo><mi>X</mi><mo>)</mo></mrow><msup><mi>t</mi><mn>2</mn></msup></mfrac></mrow></math></div>
+      </article>
+      <article class="exercise">
+        <h3>Exercice 6</h3>
+        <p>Si X et Y sont independantes et integrables, montrer:</p>
+        <div class="m"><math><mrow><mi>E</mi><mo>[</mo><mi>XY</mi><mo>]</mo><mo>=</mo><mi>E</mi><mo>[</mo><mi>X</mi><mo>]</mo><mi>E</mi><mo>[</mo><mi>Y</mi><mo>]</mo></mrow></math></div>
+        <p>Puis calculer Cov(X,Y).</p>
+      </article>
+    </section>
+
+    <section class="section">
+      <h2>Chapitre 2 - Lois usuelles, fonctions generatrices et caracteristiques</h2>
+      <article class="exercise">
+        <h3>Exercice 7</h3>
+        <p>Pour <span class="m-inline"><math><mi>X</mi><mo>&#x223C;</mo><mi>Bin</mi><mo>(</mo><mi>n</mi><mo>,</mo><mi>p</mi><mo>)</mo></math></span>, retrouver E[X], Var(X) via la fonction generatrice.</p>
+      </article>
+      <article class="exercise">
+        <h3>Exercice 8</h3>
+        <p><span class="proof">Demonstration.</span> Pour <span class="m-inline"><math><mi>N</mi><mo>&#x223C;</mo><mi>Poi</mi><mo>(</mo><mi>&#x03BB;</mi><mo>)</mo></math></span>, prouver:</p>
+        <div class="m"><math><mrow><msub><mi>G</mi><mi>N</mi></msub><mo>(</mo><mi>s</mi><mo>)</mo><mo>=</mo><mi>exp</mi><mo>(</mo><mi>&#x03BB;</mi><mo>(</mo><mi>s</mi><mo>-</mo><mn>1</mn><mo>)</mo><mo>)</mo></mrow></math></div>
+      </article>
+      <article class="exercise">
+        <h3>Exercice 9</h3>
+        <p>Soit <span class="m-inline"><math><mi>Y</mi><mo>&#x223C;</mo><mi>Exp</mi><mo>(</mo><mi>&#x03BB;</mi><mo>)</mo></math></span>. Prouver la propriete sans memoire et caracteriser les lois continues qui l'ont.</p>
+      </article>
+      <article class="exercise">
+        <h3>Exercice 10</h3>
+        <p><span class="proof">Demonstration.</span> Calculer la fonction caracteristique de Exp(lambda):</p>
+        <div class="m"><math><mrow><msub><mi>&#x03C6;</mi><mi>Y</mi></msub><mo>(</mo><mi>u</mi><mo>)</mo><mo>=</mo><mfrac><mi>&#x03BB;</mi><mrow><mi>&#x03BB;</mi><mo>-</mo><mi>i</mi><mi>u</mi></mrow></mfrac></mrow></math></div>
+      </article>
+    </section>
+
+    <section class="section">
+      <h2>Chapitre 3 - Probabilites conjointes</h2>
+      <article class="exercise">
+        <h3>Exercice 11</h3>
+        <p>Soit (X,Y) de densite <span class="m-inline"><math><mrow><mi>f</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>)</mo><mo>=</mo><mn>2</mn><mo>,</mo><mspace width="5px"/><mn>0</mn><mo>&lt;</mo><mi>x</mi><mo>&lt;</mo><mi>y</mi><mo>&lt;</mo><mn>1</mn></mrow></math></span>.</p>
+        <ol><li>Verifier que f est une densite.</li><li>Determiner les marginales.</li><li>X et Y sont-elles independantes ?</li></ol>
+      </article>
+      <article class="exercise">
+        <h3>Exercice 12</h3>
+        <p><span class="proof">Demonstration.</span> Montrer la formule des probabilites totales puis Bayes pour une partition finie.</p>
+      </article>
+      <article class="exercise">
+        <h3>Exercice 13</h3>
+        <p>Soit X,Y centrees, de variance finie. Montrer:</p>
+        <div class="m"><math><mrow><mo>|</mo><mi>Cov</mi><mo>(</mo><mi>X</mi><mo>,</mo><mi>Y</mi><mo>)</mo><mo>|</mo><mo>&#x2264;</mo><msqrt><mrow><mi>Var</mi><mo>(</mo><mi>X</mi><mo>)</mo><mi>Var</mi><mo>(</mo><mi>Y</mi><mo>)</mo></mrow></msqrt></mrow></math></div>
+      </article>
+    </section>
+
+    <section class="section">
+      <h2>Chapitre 4 - Convergences p.s., en probabilite, en L<sup>p</sup>, en loi</h2>
+      <article class="exercise">
+        <h3>Exercice 14</h3>
+        <p>Sur ([0,1],B,lambda), poser <span class="m-inline"><math><mrow><msub><mi>X</mi><mi>n</mi></msub><mo>(</mo><mi>&#x03C9;</mi><mo>)</mo><mo>=</mo><msup><mi>&#x03C9;</mi><mi>n</mi></msup></mrow></math></span>.</p>
+        <ol><li>Etudier convergence p.s., en probabilite, en L1, en loi.</li></ol>
+      </article>
+      <article class="exercise">
+        <h3>Exercice 15</h3>
+        <p><span class="proof">Demonstration.</span> Montrer:</p>
+        <div class="m"><math><mrow><msub><mi>X</mi><mi>n</mi></msub><mo>&#x2192;</mo><mi>X</mi><mspace width="6px"/><mtext>dans L1</mtext><mspace width="6px"/><mo>&#x21D2;</mo><mspace width="6px"/><msub><mi>X</mi><mi>n</mi></msub><mo>&#x2192;</mo><mi>X</mi><mspace width="6px"/><mtext>en probabilite</mtext></mrow></math></div>
+      </article>
+    </section>
+
+    <section class="section">
+      <h2>Chapitre 5 - Loi des grands nombres et TCL</h2>
+      <article class="exercise">
+        <h3>Exercice 16</h3>
+        <p><span class="proof">Demonstration + application.</span> Soit (X_i) i.i.d. avec moyenne mu et variance sigma^2.</p>
+        <ol>
+          <li>Enoncer LGN et TCL pour <span class="m-inline"><math><mrow><msub><mi>S</mi><mi>n</mi></msub><mo>=</mo><munderover><mo>&#x2211;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><msub><mi>X</mi><mi>i</mi></msub></mrow></math></span>.</li>
+          <li>Application Bernoulli(p=0.4), n=100: approximer P(0.35 <= Xbar_100 <= 0.50).</li>
+        </ol>
+      </article>
+    </section>
+
+    <div class="note">Formules en MathML pour un rendu mathematique stable en navigateur et a l'export PDF.</div>
+    <p class="footer">Fiche TD avancee - Probabilites Partie 1</p>
+  </main>
+</body>
+</html>

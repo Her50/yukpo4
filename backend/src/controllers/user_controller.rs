@@ -806,10 +806,10 @@ pub async fn recharge_tokens(
         user.id, req.amount
     );
 
-    // Valider le montant minimum (100 XAF minimum)
-    if req.amount < 100.0 {
+    // Valider le montant minimum (1000 XAF minimum)
+    if req.amount < 1000.0 {
         return Err(AppError::BadRequest(
-            "Le montant minimum de recharge est de 100 XAF".into(),
+            "Le montant minimum de recharge est de 1000 XAF".into(),
         ));
     }
 

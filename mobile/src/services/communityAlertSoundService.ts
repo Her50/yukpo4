@@ -111,7 +111,8 @@ class CommunityAlertSoundService {
         type: CommunityAlertType,
         extraData?: Record<string, any>,
         paymentHook?: ReturnType<typeof useNavigationPayment>,
-        checkpointId?: string
+        checkpointId?: string,
+        notificationOverrides?: { sound?: boolean; vibrate?: boolean }
     ): Promise<boolean> {
         if (!this.isInitialized) {
             await this.initialize();
@@ -169,7 +170,8 @@ class CommunityAlertSoundService {
             }
 
             // Vibration
-            if (soundConfig.vibrate) {
+            const shouldVibrate = notificationOverrides?.vibrate ?? soundConfig.vibrate;
+            if (shouldVibrate) {
                 try {
                     Vibration.vibrate([0, 200, 100, 200]);
                 } catch { }
@@ -181,7 +183,7 @@ class CommunityAlertSoundService {
                     title,
                     body,
                     data: { type: 'community_alert_sound', subtype: type, ...extraData },
-                    sound: soundConfig.sound,
+                    sound: notificationOverrides?.sound ?? soundConfig.sound,
                     ...(Platform.OS === 'android' ? { channelId: 'community_alerts' } : {}),
                 },
                 trigger: null, // Immédiat
@@ -212,9 +214,10 @@ class CommunityAlertSoundService {
      */
     async sendFreeAlertSound(
         type: CommunityAlertType,
-        extraData?: Record<string, any>
+        extraData?: Record<string, any>,
+        notificationOverrides?: { sound?: boolean; vibrate?: boolean }
     ): Promise<boolean> {
-        return this.sendAlertSound(type, extraData, undefined);
+        return this.sendAlertSound(type, extraData, undefined, undefined, notificationOverrides);
     }
 
     /**

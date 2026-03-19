@@ -1,0 +1,149 @@
+﻿{
+    "generated_at":  "2026-03-19T13:08:44.1185846+01:00",
+    "host":  "34.79.199.41",
+    "port":  5432,
+    "database":  "yukpo_db",
+    "migration_source":  "C:\\Users\\23767\\yukpomnang2\\backend\\migrations",
+    "apply_requested":  true,
+    "applied_count":  362,
+    "local_unique_versions":  371,
+    "aligned_count":  357,
+    "update_count":  5,
+    "missing_local_count":  0,
+    "ambiguous_local_count":  0,
+    "updates":  [
+                    {
+                        "version":  1025,
+                        "db_description":  "create livres scolaires troc",
+                        "db_checksum_hex":  "8f26a98a290a06f966a3350f59208c080b40db86599636ecc4ff2a6fa52544ca33e4455d060a4641c62c9cd65f0bf511",
+                        "local_description":  "create livres scolaires troc",
+                        "local_checksum_hex":  "022824ff592f1205e878d7638648e64197b2aef7c1650db736b7751c6e182f5bca6296efca008a5d2cfe583a4001b67c",
+                        "local_file":  "00001025_create_livres_scolaires_troc.sql"
+                    },
+                    {
+                        "version":  20250127,
+                        "db_description":  "000001 create user saved addresses",
+                        "db_checksum_hex":  "495af33fc7c2e6f617ca5ad6c81118da79461bd40d66d063e1cbd7811896277ffd0e1b10bae46e79e436077813047093",
+                        "local_description":  "000001 create user saved addresses",
+                        "local_checksum_hex":  "de0fad5448aa6061d04027468123af7b7982304af84e563d4114319e89f3fdd1e7f975c451aa5a459bba5a8836f1cf02",
+                        "local_file":  "20250127_000001_create_user_saved_addresses.sql"
+                    },
+                    {
+                        "version":  20251127,
+                        "db_description":  "120000 create get product reactions count",
+                        "db_checksum_hex":  "5856e9fbabadb5b896830157ada6bf3c3626bd60ab7d8bb152b25ff1721a6b9d0a0341d1e2fd0db148ea2a5e9e896f68",
+                        "local_description":  "120000 create get product reactions count",
+                        "local_checksum_hex":  "e1efa4d1515f3a6c819e940bf535bcfa34bab025e744412b4a3fd4ec0b7115c351dba2e079b406196c942878a35c3aa8",
+                        "local_file":  "20251127_120000_create_get_product_reactions_count.sql"
+                    },
+                    {
+                        "version":  20251224,
+                        "db_description":  "fix image search relevance and performance",
+                        "db_checksum_hex":  "d2083cb14c0370d4faddd574133154fbf44cb400a282f467ed3dedeb70657eb2178012047810906395eacca742f97843",
+                        "local_description":  "fix image search relevance and performance",
+                        "local_checksum_hex":  "4f80349ed5eeb76ec5ace3db4cf4ac60c111230d6ba63deeee4548dfc1082f7d1187abf58916eb6411922ae464936ce1",
+                        "local_file":  "20251224_fix_image_search_relevance_and_performance.sql"
+                    },
+                    {
+                        "version":  20251227,
+                        "db_description":  "ensure search indexes exist",
+                        "db_checksum_hex":  "f8616426458db0a8fbacbac4566cd1a5582ae9b9fff481601af2b215dec9904664d560f108fb088840bc02ad8dcd56ff",
+                        "local_description":  "ensure search indexes exist",
+                        "local_checksum_hex":  "ef31ad777fe39914789febc71e2b68b39912961e9610d176a03101f7dc437681a23b36e1078fce2c06d15390ad6726f2",
+                        "local_file":  "20251227_ensure_search_indexes_exist.sql"
+                    }
+                ],
+    "resolved_ambiguous":  [
+                               {
+                                   "version":  20250101,
+                                   "db_description":  "001 create advanced features tables",
+                                   "selected_file":  "20250101_001_create_advanced_features_tables.sql"
+                               },
+                               {
+                                   "version":  20250127,
+                                   "db_description":  "000001 create user saved addresses",
+                                   "selected_file":  "20250127_000001_create_user_saved_addresses.sql"
+                               },
+                               {
+                                   "version":  20250128,
+                                   "db_description":  "001 add media urls to comments",
+                                   "selected_file":  "20250128_001_add_media_urls_to_comments.sql"
+                               },
+                               {
+                                   "version":  20250129,
+                                   "db_description":  "add insurance qr covoiturage",
+                                   "selected_file":  "20250129_add_insurance_qr_covoiturage.sql"
+                               },
+                               {
+                                   "version":  20251126,
+                                   "db_description":  "create specialized services tables",
+                                   "selected_file":  "20251126_create_specialized_services_tables.sql"
+                               },
+                               {
+                                   "version":  20251127,
+                                   "db_description":  "120000 create get product reactions count",
+                                   "selected_file":  "20251127_120000_create_get_product_reactions_count.sql"
+                               },
+                               {
+                                   "version":  20251201,
+                                   "db_description":  "add missing product descriptions",
+                                   "selected_file":  "20251201_add_missing_product_descriptions.sql"
+                               },
+                               {
+                                   "version":  20251203,
+                                   "db_description":  "create videos table with hashtags",
+                                   "selected_file":  "20251203_create_videos_table_with_hashtags.sql"
+                               },
+                               {
+                                   "version":  20251221,
+                                   "db_description":  "add fallback to hybrid image search",
+                                   "selected_file":  "20251221_add_fallback_to_hybrid_image_search.sql"
+                               },
+                               {
+                                   "version":  20251224,
+                                   "db_description":  "fix image search relevance and performance",
+                                   "selected_file":  "20251224_fix_image_search_relevance_and_performance.sql"
+                               },
+                               {
+                                   "version":  20251227,
+                                   "db_description":  "ensure search indexes exist",
+                                   "selected_file":  "20251227_ensure_search_indexes_exist.sql"
+                               },
+                               {
+                                   "version":  20251230,
+                                   "db_description":  "fix add product tls error",
+                                   "selected_file":  "20251230_fix_add_product_tls_error.sql"
+                               },
+                               {
+                                   "version":  20251231,
+                                   "db_description":  "fix audio cache cleanup null handling",
+                                   "selected_file":  "20251231_fix_audio_cache_cleanup_null_handling.sql"
+                               },
+                               {
+                                   "version":  20260114,
+                                   "db_description":  "create negotiated prices table",
+                                   "selected_file":  "20260114_create_negotiated_prices_table.sql"
+                               },
+                               {
+                                   "version":  20260115,
+                                   "db_description":  "fix image search empty results",
+                                   "selected_file":  "20260115_fix_image_search_empty_results.sql"
+                               },
+                               {
+                                   "version":  46,
+                                   "db_description":  "fix product lifecycle sync trigger",
+                                   "selected_file":  "00000046_fix_product_lifecycle_sync_trigger.sql"
+                               },
+                               {
+                                   "version":  5,
+                                   "db_description":  "002 add pharmacy products",
+                                   "selected_file":  "00000005_002_add_pharmacy_products.sql"
+                               }
+                           ],
+    "missing_local_versions":  [
+
+                               ],
+    "ambiguous_local_versions":  [
+
+                                 ]
+}

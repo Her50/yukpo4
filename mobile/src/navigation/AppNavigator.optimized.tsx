@@ -7,8 +7,9 @@
 // ============================================================================
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useNavigationState } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Platform, StyleSheet, Text, View } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
 import { OfflineIndicator } from '../components/ux/OfflineIndicator';
@@ -111,7 +112,29 @@ function reg(name: string, imp: () => Promise<any>) {
 
 const loadScreen = (path: string, name?: string): React.ComponentType<any> => {
   try {
-    return require(path).default;
+    switch (path) {
+      case '../screens/HomeScreen':
+        return require('../screens/HomeScreen').default;
+      case '../screens/MesServicesScreen':
+        return require('../screens/MesServicesScreen').default;
+      case '../screens/MesInteractionsScreen':
+        return require('../screens/MesInteractionsScreen').default;
+      case '../screens/ProfileScreen':
+        return require('../screens/ProfileScreen').default;
+      case '../screens/ContactScreen':
+        return require('../screens/ContactScreen').default;
+      case '../screens/specialized/GestionServicesSpecialisesScreen':
+        return require('../screens/specialized/GestionServicesSpecialisesScreen').default;
+      case '../screens/specialized/ServicesDashboard':
+        return require('../screens/specialized/ServicesDashboard').default;
+      case '../components/IntelligentChatFab':
+        return require('../components/IntelligentChatFab').default;
+      case '../components/IntelligentChat':
+        return require('../components/IntelligentChat').default;
+      default:
+        console.error(`[AppNav] ❌ Module non mappé dans loadScreen: ${name || path}`);
+        return () => <ScreenError name={name || path} />;
+    }
   } catch (error) {
     console.error(`[AppNav] ❌ Impossible de charger le module ${name || path}:`, error);
     return () => <ScreenError name={name || path} />;
@@ -901,7 +924,7 @@ function MainStackNavigator() {
   );
 }
 
-const SCREENS_HIDE_FAB = ['ChatModalMobile', 'Login', 'Register', 'PartnerRegister', 'OtpVerification'];
+const SCREENS_HIDE_FAB = ['ChatModalMobile', 'Login', 'Register', 'PartnerRegister', 'OtpVerification', 'VideoFeed', 'Videos'];
 
 function getActiveRouteName(state: any): string {
   if (!state?.routes) return 'Unknown';
@@ -910,13 +933,20 @@ function getActiveRouteName(state: any): string {
   return route.name || 'Unknown';
 }
 
+function getActiveRoute(state: any): { name: string; params?: any } {
+  if (!state?.routes) return { name: 'Unknown', params: undefined };
+  const route = state.routes[state.index ?? 0];
+  if (route?.state) return getActiveRoute(route.state);
+  return { name: route?.name || 'Unknown', params: route?.params };
+}
+
 function MainStackWithDeepLinks() {
   const { user } = useAuth();
   const [chatVisible, setChatVisible] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
-  // Keep startup stable: this component is mounted before any parent navigator
-  // provides state context, so avoid useNavigationState here.
-  const currentScreen = 'Home';
+  const activeRoute = useNavigationState((state: any) => getActiveRoute(state));
+  const currentScreen = activeRoute?.name || 'Home';
+  const currentRouteParams = activeRoute?.params;
 
   const showIntelligentChat = useCallback((message?: string) => {
     setChatMessage(message || '');
@@ -932,6 +962,17 @@ function MainStackWithDeepLinks() {
   const fabVisible = !chatVisible && !SCREENS_HIDE_FAB.includes(currentScreen);
   const IntelligentChatFab = loadScreen('../components/IntelligentChatFab');
   const IntelligentChat = loadScreen('../components/IntelligentChat');
+  const contextualChatScreenContext = useMemo(() => ({
+    screenName: currentScreen,
+    routeParams: currentRouteParams,
+  }), [currentScreen, currentRouteParams]);
+
+  // Ne jamais afficher la fenêtre de chat sur l'expérience vidéo plein écran
+  useEffect(() => {
+    if ((currentScreen === 'VideoFeed' || currentScreen === 'Videos') && chatVisible) {
+      setChatVisible(false);
+    }
+  }, [currentScreen, chatVisible]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -949,6 +990,7 @@ function MainStackWithDeepLinks() {
         visible={chatVisible}
         onClose={() => setChatVisible(false)}
         initialMessage={chatMessage}
+        screenContext={contextualChatScreenContext}
       />
     </View>
   );

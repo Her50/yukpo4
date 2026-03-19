@@ -208,7 +208,7 @@ class CoachingNotificationService {
                     title,
                     body,
                     data: { type: 'coaching', subtype: type },
-                    sound: msg.sound,
+                    sound: true,
                     ...(Platform.OS === 'android' ? { channelId: 'coaching' } : {}),
                 },
                 trigger: {
@@ -243,7 +243,7 @@ class CoachingNotificationService {
                     title,
                     body,
                     data: { type: 'coaching', subtype: type },
-                    sound: msg.sound,
+                    sound: true,
                     ...(Platform.OS === 'android' ? { channelId: 'coaching' } : {}),
                 },
                 trigger: {
@@ -283,6 +283,19 @@ class CoachingNotificationService {
         return messages[Math.floor(Math.random() * messages.length)];
     }
 
+    /**
+     * Enregistrer une notification coaching reçue (push/background) dans l'historique visuel.
+     */
+    async recordFromNotification(
+        subtype: CoachingNotificationType | string,
+        title: string,
+        body: string,
+        metadata?: Record<string, any>
+    ): Promise<void> {
+        const normalizedType = (String(subtype || '') || 'midday_activity') as CoachingNotificationType;
+        await this.trackNotification(normalizedType, title || 'Coach IA', body || '', metadata);
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     // NOTIFICATIONS INSTANTANÉES (déclenchées par des événements)
     // ══════════════════════════════════════════════════════════════════════
@@ -317,7 +330,7 @@ class CoachingNotificationService {
                     title,
                     body,
                     data: { type: 'coaching', subtype: type, ...extraData },
-                    sound: msg.sound,
+                    sound: true,
                     ...(Platform.OS === 'android' ? { channelId: 'coaching' } : {}),
                 },
                 trigger: null, // Immédiat
@@ -357,7 +370,12 @@ class CoachingNotificationService {
     /**
      * Tracker une notification envoyée (pour stats + historique)
      */
-    private async trackNotification(type: CoachingNotificationType, title: string, body: string): Promise<void> {
+    private async trackNotification(
+        type: CoachingNotificationType,
+        title: string,
+        body: string,
+        metadata?: Record<string, any>
+    ): Promise<void> {
         try {
             // Stats existantes
             const stored = await SafeStorage.getItem(COACHING_STATS_KEY).catch(() => null);
@@ -379,6 +397,7 @@ class CoachingNotificationService {
                 timestamp: Date.now(),
                 read: false, // Non lu par défaut
                 soundPlayed: true, // Sonore par défaut
+                metadata: metadata || {},
             };
 
             // Garder seulement les 50 dernières notifications (limite de stockage)

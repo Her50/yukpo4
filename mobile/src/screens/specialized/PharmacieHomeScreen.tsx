@@ -1313,6 +1313,7 @@ const DosageModal: React.FC<DosageModalProps> = ({
     dosage,
     loading,
 }) => {
+    const { t } = useLanguageSafe();
     return (
         <Modal
             visible={visible}
@@ -1421,6 +1422,7 @@ const InteractionsModal: React.FC<InteractionsModalProps> = ({
     interactions,
     loading,
 }) => {
+    const { t } = useLanguageSafe();
     const getSeverityColor = (severity: string) => {
         switch (severity) {
             case 'contraindicated':
@@ -1552,6 +1554,7 @@ const MedicationDetailsModal: React.FC<MedicationDetailsModalProps> = ({
     onGetDosage,
     onCheckInteractions,
 }) => {
+    const { t } = useLanguageSafe();
     if (!medication) return null;
 
     return (

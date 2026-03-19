@@ -1715,9 +1715,15 @@ export const mediaApi = {
 export const iaApi = {
   // Chat avec l'IA
   chat: async (message: string) => {
-    return apiCall('/api/ia/chat', {
+    // Backend expose POST /ai/chat (sans préfixe `/api`)
+    return apiCall('/ai/chat', {
       method: 'POST',
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({
+        message,
+        type: 'general',
+        language: 'fr',
+        context: null,
+      }),
     });
   },
 
@@ -2226,9 +2232,15 @@ export const commentsApi = {
 // Export pour compatibilité avec les anciens imports
 export const aiService = {
   chat: async (message: string) => {
-    return apiCall('/api/ia/chat', {
+    // Backend expose POST /ai/chat (sans préfixe `/api`)
+    return apiCall('/ai/chat', {
       method: 'POST',
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({
+        message,
+        type: 'general',
+        language: 'fr',
+        context: null,
+      }),
     });
   },
 };

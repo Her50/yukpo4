@@ -1,0 +1,3 @@
+-- Placeholder migration restored to satisfy Render history
+-- This migration was already applied manually in production.
+-- No schema changes are executed here.
